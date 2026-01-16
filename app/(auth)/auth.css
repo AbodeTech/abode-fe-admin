@@ -1,0 +1,45 @@
+/* Auth System Styles */
+
+:root {
+  /* Semantic Layer - Auth Specific */
+  --auth-background: #ECFCFF;
+  --auth-foreground: #151616;
+
+  --auth-card-bg: rgba(255, 255, 255, 0.9);
+
+  --auth-input-bg: #F2F8FB;
+  --auth-input-placeholder: #7B9CAF;
+
+  --auth-primary: #F26B35;
+
+  /* Button Gradients */
+  --auth-btn-start: #63C7D3;
+  /* btnSecondary-light */
+  --auth-btn-end: #0593A5;
+  /* btnSecondary-dark */
+
+  /* Text Colors */
+  --auth-header-text: #0593A5;
+  /* abodeTeal-light for para */
+
+  /* Mapping standard Shadcn variables to Auth specific choices */
+  --background: var(--auth-background);
+  --foreground: var(--auth-foreground);
+
+  --primary: var(--auth-btn-end);
+  --primary-foreground: #FFFFFF;
+
+  --muted: #E2E8F0;
+  --muted-foreground: #64748B;
+
+  --border: #D5E1EE;
+  /* borderPrimary */
+  --input: var(--auth-input-bg);
+  --ring: var(--auth-btn-end);
+}
+
+.dark {
+  /* Dark mode overrides would go here, keeping light mode focus for legacy match */
+  --background: #020817;
+  --foreground: #F8FAFC;
+}
