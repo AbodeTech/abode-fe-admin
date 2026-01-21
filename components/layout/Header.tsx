@@ -1,7 +1,6 @@
 "use client";
 
 import Container from "./Container";
-import Accounts from "../features/dashboard/Accounts"; // Adjusted import path
 import { useState } from "react";
 import TopSnackbar from "./TopSnackbar";
 import Notifications from "./Notifications";
