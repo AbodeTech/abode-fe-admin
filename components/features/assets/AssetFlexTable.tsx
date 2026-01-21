@@ -10,6 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { AdminAsset } from "@/lib/api/admin/assets";
+import { useAssetIdStore } from "@/store/assetid-store";
 
 function transformAssetData(asset: AdminAsset) {
   return {
@@ -19,7 +20,6 @@ function transformAssetData(asset: AdminAsset) {
     location: asset.asset_location,
     status: asset.sold === "true" ? "Sold" : "Active",
     unitsAvailable: asset.asset_option.reduce((total, opt) => {
-      // If flex_payment_plans exists, sum up units from all payment plans
       if (opt.flex_payment_plans && opt.flex_payment_plans.length > 0) {
         const optionUnits = opt.flex_payment_plans.reduce(
           (sum, plan) => sum + plan.unit,
@@ -27,26 +27,21 @@ function transformAssetData(asset: AdminAsset) {
         );
         return total + optionUnits;
       }
-      // Fallback to opt.unit for legacy data or full ownership
       return total + (opt.unit || 0);
     }, 0),
     minPrice: Math.min(
       ...asset.asset_option.flatMap((opt) => {
-        // If flex_payment_plans exists, get prices from payment plans
         if (opt.flex_payment_plans && opt.flex_payment_plans.length > 0) {
           return opt.flex_payment_plans.map((plan) => plan.price);
         }
-        // Fallback to opt.price for legacy data or full ownership
         return [opt.price || 0];
       })
     ),
     maxPrice: Math.max(
       ...asset.asset_option.flatMap((opt) => {
-        // If flex_payment_plans exists, get prices from payment plans
         if (opt.flex_payment_plans && opt.flex_payment_plans.length > 0) {
           return opt.flex_payment_plans.map((plan) => plan.price);
         }
-        // Fallback to opt.price for legacy data or full ownership
         return [opt.price || 0];
       })
     ),
@@ -58,6 +53,7 @@ interface Props {
 }
 
 export function FlexAssetsTable({ data }: Props) {
+  const { updateAssetId } = useAssetIdStore();
   // Filter for flex assets (logic from legacy)
   const flexNewAsset = data.filter(
     (asset) => asset.asset_type === "flex" && asset.asset_option.length > 0
@@ -95,8 +91,9 @@ export function FlexAssetsTable({ data }: Props) {
                 <TableRow key={asset.id} className="cursor-pointer hover:bg-muted/50">
                   <TableCell>
                     <Link
-                      href={`/assets/flex/${asset.id}`}
+                      href={`/assets/flex/${asset.name}`}
                       className="block w-full h-full"
+                      onClick={() => updateAssetId(asset.id)}
                     >
                       {asset.name}
                     </Link>
@@ -110,8 +107,8 @@ export function FlexAssetsTable({ data }: Props) {
                   <TableCell>
                     <span
                       className={`px-2 py-1 rounded-full text-xs ${asset.status === "Active"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-red-100 text-red-800"
+                        ? "bg-green-100 text-green-800"
+                        : "bg-red-100 text-red-800"
                         }`}
                     >
                       {asset.status}

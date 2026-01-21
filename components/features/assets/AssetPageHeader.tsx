@@ -34,7 +34,7 @@ export function AssetPageHeader() {
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem>
-              <Link href="/assets/create-fullownership" className="w-full">
+              <Link href="/assets/create-full-ownership" className="w-full">
                 Create Full Ownership Asset
               </Link>
             </DropdownMenuItem>

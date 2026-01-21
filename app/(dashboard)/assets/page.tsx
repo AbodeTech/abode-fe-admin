@@ -19,16 +19,11 @@ export default async function AssetsPage() {
     ]);
 
 
-    console.log("assetsRes", assetsRes);
-    console.log("inventoryRes", inventoryRes);
 
     assetsData = assetsRes.getAllAdminAssets.data;
     inventoryData = inventoryRes.getAssetInventoryData.statistics;
   } catch (error) {
     console.error("Error loading assets data:", error);
-    // In a real app, you might want to throw to trigger error.tsxß
-    // or return a partial state.
-    // return <div>Error loading data: {(error as Error).message}</div>;
   }
 
   return (

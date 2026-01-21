@@ -11,6 +11,8 @@ import {
 } from "@/components/ui/table";
 import { AdminAsset } from "@/lib/api/admin/assets";
 
+import { useAssetIdStore } from "@/store/assetid-store";
+
 function transformAssetData(asset: AdminAsset) {
   return {
     id: asset._id,
@@ -19,8 +21,8 @@ function transformAssetData(asset: AdminAsset) {
     location: asset.asset_location,
     status: asset.sold === "true" ? "Sold" : "Active",
     unitsAvailable: asset.asset_option.reduce((total, opt) => total + Number(opt.unit || 0), 0),
-    minPrice: Math.min(...asset.asset_option.map((opt) => opt.one_month || 0)),
-    maxPrice: Math.max(...asset.asset_option.map((opt) => opt.one_month || 0)),
+    minPrice: Math.min(...asset.asset_option.map((opt) => opt.zero_months || 0)),
+    maxPrice: Math.max(...asset.asset_option.map((opt) => opt.zero_months || 0)),
   };
 }
 
@@ -29,6 +31,7 @@ interface Props {
 }
 
 export function FullOwnershipAssetsTable({ data }: Props) {
+  const { updateAssetId } = useAssetIdStore();
   const fullOwnershipNewAssets = data.filter(
     (asset) => asset.asset_type === "full-ownership" && asset.asset_option.length > 0
   );
@@ -67,6 +70,7 @@ export function FullOwnershipAssetsTable({ data }: Props) {
                     <Link
                       href={`/assets/fullownership/${asset.id}`}
                       className="block w-full h-full"
+                      onClick={() => updateAssetId(asset.id)}
                     >
                       {asset.name}
                     </Link>
@@ -80,8 +84,8 @@ export function FullOwnershipAssetsTable({ data }: Props) {
                   <TableCell>
                     <span
                       className={`px-2 py-1 rounded-full text-xs ${asset.status === "Active"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-red-100 text-red-800"
+                        ? "bg-green-100 text-green-800"
+                        : "bg-red-100 text-red-800"
                         }`}
                     >
                       {asset.status}

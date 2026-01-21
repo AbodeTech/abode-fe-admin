@@ -59,7 +59,8 @@ export function SignInForm() {
           email: result.user.email,
           firstName: "Admin",
           lastName: "User",
-          role: result.user.role
+          role: result.user.role,
+          permissions: result.user.permissions
         });
 
         router.push("/");

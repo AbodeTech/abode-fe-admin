@@ -1,15 +1,21 @@
-import { graphql } from "@/lib/gql";
-import { cookies } from "next/headers";
+import { graphql } from "@/lib/gql/gql";
+import { fetchServerGraphql } from "@/lib/api/server-utils";
+import { fetchGraphql } from "@/lib/graphql-client";
+import { ReadonlyURLSearchParams } from "next/navigation";
+import {
+  AdminAssetsData,
+  AssetInventoryData,
+  CreateFlexAssetInput,
+  CreateFullOwnershipAssetInput,
+  AssetByNameData,
+  AssetOptionDataByNameData,
+  AssetSubscribersData,
+  Subscriber
+} from "./assets.types";
 
-const API_URL =
-  process.env.API_BASE_URL ||
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  process.env.NEXT_API_BASE_URL ||
-  "";
 
-if (!API_URL) {
-  console.error("API_BASE_URL is not defined");
-}
+// Re-export types for backward compatibility
+export * from "./assets.types";
 
 const GET_ALL_ADMIN_ASSETS_QUERY = graphql(`
   query GetAllAdminAssets($page: Int!, $limit: Int!) {
@@ -74,82 +80,79 @@ const GET_ASSET_INVENTORY_DATA_QUERY = graphql(`
   }
 `);
 
-async function fetchServerGraphql<T>(query: any, variables: any = {}) {
-  const cookieStore = await cookies();
-  const accessToken = cookieStore.get("accessToken");
-
-  if (!accessToken?.value) {
-    throw new Error("Unauthorized");
+const CREATE_FLEX_ASSET_MUTATION = graphql(`
+  mutation CreateFlexAsset($createFlexAssetInput: CreateFlexAssetInput!) {
+    createFlexAsset(createFlexAssetInput: $createFlexAssetInput) {
+      _id
+      asset_name
+    }
   }
+`);
 
-  const response = await fetch(API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken.value}`,
-    },
-    body: JSON.stringify({
-      query: typeof query === 'string' ? query : query.loc?.source.body,
-      variables,
-    }),
-    next: { tags: ["assets"] }, // Simple caching tag
-  });
 
-  if (!response.ok) {
-    throw new Error(`Example API Error: ${response.statusText}`);
+const GET_ASSET_BY_NAME_QUERY = graphql(`
+  query ViewAssetByName($assetName: String!, $assetType: String) {
+    viewAssetByName(assetName: $assetName, assetType: $assetType) {
+      available_unit
+      unit_sold
+      expected_return
+      total_value
+      sizes
+    }
   }
+`);
 
-  const json = await response.json();
-  if (json.errors) {
-    throw new Error(json.errors[0].message);
+const GET_ASSET_OPTION_DATA_BY_NAME_QUERY = graphql(`
+  query ViewAssetOptionDataByName($assetName: String!, $assetType: String!) {
+    viewAssetOptionDataByName(assetName: $assetName, assetType: $assetType) {
+      sizes {
+        size
+        available_unit
+        value
+        unit_sold
+        expected_return
+      }
+    }
   }
+`);
 
-  return json.data as T;
-}
-
-export type AssetInventoryData = {
-  getAssetInventoryData: {
-    statistics: {
-      totalAssets: number;
-      totalWorth: number;
-      totalFlexAssets: number;
-      totalFlexWorth: number;
-      totalFullOwnershipAssets: number;
-      totalFullOwnershipWorth: number;
-    };
-  };
-};
-
-export type AdminAsset = {
-  _id: string;
-  asset_name: string;
-  asset_location: string;
-  asset_type: string;
-  sold: string;
-  asset_pictures: string[];
-  asset_option: Array<{
-    size: number;
-    unit: number;
-    price: number;
-    one_month: number;
-    flex_payment_plans?: Array<{
-      price: number;
-      unit: number;
-    }>;
-  }>;
-};
-
-export type AdminAssetsData = {
-  getAllAdminAssets: {
-    count: number;
-    data: AdminAsset[];
-  };
-};
 
 export const getAssetInventoryData = async () => {
-  return fetchServerGraphql<AssetInventoryData>(GET_ASSET_INVENTORY_DATA_QUERY);
+  return fetchServerGraphql<AssetInventoryData>(GET_ASSET_INVENTORY_DATA_QUERY as any, undefined, []);
 };
 
 export const getAllAdminAssets = async (page: number = 1, limit: number = 5000) => {
-  return fetchServerGraphql<AdminAssetsData>(GET_ALL_ADMIN_ASSETS_QUERY, { page, limit });
+  return fetchServerGraphql<AdminAssetsData>(GET_ALL_ADMIN_ASSETS_QUERY as any, { page, limit }, ["assets"]);
 };
+
+export const getAssetByName = async (assetName: string, assetType: string) => {
+  return fetchServerGraphql<AssetByNameData>(GET_ASSET_BY_NAME_QUERY as any, { assetName, assetType }, ["assets"]);
+}
+
+export const createFlexAsset = async (payload: CreateFlexAssetInput) => {
+  return fetchServerGraphql(CREATE_FLEX_ASSET_MUTATION as any, {
+    createFlexAssetInput: payload,
+  });
+};
+
+const CREATE_FULL_OWNERSHIP_ASSET_MUTATION = graphql(`
+  mutation CreateFullOwnershipAsset($createFullOwnershipAssetInput: CreateFullOwnershipAssetInput!) {
+    createFullOwnershipAsset(createFullOwnershipAssetInput: $createFullOwnershipAssetInput) {
+      _id
+      asset_name
+    }
+  }
+`);
+
+export const createFullOwnershipAsset = async (payload: CreateFullOwnershipAssetInput) => {
+  return fetchServerGraphql(CREATE_FULL_OWNERSHIP_ASSET_MUTATION as any, {
+    createFullOwnershipAssetInput: payload,
+  });
+};
+
+
+export const getAssetOptionDataByName = async (assetName: string, assetType: string) => {
+  return fetchServerGraphql<AssetOptionDataByNameData>(GET_ASSET_OPTION_DATA_BY_NAME_QUERY as any, { assetName, assetType });
+};
+
+

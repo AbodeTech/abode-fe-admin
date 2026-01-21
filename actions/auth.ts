@@ -3,6 +3,7 @@
 import { cookies } from "next/headers";
 
 export async function loginAction(prevState: any, formData: FormData) {
+  console.log("working")
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
 
@@ -11,10 +12,14 @@ export async function loginAction(prevState: any, formData: FormData) {
   }
 
   try {
-    const API_BASE_URL = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_API_BASE_URL;
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
     if (!API_BASE_URL) {
       throw new Error("API_BASE_URL is not defined");
     }
+
+    console.log(API_BASE_URL)
+
+
 
     // GraphQL Query
     const query = `
@@ -43,6 +48,8 @@ export async function loginAction(prevState: any, formData: FormData) {
       body: JSON.stringify({ query, variables }),
       cache: "no-store",
     });
+
+    console.log(response)
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => null);
@@ -104,6 +111,7 @@ export async function loginAction(prevState: any, formData: FormData) {
     };
 
   } catch (error: any) {
+    console.log(error)
     console.error("Login Action Error:", error.message);
     return {
       error: error.message || "Invalid credentials"
