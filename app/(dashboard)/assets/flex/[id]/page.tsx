@@ -1,6 +1,6 @@
-import { AssetDetailHeader } from "@/components/features/assets/detail/AssetDetailHeader";
-import { AssetInventory } from "@/components/features/assets/detail/AssetInventory";
-import { SubscribedCustomers } from "@/components/features/assets/detail/SubscribedCustomers";
+import { AssetDetailHeader } from "@/features/assets";
+import { AssetInventory } from "@/features/assets/components/detail/AssetInventory";
+import { SubscribedCustomers } from "@/features/assets/components/detail/SubscribedCustomers";
 
 interface PageProps {
   params: Promise<{ id: string }>;

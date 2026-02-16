@@ -1,4 +1,4 @@
-import { CreateFlexAssetForm } from "@/components/features/assets/CreateFlexAssetForm";
+import { CreateFlexAssetForm } from "@/features/assets";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";

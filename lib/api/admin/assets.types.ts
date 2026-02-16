@@ -162,3 +162,105 @@ export type AssetSubscribersData = {
     totalPlotsSold: number;
   };
 };
+
+// --- Asset Transactions Types ---
+
+export type AssetTransaction = {
+  _id: string;
+  amount: string;
+  description: string;
+  admin_status: string; // 'pending' | 'approved' | 'declined'
+  status: string;
+  plot_size: string;
+  asset_type: string;
+  referral: string;
+  transaction_type: string;
+  type: string;
+  time_of_transaction: string;
+  transfer_file?: {
+    file: string;
+    bank_name?: string;
+    amount?: string;
+  } | null;
+  user: {
+    _id: string;
+    firstName: string;
+    lastName: string;
+    email?: string;
+    phoneNumber?: string;
+  };
+};
+
+export type GetAssetTransactionData = {
+  getAssetTransaction: {
+    data: AssetTransaction[];
+    count: number;
+  };
+};
+
+export type GetAssetTransactionVariables = {
+  page: number;
+  limit: number;
+  assetType?: string | null;
+  transactionType?: string | null;
+  status?: string | null;
+  salesType?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  search?: string | null;
+};
+
+// --- Edit Asset Types ---
+
+export type UpdateFlexAssetInput = {
+  id: string; // ID is required for update
+  asset_name: string;
+  asset_pictures?: string[]; // Optional in update usually, but sending complete list is safer
+  asset_location?: string;
+  title?: string;
+  asset_type?: string;
+  description?: string;
+  allocation_qualification?: number;
+  amenities?: string[];
+  asset_history?: Record<string, any>;
+  deed_of_assignment?: string;
+  survey?: string;
+  contract_of_sales?: string;
+  estate_layout?: string;
+  asset_option?: FlexAssetOptionInput[];
+  // Include other fields if they are editable 
+};
+
+export type ViewAssetData = {
+  viewAsset: {
+    _id: string;
+    asset_name: string;
+    asset_location: string;
+    asset_type: string;
+    description: string;
+    title: string;
+    allocation_qualification?: number; // basic_details.allocation_qualification in legacy?
+    asset_pictures: string[];
+    amenities: string[];
+    asset_history?: Record<string, number>; // Legacy map: "2021": 5000000
+    documents?: {
+      deed_of_assignment?: string;
+      survey?: string;
+      contract_of_sales?: string;
+      estate_layout?: string;
+    };
+    asset_option?: Array<{
+      size: number;
+      unit: number;
+      price: number;
+      flex_payment_plans: Array<{
+        description: string;
+        duration_months: number;
+        initial_payment: number;
+        monthly_installment: number;
+        price: number;
+        unit: number; // Cast to number if string in legacy
+      }>;
+    }>;
+  };
+};

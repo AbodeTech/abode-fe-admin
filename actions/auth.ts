@@ -1,9 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use server";
 
 import { cookies } from "next/headers";
 
 export async function loginAction(prevState: any, formData: FormData) {
-  console.log("working")
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
 
@@ -17,11 +17,9 @@ export async function loginAction(prevState: any, formData: FormData) {
       throw new Error("API_BASE_URL is not defined");
     }
 
-    console.log(API_BASE_URL)
 
+    console.log(API_BASE_URL, "API_BASE_URL");
 
-
-    // GraphQL Query
     const query = `
        mutation SigninAdmin($signinAdminInput: adminSigninInput!) {
         signinAdmin(signinAdminInput: $signinAdminInput) {
@@ -49,7 +47,6 @@ export async function loginAction(prevState: any, formData: FormData) {
       cache: "no-store",
     });
 
-    console.log(response)
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => null);
@@ -69,29 +66,29 @@ export async function loginAction(prevState: any, formData: FormData) {
     const { authToken, role, permissions } = data.signinAdmin;
     const cookieStore = await cookies();
 
-    // 1. 'accessToken': Required by app/api/proxy (route.ts)
-    cookieStore.set("accessToken", authToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-      maxAge: 60 * 60 * 24, // 1 day
-      sameSite: "lax",
-    });
 
-    // 2. 'adminAccessToken': Required by middleware.ts (legacy)
+    // Also set adminAccessToken for middleware compatibility
     cookieStore.set("adminAccessToken", authToken, {
-      httpOnly: true,
+      httpOnly: false, // Accessible by client-side JavaScript
       secure: process.env.NODE_ENV === "production",
       path: "/",
-      maxAge: 60 * 60 * 24, // 1 day
+      maxAge: 60 * 60 * 24,
       sameSite: "lax",
     });
 
+    // TODO: Replace authToken with actual refreshToken from backend response
+    // cookieStore.set("refreshToken", refreshToken, {
+    //   httpOnly: true, // NOT accessible by client-side JavaScript
+    //   secure: process.env.NODE_ENV === "production",
+    //   path: "/",
+    //   maxAge: 60 * 60 * 24 * 7, // 7 days
+    //   sameSite: "lax",
+    // });
 
     const userPayload = { email, role: role || "admin", permissions: permissions || [] };
 
     cookieStore.set("user", JSON.stringify(userPayload), {
-      httpOnly: true,
+      httpOnly: false,
       secure: process.env.NODE_ENV === "production",
       path: "/",
       maxAge: 60 * 60 * 24,
@@ -99,7 +96,7 @@ export async function loginAction(prevState: any, formData: FormData) {
     });
 
     cookieStore.set("adminRole", "admin", {
-      httpOnly: true,
+      httpOnly: false,
       secure: process.env.NODE_ENV === "production",
       path: "/",
       maxAge: 60 * 60 * 24,
@@ -231,8 +228,9 @@ export async function verifyEmailAction(token: string) {
     if (authToken) {
       const cookieStore = await cookies();
 
+      // Access token - client-accessible
       cookieStore.set("accessToken", authToken, {
-        httpOnly: true,
+        httpOnly: false,
         secure: process.env.NODE_ENV === "production",
         path: "/",
         maxAge: 60 * 60 * 24,
@@ -240,7 +238,7 @@ export async function verifyEmailAction(token: string) {
       });
 
       cookieStore.set("adminAccessToken", authToken, {
-        httpOnly: true,
+        httpOnly: false,
         secure: process.env.NODE_ENV === "production",
         path: "/",
         maxAge: 60 * 60 * 24,
@@ -248,7 +246,7 @@ export async function verifyEmailAction(token: string) {
       });
 
       cookieStore.set("adminRole", "admin", {
-        httpOnly: true,
+        httpOnly: false,
         secure: process.env.NODE_ENV === "production",
         path: "/",
         maxAge: 60 * 60 * 24,

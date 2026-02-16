@@ -1,29 +1,35 @@
-import React from 'react';
-import { AssetPageHeader } from '@/components/features/assets/AssetPageHeader';
-import { AssetInventoryOverview } from '@/components/features/assets/AssetInventoryOverview';
-import { FlexAssetsTable } from '@/components/features/assets/AssetFlexTable';
-import { FullOwnershipAssetsTable } from '@/components/features/assets/AssetFullOwnershipTable';
-import { getAllAdminAssets, getAssetInventoryData } from '@/lib/api/admin/assets';
+"use client";
+import {
+  useAssets,
+  useAssetInventory,
+  AssetPageHeader,
+  AssetInventoryOverview,
+  AssetFlexTable,
+  AssetFullOwnershipTable,
+} from "@/features/assets";
+import { Loader2 } from "lucide-react";
 
-export const dynamic = 'force-dynamic'; // Ensure cookies are read on every request if needed, or rely on cache
+export default function AssetsPage() {
+  const { data: assetsData, isLoading: assetsLoading, error: assetsError } = useAssets();
+  const { data: inventoryData, isLoading: inventoryLoading } = useAssetInventory();
 
-export default async function AssetsPage() {
-  let assetsData;
-  let inventoryData;
+  const isLoading = assetsLoading || inventoryLoading;
 
-  try {
-    // Parallel data fetching
-    const [assetsRes, inventoryRes] = await Promise.all([
-      getAllAdminAssets(),
-      getAssetInventoryData(),
-    ]);
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-[calc(100vh-200px)]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
-
-
-    assetsData = assetsRes.getAllAdminAssets.data;
-    inventoryData = inventoryRes.getAssetInventoryData.statistics;
-  } catch (error) {
-    console.error("Error loading assets data:", error);
+  if (assetsError) {
+    return (
+      <div className="p-4 rounded-md bg-red-50 text-red-500 border border-red-200">
+        <h3 className="font-bold">Error loading assets</h3>
+        <p>{assetsError.message || "An unexpected error occurred."}</p>
+      </div>
+    );
   }
 
   return (
@@ -32,15 +38,15 @@ export default async function AssetsPage() {
 
       <section>
         <h2 className="text-2xl font-bold mb-4">Inventory Overview</h2>
-        <AssetInventoryOverview data={inventoryData || null} />
+        <AssetInventoryOverview data={inventoryData} />
       </section>
 
       <section>
-        <FlexAssetsTable data={assetsData || []} />
+        <AssetFlexTable data={assetsData?.data?.filter((asset): asset is NonNullable<typeof asset> => asset !== null) || []} />
       </section>
 
       <section>
-        <FullOwnershipAssetsTable data={assetsData || []} />
+        <AssetFullOwnershipTable data={assetsData?.data?.filter((asset): asset is NonNullable<typeof asset> => asset !== null) || []} />
       </section>
     </div>
   );

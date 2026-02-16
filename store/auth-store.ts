@@ -8,6 +8,7 @@ interface User {
   lastName: string;
   role: string;
   permissions?: string[];
+  authToken?: string;
   // Add other user fields as needed
 }
 

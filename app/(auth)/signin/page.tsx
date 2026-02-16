@@ -1,4 +1,4 @@
-import { SignInForm } from "@/components/features/auth/SignInForm";
+import { SignInForm } from "@/features/auth";
 import Image from "next/image";
 
 export default function SignInPage() {

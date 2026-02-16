@@ -16,6 +16,11 @@ export const assetOptionSchema = z.object({
   flex_payment_plans: z.array(paymentPlanSchema),
 });
 
+export const assetHistorySchema = z.object({
+  year: z.coerce.number().int().positive(),
+  value: z.coerce.number().int().positive(),
+});
+
 export const createFlexAssetSchema = z.object({
   asset_name: z.string().min(1, "Name is required"),
   asset_location: z.string().min(1, "Location is required"),
@@ -24,13 +29,14 @@ export const createFlexAssetSchema = z.object({
   description: z.string().min(1, "Description is required"),
   allocation_qualification: z.coerce.number().min(0),
   amenities: z.string().min(1, "Amenities are required (comma separated)"),
-  estate_layout: z.string().optional(),
+  estate_layout: z.instanceof(File).optional(),
   asset_pictures: z.array(z.instanceof(File)).min(1, "At least one picture is required"),
-  deed_of_assignment: z.instanceof(File).optional(),
-  survey: z.instanceof(File).optional(),
-  contract_of_sales: z.instanceof(File).optional(),
+  deed_of_assignment: z.instanceof(File, { message: "Deed of assignment file is required" }),
+  survey: z.instanceof(File, { message: "Survey file is required" }),
+  contract_of_sales: z.instanceof(File, { message: "Contract of sales file is required" }),
   asset_option: z.array(assetOptionSchema).min(1, "At least one asset option is required"),
   new_asset: z.boolean().default(true),
+  asset_history: z.array(assetHistorySchema).min(1, "At least one asset history entry is required"),
 });
 
 export type CreateFlexAssetFormValues = z.infer<typeof createFlexAssetSchema>;
@@ -65,14 +71,55 @@ export const createFullOwnershipAssetSchema = z.object({
   description: z.string().min(1, "Description is required"),
   allocation_qualification: z.coerce.number().min(0),
   amenities: z.string().min(1, "Amenities are required (comma separated)"),
-  estate_layout: z.string().optional(),
+  estate_layout: z.instanceof(File).optional(),
   asset_pictures: z.array(z.instanceof(File)).min(1, "At least one picture is required"),
-  deed_of_assignment: z.instanceof(File).optional(),
-  survey: z.instanceof(File).optional(),
-  contract_of_sales: z.instanceof(File).optional(),
+  deed_of_assignment: z.instanceof(File, { message: "Deed of assignment file is required" }),
+  survey: z.instanceof(File, { message: "Survey file is required" }),
+  contract_of_sales: z.instanceof(File, { message: "Contract of sales file is required" }),
   asset_option: z.array(fullOwnershipAssetOptionSchema).min(1, "At least one asset option is required"),
   new_asset: z.boolean().default(true),
+  asset_history: z.array(assetHistorySchema).min(1, "At least one asset history entry is required"),
 });
 
 export type CreateFullOwnershipAssetFormValues = z.infer<typeof createFullOwnershipAssetSchema>;
 
+
+export const updateFlexAssetSchema = z.object({
+  id: z.string(),
+  asset_name: z.string().min(1, "Name is required"),
+  asset_location: z.string().min(1, "Location is required"),
+  title: z.string().min(1, "Title is required"),
+  asset_type: z.string().default("flex"),
+  description: z.string().min(1, "Description is required"),
+  allocation_qualification: z.coerce.number().min(0),
+  amenities: z.string().min(1, "Amenities are required (comma separated)"),
+  estate_layout: z.union([z.string(), z.instanceof(File)]).optional(),
+  asset_pictures: z.array(z.union([z.string(), z.instanceof(File)])).min(1, "At least one picture is required"),
+  deed_of_assignment: z.union([z.string(), z.instanceof(File)]).optional(),
+  survey: z.union([z.string(), z.instanceof(File)]).optional(),
+  contract_of_sales: z.union([z.string(), z.instanceof(File)]).optional(),
+  asset_option: z.array(assetOptionSchema).min(1, "At least one asset option is required"),
+  asset_history: z.array(assetHistorySchema).optional(),
+});
+
+export type UpdateFlexAssetFormValues = z.infer<typeof updateFlexAssetSchema>;
+
+export const updateFullOwnershipAssetSchema = z.object({
+  id: z.string(),
+  asset_name: z.string().min(1, "Name is required"),
+  asset_location: z.string().min(1, "Location is required"),
+  title: z.string().min(1, "Title is required"),
+  asset_type: z.string().default("full-ownership"),
+  description: z.string().min(1, "Description is required"),
+  allocation_qualification: z.coerce.number().min(0),
+  amenities: z.string().min(1, "Amenities are required (comma separated)"),
+  estate_layout: z.union([z.string(), z.instanceof(File)]).optional(),
+  asset_pictures: z.array(z.union([z.string(), z.instanceof(File)])).min(1, "At least one picture is required"),
+  deed_of_assignment: z.union([z.string(), z.instanceof(File)]).optional(),
+  survey: z.union([z.string(), z.instanceof(File)]).optional(),
+  contract_of_sales: z.union([z.string(), z.instanceof(File)]).optional(),
+  asset_option: z.array(fullOwnershipAssetOptionSchema).min(1, "At least one asset option is required"),
+  asset_history: z.array(assetHistorySchema).optional(),
+});
+
+export type UpdateFullOwnershipAssetFormValues = z.infer<typeof updateFullOwnershipAssetSchema>;

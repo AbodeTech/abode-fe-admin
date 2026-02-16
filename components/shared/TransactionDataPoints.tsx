@@ -1,0 +1,86 @@
+"use client";
+
+import { useQuery } from "@tanstack/react-query";
+import { Clock, CheckCircle, XCircle, DollarSign, Wallet } from "lucide-react";
+import { DashboardCard } from "@/components/shared/DashboardCard";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { getTransactionDataPoints } from "@/lib/api/admin/transactions.client";
+
+interface TransactionDataPointsProps {
+  type: "credit" | "debit" | "asset" | "commission" | "document";
+}
+
+function DataPointSkeleton() {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
+        <div className="h-4 w-4 bg-gray-200 rounded animate-pulse" />
+      </CardHeader>
+      <CardContent>
+        <div className="h-8 w-32 bg-gray-200 rounded animate-pulse" />
+      </CardContent>
+    </Card>
+  );
+}
+
+export function TransactionDataPoints({ type }: TransactionDataPointsProps) {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["transactionDataPoints", type],
+    queryFn: () => getTransactionDataPoints(type),
+  });
+
+  if (isLoading) {
+    return (
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-4">
+        {[...Array(4)].map((_, index) => (
+          <DataPointSkeleton key={index} />
+        ))}
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return null;
+  }
+
+  const stats = [
+    {
+      title: "Pending Transactions",
+      value: data.pending_transaction?.toLocaleString() || "0",
+      icon: Clock,
+    },
+    {
+      title: "Approved Transactions",
+      value: data.approved_transaction?.toLocaleString() || "0",
+      icon: CheckCircle,
+    },
+    {
+      title: "Rejected Transactions",
+      value: data.rejected_transaction?.toLocaleString() || "0",
+      icon: XCircle,
+    },
+    {
+      title: "Users Wallet Balance",
+      value: `₦${data.users_wallet_balance?.toLocaleString() || "0"}`,
+      icon: Wallet,
+    },
+  ];
+
+  // Add commission if available
+  if (data.commission_transaction !== undefined) {
+    stats.push({
+      title: "Commission Transactions",
+      value: `₦${data.commission_transaction?.toLocaleString() || "0"}`,
+      icon: DollarSign,
+    });
+  }
+
+  return (
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-4">
+      {stats.map((stat, index) => (
+        <DashboardCard key={index} title={stat.title} value={stat.value} icon={stat.icon} />
+      ))}
+    </div>
+  );
+}

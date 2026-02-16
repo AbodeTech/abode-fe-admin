@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // Mocking icons using Lucide React to match the interface expected by the new Sidebar
 import {
   LayoutDashboard,

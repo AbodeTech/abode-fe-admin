@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { graphql } from "@/lib/gql/gql";
 import { fetchServerGraphql } from "@/lib/api/server-utils";
 import { fetchGraphql } from "@/lib/graphql-client";
@@ -10,7 +11,8 @@ import {
   AssetByNameData,
   AssetOptionDataByNameData,
   AssetSubscribersData,
-  Subscriber
+  Subscriber,
+  ViewAssetData
 } from "./assets.types";
 
 
@@ -153,6 +155,44 @@ export const createFullOwnershipAsset = async (payload: CreateFullOwnershipAsset
 
 export const getAssetOptionDataByName = async (assetName: string, assetType: string) => {
   return fetchServerGraphql<AssetOptionDataByNameData>(GET_ASSET_OPTION_DATA_BY_NAME_QUERY as any, { assetName, assetType });
+};
+
+const VIEW_ASSET_QUERY = `
+  query ViewAsset($viewAssetId: ID!) {
+    viewAsset(id: $viewAssetId) {
+      _id
+      asset_name
+      asset_location
+      asset_type
+      description
+      title
+      allocation_qualification: basic_details {
+        allocation_qualification
+      }
+      asset_pictures
+      amenities
+      asset_history
+      documents: asset_documents
+      asset_option {
+        size
+        unit
+        price
+        flex_payment_plans {
+          description
+          duration_months
+          initial_payment
+          monthly_installment
+          price
+          unit
+        }
+      }
+    }
+  }
+`;
+
+export const viewAsset = async (id: string) => {
+  const response = await fetchServerGraphql<ViewAssetData>(VIEW_ASSET_QUERY as any, { viewAssetId: id }, [`asset-${id}`]);
+  return response.viewAsset;
 };
 
 

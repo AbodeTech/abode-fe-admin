@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { logoutAction } from "@/actions/auth";
 import { useAuthStore } from "@/store/auth-store";
 import { useRouter } from "next/navigation";
+import { clearAuthCookies } from "@/lib/utils/cookies";
 
 interface LogOutModalProps {
   isOpen: boolean;
@@ -24,13 +25,16 @@ const LogOutModal = ({ isOpen, onClose }: LogOutModalProps) => {
   const { logout } = useAuthStore();
 
   const handleLogout = async () => {
-    // 1. Server-side logout (clear cookies)
+    // 1. Clear client-side cookies (access token, user, etc.)
+    clearAuthCookies();
+
+    // 2. Server-side logout (clears HTTP-only cookies like refreshToken)
     await logoutAction();
 
-    // 2. Client-side logout (clear store)
+    // 3. Clear Zustand store
     logout();
 
-    // 3. Close modal and redirect
+    // 4. Close modal and redirect
     onClose();
     router.push("/signin");
   };

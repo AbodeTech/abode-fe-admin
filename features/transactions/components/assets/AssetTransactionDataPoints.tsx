@@ -1,0 +1,111 @@
+"use client";
+
+import { useSearchParams } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
+import {
+  ShoppingCart,
+  CheckCircle,
+  Clock,
+  ShoppingBag,
+  Zap,
+  Repeat,
+  Home,
+  XCircle,
+} from "lucide-react";
+import { DashboardCard } from "@/components/shared/DashboardCard";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { getAssetTransactionStats } from "@/lib/api/admin/assets.client";
+
+const iconMap: Record<string, any> = {
+  totalTransactions: ShoppingCart,
+  approvedTransactions: CheckCircle,
+  totalApprovedAmount: CheckCircle,
+  pendingTransactions: Clock,
+  totalPendingAmount: Clock,
+  declinedTransactions: XCircle,
+  totalDeclinedAmount: XCircle,
+  new_sales: ShoppingBag,
+  total_new_sales: ShoppingBag,
+  flexTransactions: Zap,
+  totalFlexAmount: Zap,
+  new_flex_sales: Zap,
+  flex_recurring_sales: Repeat,
+  total_flex_recurring_sales: Repeat,
+  fullOwnershipTransactions: Home,
+  totalFullOwnershipAmount: Home,
+  new_fullOwnership_sales: Home,
+  total_new_fullOwnership_sales: Home,
+  fullOwnership_recurring_sales: Repeat,
+  total_fullOwnership_recurring_sales: Repeat,
+};
+
+const nairaKeys = new Set([
+  "totalApprovedAmount",
+  "totalPendingAmount",
+  "totalDeclinedAmount",
+  "total_new_sales",
+  "totalFlexAmount",
+  "totalFullOwnershipAmount",
+  "total_flex_recurring_sales",
+  "total_new_fullOwnership_sales",
+  "total_fullOwnership_recurring_sales",
+]);
+
+function DashboardCardSkeleton() {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
+        <div className="h-4 w-4 bg-gray-200 rounded animate-pulse" />
+      </CardHeader>
+      <CardContent>
+        <div className="h-8 w-32 bg-gray-200 rounded animate-pulse" />
+      </CardContent>
+    </Card>
+  );
+}
+
+export function AssetTransactionDataPoints() {
+  const searchParams = useSearchParams();
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["assetTransactionStats", searchParams.toString()],
+    queryFn: () => getAssetTransactionStats(searchParams),
+  });
+
+  const dashboardStats = (data?.statistics || {}) as Record<string, number>;
+
+  const dashboardData = Object.keys(dashboardStats).map((key) => ({
+    title: key.replace(/([A-Z])/g, " $1").replace(/_/g, " ").trim(),
+    value: nairaKeys.has(key)
+      ? `₦${Number(dashboardStats[key]).toLocaleString()}`
+      : Number(dashboardStats[key]).toLocaleString(),
+    icon: iconMap[key] || ShoppingCart,
+  }));
+
+  if (isLoading) {
+    return (
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {[...Array(9)].map((_, index) => (
+          <DashboardCardSkeleton key={index} />
+        ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return <div className="text-red-500">Error loading statistics</div>;
+  }
+
+  if (dashboardData.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {dashboardData.map((item, index) => (
+        <DashboardCard key={index} title={item.title} value={item.value} icon={item.icon} />
+      ))}
+    </div>
+  );
+}

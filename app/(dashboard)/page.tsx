@@ -1,20 +1,30 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { getAdminDashboardDetails, type DashboardData } from "@/lib/api/admin/dashboard";
-import DashboardQuickOverview from "@/components/features/dashboard/DashboardQuickOverview";
-import TopSellingProducts from "@/components/features/dashboard/TopSellingProducts";
-import TopAssociates from "@/components/features/dashboard/TopAssociates";
+import { Suspense } from "react";
+import {
+  useAdminDashboard,
+  DashboardQuickOverview,
+  TopSellingProducts,
+  TopAssociates,
+  InviteAdminDialog,
+} from "@/features/dashboard";
 import { useAuthStore } from "@/store/auth-store";
 import { Loader2 } from "lucide-react";
+import { DateFilter } from "@/components/shared/DateFilter";
+import { useSearchParams } from "next/navigation";
 
-export default function DashboardPage() {
+function DashboardContent() {
   const { user } = useAuthStore();
+  const searchParams = useSearchParams();
+  const startDate = searchParams.get("start_date");
+  const endDate = searchParams.get("end_date");
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["adminDashboard"],
-    queryFn: () => getAdminDashboardDetails(),
+  const { data, isLoading, error } = useAdminDashboard({
+    startDate,
+    endDate,
   });
+
+  const isAdmin = user?.role === "admin";
 
   if (isLoading) {
     return (
@@ -35,16 +45,20 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
-        <p className="text-muted-foreground">
-          Welcome back, {user?.firstName || "Admin"}. Here&apos;s an overview of your platform.
-        </p>
+        <div className="flex items-center gap-3">
+          <DateFilter />
+          {isAdmin && <InviteAdminDialog />}
+        </div>
       </div>
+      <p className="text-muted-foreground">
+        Welcome back, {user?.firstName || "Admin"}. Here&apos;s an overview of your platform.
+      </p>
 
       {data && (
         <>
-          <DashboardQuickOverview {...data} />
+          <DashboardQuickOverview data={data} />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <TopSellingProducts data={data.top_selling_prop} />
@@ -53,5 +67,13 @@ export default function DashboardPage() {
         </>
       )}
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+      <DashboardContent />
+    </Suspense>
   );
 }

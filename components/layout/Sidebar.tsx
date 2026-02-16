@@ -9,8 +9,10 @@ import {
   ArrowDownToLine,
   BarChart3,
   Building2,
+  CheckCircle,
   ChevronRight,
   CircleDollarSign,
+  ClipboardList,
   FileText,
   Gift,
   LandPlot,
@@ -39,9 +41,22 @@ const navGroups = [
     items: [
       { name: "Dashboard", link: "/", icon: <LayoutDashboard /> },
       { name: "Assets", link: "/assets", icon: <CircleDollarSign /> },
-      { name: "Sales", link: "/admin/dashboard/sales", icon: <ShoppingCart /> },
-      { name: "Users", link: "/admin/dashboard/users", icon: <Users /> },
-      { name: "Allocation", link: "/admin/dashboard/allocation", icon: <Building2 /> },
+      { name: "Sales", link: "/sales", icon: <ShoppingCart /> },
+      { name: "Agency", link: "/agency", icon: <Building2 /> },
+      { name: "Allocation", link: "/allocation", icon: <Building2 /> },
+      { name: "Requests", link: "/requests", icon: <ClipboardList /> },
+    ]
+  },
+  {
+    title: "Users",
+    isCollapsible: true,
+    icon: <Users />,
+    items: [
+      { name: "All Users", link: "/users", icon: <Users /> },
+      { name: "Default Users", link: "/users/defaults", icon: <ShieldCheck /> },
+      { name: "Suspended Users", link: "/users/suspended", icon: <ShieldCheck /> },
+      { name: "Suspended Payment Plans", link: "/users/suspended-payment-plans", icon: <ScrollText /> },
+      { name: "Completed Asset Payments", link: "/users/completed-asset-payments", icon: <CheckCircle /> },
     ]
   },
   {
@@ -49,8 +64,9 @@ const navGroups = [
     isCollapsible: true,
     icon: <Users />,
     items: [
-      { name: "Associates Upgrade", link: "/admin/dashboard/associate-upgrade", icon: <UserPlus /> },
-      { name: "Top associates", link: "/admin/dashboard/top-associates/1", icon: <TrendingUp /> },
+      { name: "Associates Upgrade", link: "/associate-upgrade", icon: <UserPlus /> },
+      { name: "Upgrade Coupons", link: "/associate-upgrade/coupons", icon: <Gift /> },
+      { name: "Top associates", link: "/associates", icon: <TrendingUp /> },
     ]
   },
   {
@@ -58,11 +74,11 @@ const navGroups = [
     isCollapsible: true,
     icon: <BarChart3 />,
     items: [
-      { name: "Withdrawal", link: "/admin/dashboard/withdrawaltransaction", icon: <ArrowDownToLine /> },
-      { name: "Topup", link: "/admin/dashboard/topuptransaction", icon: <Upload /> },
-      { name: "Asset", link: "/admin/dashboard/assettransaction", icon: <BarChart3 /> },
-      { name: "Document", link: "/admin/dashboard/documenttransaction", icon: <FileText /> },
-      { name: "Commission", link: "/admin/dashboard/commissiontransaction", icon: <Percent /> },
+      { name: "Withdrawal", link: "/transactions/withdrawal", icon: <ArrowDownToLine /> },
+      { name: "Topup", link: "/transactions/topup", icon: <Upload /> },
+      { name: "Asset", link: "/transactions/assets", icon: <BarChart3 /> },
+      { name: "Document", link: "/transactions/document", icon: <FileText /> },
+      { name: "Commission", link: "/transactions/commission", icon: <Percent /> },
     ]
   },
   {
@@ -70,8 +86,9 @@ const navGroups = [
     isCollapsible: true,
     icon: <Gift />,
     items: [
-      { name: "1000 Plots Project", link: "/admin/dashboard/1000plotsproject", icon: <LandPlot /> },
-      { name: "Hamper Campaign", link: "/admin/dashboard/hampercampaign", icon: <Gift /> },
+      { name: "1000 Plots Project", link: "/campaigns/1000plotsproject", icon: <LandPlot /> },
+      { name: "2000 Associate Pro", link: "/campaigns/2000associateprocampaign", icon: <TrendingUp /> },
+      { name: "Hamper Campaign", link: "/campaigns/hampercampaign", icon: <Gift /> },
     ]
   },
   {
@@ -79,8 +96,8 @@ const navGroups = [
     isCollapsible: true,
     icon: <ShieldCheck />,
     items: [
-      { name: "Admin Logs", link: "/admin/dashboard/adminlogs", icon: <ScrollText /> },
-      { name: "Roles and Permissions", link: "/admin/dashboard/rolesandpermissions", icon: <ShieldCheck /> },
+      { name: "Admin Logs", link: "/security/adminlogs", icon: <ScrollText /> },
+      { name: "Roles and Permissions", link: "/security/roles", icon: <ShieldCheck /> },
     ]
   }
 ];
@@ -89,7 +106,7 @@ const Sidebar = () => {
   const pathname = usePathname();
   const { isSidebarCollapsed } = useUIStore();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ "Transactions": false });
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ "Transactions": false, "Users": false });
 
   const toggleGroup = (groupTitle: string) => {
     setOpenGroups(prev => ({ ...prev, [groupTitle]: !prev[groupTitle] }));

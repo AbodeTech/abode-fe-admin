@@ -1,4 +1,4 @@
-import { ResetPasswordForm } from "@/components/features/auth/ResetPasswordForm";
+import { ResetPasswordForm } from "@/features/auth";
 import { Suspense } from "react";
 import Image from "next/image";
 

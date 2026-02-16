@@ -1,5 +1,5 @@
 /* eslint-disable */
-import { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-node/core';
+import type { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-node/core';
 export type Maybe<T> = T | null;
 export type InputMaybe<T> = T | null | undefined;
 export type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] };
@@ -185,6 +185,7 @@ export type AdminTransactions = {
   no_of_units?: Maybe<Scalars['Int']['output']>;
   paystack_reference?: Maybe<Scalars['String']['output']>;
   plot_size?: Maybe<Scalars['String']['output']>;
+  processing_type?: Maybe<Scalars['String']['output']>;
   referral?: Maybe<Scalars['String']['output']>;
   status?: Maybe<Scalars['String']['output']>;
   time_of_transaction?: Maybe<Scalars['Date']['output']>;
@@ -712,11 +713,47 @@ export type Associate = {
   units_sold?: Maybe<Scalars['Int']['output']>;
 };
 
+export type AssociateProProgress = {
+  __typename?: 'AssociateProProgress';
+  currentAssociatePro: Scalars['Int']['output'];
+  percentageComplete: Scalars['Float']['output'];
+  progressText: Scalars['String']['output'];
+  targetAssociatePro: Scalars['Int']['output'];
+};
+
+export type AssociateProUpgradeDetail = {
+  __typename?: 'AssociateProUpgradeDetail';
+  adminStatus: Scalars['String']['output'];
+  amountPaid: Scalars['Float']['output'];
+  associateProSince?: Maybe<Scalars['Date']['output']>;
+  associateSince?: Maybe<Scalars['Date']['output']>;
+  referrerFullName?: Maybe<Scalars['String']['output']>;
+  ticketId?: Maybe<Scalars['String']['output']>;
+  upgradeId: Scalars['ID']['output'];
+  userFullName?: Maybe<Scalars['String']['output']>;
+  userId: Scalars['ID']['output'];
+  userSince: Scalars['Date']['output'];
+};
+
+export type AssociateProUpgradeResponse = {
+  __typename?: 'AssociateProUpgradeResponse';
+  total: Scalars['Int']['output'];
+  upgrades: Array<AssociateProUpgradeDetail>;
+};
+
 export type AssociateResponse = {
   __typename?: 'AssociateResponse';
   count: Scalars['Int']['output'];
   data: Array<Associate>;
   success: Scalars['Boolean']['output'];
+};
+
+export type AssociateToAssociateProMetrics = {
+  __typename?: 'AssociateToAssociateProMetrics';
+  conversionRate: Scalars['Float']['output'];
+  convertedToAssociatePro: Scalars['Int']['output'];
+  notConverted: Scalars['Int']['output'];
+  totalAssociates: Scalars['Int']['output'];
 };
 
 export type AuthResponse = {
@@ -854,6 +891,22 @@ export type BuyFullOwnershipAssetTransferInput = {
   source_of_funds?: InputMaybe<Scalars['String']['input']>;
 };
 
+export type CampaignDashboard = {
+  __typename?: 'CampaignDashboard';
+  associateProProgress: AssociateProProgress;
+  campaignPeriod: CampaignPeriod;
+  conversionMetrics: ConversionMetrics;
+  graphs: CampaignGraphs;
+  revenueMetrics: RevenueMetrics;
+  ticketMetrics: CampaignTicketMetrics;
+};
+
+export type CampaignGraphs = {
+  __typename?: 'CampaignGraphs';
+  conversionGraph: ConversionGraph;
+  revenueGraph: RevenueGraph;
+};
+
 export type CampaignHamper = {
   __typename?: 'CampaignHamper';
   _id: Scalars['ID']['output'];
@@ -904,6 +957,22 @@ export type CampaignPaymentPlansResponse = {
   count?: Maybe<Scalars['Int']['output']>;
   data?: Maybe<Array<Maybe<CampaignPaymentPlan>>>;
   success?: Maybe<Scalars['Boolean']['output']>;
+};
+
+export type CampaignPeriod = {
+  __typename?: 'CampaignPeriod';
+  daysElapsed: Scalars['Int']['output'];
+  daysRemaining: Scalars['Int']['output'];
+  endDate: Scalars['Date']['output'];
+  startDate: Scalars['Date']['output'];
+  totalDays: Scalars['Int']['output'];
+};
+
+export type CampaignTicketMetrics = {
+  __typename?: 'CampaignTicketMetrics';
+  referralTickets: Scalars['Int']['output'];
+  totalTicketsIssued: Scalars['Int']['output'];
+  userTickets: Scalars['Int']['output'];
 };
 
 export type ClearTinResponse = {
@@ -1026,19 +1095,49 @@ export type CommissionTransactionsResponse = {
   transactions: Array<CommissionTransactions>;
 };
 
+export type ConversionDataPoint = {
+  __typename?: 'ConversionDataPoint';
+  count: Scalars['Int']['output'];
+  cumulativeCount: Scalars['Int']['output'];
+  date: Scalars['String']['output'];
+};
+
+export type ConversionGraph = {
+  __typename?: 'ConversionGraph';
+  associateToAssociateProConversions: ConversionGraphData;
+  newSignups: ConversionGraphData;
+  userToAssociateProConversions: ConversionGraphData;
+};
+
+export type ConversionGraphData = {
+  __typename?: 'ConversionGraphData';
+  averageDaily: Scalars['Float']['output'];
+  chartData: Array<ConversionDataPoint>;
+  peakDay?: Maybe<ConversionDataPoint>;
+  total: Scalars['Int']['output'];
+};
+
+export type ConversionMetrics = {
+  __typename?: 'ConversionMetrics';
+  associateToAssociatePro: AssociateToAssociateProMetrics;
+  overallConversionRate: Scalars['Float']['output'];
+  totalAssociatePro: Scalars['Int']['output'];
+  userToAssociatePro: UserToAssociateProMetrics;
+};
+
 export type Coupon = {
   __typename?: 'Coupon';
   _id: Scalars['ID']['output'];
   activeImmediately: Scalars['Boolean']['output'];
   couponCode: Scalars['String']['output'];
-  createdAt: Scalars['String']['output'];
+  createdAt: Scalars['Date']['output'];
   discountPercentage: Scalars['Float']['output'];
   endDate?: Maybe<Scalars['Date']['output']>;
-  expiryDate?: Maybe<Scalars['String']['output']>;
+  expiryDate?: Maybe<Scalars['Date']['output']>;
   expiryType: ExpiryType;
   startDate: Scalars['Date']['output'];
   status?: Maybe<CouponStatus>;
-  updatedAt: Scalars['String']['output'];
+  updatedAt: Scalars['Date']['output'];
   usageLimit?: Maybe<Scalars['Int']['output']>;
   usageLimitType: UsageLimitType;
 };
@@ -1195,6 +1294,8 @@ export type DataPointInput = {
 export type DataPointResponse = {
   __typename?: 'DataPointResponse';
   approved_transaction?: Maybe<Scalars['Float']['output']>;
+  auto_approved_transaction?: Maybe<Scalars['Float']['output']>;
+  auto_failed_transaction?: Maybe<Scalars['Float']['output']>;
   commission_transaction?: Maybe<Scalars['Float']['output']>;
   pending_transaction?: Maybe<Scalars['Float']['output']>;
   rejected_transaction?: Maybe<Scalars['Float']['output']>;
@@ -1466,6 +1567,8 @@ export type FilteredUserAdminDetail = {
   __typename?: 'FilteredUserAdminDetail';
   Networth?: Maybe<Scalars['Int']['output']>;
   _id?: Maybe<Scalars['ID']['output']>;
+  address?: Maybe<Scalars['String']['output']>;
+  country?: Maybe<Scalars['String']['output']>;
   createdAt?: Maybe<Scalars['Date']['output']>;
   email?: Maybe<Scalars['String']['output']>;
   firstName?: Maybe<Scalars['String']['output']>;
@@ -1646,6 +1749,19 @@ export type HamperMetrics = {
   totalUniqueReferrers?: Maybe<Scalars['Int']['output']>;
 };
 
+export type HowYouHeardBreakdown = {
+  __typename?: 'HowYouHeardBreakdown';
+  breakdown: Array<HowYouHeardSource>;
+  totalResponses: Scalars['Int']['output'];
+};
+
+export type HowYouHeardSource = {
+  __typename?: 'HowYouHeardSource';
+  count: Scalars['Int']['output'];
+  percentage: Scalars['Float']['output'];
+  source: Scalars['String']['output'];
+};
+
 export type InitializeDocumentPaystackInput = {
   amount?: InputMaybe<Scalars['String']['input']>;
   assetId?: InputMaybe<Scalars['String']['input']>;
@@ -1755,6 +1871,37 @@ export type LogAdminResponse = {
   success?: Maybe<Scalars['Boolean']['output']>;
 };
 
+export type ManualUpgradeData = {
+  __typename?: 'ManualUpgradeData';
+  commissionAmount?: Maybe<Scalars['Float']['output']>;
+  commissionProcessed: Scalars['Boolean']['output'];
+  transaction: ManualUpgradeTransactionInfo;
+  user: ManualUpgradeUserInfo;
+};
+
+export type ManualUpgradeResponse = {
+  __typename?: 'ManualUpgradeResponse';
+  data?: Maybe<ManualUpgradeData>;
+  message: Scalars['String']['output'];
+  success: Scalars['Boolean']['output'];
+};
+
+export type ManualUpgradeTransactionInfo = {
+  __typename?: 'ManualUpgradeTransactionInfo';
+  amount: Scalars['Float']['output'];
+  reference_no: Scalars['String']['output'];
+  status: Scalars['String']['output'];
+};
+
+export type ManualUpgradeUserInfo = {
+  __typename?: 'ManualUpgradeUserInfo';
+  email: Scalars['String']['output'];
+  firstName: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  lastName: Scalars['String']['output'];
+  referral_status: Scalars['String']['output'];
+};
+
 export type ModifyReferralInput = {
   referral_status?: InputMaybe<Scalars['String']['input']>;
   userId?: InputMaybe<Scalars['String']['input']>;
@@ -1836,6 +1983,7 @@ export type Mutation = {
   initializeRecurringPaystack: InitializePaystackResponse;
   initializeUpgradeToAssociatePro: UpgradePaystackResponse;
   joinCommunityEmail: Scalars['String']['output'];
+  manualUpgradeToAssociatePro: ManualUpgradeResponse;
   modifyUserReferralStatus: Scalars['String']['output'];
   processCommission: Scalars['String']['output'];
   processReceipt: Scalars['String']['output'];
@@ -2215,11 +2363,21 @@ export type MutationInitializeRecurringPaystackArgs = {
 export type MutationInitializeUpgradeToAssociateProArgs = {
   amount: Scalars['Float']['input'];
   callback_url: Scalars['String']['input'];
+  couponCode?: InputMaybe<Scalars['String']['input']>;
 };
 
 
 export type MutationJoinCommunityEmailArgs = {
   joinCommunityInput?: InputMaybe<JoinCommunityInput>;
+};
+
+
+export type MutationManualUpgradeToAssociateProArgs = {
+  amount: Scalars['Float']['input'];
+  commissionableAmount?: InputMaybe<Scalars['Float']['input']>;
+  email: Scalars['String']['input'];
+  payCommission: Scalars['Boolean']['input'];
+  paymentUrl: Scalars['String']['input'];
 };
 
 
@@ -2296,6 +2454,8 @@ export type MutationSendAdminEmailVerificationArgs = {
 export type MutationSendAssetStatementsToAdminArgs = {
   adminEmail: Scalars['String']['input'];
   assetId: Scalars['ID']['input'];
+  batchSize?: InputMaybe<Scalars['Int']['input']>;
+  pauseSeconds?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -2485,6 +2645,7 @@ export type MutationUpdateUserTinArgs = {
 export type MutationUpgradeToAssociateProArgs = {
   amount: Scalars['Float']['input'];
   bankName: Scalars['String']['input'];
+  couponCode?: InputMaybe<Scalars['String']['input']>;
   file_Url: Scalars['String']['input'];
   reference_no: Scalars['String']['input'];
 };
@@ -2565,14 +2726,11 @@ export type NextofKinResponse = {
 export type PaginationInfo = {
   __typename?: 'PaginationInfo';
   currentPage: Scalars['Int']['output'];
-  hasNextPage: Scalars['Boolean']['output'];
-  hasPrevPage: Scalars['Boolean']['output'];
   limit: Scalars['Int']['output'];
   page: Scalars['Int']['output'];
   pages: Scalars['Int']['output'];
   total: Scalars['Int']['output'];
   totalClients: Scalars['Int']['output'];
-  totalCount: Scalars['Int']['output'];
   totalPages: Scalars['Int']['output'];
 };
 
@@ -2765,7 +2923,9 @@ export type Query = {
   getAssetInventoryData?: Maybe<AssetInventoryResponse>;
   getAssetTransaction?: Maybe<TransactionAdminResponse>;
   getAssetTransactionData?: Maybe<TransactionAdminAssetResponse>;
+  getAssociateProUpgrades: AssociateProUpgradeResponse;
   getAvailableAssets?: Maybe<AssetResponse>;
+  getCampaignDashboard: CampaignDashboard;
   getCampaignHampers?: Maybe<CampaignHamperResponse>;
   getCampaignPaymentPlans?: Maybe<CampaignPaymentPlansResponse>;
   getClientOverview: ClientOverviewResponse;
@@ -2783,6 +2943,7 @@ export type Query = {
   getMyAgencyDashboard: MyAgencyDashboardResponse;
   getMyRequests?: Maybe<Scalars['JSON']['output']>;
   getRaffleTickets?: Maybe<RaffleTicketResponse>;
+  getReferralAnalytics: ReferralAnalytics;
   getRequestById?: Maybe<Scalars['JSON']['output']>;
   getRequestByIdAdmin: Scalars['JSON']['output'];
   getRequestStatistics: RequestStatistics;
@@ -2915,6 +3076,7 @@ export type QueryGetAllUpgradeRequestsArgs = {
 
 
 export type QueryGetAllUsersArgs = {
+  endDate?: InputMaybe<Scalars['String']['input']>;
   hasAsset?: InputMaybe<Scalars['Boolean']['input']>;
   hasReferral?: InputMaybe<Scalars['Boolean']['input']>;
   howDidYouHearAboutUs?: InputMaybe<Scalars['String']['input']>;
@@ -2922,6 +3084,7 @@ export type QueryGetAllUsersArgs = {
   page: Scalars['Int']['input'];
   referralStatus?: InputMaybe<Scalars['String']['input']>;
   searchQuery?: InputMaybe<Scalars['String']['input']>;
+  startDate?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -3060,6 +3223,12 @@ export type QueryGetRequestStatisticsArgs = {
 };
 
 
+export type QueryGetSalesDashboardArgs = {
+  endDate?: InputMaybe<Scalars['String']['input']>;
+  startDate?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type QueryGetSalesRecordArgs = {
   filters?: InputMaybe<SalesRecordFilters>;
   limit: Scalars['Int']['input'];
@@ -3078,6 +3247,12 @@ export type QueryGetSuspendedPaymentPlansArgs = {
   page: Scalars['Int']['input'];
   searchQuery?: InputMaybe<Scalars['String']['input']>;
   startDate?: InputMaybe<Scalars['Date']['input']>;
+};
+
+
+export type QueryGetSystemUsersOverviewArgs = {
+  endDate?: InputMaybe<Scalars['String']['input']>;
+  startDate?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -3319,6 +3494,14 @@ export type Referral = {
   status?: Maybe<Scalars['String']['output']>;
 };
 
+export type ReferralAnalytics = {
+  __typename?: 'ReferralAnalytics';
+  howYouHeardBreakdown: HowYouHeardBreakdown;
+  revenueLeaders: RevenueLeadersResponse;
+  ticketHolders: TicketHoldersResponse;
+  topReferrers: TopReferrersResponse;
+};
+
 export type ReferralPaymentDetails = {
   __typename?: 'ReferralPaymentDetails';
   paymentPlan?: Maybe<Array<Maybe<PaymentPlan>>>;
@@ -3355,6 +3538,14 @@ export type ReferralUpgrade = {
   transaction_type?: Maybe<Scalars['String']['output']>;
   user?: Maybe<User>;
   user_upgrade_type?: Maybe<Scalars['String']['output']>;
+};
+
+export type ReferralUpgradePaginationInfo = {
+  __typename?: 'ReferralUpgradePaginationInfo';
+  currentPage: Scalars['Int']['output'];
+  limit: Scalars['Int']['output'];
+  totalCount: Scalars['Int']['output'];
+  totalPages: Scalars['Int']['output'];
 };
 
 export type Referrer = {
@@ -3415,6 +3606,44 @@ export type ResponseMessage = {
   __typename?: 'ResponseMessage';
   message: Scalars['String']['output'];
   transaction?: Maybe<Transactions>;
+};
+
+export type RevenueDataPoint = {
+  __typename?: 'RevenueDataPoint';
+  amount: Scalars['Float']['output'];
+  cumulativeAmount: Scalars['Float']['output'];
+  date: Scalars['String']['output'];
+};
+
+export type RevenueGraph = {
+  __typename?: 'RevenueGraph';
+  averageDailyRevenue: Scalars['Float']['output'];
+  chartData: Array<RevenueDataPoint>;
+  peakDay?: Maybe<RevenueDataPoint>;
+  totalRevenue: Scalars['Float']['output'];
+};
+
+export type RevenueLeader = {
+  __typename?: 'RevenueLeader';
+  referrerEmail?: Maybe<Scalars['String']['output']>;
+  referrerFullName?: Maybe<Scalars['String']['output']>;
+  referrerId: Scalars['ID']['output'];
+  totalRevenue: Scalars['Float']['output'];
+};
+
+export type RevenueLeadersResponse = {
+  __typename?: 'RevenueLeadersResponse';
+  leaders: Array<RevenueLeader>;
+  total: Scalars['Int']['output'];
+};
+
+export type RevenueMetrics = {
+  __typename?: 'RevenueMetrics';
+  percentageComplete: Scalars['Float']['output'];
+  progressText: Scalars['String']['output'];
+  revenueGoal: Scalars['Float']['output'];
+  revenueRemaining: Scalars['Float']['output'];
+  totalRevenue: Scalars['Float']['output'];
 };
 
 export type Role = {
@@ -3530,6 +3759,7 @@ export type SalesRecord = {
 
 export type SalesRecordFilters = {
   assetType?: InputMaybe<Scalars['String']['input']>;
+  endDate?: InputMaybe<Scalars['Date']['input']>;
   nextDate?: InputMaybe<Scalars['Date']['input']>;
   search?: InputMaybe<Scalars['String']['input']>;
   startDate?: InputMaybe<Scalars['Date']['input']>;
@@ -3603,6 +3833,8 @@ export type SingleLog = {
 
 export type StatementSendResponse = {
   __typename?: 'StatementSendResponse';
+  batchSize?: Maybe<Scalars['Int']['output']>;
+  batches?: Maybe<Scalars['Int']['output']>;
   failures?: Maybe<Array<Scalars['String']['output']>>;
   message: Scalars['String']['output'];
   statementsCount: Scalars['Int']['output'];
@@ -3746,6 +3978,25 @@ export type SystemUsersOverviewResponse = {
   success: Scalars['Boolean']['output'];
 };
 
+export type TicketDetail = {
+  __typename?: 'TicketDetail';
+  amountPaid: Scalars['Float']['output'];
+  createdDate: Scalars['Date']['output'];
+  isActive: Scalars['Boolean']['output'];
+  referrerFullName?: Maybe<Scalars['String']['output']>;
+  ticketId: Scalars['String']['output'];
+  ticketType: Scalars['String']['output'];
+  userEmail?: Maybe<Scalars['String']['output']>;
+  userFullName?: Maybe<Scalars['String']['output']>;
+  userId: Scalars['ID']['output'];
+};
+
+export type TicketHoldersResponse = {
+  __typename?: 'TicketHoldersResponse';
+  tickets: Array<TicketDetail>;
+  totalTickets: Scalars['Int']['output'];
+};
+
 export type TicketMetrics = {
   __typename?: 'TicketMetrics';
   associatePercentage?: Maybe<Scalars['Float']['output']>;
@@ -3782,6 +4033,20 @@ export type TopPerformingAgency = {
   email: Scalars['String']['output'];
   phoneNumber: Scalars['String']['output'];
   sales_volume: Scalars['Float']['output'];
+};
+
+export type TopReferrer = {
+  __typename?: 'TopReferrer';
+  referrerEmail?: Maybe<Scalars['String']['output']>;
+  referrerFullName?: Maybe<Scalars['String']['output']>;
+  referrerId: Scalars['ID']['output'];
+  totalReferrals: Scalars['Int']['output'];
+};
+
+export type TopReferrersResponse = {
+  __typename?: 'TopReferrersResponse';
+  referrers: Array<TopReferrer>;
+  total: Scalars['Int']['output'];
 };
 
 export type TopSellingLand = {
@@ -3871,6 +4136,7 @@ export type Transactions = {
   commissionType?: Maybe<Scalars['String']['output']>;
   description?: Maybe<Scalars['String']['output']>;
   paystack_reference?: Maybe<Scalars['String']['output']>;
+  processing_type?: Maybe<Scalars['String']['output']>;
   status?: Maybe<Scalars['String']['output']>;
   time_of_transaction?: Maybe<Scalars['Date']['output']>;
   transaction_reference?: Maybe<Scalars['String']['output']>;
@@ -3980,7 +4246,14 @@ export type UpgradePaystackResponse = {
 
 export type UpgradeRequestsResponse = {
   __typename?: 'UpgradeRequestsResponse';
+  pagination: ReferralUpgradePaginationInfo;
   upgradeRequests: Array<Maybe<ReferralUpgrade>>;
+};
+
+export type UpgradeTypeStats = {
+  __typename?: 'UpgradeTypeStats';
+  count: Scalars['Int']['output'];
+  percentage: Scalars['Float']['output'];
 };
 
 export enum UsageLimitType {
@@ -4259,6 +4532,14 @@ export type UserResponse = {
   success: Scalars['Boolean']['output'];
 };
 
+export type UserToAssociateProMetrics = {
+  __typename?: 'UserToAssociateProMetrics';
+  conversionRate: Scalars['Float']['output'];
+  convertedToAssociatePro: Scalars['Int']['output'];
+  notConverted: Scalars['Int']['output'];
+  totalUsers: Scalars['Int']['output'];
+};
+
 export type UserWithAsset = {
   __typename?: 'UserWithAsset';
   customer_assets?: Maybe<Array<Maybe<UserAssetData>>>;
@@ -4386,7 +4667,7 @@ export type AdminSigninInput = {
   password: Scalars['String']['input'];
 };
 
-export type LegacyAdminSignupInput = {
+export type AdminSignupInput_Duplicate = {
   email: Scalars['String']['input'];
   password: Scalars['String']['input'];
   role: Scalars['String']['input'];
@@ -4449,25 +4730,136 @@ export type WithdrawalPin = {
   withdrawal_pin: Scalars['String']['input'];
 };
 
-export type GetAllAdminAssetsQueryVariables = Exact<{
+export type AdminLogsRowFragmentFragment = { __typename?: 'LogAdmin', _id: string, timestamp?: any | null, description?: string | null, action?: string | null, adminEmail?: string | null, adminId?: string | null, metadata?: any | null, oldState?: any | null } & { ' $fragmentName'?: 'AdminLogsRowFragmentFragment' };
+
+export type ExportAdminLogsQueryVariables = Exact<{
+  page: Scalars['Int']['input'];
+  limit: Scalars['Int']['input'];
+  adminEmail?: InputMaybe<Scalars['String']['input']>;
+  action?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+
+export type ExportAdminLogsQuery = { __typename?: 'Query', getAllAdminLogs?: { __typename?: 'LogAdminResponse', data?: Array<{ __typename?: 'LogAdmin', timestamp?: any | null, description?: string | null, action?: string | null, adminEmail?: string | null, adminId?: string | null, metadata?: any | null, oldState?: any | null, _id: string } | null> | null } | null };
+
+export type GetAllAdminLogsQueryVariables = Exact<{
+  page: Scalars['Int']['input'];
+  limit: Scalars['Int']['input'];
+  adminEmail?: InputMaybe<Scalars['String']['input']>;
+  action?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+
+export type GetAllAdminLogsQuery = {
+  __typename?: 'Query', getAllAdminLogs?: {
+    __typename?: 'LogAdminResponse', count?: number | null, data?: Array<(
+      { __typename?: 'LogAdmin' }
+      & { ' $fragmentRefs'?: { 'AdminLogsRowFragmentFragment': AdminLogsRowFragmentFragment } }
+    ) | null> | null
+  } | null
+};
+
+export type AllocationAssetOptionFragmentFragment = { __typename?: 'Asset', _id?: string | null, asset_name?: string | null, asset_type?: string | null } & { ' $fragmentName'?: 'AllocationAssetOptionFragmentFragment' };
+
+export type AllocationTableRowFragmentFragment = { __typename?: 'EligibleClient', allocation?: string | null, allocationStatus?: string | null, allocationDate?: string | null, amountPaid?: number | null, assetName?: string | null, assetSize?: number | null, assetType?: string | null, duration?: number | null, email?: string | null, end_date?: string | null, firstName?: string | null, lastName?: string | null, location?: string | null, paymentPlan?: string | null, paymentPercentage?: string | null, phoneNumber?: string | null, referral?: string | null, referralStatus?: string | null, totalPrice?: number | null, unit?: number | null } & { ' $fragmentName'?: 'AllocationTableRowFragmentFragment' };
+
+export type AllocateLandMutationVariables = Exact<{
+  paymentPlanId: Scalars['String']['input'];
+  block: Scalars['String']['input'];
+  plot: Scalars['String']['input'];
+}>;
+
+
+export type AllocateLandMutation = { __typename?: 'Mutation', allocateLand: { __typename?: 'AllocateLandResponse', success: boolean, message: string, block: string, plot: string, assetName: string, previousAllocation?: { __typename?: 'PreviousAllocation', block: string, plot: string } | null } };
+
+export type GetAllocationAssetsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GetAllocationAssetsQuery = {
+  __typename?: 'Query', getAllAdminAssets?: {
+    __typename?: 'AssetAdminResponse', data: Array<(
+      { __typename?: 'Asset' }
+      & { ' $fragmentRefs'?: { 'AllocationAssetOptionFragmentFragment': AllocationAssetOptionFragmentFragment } }
+    ) | null>
+  } | null
+};
+
+export type EligibleClientsForLandQueryVariables = Exact<{
+  page: Scalars['Int']['input'];
+  limit: Scalars['Int']['input'];
+  filters?: InputMaybe<FiltersInput>;
+}>;
+
+
+export type EligibleClientsForLandQuery = {
+  __typename?: 'Query', eligibleClientsForLand: {
+    __typename?: 'EligibleClientsForLandResponse', count: number, limit: number, page: number, data: Array<(
+      { __typename?: 'EligibleClient' }
+      & { ' $fragmentRefs'?: { 'AllocationTableRowFragmentFragment': AllocationTableRowFragmentFragment } }
+    )>
+  }
+};
+
+export type ExportEligibleClientsForLandQueryVariables = Exact<{
+  limit: Scalars['Int']['input'];
+  filters?: InputMaybe<FiltersInput>;
+}>;
+
+
+export type ExportEligibleClientsForLandQuery = {
+  __typename?: 'Query', eligibleClientsForLand: {
+    __typename?: 'EligibleClientsForLandResponse', count: number, data: Array<(
+      { __typename?: 'EligibleClient' }
+      & { ' $fragmentRefs'?: { 'AllocationTableRowFragmentFragment': AllocationTableRowFragmentFragment } }
+    )>
+  }
+};
+
+export type AssetFlexTable_AssetFragment = { __typename?: 'Asset', _id?: string | null, asset_name?: string | null, asset_location?: string | null, sold?: boolean | null, asset_type?: string | null, asset_option?: Array<{ __typename?: 'AssetOption', size?: number | null, unit?: string | null, price?: number | null, flex_payment_plans?: Array<{ __typename?: 'FlexPaymentPlan', price?: number | null, unit?: number | null } | null> | null } | null> | null } & { ' $fragmentName'?: 'AssetFlexTable_AssetFragment' };
+
+export type AssetFullOwnershipTable_AssetFragment = { __typename?: 'Asset', _id?: string | null, asset_name?: string | null, asset_location?: string | null, sold?: boolean | null, asset_type?: string | null, asset_option?: Array<{ __typename?: 'AssetOption', size?: number | null, unit?: string | null, zero_months?: number | null } | null> | null } & { ' $fragmentName'?: 'AssetFullOwnershipTable_AssetFragment' };
+
+export type AssetInventoryOverview_StatisticsFragment = { __typename?: 'AssetInventoryStatistics', totalAssets?: number | null, totalWorth?: number | null, totalFlexAssets?: number | null, totalFlexWorth?: number | null, totalFullOwnershipAssets?: number | null, totalFullOwnershipWorth?: number | null } & { ' $fragmentName'?: 'AssetInventoryOverview_StatisticsFragment' };
+
+export type ViewSubscribedCustomersOnAssetQueryVariables = Exact<{
+  assetName: Scalars['String']['input'];
+  assetType?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<Scalars['String']['input']>;
+  size?: InputMaybe<Scalars['Int']['input']>;
+  startDate?: InputMaybe<Scalars['String']['input']>;
+  endDate?: InputMaybe<Scalars['String']['input']>;
+  subscriberType?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+
+export type ViewSubscribedCustomersOnAssetQuery = { __typename?: 'Query', viewSubscribedCustomersOnAsset: { __typename?: 'SubscribedCustomerDetailsResponse', totalSubscribers: number, unitSold: number, earningReceived: number, expectedEarning: number, defaultedUsers: number, suspendedUsers: number, completedPayments: number, totalPlotsSold: number, userDetails: Array<{ __typename?: 'subscribedCustomersDetails', _id?: string | null, name: string, email: string, phone_number: string, salesPerson: string, assetName: string, sizeBought: number, unitPurchased: number, landPrice: number, landAmountPaid: number, documentPrice?: number | null, documentAmountPaid?: number | null, month_subscription: number, startDate?: string | null, nextPaymentDate?: string | null, isDefaulted: boolean, isSuspended?: boolean | null }> } };
+
+export type GetFeatureAdminAssetsQueryVariables = Exact<{
   page: Scalars['Int']['input'];
   limit: Scalars['Int']['input'];
 }>;
 
 
-export type GetAllAdminAssetsQuery = { __typename?: 'Query', getAllAdminAssets?: { __typename?: 'AssetAdminResponse', count?: number | null, data: Array<{ __typename?: 'Asset', _id?: string | null, asset_location?: string | null, asset_name?: string | null, asset_price?: number | null, asset_size?: number | null, asset_type?: string | null, asset_unit?: number | null, asset_pictures?: Array<string | null> | null, sold?: boolean | null, description?: string | null, title?: string | null, newAsset?: boolean | null, asset_option?: Array<{ __typename?: 'AssetOption', size?: number | null, unit?: string | null, price?: number | null, zero_months?: number | null, three_months?: number | null, six_months?: number | null, five_months?: number | null, seven_months?: number | null, one_month?: number | null, one_month_initial_payment?: number | null, twelve_months?: number | null, initial_payment?: number | null, five_months_initial_payment?: number | null, seven_months_initial_payment?: number | null, development_fee?: number | null, monthly_installment?: number | null, flex_payment_plans?: Array<{ __typename?: 'FlexPaymentPlan', description?: string | null, duration_months: number, initial_payment?: number | null, monthly_installment: number, price?: number | null, unit?: number | null } | null> | null } | null> | null } | null> } | null };
+export type GetFeatureAdminAssetsQuery = {
+  __typename?: 'Query', getAllAdminAssets?: {
+    __typename?: 'AssetAdminResponse', count?: number | null, data: Array<(
+      { __typename?: 'Asset', _id?: string | null }
+      & { ' $fragmentRefs'?: { 'AssetFlexTable_AssetFragment': AssetFlexTable_AssetFragment; 'AssetFullOwnershipTable_AssetFragment': AssetFullOwnershipTable_AssetFragment } }
+    ) | null>
+  } | null
+};
 
-export type StatisticsQueryVariables = Exact<{ [key: string]: never; }>;
+export type FeatureAssetStatisticsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type StatisticsQuery = { __typename?: 'Query', getAssetInventoryData?: { __typename?: 'AssetInventoryResponse', statistics?: { __typename?: 'AssetInventoryStatistics', totalAssets?: number | null, totalWorth?: number | null, totalFlexAssets?: number | null, totalFlexWorth?: number | null, totalFullOwnershipAssets?: number | null, totalFullOwnershipWorth?: number | null } | null } | null };
-
-export type CreateFlexAssetMutationVariables = Exact<{
-  createFlexAssetInput: CreateFlexAssetInput;
-}>;
-
-
-export type CreateFlexAssetMutation = { __typename?: 'Mutation', createFlexAsset: { __typename?: 'Asset', _id?: string | null, asset_name?: string | null } };
+export type FeatureAssetStatisticsQuery = {
+  __typename?: 'Query', getAssetInventoryData?: {
+    __typename?: 'AssetInventoryResponse', statistics?: (
+      { __typename?: 'AssetInventoryStatistics' }
+      & { ' $fragmentRefs'?: { 'AssetInventoryOverview_StatisticsFragment': AssetInventoryOverview_StatisticsFragment } }
+    ) | null
+  } | null
+};
 
 export type ViewAssetByNameQueryVariables = Exact<{
   assetName: Scalars['String']['input'];
@@ -4485,6 +4877,20 @@ export type ViewAssetOptionDataByNameQueryVariables = Exact<{
 
 export type ViewAssetOptionDataByNameQuery = { __typename?: 'Query', viewAssetOptionDataByName?: { __typename?: 'AssetSizeDetailsResponse', sizes: Array<{ __typename?: 'AssetSizeDetails', size: number, available_unit: number, value: number, unit_sold: number, expected_return: number }> } | null };
 
+export type ViewAssetQueryVariables = Exact<{
+  id: Scalars['ID']['input'];
+}>;
+
+
+export type ViewAssetQuery = { __typename?: 'Query', viewAsset: { __typename?: 'Asset', _id?: string | null, asset_name?: string | null, asset_location?: string | null, asset_type?: string | null, description?: string | null, title?: string | null, asset_pictures?: Array<string | null> | null, amenities?: Array<string | null> | null, asset_history?: any | null, basic_details?: Array<{ __typename?: 'BasicDetails', allocation_qualification?: number | null } | null> | null, documents?: { __typename?: 'Documents', deed_of_assignment?: string | null, survey?: string | null, contract_of_sales?: string | null, estate_layout?: string | null } | null, asset_option?: Array<{ __typename?: 'AssetOption', size?: number | null, unit?: string | null, price?: number | null, zero_months?: number | null, three_months?: number | null, six_months?: number | null, twelve_months?: number | null, one_month?: number | null, five_months?: number | null, seven_months?: number | null, development_fee?: number | null, initial_payment?: number | null, monthly_installment?: number | null, one_month_initial_payment?: number | null, five_months_initial_payment?: number | null, seven_months_initial_payment?: number | null, flex_payment_plans?: Array<{ __typename?: 'FlexPaymentPlan', description?: string | null, duration_months: number, initial_payment?: number | null, monthly_installment: number, price?: number | null, unit?: number | null } | null> | null } | null> | null } };
+
+export type CreateFlexAssetMutationVariables = Exact<{
+  createFlexAssetInput: CreateFlexAssetInput;
+}>;
+
+
+export type CreateFlexAssetMutation = { __typename?: 'Mutation', createFlexAsset: { __typename?: 'Asset', _id?: string | null, asset_name?: string | null } };
+
 export type CreateFullOwnershipAssetMutationVariables = Exact<{
   createFullOwnershipAssetInput: CreateFullOwnershipAssetInput;
 }>;
@@ -4492,18 +4898,85 @@ export type CreateFullOwnershipAssetMutationVariables = Exact<{
 
 export type CreateFullOwnershipAssetMutation = { __typename?: 'Mutation', createFullOwnershipAsset: { __typename?: 'AdminAsset', _id: string, asset_name?: string | null } };
 
-export type ViewSubscribedCustomersOnAssetQueryVariables = Exact<{
-  assetName: Scalars['String']['input'];
-  assetType?: InputMaybe<Scalars['String']['input']>;
-  filter?: InputMaybe<Scalars['String']['input']>;
-  size?: InputMaybe<Scalars['Int']['input']>;
-  startDate?: InputMaybe<Scalars['String']['input']>;
-  endDate?: InputMaybe<Scalars['String']['input']>;
-  subscriberType?: InputMaybe<Scalars['String']['input']>;
+export type UpdateAssetMutationVariables = Exact<{
+  updateAssetInput: UpdateFlexAssetInput;
 }>;
 
 
-export type ViewSubscribedCustomersOnAssetQuery = { __typename?: 'Query', viewSubscribedCustomersOnAsset: { __typename?: 'SubscribedCustomerDetailsResponse', totalSubscribers: number, unitSold: number, earningReceived: number, expectedEarning: number, defaultedUsers: number, suspendedUsers: number, completedPayments: number, totalPlotsSold: number, userDetails: Array<{ __typename?: 'subscribedCustomersDetails', _id?: string | null, name: string, email: string, phone_number: string, salesPerson: string, assetName: string, sizeBought: number, unitPurchased: number, landPrice: number, landAmountPaid: number, documentPrice?: number | null, documentAmountPaid?: number | null, month_subscription: number, startDate?: string | null, nextPaymentDate?: string | null, isDefaulted: boolean, isSuspended?: boolean | null }> } };
+export type UpdateAssetMutation = { __typename?: 'Mutation', updateAsset: string };
+
+export type UpgradeRowFragmentFragment = { __typename?: 'ReferralUpgrade', _id: string, admin_status?: string | null, createdAt?: string | null, fee_amount?: number | null, transaction_type?: string | null, user_upgrade_type?: string | null, file_Url?: string | null, user?: { __typename?: 'User', _id: string, firstName: string, lastName: string, email: string } | null, associate?: { __typename?: 'User', _id: string, firstName: string, lastName: string, email: string } | null } & { ' $fragmentName'?: 'UpgradeRowFragmentFragment' };
+
+export type CouponRowFragmentFragment = { __typename?: 'Coupon', _id: string, couponCode: string, discountPercentage: number, startDate: any, endDate?: any | null, expiryDate?: any | null, expiryType: ExpiryType, usageLimit?: number | null, usageLimitType: UsageLimitType, status?: CouponStatus | null, activeImmediately: boolean, createdAt: any } & { ' $fragmentName'?: 'CouponRowFragmentFragment' };
+
+export type ApproveUpgradeToAssociateMutationVariables = Exact<{
+  id: Scalars['ID']['input'];
+}>;
+
+
+export type ApproveUpgradeToAssociateMutation = { __typename?: 'Mutation', approveUpgradeToAssociate: string };
+
+export type ApproveUpgradeToAssociateProMutationVariables = Exact<{
+  id: Scalars['ID']['input'];
+}>;
+
+
+export type ApproveUpgradeToAssociateProMutation = { __typename?: 'Mutation', approveUpgradeToAssociatePro: string };
+
+export type DeclineUpgradeRequestMutationVariables = Exact<{
+  id: Scalars['ID']['input'];
+}>;
+
+
+export type DeclineUpgradeRequestMutation = { __typename?: 'Mutation', declineUpgradeRequest: string };
+
+export type GetAllUpgradeRequestsQueryVariables = Exact<{
+  page: Scalars['Int']['input'];
+  limit: Scalars['Int']['input'];
+  adminStatus?: InputMaybe<AdminStatus>;
+}>;
+
+
+export type GetAllUpgradeRequestsQuery = {
+  __typename?: 'Query', getAllUpgradeRequests: {
+    __typename?: 'UpgradeRequestsResponse', upgradeRequests: Array<(
+      { __typename?: 'ReferralUpgrade' }
+      & { ' $fragmentRefs'?: { 'UpgradeRowFragmentFragment': UpgradeRowFragmentFragment } }
+    ) | null>, pagination: { __typename?: 'ReferralUpgradePaginationInfo', currentPage: number, limit: number, totalCount: number, totalPages: number }
+  }
+};
+
+export type TopAssociatesTableRowFragmentFragment = { __typename?: 'Associate', name?: string | null, status?: string | null, email?: string | null, sales_person?: string | null, no_of_clients?: number | null, units_sold?: number | null, size_sold?: number | null, expected_revenue?: number | null, received_revenue?: number | null, commission?: number | null } & { ' $fragmentName'?: 'TopAssociatesTableRowFragmentFragment' };
+
+export type GetTopAssociatesQueryVariables = Exact<{
+  page: Scalars['Int']['input'];
+  limit: Scalars['Int']['input'];
+  sortBy?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+
+export type GetTopAssociatesQuery = {
+  __typename?: 'Query', getTopAssociates?: {
+    __typename?: 'AssociateResponse', count: number, data: Array<(
+      { __typename?: 'Associate' }
+      & { ' $fragmentRefs'?: { 'TopAssociatesTableRowFragmentFragment': TopAssociatesTableRowFragmentFragment } }
+    )>
+  } | null
+};
+
+export type RaffleSalesMetricsFragment = { __typename?: 'SalesMetrics', dailySqmTargetRemaining?: number | null, percentageSold?: number | null, sqmRemainingToSell?: number | null, targetSqm?: number | null, totalSqmSold?: number | null } & { ' $fragmentName'?: 'RaffleSalesMetricsFragment' };
+
+export type RaffleFinancialMetricsFragment = { __typename?: 'FinancialMetrics', totalRevenueGenerated?: number | null, totalAssetValueSold?: number | null, averagePaymentPerPlan?: number | null, totalBalance?: number | null } & { ' $fragmentName'?: 'RaffleFinancialMetricsFragment' };
+
+export type RaffleAssetBreakdownFragment = { __typename?: 'AssetBreakdown', assetName?: string | null, percentageOfTotal?: number | null, totalSqmSold?: number | null, totalTickets?: number | null } & { ' $fragmentName'?: 'RaffleAssetBreakdownFragment' };
+
+export type RaffleUserTicketFragment = { __typename?: 'UserWithTicket', email?: string | null, name?: string | null, ticketId?: string | null } & { ' $fragmentName'?: 'RaffleUserTicketFragment' };
+
+export type DashboardQuickOverview_DataFragment = { __typename?: 'AdminDashboard', users?: number | null, monthly_recurring_revenue?: number | null, associate_users?: number | null, associate_pro_users?: number | null, total_asset?: number | null, default_users?: number | null, suspended_users?: number | null, suspended_payment_plans?: number | null, total_payable?: number | null, sales?: number | null, inflow?: number | null, outflow?: number | null, total_wallet_balance?: number | null } & { ' $fragmentName'?: 'DashboardQuickOverview_DataFragment' };
+
+export type TopAssociates_DataFragment = { __typename?: 'UserReferralAdmin', userName: string, email: string, firstName: string, lastName: string, amount_brought?: number | null, no_of_referral?: number | null, phoneNumber: string } & { ' $fragmentName'?: 'TopAssociates_DataFragment' };
+
+export type TopSellingProducts_DataFragment = { __typename?: 'AssetDashBoard', asset_name?: string | null, asset_pictures?: Array<string | null> | null, asset_location?: string | null, units_subscribed?: number | null, amount_broughtin?: number | null } & { ' $fragmentName'?: 'TopSellingProducts_DataFragment' };
 
 export type GetAdminDashboardDetailsQueryVariables = Exact<{
   startDate?: InputMaybe<Scalars['String']['input']>;
@@ -4511,14 +4984,614 @@ export type GetAdminDashboardDetailsQueryVariables = Exact<{
 }>;
 
 
-export type GetAdminDashboardDetailsQuery = { __typename?: 'Query', getAdminDashboardDetails?: { __typename?: 'AdminDashboard', associate_pro_users?: number | null, associate_users?: number | null, default_users?: number | null, suspended_users?: number | null, monthly_recurring_revenue?: number | null, sales?: number | null, total_payable?: number | null, users?: number | null, total_asset?: number | null, inflow?: number | null, outflow?: number | null, total_wallet_balance?: number | null, suspended_payment_plans?: number | null, top_associates?: Array<{ __typename?: 'UserReferralAdmin', userName: string, email: string, gender?: string | null, amount_commissions?: number | null, amount_brought?: number | null, firstName: string, lastName: string, no_of_referral?: number | null } | null> | null, top_selling_prop?: Array<{ __typename?: 'AssetDashBoard', asset_name?: string | null, asset_pictures?: Array<string | null> | null, asset_location?: string | null, units_subscribed?: number | null, amount_broughtin?: number | null } | null> | null } | null };
+export type GetAdminDashboardDetailsQuery = {
+  __typename?: 'Query', getAdminDashboardDetails?: (
+    {
+      __typename?: 'AdminDashboard', top_associates?: Array<(
+        { __typename?: 'UserReferralAdmin' }
+        & { ' $fragmentRefs'?: { 'TopAssociates_DataFragment': TopAssociates_DataFragment } }
+      ) | null> | null, top_selling_prop?: Array<(
+        { __typename?: 'AssetDashBoard' }
+        & { ' $fragmentRefs'?: { 'TopSellingProducts_DataFragment': TopSellingProducts_DataFragment } }
+      ) | null> | null
+    }
+    & { ' $fragmentRefs'?: { 'DashboardQuickOverview_DataFragment': DashboardQuickOverview_DataFragment } }
+  ) | null
+};
+
+export type InviteAdminMutationVariables = Exact<{
+  input: SubAdminInput;
+}>;
 
 
-export const GetAllAdminAssetsDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "query", "name": { "kind": "Name", "value": "GetAllAdminAssets" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "getAllAdminAssets" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "page" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "limit" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "count" } }, { "kind": "Field", "name": { "kind": "Name", "value": "data" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_location" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_name" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_price" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_size" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_type" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_unit" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_pictures" } }, { "kind": "Field", "name": { "kind": "Name", "value": "sold" } }, { "kind": "Field", "name": { "kind": "Name", "value": "description" } }, { "kind": "Field", "name": { "kind": "Name", "value": "title" } }, { "kind": "Field", "name": { "kind": "Name", "value": "newAsset" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_option" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "size" } }, { "kind": "Field", "name": { "kind": "Name", "value": "unit" } }, { "kind": "Field", "name": { "kind": "Name", "value": "price" } }, { "kind": "Field", "name": { "kind": "Name", "value": "zero_months" } }, { "kind": "Field", "name": { "kind": "Name", "value": "three_months" } }, { "kind": "Field", "name": { "kind": "Name", "value": "six_months" } }, { "kind": "Field", "name": { "kind": "Name", "value": "five_months" } }, { "kind": "Field", "name": { "kind": "Name", "value": "seven_months" } }, { "kind": "Field", "name": { "kind": "Name", "value": "one_month" } }, { "kind": "Field", "name": { "kind": "Name", "value": "one_month_initial_payment" } }, { "kind": "Field", "name": { "kind": "Name", "value": "twelve_months" } }, { "kind": "Field", "name": { "kind": "Name", "value": "initial_payment" } }, { "kind": "Field", "name": { "kind": "Name", "value": "five_months_initial_payment" } }, { "kind": "Field", "name": { "kind": "Name", "value": "seven_months_initial_payment" } }, { "kind": "Field", "name": { "kind": "Name", "value": "development_fee" } }, { "kind": "Field", "name": { "kind": "Name", "value": "monthly_installment" } }, { "kind": "Field", "name": { "kind": "Name", "value": "flex_payment_plans" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "description" } }, { "kind": "Field", "name": { "kind": "Name", "value": "duration_months" } }, { "kind": "Field", "name": { "kind": "Name", "value": "initial_payment" } }, { "kind": "Field", "name": { "kind": "Name", "value": "monthly_installment" } }, { "kind": "Field", "name": { "kind": "Name", "value": "price" } }, { "kind": "Field", "name": { "kind": "Name", "value": "unit" } }] } }] } }] } }] } }] } }] } as unknown as DocumentNode<GetAllAdminAssetsQuery, GetAllAdminAssetsQueryVariables>;
-export const StatisticsDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "query", "name": { "kind": "Name", "value": "Statistics" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "getAssetInventoryData" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "statistics" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "totalAssets" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalWorth" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalFlexAssets" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalFlexWorth" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalFullOwnershipAssets" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalFullOwnershipWorth" } }] } }] } }] } }] } as unknown as DocumentNode<StatisticsQuery, StatisticsQueryVariables>;
-export const CreateFlexAssetDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "mutation", "name": { "kind": "Name", "value": "CreateFlexAsset" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "createFlexAssetInput" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "CreateFlexAssetInput" } } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "createFlexAsset" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "createFlexAssetInput" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "createFlexAssetInput" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_name" } }] } }] } }] } as unknown as DocumentNode<CreateFlexAssetMutation, CreateFlexAssetMutationVariables>;
+export type InviteAdminMutation = { __typename?: 'Mutation', createSubAdmin: string };
+
+export type RequestStats_StatsFragment = { __typename?: 'RequestStatistics', totalRequests?: number | null, pendingRequests?: number | null, approvedRequests?: number | null, declinedRequests?: number | null, locationChangeRequests?: number | null, documentChangeRequests?: number | null, assetUpdateRequests?: number | null, customRequests?: number | null, totalFeesCollected?: number | null, paidRequests?: number | null, unpaidRequests?: number | null } & { ' $fragmentName'?: 'RequestStats_StatsFragment' };
+
+export type RequestTypeCards_StatsFragment = { __typename?: 'RequestStatistics', locationChangeRequests?: number | null, documentChangeRequests?: number | null, assetUpdateRequests?: number | null, customRequests?: number | null } & { ' $fragmentName'?: 'RequestTypeCards_StatsFragment' };
+
+export type GetAllClientRequestsQueryVariables = Exact<{
+  page: Scalars['Int']['input'];
+  limit: Scalars['Int']['input'];
+  filters?: InputMaybe<ClientRequestFilters>;
+}>;
+
+
+export type GetAllClientRequestsQuery = { __typename?: 'Query', getAllClientRequests: any };
+
+export type AdminDetailFragmentFragment = { __typename?: 'AdminRoles', adminEmail: string, adminId: string, adminName: string, permissions: Array<string>, role: string, roleId: string } & { ' $fragmentName'?: 'AdminDetailFragmentFragment' };
+
+export type AdminRowFragmentFragment = { __typename?: 'AdminRoles', adminEmail: string, adminId: string, adminName: string, permissions: Array<string>, role: string, roleId: string } & { ' $fragmentName'?: 'AdminRowFragmentFragment' };
+
+export type PermissionOptionFragmentFragment = { __typename?: 'Permission', _id: string, name: string, description?: string | null } & { ' $fragmentName'?: 'PermissionOptionFragmentFragment' };
+
+export type RoleCardFragmentFragment = { __typename?: 'Role', _id: string, name: string, description?: string | null, permissions: Array<string> } & { ' $fragmentName'?: 'RoleCardFragmentFragment' };
+
+export type GetAdminWithRoleQueryVariables = Exact<{
+  adminId: Scalars['String']['input'];
+}>;
+
+
+export type GetAdminWithRoleQuery = {
+  __typename?: 'Query', getAdminWithRole: {
+    __typename?: 'SingleAdminWithRoleResponse', data: (
+      { __typename?: 'AdminRoles' }
+      & { ' $fragmentRefs'?: { 'AdminDetailFragmentFragment': AdminDetailFragmentFragment } }
+    )
+  }
+};
+
+export type GetAllAdminWithRolesQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GetAllAdminWithRolesQuery = {
+  __typename?: 'Query', getAllAdminWithRoles: {
+    __typename?: 'AdminRoleResponse', data: Array<(
+      { __typename?: 'AdminRoles' }
+      & { ' $fragmentRefs'?: { 'AdminRowFragmentFragment': AdminRowFragmentFragment } }
+    )>
+  }
+};
+
+export type CreateRoleMutationVariables = Exact<{
+  input: CreateRoleInput;
+}>;
+
+
+export type CreateRoleMutation = { __typename?: 'Mutation', createRole: { __typename?: 'Role', _id: string, name: string, description?: string | null, permissions: Array<string> } };
+
+export type GetAllPermissionsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GetAllPermissionsQuery = {
+  __typename?: 'Query', getAllPermissions: {
+    __typename?: 'PermissionResponse', data: Array<(
+      { __typename?: 'Permission' }
+      & { ' $fragmentRefs'?: { 'PermissionOptionFragmentFragment': PermissionOptionFragmentFragment } }
+    )>
+  }
+};
+
+export type GetAllRolesQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GetAllRolesQuery = {
+  __typename?: 'Query', getAllRoles: {
+    __typename?: 'RoleResponse', data: Array<(
+      { __typename?: 'Role' }
+      & { ' $fragmentRefs'?: { 'RoleCardFragmentFragment': RoleCardFragmentFragment } }
+    )>
+  }
+};
+
+export type SalesRowFragmentFragment = { __typename?: 'SalesRecord', user_firstName?: string | null, user_lastName?: string | null, email?: string | null, user_phone?: string | null, referrer_name?: string | null, referrer_email?: string | null, referrer_phone?: string | null, asset_name?: string | null, asset_type?: string | null, no_of_units?: number | null, document_amount_paid?: number | null, fullownerhsip_documentprice?: number | null, month_subscription?: number | null, size?: number | null, price?: number | null, amount_paid?: number | null, start_date?: any | null, next_date?: any | null } & { ' $fragmentName'?: 'SalesRowFragmentFragment' };
+
+export type SummaryCards_DashboardFragment = { __typename?: 'SalesDashboard', totalTransactionValue?: number | null, expectedTransactionValue?: number | null, totalReceivedTransactionValue?: number | null, outstandingTransactionValue?: number | null, totalFlexTransactionValue?: number | null, expectedFlexTransactionValue?: number | null, totalReceivedFlexTransactionValue?: number | null, outstandingFlexTransactionValue?: number | null, totalFullOwnershipTransactionValue?: number | null, expectedFullOwnershipTransactionValue?: number | null, totalReceivedFullOwnershipTransactionValue?: number | null, outstandingFullOwnershipTransactionValue?: number | null } & { ' $fragmentName'?: 'SummaryCards_DashboardFragment' };
+
+export type ExportSalesQueryVariables = Exact<{
+  filters?: InputMaybe<SalesRecordFilters>;
+  limit: Scalars['Int']['input'];
+  page: Scalars['Int']['input'];
+}>;
+
+
+export type ExportSalesQuery = { __typename?: 'Query', getSalesRecord?: { __typename?: 'SalesRecordResponse', data?: Array<{ __typename?: 'SalesRecord', user_firstName?: string | null, user_lastName?: string | null, email?: string | null, user_phone?: string | null, referrer_name?: string | null, referrer_email?: string | null, referrer_phone?: string | null, asset_name?: string | null, asset_type?: string | null, no_of_units?: number | null, size?: number | null, price?: number | null, amount_paid?: number | null, fullownerhsip_documentprice?: number | null, document_amount_paid?: number | null, month_subscription?: number | null, start_date?: any | null, next_date?: any | null } | null> | null } | null };
+
+export type GetSalesRecordQueryVariables = Exact<{
+  filters?: InputMaybe<SalesRecordFilters>;
+  limit: Scalars['Int']['input'];
+  page: Scalars['Int']['input'];
+}>;
+
+
+export type GetSalesRecordQuery = {
+  __typename?: 'Query', getSalesRecord?: {
+    __typename?: 'SalesRecordResponse', count?: number | null, data?: Array<(
+      { __typename?: 'SalesRecord' }
+      & { ' $fragmentRefs'?: { 'SalesRowFragmentFragment': SalesRowFragmentFragment } }
+    ) | null> | null
+  } | null
+};
+
+export type GetSalesDashboardQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GetSalesDashboardQuery = {
+  __typename?: 'Query', getSalesDashboard?: (
+    { __typename?: 'SalesDashboard' }
+    & { ' $fragmentRefs'?: { 'SummaryCards_DashboardFragment': SummaryCards_DashboardFragment } }
+  ) | null
+};
+
+export type AssetTransactionsTable_DataFragment = { __typename?: 'AdminTransactions', _id: string, amount?: string | null, description?: string | null, admin_status?: string | null, plot_size?: string | null, asset_type?: string | null, referral?: string | null, transaction_type?: string | null, time_of_transaction?: any | null, transfer_file?: { __typename?: 'TransferFile', file?: string | null } | null, user?: { __typename?: 'UserAdmin', firstName: string, lastName: string, _id: string } | null } & { ' $fragmentName'?: 'AssetTransactionsTable_DataFragment' };
+
+export type CommissionTransactionsTable_DataFragment = { __typename?: 'AdminTransactions', _id: string, tin?: string | null, admin_status?: string | null, amount?: string | null, asset_type?: string | null, description?: string | null, plot_size?: string | null, status?: string | null, referral?: string | null, transaction_type?: string | null, time_of_transaction?: any | null, user?: { __typename?: 'UserAdmin', _id: string, firstName: string, lastName: string, referrer?: string | null, referral_status?: string | null, email: string } | null } & { ' $fragmentName'?: 'CommissionTransactionsTable_DataFragment' };
+
+export type CompleteAssetPaymentsTable_DataFragment = { __typename?: 'ZeroBalance', name?: string | null, email?: string | null, phone_number?: string | null, sales_person?: string | null, asset_name?: string | null, unit?: number | null, size?: number | null, price?: number | null, amount_paid?: number | null, month_subscription?: number | null, start_date?: any | null, next_payment_date?: any | null } & { ' $fragmentName'?: 'CompleteAssetPaymentsTable_DataFragment' };
+
+export type DocumentTransactionsTable_DataFragment = { __typename?: 'AdminTransactions', _id: string, amount?: string | null, description?: string | null, admin_status?: string | null, plot_size?: string | null, asset_type?: string | null, referral?: string | null, transaction_type?: string | null, time_of_transaction?: any | null, transfer_file?: { __typename?: 'TransferFile', file?: string | null } | null, user?: { __typename?: 'UserAdmin', firstName: string, lastName: string, _id: string } | null } & { ' $fragmentName'?: 'DocumentTransactionsTable_DataFragment' };
+
+export type TopupTransactionsTable_DataFragment = { __typename?: 'AdminTransactions', _id: string, amount?: string | null, status?: string | null, admin_status?: string | null, time_of_transaction?: any | null, transaction_type?: string | null, transfer_file?: { __typename?: 'TransferFile', file?: string | null } | null, user?: { __typename?: 'UserAdmin', firstName: string, lastName: string, _id: string } | null } & { ' $fragmentName'?: 'TopupTransactionsTable_DataFragment' };
+
+export type WithdrawalTransactionsTable_DataFragment = { __typename?: 'AdminTransactions', _id: string, admin_status?: string | null, amount?: string | null, time_of_transaction?: any | null, tin?: string | null, bank_details?: { __typename?: 'UserBankDetails', accountNumber: string, bankName: string, name: string } | null, user?: { __typename?: 'UserAdmin', firstName: string, lastName: string, _id: string } | null } & { ' $fragmentName'?: 'WithdrawalTransactionsTable_DataFragment' };
+
+export type GetUsersWithZeroBalanceQueryVariables = Exact<{
+  page: Scalars['Int']['input'];
+  limit: Scalars['Int']['input'];
+}>;
+
+
+export type GetUsersWithZeroBalanceQuery = {
+  __typename?: 'Query', getUsersWithZeroBalance: {
+    __typename?: 'ZeroBalanceResponse', count: number, data: Array<(
+      { __typename?: 'ZeroBalance' }
+      & { ' $fragmentRefs'?: { 'CompleteAssetPaymentsTable_DataFragment': CompleteAssetPaymentsTable_DataFragment } }
+    )>
+  }
+};
+
+export type ApproveTransactionMutationVariables = Exact<{
+  approveTransactionId: Scalars['ID']['input'];
+}>;
+
+
+export type ApproveTransactionMutation = { __typename?: 'Mutation', approveTransaction: string };
+
+export type DeclineTransactionMutationVariables = Exact<{
+  declineTransactionInput: DeclineTransactionInput;
+}>;
+
+
+export type DeclineTransactionMutation = { __typename?: 'Mutation', declineTransaction?: string | null };
+
+export type ApprovePaystackTransactionMutationVariables = Exact<{
+  approvePaystackTransactionId: Scalars['ID']['input'];
+}>;
+
+
+export type ApprovePaystackTransactionMutation = { __typename?: 'Mutation', approvePaystackTransaction: string };
+
+export type ApproveAssetTransactionMutationVariables = Exact<{
+  approveAssetTransactionId: Scalars['ID']['input'];
+}>;
+
+
+export type ApproveAssetTransactionMutation = { __typename?: 'Mutation', approveAssetTransaction: string };
+
+export type DeclineDocumentTransactionMutationVariables = Exact<{
+  declineTransactionInput: DeclineTransactionInput;
+}>;
+
+
+export type DeclineDocumentTransactionMutation = { __typename?: 'Mutation', declineDocumentTransaction: string };
+
+export type ProcessCommissionMutationVariables = Exact<{
+  processCommissionInput: ProcessCommissionInput;
+}>;
+
+
+export type ProcessCommissionMutation = { __typename?: 'Mutation', processCommission: string };
+
+export type ProcessReceiptMutationVariables = Exact<{
+  processReceiptInput: ProcessReceiptInput;
+}>;
+
+
+export type ProcessReceiptMutation = { __typename?: 'Mutation', processReceipt: string };
+
+export type DeclineAssetTransactionMutationVariables = Exact<{
+  declineTransactionInput: DeclineTransactionInput;
+}>;
+
+
+export type DeclineAssetTransactionMutation = { __typename?: 'Mutation', declineAssetTransaction: string };
+
+export type GetTopupTransactionQueryVariables = Exact<{
+  page: Scalars['Int']['input'];
+  limit: Scalars['Int']['input'];
+}>;
+
+
+export type GetTopupTransactionQuery = {
+  __typename?: 'Query', getTopupTransaction?: {
+    __typename?: 'TransactionAdminResponse', count?: number | null, data?: Array<(
+      { __typename?: 'AdminTransactions' }
+      & { ' $fragmentRefs'?: { 'TopupTransactionsTable_DataFragment': TopupTransactionsTable_DataFragment } }
+    ) | null> | null
+  } | null
+};
+
+export type GetWithdrawalTransactionQueryVariables = Exact<{
+  page: Scalars['Int']['input'];
+  limit: Scalars['Int']['input'];
+  status?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+
+export type GetWithdrawalTransactionQuery = {
+  __typename?: 'Query', getWithdrawalTransaction?: {
+    __typename?: 'TransactionAdminResponse', count?: number | null, data?: Array<(
+      { __typename?: 'AdminTransactions' }
+      & { ' $fragmentRefs'?: { 'WithdrawalTransactionsTable_DataFragment': WithdrawalTransactionsTable_DataFragment } }
+    ) | null> | null
+  } | null
+};
+
+export type GetDocumentTransactionQueryVariables = Exact<{
+  page: Scalars['Int']['input'];
+  limit: Scalars['Int']['input'];
+  status?: InputMaybe<Scalars['String']['input']>;
+  startDate?: InputMaybe<Scalars['Date']['input']>;
+  endDate?: InputMaybe<Scalars['Date']['input']>;
+}>;
+
+
+export type GetDocumentTransactionQuery = {
+  __typename?: 'Query', getDocumentTransaction?: {
+    __typename?: 'TransactionAdminResponse', count?: number | null, data?: Array<(
+      { __typename?: 'AdminTransactions' }
+      & { ' $fragmentRefs'?: { 'DocumentTransactionsTable_DataFragment': DocumentTransactionsTable_DataFragment } }
+    ) | null> | null
+  } | null
+};
+
+export type GetCommissionTransactionsQueryVariables = Exact<{
+  page: Scalars['Int']['input'];
+  limit: Scalars['Int']['input'];
+  startDate?: InputMaybe<Scalars['String']['input']>;
+  endDate?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+
+export type GetCommissionTransactionsQuery = {
+  __typename?: 'Query', getCommissionTransactions?: {
+    __typename?: 'TransactionAdminResponse', count?: number | null, data?: Array<(
+      { __typename?: 'AdminTransactions' }
+      & { ' $fragmentRefs'?: { 'CommissionTransactionsTable_DataFragment': CommissionTransactionsTable_DataFragment } }
+    ) | null> | null
+  } | null
+};
+
+export type AdminTransactionDataPointQueryVariables = Exact<{
+  dataPointInput: DataPointInput;
+}>;
+
+
+export type AdminTransactionDataPointQuery = { __typename?: 'Query', adminTransactionDataPoint?: { __typename?: 'DataPointResponse', pending_transaction?: number | null, approved_transaction?: number | null, rejected_transaction?: number | null, commission_transaction?: number | null, users_wallet_balance?: number | null } | null };
+
+export type GetAssetTransactionQueryVariables = Exact<{
+  assetType?: InputMaybe<Scalars['String']['input']>;
+  transactionType?: InputMaybe<Scalars['String']['input']>;
+  status?: InputMaybe<Scalars['String']['input']>;
+  startDate?: InputMaybe<Scalars['Date']['input']>;
+  endDate?: InputMaybe<Scalars['Date']['input']>;
+  salesType?: InputMaybe<Scalars['String']['input']>;
+  page: Scalars['Int']['input'];
+  limit: Scalars['Int']['input'];
+  search?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+
+export type GetAssetTransactionQuery = {
+  __typename?: 'Query', getAssetTransaction?: {
+    __typename?: 'TransactionAdminResponse', count?: number | null, data?: Array<(
+      { __typename?: 'AdminTransactions' }
+      & { ' $fragmentRefs'?: { 'AssetTransactionsTable_DataFragment': AssetTransactionsTable_DataFragment } }
+    ) | null> | null
+  } | null
+};
+
+export type GetAssetTransactionsStatisticsQueryVariables = Exact<{
+  filters?: InputMaybe<AssetTransactionFilters>;
+}>;
+
+
+export type GetAssetTransactionsStatisticsQuery = { __typename?: 'Query', getAssetTransactionData?: { __typename?: 'TransactionAdminAssetResponse', statistics?: { __typename?: 'TransactionStatistics', totalTransactions?: number | null, approvedTransactions?: number | null, totalApprovedAmount?: number | null, pendingTransactions?: number | null, totalPendingAmount?: number | null, declinedTransactions?: number | null, totalDeclinedAmount?: number | null, new_sales?: number | null, total_new_sales?: number | null, flexTransactions?: number | null, totalFlexAmount?: number | null, new_flex_sales?: number | null, flex_recurring_sales?: number | null, total_flex_recurring_sales?: number | null, fullOwnershipTransactions?: number | null, totalFullOwnershipAmount?: number | null, new_fullOwnership_sales?: number | null, total_new_fullOwnership_sales?: number | null, fullOwnership_recurring_sales?: number | null, total_fullOwnership_recurring_sales?: number | null } | null } | null };
+
+export type UsersTableFragmentFragment = { __typename?: 'UserAdmin', _id: string, firstName: string, lastName: string, email: string, createdAt?: any | null, referral_status?: string | null, referrer?: string | null, howYouHearAboutUs?: string | null, virtual_subscriptions?: number | null, virtual_networth?: number | null } & { ' $fragmentName'?: 'UsersTableFragmentFragment' };
+
+export type DefaultUsersRow_UserFragment = { __typename?: 'UserAdmin', _id: string, firstName: string, lastName: string, email: string, phoneNumber?: string | null, createdAt?: any | null, referrer?: string | null, subscriptions?: number | null, Networth?: number | null } & { ' $fragmentName'?: 'DefaultUsersRow_UserFragment' };
+
+export type SuspendedPaymentPlansRow_PlanFragment = { __typename?: 'SuspendedPaymentPlans', firstName?: string | null, lastName?: string | null, email?: string | null, phoneNumber?: string | null, referrer?: string | null, asset_name?: string | null, size?: number | null, asset_type?: string | null, no_of_units?: number | null, amount_paid?: number | null, balance?: number | null, start_date?: any | null } & { ' $fragmentName'?: 'SuspendedPaymentPlansRow_PlanFragment' };
+
+export type SuspendedUsersRow_UserFragment = { __typename?: 'UserAdmin', _id: string, firstName: string, lastName: string, email: string, phoneNumber?: string | null, createdAt?: any | null, referrer?: string | null, subscriptions?: number | null } & { ' $fragmentName'?: 'SuspendedUsersRow_UserFragment' };
+
+export type GetAllDefaultUsersQueryVariables = Exact<{
+  page: Scalars['Int']['input'];
+  limit: Scalars['Int']['input'];
+}>;
+
+
+export type GetAllDefaultUsersQuery = {
+  __typename?: 'Query', getAllDefaultUsers?: {
+    __typename?: 'UserAdminResponse', count?: number | null, data?: Array<(
+      { __typename?: 'UserAdmin' }
+      & { ' $fragmentRefs'?: { 'DefaultUsersRow_UserFragment': DefaultUsersRow_UserFragment } }
+    ) | null> | null
+  } | null
+};
+
+export type ExportDefaultUsersQueryVariables = Exact<{
+  page: Scalars['Int']['input'];
+  limit: Scalars['Int']['input'];
+}>;
+
+
+export type ExportDefaultUsersQuery = {
+  __typename?: 'Query', getAllDefaultUsers?: {
+    __typename?: 'UserAdminResponse', data?: Array<(
+      { __typename?: 'UserAdmin' }
+      & { ' $fragmentRefs'?: { 'DefaultUsersRow_UserFragment': DefaultUsersRow_UserFragment } }
+    ) | null> | null
+  } | null
+};
+
+export type GetSuspendedPaymentPlansQueryVariables = Exact<{
+  page: Scalars['Int']['input'];
+  limit: Scalars['Int']['input'];
+  searchQuery?: InputMaybe<Scalars['String']['input']>;
+  assetType?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+
+export type GetSuspendedPaymentPlansQuery = {
+  __typename?: 'Query', getSuspendedPaymentPlans?: {
+    __typename?: 'SuspendedPaymentPlansResponse', count?: number | null, data?: Array<(
+      { __typename?: 'SuspendedPaymentPlans' }
+      & { ' $fragmentRefs'?: { 'SuspendedPaymentPlansRow_PlanFragment': SuspendedPaymentPlansRow_PlanFragment } }
+    ) | null> | null
+  } | null
+};
+
+export type ExportSuspendedPaymentPlansQueryVariables = Exact<{
+  page: Scalars['Int']['input'];
+  limit: Scalars['Int']['input'];
+  searchQuery?: InputMaybe<Scalars['String']['input']>;
+  assetType?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+
+export type ExportSuspendedPaymentPlansQuery = {
+  __typename?: 'Query', getSuspendedPaymentPlans?: {
+    __typename?: 'SuspendedPaymentPlansResponse', data?: Array<(
+      { __typename?: 'SuspendedPaymentPlans' }
+      & { ' $fragmentRefs'?: { 'SuspendedPaymentPlansRow_PlanFragment': SuspendedPaymentPlansRow_PlanFragment } }
+    ) | null> | null
+  } | null
+};
+
+export type GetAllSuspendedUsersQueryVariables = Exact<{
+  page: Scalars['Int']['input'];
+  limit: Scalars['Int']['input'];
+}>;
+
+
+export type GetAllSuspendedUsersQuery = {
+  __typename?: 'Query', getAllSuspendedUsers?: {
+    __typename?: 'UserAdminResponse', count?: number | null, data?: Array<(
+      { __typename?: 'UserAdmin' }
+      & { ' $fragmentRefs'?: { 'SuspendedUsersRow_UserFragment': SuspendedUsersRow_UserFragment } }
+    ) | null> | null
+  } | null
+};
+
+export type ExportSuspendedUsersQueryVariables = Exact<{
+  page: Scalars['Int']['input'];
+  limit: Scalars['Int']['input'];
+}>;
+
+
+export type ExportSuspendedUsersQuery = {
+  __typename?: 'Query', getAllSuspendedUsers?: {
+    __typename?: 'UserAdminResponse', data?: Array<(
+      { __typename?: 'UserAdmin' }
+      & { ' $fragmentRefs'?: { 'SuspendedUsersRow_UserFragment': SuspendedUsersRow_UserFragment } }
+    ) | null> | null
+  } | null
+};
+
+export type UnsuspendUserMutationVariables = Exact<{
+  id: Scalars['ID']['input'];
+}>;
+
+
+export type UnsuspendUserMutation = { __typename?: 'Mutation', unsuspendUser: string };
+
+export type EditUserDetailsByAdminMutationVariables = Exact<{
+  userDetailsInput: UserDetailsInput;
+}>;
+
+
+export type EditUserDetailsByAdminMutation = { __typename?: 'Mutation', editUserDetailsByAdmin: string };
+
+export type EditUserWalletDetailsByAdminMutationVariables = Exact<{
+  adminWalletInput: AdminWalletInput;
+}>;
+
+
+export type EditUserWalletDetailsByAdminMutation = { __typename?: 'Mutation', editUserWalletDetailsByAdmin: string };
+
+export type ModifyUserReferralStatusMutationVariables = Exact<{
+  modifyReferralInput: ModifyReferralInput;
+}>;
+
+
+export type ModifyUserReferralStatusMutation = { __typename?: 'Mutation', modifyUserReferralStatus: string };
+
+export type ViewUserReferralsByAdminQueryVariables = Exact<{
+  viewUserReferralsByAdminId: Scalars['ID']['input'];
+}>;
+
+
+export type ViewUserReferralsByAdminQuery = { __typename?: 'Query', viewUserReferralsByAdmin?: Array<{ __typename?: 'AdminReferral', _id: string, commission?: number | null, createdAt?: any | null, userReferralStatus?: string | null, email?: string | null, name?: string | null, phoneNumber?: string | null, status?: string | null } | null> | null };
+
+export type RemoveReferralByAdminMutationVariables = Exact<{
+  referralUpdateInput: ReferralUpdateInput;
+}>;
+
+
+export type RemoveReferralByAdminMutation = { __typename?: 'Mutation', removeReferralByAdmin: string };
+
+export type GetAllUsersQueryVariables = Exact<{
+  page: Scalars['Int']['input'];
+  searchQuery?: InputMaybe<Scalars['String']['input']>;
+  limit: Scalars['Int']['input'];
+  hasReferral?: InputMaybe<Scalars['Boolean']['input']>;
+  hasAsset?: InputMaybe<Scalars['Boolean']['input']>;
+  referralStatus?: InputMaybe<Scalars['String']['input']>;
+  howDidYouHearAboutUs?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+
+export type GetAllUsersQuery = {
+  __typename?: 'Query', getAllUsers?: {
+    __typename?: 'UserAdminResponse', count?: number | null, data?: Array<(
+      { __typename?: 'UserAdmin' }
+      & { ' $fragmentRefs'?: { 'UsersTableFragmentFragment': UsersTableFragmentFragment } }
+    ) | null> | null
+  } | null
+};
+
+export type GetUserDetailsByAdminQueryVariables = Exact<{
+  getUserDetailsByAdminId: Scalars['ID']['input'];
+}>;
+
+
+export type GetUserDetailsByAdminQuery = { __typename?: 'Query', getUserDetailsByAdmin?: { __typename?: 'UserAdminDetail', Networth?: number | null, virtual_networth?: number | null, virtual_subscriptions?: number | null, _id: string, address?: string | null, amount_paid?: number | null, amount_payable?: number | null, balance_payable?: number | null, referral_status?: string | null, country?: string | null, date_of_birth?: any | null, email: string, last_login?: any | null, default_status?: string | null, employment_status?: string | null, firstName: string, gender?: string | null, lastName: string, marital_status?: string | null, occupation?: string | null, phoneNumber: string, is_suspended?: boolean | null, profile_pic?: string | null, subscriptions?: number | null, units_purchased?: number | null, userName: string, next_date_of_payment?: any | null, referral?: { __typename?: 'Referrer', lastName: string, firstName: string, email?: string | null } | null, kyc?: { __typename?: 'Kyc', tin?: string | null } | null, transaction?: Array<{ __typename?: 'Transactions', _id: string, time_of_transaction?: any | null, amount?: string | null, type?: string | null, status?: string | null, description?: string | null, transaction_type?: string | null, paystack_reference?: string | null, transfer_reference?: string | null, transfer_file?: { __typename?: 'TransferFile', file?: string | null } | null } | null> | null, wallet?: { __typename?: 'AdminWallet', balance?: string | null } | null } | null };
+
+export type MetricsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type MetricsQuery = { __typename?: 'Query', getSystemUsersOverview: { __typename?: 'SystemUsersOverviewResponse', metrics: { __typename?: 'SystemUsersMetrics', totalUsers: number, noReferralUsers: number, users_with_assets: number, flexSubscribers: number, fullOwnershipSubscribers: number, defaultUsers: number, overdueUsers: number, active_associate: number, active_associate_pro: number, referralStatusCounts: { __typename?: 'ReferralStatusCounts', user: number, associate: number, associatePro: number } } } };
+
+export type GetAllAdminAssetsQueryVariables = Exact<{
+  page: Scalars['Int']['input'];
+  limit: Scalars['Int']['input'];
+}>;
+
+
+export type GetAllAdminAssetsQuery = { __typename?: 'Query', getAllAdminAssets?: { __typename?: 'AssetAdminResponse', count?: number | null, data: Array<{ __typename?: 'Asset', _id?: string | null, asset_location?: string | null, asset_name?: string | null, asset_price?: number | null, asset_size?: number | null, asset_type?: string | null, asset_unit?: number | null, asset_pictures?: Array<string | null> | null, sold?: boolean | null, description?: string | null, title?: string | null, newAsset?: boolean | null, asset_option?: Array<{ __typename?: 'AssetOption', size?: number | null, unit?: string | null, price?: number | null, zero_months?: number | null, three_months?: number | null, six_months?: number | null, five_months?: number | null, seven_months?: number | null, one_month?: number | null, one_month_initial_payment?: number | null, twelve_months?: number | null, initial_payment?: number | null, five_months_initial_payment?: number | null, seven_months_initial_payment?: number | null, development_fee?: number | null, monthly_installment?: number | null, flex_payment_plans?: Array<{ __typename?: 'FlexPaymentPlan', description?: string | null, duration_months: number, initial_payment?: number | null, monthly_installment: number, price?: number | null, unit?: number | null } | null> | null } | null> | null } | null> } | null };
+
+export type StatisticsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type StatisticsQuery = { __typename?: 'Query', getAssetInventoryData?: { __typename?: 'AssetInventoryResponse', statistics?: { __typename?: 'AssetInventoryStatistics', totalAssets?: number | null, totalWorth?: number | null, totalFlexAssets?: number | null, totalFlexWorth?: number | null, totalFullOwnershipAssets?: number | null, totalFullOwnershipWorth?: number | null } | null } | null };
+
+export const AdminLogsRowFragmentFragmentDoc = { "kind": "Document", "definitions": [{ "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "AdminLogsRowFragment" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "LogAdmin" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "timestamp" } }, { "kind": "Field", "name": { "kind": "Name", "value": "description" } }, { "kind": "Field", "name": { "kind": "Name", "value": "action" } }, { "kind": "Field", "name": { "kind": "Name", "value": "adminEmail" } }, { "kind": "Field", "name": { "kind": "Name", "value": "adminId" } }, { "kind": "Field", "name": { "kind": "Name", "value": "metadata" } }, { "kind": "Field", "name": { "kind": "Name", "value": "oldState" } }] } }] } as unknown as DocumentNode<AdminLogsRowFragmentFragment, unknown>;
+export const AllocationAssetOptionFragmentFragmentDoc = { "kind": "Document", "definitions": [{ "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "AllocationAssetOptionFragment" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "Asset" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_name" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_type" } }] } }] } as unknown as DocumentNode<AllocationAssetOptionFragmentFragment, unknown>;
+export const AllocationTableRowFragmentFragmentDoc = { "kind": "Document", "definitions": [{ "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "AllocationTableRowFragment" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "EligibleClient" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "allocation" } }, { "kind": "Field", "name": { "kind": "Name", "value": "allocationStatus" } }, { "kind": "Field", "name": { "kind": "Name", "value": "allocationDate" } }, { "kind": "Field", "name": { "kind": "Name", "value": "amountPaid" } }, { "kind": "Field", "name": { "kind": "Name", "value": "assetName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "assetSize" } }, { "kind": "Field", "name": { "kind": "Name", "value": "assetType" } }, { "kind": "Field", "name": { "kind": "Name", "value": "duration" } }, { "kind": "Field", "name": { "kind": "Name", "value": "email" } }, { "kind": "Field", "name": { "kind": "Name", "value": "end_date" } }, { "kind": "Field", "name": { "kind": "Name", "value": "firstName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "lastName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "location" } }, { "kind": "Field", "name": { "kind": "Name", "value": "paymentPlan" } }, { "kind": "Field", "name": { "kind": "Name", "value": "paymentPercentage" } }, { "kind": "Field", "name": { "kind": "Name", "value": "phoneNumber" } }, { "kind": "Field", "name": { "kind": "Name", "value": "referral" } }, { "kind": "Field", "name": { "kind": "Name", "value": "referralStatus" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalPrice" } }, { "kind": "Field", "name": { "kind": "Name", "value": "unit" } }] } }] } as unknown as DocumentNode<AllocationTableRowFragmentFragment, unknown>;
+export const AssetFlexTable_AssetFragmentDoc = { "kind": "Document", "definitions": [{ "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "AssetFlexTable_asset" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "Asset" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_name" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_location" } }, { "kind": "Field", "name": { "kind": "Name", "value": "sold" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_type" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_option" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "size" } }, { "kind": "Field", "name": { "kind": "Name", "value": "unit" } }, { "kind": "Field", "name": { "kind": "Name", "value": "price" } }, { "kind": "Field", "name": { "kind": "Name", "value": "flex_payment_plans" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "price" } }, { "kind": "Field", "name": { "kind": "Name", "value": "unit" } }] } }] } }] } }] } as unknown as DocumentNode<AssetFlexTable_AssetFragment, unknown>;
+export const AssetFullOwnershipTable_AssetFragmentDoc = { "kind": "Document", "definitions": [{ "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "AssetFullOwnershipTable_asset" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "Asset" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_name" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_location" } }, { "kind": "Field", "name": { "kind": "Name", "value": "sold" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_type" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_option" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "size" } }, { "kind": "Field", "name": { "kind": "Name", "value": "unit" } }, { "kind": "Field", "name": { "kind": "Name", "value": "zero_months" } }] } }] } }] } as unknown as DocumentNode<AssetFullOwnershipTable_AssetFragment, unknown>;
+export const AssetInventoryOverview_StatisticsFragmentDoc = { "kind": "Document", "definitions": [{ "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "AssetInventoryOverview_statistics" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "AssetInventoryStatistics" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "totalAssets" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalWorth" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalFlexAssets" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalFlexWorth" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalFullOwnershipAssets" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalFullOwnershipWorth" } }] } }] } as unknown as DocumentNode<AssetInventoryOverview_StatisticsFragment, unknown>;
+export const UpgradeRowFragmentFragmentDoc = { "kind": "Document", "definitions": [{ "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "UpgradeRowFragment" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "ReferralUpgrade" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "admin_status" } }, { "kind": "Field", "name": { "kind": "Name", "value": "createdAt" } }, { "kind": "Field", "name": { "kind": "Name", "value": "fee_amount" } }, { "kind": "Field", "name": { "kind": "Name", "value": "transaction_type" } }, { "kind": "Field", "name": { "kind": "Name", "value": "user_upgrade_type" } }, { "kind": "Field", "name": { "kind": "Name", "value": "file_Url" } }, { "kind": "Field", "name": { "kind": "Name", "value": "user" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "firstName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "lastName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "email" } }] } }, { "kind": "Field", "name": { "kind": "Name", "value": "associate" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "firstName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "lastName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "email" } }] } }] } }] } as unknown as DocumentNode<UpgradeRowFragmentFragment, unknown>;
+export const CouponRowFragmentFragmentDoc = { "kind": "Document", "definitions": [{ "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "CouponRowFragment" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "Coupon" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "couponCode" } }, { "kind": "Field", "name": { "kind": "Name", "value": "discountPercentage" } }, { "kind": "Field", "name": { "kind": "Name", "value": "startDate" } }, { "kind": "Field", "name": { "kind": "Name", "value": "endDate" } }, { "kind": "Field", "name": { "kind": "Name", "value": "expiryDate" } }, { "kind": "Field", "name": { "kind": "Name", "value": "expiryType" } }, { "kind": "Field", "name": { "kind": "Name", "value": "usageLimit" } }, { "kind": "Field", "name": { "kind": "Name", "value": "usageLimitType" } }, { "kind": "Field", "name": { "kind": "Name", "value": "status" } }, { "kind": "Field", "name": { "kind": "Name", "value": "activeImmediately" } }, { "kind": "Field", "name": { "kind": "Name", "value": "createdAt" } }] } }] } as unknown as DocumentNode<CouponRowFragmentFragment, unknown>;
+export const TopAssociatesTableRowFragmentFragmentDoc = { "kind": "Document", "definitions": [{ "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "TopAssociatesTableRowFragment" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "Associate" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "name" } }, { "kind": "Field", "name": { "kind": "Name", "value": "status" } }, { "kind": "Field", "name": { "kind": "Name", "value": "email" } }, { "kind": "Field", "name": { "kind": "Name", "value": "sales_person" } }, { "kind": "Field", "name": { "kind": "Name", "value": "no_of_clients" } }, { "kind": "Field", "name": { "kind": "Name", "value": "units_sold" } }, { "kind": "Field", "name": { "kind": "Name", "value": "size_sold" } }, { "kind": "Field", "name": { "kind": "Name", "value": "expected_revenue" } }, { "kind": "Field", "name": { "kind": "Name", "value": "received_revenue" } }, { "kind": "Field", "name": { "kind": "Name", "value": "commission" } }] } }] } as unknown as DocumentNode<TopAssociatesTableRowFragmentFragment, unknown>;
+export const RaffleSalesMetricsFragmentDoc = { "kind": "Document", "definitions": [{ "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "RaffleSalesMetrics" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "SalesMetrics" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "dailySqmTargetRemaining" } }, { "kind": "Field", "name": { "kind": "Name", "value": "percentageSold" } }, { "kind": "Field", "name": { "kind": "Name", "value": "sqmRemainingToSell" } }, { "kind": "Field", "name": { "kind": "Name", "value": "targetSqm" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalSqmSold" } }] } }] } as unknown as DocumentNode<RaffleSalesMetricsFragment, unknown>;
+export const RaffleFinancialMetricsFragmentDoc = { "kind": "Document", "definitions": [{ "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "RaffleFinancialMetrics" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "FinancialMetrics" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "totalRevenueGenerated" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalAssetValueSold" } }, { "kind": "Field", "name": { "kind": "Name", "value": "averagePaymentPerPlan" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalBalance" } }] } }] } as unknown as DocumentNode<RaffleFinancialMetricsFragment, unknown>;
+export const RaffleAssetBreakdownFragmentDoc = { "kind": "Document", "definitions": [{ "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "RaffleAssetBreakdown" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "AssetBreakdown" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "assetName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "percentageOfTotal" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalSqmSold" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalTickets" } }] } }] } as unknown as DocumentNode<RaffleAssetBreakdownFragment, unknown>;
+export const RaffleUserTicketFragmentDoc = { "kind": "Document", "definitions": [{ "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "RaffleUserTicket" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "UserWithTicket" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "email" } }, { "kind": "Field", "name": { "kind": "Name", "value": "name" } }, { "kind": "Field", "name": { "kind": "Name", "value": "ticketId" } }] } }] } as unknown as DocumentNode<RaffleUserTicketFragment, unknown>;
+export const DashboardQuickOverview_DataFragmentDoc = { "kind": "Document", "definitions": [{ "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "DashboardQuickOverview_data" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "AdminDashboard" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "users" } }, { "kind": "Field", "name": { "kind": "Name", "value": "monthly_recurring_revenue" } }, { "kind": "Field", "name": { "kind": "Name", "value": "associate_users" } }, { "kind": "Field", "name": { "kind": "Name", "value": "associate_pro_users" } }, { "kind": "Field", "name": { "kind": "Name", "value": "total_asset" } }, { "kind": "Field", "name": { "kind": "Name", "value": "default_users" } }, { "kind": "Field", "name": { "kind": "Name", "value": "suspended_users" } }, { "kind": "Field", "name": { "kind": "Name", "value": "suspended_payment_plans" } }, { "kind": "Field", "name": { "kind": "Name", "value": "total_payable" } }, { "kind": "Field", "name": { "kind": "Name", "value": "sales" } }, { "kind": "Field", "name": { "kind": "Name", "value": "inflow" } }, { "kind": "Field", "name": { "kind": "Name", "value": "outflow" } }, { "kind": "Field", "name": { "kind": "Name", "value": "total_wallet_balance" } }] } }] } as unknown as DocumentNode<DashboardQuickOverview_DataFragment, unknown>;
+export const TopAssociates_DataFragmentDoc = { "kind": "Document", "definitions": [{ "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "TopAssociates_data" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "UserReferralAdmin" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "userName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "email" } }, { "kind": "Field", "name": { "kind": "Name", "value": "firstName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "lastName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "amount_brought" } }, { "kind": "Field", "name": { "kind": "Name", "value": "no_of_referral" } }, { "kind": "Field", "name": { "kind": "Name", "value": "phoneNumber" } }] } }] } as unknown as DocumentNode<TopAssociates_DataFragment, unknown>;
+export const TopSellingProducts_DataFragmentDoc = { "kind": "Document", "definitions": [{ "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "TopSellingProducts_data" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "AssetDashBoard" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "asset_name" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_pictures" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_location" } }, { "kind": "Field", "name": { "kind": "Name", "value": "units_subscribed" } }, { "kind": "Field", "name": { "kind": "Name", "value": "amount_broughtin" } }] } }] } as unknown as DocumentNode<TopSellingProducts_DataFragment, unknown>;
+export const RequestStats_StatsFragmentDoc = { "kind": "Document", "definitions": [{ "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "RequestStats_stats" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "RequestStatistics" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "totalRequests" } }, { "kind": "Field", "name": { "kind": "Name", "value": "pendingRequests" } }, { "kind": "Field", "name": { "kind": "Name", "value": "approvedRequests" } }, { "kind": "Field", "name": { "kind": "Name", "value": "declinedRequests" } }, { "kind": "Field", "name": { "kind": "Name", "value": "locationChangeRequests" } }, { "kind": "Field", "name": { "kind": "Name", "value": "documentChangeRequests" } }, { "kind": "Field", "name": { "kind": "Name", "value": "assetUpdateRequests" } }, { "kind": "Field", "name": { "kind": "Name", "value": "customRequests" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalFeesCollected" } }, { "kind": "Field", "name": { "kind": "Name", "value": "paidRequests" } }, { "kind": "Field", "name": { "kind": "Name", "value": "unpaidRequests" } }] } }] } as unknown as DocumentNode<RequestStats_StatsFragment, unknown>;
+export const RequestTypeCards_StatsFragmentDoc = { "kind": "Document", "definitions": [{ "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "RequestTypeCards_stats" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "RequestStatistics" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "locationChangeRequests" } }, { "kind": "Field", "name": { "kind": "Name", "value": "documentChangeRequests" } }, { "kind": "Field", "name": { "kind": "Name", "value": "assetUpdateRequests" } }, { "kind": "Field", "name": { "kind": "Name", "value": "customRequests" } }] } }] } as unknown as DocumentNode<RequestTypeCards_StatsFragment, unknown>;
+export const AdminDetailFragmentFragmentDoc = { "kind": "Document", "definitions": [{ "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "AdminDetailFragment" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "AdminRoles" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "adminEmail" } }, { "kind": "Field", "name": { "kind": "Name", "value": "adminId" } }, { "kind": "Field", "name": { "kind": "Name", "value": "adminName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "permissions" } }, { "kind": "Field", "name": { "kind": "Name", "value": "role" } }, { "kind": "Field", "name": { "kind": "Name", "value": "roleId" } }] } }] } as unknown as DocumentNode<AdminDetailFragmentFragment, unknown>;
+export const AdminRowFragmentFragmentDoc = { "kind": "Document", "definitions": [{ "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "AdminRowFragment" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "AdminRoles" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "adminEmail" } }, { "kind": "Field", "name": { "kind": "Name", "value": "adminId" } }, { "kind": "Field", "name": { "kind": "Name", "value": "adminName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "permissions" } }, { "kind": "Field", "name": { "kind": "Name", "value": "role" } }, { "kind": "Field", "name": { "kind": "Name", "value": "roleId" } }] } }] } as unknown as DocumentNode<AdminRowFragmentFragment, unknown>;
+export const PermissionOptionFragmentFragmentDoc = { "kind": "Document", "definitions": [{ "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "PermissionOptionFragment" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "Permission" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "name" } }, { "kind": "Field", "name": { "kind": "Name", "value": "description" } }] } }] } as unknown as DocumentNode<PermissionOptionFragmentFragment, unknown>;
+export const RoleCardFragmentFragmentDoc = { "kind": "Document", "definitions": [{ "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "RoleCardFragment" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "Role" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "name" } }, { "kind": "Field", "name": { "kind": "Name", "value": "description" } }, { "kind": "Field", "name": { "kind": "Name", "value": "permissions" } }] } }] } as unknown as DocumentNode<RoleCardFragmentFragment, unknown>;
+export const SalesRowFragmentFragmentDoc = { "kind": "Document", "definitions": [{ "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "SalesRowFragment" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "SalesRecord" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "user_firstName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "user_lastName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "email" } }, { "kind": "Field", "name": { "kind": "Name", "value": "user_phone" } }, { "kind": "Field", "name": { "kind": "Name", "value": "referrer_name" } }, { "kind": "Field", "name": { "kind": "Name", "value": "referrer_email" } }, { "kind": "Field", "name": { "kind": "Name", "value": "referrer_phone" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_name" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_type" } }, { "kind": "Field", "name": { "kind": "Name", "value": "no_of_units" } }, { "kind": "Field", "name": { "kind": "Name", "value": "document_amount_paid" } }, { "kind": "Field", "name": { "kind": "Name", "value": "fullownerhsip_documentprice" } }, { "kind": "Field", "name": { "kind": "Name", "value": "month_subscription" } }, { "kind": "Field", "name": { "kind": "Name", "value": "size" } }, { "kind": "Field", "name": { "kind": "Name", "value": "price" } }, { "kind": "Field", "name": { "kind": "Name", "value": "amount_paid" } }, { "kind": "Field", "name": { "kind": "Name", "value": "start_date" } }, { "kind": "Field", "name": { "kind": "Name", "value": "next_date" } }] } }] } as unknown as DocumentNode<SalesRowFragmentFragment, unknown>;
+export const SummaryCards_DashboardFragmentDoc = { "kind": "Document", "definitions": [{ "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "SummaryCards_dashboard" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "SalesDashboard" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "totalTransactionValue" } }, { "kind": "Field", "name": { "kind": "Name", "value": "expectedTransactionValue" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalReceivedTransactionValue" } }, { "kind": "Field", "name": { "kind": "Name", "value": "outstandingTransactionValue" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalFlexTransactionValue" } }, { "kind": "Field", "name": { "kind": "Name", "value": "expectedFlexTransactionValue" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalReceivedFlexTransactionValue" } }, { "kind": "Field", "name": { "kind": "Name", "value": "outstandingFlexTransactionValue" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalFullOwnershipTransactionValue" } }, { "kind": "Field", "name": { "kind": "Name", "value": "expectedFullOwnershipTransactionValue" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalReceivedFullOwnershipTransactionValue" } }, { "kind": "Field", "name": { "kind": "Name", "value": "outstandingFullOwnershipTransactionValue" } }] } }] } as unknown as DocumentNode<SummaryCards_DashboardFragment, unknown>;
+export const AssetTransactionsTable_DataFragmentDoc = { "kind": "Document", "definitions": [{ "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "AssetTransactionsTable_data" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "AdminTransactions" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "amount" } }, { "kind": "Field", "name": { "kind": "Name", "value": "description" } }, { "kind": "Field", "name": { "kind": "Name", "value": "admin_status" } }, { "kind": "Field", "name": { "kind": "Name", "value": "plot_size" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_type" } }, { "kind": "Field", "name": { "kind": "Name", "value": "referral" } }, { "kind": "Field", "name": { "kind": "Name", "value": "transaction_type" } }, { "kind": "Field", "name": { "kind": "Name", "value": "transfer_file" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "file" } }] } }, { "kind": "Field", "name": { "kind": "Name", "value": "user" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "firstName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "lastName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "_id" } }] } }, { "kind": "Field", "name": { "kind": "Name", "value": "time_of_transaction" } }] } }] } as unknown as DocumentNode<AssetTransactionsTable_DataFragment, unknown>;
+export const CommissionTransactionsTable_DataFragmentDoc = { "kind": "Document", "definitions": [{ "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "CommissionTransactionsTable_data" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "AdminTransactions" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "tin" } }, { "kind": "Field", "name": { "kind": "Name", "value": "admin_status" } }, { "kind": "Field", "name": { "kind": "Name", "value": "amount" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_type" } }, { "kind": "Field", "name": { "kind": "Name", "value": "description" } }, { "kind": "Field", "name": { "kind": "Name", "value": "user" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "firstName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "lastName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "referrer" } }, { "kind": "Field", "name": { "kind": "Name", "value": "referral_status" } }, { "kind": "Field", "name": { "kind": "Name", "value": "email" } }] } }, { "kind": "Field", "name": { "kind": "Name", "value": "plot_size" } }, { "kind": "Field", "name": { "kind": "Name", "value": "status" } }, { "kind": "Field", "name": { "kind": "Name", "value": "referral" } }, { "kind": "Field", "name": { "kind": "Name", "value": "transaction_type" } }, { "kind": "Field", "name": { "kind": "Name", "value": "time_of_transaction" } }] } }] } as unknown as DocumentNode<CommissionTransactionsTable_DataFragment, unknown>;
+export const CompleteAssetPaymentsTable_DataFragmentDoc = { "kind": "Document", "definitions": [{ "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "CompleteAssetPaymentsTable_data" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "ZeroBalance" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "name" } }, { "kind": "Field", "name": { "kind": "Name", "value": "email" } }, { "kind": "Field", "name": { "kind": "Name", "value": "phone_number" } }, { "kind": "Field", "name": { "kind": "Name", "value": "sales_person" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_name" } }, { "kind": "Field", "name": { "kind": "Name", "value": "unit" } }, { "kind": "Field", "name": { "kind": "Name", "value": "size" } }, { "kind": "Field", "name": { "kind": "Name", "value": "price" } }, { "kind": "Field", "name": { "kind": "Name", "value": "amount_paid" } }, { "kind": "Field", "name": { "kind": "Name", "value": "month_subscription" } }, { "kind": "Field", "name": { "kind": "Name", "value": "start_date" } }, { "kind": "Field", "name": { "kind": "Name", "value": "next_payment_date" } }] } }] } as unknown as DocumentNode<CompleteAssetPaymentsTable_DataFragment, unknown>;
+export const DocumentTransactionsTable_DataFragmentDoc = { "kind": "Document", "definitions": [{ "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "DocumentTransactionsTable_data" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "AdminTransactions" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "amount" } }, { "kind": "Field", "name": { "kind": "Name", "value": "description" } }, { "kind": "Field", "name": { "kind": "Name", "value": "admin_status" } }, { "kind": "Field", "name": { "kind": "Name", "value": "plot_size" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_type" } }, { "kind": "Field", "name": { "kind": "Name", "value": "referral" } }, { "kind": "Field", "name": { "kind": "Name", "value": "transaction_type" } }, { "kind": "Field", "name": { "kind": "Name", "value": "transfer_file" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "file" } }] } }, { "kind": "Field", "name": { "kind": "Name", "value": "user" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "firstName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "lastName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "_id" } }] } }, { "kind": "Field", "name": { "kind": "Name", "value": "time_of_transaction" } }] } }] } as unknown as DocumentNode<DocumentTransactionsTable_DataFragment, unknown>;
+export const TopupTransactionsTable_DataFragmentDoc = { "kind": "Document", "definitions": [{ "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "TopupTransactionsTable_data" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "AdminTransactions" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "amount" } }, { "kind": "Field", "name": { "kind": "Name", "value": "status" } }, { "kind": "Field", "name": { "kind": "Name", "value": "admin_status" } }, { "kind": "Field", "name": { "kind": "Name", "value": "time_of_transaction" } }, { "kind": "Field", "name": { "kind": "Name", "value": "transaction_type" } }, { "kind": "Field", "name": { "kind": "Name", "value": "transfer_file" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "file" } }] } }, { "kind": "Field", "name": { "kind": "Name", "value": "user" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "firstName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "lastName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "_id" } }] } }] } }] } as unknown as DocumentNode<TopupTransactionsTable_DataFragment, unknown>;
+export const WithdrawalTransactionsTable_DataFragmentDoc = { "kind": "Document", "definitions": [{ "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "WithdrawalTransactionsTable_data" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "AdminTransactions" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "admin_status" } }, { "kind": "Field", "name": { "kind": "Name", "value": "amount" } }, { "kind": "Field", "name": { "kind": "Name", "value": "time_of_transaction" } }, { "kind": "Field", "name": { "kind": "Name", "value": "tin" } }, { "kind": "Field", "name": { "kind": "Name", "value": "bank_details" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "accountNumber" } }, { "kind": "Field", "name": { "kind": "Name", "value": "bankName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "name" } }] } }, { "kind": "Field", "name": { "kind": "Name", "value": "user" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "firstName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "lastName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "_id" } }] } }] } }] } as unknown as DocumentNode<WithdrawalTransactionsTable_DataFragment, unknown>;
+export const UsersTableFragmentFragmentDoc = { "kind": "Document", "definitions": [{ "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "UsersTableFragment" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "UserAdmin" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "firstName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "lastName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "email" } }, { "kind": "Field", "name": { "kind": "Name", "value": "createdAt" } }, { "kind": "Field", "name": { "kind": "Name", "value": "referral_status" } }, { "kind": "Field", "name": { "kind": "Name", "value": "referrer" } }, { "kind": "Field", "name": { "kind": "Name", "value": "howYouHearAboutUs" } }, { "kind": "Field", "name": { "kind": "Name", "value": "virtual_subscriptions" } }, { "kind": "Field", "name": { "kind": "Name", "value": "virtual_networth" } }] } }] } as unknown as DocumentNode<UsersTableFragmentFragment, unknown>;
+export const DefaultUsersRow_UserFragmentDoc = { "kind": "Document", "definitions": [{ "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "DefaultUsersRow_user" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "UserAdmin" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "firstName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "lastName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "email" } }, { "kind": "Field", "name": { "kind": "Name", "value": "phoneNumber" } }, { "kind": "Field", "name": { "kind": "Name", "value": "createdAt" } }, { "kind": "Field", "name": { "kind": "Name", "value": "referrer" } }, { "kind": "Field", "name": { "kind": "Name", "value": "subscriptions" } }, { "kind": "Field", "name": { "kind": "Name", "value": "Networth" } }] } }] } as unknown as DocumentNode<DefaultUsersRow_UserFragment, unknown>;
+export const SuspendedPaymentPlansRow_PlanFragmentDoc = { "kind": "Document", "definitions": [{ "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "SuspendedPaymentPlansRow_plan" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "SuspendedPaymentPlans" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "firstName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "lastName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "email" } }, { "kind": "Field", "name": { "kind": "Name", "value": "phoneNumber" } }, { "kind": "Field", "name": { "kind": "Name", "value": "referrer" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_name" } }, { "kind": "Field", "name": { "kind": "Name", "value": "size" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_type" } }, { "kind": "Field", "name": { "kind": "Name", "value": "no_of_units" } }, { "kind": "Field", "name": { "kind": "Name", "value": "amount_paid" } }, { "kind": "Field", "name": { "kind": "Name", "value": "balance" } }, { "kind": "Field", "name": { "kind": "Name", "value": "start_date" } }] } }] } as unknown as DocumentNode<SuspendedPaymentPlansRow_PlanFragment, unknown>;
+export const SuspendedUsersRow_UserFragmentDoc = { "kind": "Document", "definitions": [{ "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "SuspendedUsersRow_user" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "UserAdmin" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "firstName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "lastName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "email" } }, { "kind": "Field", "name": { "kind": "Name", "value": "phoneNumber" } }, { "kind": "Field", "name": { "kind": "Name", "value": "createdAt" } }, { "kind": "Field", "name": { "kind": "Name", "value": "referrer" } }, { "kind": "Field", "name": { "kind": "Name", "value": "subscriptions" } }] } }] } as unknown as DocumentNode<SuspendedUsersRow_UserFragment, unknown>;
+export const ExportAdminLogsDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "query", "name": { "kind": "Name", "value": "ExportAdminLogs" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "adminEmail" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "String" } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "action" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "String" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "getAllAdminLogs" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "page" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "limit" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "adminEmail" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "adminEmail" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "action" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "action" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "data" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "timestamp" } }, { "kind": "Field", "name": { "kind": "Name", "value": "description" } }, { "kind": "Field", "name": { "kind": "Name", "value": "action" } }, { "kind": "Field", "name": { "kind": "Name", "value": "adminEmail" } }, { "kind": "Field", "name": { "kind": "Name", "value": "adminId" } }, { "kind": "Field", "name": { "kind": "Name", "value": "metadata" } }, { "kind": "Field", "name": { "kind": "Name", "value": "oldState" } }, { "kind": "Field", "name": { "kind": "Name", "value": "_id" } }] } }] } }] } }] } as unknown as DocumentNode<ExportAdminLogsQuery, ExportAdminLogsQueryVariables>;
+export const GetAllAdminLogsDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "query", "name": { "kind": "Name", "value": "GetAllAdminLogs" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "adminEmail" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "String" } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "action" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "String" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "getAllAdminLogs" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "page" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "limit" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "adminEmail" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "adminEmail" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "action" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "action" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "data" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "FragmentSpread", "name": { "kind": "Name", "value": "AdminLogsRowFragment" } }] } }, { "kind": "Field", "name": { "kind": "Name", "value": "count" } }] } }] } }, { "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "AdminLogsRowFragment" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "LogAdmin" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "timestamp" } }, { "kind": "Field", "name": { "kind": "Name", "value": "description" } }, { "kind": "Field", "name": { "kind": "Name", "value": "action" } }, { "kind": "Field", "name": { "kind": "Name", "value": "adminEmail" } }, { "kind": "Field", "name": { "kind": "Name", "value": "adminId" } }, { "kind": "Field", "name": { "kind": "Name", "value": "metadata" } }, { "kind": "Field", "name": { "kind": "Name", "value": "oldState" } }] } }] } as unknown as DocumentNode<GetAllAdminLogsQuery, GetAllAdminLogsQueryVariables>;
+export const AllocateLandDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "mutation", "name": { "kind": "Name", "value": "AllocateLand" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "paymentPlanId" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "String" } } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "block" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "String" } } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "plot" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "String" } } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "allocateLand" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "paymentPlanId" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "paymentPlanId" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "block" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "block" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "plot" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "plot" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "success" } }, { "kind": "Field", "name": { "kind": "Name", "value": "message" } }, { "kind": "Field", "name": { "kind": "Name", "value": "block" } }, { "kind": "Field", "name": { "kind": "Name", "value": "plot" } }, { "kind": "Field", "name": { "kind": "Name", "value": "assetName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "previousAllocation" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "block" } }, { "kind": "Field", "name": { "kind": "Name", "value": "plot" } }] } }] } }] } }] } as unknown as DocumentNode<AllocateLandMutation, AllocateLandMutationVariables>;
+export const GetAllocationAssetsDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "query", "name": { "kind": "Name", "value": "GetAllocationAssets" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "getAllAdminAssets" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "page" }, "value": { "kind": "IntValue", "value": "1" } }, { "kind": "Argument", "name": { "kind": "Name", "value": "limit" }, "value": { "kind": "IntValue", "value": "1000" } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "data" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "FragmentSpread", "name": { "kind": "Name", "value": "AllocationAssetOptionFragment" } }] } }] } }] } }, { "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "AllocationAssetOptionFragment" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "Asset" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_name" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_type" } }] } }] } as unknown as DocumentNode<GetAllocationAssetsQuery, GetAllocationAssetsQueryVariables>;
+export const EligibleClientsForLandDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "query", "name": { "kind": "Name", "value": "EligibleClientsForLand" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "filters" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "FiltersInput" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "eligibleClientsForLand" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "page" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "limit" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "filters" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "filters" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "count" } }, { "kind": "Field", "name": { "kind": "Name", "value": "data" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "FragmentSpread", "name": { "kind": "Name", "value": "AllocationTableRowFragment" } }] } }, { "kind": "Field", "name": { "kind": "Name", "value": "limit" } }, { "kind": "Field", "name": { "kind": "Name", "value": "page" } }] } }] } }, { "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "AllocationTableRowFragment" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "EligibleClient" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "allocation" } }, { "kind": "Field", "name": { "kind": "Name", "value": "allocationStatus" } }, { "kind": "Field", "name": { "kind": "Name", "value": "allocationDate" } }, { "kind": "Field", "name": { "kind": "Name", "value": "amountPaid" } }, { "kind": "Field", "name": { "kind": "Name", "value": "assetName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "assetSize" } }, { "kind": "Field", "name": { "kind": "Name", "value": "assetType" } }, { "kind": "Field", "name": { "kind": "Name", "value": "duration" } }, { "kind": "Field", "name": { "kind": "Name", "value": "email" } }, { "kind": "Field", "name": { "kind": "Name", "value": "end_date" } }, { "kind": "Field", "name": { "kind": "Name", "value": "firstName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "lastName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "location" } }, { "kind": "Field", "name": { "kind": "Name", "value": "paymentPlan" } }, { "kind": "Field", "name": { "kind": "Name", "value": "paymentPercentage" } }, { "kind": "Field", "name": { "kind": "Name", "value": "phoneNumber" } }, { "kind": "Field", "name": { "kind": "Name", "value": "referral" } }, { "kind": "Field", "name": { "kind": "Name", "value": "referralStatus" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalPrice" } }, { "kind": "Field", "name": { "kind": "Name", "value": "unit" } }] } }] } as unknown as DocumentNode<EligibleClientsForLandQuery, EligibleClientsForLandQueryVariables>;
+export const ExportEligibleClientsForLandDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "query", "name": { "kind": "Name", "value": "ExportEligibleClientsForLand" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "filters" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "FiltersInput" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "eligibleClientsForLand" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "page" }, "value": { "kind": "IntValue", "value": "1" } }, { "kind": "Argument", "name": { "kind": "Name", "value": "limit" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "filters" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "filters" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "data" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "FragmentSpread", "name": { "kind": "Name", "value": "AllocationTableRowFragment" } }] } }, { "kind": "Field", "name": { "kind": "Name", "value": "count" } }] } }] } }, { "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "AllocationTableRowFragment" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "EligibleClient" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "allocation" } }, { "kind": "Field", "name": { "kind": "Name", "value": "allocationStatus" } }, { "kind": "Field", "name": { "kind": "Name", "value": "allocationDate" } }, { "kind": "Field", "name": { "kind": "Name", "value": "amountPaid" } }, { "kind": "Field", "name": { "kind": "Name", "value": "assetName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "assetSize" } }, { "kind": "Field", "name": { "kind": "Name", "value": "assetType" } }, { "kind": "Field", "name": { "kind": "Name", "value": "duration" } }, { "kind": "Field", "name": { "kind": "Name", "value": "email" } }, { "kind": "Field", "name": { "kind": "Name", "value": "end_date" } }, { "kind": "Field", "name": { "kind": "Name", "value": "firstName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "lastName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "location" } }, { "kind": "Field", "name": { "kind": "Name", "value": "paymentPlan" } }, { "kind": "Field", "name": { "kind": "Name", "value": "paymentPercentage" } }, { "kind": "Field", "name": { "kind": "Name", "value": "phoneNumber" } }, { "kind": "Field", "name": { "kind": "Name", "value": "referral" } }, { "kind": "Field", "name": { "kind": "Name", "value": "referralStatus" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalPrice" } }, { "kind": "Field", "name": { "kind": "Name", "value": "unit" } }] } }] } as unknown as DocumentNode<ExportEligibleClientsForLandQuery, ExportEligibleClientsForLandQueryVariables>;
+export const ViewSubscribedCustomersOnAssetDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "query", "name": { "kind": "Name", "value": "ViewSubscribedCustomersOnAsset" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "assetName" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "String" } } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "assetType" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "String" } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "filter" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "String" } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "size" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "startDate" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "String" } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "endDate" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "String" } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "subscriberType" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "String" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "viewSubscribedCustomersOnAsset" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "assetName" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "assetName" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "assetType" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "assetType" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "filter" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "filter" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "size" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "size" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "startDate" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "startDate" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "endDate" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "endDate" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "subscriberType" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "subscriberType" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "totalSubscribers" } }, { "kind": "Field", "name": { "kind": "Name", "value": "userDetails" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "name" } }, { "kind": "Field", "name": { "kind": "Name", "value": "email" } }, { "kind": "Field", "name": { "kind": "Name", "value": "phone_number" } }, { "kind": "Field", "name": { "kind": "Name", "value": "salesPerson" } }, { "kind": "Field", "name": { "kind": "Name", "value": "assetName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "sizeBought" } }, { "kind": "Field", "name": { "kind": "Name", "value": "unitPurchased" } }, { "kind": "Field", "name": { "kind": "Name", "value": "landPrice" } }, { "kind": "Field", "name": { "kind": "Name", "value": "landAmountPaid" } }, { "kind": "Field", "name": { "kind": "Name", "value": "documentPrice" } }, { "kind": "Field", "name": { "kind": "Name", "value": "documentAmountPaid" } }, { "kind": "Field", "name": { "kind": "Name", "value": "month_subscription" } }, { "kind": "Field", "name": { "kind": "Name", "value": "startDate" } }, { "kind": "Field", "name": { "kind": "Name", "value": "nextPaymentDate" } }, { "kind": "Field", "name": { "kind": "Name", "value": "isDefaulted" } }, { "kind": "Field", "name": { "kind": "Name", "value": "isSuspended" } }] } }, { "kind": "Field", "name": { "kind": "Name", "value": "unitSold" } }, { "kind": "Field", "name": { "kind": "Name", "value": "earningReceived" } }, { "kind": "Field", "name": { "kind": "Name", "value": "expectedEarning" } }, { "kind": "Field", "name": { "kind": "Name", "value": "defaultedUsers" } }, { "kind": "Field", "name": { "kind": "Name", "value": "suspendedUsers" } }, { "kind": "Field", "name": { "kind": "Name", "value": "completedPayments" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalPlotsSold" } }] } }] } }] } as unknown as DocumentNode<ViewSubscribedCustomersOnAssetQuery, ViewSubscribedCustomersOnAssetQueryVariables>;
+export const GetFeatureAdminAssetsDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "query", "name": { "kind": "Name", "value": "GetFeatureAdminAssets" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "getAllAdminAssets" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "page" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "limit" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "count" } }, { "kind": "Field", "name": { "kind": "Name", "value": "data" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "FragmentSpread", "name": { "kind": "Name", "value": "AssetFlexTable_asset" } }, { "kind": "FragmentSpread", "name": { "kind": "Name", "value": "AssetFullOwnershipTable_asset" } }] } }] } }] } }, { "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "AssetFlexTable_asset" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "Asset" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_name" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_location" } }, { "kind": "Field", "name": { "kind": "Name", "value": "sold" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_type" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_option" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "size" } }, { "kind": "Field", "name": { "kind": "Name", "value": "unit" } }, { "kind": "Field", "name": { "kind": "Name", "value": "price" } }, { "kind": "Field", "name": { "kind": "Name", "value": "flex_payment_plans" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "price" } }, { "kind": "Field", "name": { "kind": "Name", "value": "unit" } }] } }] } }] } }, { "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "AssetFullOwnershipTable_asset" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "Asset" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_name" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_location" } }, { "kind": "Field", "name": { "kind": "Name", "value": "sold" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_type" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_option" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "size" } }, { "kind": "Field", "name": { "kind": "Name", "value": "unit" } }, { "kind": "Field", "name": { "kind": "Name", "value": "zero_months" } }] } }] } }] } as unknown as DocumentNode<GetFeatureAdminAssetsQuery, GetFeatureAdminAssetsQueryVariables>;
+export const FeatureAssetStatisticsDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "query", "name": { "kind": "Name", "value": "FeatureAssetStatistics" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "getAssetInventoryData" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "statistics" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "FragmentSpread", "name": { "kind": "Name", "value": "AssetInventoryOverview_statistics" } }] } }] } }] } }, { "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "AssetInventoryOverview_statistics" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "AssetInventoryStatistics" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "totalAssets" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalWorth" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalFlexAssets" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalFlexWorth" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalFullOwnershipAssets" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalFullOwnershipWorth" } }] } }] } as unknown as DocumentNode<FeatureAssetStatisticsQuery, FeatureAssetStatisticsQueryVariables>;
 export const ViewAssetByNameDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "query", "name": { "kind": "Name", "value": "ViewAssetByName" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "assetName" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "String" } } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "assetType" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "String" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "viewAssetByName" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "assetName" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "assetName" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "assetType" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "assetType" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "available_unit" } }, { "kind": "Field", "name": { "kind": "Name", "value": "unit_sold" } }, { "kind": "Field", "name": { "kind": "Name", "value": "expected_return" } }, { "kind": "Field", "name": { "kind": "Name", "value": "total_value" } }, { "kind": "Field", "name": { "kind": "Name", "value": "sizes" } }] } }] } }] } as unknown as DocumentNode<ViewAssetByNameQuery, ViewAssetByNameQueryVariables>;
 export const ViewAssetOptionDataByNameDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "query", "name": { "kind": "Name", "value": "ViewAssetOptionDataByName" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "assetName" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "String" } } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "assetType" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "String" } } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "viewAssetOptionDataByName" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "assetName" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "assetName" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "assetType" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "assetType" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "sizes" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "size" } }, { "kind": "Field", "name": { "kind": "Name", "value": "available_unit" } }, { "kind": "Field", "name": { "kind": "Name", "value": "value" } }, { "kind": "Field", "name": { "kind": "Name", "value": "unit_sold" } }, { "kind": "Field", "name": { "kind": "Name", "value": "expected_return" } }] } }] } }] } }] } as unknown as DocumentNode<ViewAssetOptionDataByNameQuery, ViewAssetOptionDataByNameQueryVariables>;
+export const ViewAssetDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "query", "name": { "kind": "Name", "value": "ViewAsset" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "id" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "ID" } } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "viewAsset" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "id" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "id" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_name" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_location" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_type" } }, { "kind": "Field", "name": { "kind": "Name", "value": "description" } }, { "kind": "Field", "name": { "kind": "Name", "value": "title" } }, { "kind": "Field", "name": { "kind": "Name", "value": "basic_details" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "allocation_qualification" } }] } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_pictures" } }, { "kind": "Field", "name": { "kind": "Name", "value": "amenities" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_history" } }, { "kind": "Field", "name": { "kind": "Name", "value": "documents" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "deed_of_assignment" } }, { "kind": "Field", "name": { "kind": "Name", "value": "survey" } }, { "kind": "Field", "name": { "kind": "Name", "value": "contract_of_sales" } }, { "kind": "Field", "name": { "kind": "Name", "value": "estate_layout" } }] } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_option" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "size" } }, { "kind": "Field", "name": { "kind": "Name", "value": "unit" } }, { "kind": "Field", "name": { "kind": "Name", "value": "price" } }, { "kind": "Field", "name": { "kind": "Name", "value": "flex_payment_plans" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "description" } }, { "kind": "Field", "name": { "kind": "Name", "value": "duration_months" } }, { "kind": "Field", "name": { "kind": "Name", "value": "initial_payment" } }, { "kind": "Field", "name": { "kind": "Name", "value": "monthly_installment" } }, { "kind": "Field", "name": { "kind": "Name", "value": "price" } }, { "kind": "Field", "name": { "kind": "Name", "value": "unit" } }] } }, { "kind": "Field", "name": { "kind": "Name", "value": "zero_months" } }, { "kind": "Field", "name": { "kind": "Name", "value": "three_months" } }, { "kind": "Field", "name": { "kind": "Name", "value": "six_months" } }, { "kind": "Field", "name": { "kind": "Name", "value": "twelve_months" } }, { "kind": "Field", "name": { "kind": "Name", "value": "one_month" } }, { "kind": "Field", "name": { "kind": "Name", "value": "five_months" } }, { "kind": "Field", "name": { "kind": "Name", "value": "seven_months" } }, { "kind": "Field", "name": { "kind": "Name", "value": "development_fee" } }, { "kind": "Field", "name": { "kind": "Name", "value": "initial_payment" } }, { "kind": "Field", "name": { "kind": "Name", "value": "monthly_installment" } }, { "kind": "Field", "name": { "kind": "Name", "value": "one_month_initial_payment" } }, { "kind": "Field", "name": { "kind": "Name", "value": "five_months_initial_payment" } }, { "kind": "Field", "name": { "kind": "Name", "value": "seven_months_initial_payment" } }] } }] } }] } }] } as unknown as DocumentNode<ViewAssetQuery, ViewAssetQueryVariables>;
+export const CreateFlexAssetDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "mutation", "name": { "kind": "Name", "value": "CreateFlexAsset" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "createFlexAssetInput" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "CreateFlexAssetInput" } } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "createFlexAsset" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "createFlexAssetInput" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "createFlexAssetInput" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_name" } }] } }] } }] } as unknown as DocumentNode<CreateFlexAssetMutation, CreateFlexAssetMutationVariables>;
 export const CreateFullOwnershipAssetDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "mutation", "name": { "kind": "Name", "value": "CreateFullOwnershipAsset" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "createFullOwnershipAssetInput" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "CreateFullOwnershipAssetInput" } } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "createFullOwnershipAsset" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "createFullOwnershipAssetInput" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "createFullOwnershipAssetInput" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_name" } }] } }] } }] } as unknown as DocumentNode<CreateFullOwnershipAssetMutation, CreateFullOwnershipAssetMutationVariables>;
-export const ViewSubscribedCustomersOnAssetDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "query", "name": { "kind": "Name", "value": "ViewSubscribedCustomersOnAsset" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "assetName" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "String" } } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "assetType" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "String" } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "filter" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "String" } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "size" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "startDate" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "String" } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "endDate" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "String" } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "subscriberType" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "String" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "viewSubscribedCustomersOnAsset" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "assetName" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "assetName" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "assetType" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "assetType" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "filter" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "filter" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "size" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "size" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "startDate" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "startDate" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "endDate" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "endDate" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "subscriberType" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "subscriberType" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "totalSubscribers" } }, { "kind": "Field", "name": { "kind": "Name", "value": "userDetails" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "name" } }, { "kind": "Field", "name": { "kind": "Name", "value": "email" } }, { "kind": "Field", "name": { "kind": "Name", "value": "phone_number" } }, { "kind": "Field", "name": { "kind": "Name", "value": "salesPerson" } }, { "kind": "Field", "name": { "kind": "Name", "value": "assetName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "sizeBought" } }, { "kind": "Field", "name": { "kind": "Name", "value": "unitPurchased" } }, { "kind": "Field", "name": { "kind": "Name", "value": "landPrice" } }, { "kind": "Field", "name": { "kind": "Name", "value": "landAmountPaid" } }, { "kind": "Field", "name": { "kind": "Name", "value": "documentPrice" } }, { "kind": "Field", "name": { "kind": "Name", "value": "documentAmountPaid" } }, { "kind": "Field", "name": { "kind": "Name", "value": "month_subscription" } }, { "kind": "Field", "name": { "kind": "Name", "value": "startDate" } }, { "kind": "Field", "name": { "kind": "Name", "value": "nextPaymentDate" } }, { "kind": "Field", "name": { "kind": "Name", "value": "isDefaulted" } }, { "kind": "Field", "name": { "kind": "Name", "value": "isSuspended" } }] } }, { "kind": "Field", "name": { "kind": "Name", "value": "unitSold" } }, { "kind": "Field", "name": { "kind": "Name", "value": "earningReceived" } }, { "kind": "Field", "name": { "kind": "Name", "value": "expectedEarning" } }, { "kind": "Field", "name": { "kind": "Name", "value": "defaultedUsers" } }, { "kind": "Field", "name": { "kind": "Name", "value": "suspendedUsers" } }, { "kind": "Field", "name": { "kind": "Name", "value": "completedPayments" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalPlotsSold" } }] } }] } }] } as unknown as DocumentNode<ViewSubscribedCustomersOnAssetQuery, ViewSubscribedCustomersOnAssetQueryVariables>;
-export const GetAdminDashboardDetailsDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "query", "name": { "kind": "Name", "value": "GetAdminDashboardDetails" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "startDate" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "String" } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "endDate" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "String" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "getAdminDashboardDetails" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "startDate" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "startDate" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "endDate" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "endDate" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "associate_pro_users" } }, { "kind": "Field", "name": { "kind": "Name", "value": "associate_users" } }, { "kind": "Field", "name": { "kind": "Name", "value": "default_users" } }, { "kind": "Field", "name": { "kind": "Name", "value": "suspended_users" } }, { "kind": "Field", "name": { "kind": "Name", "value": "monthly_recurring_revenue" } }, { "kind": "Field", "name": { "kind": "Name", "value": "sales" } }, { "kind": "Field", "name": { "kind": "Name", "value": "top_associates" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "userName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "email" } }, { "kind": "Field", "name": { "kind": "Name", "value": "gender" } }, { "kind": "Field", "name": { "kind": "Name", "value": "amount_commissions" } }, { "kind": "Field", "name": { "kind": "Name", "value": "amount_brought" } }, { "kind": "Field", "name": { "kind": "Name", "value": "firstName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "lastName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "no_of_referral" } }] } }, { "kind": "Field", "name": { "kind": "Name", "value": "top_selling_prop" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "asset_name" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_pictures" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_location" } }, { "kind": "Field", "name": { "kind": "Name", "value": "units_subscribed" } }, { "kind": "Field", "name": { "kind": "Name", "value": "amount_broughtin" } }] } }, { "kind": "Field", "name": { "kind": "Name", "value": "total_payable" } }, { "kind": "Field", "name": { "kind": "Name", "value": "users" } }, { "kind": "Field", "name": { "kind": "Name", "value": "total_asset" } }, { "kind": "Field", "name": { "kind": "Name", "value": "inflow" } }, { "kind": "Field", "name": { "kind": "Name", "value": "outflow" } }, { "kind": "Field", "name": { "kind": "Name", "value": "total_wallet_balance" } }, { "kind": "Field", "name": { "kind": "Name", "value": "suspended_payment_plans" } }] } }] } }] } as unknown as DocumentNode<GetAdminDashboardDetailsQuery, GetAdminDashboardDetailsQueryVariables>;
+export const UpdateAssetDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "mutation", "name": { "kind": "Name", "value": "UpdateAsset" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "updateAssetInput" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "UpdateFlexAssetInput" } } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "updateAsset" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "updateAssetInput" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "updateAssetInput" } } }] }] } }] } as unknown as DocumentNode<UpdateAssetMutation, UpdateAssetMutationVariables>;
+export const ApproveUpgradeToAssociateDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "mutation", "name": { "kind": "Name", "value": "ApproveUpgradeToAssociate" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "id" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "ID" } } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "approveUpgradeToAssociate" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "id" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "id" } } }] }] } }] } as unknown as DocumentNode<ApproveUpgradeToAssociateMutation, ApproveUpgradeToAssociateMutationVariables>;
+export const ApproveUpgradeToAssociateProDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "mutation", "name": { "kind": "Name", "value": "ApproveUpgradeToAssociatePro" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "id" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "ID" } } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "approveUpgradeToAssociatePro" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "id" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "id" } } }] }] } }] } as unknown as DocumentNode<ApproveUpgradeToAssociateProMutation, ApproveUpgradeToAssociateProMutationVariables>;
+export const DeclineUpgradeRequestDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "mutation", "name": { "kind": "Name", "value": "DeclineUpgradeRequest" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "id" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "ID" } } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "declineUpgradeRequest" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "id" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "id" } } }] }] } }] } as unknown as DocumentNode<DeclineUpgradeRequestMutation, DeclineUpgradeRequestMutationVariables>;
+export const GetAllUpgradeRequestsDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "query", "name": { "kind": "Name", "value": "GetAllUpgradeRequests" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "adminStatus" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "AdminStatus" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "getAllUpgradeRequests" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "page" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "limit" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "adminStatus" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "adminStatus" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "upgradeRequests" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "FragmentSpread", "name": { "kind": "Name", "value": "UpgradeRowFragment" } }] } }, { "kind": "Field", "name": { "kind": "Name", "value": "pagination" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "currentPage" } }, { "kind": "Field", "name": { "kind": "Name", "value": "limit" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalCount" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalPages" } }] } }] } }] } }, { "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "UpgradeRowFragment" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "ReferralUpgrade" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "admin_status" } }, { "kind": "Field", "name": { "kind": "Name", "value": "createdAt" } }, { "kind": "Field", "name": { "kind": "Name", "value": "fee_amount" } }, { "kind": "Field", "name": { "kind": "Name", "value": "transaction_type" } }, { "kind": "Field", "name": { "kind": "Name", "value": "user_upgrade_type" } }, { "kind": "Field", "name": { "kind": "Name", "value": "file_Url" } }, { "kind": "Field", "name": { "kind": "Name", "value": "user" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "firstName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "lastName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "email" } }] } }, { "kind": "Field", "name": { "kind": "Name", "value": "associate" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "firstName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "lastName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "email" } }] } }] } }] } as unknown as DocumentNode<GetAllUpgradeRequestsQuery, GetAllUpgradeRequestsQueryVariables>;
+export const GetTopAssociatesDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "query", "name": { "kind": "Name", "value": "GetTopAssociates" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "sortBy" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "String" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "getTopAssociates" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "page" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "limit" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "sortBy" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "sortBy" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "count" } }, { "kind": "Field", "name": { "kind": "Name", "value": "data" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "FragmentSpread", "name": { "kind": "Name", "value": "TopAssociatesTableRowFragment" } }] } }] } }] } }, { "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "TopAssociatesTableRowFragment" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "Associate" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "name" } }, { "kind": "Field", "name": { "kind": "Name", "value": "status" } }, { "kind": "Field", "name": { "kind": "Name", "value": "email" } }, { "kind": "Field", "name": { "kind": "Name", "value": "sales_person" } }, { "kind": "Field", "name": { "kind": "Name", "value": "no_of_clients" } }, { "kind": "Field", "name": { "kind": "Name", "value": "units_sold" } }, { "kind": "Field", "name": { "kind": "Name", "value": "size_sold" } }, { "kind": "Field", "name": { "kind": "Name", "value": "expected_revenue" } }, { "kind": "Field", "name": { "kind": "Name", "value": "received_revenue" } }, { "kind": "Field", "name": { "kind": "Name", "value": "commission" } }] } }] } as unknown as DocumentNode<GetTopAssociatesQuery, GetTopAssociatesQueryVariables>;
+export const GetAdminDashboardDetailsDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "query", "name": { "kind": "Name", "value": "GetAdminDashboardDetails" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "startDate" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "String" } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "endDate" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "String" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "getAdminDashboardDetails" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "startDate" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "startDate" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "endDate" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "endDate" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "FragmentSpread", "name": { "kind": "Name", "value": "DashboardQuickOverview_data" } }, { "kind": "Field", "name": { "kind": "Name", "value": "top_associates" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "FragmentSpread", "name": { "kind": "Name", "value": "TopAssociates_data" } }] } }, { "kind": "Field", "name": { "kind": "Name", "value": "top_selling_prop" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "FragmentSpread", "name": { "kind": "Name", "value": "TopSellingProducts_data" } }] } }] } }] } }, { "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "DashboardQuickOverview_data" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "AdminDashboard" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "users" } }, { "kind": "Field", "name": { "kind": "Name", "value": "monthly_recurring_revenue" } }, { "kind": "Field", "name": { "kind": "Name", "value": "associate_users" } }, { "kind": "Field", "name": { "kind": "Name", "value": "associate_pro_users" } }, { "kind": "Field", "name": { "kind": "Name", "value": "total_asset" } }, { "kind": "Field", "name": { "kind": "Name", "value": "default_users" } }, { "kind": "Field", "name": { "kind": "Name", "value": "suspended_users" } }, { "kind": "Field", "name": { "kind": "Name", "value": "suspended_payment_plans" } }, { "kind": "Field", "name": { "kind": "Name", "value": "total_payable" } }, { "kind": "Field", "name": { "kind": "Name", "value": "sales" } }, { "kind": "Field", "name": { "kind": "Name", "value": "inflow" } }, { "kind": "Field", "name": { "kind": "Name", "value": "outflow" } }, { "kind": "Field", "name": { "kind": "Name", "value": "total_wallet_balance" } }] } }, { "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "TopAssociates_data" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "UserReferralAdmin" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "userName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "email" } }, { "kind": "Field", "name": { "kind": "Name", "value": "firstName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "lastName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "amount_brought" } }, { "kind": "Field", "name": { "kind": "Name", "value": "no_of_referral" } }, { "kind": "Field", "name": { "kind": "Name", "value": "phoneNumber" } }] } }, { "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "TopSellingProducts_data" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "AssetDashBoard" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "asset_name" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_pictures" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_location" } }, { "kind": "Field", "name": { "kind": "Name", "value": "units_subscribed" } }, { "kind": "Field", "name": { "kind": "Name", "value": "amount_broughtin" } }] } }] } as unknown as DocumentNode<GetAdminDashboardDetailsQuery, GetAdminDashboardDetailsQueryVariables>;
+export const InviteAdminDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "mutation", "name": { "kind": "Name", "value": "InviteAdmin" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "input" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "SubAdminInput" } } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "createSubAdmin" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "subAdminInput" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "input" } } }] }] } }] } as unknown as DocumentNode<InviteAdminMutation, InviteAdminMutationVariables>;
+export const GetAllClientRequestsDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "query", "name": { "kind": "Name", "value": "GetAllClientRequests" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "filters" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "ClientRequestFilters" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "getAllClientRequests" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "page" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "limit" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "filters" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "filters" } } }] }] } }] } as unknown as DocumentNode<GetAllClientRequestsQuery, GetAllClientRequestsQueryVariables>;
+export const GetAdminWithRoleDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "query", "name": { "kind": "Name", "value": "GetAdminWithRole" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "adminId" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "String" } } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "getAdminWithRole" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "adminId" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "adminId" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "data" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "FragmentSpread", "name": { "kind": "Name", "value": "AdminDetailFragment" } }] } }] } }] } }, { "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "AdminDetailFragment" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "AdminRoles" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "adminEmail" } }, { "kind": "Field", "name": { "kind": "Name", "value": "adminId" } }, { "kind": "Field", "name": { "kind": "Name", "value": "adminName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "permissions" } }, { "kind": "Field", "name": { "kind": "Name", "value": "role" } }, { "kind": "Field", "name": { "kind": "Name", "value": "roleId" } }] } }] } as unknown as DocumentNode<GetAdminWithRoleQuery, GetAdminWithRoleQueryVariables>;
+export const GetAllAdminWithRolesDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "query", "name": { "kind": "Name", "value": "GetAllAdminWithRoles" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "getAllAdminWithRoles" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "data" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "FragmentSpread", "name": { "kind": "Name", "value": "AdminRowFragment" } }] } }] } }] } }, { "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "AdminRowFragment" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "AdminRoles" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "adminEmail" } }, { "kind": "Field", "name": { "kind": "Name", "value": "adminId" } }, { "kind": "Field", "name": { "kind": "Name", "value": "adminName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "permissions" } }, { "kind": "Field", "name": { "kind": "Name", "value": "role" } }, { "kind": "Field", "name": { "kind": "Name", "value": "roleId" } }] } }] } as unknown as DocumentNode<GetAllAdminWithRolesQuery, GetAllAdminWithRolesQueryVariables>;
+export const CreateRoleDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "mutation", "name": { "kind": "Name", "value": "CreateRole" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "input" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "CreateRoleInput" } } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "createRole" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "createRoleInput" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "input" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "name" } }, { "kind": "Field", "name": { "kind": "Name", "value": "description" } }, { "kind": "Field", "name": { "kind": "Name", "value": "permissions" } }] } }] } }] } as unknown as DocumentNode<CreateRoleMutation, CreateRoleMutationVariables>;
+export const GetAllPermissionsDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "query", "name": { "kind": "Name", "value": "GetAllPermissions" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "getAllPermissions" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "data" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "FragmentSpread", "name": { "kind": "Name", "value": "PermissionOptionFragment" } }] } }] } }] } }, { "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "PermissionOptionFragment" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "Permission" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "name" } }, { "kind": "Field", "name": { "kind": "Name", "value": "description" } }] } }] } as unknown as DocumentNode<GetAllPermissionsQuery, GetAllPermissionsQueryVariables>;
+export const GetAllRolesDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "query", "name": { "kind": "Name", "value": "GetAllRoles" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "getAllRoles" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "data" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "FragmentSpread", "name": { "kind": "Name", "value": "RoleCardFragment" } }] } }] } }] } }, { "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "RoleCardFragment" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "Role" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "name" } }, { "kind": "Field", "name": { "kind": "Name", "value": "description" } }, { "kind": "Field", "name": { "kind": "Name", "value": "permissions" } }] } }] } as unknown as DocumentNode<GetAllRolesQuery, GetAllRolesQueryVariables>;
+export const ExportSalesDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "query", "name": { "kind": "Name", "value": "ExportSales" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "filters" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "SalesRecordFilters" } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "getSalesRecord" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "filters" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "filters" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "limit" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "page" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "data" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "user_firstName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "user_lastName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "email" } }, { "kind": "Field", "name": { "kind": "Name", "value": "user_phone" } }, { "kind": "Field", "name": { "kind": "Name", "value": "referrer_name" } }, { "kind": "Field", "name": { "kind": "Name", "value": "referrer_email" } }, { "kind": "Field", "name": { "kind": "Name", "value": "referrer_phone" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_name" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_type" } }, { "kind": "Field", "name": { "kind": "Name", "value": "no_of_units" } }, { "kind": "Field", "name": { "kind": "Name", "value": "size" } }, { "kind": "Field", "name": { "kind": "Name", "value": "price" } }, { "kind": "Field", "name": { "kind": "Name", "value": "amount_paid" } }, { "kind": "Field", "name": { "kind": "Name", "value": "fullownerhsip_documentprice" } }, { "kind": "Field", "name": { "kind": "Name", "value": "document_amount_paid" } }, { "kind": "Field", "name": { "kind": "Name", "value": "month_subscription" } }, { "kind": "Field", "name": { "kind": "Name", "value": "start_date" } }, { "kind": "Field", "name": { "kind": "Name", "value": "next_date" } }] } }] } }] } }] } as unknown as DocumentNode<ExportSalesQuery, ExportSalesQueryVariables>;
+export const GetSalesRecordDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "query", "name": { "kind": "Name", "value": "GetSalesRecord" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "filters" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "SalesRecordFilters" } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "getSalesRecord" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "filters" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "filters" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "limit" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "page" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "data" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "FragmentSpread", "name": { "kind": "Name", "value": "SalesRowFragment" } }] } }, { "kind": "Field", "name": { "kind": "Name", "value": "count" } }] } }] } }, { "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "SalesRowFragment" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "SalesRecord" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "user_firstName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "user_lastName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "email" } }, { "kind": "Field", "name": { "kind": "Name", "value": "user_phone" } }, { "kind": "Field", "name": { "kind": "Name", "value": "referrer_name" } }, { "kind": "Field", "name": { "kind": "Name", "value": "referrer_email" } }, { "kind": "Field", "name": { "kind": "Name", "value": "referrer_phone" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_name" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_type" } }, { "kind": "Field", "name": { "kind": "Name", "value": "no_of_units" } }, { "kind": "Field", "name": { "kind": "Name", "value": "document_amount_paid" } }, { "kind": "Field", "name": { "kind": "Name", "value": "fullownerhsip_documentprice" } }, { "kind": "Field", "name": { "kind": "Name", "value": "month_subscription" } }, { "kind": "Field", "name": { "kind": "Name", "value": "size" } }, { "kind": "Field", "name": { "kind": "Name", "value": "price" } }, { "kind": "Field", "name": { "kind": "Name", "value": "amount_paid" } }, { "kind": "Field", "name": { "kind": "Name", "value": "start_date" } }, { "kind": "Field", "name": { "kind": "Name", "value": "next_date" } }] } }] } as unknown as DocumentNode<GetSalesRecordQuery, GetSalesRecordQueryVariables>;
+export const GetSalesDashboardDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "query", "name": { "kind": "Name", "value": "GetSalesDashboard" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "getSalesDashboard" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "FragmentSpread", "name": { "kind": "Name", "value": "SummaryCards_dashboard" } }] } }] } }, { "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "SummaryCards_dashboard" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "SalesDashboard" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "totalTransactionValue" } }, { "kind": "Field", "name": { "kind": "Name", "value": "expectedTransactionValue" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalReceivedTransactionValue" } }, { "kind": "Field", "name": { "kind": "Name", "value": "outstandingTransactionValue" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalFlexTransactionValue" } }, { "kind": "Field", "name": { "kind": "Name", "value": "expectedFlexTransactionValue" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalReceivedFlexTransactionValue" } }, { "kind": "Field", "name": { "kind": "Name", "value": "outstandingFlexTransactionValue" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalFullOwnershipTransactionValue" } }, { "kind": "Field", "name": { "kind": "Name", "value": "expectedFullOwnershipTransactionValue" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalReceivedFullOwnershipTransactionValue" } }, { "kind": "Field", "name": { "kind": "Name", "value": "outstandingFullOwnershipTransactionValue" } }] } }] } as unknown as DocumentNode<GetSalesDashboardQuery, GetSalesDashboardQueryVariables>;
+export const GetUsersWithZeroBalanceDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "query", "name": { "kind": "Name", "value": "GetUsersWithZeroBalance" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "getUsersWithZeroBalance" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "page" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "limit" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "count" } }, { "kind": "Field", "name": { "kind": "Name", "value": "data" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "FragmentSpread", "name": { "kind": "Name", "value": "CompleteAssetPaymentsTable_data" } }] } }] } }] } }, { "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "CompleteAssetPaymentsTable_data" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "ZeroBalance" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "name" } }, { "kind": "Field", "name": { "kind": "Name", "value": "email" } }, { "kind": "Field", "name": { "kind": "Name", "value": "phone_number" } }, { "kind": "Field", "name": { "kind": "Name", "value": "sales_person" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_name" } }, { "kind": "Field", "name": { "kind": "Name", "value": "unit" } }, { "kind": "Field", "name": { "kind": "Name", "value": "size" } }, { "kind": "Field", "name": { "kind": "Name", "value": "price" } }, { "kind": "Field", "name": { "kind": "Name", "value": "amount_paid" } }, { "kind": "Field", "name": { "kind": "Name", "value": "month_subscription" } }, { "kind": "Field", "name": { "kind": "Name", "value": "start_date" } }, { "kind": "Field", "name": { "kind": "Name", "value": "next_payment_date" } }] } }] } as unknown as DocumentNode<GetUsersWithZeroBalanceQuery, GetUsersWithZeroBalanceQueryVariables>;
+export const ApproveTransactionDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "mutation", "name": { "kind": "Name", "value": "ApproveTransaction" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "approveTransactionId" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "ID" } } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "approveTransaction" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "id" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "approveTransactionId" } } }] }] } }] } as unknown as DocumentNode<ApproveTransactionMutation, ApproveTransactionMutationVariables>;
+export const DeclineTransactionDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "mutation", "name": { "kind": "Name", "value": "DeclineTransaction" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "declineTransactionInput" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "DeclineTransactionInput" } } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "declineTransaction" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "declineTransactionInput" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "declineTransactionInput" } } }] }] } }] } as unknown as DocumentNode<DeclineTransactionMutation, DeclineTransactionMutationVariables>;
+export const ApprovePaystackTransactionDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "mutation", "name": { "kind": "Name", "value": "ApprovePaystackTransaction" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "approvePaystackTransactionId" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "ID" } } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "approvePaystackTransaction" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "id" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "approvePaystackTransactionId" } } }] }] } }] } as unknown as DocumentNode<ApprovePaystackTransactionMutation, ApprovePaystackTransactionMutationVariables>;
+export const ApproveAssetTransactionDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "mutation", "name": { "kind": "Name", "value": "ApproveAssetTransaction" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "approveAssetTransactionId" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "ID" } } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "approveAssetTransaction" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "id" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "approveAssetTransactionId" } } }] }] } }] } as unknown as DocumentNode<ApproveAssetTransactionMutation, ApproveAssetTransactionMutationVariables>;
+export const DeclineDocumentTransactionDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "mutation", "name": { "kind": "Name", "value": "DeclineDocumentTransaction" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "declineTransactionInput" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "DeclineTransactionInput" } } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "declineDocumentTransaction" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "declineTransactionInput" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "declineTransactionInput" } } }] }] } }] } as unknown as DocumentNode<DeclineDocumentTransactionMutation, DeclineDocumentTransactionMutationVariables>;
+export const ProcessCommissionDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "mutation", "name": { "kind": "Name", "value": "ProcessCommission" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "processCommissionInput" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "ProcessCommissionInput" } } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "processCommission" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "processCommissionInput" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "processCommissionInput" } } }] }] } }] } as unknown as DocumentNode<ProcessCommissionMutation, ProcessCommissionMutationVariables>;
+export const ProcessReceiptDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "mutation", "name": { "kind": "Name", "value": "ProcessReceipt" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "processReceiptInput" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "ProcessReceiptInput" } } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "processReceipt" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "processReceiptInput" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "processReceiptInput" } } }] }] } }] } as unknown as DocumentNode<ProcessReceiptMutation, ProcessReceiptMutationVariables>;
+export const DeclineAssetTransactionDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "mutation", "name": { "kind": "Name", "value": "DeclineAssetTransaction" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "declineTransactionInput" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "DeclineTransactionInput" } } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "declineAssetTransaction" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "declineTransactionInput" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "declineTransactionInput" } } }] }] } }] } as unknown as DocumentNode<DeclineAssetTransactionMutation, DeclineAssetTransactionMutationVariables>;
+export const GetTopupTransactionDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "query", "name": { "kind": "Name", "value": "GetTopupTransaction" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "getTopupTransaction" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "page" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "limit" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "count" } }, { "kind": "Field", "name": { "kind": "Name", "value": "data" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "FragmentSpread", "name": { "kind": "Name", "value": "TopupTransactionsTable_data" } }] } }] } }] } }, { "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "TopupTransactionsTable_data" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "AdminTransactions" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "amount" } }, { "kind": "Field", "name": { "kind": "Name", "value": "status" } }, { "kind": "Field", "name": { "kind": "Name", "value": "admin_status" } }, { "kind": "Field", "name": { "kind": "Name", "value": "time_of_transaction" } }, { "kind": "Field", "name": { "kind": "Name", "value": "transaction_type" } }, { "kind": "Field", "name": { "kind": "Name", "value": "transfer_file" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "file" } }] } }, { "kind": "Field", "name": { "kind": "Name", "value": "user" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "firstName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "lastName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "_id" } }] } }] } }] } as unknown as DocumentNode<GetTopupTransactionQuery, GetTopupTransactionQueryVariables>;
+export const GetWithdrawalTransactionDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "query", "name": { "kind": "Name", "value": "GetWithdrawalTransaction" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "status" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "String" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "getWithdrawalTransaction" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "page" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "limit" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "status" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "status" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "count" } }, { "kind": "Field", "name": { "kind": "Name", "value": "data" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "FragmentSpread", "name": { "kind": "Name", "value": "WithdrawalTransactionsTable_data" } }] } }] } }] } }, { "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "WithdrawalTransactionsTable_data" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "AdminTransactions" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "admin_status" } }, { "kind": "Field", "name": { "kind": "Name", "value": "amount" } }, { "kind": "Field", "name": { "kind": "Name", "value": "time_of_transaction" } }, { "kind": "Field", "name": { "kind": "Name", "value": "tin" } }, { "kind": "Field", "name": { "kind": "Name", "value": "bank_details" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "accountNumber" } }, { "kind": "Field", "name": { "kind": "Name", "value": "bankName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "name" } }] } }, { "kind": "Field", "name": { "kind": "Name", "value": "user" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "firstName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "lastName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "_id" } }] } }] } }] } as unknown as DocumentNode<GetWithdrawalTransactionQuery, GetWithdrawalTransactionQueryVariables>;
+export const GetDocumentTransactionDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "query", "name": { "kind": "Name", "value": "GetDocumentTransaction" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "status" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "String" } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "startDate" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Date" } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "endDate" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Date" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "getDocumentTransaction" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "page" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "limit" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "status" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "status" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "startDate" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "startDate" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "endDate" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "endDate" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "data" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "FragmentSpread", "name": { "kind": "Name", "value": "DocumentTransactionsTable_data" } }] } }, { "kind": "Field", "name": { "kind": "Name", "value": "count" } }] } }] } }, { "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "DocumentTransactionsTable_data" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "AdminTransactions" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "amount" } }, { "kind": "Field", "name": { "kind": "Name", "value": "description" } }, { "kind": "Field", "name": { "kind": "Name", "value": "admin_status" } }, { "kind": "Field", "name": { "kind": "Name", "value": "plot_size" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_type" } }, { "kind": "Field", "name": { "kind": "Name", "value": "referral" } }, { "kind": "Field", "name": { "kind": "Name", "value": "transaction_type" } }, { "kind": "Field", "name": { "kind": "Name", "value": "transfer_file" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "file" } }] } }, { "kind": "Field", "name": { "kind": "Name", "value": "user" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "firstName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "lastName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "_id" } }] } }, { "kind": "Field", "name": { "kind": "Name", "value": "time_of_transaction" } }] } }] } as unknown as DocumentNode<GetDocumentTransactionQuery, GetDocumentTransactionQueryVariables>;
+export const GetCommissionTransactionsDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "query", "name": { "kind": "Name", "value": "GetCommissionTransactions" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "startDate" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "String" } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "endDate" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "String" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "getCommissionTransactions" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "page" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "startDate" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "startDate" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "endDate" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "endDate" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "limit" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "count" } }, { "kind": "Field", "name": { "kind": "Name", "value": "data" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "FragmentSpread", "name": { "kind": "Name", "value": "CommissionTransactionsTable_data" } }] } }] } }] } }, { "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "CommissionTransactionsTable_data" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "AdminTransactions" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "tin" } }, { "kind": "Field", "name": { "kind": "Name", "value": "admin_status" } }, { "kind": "Field", "name": { "kind": "Name", "value": "amount" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_type" } }, { "kind": "Field", "name": { "kind": "Name", "value": "description" } }, { "kind": "Field", "name": { "kind": "Name", "value": "user" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "firstName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "lastName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "referrer" } }, { "kind": "Field", "name": { "kind": "Name", "value": "referral_status" } }, { "kind": "Field", "name": { "kind": "Name", "value": "email" } }] } }, { "kind": "Field", "name": { "kind": "Name", "value": "plot_size" } }, { "kind": "Field", "name": { "kind": "Name", "value": "status" } }, { "kind": "Field", "name": { "kind": "Name", "value": "referral" } }, { "kind": "Field", "name": { "kind": "Name", "value": "transaction_type" } }, { "kind": "Field", "name": { "kind": "Name", "value": "time_of_transaction" } }] } }] } as unknown as DocumentNode<GetCommissionTransactionsQuery, GetCommissionTransactionsQueryVariables>;
+export const AdminTransactionDataPointDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "query", "name": { "kind": "Name", "value": "AdminTransactionDataPoint" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "dataPointInput" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "DataPointInput" } } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "adminTransactionDataPoint" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "dataPointInput" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "dataPointInput" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "pending_transaction" } }, { "kind": "Field", "name": { "kind": "Name", "value": "approved_transaction" } }, { "kind": "Field", "name": { "kind": "Name", "value": "rejected_transaction" } }, { "kind": "Field", "name": { "kind": "Name", "value": "commission_transaction" } }, { "kind": "Field", "name": { "kind": "Name", "value": "users_wallet_balance" } }] } }] } }] } as unknown as DocumentNode<AdminTransactionDataPointQuery, AdminTransactionDataPointQueryVariables>;
+export const GetAssetTransactionDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "query", "name": { "kind": "Name", "value": "GetAssetTransaction" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "assetType" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "String" } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "transactionType" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "String" } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "status" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "String" } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "startDate" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Date" } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "endDate" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Date" } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "salesType" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "String" } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "search" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "String" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "getAssetTransaction" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "assetType" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "assetType" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "transactionType" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "transactionType" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "status" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "status" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "startDate" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "startDate" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "endDate" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "endDate" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "salesType" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "salesType" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "page" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "limit" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "search" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "search" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "data" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "FragmentSpread", "name": { "kind": "Name", "value": "AssetTransactionsTable_data" } }] } }, { "kind": "Field", "name": { "kind": "Name", "value": "count" } }] } }] } }, { "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "AssetTransactionsTable_data" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "AdminTransactions" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "amount" } }, { "kind": "Field", "name": { "kind": "Name", "value": "description" } }, { "kind": "Field", "name": { "kind": "Name", "value": "admin_status" } }, { "kind": "Field", "name": { "kind": "Name", "value": "plot_size" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_type" } }, { "kind": "Field", "name": { "kind": "Name", "value": "referral" } }, { "kind": "Field", "name": { "kind": "Name", "value": "transaction_type" } }, { "kind": "Field", "name": { "kind": "Name", "value": "transfer_file" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "file" } }] } }, { "kind": "Field", "name": { "kind": "Name", "value": "user" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "firstName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "lastName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "_id" } }] } }, { "kind": "Field", "name": { "kind": "Name", "value": "time_of_transaction" } }] } }] } as unknown as DocumentNode<GetAssetTransactionQuery, GetAssetTransactionQueryVariables>;
+export const GetAssetTransactionsStatisticsDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "query", "name": { "kind": "Name", "value": "GetAssetTransactionsStatistics" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "filters" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "AssetTransactionFilters" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "getAssetTransactionData" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "filters" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "filters" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "statistics" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "totalTransactions" } }, { "kind": "Field", "name": { "kind": "Name", "value": "approvedTransactions" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalApprovedAmount" } }, { "kind": "Field", "name": { "kind": "Name", "value": "pendingTransactions" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalPendingAmount" } }, { "kind": "Field", "name": { "kind": "Name", "value": "declinedTransactions" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalDeclinedAmount" } }, { "kind": "Field", "name": { "kind": "Name", "value": "new_sales" } }, { "kind": "Field", "name": { "kind": "Name", "value": "total_new_sales" } }, { "kind": "Field", "name": { "kind": "Name", "value": "flexTransactions" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalFlexAmount" } }, { "kind": "Field", "name": { "kind": "Name", "value": "new_flex_sales" } }, { "kind": "Field", "name": { "kind": "Name", "value": "flex_recurring_sales" } }, { "kind": "Field", "name": { "kind": "Name", "value": "total_flex_recurring_sales" } }, { "kind": "Field", "name": { "kind": "Name", "value": "fullOwnershipTransactions" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalFullOwnershipAmount" } }, { "kind": "Field", "name": { "kind": "Name", "value": "new_fullOwnership_sales" } }, { "kind": "Field", "name": { "kind": "Name", "value": "total_new_fullOwnership_sales" } }, { "kind": "Field", "name": { "kind": "Name", "value": "fullOwnership_recurring_sales" } }, { "kind": "Field", "name": { "kind": "Name", "value": "total_fullOwnership_recurring_sales" } }] } }] } }] } }] } as unknown as DocumentNode<GetAssetTransactionsStatisticsQuery, GetAssetTransactionsStatisticsQueryVariables>;
+export const GetAllDefaultUsersDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "query", "name": { "kind": "Name", "value": "GetAllDefaultUsers" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "getAllDefaultUsers" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "page" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "limit" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "count" } }, { "kind": "Field", "name": { "kind": "Name", "value": "data" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "FragmentSpread", "name": { "kind": "Name", "value": "DefaultUsersRow_user" } }] } }] } }] } }, { "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "DefaultUsersRow_user" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "UserAdmin" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "firstName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "lastName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "email" } }, { "kind": "Field", "name": { "kind": "Name", "value": "phoneNumber" } }, { "kind": "Field", "name": { "kind": "Name", "value": "createdAt" } }, { "kind": "Field", "name": { "kind": "Name", "value": "referrer" } }, { "kind": "Field", "name": { "kind": "Name", "value": "subscriptions" } }, { "kind": "Field", "name": { "kind": "Name", "value": "Networth" } }] } }] } as unknown as DocumentNode<GetAllDefaultUsersQuery, GetAllDefaultUsersQueryVariables>;
+export const ExportDefaultUsersDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "query", "name": { "kind": "Name", "value": "ExportDefaultUsers" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "getAllDefaultUsers" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "page" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "limit" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "data" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "FragmentSpread", "name": { "kind": "Name", "value": "DefaultUsersRow_user" } }] } }] } }] } }, { "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "DefaultUsersRow_user" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "UserAdmin" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "firstName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "lastName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "email" } }, { "kind": "Field", "name": { "kind": "Name", "value": "phoneNumber" } }, { "kind": "Field", "name": { "kind": "Name", "value": "createdAt" } }, { "kind": "Field", "name": { "kind": "Name", "value": "referrer" } }, { "kind": "Field", "name": { "kind": "Name", "value": "subscriptions" } }, { "kind": "Field", "name": { "kind": "Name", "value": "Networth" } }] } }] } as unknown as DocumentNode<ExportDefaultUsersQuery, ExportDefaultUsersQueryVariables>;
+export const GetSuspendedPaymentPlansDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "query", "name": { "kind": "Name", "value": "GetSuspendedPaymentPlans" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "searchQuery" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "String" } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "assetType" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "String" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "getSuspendedPaymentPlans" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "page" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "limit" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "searchQuery" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "searchQuery" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "assetType" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "assetType" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "count" } }, { "kind": "Field", "name": { "kind": "Name", "value": "data" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "FragmentSpread", "name": { "kind": "Name", "value": "SuspendedPaymentPlansRow_plan" } }] } }] } }] } }, { "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "SuspendedPaymentPlansRow_plan" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "SuspendedPaymentPlans" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "firstName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "lastName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "email" } }, { "kind": "Field", "name": { "kind": "Name", "value": "phoneNumber" } }, { "kind": "Field", "name": { "kind": "Name", "value": "referrer" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_name" } }, { "kind": "Field", "name": { "kind": "Name", "value": "size" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_type" } }, { "kind": "Field", "name": { "kind": "Name", "value": "no_of_units" } }, { "kind": "Field", "name": { "kind": "Name", "value": "amount_paid" } }, { "kind": "Field", "name": { "kind": "Name", "value": "balance" } }, { "kind": "Field", "name": { "kind": "Name", "value": "start_date" } }] } }] } as unknown as DocumentNode<GetSuspendedPaymentPlansQuery, GetSuspendedPaymentPlansQueryVariables>;
+export const ExportSuspendedPaymentPlansDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "query", "name": { "kind": "Name", "value": "ExportSuspendedPaymentPlans" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "searchQuery" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "String" } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "assetType" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "String" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "getSuspendedPaymentPlans" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "page" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "limit" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "searchQuery" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "searchQuery" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "assetType" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "assetType" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "data" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "FragmentSpread", "name": { "kind": "Name", "value": "SuspendedPaymentPlansRow_plan" } }] } }] } }] } }, { "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "SuspendedPaymentPlansRow_plan" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "SuspendedPaymentPlans" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "firstName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "lastName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "email" } }, { "kind": "Field", "name": { "kind": "Name", "value": "phoneNumber" } }, { "kind": "Field", "name": { "kind": "Name", "value": "referrer" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_name" } }, { "kind": "Field", "name": { "kind": "Name", "value": "size" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_type" } }, { "kind": "Field", "name": { "kind": "Name", "value": "no_of_units" } }, { "kind": "Field", "name": { "kind": "Name", "value": "amount_paid" } }, { "kind": "Field", "name": { "kind": "Name", "value": "balance" } }, { "kind": "Field", "name": { "kind": "Name", "value": "start_date" } }] } }] } as unknown as DocumentNode<ExportSuspendedPaymentPlansQuery, ExportSuspendedPaymentPlansQueryVariables>;
+export const GetAllSuspendedUsersDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "query", "name": { "kind": "Name", "value": "GetAllSuspendedUsers" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "getAllSuspendedUsers" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "page" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "limit" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "count" } }, { "kind": "Field", "name": { "kind": "Name", "value": "data" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "FragmentSpread", "name": { "kind": "Name", "value": "SuspendedUsersRow_user" } }] } }] } }] } }, { "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "SuspendedUsersRow_user" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "UserAdmin" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "firstName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "lastName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "email" } }, { "kind": "Field", "name": { "kind": "Name", "value": "phoneNumber" } }, { "kind": "Field", "name": { "kind": "Name", "value": "createdAt" } }, { "kind": "Field", "name": { "kind": "Name", "value": "referrer" } }, { "kind": "Field", "name": { "kind": "Name", "value": "subscriptions" } }] } }] } as unknown as DocumentNode<GetAllSuspendedUsersQuery, GetAllSuspendedUsersQueryVariables>;
+export const ExportSuspendedUsersDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "query", "name": { "kind": "Name", "value": "ExportSuspendedUsers" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "getAllSuspendedUsers" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "page" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "limit" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "data" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "FragmentSpread", "name": { "kind": "Name", "value": "SuspendedUsersRow_user" } }] } }] } }] } }, { "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "SuspendedUsersRow_user" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "UserAdmin" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "firstName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "lastName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "email" } }, { "kind": "Field", "name": { "kind": "Name", "value": "phoneNumber" } }, { "kind": "Field", "name": { "kind": "Name", "value": "createdAt" } }, { "kind": "Field", "name": { "kind": "Name", "value": "referrer" } }, { "kind": "Field", "name": { "kind": "Name", "value": "subscriptions" } }] } }] } as unknown as DocumentNode<ExportSuspendedUsersQuery, ExportSuspendedUsersQueryVariables>;
+export const UnsuspendUserDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "mutation", "name": { "kind": "Name", "value": "UnsuspendUser" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "id" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "ID" } } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "unsuspendUser" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "id" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "id" } } }] }] } }] } as unknown as DocumentNode<UnsuspendUserMutation, UnsuspendUserMutationVariables>;
+export const EditUserDetailsByAdminDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "mutation", "name": { "kind": "Name", "value": "EditUserDetailsByAdmin" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "userDetailsInput" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "UserDetailsInput" } } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "editUserDetailsByAdmin" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "userDetailsInput" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "userDetailsInput" } } }] }] } }] } as unknown as DocumentNode<EditUserDetailsByAdminMutation, EditUserDetailsByAdminMutationVariables>;
+export const EditUserWalletDetailsByAdminDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "mutation", "name": { "kind": "Name", "value": "EditUserWalletDetailsByAdmin" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "adminWalletInput" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "AdminWalletInput" } } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "editUserWalletDetailsByAdmin" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "adminWalletInput" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "adminWalletInput" } } }] }] } }] } as unknown as DocumentNode<EditUserWalletDetailsByAdminMutation, EditUserWalletDetailsByAdminMutationVariables>;
+export const ModifyUserReferralStatusDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "mutation", "name": { "kind": "Name", "value": "ModifyUserReferralStatus" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "modifyReferralInput" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "ModifyReferralInput" } } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "modifyUserReferralStatus" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "modifyReferralInput" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "modifyReferralInput" } } }] }] } }] } as unknown as DocumentNode<ModifyUserReferralStatusMutation, ModifyUserReferralStatusMutationVariables>;
+export const ViewUserReferralsByAdminDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "query", "name": { "kind": "Name", "value": "ViewUserReferralsByAdmin" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "viewUserReferralsByAdminId" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "ID" } } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "viewUserReferralsByAdmin" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "id" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "viewUserReferralsByAdminId" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "commission" } }, { "kind": "Field", "name": { "kind": "Name", "value": "createdAt" } }, { "kind": "Field", "name": { "kind": "Name", "value": "userReferralStatus" } }, { "kind": "Field", "name": { "kind": "Name", "value": "email" } }, { "kind": "Field", "name": { "kind": "Name", "value": "name" } }, { "kind": "Field", "name": { "kind": "Name", "value": "phoneNumber" } }, { "kind": "Field", "name": { "kind": "Name", "value": "status" } }] } }] } }] } as unknown as DocumentNode<ViewUserReferralsByAdminQuery, ViewUserReferralsByAdminQueryVariables>;
+export const RemoveReferralByAdminDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "mutation", "name": { "kind": "Name", "value": "RemoveReferralByAdmin" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "referralUpdateInput" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "ReferralUpdateInput" } } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "removeReferralByAdmin" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "referralUpdateInput" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "referralUpdateInput" } } }] }] } }] } as unknown as DocumentNode<RemoveReferralByAdminMutation, RemoveReferralByAdminMutationVariables>;
+export const GetAllUsersDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "query", "name": { "kind": "Name", "value": "GetAllUsers" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "searchQuery" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "String" } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "hasReferral" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Boolean" } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "hasAsset" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Boolean" } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "referralStatus" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "String" } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "howDidYouHearAboutUs" } }, "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "String" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "getAllUsers" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "page" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "searchQuery" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "searchQuery" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "limit" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "hasReferral" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "hasReferral" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "hasAsset" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "hasAsset" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "referralStatus" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "referralStatus" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "howDidYouHearAboutUs" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "howDidYouHearAboutUs" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "count" } }, { "kind": "Field", "name": { "kind": "Name", "value": "data" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "FragmentSpread", "name": { "kind": "Name", "value": "UsersTableFragment" } }] } }] } }] } }, { "kind": "FragmentDefinition", "name": { "kind": "Name", "value": "UsersTableFragment" }, "typeCondition": { "kind": "NamedType", "name": { "kind": "Name", "value": "UserAdmin" } }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "firstName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "lastName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "email" } }, { "kind": "Field", "name": { "kind": "Name", "value": "createdAt" } }, { "kind": "Field", "name": { "kind": "Name", "value": "referral_status" } }, { "kind": "Field", "name": { "kind": "Name", "value": "referrer" } }, { "kind": "Field", "name": { "kind": "Name", "value": "howYouHearAboutUs" } }, { "kind": "Field", "name": { "kind": "Name", "value": "virtual_subscriptions" } }, { "kind": "Field", "name": { "kind": "Name", "value": "virtual_networth" } }] } }] } as unknown as DocumentNode<GetAllUsersQuery, GetAllUsersQueryVariables>;
+export const GetUserDetailsByAdminDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "query", "name": { "kind": "Name", "value": "GetUserDetailsByAdmin" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "getUserDetailsByAdminId" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "ID" } } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "getUserDetailsByAdmin" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "id" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "getUserDetailsByAdminId" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "Networth" } }, { "kind": "Field", "name": { "kind": "Name", "value": "virtual_networth" } }, { "kind": "Field", "name": { "kind": "Name", "value": "virtual_subscriptions" } }, { "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "address" } }, { "kind": "Field", "name": { "kind": "Name", "value": "amount_paid" } }, { "kind": "Field", "name": { "kind": "Name", "value": "amount_payable" } }, { "kind": "Field", "name": { "kind": "Name", "value": "balance_payable" } }, { "kind": "Field", "name": { "kind": "Name", "value": "referral_status" } }, { "kind": "Field", "name": { "kind": "Name", "value": "country" } }, { "kind": "Field", "name": { "kind": "Name", "value": "date_of_birth" } }, { "kind": "Field", "name": { "kind": "Name", "value": "email" } }, { "kind": "Field", "name": { "kind": "Name", "value": "last_login" } }, { "kind": "Field", "name": { "kind": "Name", "value": "default_status" } }, { "kind": "Field", "name": { "kind": "Name", "value": "employment_status" } }, { "kind": "Field", "name": { "kind": "Name", "value": "firstName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "gender" } }, { "kind": "Field", "name": { "kind": "Name", "value": "lastName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "marital_status" } }, { "kind": "Field", "name": { "kind": "Name", "value": "occupation" } }, { "kind": "Field", "name": { "kind": "Name", "value": "phoneNumber" } }, { "kind": "Field", "name": { "kind": "Name", "value": "is_suspended" } }, { "kind": "Field", "name": { "kind": "Name", "value": "profile_pic" } }, { "kind": "Field", "name": { "kind": "Name", "value": "referral" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "lastName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "firstName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "email" } }] } }, { "kind": "Field", "name": { "kind": "Name", "value": "kyc" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "tin" } }] } }, { "kind": "Field", "name": { "kind": "Name", "value": "subscriptions" } }, { "kind": "Field", "name": { "kind": "Name", "value": "transaction" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "time_of_transaction" } }, { "kind": "Field", "name": { "kind": "Name", "value": "amount" } }, { "kind": "Field", "name": { "kind": "Name", "value": "type" } }, { "kind": "Field", "name": { "kind": "Name", "value": "status" } }, { "kind": "Field", "name": { "kind": "Name", "value": "description" } }, { "kind": "Field", "name": { "kind": "Name", "value": "transaction_type" } }, { "kind": "Field", "name": { "kind": "Name", "value": "paystack_reference" } }, { "kind": "Field", "name": { "kind": "Name", "value": "transfer_reference" } }, { "kind": "Field", "name": { "kind": "Name", "value": "transfer_file" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "file" } }] } }] } }, { "kind": "Field", "name": { "kind": "Name", "value": "wallet" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "balance" } }] } }, { "kind": "Field", "name": { "kind": "Name", "value": "units_purchased" } }, { "kind": "Field", "name": { "kind": "Name", "value": "userName" } }, { "kind": "Field", "name": { "kind": "Name", "value": "next_date_of_payment" } }] } }] } }] } as unknown as DocumentNode<GetUserDetailsByAdminQuery, GetUserDetailsByAdminQueryVariables>;
+export const MetricsDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "query", "name": { "kind": "Name", "value": "Metrics" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "getSystemUsersOverview" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "metrics" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "totalUsers" } }, { "kind": "Field", "name": { "kind": "Name", "value": "referralStatusCounts" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "user" } }, { "kind": "Field", "name": { "kind": "Name", "value": "associate" } }, { "kind": "Field", "name": { "kind": "Name", "value": "associatePro" } }] } }, { "kind": "Field", "name": { "kind": "Name", "value": "noReferralUsers" } }, { "kind": "Field", "name": { "kind": "Name", "value": "users_with_assets" } }, { "kind": "Field", "name": { "kind": "Name", "value": "flexSubscribers" } }, { "kind": "Field", "name": { "kind": "Name", "value": "fullOwnershipSubscribers" } }, { "kind": "Field", "name": { "kind": "Name", "value": "defaultUsers" } }, { "kind": "Field", "name": { "kind": "Name", "value": "overdueUsers" } }, { "kind": "Field", "name": { "kind": "Name", "value": "active_associate" } }, { "kind": "Field", "name": { "kind": "Name", "value": "active_associate_pro" } }] } }] } }] } }] } as unknown as DocumentNode<MetricsQuery, MetricsQueryVariables>;
+export const GetAllAdminAssetsDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "query", "name": { "kind": "Name", "value": "GetAllAdminAssets" }, "variableDefinitions": [{ "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }, { "kind": "VariableDefinition", "variable": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } }, "type": { "kind": "NonNullType", "type": { "kind": "NamedType", "name": { "kind": "Name", "value": "Int" } } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "getAllAdminAssets" }, "arguments": [{ "kind": "Argument", "name": { "kind": "Name", "value": "page" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "page" } } }, { "kind": "Argument", "name": { "kind": "Name", "value": "limit" }, "value": { "kind": "Variable", "name": { "kind": "Name", "value": "limit" } } }], "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "count" } }, { "kind": "Field", "name": { "kind": "Name", "value": "data" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "_id" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_location" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_name" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_price" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_size" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_type" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_unit" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_pictures" } }, { "kind": "Field", "name": { "kind": "Name", "value": "sold" } }, { "kind": "Field", "name": { "kind": "Name", "value": "description" } }, { "kind": "Field", "name": { "kind": "Name", "value": "title" } }, { "kind": "Field", "name": { "kind": "Name", "value": "newAsset" } }, { "kind": "Field", "name": { "kind": "Name", "value": "asset_option" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "size" } }, { "kind": "Field", "name": { "kind": "Name", "value": "unit" } }, { "kind": "Field", "name": { "kind": "Name", "value": "price" } }, { "kind": "Field", "name": { "kind": "Name", "value": "zero_months" } }, { "kind": "Field", "name": { "kind": "Name", "value": "three_months" } }, { "kind": "Field", "name": { "kind": "Name", "value": "six_months" } }, { "kind": "Field", "name": { "kind": "Name", "value": "five_months" } }, { "kind": "Field", "name": { "kind": "Name", "value": "seven_months" } }, { "kind": "Field", "name": { "kind": "Name", "value": "one_month" } }, { "kind": "Field", "name": { "kind": "Name", "value": "one_month_initial_payment" } }, { "kind": "Field", "name": { "kind": "Name", "value": "twelve_months" } }, { "kind": "Field", "name": { "kind": "Name", "value": "initial_payment" } }, { "kind": "Field", "name": { "kind": "Name", "value": "five_months_initial_payment" } }, { "kind": "Field", "name": { "kind": "Name", "value": "seven_months_initial_payment" } }, { "kind": "Field", "name": { "kind": "Name", "value": "development_fee" } }, { "kind": "Field", "name": { "kind": "Name", "value": "monthly_installment" } }, { "kind": "Field", "name": { "kind": "Name", "value": "flex_payment_plans" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "description" } }, { "kind": "Field", "name": { "kind": "Name", "value": "duration_months" } }, { "kind": "Field", "name": { "kind": "Name", "value": "initial_payment" } }, { "kind": "Field", "name": { "kind": "Name", "value": "monthly_installment" } }, { "kind": "Field", "name": { "kind": "Name", "value": "price" } }, { "kind": "Field", "name": { "kind": "Name", "value": "unit" } }] } }] } }] } }] } }] } }] } as unknown as DocumentNode<GetAllAdminAssetsQuery, GetAllAdminAssetsQueryVariables>;
+export const StatisticsDocument = { "kind": "Document", "definitions": [{ "kind": "OperationDefinition", "operation": "query", "name": { "kind": "Name", "value": "Statistics" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "getAssetInventoryData" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "statistics" }, "selectionSet": { "kind": "SelectionSet", "selections": [{ "kind": "Field", "name": { "kind": "Name", "value": "totalAssets" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalWorth" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalFlexAssets" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalFlexWorth" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalFullOwnershipAssets" } }, { "kind": "Field", "name": { "kind": "Name", "value": "totalFullOwnershipWorth" } }] } }] } }] } }] } as unknown as DocumentNode<StatisticsQuery, StatisticsQueryVariables>;
