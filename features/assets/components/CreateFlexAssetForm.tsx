@@ -1,15 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm, useFieldArray, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
-import { createFlexAssetAction } from "@/lib/actions/assets";
 import { uploadToCloudinary } from "@/lib/utils/upload";
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
 import { CreateFlexAssetInput } from "@/lib/api/admin/assets";
+import { useCreateFlexAsset } from "@/features/assets/hooks/use-create-asset";
 import {
   createFlexAssetSchema,
   CreateFlexAssetFormValues,
@@ -26,7 +27,9 @@ import { Label } from "@/components/ui/label";
 
 
 export function CreateFlexAssetForm() {
+  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const createFlexAssetMutation = useCreateFlexAsset();
   const [generatorModal, setGeneratorModal] = useState<{
     open: boolean;
     optionIndex: number;
@@ -35,7 +38,7 @@ export function CreateFlexAssetForm() {
   const [durationsInput, setDurationsInput] = useState("");
 
   const form = useForm<CreateFlexAssetFormValues>({
-    resolver: zodResolver(createFlexAssetSchema) as any,
+    resolver: zodResolver(createFlexAssetSchema) as Resolver<CreateFlexAssetFormValues>,
     defaultValues: {
       asset_name: "",
       asset_location: "",
@@ -242,8 +245,9 @@ export function CreateFlexAssetForm() {
         })),
       };
 
-      await createFlexAssetAction(payload);
+      await createFlexAssetMutation.mutateAsync(payload);
       toast.success("Asset created successfully");
+      router.push("/assets");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to create asset";
       toast.error(message);

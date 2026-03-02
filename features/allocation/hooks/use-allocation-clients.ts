@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { execute } from '@/lib/graphql-client';
 import { graphql } from '@/lib/gql';
 import { allocationKeys } from './query-keys';
+import { FiltersInput } from '@/lib/gql/graphql';
 
 const GET_ALLOCATION_CLIENTS_QUERY = graphql(`
   query EligibleClientsForLand($page: Int!, $limit: Int!, $filters: FiltersInput) {
@@ -23,6 +24,8 @@ export interface AllocationClientFilters {
   assetType?: string | null;
   percentage?: number | null;
   search?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
   [key: string]: unknown;
 }
 
@@ -36,21 +39,29 @@ export const useAllocationClients = (filters: AllocationClientFilters) => {
     assetType,
     percentage,
     search,
+    startDate,
+    endDate,
   } = filters;
 
   return useQuery({
     queryKey: allocationKeys.list(filters),
-    queryFn: () =>
-      execute(GET_ALLOCATION_CLIENTS_QUERY, {
+    queryFn: () => {
+      const gqlFilters = {
+        assetName: assetName || undefined,
+        assetType: assetType || undefined,
+        percentage: percentage ?? undefined,
+        search: search || undefined,
+        // API supports date range for this endpoint; generated FiltersInput is currently stale.
+        startDate: startDate || undefined,
+        endDate: endDate || undefined,
+      };
+
+      return execute(GET_ALLOCATION_CLIENTS_QUERY, {
         page,
         limit,
-        filters: {
-          assetName: assetName || undefined,
-          assetType: assetType || undefined,
-          percentage: percentage ?? undefined,
-          search: search || undefined,
-        },
-      }),
+        filters: gqlFilters as FiltersInput & { startDate?: string; endDate?: string },
+      });
+    },
     select: (data) => data.eligibleClientsForLand,
   });
 };

@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Clock, CheckCircle, XCircle, DollarSign, Wallet } from "lucide-react";
+import { Clock, CheckCircle, XCircle, DollarSign, Wallet, Zap, AlertTriangle } from "lucide-react";
 import { DashboardCard } from "@/components/shared/DashboardCard";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { getTransactionDataPoints } from "@/lib/api/admin/transactions.client";
@@ -73,6 +73,22 @@ export function TransactionDataPoints({ type }: TransactionDataPointsProps) {
       title: "Commission Transactions",
       value: `₦${data.commission_transaction?.toLocaleString() || "0"}`,
       icon: DollarSign,
+    });
+  }
+
+  if (data.auto_approved_transaction !== undefined) {
+    stats.push({
+      title: "Auto-Approved",
+      value: data.auto_approved_transaction?.toLocaleString() || "0",
+      icon: Zap,
+    });
+  }
+
+  if (data.auto_failed_transaction !== undefined) {
+    stats.push({
+      title: "Auto-Failed",
+      value: data.auto_failed_transaction?.toLocaleString() || "0",
+      icon: AlertTriangle,
     });
   }
 

@@ -23,9 +23,9 @@ export function CreateCouponDialog() {
   const [open, setOpen] = useState(false);
   const [couponCode, setCouponCode] = useState("");
   const [discount, setDiscount] = useState<number>(5);
-  const [expiryType, setExpiryType] = useState("date");
-  const [expiryDate, setExpiryDate] = useState<string>("");
+  const [expiryType, setExpiryType] = useState("no_expiry");
   const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
   const [usageLimitType, setUsageLimitType] = useState("unlimited");
   const [usageLimit, setUsageLimit] = useState<number | undefined>(undefined);
   const [activeImmediately, setActiveImmediately] = useState(true);
@@ -34,13 +34,30 @@ export function CreateCouponDialog() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (discount <= 0 || discount > 100) {
+      toast.error("Discount must be between 1 and 100");
+      return;
+    }
+
+    if (expiryType === "expires_on" && !endDate) {
+      toast.error("End date is required when expiry is enabled");
+      return;
+    }
+
+    if (expiryType === "expires_on" && startDate && endDate && new Date(endDate) <= new Date(startDate)) {
+      toast.error("End date must be after start date");
+      return;
+    }
+
     try {
       await createCoupon({
         couponCode,
         discountPercentage: discount,
         expiryType,
-        expiryDate: expiryDate ? new Date(expiryDate) : undefined,
+        expiryDate: expiryType === "expires_on" && endDate ? new Date(endDate) : undefined,
         startDate: startDate ? new Date(startDate) : undefined,
+        endDate: endDate ? new Date(endDate) : undefined,
         usageLimitType,
         usageLimit: usageLimitType === "limited" ? usageLimit : undefined,
         activeImmediately,
@@ -49,10 +66,11 @@ export function CreateCouponDialog() {
       setOpen(false);
       setCouponCode("");
       setDiscount(5);
-      setExpiryDate("");
       setStartDate("");
+      setEndDate("");
       setUsageLimit(undefined);
       setUsageLimitType("unlimited");
+      setExpiryType("no_expiry");
       setActiveImmediately(true);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Failed to create coupon");
@@ -108,8 +126,8 @@ export function CreateCouponDialog() {
                   <SelectValue placeholder="Expiry type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="date">Date</SelectItem>
-                  <SelectItem value="none">None</SelectItem>
+                  <SelectItem value="expires_on">Expires On</SelectItem>
+                  <SelectItem value="no_expiry">No Expiry</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -143,7 +161,7 @@ export function CreateCouponDialog() {
               />
             </div>
           )}
-          {expiryType === "date" && (
+          {expiryType === "expires_on" && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Start Date</Label>
@@ -155,11 +173,11 @@ export function CreateCouponDialog() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Expiry Date</Label>
+                <Label>End Date</Label>
                 <Input
                   type="date"
-                  value={expiryDate}
-                  onChange={(e) => setExpiryDate(e.target.value)}
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
                   disabled={isPending}
                 />
               </div>

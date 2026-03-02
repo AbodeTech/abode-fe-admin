@@ -1,6 +1,5 @@
 "use client";
 
-import { TopupTransaction } from "../../types/transaction.types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -12,7 +11,7 @@ import { ViewTransactionEvidence } from "../assets/ViewTransactionEvidence";
 import { format } from "date-fns";
 import { graphql } from "@/lib/gql";
 import { FragmentType, useFragment } from "@/lib/gql";
-import { TopupTransactionsTable_DataFragment } from "@/lib/gql/graphql";
+import { useAuthStore } from "@/store/auth-store";
 
 export const TopupTransactionsFragment = graphql(`
   fragment TopupTransactionsTable_data on AdminTransactions {
@@ -49,8 +48,8 @@ const formatDateNumerical = (dateString: string) => {
 interface TopupTransactionsTableProps {
   data: (FragmentType<typeof TopupTransactionsFragment> | null)[] | null | undefined;
   isLoading?: boolean;
-  onApprove: (id: string) => Promise<any>;
-  onDecline: (id: string, message: string) => Promise<any>;
+  onApprove: (id: string) => Promise<unknown>;
+  onDecline: (id: string, message: string) => Promise<unknown>;
   filterQuery?: string;
 }
 
@@ -62,17 +61,16 @@ const DECLINE_REASONS = [
 ];
 
 export function TopupTransactionsTable({ data, isLoading, onApprove, onDecline, filterQuery = "" }: TopupTransactionsTableProps) {
-  const transactionsRaw = data || [];
-  const transactions = transactionsRaw.map(t => useFragment(TopupTransactionsFragment, t));
-
-  const validTransactions = transactions
-    .filter((t): t is TopupTransactionsTable_DataFragment => t !== null && t !== undefined)
-    .filter((tx) => {
+  const { user } = useAuthStore();
+  const canManageTopup = user?.role === "admin";
+  const nonNullData = (data || []).filter((t): t is FragmentType<typeof TopupTransactionsFragment> => t !== null);
+  const validTransactions = useFragment(TopupTransactionsFragment, nonNullData).filter((tx) => {
       if (!filterQuery) return true;
       const q = filterQuery.toLowerCase();
       const first = tx.user?.firstName?.toLowerCase() ?? "";
       const last = tx.user?.lastName?.toLowerCase() ?? "";
-      return first.includes(q) || last.includes(q);
+      const fullName = `${first} ${last}`.trim();
+      return first.includes(q) || last.includes(q) || fullName.includes(q);
     });
 
   if (isLoading) {
@@ -131,7 +129,7 @@ export function TopupTransactionsTable({ data, isLoading, onApprove, onDecline, 
                     Status
                   </div>
                 </TableHead>
-                <TableHead className="py-4 font-semibold">Action</TableHead>
+                {canManageTopup && <TableHead className="py-4 font-semibold">Action</TableHead>}
                 <TableHead className="py-4 font-semibold">
                   <div className="flex items-center gap-2">
                     <Eye className="h-4 w-4" />
@@ -149,7 +147,7 @@ export function TopupTransactionsTable({ data, isLoading, onApprove, onDecline, 
                 >
                   <TableCell className="py-4 w-[150px]">
                     <Link
-                      href={`/users/${transaction.user?._id ?? ""}`}
+                      href={`/admin/dashboard/user/${transaction.user?._id ?? ""}`}
                       className="text-black hover:text-gray-700 font-medium hover:underline transition-colors"
                     >
                       {transaction.user?.lastName} {transaction.user?.firstName}
@@ -165,16 +163,18 @@ export function TopupTransactionsTable({ data, isLoading, onApprove, onDecline, 
                   <TableCell className="py-4">
                     <TransactionStatus status={transaction.admin_status || undefined} />
                   </TableCell>
-                  <TableCell className="py-4">
-                    <TransactionAction
-                      status={transaction.admin_status ?? ""}
-                      transactionId={transaction._id ?? ""}
-                      tag="topupTransactions"
-                      declineReasons={DECLINE_REASONS}
-                      onApprove={onApprove}
-                      onDecline={onDecline}
-                    />
-                  </TableCell>
+                  {canManageTopup && (
+                    <TableCell className="py-4">
+                      <TransactionAction
+                        status={transaction.admin_status ?? ""}
+                        transactionId={transaction._id ?? ""}
+                        tag="topupTransactions"
+                        declineReasons={DECLINE_REASONS}
+                        onApprove={onApprove}
+                        onDecline={onDecline}
+                      />
+                    </TableCell>
+                  )}
                   <TableCell className="py-4">
                     {transaction.transfer_file ? (
                       <ViewTransactionEvidence

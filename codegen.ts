@@ -10,12 +10,6 @@ const config: CodegenConfig = {
     "components/**/*.{ts,tsx}",
     "hooks/**/*.{ts,tsx}",
     "features/**/*.{ts,tsx}",
-    "!features/campaigns/components/HamperComponents.tsx",
-    "!features/requests/hooks/use-request-stats.ts",
-    "!features/campaigns/components/AssociateProComponents.tsx",
-    "!features/campaigns/hooks/use-campaigns.ts",
-    "!features/campaigns/hooks/use-coupons.ts",
-    "!features/associate-upgrade/hooks/use-coupons.ts",
   ],
   generates: {
     "lib/gql/": {

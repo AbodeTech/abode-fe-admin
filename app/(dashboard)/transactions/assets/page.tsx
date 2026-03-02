@@ -1,22 +1,21 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { Suspense, useMemo } from "react";
+import { Suspense } from "react";
 import {
   useAssetTransactions,
   AssetTransactionsTable,
+  AssetTransactionDataPoints,
   useApproveAssetTransaction,
   useDeclineAssetTransaction,
 } from "@/features/transactions";
 import { Pagination } from "@/components/shared/Pagination";
 import { FilterSelect } from "@/components/shared/FilterSelect";
 import { DateFilter } from "@/components/shared/DateFilter";
-import { TransactionDataPoints } from "@/components/shared/TransactionDataPoints";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 
 function AssetTransactionsContent() {
   const searchParams = useSearchParams();
@@ -67,28 +66,14 @@ function AssetTransactionsContent() {
   const { mutateAsync: approveTransaction } = useApproveAssetTransaction();
   const { mutateAsync: declineTransaction } = useDeclineAssetTransaction();
 
-  const transactions = useMemo(
-    () => (data?.data ?? []).filter((item): item is NonNullable<typeof item> => Boolean(item)),
-    [data?.data]
-  );
   const totalCount = data?.count || 0;
 
   const handleApprove = async (id: string) => {
-    try {
-      await approveTransaction(id);
-      toast.success("Asset transaction approved");
-    } catch (err: any) {
-      toast.error(err?.message ?? "Failed to approve asset transaction");
-    }
+    await approveTransaction(id);
   };
 
   const handleDecline = async (id: string, message: string) => {
-    try {
-      await declineTransaction({ transactionId: id, message });
-      toast.success("Asset transaction declined");
-    } catch (err: any) {
-      toast.error(err?.message ?? "Failed to decline asset transaction");
-    }
+    await declineTransaction({ transactionId: id, message });
   };
 
   return (
@@ -153,7 +138,7 @@ function AssetTransactionsContent() {
       )}
 
       {/* Statistics Cards */}
-      <TransactionDataPoints type="asset" />
+      <AssetTransactionDataPoints />
 
       {/* Transaction Table */}
       <div className="bg-white border border-[#E5EAEF] rounded-md overflow-hidden pb-10">

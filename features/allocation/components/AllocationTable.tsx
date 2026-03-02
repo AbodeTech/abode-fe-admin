@@ -62,7 +62,17 @@ const formatNumber = (value?: number | null) =>
 
 const formatDate = (value?: string | null) => {
   if (!value) return "—";
-  const date = new Date(value);
+
+  const trimmed = value.trim();
+  let normalizedValue: string | number = trimmed;
+
+  if (/^\d+$/.test(trimmed)) {
+    const numeric = Number(trimmed);
+    // Support both epoch seconds and epoch milliseconds.
+    normalizedValue = numeric < 1_000_000_000_000 ? numeric * 1000 : numeric;
+  }
+
+  const date = new Date(normalizedValue);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleDateString();
 };

@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { graphql } from "@/lib/gql";
-import { FragmentType, useFragment } from "@/lib/gql";
+import { FragmentType, useFragment as getFragmentData } from "@/lib/gql";
 import { CommissionTransactionsTable_DataFragment } from "@/lib/gql/graphql";
 
 export const CommissionTransactionsFragment = graphql(`
@@ -134,7 +134,7 @@ export function CommissionTransactionsTable({ data, isLoading }: CommissionTrans
   const sortableFields = ["time_of_transaction", "amount"];
 
   const transactionsRaw = data || [];
-  const transactions = transactionsRaw.map(t => useFragment(CommissionTransactionsFragment, t));
+  const transactions = transactionsRaw.map((t) => getFragmentData(CommissionTransactionsFragment, t));
   const validTransactions = transactions.filter((t): t is CommissionTransactionsTable_DataFragment => t !== null && t !== undefined);
 
 

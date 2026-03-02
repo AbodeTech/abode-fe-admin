@@ -1,8 +1,9 @@
 "use client";
 
 import React from "react";
+import { Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -19,10 +20,16 @@ interface CouponFiltersProps {
 }
 
 export function CouponFilters({ status, onStatusChange, search, onSearchChange }: CouponFiltersProps) {
+  const hasActiveFilters = status !== null || search.trim().length > 0;
+
+  const clearFilters = () => {
+    onStatusChange(null);
+    onSearchChange("");
+  };
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <div className="space-y-2">
-        <Label className="text-sm text-muted-foreground">Status</Label>
+    <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+      <div className="w-full sm:w-64">
         <Select
           value={status ?? "all"}
           onValueChange={(value) => onStatusChange(value === "all" ? null : value)}
@@ -38,14 +45,23 @@ export function CouponFilters({ status, onStatusChange, search, onSearchChange }
           </SelectContent>
         </Select>
       </div>
-      <div className="space-y-2 md:col-span-2">
-        <Label className="text-sm text-muted-foreground">Search</Label>
+
+      <div className="relative w-full sm:flex-1">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
         <Input
-          placeholder="Search by code"
+          placeholder="Search by coupon code..."
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
+          className="pl-10"
         />
       </div>
+
+      {hasActiveFilters && (
+        <Button variant="ghost" size="sm" onClick={clearFilters} className="flex items-center gap-2">
+          <X className="h-4 w-4" />
+          Clear
+        </Button>
+      )}
     </div>
   );
 }

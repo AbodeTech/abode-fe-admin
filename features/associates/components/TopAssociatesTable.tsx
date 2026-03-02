@@ -57,6 +57,11 @@ const getStatusBadge = (status?: string | null) => {
 };
 
 export function TopAssociatesTable({ data, isLoading }: TopAssociatesTableProps) {
+  const safeRows = (data ?? []).filter(
+    (item): item is NonNullable<typeof item> => item !== null
+  );
+  const associates = useFragment(TopAssociatesTableRowFragment, safeRows);
+
   if (isLoading) {
     return (
       <div className="rounded-xl bg-white p-4 shadow-sm">
@@ -69,10 +74,6 @@ export function TopAssociatesTable({ data, isLoading }: TopAssociatesTableProps)
       </div>
     );
   }
-
-  const safeRows = (data ?? []).filter(
-    (item): item is NonNullable<typeof item> => item !== null
-  );
 
   return (
     <div className="rounded-xl bg-white shadow-sm overflow-x-auto">
@@ -103,8 +104,7 @@ export function TopAssociatesTable({ data, isLoading }: TopAssociatesTableProps)
               </TableCell>
             </TableRow>
           ) : (
-            safeRows.map((row, idx) => {
-              const associate = useFragment(TopAssociatesTableRowFragment, row);
+            associates.map((associate, idx) => {
               return (
                 <TableRow key={`${associate.email}-${idx}`}>
                   <TableCell className="font-medium">{associate.name}</TableCell>

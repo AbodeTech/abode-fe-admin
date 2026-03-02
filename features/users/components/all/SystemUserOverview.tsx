@@ -5,8 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, UserCheck, Briefcase, UserPlus, Activity, Box, Zap, Crown, UserX, UserMinus } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export function SystemUserOverview() {
-  const { data: metrics, isLoading } = useSystemUsersOverview();
+interface SystemUserOverviewProps {
+  startDate?: string;
+  endDate?: string;
+}
+
+export function SystemUserOverview({ startDate, endDate }: SystemUserOverviewProps) {
+  const { data: metrics, isLoading } = useSystemUsersOverview({ startDate, endDate });
 
   if (isLoading) {
     return (

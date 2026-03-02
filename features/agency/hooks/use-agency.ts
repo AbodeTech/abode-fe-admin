@@ -6,8 +6,8 @@ import { AgencyUserRow } from '../components/AgencyUsersTable';
 import { AgencyTransactionRow } from '../components/AgencyTransactionsTable';
 
 const GET_AGENCY_BY_ID = `
-  query GetAgencyById($agencyId: ID!) {
-    getAgencyById(agencyId: $agencyId) {
+  query GetAgencyById($id: ID!) {
+    getAgencyById(id: $id) {
       agency {
         _id
         agency_name
@@ -24,12 +24,8 @@ const GET_AGENCY_BY_ID = `
         verified
         is_suspended
         suspension_reason
-        total_referrals
-        purchases_on_behalf_count
-        total_commission_earned
         withdrawn_commission
         available_commission_balance
-        total_transaction_amount
         createdAt
         referrals {
           user {
@@ -94,7 +90,7 @@ interface AgencyByIdResponse {
 export const useAgency = (agencyId: string) => {
   return useQuery({
     queryKey: agencyKeys.detail(agencyId),
-    queryFn: () => executeRaw<AgencyByIdResponse>(GET_AGENCY_BY_ID, { agencyId }),
+    queryFn: () => executeRaw<AgencyByIdResponse>(GET_AGENCY_BY_ID, { id: agencyId }),
     enabled: Boolean(agencyId),
     select: (data) => data.getAgencyById,
   });

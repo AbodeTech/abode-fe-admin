@@ -13,13 +13,13 @@ interface MetricCardProps {
 
 export function MetricCard({ title, value, note }: MetricCardProps) {
   return (
-    <Card className="border border-gray-200">
+    <Card className="border-border bg-card">
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium text-gray-600">{title}</CardTitle>
+        <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold text-gray-900">{value}</div>
-        {note ? <p className="text-xs text-gray-500 mt-1">{note}</p> : null}
+        <div className="text-2xl font-bold text-foreground">{value}</div>
+        {note ? <p className="mt-1 text-xs text-muted-foreground">{note}</p> : null}
       </CardContent>
     </Card>
   );
@@ -35,16 +35,16 @@ interface ProgressCardProps {
 export function ProgressCard({ title, sold, target, percentage }: ProgressCardProps) {
   const pct = Math.max(0, Math.min(100, Number(percentage || 0)));
   return (
-    <Card className="border border-gray-200">
+    <Card className="border-border bg-card">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle>{title}</CardTitle>
+          <CardTitle className="text-foreground">{title}</CardTitle>
           <Badge variant="outline">{pct.toFixed(1)}%</Badge>
         </div>
       </CardHeader>
       <CardContent className="space-y-2">
         <Progress value={pct} className="h-2" />
-        <div className="text-sm text-gray-600">
+        <div className="text-sm text-muted-foreground">
           {Number(sold || 0).toLocaleString()} / {Number(target || 0).toLocaleString()} sqm
         </div>
       </CardContent>

@@ -17,6 +17,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Users } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ChangeRoleDialog } from "@/features/roles-permissions/components/ChangeRoleDialog";
 
 export const AdminRowFragment = graphql(`
   fragment AdminRowFragment on AdminRoles {
@@ -37,7 +38,7 @@ interface AdminsTableProps {
 export function AdminsTable({ admins, isLoading }: AdminsTableProps) {
   if (isLoading) {
     return (
-      <Card className="border border-gray-200">
+      <Card className="border-border bg-card">
         <div className="p-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Users className="h-5 w-5" />
@@ -62,22 +63,22 @@ export function AdminsTable({ admins, isLoading }: AdminsTableProps) {
     <section className="space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Users className="h-5 w-5 text-gray-700" />
-          <h2 className="text-2xl font-semibold text-gray-900">Admin Management</h2>
+          <Users className="h-5 w-5 text-muted-foreground" />
+          <h2 className="text-2xl font-semibold text-foreground">Admin Management</h2>
         </div>
-        <div className="text-sm text-gray-600 flex items-center gap-1">
+        <div className="text-sm text-muted-foreground flex items-center gap-1">
           <Users className="h-4 w-4" />
           {rows.length} total admins
         </div>
       </div>
-      <Card className="border border-gray-200">
+      <Card className="border-border bg-card">
         <Table>
           <TableHeader>
-            <TableRow className="border-gray-200">
-              <TableHead className="font-semibold text-black">Admin</TableHead>
-              <TableHead className="font-semibold text-black">Role</TableHead>
-              <TableHead className="font-semibold text-black">Permissions</TableHead>
-              <TableHead className="font-semibold text-black">Actions</TableHead>
+            <TableRow className="border-border hover:bg-transparent">
+              <TableHead className="font-semibold text-foreground">Admin</TableHead>
+              <TableHead className="font-semibold text-foreground">Role</TableHead>
+              <TableHead className="font-semibold text-foreground">Permissions</TableHead>
+              <TableHead className="font-semibold text-foreground">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -97,26 +98,29 @@ export function AdminsTable({ admins, isLoading }: AdminsTableProps) {
                       <div className="text-xs text-muted-foreground">{admin.adminEmail}</div>
                     </TableCell>
                     <TableCell>
-                      <Badge className="bg-black text-white">{admin.role}</Badge>
+                      <Badge className="bg-primary/10 text-primary hover:bg-primary/20 border-primary/20">{admin.role}</Badge>
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
                         {(admin.permissions || []).slice(0, 3).map((perm, i) => (
-                          <Badge key={`${admin.adminId}-${i}`} variant="outline" className="text-xs">
+                          <Badge key={`${admin.adminId}-${i}`} variant="outline" className="text-xs bg-muted/30 border-border">
                             {perm}
                           </Badge>
                         ))}
                         {admin.permissions && admin.permissions.length > 3 && (
-                          <Badge variant="outline" className="text-xs">
+                          <Badge variant="outline" className="text-xs bg-muted/30 border-border">
                             +{admin.permissions.length - 3} more
                           </Badge>
                         )}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Button variant="outline" size="sm" asChild>
-                        <Link href={`/security/roles/${admin.adminId}`}>View</Link>
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <ChangeRoleDialog admin={admin} />
+                        <Button variant="outline" size="sm" asChild>
+                          <Link href={`/security/roles/${admin.adminId}`}>View</Link>
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 );

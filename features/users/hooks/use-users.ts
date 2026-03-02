@@ -5,8 +5,8 @@ import { userKeys } from './query-keys';
 import { UsersTableFragment } from '../components/all/UsersTable';
 
 const GET_ALL_USERS_QUERY = graphql(`
-  query GetAllUsers($page: Int!, $searchQuery: String, $limit: Int!, $hasReferral: Boolean, $hasAsset: Boolean, $referralStatus: String, $howDidYouHearAboutUs: String) {
-    getAllUsers(page: $page, searchQuery: $searchQuery, limit: $limit, hasReferral: $hasReferral, hasAsset: $hasAsset, referralStatus: $referralStatus, howDidYouHearAboutUs: $howDidYouHearAboutUs) {
+  query GetAllUsers($page: Int!, $searchQuery: String, $limit: Int!, $hasReferral: Boolean, $hasAsset: Boolean, $referralStatus: String, $howDidYouHearAboutUs: String, $startDate: String, $endDate: String) {
+    getAllUsers(page: $page, searchQuery: $searchQuery, limit: $limit, hasReferral: $hasReferral, hasAsset: $hasAsset, referralStatus: $referralStatus, howDidYouHearAboutUs: $howDidYouHearAboutUs, startDate: $startDate, endDate: $endDate) {
       count
       data {
         ...UsersTableFragment
@@ -75,8 +75,8 @@ const GET_USER_DETAILS_QUERY = graphql(`
 `);
 
 const GET_SYSTEM_USERS_OVERVIEW_QUERY = graphql(`
-  query Metrics {
-    getSystemUsersOverview {
+  query Metrics($startDate: String, $endDate: String) {
+    getSystemUsersOverview(startDate: $startDate, endDate: $endDate) {
       metrics {
         totalUsers
         referralStatusCounts {
@@ -97,6 +97,9 @@ const GET_SYSTEM_USERS_OVERVIEW_QUERY = graphql(`
   }
 `);
 
+// Keep fragment import referenced for codegen fragment registration.
+void UsersTableFragment;
+
 interface UseUsersParams {
   page?: number;
   limit?: number;
@@ -105,6 +108,8 @@ interface UseUsersParams {
   hasAsset?: boolean;
   referralStatus?: string;
   howDidYouHearAboutUs?: string;
+  startDate?: string;
+  endDate?: string;
 }
 
 export const useUsers = (params?: UseUsersParams) => {
@@ -149,11 +154,18 @@ export const useUserDetails = (id: string) => {
   });
 };
 
-export const useSystemUsersOverview = () => {
+interface UseSystemUsersOverviewParams {
+  startDate?: string;
+  endDate?: string;
+}
+
+export const useSystemUsersOverview = (params?: UseSystemUsersOverviewParams) => {
+  const { startDate, endDate } = params ?? {};
+
   return useQuery({
-    queryKey: userKeys.overview(),
+    queryKey: [...userKeys.overview(), { startDate, endDate }],
     queryFn: () =>
-      execute(GET_SYSTEM_USERS_OVERVIEW_QUERY),
+      execute(GET_SYSTEM_USERS_OVERVIEW_QUERY, { startDate, endDate }),
     select: (data) => data.getSystemUsersOverview?.metrics,
   });
 };
@@ -161,4 +173,3 @@ export const useSystemUsersOverview = () => {
 export type UsersData = NonNullable<ReturnType<typeof useUsers>['data']>;
 export type UserDetailsData = NonNullable<ReturnType<typeof useUserDetails>['data']>;
 export type SystemUsersOverviewData = NonNullable<ReturnType<typeof useSystemUsersOverview>['data']>;
-

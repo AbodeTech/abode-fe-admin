@@ -197,26 +197,28 @@ const MetadataField = ({
   isLink?: boolean
   linkHref?: string
 }) => (
-  <div className="flex items-start gap-3 py-2">
-    <Icon className="h-4 w-4 text-gray-500 mt-1 flex-shrink-0" />
+  <div className="flex items-start gap-4 py-3">
+    <div className="mt-0.5 p-2 bg-muted rounded-md shrink-0">
+      <Icon className="h-4 w-4 text-muted-foreground" />
+    </div>
     <div className="flex-1 min-w-0">
-      <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">{label}</p>
+      <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">{label}</p>
       {isLink && linkHref ? (
         <Link
           href={linkHref}
           target="_blank"
-          className="text-sm text-blue-600 hover:text-blue-800 font-medium mt-0.5 break-words inline-flex items-center gap-1 hover:underline"
+          className="text-sm font-medium text-primary hover:text-primary/80 hover:underline wrap-break-word inline-flex items-center gap-1 transition-colors"
         >
           {formatValue(value, isCurrency)}
           <ExternalLink className="h-3 w-3" />
         </Link>
       ) : (
-        <p className="text-sm text-gray-900 font-medium mt-0.5 break-words">
+        <p className="text-sm font-medium text-foreground wrap-break-word">
           {formatValue(value, isCurrency)}
         </p>
       )}
       {!isLink && String(value).length > 20 && (
-        <p className="text-xs text-gray-400 font-mono mt-1">{String(value)}</p>
+        <p className="text-xs text-muted-foreground mt-1.5 font-mono bg-muted/30 p-1.5 rounded-sm line-clamp-2 hover:line-clamp-none transition-all">{String(value)}</p>
       )}
     </div>
   </div>
@@ -242,31 +244,37 @@ const ComparisonField = ({
   const hasChanged = JSON.stringify(oldValue) !== JSON.stringify(newValue)
 
   return (
-    <div className="flex items-start gap-3 py-3 border-b border-gray-100 last:border-0">
-      <Icon className="h-4 w-4 text-gray-500 mt-1 flex-shrink-0" />
+    <div className="flex items-start gap-4 py-4 border-b border-border/50 last:border-0 relative">
+      <div className="mt-0.5 p-2 bg-muted rounded-md flex-shrink-0">
+        <Icon className="h-4 w-4 text-muted-foreground" />
+      </div>
       <div className="flex-1 min-w-0">
-        <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-2">{label}</p>
-        <div className="flex items-center gap-3">
-          <div className="flex-1">
-            <p className="text-xs text-gray-500 mb-1">Before</p>
-            <p className={`text-sm font-medium break-words ${hasChanged ? 'text-red-600' : 'text-gray-700'}`}>
+        <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">{label}</p>
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 bg-muted/20 p-3 rounded-lg border border-border/30">
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 opacity-80">Before</p>
+            <p className={`text-sm font-medium break-words ${hasChanged ? 'text-destructive/80 line-through decoration-destructive/30' : 'text-foreground/80'}`}>
               {formatValue(oldValue, isCurrency)}
             </p>
           </div>
-          {hasChanged && <ArrowRight className="h-4 w-4 text-gray-400 flex-shrink-0" />}
-          <div className="flex-1">
-            <p className="text-xs text-gray-500 mb-1">After</p>
+
+          <div className="flex items-center justify-center bg-muted h-6 w-6 rounded-full mx-2 flex-shrink-0 text-muted-foreground">
+            <ArrowRight className="h-3 w-3" />
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 opacity-80">After</p>
             {isLink && linkHref ? (
               <Link
                 href={linkHref}
                 target="_blank"
-                className={`text-sm font-medium break-words inline-flex items-center gap-1 hover:underline ${hasChanged ? 'text-green-600 hover:text-green-700' : 'text-gray-700'}`}
+                className={`text-sm font-medium break-words inline-flex items-center gap-1 hover:underline transition-colors ${hasChanged ? 'text-green-600 hover:text-green-700 font-semibold' : 'text-foreground'}`}
               >
                 {formatValue(newValue, isCurrency)}
                 <ExternalLink className="h-3 w-3" />
               </Link>
             ) : (
-              <p className={`text-sm font-medium break-words ${hasChanged ? 'text-green-600' : 'text-gray-700'}`}>
+              <p className={`text-sm font-medium break-words ${hasChanged ? 'text-green-600 font-semibold bg-green-500/10 inline-block px-1 -mx-1 rounded' : 'text-foreground'}`}>
                 {formatValue(newValue, isCurrency)}
               </p>
             )}
@@ -592,75 +600,87 @@ export function AdminLogMetadataModal({ open, onOpenChange, log }: AdminLogMetad
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogOverlay className="bg-gray-500 bg-opacity-50 backdrop-blur-sm">
-        <DialogContent className="max-w-3xl max-h-[90vh]">
-          <DialogHeader>
-            <div className="flex items-center justify-between gap-4">
-              <DialogTitle className="text-xl font-semibold">Admin Activity Details</DialogTitle>
-              <Badge className={`${getActionBadgeStyle(log.action || "")} text-xs`}>
+      <DialogOverlay className="bg-black/40 backdrop-blur-sm transition-all duration-300">
+        <DialogContent className="max-w-3xl max-h-[85vh] p-0 overflow-hidden border-border bg-card shadow-2xl rounded-xl">
+          <DialogHeader className="p-6 border-b border-border/50 bg-muted/20">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-1.5">
+                <DialogTitle className="text-2xl font-bold tracking-tight text-foreground">Activity Details</DialogTitle>
+                <DialogDescription className="text-[15px] font-medium text-muted-foreground leading-relaxed max-w-[90%]">
+                  {log.description}
+                </DialogDescription>
+              </div>
+              <Badge className={`${getActionBadgeStyle(log.action || "")} text-xs px-3 py-1 font-semibold uppercase tracking-wider`}>
                 {log.action}
               </Badge>
             </div>
-            <DialogDescription className="text-sm text-gray-600 mt-2">
-              {log.description}
-            </DialogDescription>
           </DialogHeader>
 
-          <ScrollArea className="max-h-[65vh] pr-4">
-            <div className="space-y-6">
+          <ScrollArea className="max-h-[calc(85vh-140px)] p-6">
+            <div className="space-y-8 pb-4">
               {/* Log Information */}
-              <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-                <h3 className="text-sm font-semibold text-gray-900 mb-3">Activity Information</h3>
-                <MetadataField icon={Mail} label="Performed By" value={log.adminEmail} />
-                <div className="flex items-start gap-3 py-2">
-                  <Calendar className="h-4 w-4 text-gray-500 mt-1 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Timestamp</p>
-                    <p className="text-sm text-gray-900 font-medium mt-0.5">
-                      {formatDate(log.timestamp)}
-                      <span className="text-xs text-gray-500 ml-2">({getRelativeTime(log.timestamp)})</span>
-                    </p>
-                  </div>
+              <div className="bg-muted/40 border border-border/60 rounded-xl p-5 shadow-sm">
+                <h3 className="text-sm font-bold text-foreground tracking-wide mb-4 flex items-center gap-2">
+                  <User className="w-4 h-4 text-muted-foreground" />
+                  Operator Information
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
+                  <MetadataField icon={Mail} label="Admin Account" value={log.adminEmail} />
+                  <MetadataField icon={Hash} label="Admin ID" value={log.adminId} />
                 </div>
-                <div className="flex items-start gap-3 py-2">
-                  <Hash className="h-4 w-4 text-gray-500 mt-1 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Admin ID</p>
-                    <p className="text-xs text-gray-500 font-mono mt-0.5">{log.adminId}</p>
-                  </div>
+                <div className="mt-2 border-t border-border/50 pt-2">
+                  <MetadataField icon={Calendar} label="Timestamp" value={`${formatDate(log.timestamp)} (${getRelativeTime(log.timestamp)})`} />
                 </div>
               </div>
 
               {/* Tabs for Metadata and Old State */}
               {showComparison ? (
                 <Tabs defaultValue="comparison" className="w-full">
-                  <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="comparison">What Changed</TabsTrigger>
-                    <TabsTrigger value="new">After Action</TabsTrigger>
-                    <TabsTrigger value="old">Before Action</TabsTrigger>
+                  <TabsList className="grid w-full grid-cols-3 bg-muted/50 p-1 rounded-lg">
+                    <TabsTrigger value="comparison" className="rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">Changes Made</TabsTrigger>
+                    <TabsTrigger value="new" className="rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">After Action</TabsTrigger>
+                    <TabsTrigger value="old" className="rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">Before Action</TabsTrigger>
                   </TabsList>
 
-                  <TabsContent value="comparison" className="mt-4">
-                    <div className="bg-white border border-gray-200 rounded-lg p-4">
-                      <div className="flex items-center gap-2 mb-4">
-                        <ArrowRight className="h-4 w-4 text-gray-500" />
-                        <h3 className="text-sm font-semibold text-gray-900">Changes Summary</h3>
+                  <TabsContent value="comparison" className="mt-6 focus-visible:outline-none">
+                    <div className="bg-card border border-border/60 rounded-xl p-5 shadow-sm">
+                      <div className="flex items-center gap-2 mb-6 border-b border-border/40 pb-3">
+                        <div className="p-1.5 bg-muted rounded">
+                          <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                        <h3 className="text-[15px] font-bold text-foreground">Changes Summary</h3>
                       </div>
-                      {renderComparisonContent(log.action || "", log.oldState, log.metadata)}
+                      <div className="pl-1">
+                        {renderComparisonContent(log.action || "", log.oldState, log.metadata)}
+                      </div>
                     </div>
                   </TabsContent>
 
-                  <TabsContent value="new" className="mt-4">
-                    <div className="bg-white border border-gray-200 rounded-lg p-4">
-                      <h3 className="text-sm font-semibold text-gray-900 mb-4">New State (After Action)</h3>
-                      {renderDataContent(log.action || "", log.metadata)}
+                  <TabsContent value="new" className="mt-6 focus-visible:outline-none">
+                    <div className="bg-card border border-border/60 rounded-xl p-5 shadow-sm">
+                      <div className="flex items-center gap-2 mb-6 border-b border-border/40 pb-3">
+                        <div className="p-1.5 bg-muted rounded">
+                          <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                        <h3 className="text-[15px] font-bold text-foreground">New State (After Action)</h3>
+                      </div>
+                      <div className="pl-1">
+                        {renderDataContent(log.action || "", log.metadata)}
+                      </div>
                     </div>
                   </TabsContent>
 
-                  <TabsContent value="old" className="mt-4">
-                    <div className="bg-white border border-gray-200 rounded-lg p-4">
-                      <h3 className="text-sm font-semibold text-gray-900 mb-4">Previous State (Before Action)</h3>
-                      {renderDataContent(log.action || "", log.oldState)}
+                  <TabsContent value="old" className="mt-6 focus-visible:outline-none">
+                    <div className="bg-card border border-border/60 rounded-xl p-5 shadow-sm">
+                      <div className="flex items-center gap-2 mb-6 border-b border-border/40 pb-3">
+                        <div className="p-1.5 bg-muted rounded">
+                          <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                        <h3 className="text-[15px] font-bold text-foreground">Previous State (Before Action)</h3>
+                      </div>
+                      <div className="pl-1">
+                        {renderDataContent(log.action || "", log.oldState)}
+                      </div>
                     </div>
                   </TabsContent>
                 </Tabs>
@@ -668,31 +688,46 @@ export function AdminLogMetadataModal({ open, onOpenChange, log }: AdminLogMetad
                 <>
                   {/* Just Metadata */}
                   {hasMetadata && (
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-900 mb-3">Action Details</h3>
-                      <div className="bg-white border border-gray-200 rounded-lg p-4">
-                        {renderDataContent(log.action || "", log.metadata)}
+                    <div className="mt-6">
+                      <div className="bg-card border border-border/60 rounded-xl p-5 shadow-sm">
+                        <div className="flex items-center gap-2 mb-6 border-b border-border/40 pb-3">
+                          <div className="p-1.5 bg-muted rounded">
+                            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                          <h3 className="text-[15px] font-bold text-foreground">Action Details</h3>
+                        </div>
+                        <div className="pl-1">
+                          {renderDataContent(log.action || "", log.metadata)}
+                        </div>
                       </div>
                     </div>
                   )}
 
                   {/* Just Old State */}
                   {hasOldState && !hasMetadata && (
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-900 mb-3">Previous State</h3>
-                      <div className="bg-white border border-gray-200 rounded-lg p-4">
-                        {renderDataContent(log.action || "", log.oldState)}
+                    <div className="mt-6">
+                      <div className="bg-card border border-border/60 rounded-xl p-5 shadow-sm">
+                        <div className="flex items-center gap-2 mb-6 border-b border-border/40 pb-3">
+                          <div className="p-1.5 bg-muted rounded">
+                            <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                          <h3 className="text-[15px] font-bold text-foreground">Previous State</h3>
+                        </div>
+                        <div className="pl-1">
+                          {renderDataContent(log.action || "", log.oldState)}
+                        </div>
                       </div>
                     </div>
                   )}
 
                   {/* No data at all */}
                   {!hasMetadata && !hasOldState && (
-                    <div className="bg-white border border-gray-200 rounded-lg p-4">
-                      <div className="flex flex-col items-center justify-center py-8 text-gray-500">
-                        <AlertCircle className="h-12 w-12 mb-3" />
-                        <p className="text-sm">No additional information available</p>
+                    <div className="bg-card border border-border/60 rounded-xl p-8 shadow-sm flex flex-col items-center text-center">
+                      <div className="p-3 bg-muted/50 rounded-full mb-4">
+                        <AlertCircle className="h-8 w-8 text-muted-foreground" />
                       </div>
+                      <p className="text-sm font-medium text-foreground">No additional payload attached.</p>
+                      <p className="text-xs text-muted-foreground mt-1">This action was performed without tracking any specific state transition data.</p>
                     </div>
                   )}
                 </>

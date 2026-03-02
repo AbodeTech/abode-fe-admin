@@ -27,7 +27,7 @@ interface RolesGridProps {
 export function RolesGrid({ roles, isLoading }: RolesGridProps) {
   if (isLoading) {
     return (
-      <Card className="border border-gray-200">
+      <Card className="border-border bg-card">
         <CardHeader className="flex flex-row items-center justify-between">
           <div className="flex items-center gap-2">
             <Shield className="h-5 w-5" />
@@ -52,8 +52,8 @@ export function RolesGrid({ roles, isLoading }: RolesGridProps) {
     <section className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Shield className="h-5 w-5 text-gray-700" />
-          <h2 className="text-2xl font-semibold text-gray-900">Roles Management</h2>
+          <Shield className="h-5 w-5 text-muted-foreground" />
+          <h2 className="text-2xl font-semibold text-foreground">Roles Management</h2>
         </div>
         <CreateRoleDialog />
       </div>
@@ -62,30 +62,30 @@ export function RolesGrid({ roles, isLoading }: RolesGridProps) {
         {safeRoles.map((role) => {
           const data = getFragmentData(RoleCardFragment, role);
           return (
-            <Card key={data._id} className="border border-gray-200 hover:shadow-sm transition">
+            <Card key={data._id} className="border-border bg-card hover:shadow-sm transition">
               <CardHeader className="pb-3 flex flex-row items-start justify-between">
                 <div>
-                  <CardTitle className="text-lg font-semibold text-gray-900">
+                  <CardTitle className="text-lg font-semibold text-foreground">
                     {data.name}
                   </CardTitle>
-                  <p className="text-sm text-gray-600 mt-1">{data.description}</p>
+                  <p className="text-sm text-muted-foreground mt-1">{data.description}</p>
                 </div>
-                <Button variant="ghost" size="icon" className="text-red-500" disabled>
+                <Button variant="ghost" size="icon" className="text-destructive" disabled>
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </CardHeader>
               <CardContent className="space-y-3">
-                <p className="text-sm font-medium text-gray-700">
+                <p className="text-sm font-medium text-muted-foreground">
                   Permissions ({data.permissions?.length || 0})
                 </p>
                 <div className="flex flex-wrap gap-1">
                   {(data.permissions || []).slice(0, 3).map((perm, idx) => (
-                    <Badge key={`${data._id}-${idx}`} variant="outline" className="text-xs bg-gray-50 border-gray-300">
+                    <Badge key={`${data._id}-${idx}`} variant="outline" className="text-xs bg-muted/30 border-border">
                       {perm}
                     </Badge>
                   ))}
                   {data.permissions && data.permissions.length > 3 && (
-                    <Badge variant="outline" className="text-xs bg-gray-50 border-gray-300">
+                    <Badge variant="outline" className="text-xs bg-muted/30 border-border">
                       +{data.permissions.length - 3} more
                     </Badge>
                   )}

@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -12,6 +11,11 @@ import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { FilterSelect } from "@/components/shared/FilterSelect";
+import { DateFilter } from "@/components/shared/DateFilter";
+import { SendAssetStatementsModal } from "./SendAssetStatementsModal";
+import { useAssetIdStore } from "@/store/assetid-store";
 
 interface Props {
   assetName: string;
@@ -31,15 +35,20 @@ function formatDate(dateStr: string) {
   if (!dateStr) return "-";
   try {
     return format(new Date(dateStr), 'dd/MM/yyyy');
-  } catch (e) {
+  } catch {
     return dateStr;
   }
 }
 
 export function SubscribedCustomers({ assetName, assetType }: Props) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const { assetId } = useAssetIdStore();
+
   const { data, isLoading, error } = useQuery({
-    queryKey: ['subscribers', assetName, assetType],
-    queryFn: () => getAssetSubscribers(decodeURIComponent(assetName), assetType)
+    queryKey: ['subscribers', assetName, assetType, searchParams.toString()],
+    queryFn: () => getAssetSubscribers(decodeURIComponent(assetName), assetType, searchParams)
   });
 
   if (isLoading) return <div className="p-8 text-center">Loading subscribers...</div>;
@@ -104,13 +113,46 @@ export function SubscribedCustomers({ assetName, assetType }: Props) {
           <MetricCard title="Completed Payments" value={metrics.completedPayments} icon={<CheckCircle className="h-4 w-4" />} />
         </div>
 
+        <div className="mb-6 flex flex-wrap items-center gap-3">
+          <FilterSelect
+            data={[
+              { label: "All Subscribers", value: "all" },
+              { label: "Suspended Subscribers", value: "Suspended-subscribers" },
+              { label: "Default Subscribers", value: "Default-subscribers" },
+              { label: "Completed Subscribers", value: "Completed-subscribers" },
+              {
+                label: "Allocation Qualified Subscribers",
+                value: assetType === "flex" ? "thirty-percent-subscribers" : "FullownershipQualifiedUsers",
+              },
+            ]}
+            queryKey="subscriber_type"
+            placeholder="Subscriber Type"
+          />
+          <FilterSelect
+            data={[
+              { label: "All Sizes", value: "all" },
+              { label: "150sqm", value: "150" },
+              { label: "300sqm", value: "300" },
+              { label: "500sqm", value: "500" },
+              { label: "1500sqm", value: "1500" },
+              { label: "3000sqm", value: "3000" },
+            ]}
+            queryKey="size"
+            placeholder="Size"
+          />
+          <DateFilter />
+          <Button variant="outline" onClick={() => router.push(pathname)}>
+            Clear Filters
+          </Button>
+        </div>
+
         {/* Subscribers Table */}
         <Card className="overflow-hidden">
           <CardHeader>
             <div className="flex flex-col gap-3 md:flex-row items-center justify-between">
               <CardTitle>Subscribers Details</CardTitle>
               <div className="flex gap-2">
-                {/* TODO: Add SendAssetStatementsModal if needed */}
+                <SendAssetStatementsModal assetId={assetId} />
                 <Button variant={"outline"} onClick={downloadSubscribersData}>Download Excel</Button>
               </div>
             </div>
@@ -140,10 +182,13 @@ export function SubscribedCustomers({ assetName, assetType }: Props) {
                     {subscribers.map((subscriber, index) => (
                       <TableRow key={index}>
                         <TableCell className="font-medium">
-                          {/* <Link href={`/admin/dashboard/user/${subscriber._id}`} className="hover:underline"> */}
-                          {/* Linking to user profile - path might need adjustment */}
-                          {subscriber.name}
-                          {/* </Link> */}
+                          {subscriber._id ? (
+                            <Link href={`/users/${subscriber._id}`} className="hover:underline">
+                              {subscriber.name}
+                            </Link>
+                          ) : (
+                            subscriber.name
+                          )}
                         </TableCell>
                         <TableCell>{Number(subscriber.sizeBought ?? 0) * Number(subscriber.unitPurchased ?? 0)}</TableCell>
                         <TableCell>{formatNaira(subscriber.landPrice ?? 0)}</TableCell>

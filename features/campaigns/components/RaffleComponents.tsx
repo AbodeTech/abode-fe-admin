@@ -1,10 +1,14 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { graphql } from "@/lib/gql";
 import { FragmentType, useFragment } from "@/lib/gql";
 import { MetricCard, ProgressCard } from "./CampaignCards";
 import { GenericTable } from "./SimpleTables";
+import { useCampaignPaymentPlans, useRaffleTickets } from "../hooks/use-campaigns";
+import { Button } from "@/components/ui/button";
+import { Download } from "lucide-react";
+import { saveAs } from "file-saver";
 
 // --- Fragments ---
 
@@ -122,5 +126,130 @@ export function RaffleUsersTable({
         row.ticketId || "-",
       ])}
     />
+  );
+}
+
+export function RaffleTransactionTable() {
+  const [page, setPage] = useState(1);
+  const limit = 10;
+  const { data, isLoading } = useCampaignPaymentPlans({ page, limit });
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center p-8">
+        <span className="text-muted-foreground">Loading transactions...</span>
+      </div>
+    );
+  }
+
+  const rows = data?.data?.map((row) => [
+    row?.name || "-",
+    row?.email || "-",
+    row?.assetName || "-",
+    `${row?.size || "-"} ${row?.unit || "-"}`,
+    currency(row?.landPrice),
+    currency(row?.landAmountPaid),
+    currency(row?.documentPrice),
+    currency(row?.documentAmountPaid),
+  ]) || [];
+
+  return (
+    <div className="space-y-4">
+      <GenericTable
+        title="Recent Transactions"
+        columns={[
+          "Name",
+          "Email",
+          "Asset",
+          "Size",
+          "Land Price",
+          "Land Amount Paid",
+          "Doc Price",
+          "Doc Amount Paid",
+        ]}
+        rows={rows}
+      />
+      {typeof data?.count === 'number' && data.count > limit && (
+        <div className="flex items-center justify-between">
+          <Button
+            variant="outline"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page === 1}
+          >
+            Previous
+          </Button>
+          <span className="text-sm text-muted-foreground">
+            Page {page} of {Math.ceil(data.count / limit)}
+          </span>
+          <Button
+            variant="outline"
+            onClick={() => setPage((p) => p + 1)}
+            disabled={page >= Math.ceil(data.count / limit)}
+          >
+            Next
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function RaffleTicketsSection() {
+  const { data, isLoading, refetch } = useRaffleTickets("ALL");
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handleDownload = async () => {
+    try {
+      setIsDownloading(true);
+      const res = await refetch();
+      const ticketData = res.data?.data;
+
+      if (!ticketData || ticketData.length === 0) {
+        alert("No tickets available to download.");
+        return;
+      }
+
+      // Simple CSV generation
+      const headers = ["Name", "Email", "Phone", "Asset Name", "Ticket ID", "Total Size", "Units Purchased", "Created Date"];
+      const csvContent = [
+        headers.join(","),
+        ...ticketData.map((row) => {
+          const name = row?.user_id?.firstName ? `${row.user_id.firstName} ${row.user_id.lastName || ''}` : "-";
+          const email = row?.user_id?.email || "-";
+          const phone = row?.user_id?.phoneNumber || "-";
+          return [
+            `"${name}"`,
+            `"${email}"`,
+            `"${phone}"`,
+            `"${row?.asset_name || "-"}"`,
+            `"${row?.ticket_id || "-"}"`,
+            `"${row?.total_size || "-"}"`,
+            `"${row?.units_purchased || "-"}"`,
+            `"${row?.created_date || "-"}"`
+          ].join(",");
+        })
+      ].join("\n");
+
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" });
+      saveAs(blob, "raffle-tickets.csv");
+    } catch (e) {
+      console.error(e);
+      alert("Failed to download tickets");
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-between p-4 bg-card border border-border rounded-lg shadow-sm">
+      <div>
+        <h3 className="text-lg font-semibold text-foreground">Raffle Tickets</h3>
+        <p className="text-sm text-muted-foreground">Download the full list of generated raffle tickets.</p>
+      </div>
+      <Button onClick={handleDownload} disabled={isDownloading || isLoading}>
+        <Download className="mr-2 h-4 w-4" />
+        {isDownloading ? "Generating..." : "Download CSV"}
+      </Button>
+    </div>
   );
 }

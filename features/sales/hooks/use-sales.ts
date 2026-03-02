@@ -3,8 +3,6 @@ import { execute } from '@/lib/graphql-client';
 import { graphql } from '@/lib/gql';
 import { salesKeys } from './query-keys';
 
-import { SalesRowFragment } from '../components/SalesTable';
-
 const GET_SALES_RECORD_QUERY = graphql(`
   query GetSalesRecord($filters: SalesRecordFilters, $limit: Int!, $page: Int!) {
     getSalesRecord(filters: $filters, limit: $limit, page: $page) {
@@ -17,8 +15,8 @@ const GET_SALES_RECORD_QUERY = graphql(`
 `);
 
 const GET_SALES_DASHBOARD_QUERY = graphql(`
-  query GetSalesDashboard {
-    getSalesDashboard {
+  query GetSalesDashboard($startDate: String, $endDate: String) {
+    getSalesDashboard(startDate: $startDate, endDate: $endDate) {
       ...SummaryCards_dashboard
     }
   }
@@ -56,10 +54,16 @@ export const useSalesRecords = (filters: SalesFilters) => {
   });
 };
 
-export const useSalesSummary = () => {
+export const useSalesSummary = (filters?: { startDate?: string | null; endDate?: string | null }) => {
+  const { startDate = null, endDate = null } = filters || {};
   return useQuery({
-    queryKey: salesKeys.summary(),
-    queryFn: () => execute(GET_SALES_DASHBOARD_QUERY, {}),
+    queryKey: salesKeys.summary({ startDate, endDate }),
+    queryFn: () => {
+      const variables: { startDate?: string; endDate?: string } = {};
+      if (startDate) variables.startDate = startDate;
+      if (endDate) variables.endDate = endDate;
+      return execute(GET_SALES_DASHBOARD_QUERY, variables);
+    },
     select: (data) => data.getSalesDashboard,
   });
 };

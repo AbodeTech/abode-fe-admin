@@ -2,14 +2,20 @@ import { useQuery } from '@tanstack/react-query';
 import { execute } from '@/lib/graphql-client';
 import { graphql } from '@/lib/gql';
 import { requestKeys } from './query-keys';
-import { RequestStatsFragment } from '../components/RequestStats';
-import { RequestTypeCardFragment } from '../components/RequestTypeCards';
-
 const GET_REQUEST_STATS = graphql(`
-  query GetRequestStatistics($startDate: String, $endDate: String) {
-    getRequestStatistics(dateRange: { startDate: $startDate, endDate: $endDate }) {
-      ...RequestStats_stats
-      ...RequestTypeCards_stats
+  query GetRequestStatistics($from: Date, $to: Date) {
+    getRequestStatistics(dateRange: { from: $from, to: $to }) {
+      totalRequests
+      pendingRequests
+      approvedRequests
+      declinedRequests
+      locationChangeRequests
+      documentChangeRequests
+      assetUpdateRequests
+      customRequests
+      totalFeesCollected
+      paidRequests
+      unpaidRequests
     }
   }
 `);
@@ -21,12 +27,12 @@ export interface RequestStatsFilters {
 
 export const useRequestStats = (filters?: RequestStatsFilters) => {
   return useQuery({
-    queryKey: requestKeys.stats(filters as any),
+    queryKey: requestKeys.stats(filters),
     queryFn: () =>
-      execute(GET_REQUEST_STATS as any, {
-        startDate: filters?.startDate || undefined,
-        endDate: filters?.endDate || undefined,
+      execute(GET_REQUEST_STATS, {
+        from: filters?.startDate || undefined,
+        to: filters?.endDate || undefined,
       }),
-    select: (data) => (data as any).getRequestStatistics,
+    select: (data) => data.getRequestStatistics,
   });
 };

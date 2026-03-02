@@ -1,6 +1,5 @@
 "use client";
 
-import { DocumentTransaction } from "@/lib/api/admin/transactions.types";
 import { approveDocumentTransaction, declineDocumentTransaction } from "@/lib/api/admin/transactions.client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,8 +11,9 @@ import { TransactionAction } from "@/components/shared/TransactionAction";
 import { ViewTransactionEvidence } from "../assets/ViewTransactionEvidence";
 import { format } from "date-fns";
 import { graphql } from "@/lib/gql";
-import { FragmentType, useFragment } from "@/lib/gql";
+import { FragmentType, useFragment as getFragmentData } from "@/lib/gql";
 import { DocumentTransactionsTable_DataFragment } from "@/lib/gql/graphql";
+import { useAuthStore } from "@/store/auth-store";
 
 export const DocumentTransactionsFragment = graphql(`
   fragment DocumentTransactionsTable_data on AdminTransactions {
@@ -55,7 +55,6 @@ const updatedString = (str: string) => (str.includes("asset purchase") ? str.rep
 interface DocumentTransactionsTableProps {
   data: (FragmentType<typeof DocumentTransactionsFragment> | null)[] | null | undefined;
   isLoading?: boolean;
-  filterQuery?: string;
 }
 
 const DECLINE_REASONS = [
@@ -65,19 +64,16 @@ const DECLINE_REASONS = [
   "Insufficient Information",
 ];
 
-export function DocumentTransactionsTable({ data, isLoading, filterQuery = "" }: DocumentTransactionsTableProps) {
+export function DocumentTransactionsTable({ data, isLoading }: DocumentTransactionsTableProps) {
+  const { user } = useAuthStore();
+  const canManageDocumentTransactions =
+    (user?.permissions ?? []).includes("asset_transactions") || user?.role === "admin";
   const transactionsRaw = data || [];
-  const transactions = transactionsRaw.map(t => useFragment(DocumentTransactionsFragment, t));
+  const transactions = transactionsRaw.map((t) => getFragmentData(DocumentTransactionsFragment, t));
 
-  const validTransactions = transactions
-    .filter((t): t is DocumentTransactionsTable_DataFragment => t !== null && t !== undefined)
-    .filter((tx) => {
-      if (!filterQuery) return true;
-      const q = filterQuery.toLowerCase();
-      const first = tx.user?.firstName?.toLowerCase() ?? "";
-      const last = tx.user?.lastName?.toLowerCase() ?? "";
-      return first.includes(q) || last.includes(q);
-    });
+  const validTransactions = transactions.filter(
+    (t): t is DocumentTransactionsTable_DataFragment => t !== null && t !== undefined
+  );
 
   if (isLoading) {
     return <div className="p-8 text-center text-gray-500">Loading transactions...</div>;
@@ -146,7 +142,7 @@ export function DocumentTransactionsTable({ data, isLoading, filterQuery = "" }:
                     Status
                   </div>
                 </TableHead>
-                <TableHead className="py-4 font-semibold">Action</TableHead>
+                {canManageDocumentTransactions && <TableHead className="py-4 font-semibold">Action</TableHead>}
                 <TableHead className="py-4 font-semibold">
                   <div className="flex items-center gap-2">
                     <Eye className="h-4 w-4" />
@@ -164,7 +160,7 @@ export function DocumentTransactionsTable({ data, isLoading, filterQuery = "" }:
                 >
                   <TableCell className="py-4 w-[120px]">
                     <Link
-                      href={`/users/${transaction.user?._id ?? ""}`}
+                      href={`/admin/dashboard/user/${transaction.user?._id ?? ""}`}
                       className="text-black hover:text-gray-700 font-medium hover:underline transition-colors truncate block"
                     >
                       {transaction.user?.lastName} {transaction.user?.firstName}
@@ -173,10 +169,8 @@ export function DocumentTransactionsTable({ data, isLoading, filterQuery = "" }:
                   <TableCell className="py-4 text-gray-700 w-[100px] truncate">
                     {transaction.referral || "No Referrer"}
                   </TableCell>
-                  <TableCell className="py-4 text-gray-700 w-[220px]">
-                    <div className="truncate" title={`${transaction.asset_type || ""} - ${updatedString(`${transaction.description ?? ""}(${transaction.plot_size ?? ""}sqm)`)}`}>
-                      {transaction.asset_type || ""} - {updatedString(`${transaction.description ?? ""}(${transaction.plot_size ?? ""}sqm)`)}
-                    </div>
+                  <TableCell className="py-4 text-gray-700 max-w-[220px] wrap-break-word">
+                    {transaction.asset_type || ""} - {updatedString(`${transaction.description ?? ""}(${transaction.plot_size ?? ""}sqm)`)}
                   </TableCell>
                   <TableCell className="py-4 text-gray-700 w-[100px]">{transaction.transaction_type ?? ""}</TableCell>
                   <TableCell className="py-4 font-semibold text-black w-[100px] whitespace-nowrap">
@@ -188,16 +182,18 @@ export function DocumentTransactionsTable({ data, isLoading, filterQuery = "" }:
                   <TableCell className="py-4">
                     <TransactionStatus status={transaction.admin_status || undefined} />
                   </TableCell>
-                  <TableCell className="py-4">
-                    <TransactionAction
-                      status={transaction.admin_status ?? ""}
-                      transactionId={transaction._id ?? ""}
-                      tag="documentTransactions"
-                      declineReasons={DECLINE_REASONS}
-                      onApprove={approveDocumentTransaction}
-                      onDecline={declineDocumentTransaction}
-                    />
-                  </TableCell>
+                  {canManageDocumentTransactions && (
+                    <TableCell className="py-4">
+                      <TransactionAction
+                        status={transaction.admin_status ?? ""}
+                        transactionId={transaction._id ?? ""}
+                        tag="documentTransactions"
+                        declineReasons={DECLINE_REASONS}
+                        onApprove={approveDocumentTransaction}
+                        onDecline={declineDocumentTransaction}
+                      />
+                    </TableCell>
+                  )}
                   <TableCell className="py-4">
                     {transaction.transfer_file ? (
                       <ViewTransactionEvidence

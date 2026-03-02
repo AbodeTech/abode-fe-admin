@@ -3,7 +3,7 @@
 import { useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useClientRequests, DEFAULT_REQUESTS_LIMIT } from "@/features/requests";
-import { RequestsFilters } from "@/features/requests";
+import { RequestsFilters, SubRequestStats } from "@/features/requests";
 import { RequestsTable } from "@/features/requests";
 import { Pagination } from "@/components/shared/Pagination";
 import { Loader2 } from "lucide-react";
@@ -15,11 +15,27 @@ const customStatusOptions = [
   { label: "Closed", value: "closed" },
 ];
 
+const customCategoryOptions = [
+  { label: "Payment Related", value: "payment" },
+  { label: "Documentation", value: "documentation" },
+  { label: "Property Issue", value: "property" },
+  { label: "Technical Support", value: "technical" },
+  { label: "General Inquiry", value: "general" },
+  { label: "Other", value: "other" },
+];
+
+const customHasAssetOptions = [
+  { label: "With Asset", value: "with_asset" },
+  { label: "Without Asset", value: "without_asset" },
+];
+
 function CustomRequestsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const page = Number(searchParams.get("page")) || 1;
   const status = searchParams.get("status");
+  const category = searchParams.get("category");
+  const hasAsset = searchParams.get("has_asset");
   const search = searchParams.get("search") ?? "";
   const startDate = searchParams.get("start_date");
   const endDate = searchParams.get("end_date");
@@ -33,6 +49,8 @@ function CustomRequestsContent() {
     searchQuery: search || null,
     startDate,
     endDate,
+    category: category || null,
+    hasAsset: hasAsset ? hasAsset === "with_asset" : null,
   });
 
   const requests = data?.requests ?? [];
@@ -56,6 +74,8 @@ function CustomRequestsContent() {
   );
 
   const handleStatusChange = (value: string | null) => updateParams({ status: value, page: 1 });
+  const handleCategoryChange = (value: string | null) => updateParams({ category: value, page: 1 });
+  const handleHasAssetChange = (value: string | null) => updateParams({ has_asset: value, page: 1 });
   const handleSearchChange = (value: string) => updateParams({ search: value || null, page: 1 });
 
   if (error) {
@@ -74,18 +94,30 @@ function CustomRequestsContent() {
         <p className="text-muted-foreground">Manage bespoke client requests.</p>
       </div>
 
+      <SubRequestStats analytics={data?.analytics} />
+
       <RequestsFilters
         status={status}
         paymentStatus={null}
         searchQuery={search}
+        category={category}
+        hasAsset={hasAsset}
         onStatusChange={handleStatusChange}
         onPaymentStatusChange={() => { }}
         onSearchChange={handleSearchChange}
+        onCategoryChange={handleCategoryChange}
+        onHasAssetChange={handleHasAssetChange}
         showPaymentStatus={false}
         statusOptions={customStatusOptions}
+        categoryOptions={customCategoryOptions}
+        hasAssetOptions={customHasAssetOptions}
       />
 
-      <RequestsTable requests={requests} isLoading={isLoading} />
+      <RequestsTable
+        requests={requests}
+        isLoading={isLoading}
+        requestTypeFilter="custom_request"
+      />
 
       <Pagination count={total} currentIdx={page} limit={limit} />
 

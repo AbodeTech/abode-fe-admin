@@ -10,7 +10,7 @@ import { AssetTransactionAction } from "./AssetTransactionAction";
 import { ViewTransactionEvidence } from "./ViewTransactionEvidence";
 import { format } from "date-fns";
 import { graphql } from "@/lib/gql";
-import { FragmentType, useFragment } from "@/lib/gql";
+import { FragmentType, useFragment as getFragmentData } from "@/lib/gql";
 import { AssetTransactionsTable_DataFragment } from "@/lib/gql/graphql";
 
 export const AssetTransactionsFragment = graphql(`
@@ -57,14 +57,13 @@ const updatedString = (str: string) =>
 interface AssetTransactionsTableProps {
   data: (FragmentType<typeof AssetTransactionsFragment> | null)[] | null | undefined;
   isLoading?: boolean;
-  onApprove: (id: string) => Promise<any>;
-  onDecline: (id: string, message: string) => Promise<any>;
+  onApprove: (id: string) => Promise<unknown>;
+  onDecline: (id: string, message: string) => Promise<unknown>;
 }
 
 export function AssetTransactionsTable({ data, isLoading, onApprove, onDecline }: AssetTransactionsTableProps) {
-  const transactionsRaw = data || [];
-  const transactions = transactionsRaw.map((t) => useFragment(AssetTransactionsFragment, t));
-  const validTransactions = transactions.filter((t): t is AssetTransactionsTable_DataFragment => t !== null && t !== undefined);
+  const nonNullData = (data || []).filter((t): t is FragmentType<typeof AssetTransactionsFragment> => t !== null);
+  const validTransactions = getFragmentData(AssetTransactionsFragment, nonNullData);
 
   if (isLoading) {
     return <div className="p-8 text-center text-gray-500">Loading transactions...</div>;
@@ -89,13 +88,14 @@ export function AssetTransactionsTable({ data, isLoading, onApprove, onDecline }
       {/* Mobile Card Layout */}
       <div className="lg:hidden space-y-4 p-4">
         {validTransactions.map((transaction, idx) => (
-          <MobileTransactionCard key={transaction._id} data={transaction} idx={idx + 1} onApprove={onApprove} onDecline={onDecline} />
+          <MobileTransactionCard key={transaction._id} data={transaction}  onApprove={onApprove} onDecline={onDecline} />
         ))}
       </div>
 
       {/* Desktop Table Layout */}
       <div className="hidden lg:block">
-        <Card className="border border-gray-200">
+        <Card className="border border-gray-200 pt-0!
+        ">
           <ScrollArea className="w-full">
             <Table>
               <TableHeader className="bg-gray-50 border-b border-gray-200">
@@ -158,7 +158,7 @@ export function AssetTransactionsTable({ data, isLoading, onApprove, onDecline }
                     className={`text-sm font-medium text-gray-900 hover:bg-gray-100 transition-colors border-gray-200 ${idx % 2 === 0 ? "bg-gray-50/50" : "bg-white"
                       }`}
                   >
-                    <TableCell className="py-4 w-[120px]">
+                    <TableCell className="py-4 w-30">
                       <Link
                         href={`/users/${transaction.user?._id}`}
                         className="text-black hover:text-gray-700 font-medium hover:underline transition-colors truncate block"
@@ -166,19 +166,17 @@ export function AssetTransactionsTable({ data, isLoading, onApprove, onDecline }
                         {transaction.user?.lastName} {transaction.user?.firstName}
                       </Link>
                     </TableCell>
-                    <TableCell className="py-4 text-gray-700 w-[100px] truncate">
+                    <TableCell className="py-4 text-gray-700 w-25 truncate">
                       {transaction.referral ?? "No Referrer"}
                     </TableCell>
-                    <TableCell className="py-4 text-gray-700 w-[220px]">
-                      <div className="truncate" title={`${transaction.asset_type || ""} - ${updatedString(`${transaction.description ?? ""}(${transaction.plot_size ?? ""}sqm)`)}`}>
-                        {transaction.asset_type || ""} - {updatedString(`${transaction.description ?? ""}(${transaction.plot_size ?? ""}sqm)`)}
-                      </div>
+                    <TableCell className="py-4 text-gray-700 max-w-[220px] wrap-break-word">
+                      {transaction.asset_type || ""} - {updatedString(`${transaction.description ?? ""}(${transaction.plot_size ?? ""}sqm)`)}
                     </TableCell>
-                    <TableCell className="py-4 text-gray-700 w-[100px]">{transaction.transaction_type ?? ""}</TableCell>
-                    <TableCell className="py-4 font-semibold text-black w-[100px] whitespace-nowrap">
+                    <TableCell className="py-4 text-gray-700 w-25">{transaction.transaction_type ?? ""}</TableCell>
+                    <TableCell className="py-4 font-semibold text-black w-25 whitespace-nowrap">
                       ₦{formatNumber(transaction.amount ?? 0)}
                     </TableCell>
-                    <TableCell className="py-4 text-gray-700 w-[100px] whitespace-nowrap">
+                    <TableCell className="py-4 text-gray-700 w-25 whitespace-nowrap">
                       {formatDateNumerical(transaction.time_of_transaction ?? "")}
                     </TableCell>
                     <TableCell className="py-4">
@@ -222,25 +220,13 @@ export function AssetTransactionsTable({ data, isLoading, onApprove, onDecline }
 // Mobile Card Component
 function MobileTransactionCard({
   data,
-  idx,
   onApprove,
   onDecline
 }: {
   data: AssetTransactionsTable_DataFragment;
-  idx: number;
-  onApprove: (id: string) => Promise<any>;
-  onDecline: (id: string, message: string) => Promise<any>;
+  onApprove: (id: string) => Promise<unknown>;
+  onDecline: (id: string, message: string) => Promise<unknown>;
 }) {
-  // Unwrapping handled in parent for now or simply treat data as the unwrapped type if we passed unwrapped data.
-  // However, to supply fragment masking properly, we typically unwrap in parent and pass down plain data OR pass fragment and unwrap here.
-  // Given the pattern above "validTransactions" is already unwrapped.
-  // So 'data' here is actually the ResultOf<typeof AssetTransactionsFragment>.
-  // But since we can't easily import ResultOf without codegen running first, let's assume it matches the shape.
-  // The 'useFragment' returns the actual data type.
-
-  // Quick fix: The parent `validTransactions` is an array of the UNWRAPPED data. 
-  // So `data` prop here is just the plain object.
-
   return (
     <Card className="border border-gray-200 hover:shadow-md transition-shadow">
       <CardHeader className="pb-3">
@@ -270,7 +256,7 @@ function MobileTransactionCard({
             <Building className="h-4 w-4 text-gray-600 mt-1 shrink-0" />
             <div className="flex-1">
               <span className="text-sm text-gray-600">Property</span>
-              <p className="text-sm font-medium text-gray-900 break-words">
+              <p className="text-sm font-medium text-gray-900 wrap-break-word">
                 {data.asset_type || ""} - {updatedString(`${data.description ?? ""}(${data.plot_size ?? ""}sqm)`)}
               </p>
             </div>

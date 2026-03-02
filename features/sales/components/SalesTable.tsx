@@ -1,8 +1,6 @@
 "use client";
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { DateFilter } from "@/components/shared/DateFilter";
-import { FilterSelect } from "@/components/shared/FilterSelect";
 import { format } from "date-fns";
 import { FragmentType, useFragment } from "@/lib/gql";
 import { graphql } from "@/lib/gql";
@@ -54,19 +52,6 @@ export function SalesTable({ records }: SalesTableProps) {
 
   return (
     <div className="mt-8 px-4 space-y-4">
-      <div className="flex flex-wrap gap-4 items-center">
-        <FilterSelect
-          data={[
-            { label: "All Asset Type", value: "all" },
-            { label: "flex", value: "flex" },
-            { label: "full-ownership", value: "full-ownership" },
-          ]}
-          queryKey="assettype"
-          placeholder="Asset type"
-        />
-        <DateFilter />
-      </div>
-
       <div className="rounded-md border bg-white">
         <Table>
           <TableHeader>

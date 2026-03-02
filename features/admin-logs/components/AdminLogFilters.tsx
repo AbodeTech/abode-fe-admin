@@ -42,12 +42,18 @@ export function AdminLogFilters() {
           <SelectValue placeholder="Action" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">All actions</SelectItem>
-          <SelectItem value="create">Create</SelectItem>
-          <SelectItem value="update">Update</SelectItem>
-          <SelectItem value="delete">Delete</SelectItem>
-          <SelectItem value="approve">Approve</SelectItem>
-          <SelectItem value="decline">Decline</SelectItem>
+          <SelectItem value="all">All Actions</SelectItem>
+          <SelectItem value="log-in">Log in</SelectItem>
+          <SelectItem value="create-role">Create Admin</SelectItem>
+          <SelectItem value="add-refferal">Add Referral</SelectItem>
+          <SelectItem value="update-payment-plan">Update Payment Plan</SelectItem>
+          <SelectItem value="delete-asset">Delete User Asset</SelectItem>
+          <SelectItem value="modify-referral-status">Modify Referral Status</SelectItem>
+          <SelectItem value="unsuspend-user">Unsuspend User</SelectItem>
+          <SelectItem value="suspend-user">Suspend User</SelectItem>
+          <SelectItem value="update-asset">Update Asset</SelectItem>
+          <SelectItem value="buy-asset">Buy Asset</SelectItem>
+          <SelectItem value="edit-wallet-details">Edit Wallet Details</SelectItem>
         </SelectContent>
       </Select>
       <Button onClick={applyFilters}>Apply</Button>

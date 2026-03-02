@@ -9,6 +9,8 @@ export const userKeys = {
     hasAsset?: boolean;
     referralStatus?: string;
     howDidYouHearAboutUs?: string;
+    startDate?: string;
+    endDate?: string;
     list?: string;
     assetType?: string | null;
   }) => [...userKeys.lists(), filters] as const,

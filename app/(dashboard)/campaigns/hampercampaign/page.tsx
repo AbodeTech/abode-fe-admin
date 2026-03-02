@@ -3,7 +3,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
 import { useHamperCampaign } from "@/features/campaigns/hooks/use-campaigns";
-import { HamperMetricsSection, HamperAssetTable, HamperReferrersTable } from "@/features/campaigns/components/HamperComponents";
+import { HamperMetricsSection, HamperAssetTable, HamperReferrersTable, HamperLeaderboardSection, HamperTransactionTable } from "@/features/campaigns/components/HamperComponents";
 
 export default function HamperCampaignPage() {
   const { data, isLoading, error } = useHamperCampaign();
@@ -44,6 +44,10 @@ export default function HamperCampaignPage() {
       <HamperAssetTable data={data?.assetBreakdown} />
 
       <HamperReferrersTable data={data?.referrersWithHampers} />
+
+      <HamperLeaderboardSection />
+
+      <HamperTransactionTable />
     </div>
   );
 }

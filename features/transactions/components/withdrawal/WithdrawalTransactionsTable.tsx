@@ -1,16 +1,16 @@
 "use client";
 
-import { WithdrawalTransaction } from "@/lib/api/admin/transactions.types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { User, Hash, CreditCard, DollarSign, Calendar, CheckCircle } from "lucide-react";
+import { User, Hash, CreditCard, DollarSign, Calendar, CheckCircle, Zap } from "lucide-react";
 import Link from "next/link";
 import { TransactionStatus } from "@/components/shared/TransactionStatus";
 import { TransactionAction } from "@/components/shared/TransactionAction";
 import { format } from "date-fns";
+import { useAuthStore } from "@/store/auth-store";
 import { graphql } from "@/lib/gql";
-import { FragmentType, useFragment } from "@/lib/gql";
+import { FragmentType, useFragment as getFragmentData } from "@/lib/gql";
 import { WithdrawalTransactionsTable_DataFragment } from "@/lib/gql/graphql";
 
 export const WithdrawalTransactionsFragment = graphql(`
@@ -19,6 +19,7 @@ export const WithdrawalTransactionsFragment = graphql(`
     admin_status
     amount
     time_of_transaction
+    processing_type
     tin
     bank_details {
       accountNumber
@@ -29,6 +30,7 @@ export const WithdrawalTransactionsFragment = graphql(`
       firstName
       lastName
       _id
+      tin
     }
   }
 `);
@@ -49,8 +51,8 @@ const formatDateNumerical = (dateString: string) => {
 interface WithdrawalTransactionsTableProps {
   data: (FragmentType<typeof WithdrawalTransactionsFragment> | null)[] | null | undefined;
   isLoading?: boolean;
-  onApprove: (id: string) => Promise<any>;
-  onDecline: (id: string, message: string) => Promise<any>;
+  onApprove: (id: string) => Promise<unknown>;
+  onDecline: (id: string, message: string) => Promise<unknown>;
   filterQuery?: string;
 }
 
@@ -63,8 +65,10 @@ const DECLINE_REASONS = [
 ];
 
 export function WithdrawalTransactionsTable({ data, isLoading, onApprove, onDecline, filterQuery = "" }: WithdrawalTransactionsTableProps) {
+  const { user } = useAuthStore();
+  const canManageWithdrawal = (user?.permissions ?? []).includes("withdrawals") || user?.role === "admin";
   const transactionsRaw = data || [];
-  const transactions = transactionsRaw.map(t => useFragment(WithdrawalTransactionsFragment, t));
+  const transactions = transactionsRaw.map((t) => getFragmentData(WithdrawalTransactionsFragment, t));
 
   const validTransactions = transactions
     .filter((t): t is WithdrawalTransactionsTable_DataFragment => t !== null && t !== undefined)
@@ -73,7 +77,14 @@ export function WithdrawalTransactionsTable({ data, isLoading, onApprove, onDecl
       const q = filterQuery.toLowerCase();
       const first = tx.user?.firstName?.toLowerCase() ?? "";
       const last = tx.user?.lastName?.toLowerCase() ?? "";
-      return first.includes(q) || last.includes(q);
+      const fullName = `${first} ${last}`.trim();
+      const accountName = tx.bank_details?.name?.toLowerCase() ?? "";
+      return (
+        first.includes(q) ||
+        last.includes(q) ||
+        fullName.includes(q) ||
+        accountName.includes(q)
+      );
     });
 
   if (isLoading) {
@@ -130,11 +141,17 @@ export function WithdrawalTransactionsTable({ data, isLoading, onApprove, onDecl
                 </TableHead>
                 <TableHead className="py-4 font-semibold">
                   <div className="flex items-center gap-2">
+                    <Zap className="h-4 w-4" />
+                    Method
+                  </div>
+                </TableHead>
+                <TableHead className="py-4 font-semibold">
+                  <div className="flex items-center gap-2">
                     <CheckCircle className="h-4 w-4" />
                     Status
                   </div>
                 </TableHead>
-                <TableHead className="py-4 font-semibold">Action</TableHead>
+                {canManageWithdrawal && <TableHead className="py-4 font-semibold">Action</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -144,9 +161,9 @@ export function WithdrawalTransactionsTable({ data, isLoading, onApprove, onDecl
                   className={`text-sm font-medium text-gray-900 hover:bg-gray-100 transition-colors border-gray-200 ${idx % 2 === 0 ? "bg-gray-50/50" : "bg-white"
                     }`}
                 >
-                  <TableCell className="py-4 w-[150px]">
+                  <TableCell className="py-4 w-37.5">
                     <Link
-                      href={`/users/${transaction.user?._id ?? ""}`}
+                      href={`/admin/dashboard/user/${transaction.user?._id ?? ""}`}
                       className="text-black hover:text-gray-700 font-medium hover:underline transition-colors"
                     >
                       {transaction.user?.lastName} {transaction.user?.firstName}
@@ -163,24 +180,47 @@ export function WithdrawalTransactionsTable({ data, isLoading, onApprove, onDecl
                     {formatDateNumerical(transaction.time_of_transaction ?? "")}
                   </TableCell>
                   <TableCell className="py-4">
-                    <TransactionStatus status={transaction.admin_status || undefined} />
+                    <ProcessingMethodBadge type={transaction.processing_type ?? undefined} />
                   </TableCell>
                   <TableCell className="py-4">
-                    <TransactionAction
-                      status={transaction.admin_status ?? ""}
-                      transactionId={transaction._id ?? ""}
-                      tag="withdrawalTransactions"
-                      declineReasons={DECLINE_REASONS}
-                      onApprove={onApprove}
-                      onDecline={onDecline}
-                    />
+                    <TransactionStatus status={transaction.admin_status || undefined} />
                   </TableCell>
+                  {canManageWithdrawal && (
+                    <TableCell className="py-4">
+                      <TransactionAction
+                        status={transaction.admin_status ?? ""}
+                        transactionId={transaction._id ?? ""}
+                        tag="withdrawalTransactions"
+                        declineReasons={DECLINE_REASONS}
+                        onApprove={onApprove}
+                        onDecline={onDecline}
+                      />
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </ScrollArea>
       </Card>
+    </div>
+  );
+}
+
+function ProcessingMethodBadge({ type }: { type?: string }) {
+  if (type === "auto") {
+    return (
+      <div className="py-0.5 px-2 border border-[#C7D7FE] rounded-2xl bg-[#EEF4FF] flex items-center w-fit gap-x-1">
+        <Zap className="w-2.5 h-2.5 text-[#3538CD]" />
+        <p className="text-xs font-medium text-[#3538CD]">Auto</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="py-0.5 px-2 border border-[#E4E7EC] rounded-2xl bg-[#F9FAFB] flex items-center w-fit gap-x-1">
+      <User className="w-2.5 h-2.5 text-[#667085]" />
+      <p className="text-xs font-medium text-[#667085]">Manual</p>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { useParams } from "next/navigation";
 import { useAdminWithRole } from "@/features/roles-permissions";
 import { AdminDetailHeader, AdminDetailFragment } from "@/features/roles-permissions/components/AdminDetailHeader";
 import { AdminLogsTable, DEFAULT_ADMIN_LOGS_LIMIT, useAdminLogs } from "@/features/admin-logs";
+import { AdminLogsRowFragment } from "@/features/admin-logs/components/AdminLogsTable";
 import { useFragment } from "@/lib/gql";
 import { Pagination } from "@/components/shared/Pagination";
 import { Loader2 } from "lucide-react";
@@ -39,7 +40,11 @@ export default function AdminDetailPage() {
         </div>
       )}
 
-      <AdminDetailHeader admin={adminData} />
+      <AdminDetailHeader
+        admin={adminData}
+        logs={logsData?.data?.filter((log): log is NonNullable<typeof log> => log !== null) || []}
+        isLoadingLogs={loadingLogs}
+      />
 
       <div className="space-y-3">
         <div className="flex items-center justify-between">

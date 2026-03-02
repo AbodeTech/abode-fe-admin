@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -l \"useMutation\\\\|useQuery\" /Users/user/projects/work/abode/migration/abode-admin-fe/features/**/components/*.tsx)",
+      "Bash(find \"/Users/user/projects/work/abode/migration/abode-admin-fe/app/\\(dashboard\\)/agency/transactions\" -type f)",
+      "Bash(npm run codegen)"
+    ]
+  }
+}

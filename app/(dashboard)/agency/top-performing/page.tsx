@@ -2,7 +2,11 @@
 
 import { Loader2 } from "lucide-react";
 
-import { AgencyDashboardPanels, useAgencyDashboard } from "@/features/agency";
+import {
+  AgencyDashboardPanels,
+  TopPerformingAgenciesTable,
+  useAgencyDashboard,
+} from "@/features/agency";
 import { getErrorMessage } from "@/features/agency/utils/error-message";
 
 export default function TopPerformingAgenciesPage() {
@@ -29,9 +33,9 @@ export default function TopPerformingAgenciesPage() {
         totalClientsRecruited={data?.total_clients_recruited}
         totalLandValueSold={data?.total_land_value_sold}
         outstandingBalance={data?.outstanding_balance}
-        topPerformingAgencies={data?.top_performing_agencies}
-        topSellingLands={data?.top_selling_lands}
       />
+
+      <TopPerformingAgenciesTable rows={data?.top_performing_agencies} />
 
       {isLoading && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">

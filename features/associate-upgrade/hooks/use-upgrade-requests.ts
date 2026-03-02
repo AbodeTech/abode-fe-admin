@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { execute } from '@/lib/graphql-client';
 import { graphql } from '@/lib/gql';
 import { upgradeKeys } from './query-keys';
+import { AdminStatus } from '@/lib/gql/graphql';
 
 const GET_UPGRADE_REQUESTS = graphql(`
   query GetAllUpgradeRequests($page: Int!, $limit: Int!, $adminStatus: AdminStatus) {
@@ -36,12 +37,12 @@ export const useUpgradeRequests = (filters: UpgradeRequestsFilters) => {
   } = filters;
 
   return useQuery({
-    queryKey: upgradeKeys.list(filters as any),
+    queryKey: upgradeKeys.list(filters),
     queryFn: () =>
       execute(GET_UPGRADE_REQUESTS, {
         page,
         limit,
-        adminStatus: (adminStatus || undefined) as any,
+        adminStatus: (adminStatus || undefined) as AdminStatus | undefined,
       }),
     select: (data) => data.getAllUpgradeRequests,
   });

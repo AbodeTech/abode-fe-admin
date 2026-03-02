@@ -40,9 +40,9 @@ export function TransactionAction({
   onApprove,
   onDecline,
 }: TransactionActionProps) {
-  const queryClient = useQueryClient();
+  const normalizedStatus = (status || "").toLowerCase();
 
-  if (status === "pending") {
+  if (normalizedStatus === "pending" || normalizedStatus === "auto-failed") {
     return (
       <div className="flex gap-3">
         <ApproveButton
@@ -63,7 +63,10 @@ export function TransactionAction({
   // Non-pending status: show colored bar
   return (
     <div
-      className={`w-6 h-2 rounded-2xl ${status === "approved" ? "bg-[#067647]" : "bg-[#B42318]"
+      className={`w-6 h-2 rounded-2xl ${
+        normalizedStatus === "approved" || normalizedStatus === "completed" || normalizedStatus === "auto-approved"
+          ? "bg-[#067647]"
+          : "bg-[#B42318]"
         }`}
     />
   );

@@ -8,8 +8,7 @@ import { Pagination } from "@/components/shared/Pagination";
 import { FilterSelect } from "@/components/shared/FilterSelect";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
-import { useState, useEffect, useMemo } from "react";
-import { toast } from "sonner";
+import { useState, useEffect } from "react";
 
 function WithdrawalTransactionsContent() {
   const searchParams = useSearchParams();
@@ -46,26 +45,14 @@ function WithdrawalTransactionsContent() {
   const { mutateAsync: approveTransaction } = useApproveWithdrawalTransaction();
   const { mutateAsync: declineTransaction } = useDeclineWithdrawalTransaction();
 
-  const transactions = data?.data;
-
   const totalCount = data?.count || 0;
 
   const handleApprove = async (id: string) => {
-    try {
-      await approveTransaction(id);
-      toast.success("Withdrawal approved");
-    } catch (err: any) {
-      toast.error(err?.message ?? "Failed to approve withdrawal");
-    }
+    await approveTransaction(id);
   };
 
   const handleDecline = async (id: string, message: string) => {
-    try {
-      await declineTransaction({ transactionId: id, message });
-      toast.success("Withdrawal declined");
-    } catch (err: any) {
-      toast.error(err?.message ?? "Failed to decline withdrawal");
-    }
+    await declineTransaction({ transactionId: id, message });
   };
 
   return (
@@ -89,6 +76,8 @@ function WithdrawalTransactionsContent() {
             { label: 'Approved', value: 'completed' },
             { label: 'Rejected', value: 'failed' },
             { label: 'Pending', value: 'pending' },
+            { label: 'Auto-Approved', value: 'auto-approved' },
+            { label: 'Auto-Failed', value: 'auto-failed' },
           ]}
           queryKey={'transactionstatus'}
         />

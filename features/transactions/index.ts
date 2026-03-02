@@ -23,18 +23,6 @@ export {
   useDeclineAssetTransaction,
 } from './hooks/use-transaction-mutations';
 
-// Types
-export type {
-  TopupTransaction,
-  WithdrawalTransaction,
-  DocumentTransaction,
-  CommissionTransaction,
-  TransactionDataPoints,
-  ProcessCommissionInput,
-  DeclineTransactionInput,
-  TransactionType,
-} from './types/transaction.types';
-
 // Components - Topup
 export { TopupTransactionsTable } from './components/topup/TopupTransactionsTable';
 
@@ -43,9 +31,11 @@ export { WithdrawalTransactionsTable } from './components/withdrawal/WithdrawalT
 
 // Components - Document
 export { DocumentTransactionsTable } from './components/document/DocumentTransactionsTable';
+export { DocumentExport } from './components/document/DocumentExport';
 
 // Components - Commission
 export { CommissionTransactionsTable } from './components/commission/CommissionTransactionsTable';
+export { CommissionExport } from './components/commission/CommissionExport';
 
 // Components - Assets
 export { AssetTransactionsTable } from './components/assets/AssetTransactionsTable';
@@ -53,4 +43,6 @@ export { AssetTransactionDataPoints } from './components/assets/AssetTransaction
 export { AssetTransactionAction } from './components/assets/AssetTransactionAction';
 export { ViewTransactionEvidence } from './components/assets/ViewTransactionEvidence';
 export { useCompleteAssetTransactions, DEFAULT_COMPLETE_ASSET_LIMIT } from './hooks/use-complete-asset-transactions';
+export { useCommissionExport } from './hooks/use-commission-export';
+export { useDocumentExport } from './hooks/use-document-export';
 export { CompleteAssetPaymentsTable } from './components/complete/CompleteAssetPaymentsTable';

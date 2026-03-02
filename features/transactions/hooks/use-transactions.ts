@@ -2,9 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { execute } from '@/lib/graphql-client';
 import { graphql } from '@/lib/gql';
 import { transactionKeys } from './query-keys';
-import type {
-  TransactionType,
-} from '../types/transaction.types';
+type TransactionType = "credit" | "debit" | "asset" | "commission" | "document";
 
 // --- Queries ---
 
@@ -31,8 +29,8 @@ const GET_WITHDRAWAL_TRANSACTION_QUERY = graphql(`
 `);
 
 const GET_DOCUMENT_TRANSACTION_QUERY = graphql(`
-  query GetDocumentTransaction($page: Int!, $limit: Int!, $status: String, $startDate: Date, $endDate: Date) {
-    getDocumentTransaction(page: $page, limit: $limit, status: $status, startDate: $startDate, endDate: $endDate) {
+  query GetDocumentTransaction($page: Int!, $limit: Int!, $status: String, $startDate: Date, $endDate: Date, $search: String) {
+    getDocumentTransaction(page: $page, limit: $limit, status: $status, startDate: $startDate, endDate: $endDate, search: $search) {
       data {
         ...DocumentTransactionsTable_data
       }
@@ -60,6 +58,8 @@ const GET_TRANSACTION_DATA_POINTS_QUERY = graphql(`
       rejected_transaction
       commission_transaction
       users_wallet_balance
+      auto_approved_transaction
+      auto_failed_transaction
     }
   }
 `);
@@ -105,15 +105,16 @@ interface UseDocumentTransactionsParams {
   status?: string | null;
   startDate?: string | null;
   endDate?: string | null;
+  search?: string | null;
 }
 
 export const useDocumentTransactions = (params?: UseDocumentTransactionsParams) => {
-  const { page = 1, limit = 10, status = null, startDate = null, endDate = null } = params ?? {};
+  const { page = 1, limit = 10, status = null, startDate = null, endDate = null, search = null } = params ?? {};
 
   return useQuery({
-    queryKey: transactionKeys.documentList({ page, limit, status, startDate, endDate }),
+    queryKey: transactionKeys.documentList({ page, limit, status, startDate, endDate, search }),
     queryFn: () =>
-      execute(GET_DOCUMENT_TRANSACTION_QUERY, { page, limit, status, startDate, endDate }),
+      execute(GET_DOCUMENT_TRANSACTION_QUERY, { page, limit, status, startDate, endDate, search }),
     select: (data) => data.getDocumentTransaction,
   });
 };
@@ -241,4 +242,3 @@ export type WithdrawalTransactionsData = NonNullable<ReturnType<typeof useWithdr
 export type DocumentTransactionsData = NonNullable<ReturnType<typeof useDocumentTransactions>['data']>;
 export type CommissionTransactionsData = NonNullable<ReturnType<typeof useCommissionTransactions>['data']>;
 export type AssetTransactionsData = NonNullable<ReturnType<typeof useAssetTransactions>['data']>;
-

@@ -29,6 +29,7 @@ export type WithdrawalTransaction = {
   admin_status: string;
   amount: number;
   time_of_transaction: string;
+  processing_type?: string | null;
   bank_details: {
     accountNumber: string;
     bankName: string;
@@ -57,6 +58,8 @@ export type TransactionDataPoints = {
   rejected_transaction: number;
   commission_transaction: number;
   users_wallet_balance: number;
+  auto_approved_transaction?: number;
+  auto_failed_transaction?: number;
 };
 
 // Document Transaction Types (similar to asset transactions)

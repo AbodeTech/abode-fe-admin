@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useCoupons, useUpdateCouponStatus, useDeleteCoupon } from "@/features/associate-upgrade/hooks/use-coupons";
+import { useCoupons, useUpdateCouponStatus, useDeleteCoupon, useUpdateCoupon } from "@/features/associate-upgrade/hooks/use-coupons";
 import { CouponsTable } from "@/features/associate-upgrade/components/coupons/CouponsTable";
 import { CouponFilters } from "@/features/associate-upgrade/components/coupons/CouponFilters";
 import { CreateCouponDialog } from "@/features/associate-upgrade/components/coupons/CreateCouponDialog";
@@ -12,6 +12,7 @@ export default function CouponsPage() {
   const { data, isLoading, error } = useCoupons();
   const { mutateAsync: updateStatus, isPending: updating } = useUpdateCouponStatus();
   const { mutateAsync: deleteCoupon, isPending: deleting } = useDeleteCoupon();
+  const { mutateAsync: updateCoupon, isPending: editing } = useUpdateCoupon();
 
   const [status, setStatus] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -19,8 +20,9 @@ export default function CouponsPage() {
   const filtered = useMemo(() => {
     const rows = data?.data ?? [];
     return rows
-      .filter((c: any) => (status ? c?.status?.toLowerCase() === status : true))
-      .filter((c: any) => (search ? c?.couponCode?.toLowerCase().includes(search.toLowerCase()) : true));
+      .filter((c): c is NonNullable<typeof c> => c !== null)
+      .filter((c) => (status ? c.status?.toLowerCase() === status : true))
+      .filter((c) => (search ? c.couponCode?.toLowerCase().includes(search.toLowerCase()) : true));
   }, [data?.data, status, search]);
 
   const handleStatusChange = async (code: string, nextStatus: string) => {
@@ -38,6 +40,25 @@ export default function CouponsPage() {
       toast.success("Coupon deleted");
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Failed to delete coupon");
+    }
+  };
+
+  const handleUpdate = async (input: {
+    couponCode: string;
+    discountPercentage: number;
+    usageLimitType: string;
+    usageLimit?: number;
+    expiryType: string;
+    startDate?: Date;
+    endDate?: Date;
+    expiryDate?: Date;
+  }) => {
+    try {
+      await updateCoupon(input);
+      toast.success("Coupon updated");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to update coupon");
+      throw err;
     }
   };
 
@@ -64,12 +85,13 @@ export default function CouponsPage() {
 
       <CouponsTable
         data={filtered}
-        isLoading={isLoading || updating || deleting}
+        isLoading={isLoading || updating || deleting || editing}
         onStatusChange={handleStatusChange}
         onDelete={handleDelete}
+        onUpdate={handleUpdate}
       />
 
-      {(isLoading || updating || deleting) && (
+      {(isLoading || updating || deleting || editing) && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
           Working...

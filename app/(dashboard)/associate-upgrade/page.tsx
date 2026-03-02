@@ -4,12 +4,15 @@ import { useCallback, useEffect, useMemo, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 import {
   DEFAULT_UPGRADE_LIMIT,
   useUpgradeRequests,
   useApproveUpgrade,
   useDeclineUpgrade,
+  CreateUpgradeTransactionDialog,
 } from "@/features/associate-upgrade";
 import {
   UpgradeFilters,
@@ -25,7 +28,7 @@ function AssociateUpgradeContent() {
   const router = useRouter();
 
   const page = Number(searchParams.get("page")) || 1;
-  const statusParam = searchParams.get("status");
+  const statusParam = searchParams.get("adminStatus") ?? searchParams.get("status");
   const searchParam = searchParams.get("search") || "";
 
   const [search, setSearch] = useState(searchParam);
@@ -43,12 +46,37 @@ function AssociateUpgradeContent() {
   const { mutateAsync: approveUpgrade, isPending: approving } = useApproveUpgrade();
   const { mutateAsync: declineUpgrade, isPending: declining } = useDeclineUpgrade();
 
-  // No client-side filtering needed as the API handles it via searchParam
   const upgradeRequests = useMemo(() => {
-    return (data?.upgradeRequests ?? []).filter(
+    const rows = (data?.upgradeRequests ?? []).filter(
       (item): item is NonNullable<typeof item> => item !== null
     );
-  }, [data?.upgradeRequests]);
+
+    if (!searchParam) return rows;
+
+    const query = searchParam.toLowerCase();
+    return rows.filter((item) => {
+      const userFirst = item.user?.firstName?.toLowerCase() ?? "";
+      const userLast = item.user?.lastName?.toLowerCase() ?? "";
+      const userEmail = item.user?.email?.toLowerCase() ?? "";
+      const userFull = `${userFirst} ${userLast}`.trim();
+
+      const associateFirst = item.associate?.firstName?.toLowerCase() ?? "";
+      const associateLast = item.associate?.lastName?.toLowerCase() ?? "";
+      const associateEmail = item.associate?.email?.toLowerCase() ?? "";
+      const associateFull = `${associateFirst} ${associateLast}`.trim();
+
+      return (
+        userFirst.includes(query) ||
+        userLast.includes(query) ||
+        userEmail.includes(query) ||
+        userFull.includes(query) ||
+        associateFirst.includes(query) ||
+        associateLast.includes(query) ||
+        associateEmail.includes(query) ||
+        associateFull.includes(query)
+      );
+    });
+  }, [data?.upgradeRequests, searchParam]);
 
   const updateParams = useCallback(
     (next: Record<string, string | number | null | undefined>, options?: { replace?: boolean }) => {
@@ -82,7 +110,7 @@ function AssociateUpgradeContent() {
   }, [search, searchParam, updateParams]);
 
   const handleStatusChange = (value: string | null) => {
-    updateParams({ status: value, page: 1 });
+    updateParams({ adminStatus: value, page: 1 });
   };
 
   const openConfirm = (mode: "approve" | "decline", row: FragmentType<typeof UpgradeRowFragment>) => {
@@ -132,6 +160,12 @@ function AssociateUpgradeContent() {
             Review and manage associate/associate-pro upgrade submissions.
           </p>
         </div>
+        <div className="flex items-center gap-2">
+          <CreateUpgradeTransactionDialog />
+          <Button asChild>
+            <Link href="/associate-upgrade/coupons">Coupon Management</Link>
+          </Button>
+        </div>
       </div>
 
       <UpgradeFilters
@@ -148,8 +182,8 @@ function AssociateUpgradeContent() {
       />
 
       <Pagination
-        count={data?.pagination.totalCount ?? 0}
-        currentIdx={data?.pagination.currentPage ?? page}
+        count={searchParam ? upgradeRequests.length : (data?.pagination.totalCount ?? 0)}
+        currentIdx={searchParam ? 1 : (data?.pagination.currentPage ?? page)}
         limit={data?.pagination.limit ?? DEFAULT_UPGRADE_LIMIT}
       />
 

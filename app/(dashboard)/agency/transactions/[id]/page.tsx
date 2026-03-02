@@ -1,24 +1,106 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowLeft, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { AgencyTransactionsTable, useAgency } from "@/features/agency";
+import {
+  AgencyTransactionDateFilter,
+  AgencyTransactionFilters,
+  AgencyTransactionSummaryCards,
+  AgencyTransactionTabs,
+  useAgency,
+  useAgencyTransactions,
+} from "@/features/agency";
 import { getErrorMessage } from "@/features/agency/utils/error-message";
+
+const toDateFilterRange = (dateFilter: AgencyTransactionDateFilter) => {
+  if (dateFilter === "all") {
+    return null;
+  }
+
+  const now = new Date();
+  const start = new Date(now);
+
+  if (dateFilter === "today") {
+    start.setHours(0, 0, 0, 0);
+    return start;
+  }
+
+  if (dateFilter === "week") {
+    start.setDate(now.getDate() - 7);
+    return start;
+  }
+
+  start.setDate(now.getDate() - 30);
+  return start;
+};
 
 export default function AgencyTransactionsDetailPage() {
   const params = useParams();
   const agencyId = params?.id as string;
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("all");
+  const [date, setDate] = useState<AgencyTransactionDateFilter>("all");
 
-  const { data, isLoading, error } = useAgency(agencyId);
+  const { data: agencyData, isLoading: agencyLoading, error: agencyError } = useAgency(agencyId);
+  const {
+    data: transactions,
+    isLoading: transactionsLoading,
+    error: transactionsError,
+  } = useAgencyTransactions(agencyId);
 
-  if (error) {
+  const filteredTransactions = useMemo(() => {
+    const rows = transactions ?? [];
+    const normalizedSearch = search.trim().toLowerCase();
+    const minDate = toDateFilterRange(date);
+
+    return rows.filter((row) => {
+      const statusText = (row.status || "").toLowerCase();
+      const matchesStatus =
+        status === "all" ||
+        (status === "approved" &&
+          ["approved", "successful", "success"].includes(statusText)) ||
+        (status === "rejected" &&
+          ["rejected", "declined", "failed"].includes(statusText)) ||
+        statusText === status;
+
+      if (!matchesStatus) return false;
+
+      if (minDate) {
+        const transactionDate = row.time_of_transaction
+          ? new Date(row.time_of_transaction)
+          : null;
+        if (!transactionDate || Number.isNaN(transactionDate.getTime()) || transactionDate < minDate) {
+          return false;
+        }
+      }
+
+      if (!normalizedSearch) return true;
+
+      return [
+        row._id,
+        row.paystack_reference,
+        row.transfer_reference,
+        row.description,
+      ]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(normalizedSearch));
+    });
+  }, [transactions, search, status, date]);
+
+  if (agencyError || transactionsError) {
     return (
       <div className="p-4 rounded-md bg-red-50 text-red-500 border border-red-200">
         <h3 className="font-bold">Error loading agency transactions</h3>
-        <p>{getErrorMessage(error, "An unexpected error occurred.")}</p>
+        <p>
+          {getErrorMessage(
+            agencyError || transactionsError,
+            "An unexpected error occurred."
+          )}
+        </p>
       </div>
     );
   }
@@ -33,14 +115,34 @@ export default function AgencyTransactionsDetailPage() {
           </Link>
         </Button>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">{data?.agency?.agency_name || "Agency"} Transactions</h1>
-          <p className="text-muted-foreground">Detailed transaction history for this agency.</p>
+          <h1 className="text-2xl font-bold tracking-tight">
+            {agencyData?.agency?.agency_name || "Agency"} Transactions
+          </h1>
+          <p className="text-muted-foreground">
+            Review commission and other wallet transactions for this agency.
+          </p>
         </div>
       </div>
 
-      <AgencyTransactionsTable transactions={data?.agency?.transactions} />
+      <AgencyTransactionSummaryCards transactions={filteredTransactions} />
 
-      {isLoading && (
+      <AgencyTransactionFilters
+        search={search}
+        status={status}
+        date={date}
+        onSearchChange={setSearch}
+        onStatusChange={setStatus}
+        onDateChange={setDate}
+        onReset={() => {
+          setSearch("");
+          setStatus("all");
+          setDate("all");
+        }}
+      />
+
+      <AgencyTransactionTabs transactions={filteredTransactions} />
+
+      {(agencyLoading || transactionsLoading) && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
           Loading transactions...

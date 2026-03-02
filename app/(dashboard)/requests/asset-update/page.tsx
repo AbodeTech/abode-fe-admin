@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useClientRequests, DEFAULT_REQUESTS_LIMIT } from "@/features/requests";
 import { RequestsTable } from "@/features/requests";
 import { RequestsFilters } from "@/features/requests";
+import { SubRequestStats } from "@/features/requests";
 import { Pagination } from "@/components/shared/Pagination";
 import { Loader2 } from "lucide-react";
 
@@ -20,6 +21,8 @@ function AssetUpdateRequestsContent() {
   const router = useRouter();
   const page = Number(searchParams.get("page")) || 1;
   const status = searchParams.get("status");
+  const updateType = searchParams.get("updatetype");
+  const assetType = searchParams.get("assettype");
   const search = searchParams.get("search") ?? "";
   const startDate = searchParams.get("start_date");
   const endDate = searchParams.get("end_date");
@@ -29,6 +32,8 @@ function AssetUpdateRequestsContent() {
     limit: DEFAULT_REQUESTS_LIMIT,
     requestType: "asset_update",
     status,
+    updateType,
+    assetType,
     paymentStatus: null,
     searchQuery: search || null,
     startDate,
@@ -56,6 +61,8 @@ function AssetUpdateRequestsContent() {
   );
 
   const handleStatusChange = (value: string | null) => updateParams({ status: value, page: 1 });
+  const handleUpdateTypeChange = (value: string | null) => updateParams({ updatetype: value, page: 1 });
+  const handleAssetTypeChange = (value: string | null) => updateParams({ assettype: value, page: 1 });
   const handleSearchChange = (value: string) => updateParams({ search: value || null, page: 1 });
 
   if (error) {
@@ -74,18 +81,32 @@ function AssetUpdateRequestsContent() {
         <p className="text-muted-foreground">Manage size/unit modification requests.</p>
       </div>
 
+      <SubRequestStats analytics={data?.analytics} />
+
       <RequestsFilters
         status={status}
         paymentStatus={null}
+        updateType={updateType}
+        assetType={assetType}
         searchQuery={search}
         onStatusChange={handleStatusChange}
         onPaymentStatusChange={() => { }}
+        onUpdateTypeChange={handleUpdateTypeChange}
+        onAssetTypeChange={handleAssetTypeChange}
         onSearchChange={handleSearchChange}
         showPaymentStatus={false}
         statusOptions={assetUpdateStatusOptions}
+        updateTypeOptions={[
+          { label: "Size Change", value: "size" },
+          { label: "Units Change", value: "units" },
+        ]}
+        assetTypeOptions={[
+          { label: "Flex", value: "flex" },
+          { label: "Full-Ownership", value: "full-ownership" },
+        ]}
       />
 
-      <RequestsTable requests={requests} isLoading={isLoading} />
+      <RequestsTable requests={requests} isLoading={isLoading} requestTypeFilter="asset_update" />
 
       <Pagination count={total} currentIdx={page} limit={limit} />
 

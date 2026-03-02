@@ -24,14 +24,15 @@ import { Button } from "@/components/ui/button";
 interface AssetTransactionActionProps {
   status: string;
   assetId: string;
-  onApprove: (id: string) => Promise<any>;
-  onDecline: (id: string, message: string) => Promise<any>;
+  onApprove: (id: string) => Promise<unknown>;
+  onDecline: (id: string, message: string) => Promise<unknown>;
 }
 
 export function AssetTransactionAction({ status, assetId, onApprove, onDecline }: AssetTransactionActionProps) {
   const [isApproveOpen, setIsApproveOpen] = useState(false);
   const [isDeclineOpen, setIsDeclineOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [approveLoading, setApproveLoading] = useState(false);
+  const [declineLoading, setDeclineLoading] = useState(false);
   const [declineReason, setDeclineReason] = useState("");
 
   const reasons = [
@@ -44,15 +45,16 @@ export function AssetTransactionAction({ status, assetId, onApprove, onDecline }
   ];
 
   const handleApprove = async () => {
-    setLoading(true);
+    setApproveLoading(true);
     try {
       await onApprove(assetId);
       toast.success("Transaction Approved");
       setIsApproveOpen(false);
-    } catch {
-      toast.error("An error occurred while approving");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "An error occurred while approving";
+      toast.error(message);
     } finally {
-      setLoading(false);
+      setApproveLoading(false);
     }
   };
 
@@ -61,20 +63,31 @@ export function AssetTransactionAction({ status, assetId, onApprove, onDecline }
       toast.error("Please provide a reason for transaction decline");
       return;
     }
-    setLoading(true);
+    setDeclineLoading(true);
     try {
       await onDecline(assetId, declineReason);
       toast.success("Transaction Declined");
       setIsDeclineOpen(false);
       setDeclineReason("");
-    } catch {
-      toast.error("An error occurred while declining");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "An error occurred while declining";
+      toast.error(message);
     } finally {
-      setLoading(false);
+      setDeclineLoading(false);
     }
   };
 
-  if (status?.toLowerCase() !== "pending") return null;
+  if (status?.toLowerCase() !== "pending") {
+    return (
+      <div
+        className={`w-6 h-2 rounded-2xl ${
+          status?.toLowerCase() === "approved" || status?.toLowerCase() === "completed"
+            ? "bg-[#067647]"
+            : "bg-[#B42318]"
+        }`}
+      />
+    );
+  }
 
   return (
     <div className="flex items-center gap-2">
@@ -96,12 +109,12 @@ export function AssetTransactionAction({ status, assetId, onApprove, onDecline }
             <Button
               variant="outline"
               onClick={() => setIsApproveOpen(false)}
-              disabled={loading}
+              disabled={approveLoading}
             >
               Cancel
             </Button>
-            <Button onClick={handleApprove} disabled={loading}>
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Continue"}
+            <Button onClick={handleApprove} disabled={approveLoading}>
+              {approveLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Continue"}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -140,16 +153,16 @@ export function AssetTransactionAction({ status, assetId, onApprove, onDecline }
             <Button
               variant="outline"
               onClick={() => setIsDeclineOpen(false)}
-              disabled={loading}
+              disabled={declineLoading}
             >
               Cancel
             </Button>
             <Button
               variant="destructive"
               onClick={handleDecline}
-              disabled={loading}
+              disabled={declineLoading}
             >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Continue"}
+              {declineLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Continue"}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

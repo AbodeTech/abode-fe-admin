@@ -27,8 +27,8 @@ export async function AssetInventory({ id, assetType }: Props) {
         <h2 className="text-3xl font-bold mb-8 text-center">Asset Inventory</h2>
 
         {/* Main Inventory Card */}
-        <Card className="mb-12 shadow-lg hover:shadow-xl transition-shadow duration-300">
-          <CardHeader className="bg-primary/5 dark:bg-primary/10">
+        <Card className="mb-12 shadow-lg hover:shadow-xl transition-shadow duration-300 pt-0! ">
+          <CardHeader className="bg-primary/5 dark:bg-primary/10 rounded-t-xl py-2.5">
             <CardTitle className="text-2xl flex items-center gap-2">
               <Warehouse className="h-6 w-6" />
               Overall Inventory

@@ -9,7 +9,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -61,7 +60,7 @@ export function AdminLogsTable({ logs }: { logs: FragmentType<typeof AdminLogsRo
       {/* Mobile cards */}
       <div className="lg:hidden space-y-3">
         {items.map((log) => (
-          <Card key={log._id} className="border border-gray-200">
+          <Card key={log._id} className="border-border bg-card">
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center justify-between text-base">
                 <span>{formatTimestamp(log.timestamp)}</span>
@@ -69,11 +68,17 @@ export function AdminLogsTable({ logs }: { logs: FragmentType<typeof AdminLogsRo
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
-              <div className="flex items-center gap-2">
-                <span className="text-muted-foreground">Admin</span>
-                <span className="font-medium break-all">{log.adminEmail}</span>
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground">Admin:</span>
+                  <span className="font-medium break-all text-foreground">{log.adminEmail}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground">Admin ID:</span>
+                  <span className="font-mono text-xs text-foreground">{log.adminId}</span>
+                </div>
               </div>
-              <p className="text-muted-foreground leading-relaxed">{log.description}</p>
+              <p className="text-muted-foreground leading-relaxed pt-2">{log.description}</p>
               <Button variant="outline" size="sm" onClick={() => setSelected(log)} className="w-full">
                 <Eye className="h-4 w-4 mr-2" /> View Details
               </Button>
@@ -83,29 +88,31 @@ export function AdminLogsTable({ logs }: { logs: FragmentType<typeof AdminLogsRo
       </div>
 
       {/* Desktop table */}
-      <Card className="border border-gray-200 hidden lg:block">
-        <ScrollArea className="w-full">
+      <Card className="border-border bg-card overflow-hidden hidden lg:block">
+        <div className="w-full overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="border-gray-200">
-                <TableHead>Timestamp</TableHead>
-                <TableHead>Admin Email</TableHead>
-                <TableHead>Action</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead className="w-24">Details</TableHead>
+              <TableRow className="border-border hover:bg-transparent">
+                <TableHead className="text-muted-foreground whitespace-nowrap px-6">Timestamp</TableHead>
+                <TableHead className="text-muted-foreground whitespace-nowrap px-6">Admin Email</TableHead>
+                <TableHead className="text-muted-foreground whitespace-nowrap px-6">Admin ID</TableHead>
+                <TableHead className="text-muted-foreground whitespace-nowrap px-6">Action</TableHead>
+                <TableHead className="text-muted-foreground whitespace-nowrap px-6">Description</TableHead>
+                <TableHead className="text-muted-foreground whitespace-nowrap px-6 w-24">Details</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {items.length ? (
                 items.map((log) => (
-                  <TableRow key={log._id}>
-                    <TableCell>{formatTimestamp(log.timestamp)}</TableCell>
-                    <TableCell>{log.adminEmail}</TableCell>
-                    <TableCell>
+                  <TableRow key={log._id} className="border-border hover:bg-muted/50">
+                    <TableCell className="px-6 py-4 font-medium text-foreground whitespace-nowrap">{formatTimestamp(log.timestamp)}</TableCell>
+                    <TableCell className="px-6 py-4 text-foreground whitespace-nowrap">{log.adminEmail}</TableCell>
+                    <TableCell className="px-6 py-4 text-foreground font-mono text-xs whitespace-nowrap">{log.adminId}</TableCell>
+                    <TableCell className="px-6 py-4 whitespace-nowrap">
                       <Badge className={actionBadge(log.action || "")}>{log.action}</Badge>
                     </TableCell>
-                    <TableCell className="max-w-xl truncate">{log.description}</TableCell>
-                    <TableCell>
+                    <TableCell className="px-6 py-4 max-w-xl truncate text-muted-foreground min-w-[300px]">{log.description}</TableCell>
+                    <TableCell className="px-6 py-4 text-center whitespace-nowrap">
                       <Button variant="outline" size="sm" onClick={() => setSelected(log)}>
                         <Eye className="h-4 w-4 mr-1" /> View
                       </Button>
@@ -114,14 +121,14 @@ export function AdminLogsTable({ logs }: { logs: FragmentType<typeof AdminLogsRo
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground hover:bg-transparent">
                     No admin logs found.
                   </TableCell>
                 </TableRow>
               )}
             </TableBody>
           </Table>
-        </ScrollArea>
+        </div>
       </Card>
 
       <AdminLogMetadataModal log={selected} open={!!selected} onOpenChange={(o) => (!o ? setSelected(null) : undefined)} />

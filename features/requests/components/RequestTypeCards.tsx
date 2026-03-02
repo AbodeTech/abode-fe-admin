@@ -1,58 +1,91 @@
 "use client";
 
 import React from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { MapPin, FileText, Settings, MessageSquare } from "lucide-react";
-import { graphql } from "@/lib/gql";
-import { FragmentType, useFragment } from "@/lib/gql";
+import type { RequestStatistics } from "@/lib/gql/graphql";
 
-export const RequestTypeCardFragment = graphql(`
-  fragment RequestTypeCards_stats on RequestStatistics {
-    locationChangeRequests
-    documentChangeRequests
-    assetUpdateRequests
-    customRequests
-  }
-`);
-
-const typeConfig = [
-  { key: "location_change", title: "Location Change", icon: MapPin, route: "/requests/location-change" },
-  { key: "document_change", title: "Document Change", icon: FileText, route: "/requests/document-change" },
-  { key: "asset_update", title: "Asset Update", icon: Settings, route: "/requests/asset-update" },
-  { key: "custom_request", title: "Custom Request", icon: MessageSquare, route: "/requests/custom" },
-] as const;
+const typeConfig: {
+  statsKey: keyof RequestStatistics;
+  title: string;
+  description: string;
+  icon: React.ElementType;
+  route: string;
+}[] = [
+  {
+    statsKey: "locationChangeRequests",
+    title: "Location Change",
+    description: "Manage property location change requests",
+    icon: MapPin,
+    route: "/requests/location-change",
+  },
+  {
+    statsKey: "documentChangeRequests",
+    title: "Document Change",
+    description: "Manage name and address document updates",
+    icon: FileText,
+    route: "/requests/document-change",
+  },
+  {
+    statsKey: "assetUpdateRequests",
+    title: "Asset Update",
+    description: "Manage size and unit modification requests",
+    icon: Settings,
+    route: "/requests/asset-update",
+  },
+  {
+    statsKey: "customRequests",
+    title: "Custom Request",
+    description: "Manage custom client requests",
+    icon: MessageSquare,
+    route: "/requests/custom",
+  },
+];
 
 interface RequestTypeCardsProps {
-  stats?: FragmentType<typeof RequestTypeCardFragment> | null;
+  stats?: RequestStatistics | null;
 }
 
 export function RequestTypeCards({ stats }: RequestTypeCardsProps) {
-  const data = useFragment(RequestTypeCardFragment, stats);
-
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       {typeConfig.map((item) => {
-        const Icon = item.icon as React.ElementType;
-        // Map item.key to GraphQL field name (e.g. location_change -> locationChangeRequests)
-        const gqlKey = `${item.key.replace('_', '')}Requests`;
-        const count = (data as any)?.[gqlKey] ?? 0;
+        const Icon = item.icon;
+        const count = (stats?.[item.statsKey] as number | null | undefined) ?? 0;
 
         return (
-          <Card key={item.key} className="bg-black text-white">
-            <CardContent className="p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="text-sm uppercase tracking-wide text-white/70">{item.title}</div>
-                <Icon className="h-5 w-5 text-white" />
+          <Link
+            key={item.statsKey}
+            href={item.route}
+            className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-all group block"
+          >
+            <div className="bg-black p-6">
+              <div className="flex items-center justify-between text-white">
+                <div>
+                  <h3 className="text-2xl font-bold mb-1">{count.toLocaleString()}</h3>
+                  <p className="text-white/90 text-sm">Pending Requests</p>
+                </div>
+                <div className="p-4 bg-white/20 rounded-xl group-hover:bg-white/30 transition-colors">
+                  <Icon className="w-8 h-8" />
+                </div>
               </div>
-              <div className="text-2xl font-bold">{count}</div>
-              <p className="text-sm text-white/80">Manage {item.title.toLowerCase()} requests</p>
-              <Button variant="secondary" size="sm" asChild>
-                <Link href={item.route}>Open</Link>
-              </Button>
-            </CardContent>
-          </Card>
+            </div>
+            <div className="p-6">
+              <h4 className="text-lg font-semibold text-gray-900 mb-2">{item.title}</h4>
+              <p className="text-gray-600 text-sm mb-4">{item.description}</p>
+              <div className="flex items-center text-gray-900 font-medium text-sm group-hover:text-gray-700">
+                View All Requests
+                <svg
+                  className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
+            </div>
+          </Link>
         );
       })}
     </div>

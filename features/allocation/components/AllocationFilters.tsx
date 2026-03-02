@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { AllocationBoughtDateFilter } from "./AllocationBoughtDateFilter";
 
 export const AllocationAssetOptionFragment = graphql(`
   fragment AllocationAssetOptionFragment on Asset {
@@ -57,7 +58,7 @@ export function AllocationFilters({
   );
 
   return (
-    <section className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4 mt-2">
+    <section className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5 mt-2">
       <div className="space-y-2">
         <Label className="text-sm text-muted-foreground">Filter by asset</Label>
         <Select
@@ -106,6 +107,8 @@ export function AllocationFilters({
           onChange={(event) => onSearchChange(event.target.value)}
         />
       </div>
+
+      <AllocationBoughtDateFilter />
     </section>
   );
 }

@@ -1,7 +1,6 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
 import {
   ShoppingCart,
   CheckCircle,
@@ -11,12 +10,13 @@ import {
   Repeat,
   Home,
   XCircle,
+  LucideIcon,
 } from "lucide-react";
 import { DashboardCard } from "@/components/shared/DashboardCard";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { getAssetTransactionStats } from "@/lib/api/admin/assets.client";
+import { useAssetTransactionStats } from "../../hooks/use-transactions";
 
-const iconMap: Record<string, any> = {
+const iconMap: Record<string, LucideIcon> = {
   totalTransactions: ShoppingCart,
   approvedTransactions: CheckCircle,
   totalApprovedAmount: CheckCircle,
@@ -68,12 +68,21 @@ function DashboardCardSkeleton() {
 export function AssetTransactionDataPoints() {
   const searchParams = useSearchParams();
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["assetTransactionStats", searchParams.toString()],
-    queryFn: () => getAssetTransactionStats(searchParams),
+  const salesType = searchParams.get("salestype");
+  const status = searchParams.get("transactionstatus");
+  const transactionType = searchParams.get("transactiontype");
+  const startDate = searchParams.get("start_date");
+  const endDate = searchParams.get("end_date");
+
+  const { data, isLoading, error } = useAssetTransactionStats({
+    salesType: salesType === "all" ? null : salesType,
+    status: status === "all" ? null : status,
+    transactionType: transactionType === "all" ? null : transactionType,
+    startDate,
+    endDate,
   });
 
-  const dashboardStats = (data?.statistics || {}) as Record<string, number>;
+  const dashboardStats = (data || {}) as Record<string, number>;
 
   const dashboardData = Object.keys(dashboardStats).map((key) => ({
     title: key.replace(/([A-Z])/g, " $1").replace(/_/g, " ").trim(),

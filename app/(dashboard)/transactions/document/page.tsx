@@ -1,8 +1,8 @@
 "use client";
 
 import { useSearchParams, useRouter } from "next/navigation";
-import { Suspense, useMemo } from "react";
-import { useDocumentTransactions, DocumentTransactionsTable } from "@/features/transactions";
+import { Suspense } from "react";
+import { useDocumentTransactions, DocumentTransactionsTable, DocumentExport } from "@/features/transactions";
 import { TransactionDataPoints } from "@/components/shared/TransactionDataPoints";
 import { Pagination } from "@/components/shared/Pagination";
 import { FilterSelect } from "@/components/shared/FilterSelect";
@@ -42,9 +42,14 @@ function DocumentTransactionsContent() {
     return () => clearTimeout(timer);
   }, [searchTerm, router, searchParams]);
 
-  const { data, isLoading, error } = useDocumentTransactions({ page, limit, status, startDate, endDate });
-
-  const transactions = data?.data;
+  const { data, isLoading, error } = useDocumentTransactions({
+    page,
+    limit,
+    status,
+    startDate,
+    endDate,
+    search: searchTerm || null,
+  });
   const totalCount = data?.count || 0;
 
   return (
@@ -76,9 +81,12 @@ function DocumentTransactionsContent() {
       </div>
 
       {/* Title */}
-      <h3 className="font-sans font-semibold text-[#333333] text-xl uppercase">
-        Document / Development Transactions
-      </h3>
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="font-sans font-semibold text-[#333333] text-xl uppercase">
+          Document / Development Transactions
+        </h3>
+        <DocumentExport />
+      </div>
 
       {error && (
         <div className="p-3 rounded-md border border-red-200 bg-red-50 text-sm text-red-600">
@@ -91,7 +99,7 @@ function DocumentTransactionsContent() {
 
       {/* Transaction Table */}
       <div className="bg-white border border-[#E5EAEF] rounded-md overflow-hidden pb-10">
-        <DocumentTransactionsTable data={data?.data} isLoading={isLoading} filterQuery={searchTerm} />
+        <DocumentTransactionsTable data={data?.data} isLoading={isLoading} />
 
         {!isLoading && totalCount > 0 && (
           <div className="mt-6 px-4">

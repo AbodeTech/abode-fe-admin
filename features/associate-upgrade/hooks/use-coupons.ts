@@ -2,13 +2,22 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { execute } from '@/lib/graphql-client';
 import { graphql } from '@/lib/gql';
 
-import { CouponRowFragment } from '../components/coupons/CouponsTable';
-
-const GET_ALL_COUPONS = graphql(`
-  query GetAllCoupons {
-    getAllCoupons {
+const GET_ACTIVE_COUPONS = graphql(`
+  query GetActiveCoupons {
+    getActiveCoupons {
       data {
-        ...CouponRowFragment
+        _id
+        couponCode
+        discountPercentage
+        startDate
+        endDate
+        expiryDate
+        expiryType
+        usageLimit
+        usageLimitType
+        status
+        activeImmediately
+        createdAt
       }
       count
     }
@@ -18,7 +27,11 @@ const GET_ALL_COUPONS = graphql(`
 const CREATE_COUPON = graphql(`
   mutation CreateCoupon($input: CreateCouponInput!) {
     createCoupon(createCouponInput: $input) {
-      _id
+      success
+      message
+      data {
+        _id
+      }
     }
   }
 `);
@@ -47,23 +60,45 @@ interface CreateCouponPayload {
   expiryType: string;
   expiryDate?: Date;
   startDate?: Date;
+  endDate?: Date;
   usageLimitType: string;
   usageLimit?: number;
   activeImmediately: boolean;
 }
 
+interface UpdateCouponPayload {
+  couponCode: string;
+  discountPercentage?: number;
+  expiryType?: string;
+  expiryDate?: Date;
+  startDate?: Date;
+  endDate?: Date;
+  usageLimitType?: string;
+  usageLimit?: number;
+}
+
 export const useCoupons = () => {
   return useQuery({
     queryKey: ['coupons'],
-    queryFn: () => execute(GET_ALL_COUPONS as any, {}),
-    select: (data: any) => data.getAllCoupons,
+    queryFn: () => execute(GET_ACTIVE_COUPONS),
+    select: (data) => data.getActiveCoupons,
   });
 };
 
 export const useCreateCoupon = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (input: CreateCouponPayload) => execute(CREATE_COUPON as any, { input }),
+    mutationFn: (input: CreateCouponPayload) => execute(CREATE_COUPON, { input }),
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: ['coupons'] });
+    },
+  });
+};
+
+export const useUpdateCoupon = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: UpdateCouponPayload) => execute(CREATE_OR_UPDATE_COUPON, { input }),
     onSuccess: () => {
       client.invalidateQueries({ queryKey: ['coupons'] });
     },
@@ -74,7 +109,7 @@ export const useUpdateCouponStatus = () => {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (input: { couponCode: string; status: string }) =>
-      execute(UPDATE_COUPON_STATUS as any, { input }),
+      execute(UPDATE_COUPON_STATUS, { input }),
     onSuccess: () => {
       client.invalidateQueries({ queryKey: ['coupons'] });
     },
@@ -84,9 +119,21 @@ export const useUpdateCouponStatus = () => {
 export const useDeleteCoupon = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (couponCode: string) => execute(DELETE_COUPON as any, { couponCode }),
+    mutationFn: (couponCode: string) => execute(DELETE_COUPON, { couponCode }),
     onSuccess: () => {
       client.invalidateQueries({ queryKey: ['coupons'] });
     },
   });
 };
+
+const CREATE_OR_UPDATE_COUPON = graphql(`
+  mutation UpdateCoupon($input: UpdateCouponInput!) {
+    updateCoupon(updateCouponInput: $input) {
+      message
+      success
+      data {
+        _id
+      }
+    }
+  }
+`);

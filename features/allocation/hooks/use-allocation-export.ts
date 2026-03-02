@@ -2,6 +2,7 @@ import { useMutation } from '@tanstack/react-query';
 import { execute } from '@/lib/graphql-client';
 import { graphql } from '@/lib/gql';
 import { allocationKeys } from './query-keys';
+import { FiltersInput } from '@/lib/gql/graphql';
 
 const EXPORT_ALLOCATION_QUERY = graphql(`
   query ExportEligibleClientsForLand($limit: Int!, $filters: FiltersInput) {
@@ -20,20 +21,28 @@ interface AllocationExportParams {
   assetType?: string | null;
   percentage?: number | null;
   search?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
 }
 
 export const useAllocationExport = () => {
   return useMutation({
     mutationKey: allocationKeys.export(),
-    mutationFn: (params: AllocationExportParams) =>
-      execute(EXPORT_ALLOCATION_QUERY, {
+    mutationFn: (params: AllocationExportParams) => {
+      const gqlFilters = {
+        assetName: params.assetName || undefined,
+        assetType: params.assetType || undefined,
+        percentage: params.percentage ?? undefined,
+        search: params.search || undefined,
+        // API supports date range for this endpoint; generated FiltersInput is currently stale.
+        startDate: params.startDate || undefined,
+        endDate: params.endDate || undefined,
+      };
+
+      return execute(EXPORT_ALLOCATION_QUERY, {
         limit: params.limit ?? 1_000_000,
-        filters: {
-          assetName: params.assetName || undefined,
-          assetType: params.assetType || undefined,
-          percentage: params.percentage ?? undefined,
-          search: params.search || undefined,
-        },
-      }),
+        filters: gqlFilters as FiltersInput & { startDate?: string; endDate?: string },
+      });
+    },
   });
 };

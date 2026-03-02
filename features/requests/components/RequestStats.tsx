@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   ClipboardList,
   Clock,
@@ -14,75 +13,57 @@ import {
   TrendingUp,
   DollarSign,
 } from "lucide-react";
-import { graphql } from "@/lib/gql";
-import { FragmentType, useFragment } from "@/lib/gql";
-
-export const RequestStatsFragment = graphql(`
-  fragment RequestStats_stats on RequestStatistics {
-    totalRequests
-    pendingRequests
-    approvedRequests
-    declinedRequests
-    locationChangeRequests
-    documentChangeRequests
-    assetUpdateRequests
-    customRequests
-    totalFeesCollected
-    paidRequests
-    unpaidRequests
-  }
-`);
+import type { RequestStatistics } from "@/lib/gql/graphql";
 
 const cards: {
-  key: string;
+  key: keyof RequestStatistics;
   label: string;
   icon: React.ElementType;
-  tone: string;
+  iconColor: string;
   currency?: boolean;
 }[] = [
-    { key: "totalRequests", label: "Total Requests", icon: ClipboardList, tone: "text-gray-900" },
-    { key: "pendingRequests", label: "Pending", icon: Clock, tone: "text-yellow-600" },
-    { key: "approvedRequests", label: "Approved", icon: CheckCircle, tone: "text-green-600" },
-    { key: "declinedRequests", label: "Declined", icon: XCircle, tone: "text-red-600" },
-    { key: "locationChangeRequests", label: "Location Change", icon: MapPin, tone: "text-cyan-600" },
-    { key: "documentChangeRequests", label: "Document Change", icon: FileText, tone: "text-blue-600" },
-    { key: "assetUpdateRequests", label: "Asset Update", icon: Settings, tone: "text-purple-600" },
-    { key: "customRequests", label: "Custom Request", icon: MessageSquare, tone: "text-orange-600" },
-    { key: "totalFeesCollected", label: "Fees Collected", icon: TrendingUp, tone: "text-green-700", currency: true },
-    { key: "paidRequests", label: "Paid Fees", icon: CheckCircle, tone: "text-green-600" },
-    { key: "unpaidRequests", label: "Unpaid Fees", icon: DollarSign, tone: "text-red-600" },
-  ];
+  { key: "totalRequests", label: "Total Requests", icon: ClipboardList, iconColor: "text-gray-900" },
+  { key: "pendingRequests", label: "Pending", icon: Clock, iconColor: "text-yellow-600" },
+  { key: "approvedRequests", label: "Approved", icon: CheckCircle, iconColor: "text-green-600" },
+  { key: "declinedRequests", label: "Declined", icon: XCircle, iconColor: "text-red-600" },
+  { key: "locationChangeRequests", label: "Location Change", icon: MapPin, iconColor: "text-cyan-600" },
+  { key: "documentChangeRequests", label: "Document Change", icon: FileText, iconColor: "text-blue-600" },
+  { key: "assetUpdateRequests", label: "Asset Update", icon: Settings, iconColor: "text-purple-600" },
+  { key: "customRequests", label: "Custom Request", icon: MessageSquare, iconColor: "text-orange-600" },
+  { key: "totalFeesCollected", label: "Fees Collected", icon: TrendingUp, iconColor: "text-green-600", currency: true },
+  { key: "paidRequests", label: "Paid Fees", icon: CheckCircle, iconColor: "text-green-600" },
+  { key: "unpaidRequests", label: "Unpaid Fees", icon: DollarSign, iconColor: "text-red-600" },
+];
 
 interface RequestStatsProps {
-  stats?: FragmentType<typeof RequestStatsFragment> | null;
+  stats?: RequestStatistics | null;
 }
 
 export function RequestStats({ stats }: RequestStatsProps) {
-  const data = useFragment(RequestStatsFragment, stats);
-
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      {cards.map((card) => {
-        const value = (data as any)?.[card.key] ?? 0;
-
-        const display =
-          card.currency && typeof value === "number"
-            ? `₦${Math.round(value).toLocaleString()}`
-            : value;
+      {cards.map((card, index) => {
         const Icon = card.icon;
-        const bg = card.key === "pendingRequests" || card.key === "documentChangeRequests" || card.key === "customRequests" ? "bg-gray-50" : "bg-white";
+        const raw = stats?.[card.key] ?? 0;
+        const display =
+          card.currency && typeof raw === "number"
+            ? `₦${Math.round(raw as number).toLocaleString()}`
+            : (raw as number).toLocaleString();
+        const bg = index % 2 === 0 ? "bg-white" : "bg-gray-50";
+
         return (
-          <Card key={card.key} className="border border-gray-200">
-            <CardContent className="p-4 flex items-center justify-between">
-              <div>
-                <div className="text-sm text-gray-600">{card.label}</div>
-                <div className="text-xl font-bold text-gray-900 mt-1">{display}</div>
+          <div
+            key={card.key}
+            className={`${bg} rounded-xl p-6 border border-gray-200 hover:shadow-md transition-shadow`}
+          >
+            <div className="flex items-start justify-between mb-4">
+              <div className="p-3 rounded-lg bg-gray-100">
+                <Icon className={`w-6 h-6 ${card.iconColor}`} />
               </div>
-              <div className={`p-2 rounded-full ${bg}`}>
-                <Icon className={`h-5 w-5 ${card.tone}`} />
-              </div>
-            </CardContent>
-          </Card>
+            </div>
+            <p className="text-sm text-gray-600 mb-1">{card.label}</p>
+            <p className="text-2xl font-bold text-gray-900">{display}</p>
+          </div>
         );
       })}
     </div>

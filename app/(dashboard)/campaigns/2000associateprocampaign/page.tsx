@@ -1,15 +1,41 @@
 "use client";
 
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
-import { useAssociateProCampaign } from "@/features/campaigns/hooks/use-campaigns";
-import { AssociateProMetricsSection, AssociateProUpgradesTable, AssociateProTopReferrersTable } from "@/features/campaigns/components/AssociateProComponents";
+import { useAssociateProCampaign, useAssociateRecruitmentAnalytics } from "@/features/campaigns/hooks/use-campaigns";
+import {
+  AssociateProConversionFunnel,
+  AssociateProExportPanel,
+  AssociateProFinancialOverview,
+  AssociateProMetricsSection,
+  AssociateProRecruitmentTable,
+  AssociateProSourceAnalytics,
+  AssociateProTopPerformers,
+  AssociateProUpgradesTable,
+} from "@/features/campaigns/components/AssociateProComponents";
+
+const RECRUITMENT_LIMIT = 10;
+
+type RecruitmentStatus = "total" | "associate-pro" | "associate";
 
 export default function Campaign2000AssociateProPage() {
-  const { data: qData, isLoading, error } = useAssociateProCampaign();
-  const data = qData as any;
+  const [recruitmentPage, setRecruitmentPage] = useState(1);
+  const [recruitmentSearch, setRecruitmentSearch] = useState("");
+  const [recruitmentStatus, setRecruitmentStatus] = useState<RecruitmentStatus>("total");
+
+  const { data, isLoading, error } = useAssociateProCampaign();
+  const { data: recruitmentData, isLoading: recruitmentLoading } = useAssociateRecruitmentAnalytics({
+    page: recruitmentPage,
+    limit: RECRUITMENT_LIMIT,
+    hasReferral: true,
+    searchQuery: recruitmentSearch || undefined,
+    referralStatus: recruitmentStatus === "total" ? undefined : recruitmentStatus,
+  });
   const dashboard = data?.getCampaignDashboard;
+  const upgrades = data?.getAssociateProUpgrades?.upgrades ?? [];
   const referral = data?.getReferralAnalytics;
+  const tickets = referral?.ticketHolders.tickets ?? [];
 
   if (error) {
     return (
@@ -39,16 +65,47 @@ export default function Campaign2000AssociateProPage() {
         </div>
       )}
 
-      <AssociateProMetricsSection
-        progressData={dashboard?.associateProProgress}
-        revenueData={dashboard?.revenueMetrics}
-        ticketData={dashboard?.ticketMetrics}
-        conversionData={dashboard?.conversionMetrics}
+      {dashboard && (
+        <>
+          <AssociateProMetricsSection dashboard={dashboard} />
+          <div className="grid gap-6 lg:grid-cols-2">
+            <AssociateProConversionFunnel dashboard={dashboard} />
+            <AssociateProFinancialOverview dashboard={dashboard} />
+          </div>
+        </>
+      )}
+
+      <AssociateProUpgradesTable data={upgrades} />
+
+      {referral && (
+        <section>
+          <h2 className="mb-4 text-lg font-semibold text-foreground">Top Performers</h2>
+          <AssociateProTopPerformers data={referral} />
+        </section>
+      )}
+
+      {referral && <AssociateProSourceAnalytics data={referral} />}
+
+      <AssociateProRecruitmentTable
+        data={recruitmentData?.data ?? []}
+        count={recruitmentData?.count}
+        page={recruitmentPage}
+        limit={RECRUITMENT_LIMIT}
+        onPageChange={setRecruitmentPage}
+        searchQuery={recruitmentSearch}
+        onSearchChange={(q) => {
+          setRecruitmentSearch(q);
+          setRecruitmentPage(1);
+        }}
+        status={recruitmentStatus}
+        onStatusChange={(s) => {
+          setRecruitmentStatus(s);
+          setRecruitmentPage(1);
+        }}
+        isLoading={recruitmentLoading}
       />
 
-      <AssociateProUpgradesTable data={data?.getAssociateProUpgrades?.upgrades} />
-
-      <AssociateProTopReferrersTable data={referral?.topReferrers?.topReferrers} />
+      <AssociateProExportPanel upgrades={upgrades} tickets={tickets} />
     </div>
   );
 }

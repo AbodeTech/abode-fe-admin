@@ -3,7 +3,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
 import { useRaffleCampaign } from "@/features/campaigns/hooks/use-campaigns";
-import { RaffleMetricsSection, RaffleAssetTable, RaffleUsersTable } from "@/features/campaigns/components/RaffleComponents";
+import { RaffleMetricsSection, RaffleAssetTable, RaffleUsersTable, RaffleTicketsSection, RaffleTransactionTable } from "@/features/campaigns/components/RaffleComponents";
 
 export default function Campaign1000PlotsPage() {
   const { data, isLoading, error } = useRaffleCampaign();
@@ -44,6 +44,10 @@ export default function Campaign1000PlotsPage() {
       <RaffleAssetTable data={data?.assetBreakdown} />
 
       <RaffleUsersTable data={data?.usersWithTickets} />
+
+      <RaffleTicketsSection />
+
+      <RaffleTransactionTable />
     </div>
   );
 }

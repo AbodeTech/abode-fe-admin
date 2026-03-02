@@ -12,34 +12,40 @@ interface GenericTableProps {
 
 export function GenericTable({ title, columns, rows }: GenericTableProps) {
   return (
-    <Card className="border border-gray-200 overflow-x-auto">
-      <div className="px-4 py-3 border-b text-sm font-semibold text-gray-900">{title}</div>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            {columns.map((col) => (
-              <TableHead key={col}>{col}</TableHead>
-            ))}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rows.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={columns.length} className="text-center text-sm text-muted-foreground">
-                No records found.
-              </TableCell>
+    <Card className="border-border bg-card overflow-hidden">
+      <div className="border-b border-border px-6 py-4">
+        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+      </div>
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow className="border-border hover:bg-transparent">
+              {columns.map((col) => (
+                <TableHead key={col} className="text-muted-foreground whitespace-nowrap px-6">{col}</TableHead>
+              ))}
             </TableRow>
-          ) : (
-            rows.map((row, idx) => (
-              <TableRow key={idx}>
-                {row.map((cell, i) => (
-                  <TableCell key={`${idx}-${i}`}>{cell}</TableCell>
-                ))}
+          </TableHeader>
+          <TableBody>
+            {rows.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={columns.length} className="py-8 text-center text-sm text-muted-foreground hover:bg-transparent">
+                  No records found.
+                </TableCell>
               </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
+            ) : (
+              rows.map((row, idx) => (
+                <TableRow key={idx} className="border-border hover:bg-muted/50">
+                  {row.map((cell, i) => (
+                    <TableCell key={`${idx}-${i}`} className="px-6 py-4 font-medium text-foreground whitespace-nowrap">
+                      {cell}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
     </Card>
   );
 }

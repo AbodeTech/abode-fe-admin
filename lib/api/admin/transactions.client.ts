@@ -142,6 +142,8 @@ const GET_TRANSACTION_DATA_POINTS_QUERY = `
       rejected_transaction
       commission_transaction
       users_wallet_balance
+      auto_approved_transaction
+      auto_failed_transaction
     }
   }
 `;
@@ -307,5 +309,4 @@ export const sendReceiptEmail = async (transactionId: string) => {
 
   return responseData?.processReceipt
 }
-
 

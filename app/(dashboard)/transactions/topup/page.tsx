@@ -7,7 +7,7 @@ import { TransactionDataPoints } from "@/components/shared/TransactionDataPoints
 import { Pagination } from "@/components/shared/Pagination";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 
 function TopupTransactionsContent() {
@@ -42,16 +42,15 @@ function TopupTransactionsContent() {
   const { mutateAsync: approveTransaction } = useApproveTopupTransaction();
   const { mutateAsync: declineTransaction } = useDeclineTopupTransaction();
 
-  const transactions = data?.data;
-
   const totalCount = data?.count || 0;
 
   const handleApprove = async (id: string) => {
     try {
       await approveTransaction(id);
       toast.success("Top-up approved");
-    } catch (err: any) {
-      toast.error(err?.message ?? "Failed to approve top-up");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to approve top-up";
+      toast.error(message);
     }
   };
 
@@ -59,8 +58,9 @@ function TopupTransactionsContent() {
     try {
       await declineTransaction({ transactionId: id, message });
       toast.success("Top-up declined");
-    } catch (err: any) {
-      toast.error(err?.message ?? "Failed to decline top-up");
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to decline top-up";
+      toast.error(errorMessage);
     }
   };
 

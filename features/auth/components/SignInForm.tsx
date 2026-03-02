@@ -9,9 +9,9 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
-import { loginAction } from "@/actions/auth";
 import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import Cookies from "js-cookie";
 import {
   Form,
   FormControl,
@@ -21,6 +21,60 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+
+type SigninAdminResponse = {
+  authToken: string;
+  role?: string;
+  permissions?: string[];
+};
+
+async function signinAdminClient(email: string, password: string): Promise<SigninAdminResponse> {
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+  if (!API_BASE_URL) {
+    throw new Error("NEXT_PUBLIC_API_BASE_URL is not defined");
+  }
+
+  const query = `
+    mutation SigninAdmin($signinAdminInput: adminSigninInput!) {
+      signinAdmin(signinAdminInput: $signinAdminInput) {
+        authToken
+        role
+        permissions
+      }
+    }
+  `;
+
+  const response = await fetch(API_BASE_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({
+      query,
+      variables: {
+        signinAdminInput: { email, password },
+      },
+      operationName: "SigninAdmin",
+    }),
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error("Network error during login");
+  }
+
+  const { data, errors } = await response.json();
+  if (errors?.length) {
+    throw new Error(errors[0]?.message || "Invalid credentials");
+  }
+
+  if (!data?.signinAdmin?.authToken) {
+    throw new Error("Login failed");
+  }
+
+  return data.signinAdmin;
+}
 
 export function SignInForm() {
   const router = useRouter();
@@ -41,34 +95,53 @@ export function SignInForm() {
     setIsLoading(true);
     setError(null);
     try {
-      const formData = new FormData();
-      formData.append("email", data.email);
-      formData.append("password", data.password);
+      const result = await signinAdminClient(data.email, data.password);
+      const role = result.role || "admin";
+      const permissions = result.permissions || [];
 
-      const result = await loginAction(null, formData);
+      Cookies.set("adminAccessToken", result.authToken, {
+        expires: 1,
+        sameSite: "lax",
+        secure: window.location.protocol === "https:",
+      });
+      Cookies.set("accessToken", result.authToken, {
+        expires: 1,
+        sameSite: "lax",
+        secure: window.location.protocol === "https:",
+      });
+      Cookies.set(
+        "user",
+        JSON.stringify({
+          email: data.email,
+          role,
+          permissions,
+        }),
+        {
+          expires: 1,
+          sameSite: "lax",
+          secure: window.location.protocol === "https:",
+        }
+      );
+      Cookies.set("adminRole", role, {
+        expires: 1,
+        sameSite: "lax",
+        secure: window.location.protocol === "https:",
+      });
 
+      login({
+        id: "admin",
+        email: data.email,
+        firstName: "Admin",
+        lastName: "User",
+        role,
+        permissions,
+        authToken: result.authToken,
+      });
 
-
-      if (result.error) {
-        setError(result.error);
-        return;
-      }
-
-      if (result.success && result.user) {
-        login({
-          id: "admin",
-          email: result.user.email,
-          firstName: "Admin",
-          lastName: "User",
-          role: result.user.role,
-          permissions: result.user.permissions
-        });
-
-        router.push("/");
-      }
+      router.push("/");
     } catch (err: any) {
       console.error(err);
-      setError("An unexpected error occurred.");
+      setError(err?.message || "An unexpected error occurred.");
     } finally {
       setIsLoading(false);
     }

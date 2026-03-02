@@ -1,8 +1,6 @@
 "use client";
 
 import React from "react";
-import { graphql } from "@/lib/gql";
-import { FragmentType, useFragment as getFragmentData } from "@/lib/gql";
 import { Card } from "@/components/ui/card";
 import {
   Table,
@@ -15,31 +13,27 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreVertical } from "lucide-react";
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
+import { MoreVertical, Ticket } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
-
-export const CouponRowFragment = graphql(`
-  fragment CouponRowFragment on Coupon {
-    _id
-    couponCode
-    discountPercentage
-    startDate
-    endDate
-    expiryDate
-    expiryType
-    usageLimit
-    usageLimitType
-    status
-    activeImmediately
-    createdAt
-  }
-`);
+import { EditCouponDialog } from "./EditCouponDialog";
+import type { Coupon } from "@/lib/gql/graphql";
 
 interface CouponsTableProps {
-  data?: (FragmentType<typeof CouponRowFragment> | null)[] | null;
+  data?: (Coupon | null)[] | null;
   onStatusChange: (code: string, status: string) => void;
   onDelete: (code: string) => void;
+  onUpdate: (input: {
+    couponCode: string;
+    discountPercentage: number;
+    usageLimitType: string;
+    usageLimit?: number;
+    expiryType: string;
+    startDate?: Date;
+    endDate?: Date;
+    expiryDate?: Date;
+  }) => Promise<void>;
   onViewUsage?: (code: string) => void;
   isLoading?: boolean;
 }
@@ -56,7 +50,11 @@ const formatDate = (value?: string | null) => {
   return Number.isNaN(parsed.getTime()) ? value : format(parsed, "MMM d, yyyy");
 };
 
-export function CouponsTable({ data, onStatusChange, onDelete, onViewUsage, isLoading }: CouponsTableProps) {
+export function CouponsTable({ data, onStatusChange, onDelete, onUpdate, onViewUsage, isLoading }: CouponsTableProps) {
+  const [editingCoupon, setEditingCoupon] = React.useState<Coupon | null>(null);
+  const [isEditOpen, setIsEditOpen] = React.useState(false);
+  const [deletingCode, setDeletingCode] = React.useState<string | null>(null);
+
   if (isLoading) {
     return (
       <Card className="border border-gray-200">
@@ -77,44 +75,46 @@ export function CouponsTable({ data, onStatusChange, onDelete, onViewUsage, isLo
   return (
     <Card className="border border-gray-200 overflow-x-auto">
       <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Code</TableHead>
-            <TableHead>Discount</TableHead>
-            <TableHead>Usage</TableHead>
-            <TableHead>Start</TableHead>
-            <TableHead>End</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
+        <TableHeader className="bg-gray-50 border-b border-gray-200">
+          <TableRow className="text-sm font-bold text-black">
+            <TableHead className="py-4 font-semibold">
+              <div className="flex items-center gap-2">
+                <Ticket className="h-4 w-4" />
+                Code
+              </div>
+            </TableHead>
+            <TableHead className="py-4 font-semibold">Discount</TableHead>
+            <TableHead className="py-4 font-semibold">Usage Limit</TableHead>
+            <TableHead className="py-4 font-semibold">Expiry</TableHead>
+            <TableHead className="py-4 font-semibold">Status</TableHead>
+            <TableHead className="py-4 font-semibold">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {rows.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={7} className="text-center text-sm text-muted-foreground">
+              <TableCell colSpan={6} className="text-center text-sm text-muted-foreground">
                 No coupons found.
               </TableCell>
             </TableRow>
           ) : (
             rows.map((row) => {
-              const coupon = getFragmentData(CouponRowFragment, row);
+              const coupon = row;
+              const isActive = coupon.status === "active";
               return (
-                <TableRow key={coupon._id}>
-                  <TableCell className="font-medium">{coupon.couponCode}</TableCell>
-                  <TableCell>{coupon.discountPercentage}%</TableCell>
+                <TableRow key={coupon._id} className="text-sm font-medium text-gray-900 hover:bg-gray-100 transition-colors border-gray-200">
+                  <TableCell className="py-4 font-mono font-semibold text-gray-900">{coupon.couponCode}</TableCell>
+                  <TableCell className="py-4 text-gray-700 font-medium">{coupon.discountPercentage}%</TableCell>
                   <TableCell>
-                    {coupon.usageLimitType === "unlimited"
-                      ? "Unlimited"
-                      : coupon.usageLimit ?? "—"}
+                    {coupon.usageLimitType === "unlimited" ? "Unlimited" : coupon.usageLimit ?? "—"}
                   </TableCell>
-                  <TableCell>{formatDate(coupon.startDate)}</TableCell>
-                  <TableCell>{formatDate(coupon.endDate || coupon.expiryDate)}</TableCell>
-                  <TableCell>
+                  <TableCell>{formatDate(coupon.expiryDate)}</TableCell>
+                  <TableCell className="py-4">
                     <Badge className={statusTone[coupon.status?.toLowerCase() || ""] || "bg-gray-100 text-gray-800"}>
                       {coupon.status}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="py-4">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon">
@@ -122,18 +122,23 @@ export function CouponsTable({ data, onStatusChange, onDelete, onViewUsage, isLo
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => onStatusChange(coupon.couponCode, coupon.status === "active" ? "inactive" : "active")}>
-                          {coupon.status === "active" ? "Set Inactive" : "Set Active"}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onStatusChange(coupon.couponCode, "expired")}>
-                          Mark Expired
-                        </DropdownMenuItem>
                         {onViewUsage && (
                           <DropdownMenuItem onClick={() => onViewUsage(coupon.couponCode)}>
                             View Usage
                           </DropdownMenuItem>
                         )}
-                        <DropdownMenuItem className="text-red-600" onClick={() => onDelete(coupon.couponCode)}>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setEditingCoupon(row);
+                            setIsEditOpen(true);
+                          }}
+                        >
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onStatusChange(coupon.couponCode, isActive ? "inactive" : "active")}>
+                          {isActive ? "Deactivate" : "Activate"}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="text-red-600" onClick={() => setDeletingCode(coupon.couponCode)}>
                           Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -145,6 +150,38 @@ export function CouponsTable({ data, onStatusChange, onDelete, onViewUsage, isLo
           )}
         </TableBody>
       </Table>
+      <AlertDialog open={deletingCode !== null} onOpenChange={(open) => { if (!open) setDeletingCode(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete coupon?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete coupon <span className="font-mono font-semibold">{deletingCode}</span>. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700"
+              onClick={() => { onDelete(deletingCode!); setDeletingCode(null); }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {editingCoupon && (
+        <EditCouponDialog
+          key={editingCoupon._id}
+          coupon={editingCoupon}
+          open={isEditOpen}
+          onOpenChange={(open) => {
+            setIsEditOpen(open);
+            if (!open) setEditingCoupon(null);
+          }}
+          onSubmit={onUpdate}
+        />
+      )}
     </Card>
   );
 }

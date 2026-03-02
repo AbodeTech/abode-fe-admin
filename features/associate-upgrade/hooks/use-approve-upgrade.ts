@@ -26,9 +26,9 @@ export const useApproveUpgrade = () => {
     mutationFn: ({ id, upgradeType }: ApproveInput) => {
       const isPro = (upgradeType || '').toLowerCase().includes('pro');
       if (isPro) {
-        return execute(APPROVE_UPGRADE_PRO, { id }) as Promise<any>;
+        return execute(APPROVE_UPGRADE_PRO, { id });
       }
-      return execute(APPROVE_UPGRADE, { id }) as Promise<any>;
+      return execute(APPROVE_UPGRADE, { id });
     },
     onSuccess: () => {
       client.invalidateQueries({ queryKey: upgradeKeys.all });

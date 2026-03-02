@@ -13,11 +13,24 @@ import { TopAssociatesHeader, AssociateSortKey } from "@/features/associates";
 import { TopAssociatesTable } from "@/features/associates";
 import { Pagination } from "@/components/shared/Pagination";
 
+const ASSOCIATE_SORT_KEYS: AssociateSortKey[] = [
+  "sales_person",
+  "no_of_clients",
+  "units_sold",
+  "size_sold",
+  "expected_revenue",
+  "received_revenue",
+  "commission",
+];
+
 const parseSort = (value?: string | null) => {
   const fallback = DEFAULT_TOP_ASSOCIATES_SORT;
   const raw = value || fallback;
   const [rawKey, rawDirection] = raw.split(":");
-  const key = (rawKey || fallback.split(":")[0]) as AssociateSortKey;
+  const fallbackKey = fallback.split(":")[0] as AssociateSortKey;
+  const key = ASSOCIATE_SORT_KEYS.includes(rawKey as AssociateSortKey)
+    ? (rawKey as AssociateSortKey)
+    : fallbackKey;
   const direction = (rawDirection === "asc" || rawDirection === "desc"
     ? rawDirection
     : "desc") as "asc" | "desc";

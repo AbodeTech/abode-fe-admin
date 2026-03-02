@@ -4,6 +4,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useUsers, UsersTable, SystemUserOverview } from "@/features/users";
 import { Pagination } from "@/components/shared/Pagination";
 import { FilterSelect } from "@/components/shared/FilterSelect";
+import { DateFilter } from "@/components/shared/DateFilter";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { useState, useEffect, Suspense } from "react";
@@ -13,19 +14,24 @@ function UsersPageContent() {
   const page = Number(searchParams.get("page")) || 1;
   const limit = 10;
 
-  const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "");
+  const [searchTerm, setSearchTerm] = useState(
+    searchParams.get("query") || searchParams.get("search") || ""
+  );
   const [isSearchPending, setIsSearchPending] = useState(false);
 
   // Debounce search update to URL
   useEffect(() => {
     const timer = setTimeout(() => {
       const params = new URLSearchParams(searchParams.toString());
-      const currentSearch = searchParams.get("search") || "";
+      const currentSearch =
+        searchParams.get("query") || searchParams.get("search") || "";
 
       if (searchTerm !== currentSearch) {
         if (searchTerm) {
-          params.set("search", searchTerm);
+          params.set("query", searchTerm);
+          params.delete("search");
         } else {
+          params.delete("query");
           params.delete("search");
         }
         params.set("page", "1");
@@ -40,11 +46,14 @@ function UsersPageContent() {
   const { data, isLoading } = useUsers({
     page,
     limit,
-    searchQuery: searchParams.get("search") || undefined,
+    searchQuery:
+      searchParams.get("query") || searchParams.get("search") || undefined,
     hasReferral: searchParams.get("hasReferral") === 'true' ? true : searchParams.get("hasReferral") === 'false' ? false : undefined,
     hasAsset: searchParams.get("hasAsset") === 'true' ? true : searchParams.get("hasAsset") === 'false' ? false : undefined,
     referralStatus: searchParams.get("referralStatus") || undefined,
     howDidYouHearAboutUs: searchParams.get("howYouHeard") || undefined,
+    startDate: searchParams.get("start_date") || undefined,
+    endDate: searchParams.get("end_date") || undefined,
   });
 
   const users = (data?.data || []).filter((u) => u !== null && u !== undefined);
@@ -60,7 +69,10 @@ function UsersPageContent() {
         </div>
       </div>
 
-      <SystemUserOverview />
+      <SystemUserOverview
+        startDate={searchParams.get("start_date") || undefined}
+        endDate={searchParams.get("end_date") || undefined}
+      />
 
       {/* Filters Section */}
       <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center bg-white p-4 border border-[#E5EAEF] rounded-lg">
@@ -81,9 +93,9 @@ function UsersPageContent() {
           <FilterSelect
             data={[
               { label: "All Statuses", value: "all" },
-              { label: "Active", value: "active" },
-              { label: "Pending", value: "pending" },
-              { label: "Suspended", value: "suspended" },
+              { label: "User", value: "user" },
+              { label: "Associate", value: "associate" },
+              { label: "Associate Pro", value: "associate-pro" },
             ]}
             queryKey="referralStatus"
             placeholder="Status"
@@ -106,6 +118,21 @@ function UsersPageContent() {
             queryKey="hasAsset"
             placeholder="Asset Ownership"
           />
+          <FilterSelect
+            data={[
+              { label: "How You Heard: All", value: "all" },
+              { label: "Someone invited me", value: "referral" },
+              { label: "Social Media", value: "social-media" },
+              { label: "Billboard", value: "billboard" },
+              { label: "Email Newsletter", value: "email-newsletter" },
+              { label: "Associate", value: "associate" },
+              { label: "African Wealth Festival Event", value: "african-wealth-festival" },
+              { label: "Other", value: "other" },
+            ]}
+            queryKey="howYouHeard"
+            placeholder="How You Heard"
+          />
+          <DateFilter />
         </div>
       </div>
 

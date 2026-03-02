@@ -3,9 +3,9 @@ import { executeRaw } from '@/lib/graphql-client';
 import { agencyKeys } from './query-keys';
 import { AgencyListItem } from '../components/AgencyListTable';
 
-const GET_ALL_AGENCIES = `
-  query GetAllAgencies($page: Int, $limit: Int, $searchQuery: String) {
-    getAllAgencies(page: $page, limit: $limit, searchQuery: $searchQuery) {
+const GET_AGENCIES = `
+  query GetAgencies($page: Int, $limit: Int, $query: String) {
+    getAgencies(page: $page, limit: $limit, query: $query) {
       agencies {
         _id
         agency_name
@@ -43,7 +43,7 @@ export interface AgenciesFilters {
 }
 
 interface AgenciesResponse {
-  getAllAgencies?: {
+  getAgencies?: {
     agencies: AgencyListItem[];
     count: number;
     currentPage: number;
@@ -69,12 +69,12 @@ export const useAgencies = (filters: AgenciesFilters) => {
   return useQuery({
     queryKey: agencyKeys.list({ page, limit, searchQuery }),
     queryFn: () =>
-      executeRaw<AgenciesResponse>(GET_ALL_AGENCIES, {
+      executeRaw<AgenciesResponse>(GET_AGENCIES, {
         page,
         limit,
-        searchQuery: searchQuery || undefined,
+        query: searchQuery || undefined,
       }),
-    select: (data) => data.getAllAgencies,
+    select: (data) => data.getAgencies,
   });
 };
 

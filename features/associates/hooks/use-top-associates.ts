@@ -2,7 +2,6 @@ import { useQuery } from '@tanstack/react-query';
 import { execute } from '@/lib/graphql-client';
 import { graphql } from '@/lib/gql';
 import { associateKeys } from './query-keys';
-import { TopAssociatesTableRowFragment } from '../components/TopAssociatesTable';
 
 const GET_TOP_ASSOCIATES_QUERY = graphql(`
   query GetTopAssociates($page: Int!, $limit: Int!, $sortBy: String) {

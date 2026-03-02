@@ -16,7 +16,7 @@ import {
   useAllocationExport,
 } from "@/features/allocation";
 import { FragmentType, useFragment as getFragmentData } from "@/lib/gql";
-// @ts-ignore
+// @ts-expect-error - json2csv does not ship complete ESM typings in this setup.
 import { Parser } from "json2csv";
 import { saveAs } from "file-saver";
 import { toast } from "sonner";
@@ -36,6 +36,8 @@ function AllocationContent() {
   const assetNameParam = searchParams.get("assetname");
   const percentageParam = searchParams.get("percentage");
   const searchParam = searchParams.get("search") || "";
+  const startDateParam = searchParams.get("startDate");
+  const endDateParam = searchParams.get("endDate");
 
   const [searchTerm, setSearchTerm] = useState(searchParam);
 
@@ -45,6 +47,8 @@ function AllocationContent() {
     assetName: assetNameParam,
     percentage: parsePercentage(percentageParam),
     search: searchParam || null,
+    startDate: startDateParam,
+    endDate: endDateParam,
   };
 
   const { data, isLoading, error } = useAllocationClients(filters);
@@ -123,6 +127,8 @@ function AllocationContent() {
         assetName: assetNameParam,
         percentage: parsePercentage(percentageParam),
         search: searchParam || null,
+        startDate: startDateParam,
+        endDate: endDateParam,
       });
       const rows = result?.eligibleClientsForLand?.data ?? [];
       if (!rows.length) {

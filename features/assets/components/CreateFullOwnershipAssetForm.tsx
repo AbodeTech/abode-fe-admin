@@ -1,15 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm, useFieldArray, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
-import { createFullOwnershipAssetAction } from "@/lib/actions/assets";
 import { uploadToCloudinary } from "@/lib/utils/upload";
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
 import { CreateFullOwnershipAssetInput } from "@/lib/api/admin/assets";
+import { useCreateFullOwnershipAsset } from "@/features/assets/hooks/use-create-asset";
 import {
   createFullOwnershipAssetSchema,
   CreateFullOwnershipAssetFormValues,
@@ -23,10 +24,12 @@ import { AssetUploads } from "./form/AssetUploads";
 import { FullOwnershipOptionRow } from "./form/FullOwnershipOptionRow";
 
 export function CreateFullOwnershipAssetForm() {
+  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const createFullOwnershipAssetMutation = useCreateFullOwnershipAsset();
 
   const form = useForm<CreateFullOwnershipAssetFormValues>({
-    resolver: zodResolver(createFullOwnershipAssetSchema) as any,
+    resolver: zodResolver(createFullOwnershipAssetSchema) as Resolver<CreateFullOwnershipAssetFormValues>,
     defaultValues: {
       asset_name: "",
       asset_location: "",
@@ -127,8 +130,9 @@ export function CreateFullOwnershipAssetForm() {
         })),
       };
 
-      await createFullOwnershipAssetAction(payload);
+      await createFullOwnershipAssetMutation.mutateAsync(payload);
       toast.success("Full Ownership Asset created successfully");
+      router.push("/assets");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to create asset";
       toast.error(message);

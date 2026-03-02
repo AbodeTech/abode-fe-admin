@@ -22,7 +22,10 @@ function SalesContent() {
   const endDate = searchParams.get("end_date") || null;
   const assetType = searchParams.get("assettype") || null;
 
-  const { data: summary, isLoading: summaryLoading } = useSalesSummary();
+  const { data: summary, isLoading: summaryLoading, error: summaryError } = useSalesSummary({
+    startDate,
+    endDate,
+  });
   const {
     data: list,
     isLoading: listLoading,
@@ -71,6 +74,12 @@ function SalesContent() {
         />
       </div>
 
+      {summaryError && (
+        <div className="p-4 rounded-md bg-amber-50 text-amber-700 border border-amber-200">
+          <h3 className="font-bold">Unable to load sales summary</h3>
+          <p>{(summaryError as Error).message || "Sales cards could not be loaded."}</p>
+        </div>
+      )}
       {summary && <SummaryCards data={summary} />}
 
       <SalesTable records={list?.data?.filter((item): item is NonNullable<typeof item> => item !== null)} />
