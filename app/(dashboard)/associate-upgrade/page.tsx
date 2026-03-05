@@ -55,14 +55,15 @@ function AssociateUpgradeContent() {
 
     const query = searchParam.toLowerCase();
     return rows.filter((item) => {
-      const userFirst = item.user?.firstName?.toLowerCase() ?? "";
-      const userLast = item.user?.lastName?.toLowerCase() ?? "";
-      const userEmail = item.user?.email?.toLowerCase() ?? "";
+      const row = getFragmentData(UpgradeRowFragment, item);
+      const userFirst = row.user?.firstName?.toLowerCase() ?? "";
+      const userLast = row.user?.lastName?.toLowerCase() ?? "";
+      const userEmail = row.user?.email?.toLowerCase() ?? "";
       const userFull = `${userFirst} ${userLast}`.trim();
 
-      const associateFirst = item.associate?.firstName?.toLowerCase() ?? "";
-      const associateLast = item.associate?.lastName?.toLowerCase() ?? "";
-      const associateEmail = item.associate?.email?.toLowerCase() ?? "";
+      const associateFirst = row.associate?.firstName?.toLowerCase() ?? "";
+      const associateLast = row.associate?.lastName?.toLowerCase() ?? "";
+      const associateEmail = row.associate?.email?.toLowerCase() ?? "";
       const associateFull = `${associateFirst} ${associateLast}`.trim();
 
       return (

@@ -18,6 +18,7 @@ const GET_ACTIVE_COUPONS = graphql(`
         status
         activeImmediately
         createdAt
+        updatedAt
       }
       count
     }

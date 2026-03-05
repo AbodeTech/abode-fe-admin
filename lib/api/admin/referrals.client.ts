@@ -1,7 +1,7 @@
 "use client"
 
 import { fetchGraphql } from "@/lib/graphql-client"
-import { GetUserReferralsResponse, UserReferralResponse } from "./referrals.types"
+import { GetUserReferralsResponse } from "./referrals.types"
 
 // Fetch User Referrals
 export const getUserReferrals = async (userId: string) => {
@@ -43,4 +43,22 @@ export const deleteUserReferral = async (userId: string, referralId: string) => 
   )
 
   return response.deleteUserReferral
+}
+
+export const addUserReferralByAdmin = async (userId: string, referralEmail: string) => {
+  const response = await fetchGraphql<{ addReferralByAdmin: string }>(
+    `
+      mutation AddReferralByAdmin($addReferralUpdateInput: AddReferralUpdateInput!) {
+        addReferralByAdmin(addReferralUpdateInput: $addReferralUpdateInput)
+      }
+    `,
+    {
+      addReferralUpdateInput: {
+        user_id: userId,
+        referral_email: referralEmail,
+      },
+    }
+  )
+
+  return response.addReferralByAdmin
 }

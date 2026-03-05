@@ -42,34 +42,35 @@ export function DefaultUsersTable({ users }: DefaultUsersTableProps) {
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>No.</TableHead>
           <TableHead>Name</TableHead>
           <TableHead>Email</TableHead>
-          <TableHead>Phone</TableHead>
+          <TableHead>Phone Number</TableHead>
           <TableHead>Date Joined</TableHead>
           <TableHead>Referrer</TableHead>
-          <TableHead>Subscriptions</TableHead>
+          <TableHead>Product Purchased</TableHead>
           <TableHead>Networth</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {validRows.map((user, idx) => (
-          <TableRow key={user._id}>
-            <TableCell>{idx + 1}</TableCell>
-            <TableCell>
-              <Link href={`/dashboard/users/${user._id}`} className="hover:underline text-blue-600">
+          <TableRow
+            key={user._id}
+            className={`text-sm font-medium text-[#333333] ${idx % 2 === 1 ? "bg-[#F8F8F8]" : ""}`}
+          >
+            <TableCell className="!py-3.5">
+              <Link href={`/users/${user._id}`} className="hover:underline">
                 {user.firstName} {user.lastName}
               </Link>
             </TableCell>
-            <TableCell>{user.email}</TableCell>
+            <TableCell className="!py-3.5">{user.email}</TableCell>
             <TableCell>{user.phoneNumber || "-"}</TableCell>
-            <TableCell>
+            <TableCell className="!py-3.5">
               {user.createdAt ? format(new Date(user.createdAt), "dd/MM/yyyy") : "-"}
             </TableCell>
-            <TableCell>{user.referrer || "No Referrer"}</TableCell>
-            <TableCell>{user.subscriptions ?? 0}</TableCell>
-            <TableCell>
-              {(user.Networth !== undefined && user.Networth !== null) ? `₦${user.Networth.toLocaleString()}` : "-"}
+            <TableCell className="!py-3.5">{user.referrer || "No Referer"}</TableCell>
+            <TableCell className="!py-3.5">{user.subscriptions ?? 0}</TableCell>
+            <TableCell className="!py-3.5">
+              {(user.Networth !== undefined && user.Networth !== null) ? `N${user.Networth.toLocaleString()}` : "-"}
             </TableCell>
           </TableRow>
         ))}

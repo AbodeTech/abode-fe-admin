@@ -10,26 +10,21 @@ interface UserTransactionsProps {
 }
 
 export function UserTransactions({ transactions }: UserTransactionsProps) {
-  // Safe filtering
   const safeTransactions = transactions || []
-  const commissionTransactions = safeTransactions.filter((t) => t.type === "commission")
-  const otherTransactions = safeTransactions.filter((t) => t.type !== "commission")
+  const commissionTransactions = safeTransactions.filter((t) => String(t.type).toLowerCase() === "commission")
+  const otherTransactions = safeTransactions.filter((t) => String(t.type).toLowerCase() !== "commission")
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold tracking-tight">User Transactions</h2>
-      </div>
-
+    <div className="space-y-8 mt-16">
       <Tabs defaultValue="commission" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 max-w-[400px]">
-          <TabsTrigger value="commission">Commission ({commissionTransactions.length})</TabsTrigger>
-          <TabsTrigger value="other">Other ({otherTransactions.length})</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 !h-fit">
+          <TabsTrigger value="commission" className="!py-3">Commission Transactions</TabsTrigger>
+          <TabsTrigger value="other" className="!py-3">Other Transactions</TabsTrigger>
         </TabsList>
-        <TabsContent value="commission" className="mt-4">
+        <TabsContent value="commission">
           <CommissionTransactionsTable transactions={commissionTransactions} />
         </TabsContent>
-        <TabsContent value="other" className="mt-4">
+        <TabsContent value="other">
           <OtherTransactionsTable transactions={otherTransactions} />
         </TabsContent>
       </Tabs>

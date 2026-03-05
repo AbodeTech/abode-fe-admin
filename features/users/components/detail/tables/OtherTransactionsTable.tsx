@@ -164,45 +164,45 @@ export function OtherTransactionsTable({ transactions }: OtherTransactionsTableP
 
   return (
     <>
-      <Card className="w-full border-none shadow-none">
-        <CardHeader className="px-0 pt-0">
+      <Card className="w-full">
+        <CardHeader>
           <CardTitle>Other Transactions</CardTitle>
           <CardDescription>View and manage non-commission transactions</CardDescription>
         </CardHeader>
-        <CardContent className="px-0">
-          <div className="rounded-md border overflow-x-auto">
+        <CardContent>
+          <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[100px] cursor-pointer" onClick={() => handleSort("_id")}>
+                  <TableHead className="w-[150px] cursor-pointer" onClick={() => handleSort("_id")}>
                     ID
-                    {sortField === "_id" && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-3 w-3" /> : <ArrowDownIcon className="inline ml-1 h-3 w-3" />)}
+                    {sortField === "_id" && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-4 w-4" /> : <ArrowDownIcon className="inline ml-1 h-4 w-4" />)}
                   </TableHead>
                   <TableHead className="cursor-pointer" onClick={() => handleSort("time_of_transaction")}>
                     Time
-                    {sortField === "time_of_transaction" && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-3 w-3" /> : <ArrowDownIcon className="inline ml-1 h-3 w-3" />)}
+                    {sortField === "time_of_transaction" && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-4 w-4" /> : <ArrowDownIcon className="inline ml-1 h-4 w-4" />)}
                   </TableHead>
                   <TableHead className="cursor-pointer" onClick={() => handleSort("type")}>
                     Type
-                    {sortField === "type" && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-3 w-3" /> : <ArrowDownIcon className="inline ml-1 h-3 w-3" />)}
+                    {sortField === "type" && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-4 w-4" /> : <ArrowDownIcon className="inline ml-1 h-4 w-4" />)}
                   </TableHead>
                   <TableHead className="cursor-pointer" onClick={() => handleSort("transaction_type")}>
-                    Tx Type
-                    {sortField === "transaction_type" && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-3 w-3" /> : <ArrowDownIcon className="inline ml-1 h-3 w-3" />)}
+                    Transaction Type
+                    {sortField === "transaction_type" && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-4 w-4" /> : <ArrowDownIcon className="inline ml-1 h-4 w-4" />)}
                   </TableHead>
                   <TableHead className="cursor-pointer" onClick={() => handleSort("status")}>
                     Status
-                    {sortField === "status" && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-3 w-3" /> : <ArrowDownIcon className="inline ml-1 h-3 w-3" />)}
+                    {sortField === "status" && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-4 w-4" /> : <ArrowDownIcon className="inline ml-1 h-4 w-4" />)}
                   </TableHead>
                   <TableHead className="cursor-pointer" onClick={() => handleSort("amount")}>
                     Amount
-                    {sortField === "amount" && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-3 w-3" /> : <ArrowDownIcon className="inline ml-1 h-3 w-3" />)}
+                    {sortField === "amount" && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-4 w-4" /> : <ArrowDownIcon className="inline ml-1 h-4 w-4" />)}
                   </TableHead>
                   <TableHead className="cursor-pointer" onClick={() => handleSort("description")}>
                     Description
-                    {sortField === "description" && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-3 w-3" /> : <ArrowDownIcon className="inline ml-1 h-3 w-3" />)}
+                    {sortField === "description" && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-4 w-4" /> : <ArrowDownIcon className="inline ml-1 h-4 w-4" />)}
                   </TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -215,15 +215,16 @@ export function OtherTransactionsTable({ transactions }: OtherTransactionsTableP
                       transaction.description?.startsWith("RAP")
                     const canSendReceipt =
                       transaction.description?.startsWith("AP") ||
-                      transaction.description?.startsWith("RAP")
+                      transaction.description?.startsWith("RAP") ||
+                      transaction.description?.startsWith("DP")
 
                     const isProcessing = processingId === transaction._id
                     const isSendingReceipt = receiptProcessingId === transaction._id
 
                     return (
                       <TableRow key={transaction._id}>
-                        <TableCell className="font-mono text-xs">{transaction._id.substring(0, 8)}...</TableCell>
-                        <TableCell className="text-muted-foreground text-xs">{formatDate(transaction.time_of_transaction)}</TableCell>
+                        <TableCell className="font-medium">{transaction._id}</TableCell>
+                        <TableCell>{formatDate(transaction.time_of_transaction)}</TableCell>
                         <TableCell>
                           <Badge variant="outline" className={getTypeColor(transaction.type)}>
                             {transaction.type}
@@ -240,12 +241,13 @@ export function OtherTransactionsTable({ transactions }: OtherTransactionsTableP
                           </Badge>
                         </TableCell>
                         <TableCell className="font-medium">{formatAmount(transaction.amount)}</TableCell>
-                        <TableCell className="max-w-[200px] truncate" title={transaction.description}>{transaction.description}</TableCell>
-                        <TableCell className="text-right">
+                        <TableCell>{transaction.description}</TableCell>
+                        <TableCell>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" disabled={isProcessing || isSendingReceipt}>
-                                {isProcessing || isSendingReceipt ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreVertical className="h-4 w-4" />}
+                              <Button size="sm" variant="outline" className="flex items-center gap-2" disabled={isProcessing || isSendingReceipt}>
+                                {isProcessing || isSendingReceipt ? <Loader2 className="h-4 w-4 animate-spin" /> : "Actions"}
+                                <MoreVertical className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
@@ -263,18 +265,24 @@ export function OtherTransactionsTable({ transactions }: OtherTransactionsTableP
 
                               {/* Reprocess */}
                               <DropdownMenuItem
-                                disabled={!canReprocess}
-                                onSelect={() => handleOpenConfirm(transaction._id)}
+                                disabled={!canReprocess || isProcessing}
+                                onSelect={(event) => {
+                                  event.preventDefault()
+                                  handleOpenConfirm(transaction._id)
+                                }}
                               >
-                                Reprocess Transaction
+                                {isProcessing ? "Reprocessing..." : "Reprocess Transaction"}
                               </DropdownMenuItem>
 
                               {/* Send Receipt */}
                               <DropdownMenuItem
-                                disabled={!canSendReceipt}
-                                onSelect={() => handleSendReceipt(transaction._id)}
+                                disabled={!canSendReceipt || isSendingReceipt}
+                                onSelect={async (event) => {
+                                  event.preventDefault()
+                                  await handleSendReceipt(transaction._id)
+                                }}
                               >
-                                Send Receipt Email
+                                {isSendingReceipt ? "Sending..." : "Send Receipt Email"}
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -284,9 +292,9 @@ export function OtherTransactionsTable({ transactions }: OtherTransactionsTableP
                   })
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                      No other transactions found
-                    </TableCell>
+                  <TableCell colSpan={8} className="text-center py-4">
+                    No other transactions found
+                  </TableCell>
                   </TableRow>
                 )}
               </TableBody>

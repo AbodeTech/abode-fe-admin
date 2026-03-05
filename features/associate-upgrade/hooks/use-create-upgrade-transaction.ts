@@ -54,7 +54,10 @@ export const useCreateUpgradeTransaction = () => {
         ? Number(input.commissionAmount ?? "0")
         : null;
 
-      if (input.payCommission && (!Number.isFinite(commissionableAmount) || commissionableAmount <= 0)) {
+      if (
+        input.payCommission &&
+        (commissionableAmount === null || !Number.isFinite(commissionableAmount) || commissionableAmount <= 0)
+      ) {
         throw new Error("Enter a valid commission amount");
       }
 
@@ -71,4 +74,3 @@ export const useCreateUpgradeTransaction = () => {
     },
   });
 };
-

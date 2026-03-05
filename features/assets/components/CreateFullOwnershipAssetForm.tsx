@@ -9,7 +9,7 @@ import { Form } from "@/components/ui/form";
 import { uploadToCloudinary } from "@/lib/utils/upload";
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
-import { CreateFullOwnershipAssetInput } from "@/lib/api/admin/assets";
+import type { CreateFullOwnershipAssetInput } from "@/lib/gql/graphql";
 import { useCreateFullOwnershipAsset } from "@/features/assets/hooks/use-create-asset";
 import {
   createFullOwnershipAssetSchema,
@@ -98,7 +98,6 @@ export function CreateFullOwnershipAssetForm() {
         title: data.title,
         asset_type: data.asset_type,
         description: data.description,
-        allocation_qualification: data.allocation_qualification,
         amenities: data.amenities.split(",").map((s) => s.trim()).filter(Boolean),
         asset_pictures: pictureUrls,
         deed_of_assignment: deedRes.secure_url,
@@ -110,23 +109,22 @@ export function CreateFullOwnershipAssetForm() {
         ),
         new_asset: data.new_asset,
         asset_option: data.asset_option.map((opt) => ({
-          ...opt,
           size: Number(opt.size),
           unit: Number(opt.unit),
           price: Number(opt.price),
-          zero_months: opt.zero_months ? Number(opt.zero_months) : undefined,
-          three_months: opt.three_months ? Number(opt.three_months) : undefined,
-          six_months: opt.six_months ? Number(opt.six_months) : undefined,
-          twelve_months: opt.twelve_months ? Number(opt.twelve_months) : undefined,
-          development_fee: opt.development_fee ? Number(opt.development_fee) : undefined,
-          initial_payment: opt.initial_payment ? Number(opt.initial_payment) : undefined,
-          monthly_installment: opt.monthly_installment ? Number(opt.monthly_installment) : undefined,
-          one_month: opt.one_month ? Number(opt.one_month) : undefined,
-          one_month_initial_payment: opt.one_month_initial_payment ? Number(opt.one_month_initial_payment) : undefined,
-          five_months: opt.five_months ? Number(opt.five_months) : undefined,
-          five_months_initial_payment: opt.five_months_initial_payment ? Number(opt.five_months_initial_payment) : undefined,
-          seven_months: opt.seven_months ? Number(opt.seven_months) : undefined,
-          seven_months_initial_payment: opt.seven_months_initial_payment ? Number(opt.seven_months_initial_payment) : undefined,
+          zero_months: Number(opt.zero_months ?? 0),
+          three_months: Number(opt.three_months ?? 0),
+          six_months: Number(opt.six_months ?? 0),
+          twelve_months: Number(opt.twelve_months ?? 0),
+          development_fee: Number(opt.development_fee ?? 0),
+          initial_payment: Number(opt.initial_payment ?? 0),
+          monthly_installment: Number(opt.monthly_installment ?? 0),
+          one_month: Number(opt.one_month ?? 0),
+          one_month_initial_payment: Number(opt.one_month_initial_payment ?? 0),
+          five_months: Number(opt.five_months ?? 0),
+          five_months_initial_payment: Number(opt.five_months_initial_payment ?? 0),
+          seven_months: Number(opt.seven_months ?? 0),
+          seven_months_initial_payment: Number(opt.seven_months_initial_payment ?? 0),
         })),
       };
 

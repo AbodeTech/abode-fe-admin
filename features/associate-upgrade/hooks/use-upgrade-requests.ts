@@ -35,9 +35,15 @@ export const useUpgradeRequests = (filters: UpgradeRequestsFilters) => {
     limit = DEFAULT_UPGRADE_LIMIT,
     adminStatus,
   } = filters;
+  const keyFilters: Record<string, unknown> = {
+    page,
+    limit,
+    adminStatus: adminStatus ?? null,
+    search: filters.search ?? null,
+  };
 
   return useQuery({
-    queryKey: upgradeKeys.list(filters),
+    queryKey: upgradeKeys.list(keyFilters),
     queryFn: () =>
       execute(GET_UPGRADE_REQUESTS, {
         page,

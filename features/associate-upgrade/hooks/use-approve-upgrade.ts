@@ -23,12 +23,13 @@ interface ApproveInput {
 export const useApproveUpgrade = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, upgradeType }: ApproveInput) => {
+    mutationFn: async ({ id, upgradeType }: ApproveInput) => {
       const isPro = (upgradeType || '').toLowerCase().includes('pro');
       if (isPro) {
-        return execute(APPROVE_UPGRADE_PRO, { id });
+        await execute(APPROVE_UPGRADE_PRO, { id });
+        return;
       }
-      return execute(APPROVE_UPGRADE, { id });
+      await execute(APPROVE_UPGRADE, { id });
     },
     onSuccess: () => {
       client.invalidateQueries({ queryKey: upgradeKeys.all });

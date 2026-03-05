@@ -26,6 +26,7 @@ export const SuspendedPaymentPlansRowFragment = graphql(`
     amount_paid
     balance
     start_date
+    next_date
   }
 `);
 
@@ -47,15 +48,16 @@ export function SuspendedPaymentPlansTable({ plans }: SuspendedPaymentPlansTable
           <TableHead>First Name</TableHead>
           <TableHead>Last Name</TableHead>
           <TableHead>Email</TableHead>
-          <TableHead>Phone</TableHead>
+          <TableHead>Phone Number</TableHead>
           <TableHead>Referrer</TableHead>
-          <TableHead>Asset</TableHead>
+          <TableHead>Asset Name</TableHead>
           <TableHead>Size</TableHead>
           <TableHead>Asset Type</TableHead>
-          <TableHead className="text-right">Units</TableHead>
+          <TableHead className="text-right">No. of Units</TableHead>
           <TableHead className="text-right">Amount Paid</TableHead>
-          <TableHead className="text-right">Balance</TableHead>
+          <TableHead className="text-right">Amount Left</TableHead>
           <TableHead>Start Date</TableHead>
+          <TableHead>End Date</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -81,6 +83,9 @@ export function SuspendedPaymentPlansTable({ plans }: SuspendedPaymentPlansTable
               </TableCell>
               <TableCell>
                 {row.start_date ? format(new Date(row.start_date), "dd/MM/yyyy") : "-"}
+              </TableCell>
+              <TableCell>
+                {row.next_date ? format(new Date(row.next_date), "dd/MM/yyyy") : "-"}
               </TableCell>
             </TableRow>
           ))

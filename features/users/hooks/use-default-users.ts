@@ -58,15 +58,14 @@ export const useExportDefaultUsers = () => {
       if (!validRows.length) return;
 
       exportToCsv(validRows, [
-        { header: 'First Name', accessor: (r) => r.firstName },
-        { header: 'Last Name', accessor: (r) => r.lastName },
+        { header: 'Name', accessor: (r) => `${r.firstName} ${r.lastName}`.trim() },
         { header: 'Email', accessor: (r) => r.email },
-        { header: 'Phone', accessor: (r) => r.phoneNumber },
+        { header: 'Phone Number', accessor: (r) => r.phoneNumber },
         { header: 'Referrer', accessor: (r) => r.referrer },
-        { header: 'Subscriptions', accessor: (r) => r.subscriptions ?? 0 },
+        { header: 'Product Purchased', accessor: (r) => r.subscriptions ?? 0 },
         { header: 'Networth', accessor: (r) => r.Networth ?? 0 },
         { header: 'Joined', accessor: (r) => r.createdAt },
-      ], 'default-users.csv');
+      ], 'defaultusers.csv');
     },
   });
 };

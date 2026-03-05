@@ -17,6 +17,8 @@ export {
   useSuspendedPaymentPlans,
   useExportSuspendedPaymentPlans,
 } from './hooks/use-suspended-payment-plans';
+export { useExportUsersByFilter, useExportUsersWithAsset } from './hooks/use-export-users';
+export { useRegisterUser } from './hooks/use-register-user';
 
 // Types
 export type {
@@ -45,6 +47,9 @@ export { UserReferralActions } from './components/detail/UserReferralActions';
 export { UserTransactions } from './components/detail/UserTransactions';
 export { UserTransactionsList } from './components/detail/UserTransactionsList';
 export { SystemUserOverview } from './components/all/SystemUserOverview';
+export { UsersPageActions } from './components/all/UsersPageActions';
+export { UsersExportModal } from './components/all/UsersExportModal';
+export { RegisterUserModal } from './components/modals/RegisterUserModal';
 export { DefaultUsersTable } from './components/defaults/DefaultUsersTable';
 export { SuspendedUsersTable } from './components/suspended/SuspendedUsersTable';
 export { SuspendedPaymentPlansTable } from './components/suspended-payment-plans/SuspendedPaymentPlansTable';

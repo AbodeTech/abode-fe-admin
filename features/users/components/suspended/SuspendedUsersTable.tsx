@@ -23,6 +23,15 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { graphql, useFragment as getFragmentData, FragmentType } from "@/lib/gql";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { MoreVertical } from "lucide-react";
 import { toast } from "sonner";
 import { useUnsuspendUser } from "../../hooks/use-suspended-users";
 import { getErrorMessage } from "../../utils/error-message";
@@ -37,6 +46,11 @@ export const SuspendedUsersRowFragment = graphql(`
     createdAt
     referrer
     subscriptions
+    is_suspended
+    referral_status
+    gender
+    country
+    Networth
   }
 `);
 
@@ -65,56 +79,64 @@ export function SuspendedUsersTable({ users }: SuspendedUsersTableProps) {
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>No.</TableHead>
           <TableHead>Name</TableHead>
           <TableHead>Email</TableHead>
           <TableHead>Date Joined</TableHead>
           <TableHead>Referrer</TableHead>
-          <TableHead>Subscriptions</TableHead>
+          <TableHead>Product Purchased</TableHead>
           <TableHead>Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {validRows.map((user, idx) => (
-          <TableRow key={user._id}>
-            <TableCell>{idx + 1}</TableCell>
-            <TableCell>
-              <Link href={`/dashboard/users/${user._id}`} className="hover:underline text-blue-600">
+          <TableRow
+            key={user._id}
+            className={`text-sm font-medium text-[#333333] ${idx % 2 === 1 ? "bg-[#F8F8F8]" : ""}`}
+          >
+            <TableCell className="!py-3.5">
+              <Link href={`/users/${user._id}`} className="hover:underline">
                 {user.firstName} {user.lastName}
               </Link>
             </TableCell>
-            <TableCell>{user.email}</TableCell>
-            <TableCell>
+            <TableCell className="!py-3.5">{user.email}</TableCell>
+            <TableCell className="!py-3.5">
               {user.createdAt ? format(new Date(user.createdAt), "dd/MM/yyyy") : "-"}
             </TableCell>
-            <TableCell>{user.referrer || "No Referrer"}</TableCell>
-            <TableCell>{user.subscriptions ?? 0}</TableCell>
-            <TableCell>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={isPending}
-                  >
-                    {isPending ? "Working..." : "Unsuspend"}
+            <TableCell className="!py-3.5">{user.referrer || "No Referer"}</TableCell>
+            <TableCell className="!py-3.5">{user.subscriptions ?? 0}</TableCell>
+            <TableCell className="!py-3.5">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" disabled={isPending}>
+                    <MoreVertical className="h-5 w-5" />
                   </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This will unsuspend the user and allow them to access the platform again.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => handleUnsuspend(user._id)}>
-                      Unsuspend
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <DropdownMenuItem onSelect={(event) => event.preventDefault()}>
+                        Unsuspend User
+                      </DropdownMenuItem>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will unsuspend the user and allow them to access the platform again.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleUnsuspend(user._id)}>
+                          Unsuspend
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </TableCell>
           </TableRow>
         ))}

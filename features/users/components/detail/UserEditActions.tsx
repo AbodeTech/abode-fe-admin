@@ -13,6 +13,9 @@ import { Plus } from "lucide-react"
 import { EditUserProfileModal } from "../modals/EditUserProfileModal"
 import { ChangeReferralStatusModal } from "../modals/ChangeReferralStatusModal"
 import { EditUserWalletModal } from "../modals/EditUserWalletModal"
+import { EditUserCommissionBalanceModal } from "../modals/EditUserCommissionBalanceModal"
+import { EditUserTinModal } from "../modals/EditUserTinModal"
+import { ClearUserTinModal } from "../modals/ClearUserTinModal"
 
 import { UserDetail } from "../../types/user.types"
 
@@ -21,7 +24,9 @@ interface UserEditActionsProps {
 }
 
 export function UserEditActions({ user }: UserEditActionsProps) {
-  const [activeModal, setActiveModal] = useState<"profile" | "refStatus" | "wallet" | null>(null)
+  const [activeModal, setActiveModal] = useState<
+    "profile" | "refStatus" | "wallet" | "commission" | "tin" | "clearTin" | null
+  >(null)
 
   return (
     <>
@@ -42,7 +47,15 @@ export function UserEditActions({ user }: UserEditActionsProps) {
           <DropdownMenuItem onSelect={() => setActiveModal("wallet")}>
             Edit User Wallet Balance
           </DropdownMenuItem>
-          {/* Add more items like TIN later if needed */}
+          <DropdownMenuItem onSelect={() => setActiveModal("commission")}>
+            Edit User Commission Balance
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => setActiveModal("tin")}>
+            Edit User TIN
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => setActiveModal("clearTin")} className="text-red-600 focus:text-red-600">
+            Clear User TIN
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -61,6 +74,22 @@ export function UserEditActions({ user }: UserEditActionsProps) {
       <EditUserWalletModal
         currentBalance={user.wallet?.balance?.toString() || "0"}
         open={activeModal === "wallet"}
+        onOpenChange={(open) => !open && setActiveModal(null)}
+      />
+
+      <EditUserCommissionBalanceModal
+        open={activeModal === "commission"}
+        onOpenChange={(open) => !open && setActiveModal(null)}
+      />
+
+      <EditUserTinModal
+        currentTin={user.kyc?.tin || ""}
+        open={activeModal === "tin"}
+        onOpenChange={(open) => !open && setActiveModal(null)}
+      />
+
+      <ClearUserTinModal
+        open={activeModal === "clearTin"}
         onOpenChange={(open) => !open && setActiveModal(null)}
       />
     </>

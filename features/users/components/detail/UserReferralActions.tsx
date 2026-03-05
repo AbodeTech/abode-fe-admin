@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useParams } from "next/navigation"
+import { useAuthStore } from "@/store/auth-store"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,11 +34,13 @@ export function UserReferralActions({ referralId, referralName }: UserReferralAc
   const router = useRouter()
   const params = useParams<{ id: string }>()
   const userId = params.id
+  const user = useAuthStore((state) => state.user)
+  const canDeleteReferral = user?.role === "admin" || (user?.permissions ?? []).includes("remove-referral")
 
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
-  const handleViewUser = () => {
+  const handleViewAssets = () => {
     router.push(`/users/${referralId}`)
   }
 
@@ -65,15 +68,17 @@ export function UserReferralActions({ referralId, referralName }: UserReferralAc
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={handleViewUser}>
-            View User Details
+          <DropdownMenuItem onClick={handleViewAssets}>
+            View Assets
           </DropdownMenuItem>
-          <DropdownMenuItem
-            className="text-destructive focus:text-destructive"
-            onSelect={() => setIsDeleteOpen(true)}
-          >
-            Delete Referral
-          </DropdownMenuItem>
+          {canDeleteReferral && (
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              onSelect={() => setIsDeleteOpen(true)}
+            >
+              Delete Referral
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 

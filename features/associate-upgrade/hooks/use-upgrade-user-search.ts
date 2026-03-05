@@ -37,7 +37,6 @@ export const useUpgradeUserSearch = ({
         page,
       }),
     enabled: enabled && searchQuery.trim().length >= 2,
-    select: (data) => data.getAllUsers.data ?? [],
+    select: (data) => data.getAllUsers?.data ?? [],
   });
 };
-

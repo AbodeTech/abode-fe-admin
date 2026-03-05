@@ -79,10 +79,7 @@ export default function UserDetailsPage() {
 
       <UserTransactions transactions={transactionRows} />
 
-      {/* Referrals Section */}
-      {referralRows.length > 0 && (
-        <UserReferralsTable referrals={referralRows} />
-      )}
+      <UserReferralsTable referrals={referralRows} />
     </main>
   );
 }

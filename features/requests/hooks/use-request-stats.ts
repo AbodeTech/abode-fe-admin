@@ -26,8 +26,15 @@ export interface RequestStatsFilters {
 }
 
 export const useRequestStats = (filters?: RequestStatsFilters) => {
+  const keyRange: Record<string, unknown> | undefined = filters
+    ? {
+        startDate: filters.startDate ?? undefined,
+        endDate: filters.endDate ?? undefined,
+      }
+    : undefined;
+
   return useQuery({
-    queryKey: requestKeys.stats(filters),
+    queryKey: requestKeys.stats(keyRange),
     queryFn: () =>
       execute(GET_REQUEST_STATS, {
         from: filters?.startDate || undefined,

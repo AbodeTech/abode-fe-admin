@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Coupon } from "@/lib/gql/graphql";
+import type { Coupon, UsageLimitType, ExpiryType } from "@/lib/gql/graphql";
 
 interface EditCouponDialogProps {
   coupon: Coupon;
@@ -47,9 +47,9 @@ export function EditCouponDialog({
   onSubmit,
 }: EditCouponDialogProps) {
   const [discount, setDiscount] = useState(Number(coupon.discountPercentage ?? 0));
-  const [usageLimitType, setUsageLimitType] = useState(coupon.usageLimitType ?? "unlimited");
+  const [usageLimitType, setUsageLimitType] = useState<UsageLimitType>(coupon.usageLimitType ?? "unlimited");
   const [usageLimit, setUsageLimit] = useState<number | undefined>(coupon.usageLimit ?? undefined);
-  const [expiryType, setExpiryType] = useState(coupon.expiryType ?? "no_expiry");
+  const [expiryType, setExpiryType] = useState<ExpiryType>(coupon.expiryType ?? "no_expiry");
   const [startDate, setStartDate] = useState(coupon.startDate ? new Date(coupon.startDate).toISOString().slice(0, 10) : "");
   const [endDate, setEndDate] = useState(coupon.endDate ? new Date(coupon.endDate).toISOString().slice(0, 10) : "");
   const [expiryDate, setExpiryDate] = useState(coupon.expiryDate ? new Date(coupon.expiryDate).toISOString().slice(0, 10) : "");
@@ -98,7 +98,7 @@ export function EditCouponDialog({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Usage Limit Type</Label>
-              <Select value={usageLimitType} onValueChange={setUsageLimitType} disabled={isPending}>
+              <Select value={usageLimitType} onValueChange={(value) => setUsageLimitType(value as UsageLimitType)} disabled={isPending}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -124,7 +124,7 @@ export function EditCouponDialog({
 
           <div className="space-y-2">
             <Label>Expiry Type</Label>
-            <Select value={expiryType} onValueChange={setExpiryType} disabled={isPending}>
+            <Select value={expiryType} onValueChange={(value) => setExpiryType(value as ExpiryType)} disabled={isPending}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>

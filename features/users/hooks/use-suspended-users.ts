@@ -63,18 +63,30 @@ export const useExportSuspendedUsers = () => {
       const usersRaw = data.getAllSuspendedUsers?.data ?? [];
       const rows = usersRaw.map((user) => getFragmentData(SuspendedUsersRowFragment, user));
       const validRows = rows.filter((user): user is NonNullable<typeof user> => user !== null && user !== undefined);
+      const exportRows = validRows.map((row, index) => ({
+        serial: index + 1,
+        ...row,
+      }));
 
-      if (!validRows.length) return;
+      if (!exportRows.length) return;
 
-      exportToCsv(validRows, [
+      exportToCsv(exportRows, [
+        { header: 'ID', accessor: (r) => r.serial },
+        { header: 'User ID', accessor: (r) => r._id },
         { header: 'First Name', accessor: (r) => r.firstName },
         { header: 'Last Name', accessor: (r) => r.lastName },
+        { header: 'Full Name', accessor: (r) => `${r.firstName} ${r.lastName}`.trim() },
         { header: 'Email', accessor: (r) => r.email },
+        { header: 'Gender', accessor: (r) => r.gender ?? '' },
+        { header: 'Country', accessor: (r) => r.country ?? '' },
+        { header: 'Is Suspended', accessor: (r) => (r.is_suspended ? 'Yes' : 'No') },
+        { header: 'Referral Status', accessor: (r) => r.referral_status ?? '' },
         { header: 'Phone', accessor: (r) => r.phoneNumber },
         { header: 'Referrer', accessor: (r) => r.referrer },
         { header: 'Subscriptions', accessor: (r) => r.subscriptions ?? 0 },
+        { header: 'Networth', accessor: (r) => r.Networth ?? 0 },
         { header: 'Joined', accessor: (r) => r.createdAt },
-      ], 'suspended-users.csv');
+      ], `suspended-users-report-${new Date().toISOString().split('T')[0]}.csv`);
     },
   });
 };

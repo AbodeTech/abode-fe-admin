@@ -5,6 +5,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Wallet, TrendingUp, Bookmark, Package, DollarSign, PiggyBank, Calendar, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useState } from "react";
+import { useSuspendUser, useUnsuspendUser } from "../../hooks/use-user-mutations";
+import { toast } from "sonner";
+import { getErrorMessage } from "../../utils/error-message";
 
 interface UserStatsProps {
   user: UserDetail;
@@ -40,6 +54,28 @@ const DataPoint = ({ title, value, icon, isEven }: { title: string; value: strin
 );
 
 export function UserStats({ user }: UserStatsProps) {
+  const [showStatusDialog, setShowStatusDialog] = useState(false);
+  const suspendUser = useSuspendUser();
+  const unsuspendUser = useUnsuspendUser();
+  const isSuspended = user.is_suspended;
+
+  const handleUserStatusToggle = async () => {
+    try {
+      if (isSuspended) {
+        await unsuspendUser.mutateAsync(user._id);
+        toast.success("User unsuspended");
+      } else {
+        await suspendUser.mutateAsync(user._id);
+        toast.success("User suspended");
+      }
+      setShowStatusDialog(false);
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, `Unable to ${isSuspended ? "unsuspend" : "suspend"} user`));
+    }
+  };
+
+  const isUpdatingStatus = suspendUser.isPending || unsuspendUser.isPending;
+
   const stats = [
     {
       title: "Wallet Balance",
@@ -95,8 +131,25 @@ export function UserStats({ user }: UserStatsProps) {
     <div className="mt-8 space-y-8">
       <div className="flex justify-between items-center">
         <h3 className="text-2xl font-bold text-[#101828]">User Data Points</h3>
-        {/* Actions for suspend/unsuspend can be added here */}
-        <Button variant="destructive" className="bg-[#D92D20] hover:bg-[#B42318]">Suspend User</Button>
+        {isSuspended ? (
+          <Button
+            variant="outline"
+            className="text-green-700 border-green-200 bg-green-50 hover:bg-green-100 hover:text-green-800"
+            onClick={() => setShowStatusDialog(true)}
+            disabled={isUpdatingStatus}
+          >
+            Unsuspend User
+          </Button>
+        ) : (
+          <Button
+            variant="destructive"
+            className="bg-[#D92D20] hover:bg-[#B42318]"
+            onClick={() => setShowStatusDialog(true)}
+            disabled={isUpdatingStatus}
+          >
+            Suspend User
+          </Button>
+        )}
       </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat, i) => (
@@ -109,6 +162,27 @@ export function UserStats({ user }: UserStatsProps) {
           />
         ))}
       </div>
+
+      <AlertDialog open={showStatusDialog} onOpenChange={setShowStatusDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {isSuspended ? "Are you sure you want to unsuspend this user?" : "Are you sure you want to suspend this user?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {isSuspended
+                ? "Unsuspending this user will restore their access to the platform."
+                : "Suspending this user will revoke their access to the platform."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isUpdatingStatus}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleUserStatusToggle} disabled={isUpdatingStatus}>
+              {isUpdatingStatus ? "Working..." : "Continue"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

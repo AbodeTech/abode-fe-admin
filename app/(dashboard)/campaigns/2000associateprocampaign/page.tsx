@@ -36,6 +36,9 @@ export default function Campaign2000AssociateProPage() {
   const upgrades = data?.getAssociateProUpgrades?.upgrades ?? [];
   const referral = data?.getReferralAnalytics;
   const tickets = referral?.ticketHolders.tickets ?? [];
+  const recruitmentRows = (recruitmentData?.data ?? []).filter(
+    (item): item is NonNullable<typeof item> => item !== null
+  );
 
   if (error) {
     return (
@@ -87,7 +90,7 @@ export default function Campaign2000AssociateProPage() {
       {referral && <AssociateProSourceAnalytics data={referral} />}
 
       <AssociateProRecruitmentTable
-        data={recruitmentData?.data ?? []}
+        data={recruitmentRows}
         count={recruitmentData?.count}
         page={recruitmentPage}
         limit={RECRUITMENT_LIMIT}

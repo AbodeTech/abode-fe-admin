@@ -66,11 +66,11 @@ export function CommissionExport() {
         .filter((row): row is NonNullable<typeof row> => row !== null)
         .map((row) => {
           const parsed = parseCommissionDescription(row.description ?? "");
-          const transactionAmount = row.amount ?? 0;
+          const transactionAmount = Number(row.amount ?? 0);
           const taxAmount = parsed.taxAmount ? Number(parsed.taxAmount) : null;
           const gross = taxAmount !== null ? taxAmount + transactionAmount : null;
           const percentageEarned =
-            taxAmount !== null && gross > 0
+            gross !== null && gross > 0
               ? ((100 * transactionAmount) / (gross * 0.95)).toFixed(2)
               : "N/A";
 
@@ -113,4 +113,3 @@ export function CommissionExport() {
     </Button>
   );
 }
-

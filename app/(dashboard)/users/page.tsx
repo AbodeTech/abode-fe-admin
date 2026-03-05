@@ -1,13 +1,19 @@
 "use client";
 
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useUsers, UsersTable, SystemUserOverview } from "@/features/users";
+import {
+  useUsers,
+  UsersTable,
+  SystemUserOverview,
+  UsersPageActions,
+} from "@/features/users";
 import { Pagination } from "@/components/shared/Pagination";
 import { FilterSelect } from "@/components/shared/FilterSelect";
 import { DateFilter } from "@/components/shared/DateFilter";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
-import { useState, useEffect, Suspense } from "react";
+
 function UsersPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -19,13 +25,10 @@ function UsersPageContent() {
   );
   const [isSearchPending, setIsSearchPending] = useState(false);
 
-  // Debounce search update to URL
   useEffect(() => {
     const timer = setTimeout(() => {
       const params = new URLSearchParams(searchParams.toString());
-      const currentSearch =
-        searchParams.get("query") || searchParams.get("search") || "";
-
+      const currentSearch = searchParams.get("query") || searchParams.get("search") || "";
       if (searchTerm !== currentSearch) {
         if (searchTerm) {
           params.set("query", searchTerm);
@@ -39,21 +42,37 @@ function UsersPageContent() {
       }
       setIsSearchPending(false);
     }, 500);
-
     return () => clearTimeout(timer);
   }, [searchTerm, router, searchParams]);
+
+  const searchQuery = searchParams.get("query") || searchParams.get("search") || undefined;
+  const hasReferral =
+    searchParams.get("hasReferral") === "true"
+      ? true
+      : searchParams.get("hasReferral") === "false"
+        ? false
+        : undefined;
+  const hasAsset =
+    searchParams.get("hasAsset") === "true"
+      ? true
+      : searchParams.get("hasAsset") === "false"
+        ? false
+        : undefined;
+  const referralStatus = searchParams.get("referralStatus") || undefined;
+  const howDidYouHearAboutUs = searchParams.get("howYouHeard") || undefined;
+  const startDate = searchParams.get("start_date") || undefined;
+  const endDate = searchParams.get("end_date") || undefined;
 
   const { data, isLoading } = useUsers({
     page,
     limit,
-    searchQuery:
-      searchParams.get("query") || searchParams.get("search") || undefined,
-    hasReferral: searchParams.get("hasReferral") === 'true' ? true : searchParams.get("hasReferral") === 'false' ? false : undefined,
-    hasAsset: searchParams.get("hasAsset") === 'true' ? true : searchParams.get("hasAsset") === 'false' ? false : undefined,
-    referralStatus: searchParams.get("referralStatus") || undefined,
-    howDidYouHearAboutUs: searchParams.get("howYouHeard") || undefined,
-    startDate: searchParams.get("start_date") || undefined,
-    endDate: searchParams.get("end_date") || undefined,
+    searchQuery,
+    hasReferral,
+    hasAsset,
+    referralStatus,
+    howDidYouHearAboutUs,
+    startDate,
+    endDate,
   });
 
   const users = (data?.data || []).filter((u) => u !== null && u !== undefined);
@@ -61,88 +80,80 @@ function UsersPageContent() {
 
   return (
     <div className="mt-4 space-y-4">
-      {/* Title */}
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-start gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-semibold text-[#101828]">Users</h1>
           <p className="text-sm text-[#667085] mt-1">Manage all users and their details</p>
         </div>
+        <UsersPageActions />
       </div>
 
-      <SystemUserOverview
-        startDate={searchParams.get("start_date") || undefined}
-        endDate={searchParams.get("end_date") || undefined}
-      />
+      <SystemUserOverview startDate={startDate} endDate={endDate} />
 
-      {/* Filters Section */}
-      <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center bg-white p-4 border border-[#E5EAEF] rounded-lg">
-        <div className="relative w-full sm:max-w-md">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by name, email..."
-            className="pl-8 h-10 bg-white"
-            value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value);
-              setIsSearchPending(true);
-            }}
-          />
-        </div>
-
-        <div className="flex flex-wrap gap-3 w-full sm:w-auto">
-          <FilterSelect
-            data={[
-              { label: "All Statuses", value: "all" },
-              { label: "User", value: "user" },
-              { label: "Associate", value: "associate" },
-              { label: "Associate Pro", value: "associate-pro" },
-            ]}
-            queryKey="referralStatus"
-            placeholder="Status"
-          />
-          <FilterSelect
-            data={[
-              { label: "Referral: All", value: "all" },
-              { label: "Has Referral", value: "true" },
-              { label: "No Referral", value: "false" },
-            ]}
-            queryKey="hasReferral"
-            placeholder="Referral"
-          />
-          <FilterSelect
-            data={[
-              { label: "Asset: All", value: "all" },
-              { label: "Has Asset", value: "true" },
-              { label: "No Asset", value: "false" },
-            ]}
-            queryKey="hasAsset"
-            placeholder="Asset Ownership"
-          />
-          <FilterSelect
-            data={[
-              { label: "How You Heard: All", value: "all" },
-              { label: "Someone invited me", value: "referral" },
-              { label: "Social Media", value: "social-media" },
-              { label: "Billboard", value: "billboard" },
-              { label: "Email Newsletter", value: "email-newsletter" },
-              { label: "Associate", value: "associate" },
-              { label: "African Wealth Festival Event", value: "african-wealth-festival" },
-              { label: "Other", value: "other" },
-            ]}
-            queryKey="howYouHeard"
-            placeholder="How You Heard"
-          />
-          <DateFilter />
-        </div>
+      <div className="relative w-full sm:max-w-md">
+        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search by name, email..."
+          className="pl-8 h-10 bg-white"
+          value={searchTerm}
+          onChange={(e) => {
+            setSearchTerm(e.target.value);
+            setIsSearchPending(true);
+          }}
+        />
       </div>
 
-      {/* Table Section */}
+      <div className="flex flex-wrap gap-3">
+        <FilterSelect
+          data={[
+            { label: "Has Asset - all", value: "all" },
+            { label: "Has Asset - true", value: "true" },
+            { label: "Has Asset - false", value: "false" },
+          ]}
+          queryKey="hasAsset"
+          placeholder="Has Asset"
+        />
+        <FilterSelect
+          data={[
+            { label: "Has Referral - all", value: "all" },
+            { label: "Has Referral - true", value: "true" },
+            { label: "Has Referral - false", value: "false" },
+          ]}
+          queryKey="hasReferral"
+          placeholder="Has Referral"
+        />
+        <FilterSelect
+          data={[
+            { label: "Referral Status - all", value: "all" },
+            { label: "Referral Status - User", value: "user" },
+            { label: "Referral Status - Associate", value: "associate" },
+            { label: "Referral Status - Associate Pro", value: "associate-pro" },
+          ]}
+          queryKey="referralStatus"
+          placeholder="Referral Status"
+        />
+        <FilterSelect
+          data={[
+            { label: "How You Heard - all", value: "all" },
+            { label: "Someone invited me", value: "referral" },
+            { label: "Social Media", value: "social-media" },
+            { label: "Billboard", value: "billboard" },
+            { label: "Email Newsletter", value: "email-newsletter" },
+            { label: "Associate", value: "associate" },
+            { label: "African Wealth Festival Event", value: "african-wealth-festival" },
+            { label: "Other", value: "other" },
+          ]}
+          queryKey="howYouHeard"
+          placeholder="How You Heard"
+        />
+        <DateFilter />
+      </div>
+
       <div className="bg-white border border-[#E5EAEF] rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
           <UsersTable data={users} isLoading={isLoading || isSearchPending} />
         </div>
 
-        {/* Pagination Section */}
         {!isLoading && totalCount > 0 && (
           <div className="px-6 py-4 border-t border-[#E5EAEF]">
             <Pagination count={totalCount} currentIdx={page} limit={limit} />

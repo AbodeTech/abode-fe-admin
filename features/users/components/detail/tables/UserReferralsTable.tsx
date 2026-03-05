@@ -1,6 +1,10 @@
 "use client"
 
 import { useState } from "react"
+import { useParams } from "next/navigation"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
+import { useAuthStore } from "@/store/auth-store"
 import {
   Table,
   TableBody,
@@ -23,9 +27,23 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Plus } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { formatAmount, formatDate, getStatusColor, } from "@/lib/utils/transaction-utils"
 import { UserReferralResponse } from "@/lib/api/admin/referrals.types"
 import { UserReferralActions } from "../UserReferralActions"
+import { addUserReferralByAdmin } from "@/lib/api/admin/referrals.client"
+import { userKeys } from "../../../hooks/query-keys"
+import { getErrorMessage } from "../../../utils/error-message"
 
 // Extend transaction-utils with getAssociateColor if not present or create local helper
 const getAssociateColorHelper = (status: string) => {
@@ -47,22 +65,46 @@ interface UserReferralsTableProps {
 }
 
 export function UserReferralsTable({ referrals }: UserReferralsTableProps) {
+  const params = useParams<{ id: string }>()
+  const userId = params.id
+  const user = useAuthStore((state) => state.user)
+  const canAddReferral = user?.role === "admin" || (user?.permissions ?? []).includes("add-referral")
+  const queryClient = useQueryClient()
   const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [isAddOpen, setIsAddOpen] = useState(false)
+  const [referralEmail, setReferralEmail] = useState("")
 
   const filteredData =
     statusFilter === "all"
       ? referrals
       : referrals.filter((referral) => referral.userReferralStatus === statusFilter)
 
-  if (!referrals || referrals.length === 0) {
-    return null // Don't show if no referrals? Or show empty state. Legacy shows empty table.
-  }
+  const addReferral = useMutation({
+    mutationFn: async () => {
+      if (!userId) throw new Error("User ID is required")
+      if (!referralEmail.trim()) throw new Error("Referral email is required")
+      return addUserReferralByAdmin(userId, referralEmail.trim())
+    },
+    onSuccess: () => {
+      toast.success("Referral added successfully")
+      setIsAddOpen(false)
+      setReferralEmail("")
+      queryClient.invalidateQueries({ queryKey: userKeys.referrals(userId) })
+      queryClient.invalidateQueries({ queryKey: userKeys.detail(userId) })
+    },
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, "Unable to add referral"))
+    },
+  })
 
   return (
-    <Card className="mt-8 border-none shadow-none">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 px-0">
-        <CardTitle className="text-xl font-semibold tracking-tight">
-          Referrals ({filteredData.length})
+    <Card className="mt-8">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-2xl font-bold">
+          Referrals: {filteredData.length}
+          {statusFilter !== "all" && (
+            <span className="text-sm font-normal text-muted-foreground ml-2">(filtered by {statusFilter})</span>
+          )}
         </CardTitle>
         <div className="flex items-center gap-4">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -76,16 +118,21 @@ export function UserReferralsTable({ referrals }: UserReferralsTableProps) {
               <SelectItem value="associate-pro">Associate Pro</SelectItem>
             </SelectContent>
           </Select>
+          {canAddReferral && (
+            <Button onClick={() => setIsAddOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" /> Add Referral
+            </Button>
+          )}
         </div>
       </CardHeader>
-      <CardContent className="px-0">
-        <div className="rounded-md border overflow-x-auto">
+      <CardContent>
+        <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
-                <TableHead>Referral Status</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead>Phone Number</TableHead>
                 <TableHead>Account Status</TableHead>
                 <TableHead>Commission Gained</TableHead>
@@ -96,8 +143,8 @@ export function UserReferralsTable({ referrals }: UserReferralsTableProps) {
             <TableBody>
               {filteredData.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                    No referrals found
+                  <TableCell colSpan={8} className="text-center py-4 text-muted-foreground">
+                    No referrals found{statusFilter !== "all" ? ` with status "${statusFilter}"` : ""}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -133,6 +180,31 @@ export function UserReferralsTable({ referrals }: UserReferralsTableProps) {
           </Table>
         </div>
       </CardContent>
+
+      <Dialog open={isAddOpen && canAddReferral} onOpenChange={setIsAddOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Add Referral</DialogTitle>
+            <DialogDescription>Enter the referral email to add to this user.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Input
+              type="email"
+              value={referralEmail}
+              onChange={(event) => setReferralEmail(event.target.value)}
+              placeholder="name@example.com"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddOpen(false)} disabled={addReferral.isPending}>
+              Cancel
+            </Button>
+            <Button onClick={() => addReferral.mutate()} disabled={addReferral.isPending || !referralEmail.trim()}>
+              Add Referral
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   )
 }

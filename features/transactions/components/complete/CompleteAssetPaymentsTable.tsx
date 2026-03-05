@@ -37,7 +37,13 @@ const formatCurrency = (value?: number | null) =>
 const formatDate = (value?: string | null) => {
   if (!value) return "-";
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString();
+  return Number.isNaN(date.getTime())
+    ? value
+    : date.toLocaleDateString("en-NG", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
 };
 
 export function CompleteAssetPaymentsTable({ data }: CompleteAssetPaymentsTableProps) {
@@ -50,23 +56,23 @@ export function CompleteAssetPaymentsTable({ data }: CompleteAssetPaymentsTableP
           <TableRow>
             <TableHead>Name</TableHead>
             <TableHead>Email</TableHead>
-            <TableHead>Phone</TableHead>
+            <TableHead>Phone Number</TableHead>
             <TableHead>Sales Person</TableHead>
-            <TableHead>Asset</TableHead>
+            <TableHead>Asset Name</TableHead>
             <TableHead>Unit</TableHead>
             <TableHead>Size</TableHead>
             <TableHead>Price</TableHead>
-            <TableHead>Paid</TableHead>
-            <TableHead>Subscription</TableHead>
+            <TableHead>Amount Paid</TableHead>
+            <TableHead>Month Subscription</TableHead>
             <TableHead>Start Date</TableHead>
-            <TableHead>Next Payment</TableHead>
+            <TableHead>Next Payment Date</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {rows.length === 0 ? (
             <TableRow>
               <TableCell colSpan={12} className="text-center text-sm text-muted-foreground">
-                No completed asset payments found.
+                No completed payments found.
               </TableCell>
             </TableRow>
           ) : (
@@ -81,7 +87,11 @@ export function CompleteAssetPaymentsTable({ data }: CompleteAssetPaymentsTableP
                 <TableCell>{row.size ?? "-"}</TableCell>
                 <TableCell>{formatCurrency(row.price)}</TableCell>
                 <TableCell>{formatCurrency(row.amount_paid)}</TableCell>
-                <TableCell>{row.month_subscription ?? "-"}</TableCell>
+                <TableCell>
+                  {row.month_subscription !== null && row.month_subscription !== undefined
+                    ? `${row.month_subscription} months`
+                    : "-"}
+                </TableCell>
                 <TableCell>{formatDate(row.start_date)}</TableCell>
                 <TableCell>{formatDate(row.next_payment_date)}</TableCell>
               </TableRow>

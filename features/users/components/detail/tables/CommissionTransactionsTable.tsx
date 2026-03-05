@@ -80,51 +80,51 @@ export function CommissionTransactionsTable({ transactions }: CommissionTransact
   })
 
   return (
-    <Card className="w-full border-none shadow-none">
-      <CardHeader className="px-0 pt-0">
+    <Card className="w-full">
+      <CardHeader>
         <CardTitle>Commission Transactions</CardTitle>
         <CardDescription>View and manage commission transactions</CardDescription>
       </CardHeader>
-      <CardContent className="px-0">
-        <div className="rounded-md border overflow-x-auto">
+      <CardContent>
+        <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[100px] cursor-pointer" onClick={() => handleSort("_id")}>
+                <TableHead className="w-[150px] cursor-pointer" onClick={() => handleSort("_id")}>
                   ID
-                  {sortField === "_id" && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-3 w-3" /> : <ArrowDownIcon className="inline ml-1 h-3 w-3" />)}
+                  {sortField === "_id" && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-4 w-4" /> : <ArrowDownIcon className="inline ml-1 h-4 w-4" />)}
                 </TableHead>
                 <TableHead className="cursor-pointer" onClick={() => handleSort("time_of_transaction")}>
                   Time
-                  {sortField === "time_of_transaction" && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-3 w-3" /> : <ArrowDownIcon className="inline ml-1 h-3 w-3" />)}
+                  {sortField === "time_of_transaction" && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-4 w-4" /> : <ArrowDownIcon className="inline ml-1 h-4 w-4" />)}
                 </TableHead>
                 <TableHead className="cursor-pointer" onClick={() => handleSort("amount")}>
                   Amount
-                  {sortField === "amount" && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-3 w-3" /> : <ArrowDownIcon className="inline ml-1 h-3 w-3" />)}
+                  {sortField === "amount" && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-4 w-4" /> : <ArrowDownIcon className="inline ml-1 h-4 w-4" />)}
                 </TableHead>
                 <TableHead className="cursor-pointer" onClick={() => handleSort("transaction_type")}>
-                  Type
-                  {sortField === "transaction_type" && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-3 w-3" /> : <ArrowDownIcon className="inline ml-1 h-3 w-3" />)}
+                  Transaction Type
+                  {sortField === "transaction_type" && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-4 w-4" /> : <ArrowDownIcon className="inline ml-1 h-4 w-4" />)}
                 </TableHead>
                 <TableHead className="cursor-pointer" onClick={() => handleSort("vatAmount")}>
-                  Total (VAT included)
-                  {sortField === "vatAmount" && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-3 w-3" /> : <ArrowDownIcon className="inline ml-1 h-3 w-3" />)}
+                  Transaction Amount
+                  {sortField === "vatAmount" && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-4 w-4" /> : <ArrowDownIcon className="inline ml-1 h-4 w-4" />)}
                 </TableHead>
                 <TableHead className="cursor-pointer" onClick={() => handleSort("assetType")}>
                   Asset Type
-                  {sortField === "assetType" && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-3 w-3" /> : <ArrowDownIcon className="inline ml-1 h-3 w-3" />)}
+                  {sortField === "assetType" && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-4 w-4" /> : <ArrowDownIcon className="inline ml-1 h-4 w-4" />)}
                 </TableHead>
                 <TableHead className="cursor-pointer" onClick={() => handleSort("clientName")}>
                   Client Name
-                  {sortField === "clientName" && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-3 w-3" /> : <ArrowDownIcon className="inline ml-1 h-3 w-3" />)}
+                  {sortField === "clientName" && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-4 w-4" /> : <ArrowDownIcon className="inline ml-1 h-4 w-4" />)}
                 </TableHead>
                 <TableHead className="cursor-pointer" onClick={() => handleSort("balance")}>
                   Wallet Balance
-                  {sortField === "balance" && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-3 w-3" /> : <ArrowDownIcon className="inline ml-1 h-3 w-3" />)}
+                  {sortField === "balance" && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-4 w-4" /> : <ArrowDownIcon className="inline ml-1 h-4 w-4" />)}
                 </TableHead>
                 <TableHead className="cursor-pointer" onClick={() => handleSort("status")}>
                   Status
-                  {sortField === "status" && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-3 w-3" /> : <ArrowDownIcon className="inline ml-1 h-3 w-3" />)}
+                  {sortField === "status" && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-4 w-4" /> : <ArrowDownIcon className="inline ml-1 h-4 w-4" />)}
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -132,8 +132,8 @@ export function CommissionTransactionsTable({ transactions }: CommissionTransact
               {sortedTransactions.length > 0 ? (
                 sortedTransactions.map((transaction) => (
                   <TableRow key={transaction._id}>
-                    <TableCell className="font-mono text-xs">{transaction._id.substring(0, 8)}...</TableCell>
-                    <TableCell className="text-muted-foreground text-xs">{formatDate(transaction.time_of_transaction)}</TableCell>
+                    <TableCell className="font-medium">{transaction._id}</TableCell>
+                    <TableCell>{formatDate(transaction.time_of_transaction)}</TableCell>
                     <TableCell className="font-medium">{formatAmount(transaction.amount)}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className={getTransactionTypeColor(transaction.transaction_type)}>
@@ -143,7 +143,7 @@ export function CommissionTransactionsTable({ transactions }: CommissionTransact
                     <TableCell>
                       {transaction.vatAmount ? formatAmount(Number(transaction.vatAmount) + Number(transaction.amount)) : "N/A"}
                     </TableCell>
-                    <TableCell className="capitalize">{transaction.assetType || "N/A"}</TableCell>
+                    <TableCell>{transaction.assetType || "N/A"}</TableCell>
                     <TableCell>{transaction.clientName || "N/A"}</TableCell>
                     <TableCell>{transaction.balance ? formatAmount(transaction.balance) : "N/A"}</TableCell>
                     <TableCell>
@@ -155,7 +155,7 @@ export function CommissionTransactionsTable({ transactions }: CommissionTransact
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center py-4">
                     No commission transactions found
                   </TableCell>
                 </TableRow>
