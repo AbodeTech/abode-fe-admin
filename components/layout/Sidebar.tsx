@@ -21,6 +21,7 @@ import {
   MessageSquare,
   Percent,
   ScrollText,
+  Settings,
   ShieldCheck,
   ShoppingCart,
   TrendingUp,
@@ -98,6 +99,14 @@ const navGroups = [
     items: [
       { name: "Admin Logs", link: "/security/adminlogs", icon: <ScrollText /> },
       { name: "Roles and Permissions", link: "/security/roles", icon: <ShieldCheck /> },
+    ]
+  },
+  {
+    title: "Settings",
+    isCollapsible: true,
+    icon: <Settings />,
+    items: [
+      { name: "Commission Config", link: "/settings/commission-config", icon: <Percent /> },
     ]
   }
 ];
