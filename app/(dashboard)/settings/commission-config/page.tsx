@@ -7,6 +7,7 @@ import {
   CommissionRatesCard,
   EditCommissionConfigDialog,
   ConfigHistoryTable,
+  AssetOverrideList,
 } from "@/features/commission-config";
 
 export default function CommissionConfigPage() {
@@ -47,6 +48,7 @@ export default function CommissionConfigPage() {
         <TabsList>
           <TabsTrigger value="current">Current Config</TabsTrigger>
           <TabsTrigger value="history">Change History</TabsTrigger>
+          <TabsTrigger value="overrides">Per-Asset Overrides</TabsTrigger>
         </TabsList>
 
         <TabsContent value="current" className="mt-4">
@@ -55,6 +57,10 @@ export default function CommissionConfigPage() {
 
         <TabsContent value="history" className="mt-4">
           <ConfigHistoryTable />
+        </TabsContent>
+
+        <TabsContent value="overrides" className="mt-4">
+          <AssetOverrideList />
         </TabsContent>
       </Tabs>
     </div>
