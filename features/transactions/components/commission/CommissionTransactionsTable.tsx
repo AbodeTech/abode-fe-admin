@@ -36,6 +36,7 @@ export const CommissionTransactionsFragment = graphql(`
       referrer
       referral_status
       email
+      tin
     }
     plot_size
     status
@@ -128,6 +129,7 @@ interface CommissionTransactionsTableProps {
 }
 
 export function CommissionTransactionsTable({ data, isLoading }: CommissionTransactionsTableProps) {
+  console.log(data);
   const [sortField, setSortField] = useState("time_of_transaction");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
@@ -288,7 +290,7 @@ export function CommissionTransactionsTable({ data, isLoading }: CommissionTrans
                     ? `₦${formatNumber(Number(commission.whtAmount) + Number(commission.amount))}`
                     : "N/A"}
                 </TableCell>
-                <TableCell className="py-5 px-4 text-sm text-[#667085]">{commission.tin || "N/A"}</TableCell>
+                <TableCell className="py-5 px-4 text-sm text-[#667085]">{commission.user?.tin || "N/A"}</TableCell>
                 <TableCell className="py-5 px-4">
                   <Badge variant="outline" className="bg-[#F0F1F3] text-[#333333] border-[#E0E2E7] text-xs font-medium">
                     {commission.parsedAssetType}

@@ -83,7 +83,7 @@ export function CommissionExport() {
             associateStatus: row.user?.referral_status || "N/A",
             percentageEarned,
             commission: row.amount ?? "N/A",
-            taxPayerId: row.tin || "N/A",
+            taxPayerId: row.user?.tin || "N/A",
             transactionStatus: row.status || "N/A",
             balance: parsed.balance || "N/A",
           };

@@ -109,7 +109,8 @@ export function WithdrawalTransactionsTable({ data, isLoading, onApprove, onDecl
     <div className="w-full">
       <Card className="border border-gray-200 pt-0! mt-0!">
         <ScrollArea className="w-full">
-          <Table>
+          <div className="w-full overflow-x-auto">
+            <Table className="min-w-[980px]">
             <TableHeader className="bg-gray-50 border-b border-gray-200">
               <TableRow className="text-sm font-bold text-black">
                 <TableHead className="py-0! font-semibold">
@@ -200,7 +201,8 @@ export function WithdrawalTransactionsTable({ data, isLoading, onApprove, onDecl
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
+            </Table>
+          </div>
         </ScrollArea>
       </Card>
     </div>
