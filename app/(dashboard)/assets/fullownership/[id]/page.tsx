@@ -1,6 +1,10 @@
 import { AssetDetailHeader } from "@/features/assets";
-import { AssetInventory } from "@/features/assets/components/detail/AssetInventory";
-import { SubscribedCustomers } from "@/features/assets/components/detail/SubscribedCustomers";
+import { 
+  AssetDetailFilters, 
+  AssetHealthBar, 
+  PaymentPlanMatrix, 
+  SubscribedCustomers 
+} from "@/features/assets/components/detail";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -14,9 +18,11 @@ export default async function ViewFullOwnershipAssetPage({ params }: PageProps) 
   const assetTypeForData = "full-ownership";
 
   return (
-    <div>
+    <div className="max-w-[1600px] mx-auto px-4 py-8">
       <AssetDetailHeader assetName={assetName} assetType={assetTypeForHeader} />
-      <AssetInventory id={assetName} assetType={assetTypeForData} />
+      <AssetDetailFilters />
+      <AssetHealthBar />
+      <PaymentPlanMatrix />
       <SubscribedCustomers assetName={assetName} assetType={assetTypeForData} />
     </div>
   );

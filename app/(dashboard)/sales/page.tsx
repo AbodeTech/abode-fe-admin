@@ -12,7 +12,8 @@ import {
 } from "@/features/sales";
 import { SalesExport } from "@/features/sales/components/SalesExport";
 import { Pagination } from "@/components/shared/Pagination";
-import { Loader2 } from "lucide-react";
+import { ArrowRight, Loader2 } from "lucide-react";
+import Link from "next/link";
 
 function SalesContent() {
   const searchParams = useSearchParams();
@@ -61,7 +62,16 @@ function SalesContent() {
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <h1 className="text-2xl font-bold tracking-tight">Sales</h1>
+        <div className="flex items-center gap-4">
+          <h1 className="text-2xl font-bold tracking-tight">Sales</h1>
+          <Link
+            href="/analytics/sales"
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline group"
+          >
+            View Analytics
+            <ArrowRight className="size-4 group-hover:translate-x-0.5 transition-transform" />
+          </Link>
+        </div>
         <SalesExport
           filters={{
             page,

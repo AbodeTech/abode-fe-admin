@@ -11,6 +11,8 @@ export { useUpdateFlexAsset } from './hooks/use-update-asset';
 export { FlexAssetsTable as AssetFlexTable } from './components/AssetFlexTable';
 export { FullOwnershipAssetsTable as AssetFullOwnershipTable } from './components/AssetFullOwnershipTable';
 export { AssetInventoryOverview } from './components/AssetInventoryOverview';
+export { InventoryHealthBar } from './components/InventoryHealthBar';
+export { AssetCategoryHealth } from './components/AssetCategoryHealth';
 export { AssetPageHeader } from './components/AssetPageHeader';
 export { CreateFlexAssetForm } from './components/CreateFlexAssetForm';
 export { CreateFullOwnershipAssetForm } from './components/CreateFullOwnershipAssetForm';
