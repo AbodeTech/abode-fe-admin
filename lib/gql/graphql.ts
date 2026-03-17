@@ -3018,7 +3018,7 @@ export type MutationSigninUserArgs = {
 
 
 export type MutationSignupAdminArgs = {
-  signupAdminInput: AdminSignupInput;
+  signupAdminInput: LegacyAdminSignupInput;
 };
 
 
@@ -5272,7 +5272,7 @@ export type AdminSigninInput = {
   password: Scalars['String']['input'];
 };
 
-export type AdminSignupInput = {
+export type LegacyAdminSignupInput = {
   email: Scalars['String']['input'];
   password: Scalars['String']['input'];
   role: Scalars['String']['input'];
