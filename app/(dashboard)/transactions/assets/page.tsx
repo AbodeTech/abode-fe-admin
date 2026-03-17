@@ -27,6 +27,7 @@ function AssetTransactionsContent() {
   const salesType = searchParams.get("salestype");
   const status = searchParams.get("transactionstatus");
   const transactionType = searchParams.get("transactiontype");
+  const assetType = searchParams.get("assettype");
   const startDate = searchParams.get("start_date");
   const endDate = searchParams.get("end_date");
   const search = searchParams.get("search") || "";
@@ -59,6 +60,7 @@ function AssetTransactionsContent() {
     salesType: salesType === "all" ? null : salesType,
     status: status === "all" ? null : status,
     transactionType: transactionType === "all" ? null : transactionType,
+    assetType: assetType === "all" ? null : assetType,
     startDate,
     endDate,
   });
@@ -96,30 +98,40 @@ function AssetTransactionsContent() {
           placeholder="All Sales Type"
           data={[
             { label: "All Sales Type", value: "all" },
-            { label: "Land Banking", value: "land_banking" },
-            { label: "Flex", value: "flex" },
-            { label: "Full Ownership", value: "full_ownership" },
+            { label: "Asset Purchase", value: "ap" },
+            { label: "Reccurring Asset Purchase", value: "rap" },
           ]}
         />
 
         <FilterSelect
           queryKey="transactionstatus"
-          placeholder="All Status"
+          placeholder="All Transactions Status"
           data={[
-            { label: "All Status", value: "all" },
+            { label: "All Transactions Status", value: "all" },
+            { label: "Approved", value: "completed" },
+            { label: "Rejected", value: "failed" },
             { label: "Pending", value: "pending" },
-            { label: "Approved", value: "approved" },
-            { label: "Declined", value: "declined" },
           ]}
         />
 
         <FilterSelect
           queryKey="transactiontype"
-          placeholder="All Types"
+          placeholder="All Transactions Type"
           data={[
-            { label: "All Types", value: "all" },
-            { label: "Credit", value: "credit" },
-            { label: "Debit", value: "debit" },
+            { label: "All Transactions Type", value: "all" },
+            { label: "Transfer", value: "transfer" },
+            { label: "Wallet", value: "wallet" },
+            { label: "Paystack", value: "paystack" },
+          ]}
+        />
+
+        <FilterSelect
+          queryKey="assettype"
+          placeholder="All Asset Type"
+          data={[
+            { label: "All Asset Type", value: "all" },
+            { label: "Flex", value: "flex" },
+            { label: "Full-Ownership", value: "full-ownership" },
           ]}
         />
 
