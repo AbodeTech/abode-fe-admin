@@ -45,7 +45,7 @@ export function EditUserPaymentPlanModal({ isOpen, onClose, asset, userId }: Edi
     resolver: zodResolver(editUserPaymentPlanSchema),
   });
 
-  const assetType = getValues("asset_type");
+  const assetType = pd?.asset_type;
 
   useEffect(() => {
     if (isOpen && pd) {
@@ -56,11 +56,10 @@ export function EditUserPaymentPlanModal({ isOpen, onClose, asset, userId }: Edi
         balance: pd.balance,
         asset_price: pd.asset_price,
         next_date_of_payment: pd.next_date_of_payment ? new Date(pd.next_date_of_payment) : new Date(),
-        asset_type: pd.asset_type,
         start_date: pd.start_date ? new Date(pd.start_date) : new Date(),
         no_of_units: pd.no_of_units,
-        fullownership_landprice: pd.fullownerhsip_landprice ?? undefined,
-        fullownership_documentprice: pd.fullownerhsip_documentprice ?? undefined,
+        fullownerhsip_landprice: pd.fullownerhsip_landprice ?? undefined,
+        fullownerhsip_documentprice: pd.fullownerhsip_documentprice ?? undefined,
         months_covered: pd.months_covered,
         month_subscription: pd.month_subscription,
         size: Number(pd.size),
@@ -88,11 +87,22 @@ export function EditUserPaymentPlanModal({ isOpen, onClose, asset, userId }: Edi
     const monthsRemaining = (data.month_subscription || 0) - (data.months_covered || 0);
 
     mutation.mutate({
-      ...data,
-      asset_price: data.fullownership_landprice || data.asset_price,
+      userId: data.userId,
+      uniqueAssetId: data.uniqueAssetId,
+      amount_paid: data.amount_paid,
+      balance: data.balance,
+      asset_price: data.fullownerhsip_landprice || data.asset_price,
+      next_date_of_payment: data.next_date_of_payment,
+      start_date: data.start_date,
+      no_of_units: data.no_of_units,
+      fullownerhsip_landprice: data.fullownerhsip_landprice ?? null,
+      fullownerhsip_documentprice: data.fullownerhsip_documentprice ?? null,
+      months_covered: data.months_covered,
       month_remaining: monthsRemaining,
-      fullownerhsip_landprice: data.fullownership_landprice ?? null,
-      fullownerhsip_documentprice: data.fullownership_documentprice ?? null,
+      month_subscription: data.month_subscription,
+      size: data.size,
+      default_amount: data.default_amount,
+      amount_payable: data.amount_payable,
       document_amount_paid: data.document_amount_paid ?? null,
       document_balance: data.document_balance ?? null,
     });
@@ -178,8 +188,8 @@ export function EditUserPaymentPlanModal({ isOpen, onClose, asset, userId }: Edi
 
               {assetType === "full-ownership" && (
                 <>
-                  {renderNumberInput("fullownership_landprice", "Full Ownership Land Price")}
-                  {renderNumberInput("fullownership_documentprice", "Full Ownership Document Price")}
+                  {renderNumberInput("fullownerhsip_landprice", "Full Ownership Land Price")}
+                  {renderNumberInput("fullownerhsip_documentprice", "Full Ownership Document Price")}
                   {renderNumberInput("document_amount_paid", "Document Amount Paid")}
                   {renderNumberInput("document_balance", "Document Balance")}
                 </>
