@@ -229,12 +229,12 @@ export const editUserAssetQuestion = async (payload: EditUserAssetQuestionInput)
 
 export const editUserPaymentPlanByAdmin = async (payload: EditUserPaymentPlanInput) => {
   const query = `
-   mutation EditUserPaymentPlanByAdmin($assets: EditUserPaymentPlanByAdminInput!) {
-      editUserPaymentPlanByAdmin(assets: $assets)
+    mutation UpdateUserPaymentDetails($userPaymentDetailsInput: UserPaymentDetailsInput!) {
+      updateUserPaymentDetails(userPaymentDetailsInput: $userPaymentDetailsInput)
     }
   `;
   const response = await fetchGraphql<EditUserPaymentPlanResponse>(query, {
-    assets: payload,
+    userPaymentDetailsInput: payload,
   });
-  return response.editUserPaymentPlanByAdmin;
+  return response.updateUserPaymentDetails;
 };

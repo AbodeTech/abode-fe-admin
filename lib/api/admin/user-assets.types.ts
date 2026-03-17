@@ -182,5 +182,5 @@ export interface EditUserPaymentPlanInput {
 }
 
 export interface EditUserPaymentPlanResponse {
-  editUserPaymentPlanByAdmin: boolean;
+  updateUserPaymentDetails: boolean;
 }

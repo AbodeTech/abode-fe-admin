@@ -9,7 +9,6 @@ const EXPORT_COMMISSION_TRANSACTIONS_QUERY = graphql(`
       count
       data {
         _id
-        tin
         admin_status
         amount
         asset_type
@@ -21,6 +20,7 @@ const EXPORT_COMMISSION_TRANSACTIONS_QUERY = graphql(`
           referrer
           referral_status
           email
+          tin
         }
         plot_size
         status
