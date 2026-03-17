@@ -28,6 +28,7 @@ export function UserInfo({ user }: UserInfoProps) {
     { label: "Marital Status", value: user.marital_status },
     { label: "Address", value: user.address },
     { label: "Employment Status", value: user.employment_status },
+    { label: "Status", value: user.referral_status },
     { label: "Email", value: user.email },
     { label: "Date of Birth", value: user.date_of_birth ? formatDateWord(user.date_of_birth) : "N/A" },
     { label: "Referrer", value: user.referral ? `${user.referral.firstName} ${user.referral.lastName}` : "No Referrer" },

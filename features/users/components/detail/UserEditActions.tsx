@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Plus } from "lucide-react"
+import { useRouter, useSearchParams } from "next/navigation"
 
 import { EditUserProfileModal } from "../modals/EditUserProfileModal"
 import { ChangeReferralStatusModal } from "../modals/ChangeReferralStatusModal"
@@ -18,6 +19,7 @@ import { EditUserTinModal } from "../modals/EditUserTinModal"
 import { ClearUserTinModal } from "../modals/ClearUserTinModal"
 
 import { UserDetail } from "../../types/user.types"
+import { useAuthStore } from "@/store/auth-store"
 
 interface UserEditActionsProps {
   user: UserDetail
@@ -27,6 +29,59 @@ export function UserEditActions({ user }: UserEditActionsProps) {
   const [activeModal, setActiveModal] = useState<
     "profile" | "refStatus" | "wallet" | "commission" | "tin" | "clearTin" | null
   >(null)
+  const currentUser = useAuthStore((state) => state.user)
+  const permissions = currentUser?.permissions ?? []
+  const isAdmin = currentUser?.role === "admin"
+  const canEditUser = permissions.includes("edit_user")
+  const canModifyRefStatus = permissions.includes("modify-referral-status")
+  const searchParams = useSearchParams()
+  const router = useRouter()
+
+  if (!isAdmin || (!canEditUser && !canModifyRefStatus)) {
+    return null
+  }
+
+  const setModalParam = (value: string | null) => {
+    const params = new URLSearchParams(searchParams?.toString() || "")
+    if (value) {
+      params.set("modal", value)
+    } else {
+      params.delete("modal")
+    }
+    const next = params.toString()
+    router.push(next ? `?${next}` : "?")
+  }
+
+  useEffect(() => {
+    const modal = searchParams?.get("modal")
+    if (!modal) {
+      setActiveModal(null)
+      return
+    }
+    switch (modal) {
+      case "edituserprofile":
+        setActiveModal("profile")
+        break
+      case "changeRef":
+        setActiveModal("refStatus")
+        break
+      case "edituserbalance":
+        setActiveModal("wallet")
+        break
+      case "editusercommissionbalance":
+        setActiveModal("commission")
+        break
+      case "editusertin":
+        setActiveModal("tin")
+        break
+      case "clearusertin":
+        setActiveModal("clearTin")
+        break
+      default:
+        setActiveModal(null)
+        break
+    }
+  }, [searchParams])
 
   return (
     <>
@@ -38,59 +93,79 @@ export function UserEditActions({ user }: UserEditActionsProps) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-[200px]">
-          <DropdownMenuItem onSelect={() => setActiveModal("profile")}>
-            Edit User Profile
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => setActiveModal("refStatus")}>
-            Edit Ref Status
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => setActiveModal("wallet")}>
-            Edit User Wallet Balance
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => setActiveModal("commission")}>
-            Edit User Commission Balance
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => setActiveModal("tin")}>
-            Edit User TIN
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => setActiveModal("clearTin")} className="text-red-600 focus:text-red-600">
-            Clear User TIN
-          </DropdownMenuItem>
+          {canEditUser && (
+            <DropdownMenuItem onSelect={() => setModalParam("edituserprofile")}>
+              Edit User Profile
+            </DropdownMenuItem>
+          )}
+          {canModifyRefStatus && (
+            <DropdownMenuItem onSelect={() => setModalParam("changeRef")}>
+              Edit Ref Status
+            </DropdownMenuItem>
+          )}
+          {canEditUser && (
+            <>
+              <DropdownMenuItem onSelect={() => setModalParam("edituserbalance")}>
+                Edit User Wallet Balance
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setModalParam("editusercommissionbalance")}>
+                Edit User Commission Balance
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setModalParam("editusertin")}>
+                Edit User TIN
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setModalParam("clearusertin")} className="text-red-600 focus:text-red-600">
+                Clear User TIN
+              </DropdownMenuItem>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 
       <EditUserProfileModal
         user={user}
         open={activeModal === "profile"}
-        onOpenChange={(open) => !open && setActiveModal(null)}
+        onOpenChange={(open) => {
+          if (!open) setModalParam(null)
+        }}
       />
 
       <ChangeReferralStatusModal
         currentStatus={user.referral_status}
         open={activeModal === "refStatus"}
-        onOpenChange={(open) => !open && setActiveModal(null)}
+        onOpenChange={(open) => {
+          if (!open) setModalParam(null)
+        }}
       />
 
       <EditUserWalletModal
         currentBalance={user.wallet?.balance?.toString() || "0"}
         open={activeModal === "wallet"}
-        onOpenChange={(open) => !open && setActiveModal(null)}
+        onOpenChange={(open) => {
+          if (!open) setModalParam(null)
+        }}
       />
 
       <EditUserCommissionBalanceModal
         open={activeModal === "commission"}
-        onOpenChange={(open) => !open && setActiveModal(null)}
+        onOpenChange={(open) => {
+          if (!open) setModalParam(null)
+        }}
       />
 
       <EditUserTinModal
         currentTin={user.kyc?.tin || ""}
         open={activeModal === "tin"}
-        onOpenChange={(open) => !open && setActiveModal(null)}
+        onOpenChange={(open) => {
+          if (!open) setModalParam(null)
+        }}
       />
 
       <ClearUserTinModal
         open={activeModal === "clearTin"}
-        onOpenChange={(open) => !open && setActiveModal(null)}
+        onOpenChange={(open) => {
+          if (!open) setModalParam(null)
+        }}
       />
     </>
   )

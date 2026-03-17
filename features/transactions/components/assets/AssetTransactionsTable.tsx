@@ -2,7 +2,6 @@
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { User, UserCheck, Building, CreditCard, DollarSign, Calendar, CheckCircle, Eye, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import { TransactionStatus } from "@/components/shared/TransactionStatus";
@@ -96,7 +95,7 @@ export function AssetTransactionsTable({ data, isLoading, onApprove, onDecline }
       <div className="hidden lg:block">
         <Card className="border border-gray-200 pt-0!
         ">
-          <ScrollArea className="w-full">
+          <div className="w-full overflow-x-auto">
             <Table>
               <TableHeader className="bg-gray-50 border-b border-gray-200">
                 <TableRow className="text-sm font-bold text-black">
@@ -169,10 +168,10 @@ export function AssetTransactionsTable({ data, isLoading, onApprove, onDecline }
                     <TableCell className="py-4 text-gray-700 w-25 truncate">
                       {transaction.referral ?? "No Referrer"}
                     </TableCell>
-                    <TableCell className="py-4 text-gray-700 max-w-[220px] wrap-break-word">
+                    <TableCell className="py-4 text-gray-700 w-[200px] max-w-[200px] break-words whitespace-normal overflow-hidden">
                       {transaction.asset_type || ""} - {updatedString(`${transaction.description ?? ""}(${transaction.plot_size ?? ""}sqm)`)}
                     </TableCell>
-                    <TableCell className="py-4 text-gray-700 w-25">{transaction.transaction_type ?? ""}</TableCell>
+                    <TableCell className="py-4 text-gray-700 min-w-30 whitespace-nowrap text-center z-15">{transaction.transaction_type ?? ""}</TableCell>
                     <TableCell className="py-4 font-semibold text-black w-25 whitespace-nowrap">
                       ₦{formatNumber(transaction.amount ?? 0)}
                     </TableCell>
@@ -210,7 +209,7 @@ export function AssetTransactionsTable({ data, isLoading, onApprove, onDecline }
                 ))}
               </TableBody>
             </Table>
-          </ScrollArea>
+          </div>
         </Card>
       </div>
     </div>
