@@ -14,11 +14,26 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2 } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useUpsertAssetCommissionOverride } from "../hooks/use-asset-commission-overrides";
 import type { AssetCommissionOverride } from "../hooks/use-asset-commission-overrides";
 import { useCommissionConfig } from "../hooks/use-commission-config";
+import { useAssetOptions } from "../hooks/use-asset-options";
 
 // Convert decimal to display percentage (0.05 -> 5)
 const toDisplay = (val: number | null | undefined) =>
@@ -162,8 +177,15 @@ export function EditAssetOverrideDialog({
   const [fields, setFields] = useState<FormFields>(() => initFields(override));
   const [changeDescription, setChangeDescription] = useState("");
 
+  const [assetPopoverOpen, setAssetPopoverOpen] = useState(false);
+
   const { data: globalConfig } = useCommissionConfig();
   const { mutateAsync, isPending } = useUpsertAssetCommissionOverride();
+  const { data: assetOptions, isLoading: assetsLoading } = useAssetOptions(
+    open && !isEdit
+  );
+
+  const selectedAsset = assetOptions?.find((a) => a._id === assetId);
 
   useEffect(() => {
     if (open) {
@@ -251,7 +273,7 @@ export function EditAssetOverrideDialog({
     e.preventDefault();
 
     if (!assetId.trim()) {
-      toast.error("Please enter an asset ID");
+      toast.error("Please select an asset");
       return;
     }
     if (!changeDescription.trim()) {
@@ -295,23 +317,77 @@ export function EditAssetOverrideDialog({
         </DialogHeader>
 
         <form className="space-y-4" onSubmit={handleSubmit}>
-          {/* Asset ID */}
+          {/* Asset Selection */}
           <div className="space-y-1">
-            <Label htmlFor="assetId" className="text-sm font-semibold">
-              Asset ID <span className="text-red-500">*</span>
+            <Label className="text-sm font-semibold">
+              Asset <span className="text-red-500">*</span>
             </Label>
-            <Input
-              id="assetId"
-              value={assetId}
-              onChange={(e) => setAssetId(e.target.value)}
-              disabled={isPending || isEdit}
-              placeholder="Enter asset ObjectId"
-              required
-            />
-            {isEdit && override?.asset && (
-              <p className="text-xs text-muted-foreground">
-                {override.asset.asset_name} ({override.asset.asset_type})
-              </p>
+            {isEdit ? (
+              <Input
+                value={
+                  override?.asset
+                    ? `${override.asset.asset_name} (${override.asset.asset_type})`
+                    : assetId
+                }
+                disabled
+              />
+            ) : (
+              <Popover
+                open={assetPopoverOpen}
+                onOpenChange={setAssetPopoverOpen}
+              >
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={assetPopoverOpen}
+                    className="w-full justify-between font-normal"
+                    disabled={isPending}
+                  >
+                    {selectedAsset
+                      ? `${selectedAsset.asset_name} (${selectedAsset.asset_type})`
+                      : "Select an asset..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                  <Command>
+                    <CommandInput placeholder="Search assets..." />
+                    <CommandList>
+                      <CommandEmpty>
+                        {assetsLoading ? "Loading assets..." : "No assets found."}
+                      </CommandEmpty>
+                      <CommandGroup>
+                        {assetOptions?.map((asset) => (
+                          <CommandItem
+                            key={asset._id}
+                            value={`${asset.asset_name} ${asset.asset_type}`}
+                            onSelect={() => {
+                              setAssetId(asset._id);
+                              setAssetPopoverOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                assetId === asset._id
+                                  ? "opacity-100"
+                                  : "opacity-0"
+                              )}
+                            />
+                            <span className="truncate">
+                              {asset.asset_name}{" "}
+                              <span className="text-muted-foreground">
+                                ({asset.asset_type})
+                              </span>
+                            </span>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             )}
           </div>
 

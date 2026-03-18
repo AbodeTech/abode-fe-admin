@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -11,6 +12,7 @@ import {
 } from "@/features/commission-config";
 
 export default function CommissionConfigPage() {
+  const [activeTab, setActiveTab] = useState("current");
   const { data: config, isLoading, error } = useCommissionConfig();
 
   if (isLoading) {
@@ -41,10 +43,12 @@ export default function CommissionConfigPage() {
             Manage commission rates, fees, and thresholds.
           </p>
         </div>
-        <EditCommissionConfigDialog config={config} />
+        {activeTab !== "overrides" && (
+          <EditCommissionConfigDialog config={config} />
+        )}
       </div>
 
-      <Tabs defaultValue="current">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="current">Current Config</TabsTrigger>
           <TabsTrigger value="history">Change History</TabsTrigger>
