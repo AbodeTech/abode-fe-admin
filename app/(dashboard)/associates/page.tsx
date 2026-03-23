@@ -21,6 +21,7 @@ const ASSOCIATE_SORT_KEYS: AssociateSortKey[] = [
   "expected_revenue",
   "received_revenue",
   "commission",
+  "defaulting_rate",
 ];
 
 const parseSort = (value?: string | null) => {

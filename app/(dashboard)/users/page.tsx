@@ -12,7 +12,8 @@ import { Pagination } from "@/components/shared/Pagination";
 import { FilterSelect } from "@/components/shared/FilterSelect";
 import { DateFilter } from "@/components/shared/DateFilter";
 import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
+import { ArrowRight, Search } from "lucide-react";
+import Link from "next/link";
 
 function UsersPageContent() {
   const searchParams = useSearchParams();
@@ -82,7 +83,16 @@ function UsersPageContent() {
     <div className="mt-4 space-y-4">
       <div className="flex justify-between items-start gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-semibold text-[#101828]">Users</h1>
+          <div className="flex items-center gap-4">
+            <h1 className="text-2xl font-semibold text-[#101828]">Users</h1>
+            <Link
+              href="/analytics/users"
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline group"
+            >
+              View Analytics
+              <ArrowRight className="size-4 group-hover:translate-x-0.5 transition-transform" />
+            </Link>
+          </div>
           <p className="text-sm text-[#667085] mt-1">Manage all users and their details</p>
         </div>
         <UsersPageActions />
