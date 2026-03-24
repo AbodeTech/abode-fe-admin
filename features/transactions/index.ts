@@ -28,6 +28,7 @@ export { TopupTransactionsTable } from './components/topup/TopupTransactionsTabl
 
 // Components - Withdrawal
 export { WithdrawalTransactionsTable } from './components/withdrawal/WithdrawalTransactionsTable';
+export { WithdrawalExport } from './components/withdrawal/WithdrawalExport';
 
 // Components - Document
 export { DocumentTransactionsTable } from './components/document/DocumentTransactionsTable';
@@ -45,4 +46,5 @@ export { ViewTransactionEvidence } from './components/assets/ViewTransactionEvid
 export { useCompleteAssetTransactions, DEFAULT_COMPLETE_ASSET_LIMIT } from './hooks/use-complete-asset-transactions';
 export { useCommissionExport } from './hooks/use-commission-export';
 export { useDocumentExport } from './hooks/use-document-export';
+export { useWithdrawalExport } from './hooks/use-withdrawal-export';
 export { CompleteAssetPaymentsTable } from './components/complete/CompleteAssetPaymentsTable';
