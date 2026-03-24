@@ -2,6 +2,7 @@ import { graphql } from "@/lib/gql/gql";
 import { fetchGraphql, execute } from "@/lib/graphql-client";
 import { ReadonlyURLSearchParams } from "next/navigation";
 import { GetAssetTransactionData, GetAssetTransactionVariables, UpdateFlexAssetInput, ViewAssetData } from "./assets.types";
+import type { EditFullOwnershipAssetInput } from "@/lib/gql/graphql";
 
 const VIEW_SUBSCRIBED_CUSTOMERS_ON_ASSET_QUERY = graphql(`
   query ViewSubscribedCustomersOnAsset($assetName: String!, $assetType: String, $filter: String, $size: Int, $startDate: String, $endDate: String, $subscriberType: String) {
@@ -237,5 +238,17 @@ const UPDATE_FLEX_ASSET_MUTATION = `
 export const updateFlexAsset = async (payload: UpdateFlexAssetInput) => {
   return fetchGraphql(UPDATE_FLEX_ASSET_MUTATION as any, {
     updateAssetInput: payload,
+  });
+};
+
+const EDIT_FULL_OWNERSHIP_ASSET_MUTATION = `
+  mutation EditFullOwnershipAsset($editFullOwnershipAssetInput: EditFullOwnershipAssetInput!) {
+    editFullOwnershipAsset(editFullOwnershipAssetInput: $editFullOwnershipAssetInput)
+  }
+`;
+
+export const editFullOwnershipAsset = async (payload: EditFullOwnershipAssetInput) => {
+  return fetchGraphql(EDIT_FULL_OWNERSHIP_ASSET_MUTATION as any, {
+    editFullOwnershipAssetInput: payload,
   });
 };
