@@ -2,18 +2,25 @@
 
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { Loader2, Download } from "lucide-react";
 import { Pagination } from "@/components/shared/Pagination";
+import { Button } from "@/components/ui/button";
 import {
   useCompleteAssetTransactions,
   DEFAULT_COMPLETE_ASSET_LIMIT,
   CompleteAssetPaymentsTable,
+  useExportCompleteAssetPayments,
 } from "@/features/transactions";
 
 function CompletedAssetPaymentsUsersContent() {
   const searchParams = useSearchParams();
   const page = Number(searchParams.get("page")) || 1;
   const { data, isLoading, error } = useCompleteAssetTransactions(page, DEFAULT_COMPLETE_ASSET_LIMIT);
+  const exportMutation = useExportCompleteAssetPayments();
+
+  const handleExport = async () => {
+    await exportMutation.mutateAsync();
+  };
 
   if (error) {
     return (
@@ -29,9 +36,24 @@ function CompletedAssetPaymentsUsersContent() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Users With Completed Asset Payments</h1>
-        <p className="text-muted-foreground">Clients who have completed full payment.</p>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Users With Completed Asset Payments</h1>
+          <p className="text-muted-foreground">Clients who have completed full payment.</p>
+        </div>
+        <Button variant="outline" onClick={handleExport} disabled={exportMutation.isPending}>
+          {exportMutation.isPending ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Downloading...
+            </>
+          ) : (
+            <>
+              <Download className="mr-2 h-4 w-4" />
+              Download Completed Asset Payments
+            </>
+          )}
+        </Button>
       </div>
 
       <CompleteAssetPaymentsTable data={rows} />
