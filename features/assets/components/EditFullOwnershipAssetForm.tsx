@@ -1,15 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { updateFlexAsset } from "@/lib/api/admin/assets.client";
+import { editFullOwnershipAsset } from "@/lib/api/admin/assets.client";
 import { uploadToCloudinary } from "@/lib/utils/upload";
 import { toast } from "sonner";
-import { Plus, X, Trash2 } from "lucide-react";
+import { Plus, X, Trash2, FileText, ExternalLink, Loader2 } from "lucide-react";
 import {
   updateFullOwnershipAssetSchema,
   UpdateFullOwnershipAssetFormValues,
@@ -38,6 +38,7 @@ export function EditFullOwnershipAssetForm({ initialData }: EditFullOwnershipAss
     fields: optionFields,
     append: appendOption,
     remove: removeOption,
+    replace: replaceOption,
   } = useFieldArray({
     control: form.control,
     name: "asset_option",
@@ -47,10 +48,22 @@ export function EditFullOwnershipAssetForm({ initialData }: EditFullOwnershipAss
     fields: historyFields,
     append: appendHistory,
     remove: removeHistory,
+    replace: replaceHistory,
   } = useFieldArray({
     control: form.control,
     name: "asset_history",
   });
+
+  useEffect(() => {
+    form.reset({
+      ...initialData,
+      asset_pictures: initialData.asset_pictures || [],
+      asset_option: initialData.asset_option || [],
+      asset_history: initialData.asset_history || [],
+    });
+    replaceOption(initialData.asset_option || []);
+    replaceHistory(initialData.asset_history || []);
+  }, [form, initialData, replaceOption, replaceHistory]);
 
   async function onSubmit(data: UpdateFullOwnershipAssetFormValues) {
     setIsSubmitting(true);
@@ -100,22 +113,56 @@ export function EditFullOwnershipAssetForm({ initialData }: EditFullOwnershipAss
         });
       }
 
-      await updateFlexAsset({
-        id: data.id,
+      const amenitiesList = data.amenities
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+      const assetPurposeValue = data.asset_purpose?.trim() || initialData.asset_purpose || "";
+      const googleMapValue = data.google_map?.trim() || initialData.google_map || "";
+      const landmarkValue = data.landmark?.trim() || initialData.landmark || "";
+      const landmarkList = landmarkValue
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+      const mappedAssetOptions = data.asset_option.map((option) => ({
+        size: option.size,
+        unit: option.unit,
+        price: (option.zero_months ?? 0) + (option.development_fee ?? 0),
+        zero_months: option.zero_months ?? 0,
+        three_months: option.three_months ?? 0,
+        six_months: option.six_months ?? 0,
+        seven_months: option.seven_months ?? 0,
+        twelve_months: option.twelve_months ?? 0,
+        initial_payment: option.initial_payment ?? 0,
+        development_fee: option.development_fee ?? 0,
+        five_months: option.five_months ?? null,
+        five_months_initial_payment: option.five_months_initial_payment ?? null,
+        seven_months_initial_payment: option.seven_months_initial_payment ?? null,
+        one_month: option.one_month ?? null,
+        one_month_initial_payment: option.one_month_initial_payment ?? null,
+        monthly_installment: null,
+      }));
+
+      await editFullOwnershipAsset({
+        assetId: data.id,
         asset_name: data.asset_name,
         asset_location: data.asset_location,
-        title: data.title,
-        asset_type: data.asset_type,
         description: data.description,
-        allocation_qualification: data.allocation_qualification,
-        amenities: data.amenities.split(",").map((s) => s.trim()),
         asset_pictures: finalPictureUrls,
-        deed_of_assignment: deedUrl,
-        survey: surveyUrl,
+        amenities: amenitiesList,
         contract_of_sales: contractUrl,
+        survey: surveyUrl,
+        deed_of_assignment: deedUrl,
         estate_layout: estateLayoutUrl,
+        new_asset: true,
+        asset_type: data.asset_type,
+        asset_purpose: assetPurposeValue,
+        landmark: landmarkList,
         asset_history: assetHistoryRecord,
-        asset_option: data.asset_option as any, // Cast to match API expectactions
+        google_map: googleMapValue,
+        asset_option: mappedAssetOptions as any,
       });
 
       toast.success("Asset updated successfully");
@@ -145,10 +192,58 @@ export function EditFullOwnershipAssetForm({ initialData }: EditFullOwnershipAss
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 max-w-4xl mx-auto py-10">
+      <form
+        onSubmit={form.handleSubmit(onSubmit, () => {
+          toast.error("Please fix the validation errors and try again.");
+        })}
+        className="space-y-8 max-w-4xl mx-auto py-10"
+      >
 
         {/* Reusing AssetBasicInfo */}
         <AssetBasicInfo form={form as any} />
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <FormField
+            control={form.control}
+            name="asset_purpose"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Asset Purpose</FormLabel>
+                <FormControl>
+                  <Input placeholder="Residential" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="google_map"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Google Map Link</FormLabel>
+                <FormControl>
+                  <Input placeholder="https://maps.google.com/..." {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <FormField
+          control={form.control}
+          name="landmark"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Landmarks (comma separated)</FormLabel>
+              <FormControl>
+                <Input placeholder="School, Hospital, Mall" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         {/* Custom Uploads Section for Edit Mode */}
         <div className="space-y-4">
@@ -212,16 +307,34 @@ export function EditFullOwnershipAssetForm({ initialData }: EditFullOwnershipAss
                     <FormLabel className="capitalize">{docName.split('_').join(' ')}</FormLabel>
                     <div className="space-y-2">
                       {field.value && typeof field.value === 'string' && (
-                        <div className="flex items-center gap-2 text-sm bg-gray-50 p-2 rounded">
-                          <span className="truncate max-w-[200px] text-blue-600 underline">
-                            <a href={field.value} target="_blank" rel="noopener noreferrer">View Current</a>
-                          </span>
-                          <Button
-                            type="button" variant="ghost" size="sm" className="h-6 w-6 p-0"
-                            onClick={() => field.onChange(undefined)}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
+                        <div className="flex items-center justify-between gap-3 bg-muted/40 border rounded-lg px-3 py-2.5">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="shrink-0 flex items-center justify-center w-8 h-8 rounded bg-rose-50 border border-rose-100">
+                              <FileText className="h-4 w-4 text-rose-500" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-medium truncate max-w-45">
+                                {decodeURIComponent(field.value.split('/').pop()?.split('?')[0] || 'document.pdf')}
+                              </p>
+                              <p className="text-[10px] text-muted-foreground">PDF · Cloudinary</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <Button
+                              type="button" variant="ghost" size="icon" className="h-7 w-7"
+                              asChild
+                            >
+                              <a href={field.value} target="_blank" rel="noopener noreferrer">
+                                <ExternalLink className="h-3.5 w-3.5" />
+                              </a>
+                            </Button>
+                            <Button
+                              type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={() => field.onChange(undefined)}
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
                         </div>
                       )}
                       <FormControl>
@@ -327,7 +440,14 @@ export function EditFullOwnershipAssetForm({ initialData }: EditFullOwnershipAss
         </div>
 
         <Button type="submit" disabled={isSubmitting} className="w-full">
-          {isSubmitting ? "Updating Asset..." : "Update Asset"}
+          {isSubmitting ? (
+            <span className="inline-flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Updating Asset...
+            </span>
+          ) : (
+            "Update Asset"
+          )}
         </Button>
       </form>
     </Form>
