@@ -2,6 +2,46 @@
 
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { graphql, FragmentType, useFragment } from "@/lib/gql";
+
+export const AssetCategoryHealthFragment = graphql(`
+  fragment AssetCategoryHealth_statistics on AssetInventoryStatistics {
+    categories {
+      category
+      activeAssetCount
+      totalSqm
+      grossRevenue
+      collectionEfficiency
+      occupancyRate
+      totalValueSold
+      totalSqmSold
+      totalMoneyReceived
+      totalBalance
+      defaulting {
+        defaultedAssetValue
+        defaultersPaid
+        defaultersOwing
+      }
+    }
+  }
+`);
+
+function formatNaira(value: number | null | undefined): string {
+  if (value == null || value === 0) return "₦0";
+  return new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+    notation: "compact",
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
+function formatSqm(value: number | null | undefined): string {
+  if (value == null || value === 0) return "0 SQM";
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M SQM`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(0)}k SQM`;
+  return `${value.toFixed(0)} SQM`;
+}
 
 interface CategoryProps {
   title: string;
@@ -17,7 +57,6 @@ interface CategoryProps {
   moneyReceived: string;
   totalBalance: string;
   // Defaults
-  defaultingCustomers: number;
   defaultedAssetValue: string;
   defaultersPaid: string;
   defaultersOwing: string;
@@ -44,7 +83,6 @@ function CategoryCard({
   sqmSold,
   moneyReceived,
   totalBalance,
-  defaultingCustomers,
   defaultedAssetValue,
   defaultersPaid,
   defaultersOwing,
@@ -68,7 +106,7 @@ function CategoryCard({
           <div className="flex flex-col gap-1.5">
             <div className="flex justify-between text-xs font-bold">
               <span className="text-muted-foreground uppercase tracking-tighter">Collection Efficiency</span>
-              <span style={{ color: accentColor }}>{efficiency}%</span>
+              <span style={{ color: accentColor }}>{efficiency.toFixed(1)}%</span>
             </div>
             <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
               <div
@@ -81,7 +119,7 @@ function CategoryCard({
           <div className="flex flex-col gap-1.5">
             <div className="flex justify-between text-xs font-bold">
               <span className="text-muted-foreground uppercase tracking-tighter">Occupancy Rate</span>
-              <span>{occupancy}%</span>
+              <span>{occupancy.toFixed(1)}%</span>
             </div>
             <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
               <div
@@ -108,11 +146,6 @@ function CategoryCard({
         <p className="text-[10px] font-bold uppercase tracking-widest text-rose-500 mb-3">Defaults</p>
         <div className="grid grid-cols-2 gap-x-6 gap-y-1.5">
           <StatRow
-            label="Defaulting Customers"
-            value={String(defaultingCustomers)}
-            valueClassName="text-rose-600"
-          />
-          <StatRow
             label="Defaulted Asset Value"
             value={defaultedAssetValue}
             valueClassName="text-rose-600"
@@ -133,42 +166,50 @@ function CategoryCard({
   );
 }
 
-export function AssetCategoryHealth() {
+interface Props {
+  data: FragmentType<typeof AssetCategoryHealthFragment> | null | undefined;
+}
+
+export function AssetCategoryHealth({ data }: Props) {
+  const stats = useFragment(AssetCategoryHealthFragment, data);
+  const categories = stats?.categories ?? [];
+
+  const flex = categories.find((c) => c?.category === "flex");
+  const fullOwnership = categories.find((c) => c?.category === "full-ownership");
+
   return (
     <div className="flex flex-wrap gap-6 mb-12">
       <CategoryCard
         title="Flex Assets"
-        count={12}
-        sqm="450k SQM"
-        revenue="₦320M"
-        efficiency={88}
-        occupancy={92}
+        count={flex?.activeAssetCount ?? 0}
+        sqm={formatSqm(flex?.totalSqm)}
+        revenue={formatNaira(flex?.grossRevenue)}
+        efficiency={flex?.collectionEfficiency ?? 0}
+        occupancy={flex?.occupancyRate ?? 0}
         accentColor="oklch(var(--primary))"
-        valueSold="₦2.94B"
-        sqmSold="720k SQM"
-        moneyReceived="₦2.31B"
-        totalBalance="₦630M"
-        defaultingCustomers={84}
-        defaultedAssetValue="₦412M"
-        defaultersPaid="₦178M"
-        defaultersOwing="₦234M"
+        valueSold={formatNaira(flex?.totalValueSold)}
+        sqmSold={formatSqm(flex?.totalSqmSold)}
+        moneyReceived={formatNaira(flex?.totalMoneyReceived)}
+        totalBalance={formatNaira(flex?.totalBalance)}
+        defaultedAssetValue={formatNaira(flex?.defaulting?.defaultedAssetValue)}
+        defaultersPaid={formatNaira(flex?.defaulting?.defaultersPaid)}
+        defaultersOwing={formatNaira(flex?.defaulting?.defaultersOwing)}
       />
       <CategoryCard
         title="Full Ownership"
-        count={8}
-        sqm="1.65M SQM"
-        revenue="₦1.1B"
-        efficiency={75}
-        occupancy={81}
+        count={fullOwnership?.activeAssetCount ?? 0}
+        sqm={formatSqm(fullOwnership?.totalSqm)}
+        revenue={formatNaira(fullOwnership?.grossRevenue)}
+        efficiency={fullOwnership?.collectionEfficiency ?? 0}
+        occupancy={fullOwnership?.occupancyRate ?? 0}
         accentColor="rgb(59 130 246)"
-        valueSold="₦2.24B"
-        sqmSold="520k SQM"
-        moneyReceived="₦1.60B"
-        totalBalance="₦640M"
-        defaultingCustomers={43}
-        defaultedAssetValue="₦268M"
-        defaultersPaid="₦116M"
-        defaultersOwing="₦152M"
+        valueSold={formatNaira(fullOwnership?.totalValueSold)}
+        sqmSold={formatSqm(fullOwnership?.totalSqmSold)}
+        moneyReceived={formatNaira(fullOwnership?.totalMoneyReceived)}
+        totalBalance={formatNaira(fullOwnership?.totalBalance)}
+        defaultedAssetValue={formatNaira(fullOwnership?.defaulting?.defaultedAssetValue)}
+        defaultersPaid={formatNaira(fullOwnership?.defaulting?.defaultersPaid)}
+        defaultersOwing={formatNaira(fullOwnership?.defaulting?.defaultersOwing)}
       />
     </div>
   );

@@ -4,12 +4,14 @@ import { graphql, FragmentType, useFragment } from "@/lib/gql";
 
 export const AssetInventoryOverviewFragment = graphql(`
   fragment AssetInventoryOverview_statistics on AssetInventoryStatistics {
-    totalAssets
-    totalWorth
-    totalFlexAssets
-    totalFlexWorth
-    totalFullOwnershipAssets
-    totalFullOwnershipWorth
+    assetsSummary {
+      totalAssets
+      totalWorth
+      totalFlexAssets
+      totalFlexWorth
+      totalFullOwnershipAssets
+      totalFullOwnershipWorth
+    }
   }
 `);
 
@@ -19,12 +21,13 @@ interface Props {
 
 export function AssetInventoryOverview({ data }: Props) {
   const inventoryData = useFragment(AssetInventoryOverviewFragment, data);
+  const summary = inventoryData?.assetsSummary;
 
-  const items = inventoryData
+  const items = summary
     ? [
-      { title: "Total Assets", value: inventoryData.totalAssets ?? 0, subValue: inventoryData.totalWorth ?? 0, icon: Boxes },
-      { title: "Flex Assets", value: inventoryData.totalFlexAssets ?? 0, subValue: inventoryData.totalFlexWorth ?? 0, icon: Box },
-      { title: "Full Ownership Assets", value: inventoryData.totalFullOwnershipAssets ?? 0, subValue: inventoryData.totalFullOwnershipWorth ?? 0, icon: BoxSelect },
+      { title: "Total Assets", value: summary.totalAssets ?? 0, subValue: summary.totalWorth ?? 0, icon: Boxes },
+      { title: "Flex Assets", value: summary.totalFlexAssets ?? 0, subValue: summary.totalFlexWorth ?? 0, icon: Box },
+      { title: "Full Ownership Assets", value: summary.totalFullOwnershipAssets ?? 0, subValue: summary.totalFullOwnershipWorth ?? 0, icon: BoxSelect },
     ]
     : [
       { title: "Total Assets", value: 0, subValue: 0, icon: Boxes },

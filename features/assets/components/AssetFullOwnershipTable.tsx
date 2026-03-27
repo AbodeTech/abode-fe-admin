@@ -30,6 +30,7 @@ export const AssetFullOwnershipTableFragment = graphql(`
     asset_location
     sold
     asset_type
+    collectionEfficiencyRate
     asset_option {
       size
       unit
@@ -50,7 +51,7 @@ function transformAssetData(data: AssetFullOwnershipTable_AssetFragment) {
     unitsAvailable: options.reduce((total, opt) => total + Number(opt.unit || 0), 0) || 0,
     minPrice: options.length > 0 ? Math.min(...options.map((opt) => opt.zero_months || 0)) : 0,
     maxPrice: options.length > 0 ? Math.max(...options.map((opt) => opt.zero_months || 0)) : 0,
-    efficiency: 71, // Mock
+    efficiency: data.collectionEfficiencyRate ?? 0,
   };
 }
 
@@ -93,7 +94,13 @@ export function FullOwnershipAssetsTable({ data }: Props) {
           ) : (
             transformedFullOwnershipNewAssets.map((asset) => (
               <TableRow key={asset.id} className="group hover:bg-muted/30 transition-colors">
-                <TableCell className="font-bold text-slate-900 group-hover:text-primary transition-colors cursor-pointer" onClick={() => (window.location.href = `/assets/fullownership/${asset.name}`)}>
+                <TableCell
+                  className="font-bold text-slate-900 group-hover:text-primary transition-colors cursor-pointer"
+                  onClick={() => {
+                    updateAssetId(asset.id || "");
+                    window.location.href = `/assets/fullownership/${asset.name}`;
+                  }}
+                >
                   {asset.name}
                 </TableCell>
                 <TableCell className="text-xs font-medium text-slate-500 hidden md:table-cell uppercase tracking-tight"> {asset.location} </TableCell>
@@ -115,21 +122,24 @@ export function FullOwnershipAssetsTable({ data }: Props) {
                   })}
                 </TableCell>
                 <TableCell>
-                  <div
-                    className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden"
-                    role="progressbar"
-                    aria-valuenow={asset.efficiency}
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                    aria-label="Collection Efficiency"
-                  >
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold tabular-nums">{asset.efficiency.toFixed(1)}%</span>
                     <div
-                      className={cn(
-                        "h-full transition-all duration-1000 ease-in-out",
-                        asset.efficiency > 85 ? "bg-emerald-500" : asset.efficiency > 60 ? "bg-amber-500" : "bg-rose-500"
-                      )}
-                      style={{ width: `${asset.efficiency}%` }}
-                    />
+                      className="h-1.5 w-12 bg-slate-100 rounded-full overflow-hidden"
+                      role="progressbar"
+                      aria-valuenow={asset.efficiency}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-label="Collection Efficiency"
+                    >
+                      <div
+                        className={cn(
+                          "h-full transition-all duration-1000 ease-in-out",
+                          asset.efficiency > 85 ? "bg-emerald-500" : asset.efficiency > 60 ? "bg-amber-500" : "bg-rose-500"
+                        )}
+                        style={{ width: `${asset.efficiency}%` }}
+                      />
+                    </div>
                   </div>
                 </TableCell>
                 <TableCell className="text-right">
@@ -141,7 +151,12 @@ export function FullOwnershipAssetsTable({ data }: Props) {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-44">
                       <DropdownMenuItem asChild>
-                        <Link href={`/assets/fullownership/${asset.name}`}>View Details</Link>
+                        <Link
+                          href={`/assets/fullownership/${asset.name}`}
+                          onClick={() => updateAssetId(asset.id || "")}
+                        >
+                          View Details
+                        </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
                         <Link

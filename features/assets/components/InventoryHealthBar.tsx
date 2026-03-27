@@ -1,6 +1,45 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { graphql, FragmentType, useFragment } from "@/lib/gql";
+
+export const InventoryHealthBarFragment = graphql(`
+  fragment InventoryHealthBar_statistics on AssetInventoryStatistics {
+    portfolio {
+      totalPortfolioValue
+      totalCapacitySqm
+      activeCustomers
+      overallEfficiency
+      totalValueSold
+      totalSqmSold
+      totalMoneyReceived
+      totalBalanceOwed
+      defaulting {
+        defaultingCustomers
+        defaultedAssetValue
+        amountPaidByDefaulters
+        amountStillOwing
+      }
+    }
+  }
+`);
+
+function formatNaira(value: number | null | undefined): string {
+  if (value == null || value === 0) return "₦0";
+  return new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+    notation: "compact",
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
+function formatSqm(value: number | null | undefined): string {
+  if (value == null || value === 0) return "0 SQM";
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M SQM`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(0)}k SQM`;
+  return `${value.toFixed(0)} SQM`;
+}
 
 interface MetricProps {
   label: string;
@@ -35,21 +74,29 @@ function Metric({ label, value, subValue, subValueVariant = "positive", classNam
   );
 }
 
-export function InventoryHealthBar() {
+interface Props {
+  data: FragmentType<typeof InventoryHealthBarFragment> | null | undefined;
+}
+
+export function InventoryHealthBar({ data }: Props) {
+  const stats = useFragment(InventoryHealthBarFragment, data);
+  const p = stats?.portfolio;
+  const d = p?.defaulting;
+
   return (
     <div className="w-full rounded-xl border mb-8 overflow-hidden">
       {/* Portfolio overview */}
       <div className="bg-muted/30 px-6 py-5">
         <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-4">Portfolio Overview</p>
         <div className="flex flex-wrap gap-y-5">
-          <Metric label="Total Portfolio Value" value="₦8.42B" subValue="+12.4%" subValueVariant="positive" />
-          <Metric label="Total Capacity" value="2.1M SQM" />
-          <Metric label="Active Customers" value="3,450" subValue="Healthy" subValueVariant="positive" />
-          <Metric label="Overall Efficiency" value="88.2%" />
-          <Metric label="Total Value Sold" value="₦5.18B" subValue="+8.7%" subValueVariant="positive" />
-          <Metric label="Total SQM Sold" value="1.24M SQM" />
-          <Metric label="Total Money Received" value="₦3.91B" />
-          <Metric label="Total Balance Owed" value="₦1.27B" subValue="Outstanding" subValueVariant="warning" />
+          <Metric label="Total Portfolio Value" value={formatNaira(p?.totalPortfolioValue)} />
+          <Metric label="Total Capacity" value={formatSqm(p?.totalCapacitySqm)} />
+          <Metric label="Active Customers" value={p?.activeCustomers ?? 0} subValue="Healthy" subValueVariant="positive" />
+          <Metric label="Overall Efficiency" value={p?.overallEfficiency != null ? `${p.overallEfficiency.toFixed(1)}%` : "—"} />
+          <Metric label="Total Value Sold" value={formatNaira(p?.totalValueSold)} />
+          <Metric label="Total SQM Sold" value={formatSqm(p?.totalSqmSold)} />
+          <Metric label="Total Money Received" value={formatNaira(p?.totalMoneyReceived)} />
+          <Metric label="Total Balance Owed" value={formatNaira(p?.totalBalanceOwed)} subValue="Outstanding" subValueVariant="warning" />
         </div>
       </div>
 
@@ -57,10 +104,10 @@ export function InventoryHealthBar() {
       <div className="bg-rose-500/5 border-t border-rose-200/50 px-6 py-5">
         <p className="text-[10px] font-bold uppercase tracking-widest text-rose-500 mb-4">Defaults</p>
         <div className="flex flex-wrap gap-y-5">
-          <Metric label="Defaulting Customers" value="127" subValue="At Risk" subValueVariant="danger" />
-          <Metric label="Value of Defaulted Assets" value="₦680M" subValueVariant="danger" />
-          <Metric label="Amount Paid by Defaulters" value="₦294M" subValueVariant="neutral" />
-          <Metric label="Amount Still Owing" value="₦386M" subValue="Unrecovered" subValueVariant="danger" className="pr-0" />
+          <Metric label="Defaulting Customers" value={d?.defaultingCustomers ?? 0} subValue="At Risk" subValueVariant="danger" />
+          <Metric label="Value of Defaulted Assets" value={formatNaira(d?.defaultedAssetValue)} subValueVariant="danger" />
+          <Metric label="Amount Paid by Defaulters" value={formatNaira(d?.amountPaidByDefaulters)} subValueVariant="neutral" />
+          <Metric label="Amount Still Owing" value={formatNaira(d?.amountStillOwing)} subValue="Unrecovered" subValueVariant="danger" className="pr-0" />
         </div>
       </div>
     </div>

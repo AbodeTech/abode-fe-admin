@@ -1,9 +1,8 @@
 import { AssetDetailHeader } from "@/features/assets";
-import { 
-  AssetDetailFilters, 
-  AssetHealthBar, 
-  PaymentPlanMatrix, 
-  SubscribedCustomers 
+import {
+  AssetDetailFilters,
+  AssetAnalyticsSection,
+  SubscribedCustomers
 } from "@/features/assets/components/detail";
 
 interface PageProps {
@@ -21,8 +20,7 @@ export default async function ViewFullOwnershipAssetPage({ params }: PageProps) 
     <div className="max-w-[1600px] mx-auto px-4 py-8">
       <AssetDetailHeader assetName={assetName} assetType={assetTypeForHeader} />
       <AssetDetailFilters />
-      <AssetHealthBar />
-      <PaymentPlanMatrix />
+      <AssetAnalyticsSection />
       <SubscribedCustomers assetName={assetName} assetType={assetTypeForData} />
     </div>
   );

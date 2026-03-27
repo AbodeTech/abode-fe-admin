@@ -37,15 +37,14 @@ export default function AssetsPage() {
     <div className="space-y-4">
       <AssetPageHeader />
 
-      <InventoryHealthBar />
-      
-      <AssetCategoryHealth />
+      <InventoryHealthBar data={inventoryData} />
+
+      <AssetCategoryHealth data={inventoryData} />
 
       <div className="space-y-12">
         <section>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold tracking-tight">Flex Assets Inventory</h2>
-            <span className="text-sm text-muted-foreground font-medium">12 Assets Active</span>
           </div>
           <AssetFlexTable data={assetsData?.data?.filter((asset): asset is NonNullable<typeof asset> => asset !== null) || []} />
         </section>
@@ -53,7 +52,6 @@ export default function AssetsPage() {
         <section>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold tracking-tight">Full Ownership Inventory</h2>
-            <span className="text-sm text-muted-foreground font-medium">8 Assets Active</span>
           </div>
           <AssetFullOwnershipTable data={assetsData?.data?.filter((asset): asset is NonNullable<typeof asset> => asset !== null) || []} />
         </section>
