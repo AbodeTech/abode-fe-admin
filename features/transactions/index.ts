@@ -44,6 +44,7 @@ export { AssetTransactionDataPoints } from './components/assets/AssetTransaction
 export { AssetTransactionAction } from './components/assets/AssetTransactionAction';
 export { ViewTransactionEvidence } from './components/assets/ViewTransactionEvidence';
 export { useCompleteAssetTransactions, DEFAULT_COMPLETE_ASSET_LIMIT } from './hooks/use-complete-asset-transactions';
+export { useExportCompleteAssetPayments } from './hooks/use-export-complete-asset-payments';
 export { useCommissionExport } from './hooks/use-commission-export';
 export { useDocumentExport } from './hooks/use-document-export';
 export { useWithdrawalExport } from './hooks/use-withdrawal-export';
