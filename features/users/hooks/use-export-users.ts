@@ -28,6 +28,7 @@ const EXPORT_USERS_BY_FILTER_QUERY = `
         address
         country
         createdAt
+        last_login
         referral {
           firstName
           lastName
@@ -99,6 +100,7 @@ interface ExportUsersByFilterResponse {
       address?: string | null;
       country?: string | null;
       createdAt?: string | null;
+      last_login?: string | null;
       referral?: {
         firstName?: string | null;
         lastName?: string | null;

@@ -59,7 +59,7 @@ type Documents = {
     "\n  fragment AssociateProTopReferrer on TopReferrer {\n    referrerId\n    referrerFullName\n    referrerEmail\n    totalReferrals\n  }\n": typeof types.AssociateProTopReferrerFragmentDoc,
     "\n  fragment AssociateProRevenueLeader on RevenueLeader {\n    referrerId\n    referrerFullName\n    referrerEmail\n    totalRevenue\n  }\n": typeof types.AssociateProRevenueLeaderFragmentDoc,
     "\n  fragment AssociateProSourceBreakdown on HowYouHeardSource {\n    source\n    count\n    percentage\n  }\n": typeof types.AssociateProSourceBreakdownFragmentDoc,
-    "\n  fragment AssociateProTicketHolder on TicketDetail {\n    ticketId\n    ticketType\n    userFullName\n    userEmail\n    referrerFullName\n    amountPaid\n    createdDate\n    isActive\n  }\n": typeof types.AssociateProTicketHolderFragmentDoc,
+    "\n  fragment AssociateProTicketHolder on TicketDetail {\n    ticketId\n    ticketType\n    userFullName\n    userEmail\n    referrerFullName\n    referrerEmail\n    amountPaid\n    createdDate\n    isActive\n  }\n": typeof types.AssociateProTicketHolderFragmentDoc,
     "\n  fragment AssociateProReferralAnalytics on ReferralAnalytics {\n    topReferrers {\n      referrers {\n        ...AssociateProTopReferrer\n      }\n    }\n    revenueLeaders {\n      leaders {\n        ...AssociateProRevenueLeader\n      }\n    }\n    howYouHeardBreakdown {\n      totalResponses\n      breakdown {\n        ...AssociateProSourceBreakdown\n      }\n    }\n  }\n": typeof types.AssociateProReferralAnalyticsFragmentDoc,
     "\n  fragment AssociateProRecruitmentUser on FilteredUserAdminDetail {\n    _id\n    firstName\n    lastName\n    email\n    createdAt\n    referral {\n      firstName\n      lastName\n      email\n    }\n  }\n": typeof types.AssociateProRecruitmentUserFragmentDoc,
     "\n  fragment HamperSalesMetrics on SalesMetricsHamper {\n    dailySqmTargetRemaining\n    percentageSold\n    sqmRemainingToSell\n    targetSqm\n    totalSqmSold\n  }\n": typeof types.HamperSalesMetricsFragmentDoc,
@@ -199,7 +199,7 @@ const documents: Documents = {
     "\n  fragment AssociateProTopReferrer on TopReferrer {\n    referrerId\n    referrerFullName\n    referrerEmail\n    totalReferrals\n  }\n": types.AssociateProTopReferrerFragmentDoc,
     "\n  fragment AssociateProRevenueLeader on RevenueLeader {\n    referrerId\n    referrerFullName\n    referrerEmail\n    totalRevenue\n  }\n": types.AssociateProRevenueLeaderFragmentDoc,
     "\n  fragment AssociateProSourceBreakdown on HowYouHeardSource {\n    source\n    count\n    percentage\n  }\n": types.AssociateProSourceBreakdownFragmentDoc,
-    "\n  fragment AssociateProTicketHolder on TicketDetail {\n    ticketId\n    ticketType\n    userFullName\n    userEmail\n    referrerFullName\n    amountPaid\n    createdDate\n    isActive\n  }\n": types.AssociateProTicketHolderFragmentDoc,
+    "\n  fragment AssociateProTicketHolder on TicketDetail {\n    ticketId\n    ticketType\n    userFullName\n    userEmail\n    referrerFullName\n    referrerEmail\n    amountPaid\n    createdDate\n    isActive\n  }\n": types.AssociateProTicketHolderFragmentDoc,
     "\n  fragment AssociateProReferralAnalytics on ReferralAnalytics {\n    topReferrers {\n      referrers {\n        ...AssociateProTopReferrer\n      }\n    }\n    revenueLeaders {\n      leaders {\n        ...AssociateProRevenueLeader\n      }\n    }\n    howYouHeardBreakdown {\n      totalResponses\n      breakdown {\n        ...AssociateProSourceBreakdown\n      }\n    }\n  }\n": types.AssociateProReferralAnalyticsFragmentDoc,
     "\n  fragment AssociateProRecruitmentUser on FilteredUserAdminDetail {\n    _id\n    firstName\n    lastName\n    email\n    createdAt\n    referral {\n      firstName\n      lastName\n      email\n    }\n  }\n": types.AssociateProRecruitmentUserFragmentDoc,
     "\n  fragment HamperSalesMetrics on SalesMetricsHamper {\n    dailySqmTargetRemaining\n    percentageSold\n    sqmRemainingToSell\n    targetSqm\n    totalSqmSold\n  }\n": types.HamperSalesMetricsFragmentDoc,
@@ -491,7 +491,7 @@ export function graphql(source: "\n  fragment AssociateProSourceBreakdown on How
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  fragment AssociateProTicketHolder on TicketDetail {\n    ticketId\n    ticketType\n    userFullName\n    userEmail\n    referrerFullName\n    amountPaid\n    createdDate\n    isActive\n  }\n"): (typeof documents)["\n  fragment AssociateProTicketHolder on TicketDetail {\n    ticketId\n    ticketType\n    userFullName\n    userEmail\n    referrerFullName\n    amountPaid\n    createdDate\n    isActive\n  }\n"];
+export function graphql(source: "\n  fragment AssociateProTicketHolder on TicketDetail {\n    ticketId\n    ticketType\n    userFullName\n    userEmail\n    referrerFullName\n    referrerEmail\n    amountPaid\n    createdDate\n    isActive\n  }\n"): (typeof documents)["\n  fragment AssociateProTicketHolder on TicketDetail {\n    ticketId\n    ticketType\n    userFullName\n    userEmail\n    referrerFullName\n    referrerEmail\n    amountPaid\n    createdDate\n    isActive\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
