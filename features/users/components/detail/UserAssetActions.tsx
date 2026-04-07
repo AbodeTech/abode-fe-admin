@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { MoreHorizontal, Loader2 } from "lucide-react";
@@ -55,16 +55,10 @@ export function UserAssetActions({
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  if (!canEditPaymentPlan && !canEditAssetQuestion && !canDeleteAsset && !canSendContract) {
-    return null;
-  }
-
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showSuspendDialog, setShowSuspendDialog] = useState(false);
 
   // Modal states
-  const [showEditPlan, setShowEditPlan] = useState(false);
-  const [showEditQuestion, setShowEditQuestion] = useState(false);
   const [showSendContract, setShowSendContract] = useState(false);
   const [showSendCert, setShowSendCert] = useState(false);
   const [showSendHamper, setShowSendHamper] = useState(false);
@@ -91,21 +85,13 @@ export function UserAssetActions({
     router.push(next ? `?${next}` : "?");
   };
 
-  useEffect(() => {
-    const modal = searchParams?.get("modal");
-    const paramAssetId = searchParams?.get("uniqueAssetId");
-    if (!modal || !paramAssetId || paramAssetId !== uniqueAssetId) {
-      setShowEditPlan(false);
-      setShowEditQuestion(false);
-      return;
-    }
-    if (modal === "updatepaymentplan") {
-      setShowEditPlan(true);
-    }
-    if (modal === "edituserassetquestion") {
-      setShowEditQuestion(true);
-    }
-  }, [searchParams, uniqueAssetId]);
+  // Keep parity with legacy behavior: modal query alone can open, and
+  // uniqueAssetId (if provided) should only scope to the matching asset row.
+  const modal = searchParams?.get("modal");
+  const paramAssetId = searchParams?.get("uniqueAssetId");
+  const isMatchingAsset = !paramAssetId || paramAssetId === uniqueAssetId;
+  const showEditPlan = canEditPaymentPlan && modal === "updatepaymentplan" && isMatchingAsset;
+  const showEditQuestion = canEditAssetQuestion && modal === "edituserassetquestion" && isMatchingAsset;
 
   const deleteMutation = useMutation({
     mutationFn: assetType === "flex" ? deleteUserFlexAsset : deleteUserFullOwnershipAsset,
@@ -131,6 +117,10 @@ export function UserAssetActions({
     },
   });
 
+  if (!canEditPaymentPlan && !canEditAssetQuestion && !canDeleteAsset && !canSendContract) {
+    return null;
+  }
+
   return (
     <>
       <DropdownMenu>
@@ -145,13 +135,23 @@ export function UserAssetActions({
         <DropdownMenuSeparator />
 
         {canEditPaymentPlan && (
-          <DropdownMenuItem onClick={() => setModalParam("updatepaymentplan", true)}>
+          <DropdownMenuItem
+            onSelect={(event) => {
+              event.preventDefault();
+              setModalParam("updatepaymentplan", true);
+            }}
+          >
             Edit Payment Plan
           </DropdownMenuItem>
         )}
 
         {canEditAssetQuestion && (
-          <DropdownMenuItem onClick={() => setModalParam("edituserassetquestion", true)}>
+          <DropdownMenuItem
+            onSelect={(event) => {
+              event.preventDefault();
+              setModalParam("edituserassetquestion", true);
+            }}
+          >
             Edit Asset Question
           </DropdownMenuItem>
         )}
@@ -199,7 +199,6 @@ export function UserAssetActions({
         <EditUserPaymentPlanModal
           isOpen={showEditPlan}
           onClose={() => {
-            setShowEditPlan(false);
             setModalParam(null);
           }}
           asset={asset}
@@ -211,7 +210,6 @@ export function UserAssetActions({
         <EditUserAssetQuestionModal
           isOpen={showEditQuestion}
           onClose={() => {
-            setShowEditQuestion(false);
             setModalParam(null);
           }}
           uniqueAssetId={uniqueAssetId}
