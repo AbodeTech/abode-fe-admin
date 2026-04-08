@@ -10,6 +10,7 @@ import {
   UserAssetsList,
   UserReferralsTable,
 } from "@/features/users";
+import { ViewClientAssetModal } from "@/features/users/components/modals/ViewClientAssetModal";
 import type { UserDetail } from "@/features/users";
 import type { UserReferralResponse } from "@/lib/api/admin/referrals.types";
 import type { TransactionListResponse } from "@/lib/api/admin/transactions.types";
@@ -80,6 +81,8 @@ export default function UserDetailsPage() {
       <UserTransactions transactions={transactionRows} />
 
       <UserReferralsTable referrals={referralRows} />
+
+      <ViewClientAssetModal />
     </main>
   );
 }

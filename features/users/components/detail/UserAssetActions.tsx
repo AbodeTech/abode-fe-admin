@@ -95,27 +95,33 @@ export function UserAssetActions({
 
   const deleteMutation = useMutation({
     mutationFn: assetType === "flex" ? deleteUserFlexAsset : deleteUserFullOwnershipAsset,
-    onSuccess: () => {
-      toast.success("Asset deleted successfully");
-      queryClient.invalidateQueries({ queryKey: ["userAssets", userId] });
-      setShowDeleteDialog(false);
-    },
-    onError: (error: unknown) => {
-      toast.error(getErrorMessage(error, "Failed to delete asset"));
-    },
   });
 
   const suspendMutation = useMutation({
     mutationFn: isSuspended ? unSuspendPaymentPlan : suspendPaymentPlan,
-    onSuccess: () => {
+  });
+
+  const handleDelete = async () => {
+    try {
+      await deleteMutation.mutateAsync({ userId, assetId: asset._id, unique_asset_id: uniqueAssetId });
+      toast.success("Asset deleted successfully");
+      queryClient.invalidateQueries({ queryKey: ["userAssets", userId] });
+      setShowDeleteDialog(false);
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, "Failed to delete asset"));
+    }
+  };
+
+  const handleSuspend = async () => {
+    try {
+      await suspendMutation.mutateAsync({ uniqueAssetId });
       toast.success(isSuspended ? "Asset transactions resumed" : "Asset transactions suspended");
       queryClient.invalidateQueries({ queryKey: ["userAssets", userId] });
       setShowSuspendDialog(false);
-    },
-    onError: (error: unknown) => {
+    } catch (error: unknown) {
       toast.error(getErrorMessage(error, "Failed to update suspension status"));
-    },
-  });
+    }
+  };
 
   if (!canEditPaymentPlan && !canEditAssetQuestion && !canDeleteAsset && !canSendContract) {
     return null;
@@ -266,7 +272,7 @@ export function UserAssetActions({
               disabled={deleteMutation.isPending}
               onClick={(e) => {
                 e.preventDefault();
-                deleteMutation.mutate({ userId, assetId: asset._id, unique_asset_id: uniqueAssetId });
+                handleDelete();
               }}
             >
               {deleteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -294,7 +300,7 @@ export function UserAssetActions({
             <Button
               onClick={(e) => {
                 e.preventDefault();
-                suspendMutation.mutate({ uniqueAssetId });
+                handleSuspend();
               }}
               disabled={suspendMutation.isPending}
             >

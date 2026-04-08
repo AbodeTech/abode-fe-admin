@@ -25,14 +25,17 @@ interface SendContractOfSalesModalProps {
 export function SendContractOfSalesModal({ isOpen, onClose, uniqueAssetId }: SendContractOfSalesModalProps) {
   const mutation = useMutation({
     mutationFn: () => sendUserContractOfSale(uniqueAssetId),
-    onSuccess: () => {
+  });
+
+  const handleSend = async () => {
+    try {
+      await mutation.mutateAsync();
       toast.success("Contract of Sale sent successfully");
       onClose();
-    },
-    onError: (error: unknown) => {
+    } catch (error: unknown) {
       toast.error(getErrorMessage(error, "Failed to send contract of sale."));
-    },
-  });
+    }
+  };
 
   return (
     <AlertDialog open={isOpen} onOpenChange={onClose}>
@@ -45,7 +48,7 @@ export function SendContractOfSalesModal({ isOpen, onClose, uniqueAssetId }: Sen
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel onClick={onClose}>Cancel</AlertDialogCancel>
-          <Button onClick={() => mutation.mutate()} disabled={mutation.isPending}>
+          <Button onClick={handleSend} disabled={mutation.isPending}>
             {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Continue
           </Button>

@@ -85,17 +85,20 @@ export function UserReferralsTable({ referrals }: UserReferralsTableProps) {
       if (!referralEmail.trim()) throw new Error("Referral email is required")
       return addUserReferralByAdmin(userId, referralEmail.trim())
     },
-    onSuccess: () => {
+  })
+
+  const handleAddReferral = async () => {
+    try {
+      await addReferral.mutateAsync()
       toast.success("Referral added successfully")
       setIsAddOpen(false)
       setReferralEmail("")
       queryClient.invalidateQueries({ queryKey: userKeys.referrals(userId) })
       queryClient.invalidateQueries({ queryKey: userKeys.detail(userId) })
-    },
-    onError: (error: unknown) => {
+    } catch (error: unknown) {
       toast.error(getErrorMessage(error, "Unable to add referral"))
-    },
-  })
+    }
+  }
 
   return (
     <Card className="mt-8">
@@ -199,7 +202,7 @@ export function UserReferralsTable({ referrals }: UserReferralsTableProps) {
             <Button variant="outline" onClick={() => setIsAddOpen(false)} disabled={addReferral.isPending}>
               Cancel
             </Button>
-            <Button onClick={() => addReferral.mutate()} disabled={addReferral.isPending || !referralEmail.trim()}>
+            <Button onClick={handleAddReferral} disabled={addReferral.isPending || !referralEmail.trim()}>
               Add Referral
             </Button>
           </DialogFooter>

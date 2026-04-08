@@ -26,14 +26,17 @@ interface SendCompletionCertificateModalProps {
 export function SendCompletionCertificateModal({ isOpen, onClose, uniqueAssetId, email }: SendCompletionCertificateModalProps) {
   const mutation = useMutation({
     mutationFn: () => sendCertificateByEmail(email, uniqueAssetId),
-    onSuccess: () => {
+  });
+
+  const handleSend = async () => {
+    try {
+      await mutation.mutateAsync();
       toast.success("Completion certificate sent successfully");
       onClose();
-    },
-    onError: (error: unknown) => {
+    } catch (error: unknown) {
       toast.error(getErrorMessage(error, "Failed to send completion certificate."));
-    },
-  });
+    }
+  };
 
   return (
     <AlertDialog open={isOpen} onOpenChange={onClose}>
@@ -46,7 +49,7 @@ export function SendCompletionCertificateModal({ isOpen, onClose, uniqueAssetId,
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel onClick={onClose}>Cancel</AlertDialogCancel>
-          <Button onClick={() => mutation.mutate()} disabled={mutation.isPending}>
+          <Button onClick={handleSend} disabled={mutation.isPending}>
             {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Continue
           </Button>

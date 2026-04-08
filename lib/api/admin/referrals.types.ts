@@ -13,7 +13,7 @@ export interface GetUserReferralsResponse {
   viewUserReferralsByAdmin: UserReferralResponse[]
 }
 
-export interface DeleteUserReferralInput {
+export interface RemoveReferralByAdminInput {
   user_id: string
   referral_id: string
 }

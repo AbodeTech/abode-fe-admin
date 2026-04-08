@@ -62,14 +62,6 @@ export function AddFullOwnershipAssetModal({ userId, isOpen, onClose }: AddFullO
 
   const mutation = useMutation({
     mutationFn: addUserFullOwnershipAssetByAdmin,
-    onSuccess: () => {
-      toast.success("Asset added successfully");
-      queryClient.invalidateQueries({ queryKey: ["user", userId] });
-      onClose();
-    },
-    onError: (error: unknown) => {
-      toast.error(getErrorMessage(error, "Something went wrong, please try again"));
-    },
   });
 
   const formatNumber = (value: string) => {
@@ -79,26 +71,33 @@ export function AddFullOwnershipAssetModal({ userId, isOpen, onClose }: AddFullO
     return parts.join(".");
   };
 
-  const onSubmit = (data: AddFullOwnershipAssetFormValues) => {
-    mutation.mutate({
-      doc_amount: data.docAmount,
-      number_of_units: data.unit,
-      assetId: data.asset,
-      amount: data.amount,
-      land_price: data.purchasePrice,
-      start_date: data.date,
-      months: data.months,
-      development: true,
-      development_price: data.developmentPrice,
-      userId: userId,
-      pay_commision: data.shouldCommissionBeCharged === "yes",
-      commission_amount: data.commissionAmount,
-      size: Number(data.size),
-      name_of_property: data.owner_name,
-      address: data.owner_address,
-      send_contract_agreement: data.sendContractOfSales === "yes",
-      send_receipt_email: data.sendReceiptEmail === "yes",
-    });
+  const onSubmit = async (data: AddFullOwnershipAssetFormValues) => {
+    try {
+      await mutation.mutateAsync({
+        doc_amount: data.docAmount,
+        number_of_units: data.unit,
+        assetId: data.asset,
+        amount: data.amount,
+        land_price: data.purchasePrice,
+        start_date: data.date,
+        months: data.months,
+        development: true,
+        development_price: data.developmentPrice,
+        userId: userId,
+        pay_commision: data.shouldCommissionBeCharged === "yes",
+        commission_amount: data.commissionAmount,
+        size: Number(data.size),
+        name_of_property: data.owner_name,
+        address: data.owner_address,
+        send_contract_agreement: data.sendContractOfSales === "yes",
+        send_receipt_email: data.sendReceiptEmail === "yes",
+      });
+      toast.success("Asset added successfully");
+      queryClient.invalidateQueries({ queryKey: ["user", userId] });
+      onClose();
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, "Something went wrong, please try again"));
+    }
   };
 
   return (

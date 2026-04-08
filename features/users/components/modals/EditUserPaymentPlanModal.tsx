@@ -72,39 +72,37 @@ export function EditUserPaymentPlanModal({ isOpen, onClose, asset, userId }: Edi
 
   const mutation = useMutation({
     mutationFn: editUserPaymentPlanByAdmin,
-    onSuccess: () => {
+  });
+
+  const onSubmit = async (data: EditUserPaymentPlanFormValues) => {
+    const monthsRemaining = (data.month_subscription || 0) - (data.months_covered || 0);
+    try {
+      await mutation.mutateAsync({
+        userId: data.userId,
+        uniqueAssetId: data.uniqueAssetId,
+        amount_paid: data.amount_paid,
+        balance: data.balance,
+        asset_price: data.fullownerhsip_landprice || data.asset_price,
+        next_date_of_payment: data.next_date_of_payment,
+        start_date: data.start_date,
+        no_of_units: data.no_of_units,
+        fullownerhsip_landprice: data.fullownerhsip_landprice ? data.fullownerhsip_landprice : null,
+        fullownerhsip_documentprice: data.fullownerhsip_documentprice ? data.fullownerhsip_documentprice : null,
+        months_covered: data.months_covered,
+        month_remaining: monthsRemaining,
+        month_subscription: data.month_subscription,
+        size: data.size,
+        default_amount: data.default_amount,
+        amount_payable: data.amount_payable,
+        document_amount_paid: data.document_amount_paid ? data.document_amount_paid : null,
+        document_balance: data.document_balance ? data.document_balance : null,
+      });
       toast.success("Payment plan updated successfully");
       queryClient.invalidateQueries({ queryKey: ["userAssets", userId] });
       onClose();
-    },
-    onError: (error: unknown) => {
+    } catch (error: unknown) {
       toast.error(getErrorMessage(error, "Failed to update payment plan"));
-    },
-  });
-
-  const onSubmit = (data: EditUserPaymentPlanFormValues) => {
-    const monthsRemaining = (data.month_subscription || 0) - (data.months_covered || 0);
-
-    mutation.mutate({
-      userId: data.userId,
-      uniqueAssetId: data.uniqueAssetId,
-      amount_paid: data.amount_paid,
-      balance: data.balance,
-      asset_price: data.fullownerhsip_landprice || data.asset_price,
-      next_date_of_payment: data.next_date_of_payment,
-      start_date: data.start_date,
-      no_of_units: data.no_of_units,
-      fullownerhsip_landprice: data.fullownerhsip_landprice ? data.fullownerhsip_landprice : null,
-      fullownerhsip_documentprice: data.fullownerhsip_documentprice ? data.fullownerhsip_documentprice : null,
-      months_covered: data.months_covered,
-      month_remaining: monthsRemaining,
-      month_subscription: data.month_subscription,
-      size: data.size,
-      default_amount: data.default_amount,
-      amount_payable: data.amount_payable,
-      document_amount_paid: data.document_amount_paid ? data.document_amount_paid : null,
-      document_balance: data.document_balance ? data.document_balance : null,
-    });
+    }
   };
 
   const formatNumber = (value: number | string | undefined) => {

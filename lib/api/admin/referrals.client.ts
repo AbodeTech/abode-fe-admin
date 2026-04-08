@@ -28,21 +28,23 @@ export const getUserReferrals = async (userId: string) => {
   return response.viewUserReferralsByAdmin
 }
 
-// Delete User Referral
-export const deleteUserReferral = async (userId: string, referralId: string) => {
-  const response = await fetchGraphql<{ deleteUserReferral: boolean }>(
+// Remove User Referral (legacy parity)
+export const removeReferralByAdmin = async (userId: string, referralId: string) => {
+  const response = await fetchGraphql<{ removeReferralByAdmin: string }>(
     `
-      mutation DeleteUserReferral($user_id: String!, $referral_id: String!) {
-        deleteUserReferral(user_id: $user_id, referral_id: $referral_id)
+      mutation RemoveReferralByAdmin($referralUpdateInput: ReferralUpdateInput!) {
+        removeReferralByAdmin(referralUpdateInput: $referralUpdateInput)
       }
     `,
     {
-      user_id: userId,
-      referral_id: referralId,
+      referralUpdateInput: {
+        user_id: userId,
+        referral_id: referralId,
+      },
     }
   )
 
-  return response.deleteUserReferral
+  return response.removeReferralByAdmin
 }
 
 export const addUserReferralByAdmin = async (userId: string, referralEmail: string) => {
