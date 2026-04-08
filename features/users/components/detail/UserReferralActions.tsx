@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { useParams } from "next/navigation"
+import { useParams, useSearchParams } from "next/navigation"
 import { useAuthStore } from "@/store/auth-store"
 import {
   DropdownMenu,
@@ -21,9 +21,10 @@ import {
 import { Button } from "@/components/ui/button"
 import { MoreVertical, Loader2, Trash2 } from "lucide-react"
 import { toast } from "sonner"
-import { deleteUserReferral } from "@/lib/api/admin/referrals.client"
+import { removeReferralByAdmin } from "@/lib/api/admin/referrals.client"
 import revalidate from "@/lib/serverActions/admin/revalidate"
 import { getErrorMessage } from "../../utils/error-message"
+import { useSelectedClientStore } from "@/store/selected-client-store"
 
 interface UserReferralActionsProps {
   referralId: string
@@ -33,22 +34,27 @@ interface UserReferralActionsProps {
 export function UserReferralActions({ referralId, referralName }: UserReferralActionsProps) {
   const router = useRouter()
   const params = useParams<{ id: string }>()
+  const searchParams = useSearchParams()
   const userId = params.id
   const user = useAuthStore((state) => state.user)
   const canDeleteReferral = user?.role === "admin" || (user?.permissions ?? []).includes("remove-referral")
+  const { setClient } = useSelectedClientStore()
 
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
   const handleViewAssets = () => {
-    router.push(`/users/${referralId}`)
+    setClient(referralId, referralName)
+    const params = new URLSearchParams(searchParams?.toString() || "")
+    params.set("modal", "viewclientasset")
+    router.push(params.toString() ? `?${params.toString()}` : "?")
   }
 
   const handleDelete = async () => {
     if (!userId) return
     setIsDeleting(true)
     try {
-      await deleteUserReferral(userId, referralId)
+      await removeReferralByAdmin(userId, referralId)
       toast.success("Referral deleted successfully")
       setIsDeleteOpen(false)
       revalidate(userId) // Revalidate parent user page

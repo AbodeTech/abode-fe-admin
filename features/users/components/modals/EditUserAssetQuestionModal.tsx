@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { editUserAssetQuestion } from "@/lib/api/admin/user-assets.client";
+import { updateUserAssetQuestion } from "@/lib/api/admin/user-assets.client";
 import { EditUserAssetQuestionFormValues, editUserAssetQuestionSchema } from "@/lib/schemas/admin/user-assets.schema";
 import { getErrorMessage } from "../../utils/error-message";
 
@@ -61,23 +61,22 @@ export function EditUserAssetQuestionModal({
   }, [isOpen, currentName, currentAddress, setValue]);
 
   const mutation = useMutation({
-    mutationFn: editUserAssetQuestion,
-    onSuccess: () => {
+    mutationFn: updateUserAssetQuestion,
+  });
+
+  const onSubmit = async (data: EditUserAssetQuestionFormValues) => {
+    try {
+      await mutation.mutateAsync({
+        unique_asset_id: uniqueAssetId,
+        name_of_property: data.name,
+        address: data.address,
+      });
       toast.success("Asset Question updated successfully");
       queryClient.invalidateQueries({ queryKey: ["userAssets", userId] });
       onClose();
-    },
-    onError: (error: unknown) => {
+    } catch (error: unknown) {
       toast.error(getErrorMessage(error, "Failed to update asset question"));
-    },
-  });
-
-  const onSubmit = (data: EditUserAssetQuestionFormValues) => {
-    mutation.mutate({
-      unique_asset_id: uniqueAssetId,
-      name_of_property: data.name,
-      address: data.address,
-    });
+    }
   };
 
   return (

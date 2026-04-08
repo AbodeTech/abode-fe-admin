@@ -38,7 +38,8 @@ import { UserAssetActions } from "./UserAssetActions";
 
 interface UserAssetsListProps {
   userId: string;
-  userEmail: string;
+  userEmail?: string;
+  readOnly?: boolean;
 }
 
 const formatDateWord = (date: Date | string) => {
@@ -53,7 +54,7 @@ const formatCurrency = (amount: number) => {
   return amount.toLocaleString("en-NG", { style: "currency", currency: "NGN" });
 };
 
-export function UserAssetsList({ userId, userEmail }: UserAssetsListProps) {
+export function UserAssetsList({ userId, userEmail, readOnly = false }: UserAssetsListProps) {
   const [isFlexModalOpen, setIsFlexModalOpen] = useState(false);
   const [isFullOwnershipModalOpen, setIsFullOwnershipModalOpen] = useState(false);
 
@@ -102,19 +103,25 @@ export function UserAssetsList({ userId, userEmail }: UserAssetsListProps) {
 
   return (
     <div className="space-y-6 mt-6">
-      <AddFlexAssetModal userId={userId} isOpen={isFlexModalOpen} onClose={() => setIsFlexModalOpen(false)} />
-      <AddFullOwnershipAssetModal
-        userId={userId}
-        isOpen={isFullOwnershipModalOpen}
-        onClose={() => setIsFullOwnershipModalOpen(false)}
-      />
+      {!readOnly && (
+        <>
+          <AddFlexAssetModal userId={userId} isOpen={isFlexModalOpen} onClose={() => setIsFlexModalOpen(false)} />
+          <AddFullOwnershipAssetModal
+            userId={userId}
+            isOpen={isFullOwnershipModalOpen}
+            onClose={() => setIsFullOwnershipModalOpen(false)}
+          />
+        </>
+      )}
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-2xl font-bold">User Flex Assets</CardTitle>
-          <Button onClick={() => setIsFlexModalOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" /> Add Flex Asset
-          </Button>
+          {!readOnly && (
+            <Button onClick={() => setIsFlexModalOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" /> Add Flex Asset
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           <div className="grid gap-4">
@@ -167,7 +174,7 @@ export function UserAssetsList({ userId, userEmail }: UserAssetsListProps) {
                             <AlertTriangle className="h-3 w-3 mr-1" /> Payment Due Soon
                           </Badge>
                         )}
-                        <UserAssetActions userId={userId} asset={asset} email={userEmail} />
+                        {!readOnly && <UserAssetActions userId={userId} asset={asset} email={userEmail} />}
                       </div>
                     </div>
 
@@ -301,9 +308,11 @@ export function UserAssetsList({ userId, userEmail }: UserAssetsListProps) {
   
           <div className="flex items-center justify-between gap-2 w-full px-4 ">
             <CardTitle className="text-2xl font-bold">User Full Ownership Assets</CardTitle>
-            <Button onClick={() => setIsFullOwnershipModalOpen(true)}>
-              <Plus className=" h-4 w-4" /> Add New Asset
-            </Button>
+            {!readOnly && (
+              <Button onClick={() => setIsFullOwnershipModalOpen(true)}>
+                <Plus className=" h-4 w-4" /> Add New Asset
+              </Button>
+            )}
           </div>    
           
         <CardContent>
@@ -351,7 +360,7 @@ export function UserAssetsList({ userId, userEmail }: UserAssetsListProps) {
                     </div>
                     <div className="flex items-center gap-2">
                       {pd.is_suspended && <Badge variant="destructive">Suspended</Badge>}
-                      <UserAssetActions userId={userId} asset={asset} email={userEmail} />
+                      {!readOnly && <UserAssetActions userId={userId} asset={asset} email={userEmail} />}
                     </div>
                   </div>
 

@@ -15,7 +15,7 @@ import {
   SendHamperResponse,
   SendFlexTermsResponse,
   EditUserAssetQuestionInput,
-  EditUserAssetQuestionResponse,
+  UpdateUserAssetQuestionResponse,
   EditUserPaymentPlanInput,
   EditUserPaymentPlanResponse,
   ViewAllAssetsResponse,
@@ -213,18 +213,16 @@ export const sendFlexTermsAndConditionEmail = async (email: string, uniqueAssetI
   return response.sendFlexTermsAndConditionEmail;
 };
 
-export const editUserAssetQuestion = async (payload: EditUserAssetQuestionInput) => {
+export const updateUserAssetQuestion = async (payload: EditUserAssetQuestionInput) => {
   const query = `
-    mutation EditUserAssetQuestion($unique_asset_id: String!, $address: String!, $name_of_property: String) {
-      editUserAssetQuestion(unique_asset_id: $unique_asset_id, address: $address, name_of_property: $name_of_property)
+    mutation UpdateUserAssetQuestion($editUserAssetQuestionInput: EditUserAssetQuestionInput!) {
+      updateUserAssetQuestion(editUserAssetQuestionInput: $editUserAssetQuestionInput)
     }
   `;
-  const response = await fetchGraphql<EditUserAssetQuestionResponse>(query, {
-    unique_asset_id: payload.unique_asset_id,
-    address: payload.address,
-    name_of_property: payload.name_of_property,
+  const response = await fetchGraphql<UpdateUserAssetQuestionResponse>(query, {
+    editUserAssetQuestionInput: payload,
   });
-  return response.editUserAssetQuestion;
+  return response.updateUserAssetQuestion;
 };
 
 export const editUserPaymentPlanByAdmin = async (payload: EditUserPaymentPlanInput) => {

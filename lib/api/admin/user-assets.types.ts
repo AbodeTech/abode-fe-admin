@@ -156,8 +156,8 @@ export interface EditUserAssetQuestionInput {
   address: string;
 }
 
-export interface EditUserAssetQuestionResponse {
-  editUserAssetQuestion: boolean;
+export interface UpdateUserAssetQuestionResponse {
+  updateUserAssetQuestion: string;
 }
 
 export interface EditUserPaymentPlanInput {
