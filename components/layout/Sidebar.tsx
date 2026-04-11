@@ -24,6 +24,7 @@ import {
   Settings,
   ShieldCheck,
   ShoppingCart,
+  Store,
   TrendingUp,
   Upload,
   UserPlus,
@@ -45,6 +46,7 @@ const navGroups = [
       { name: "Sales", link: "/sales", icon: <ShoppingCart /> },
       { name: "Agency", link: "/agency", icon: <Building2 /> },
       { name: "Allocation", link: "/allocation", icon: <Building2 /> },
+      { name: "Marketplace", link: "/marketplace", icon: <Store /> },
       { name: "Requests", link: "/requests", icon: <ClipboardList /> },
     ]
   },
