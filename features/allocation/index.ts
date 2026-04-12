@@ -2,6 +2,7 @@ export * from './hooks/query-keys';
 export * from './hooks/use-allocation-clients';
 export * from './hooks/use-allocation-assets';
 export * from './hooks/use-allocate-land';
+export * from './hooks/use-assign-land';
 export * from './hooks/use-allocation-export';
 export * from './components/AllocationFilters';
 export * from './components/AllocationTable';

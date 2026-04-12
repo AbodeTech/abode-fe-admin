@@ -4,6 +4,7 @@ import React from "react";
 import { FragmentType, useFragment as getFragmentData } from "@/lib/gql";
 import { AllocationTableRowFragment } from "./AllocationTable";
 import { useAllocateLand } from "../hooks/use-allocate-land";
+import { useAssignLand } from "../hooks/use-assign-land";
 import {
   Dialog,
   DialogContent,
@@ -17,58 +18,77 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { RotateCcw, Send } from "lucide-react";
+import { ClipboardList, RotateCcw, Send } from "lucide-react";
+
+export type AllocationModalMode = "assign" | "allocate" | "resend";
 
 interface AllocationModalProps {
   open: boolean;
-  mode: "send" | "resend";
+  mode: AllocationModalMode;
   client?: FragmentType<typeof AllocationTableRowFragment> | null;
   onOpenChange: (open: boolean) => void;
 }
 
+function parseAllocation(allocation: string | null | undefined): { block: string; plot: string } {
+  if (!allocation) return { block: "", plot: "" };
+  const parts = allocation.split(",").map((p) => p.trim());
+  return { block: parts[0] ?? "", plot: parts[1] ?? "" };
+}
+
 export function AllocationModal({ open, mode, client, onOpenChange }: AllocationModalProps) {
   const allocationClient = getFragmentData(AllocationTableRowFragment, client);
-  const { mutateAsync: allocateLand, isPending } = useAllocateLand();
-  const initialAllocationParts =
-    mode === "resend" && allocationClient?.allocation
-      ? allocationClient.allocation.split(",").map((part) => part.trim())
-      : [];
-  const initialBlock = initialAllocationParts[0] || "";
-  const initialPlot = initialAllocationParts[1] || "";
-  const formKey = `${mode}-${allocationClient?.paymentPlan || "no-plan"}-${allocationClient?.allocation || "none"}`;
+  const { mutateAsync: allocateLand, isPending: isAllocating } = useAllocateLand();
+  const { mutateAsync: assignLand, isPending: isAssigning } = useAssignLand();
+
+  const isPending = isAllocating || isAssigning;
+
+  const prefilled = parseAllocation(allocationClient?.allocation);
+  const formKey = `${mode}-${allocationClient?.paymentPlan ?? "no-plan"}-${allocationClient?.allocation ?? "none"}`;
+
+  const titles: Record<AllocationModalMode, string> = {
+    assign: "Assign Block & Plot",
+    allocate: "Send Allocation",
+    resend: "Resend Allocation",
+  };
+
+  const descriptions: Record<AllocationModalMode, string> = {
+    assign: "Save block and plot for this client without sending the allocation email.",
+    allocate: "Send the allocation email to this client.",
+    resend: "Resend the allocation email to this client.",
+  };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!allocationClient?.paymentPlan) return;
+
     const formData = new FormData(event.currentTarget);
     const block = String(formData.get("block") || "").trim();
     const plot = String(formData.get("plot") || "").trim();
     if (!block || !plot) return;
 
     try {
-      await allocateLand({
-        paymentPlanId: allocationClient.paymentPlan,
-        block,
-        plot,
-      });
-      toast.success(mode === "resend" ? "Allocation resent" : "Allocation sent");
+      if (mode === "assign") {
+        await assignLand({ paymentPlanId: allocationClient.paymentPlan, block, plot });
+        toast.success("Block and plot assigned successfully");
+      } else {
+        await allocateLand({ paymentPlanId: allocationClient.paymentPlan, block, plot });
+        toast.success(mode === "resend" ? "Allocation resent" : "Allocation sent");
+      }
       onOpenChange(false);
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Failed to allocate land");
+      toast.error(error instanceof Error ? error.message : "Something went wrong");
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px]">
+      <DialogContent className="sm:max-w-120">
         <DialogHeader>
-          <DialogTitle>
-            {mode === "resend" ? "Resend Land Allocation" : "Send Land Allocation"}
-          </DialogTitle>
+          <DialogTitle>{allocationClient ? titles[mode] : "Select a client"}</DialogTitle>
           <DialogDescription>
             {allocationClient
-              ? `Assign allocation for ${allocationClient.firstName} ${allocationClient.lastName}`
-              : "Select a client to send allocation."}
+              ? `${descriptions[mode]} — ${allocationClient.firstName} ${allocationClient.lastName}`
+              : "Select a client to continue."}
           </DialogDescription>
         </DialogHeader>
 
@@ -83,7 +103,8 @@ export function AllocationModal({ open, mode, client, onOpenChange }: Allocation
               <div className="text-xs space-y-1">
                 <p>Asset: {allocationClient.assetName}</p>
                 <p>
-                  Payment plan: <span className="font-medium">{allocationClient.paymentPlan || "—"}</span>
+                  Payment plan:{" "}
+                  <span className="font-medium">{allocationClient.paymentPlan || "—"}</span>
                 </p>
                 {allocationClient.allocation && (
                   <p className="text-amber-600">
@@ -99,7 +120,7 @@ export function AllocationModal({ open, mode, client, onOpenChange }: Allocation
                 id="block"
                 name="block"
                 placeholder="e.g., Block 5"
-                defaultValue={initialBlock}
+                defaultValue={prefilled.block}
               />
             </div>
             <div className="space-y-2">
@@ -108,11 +129,17 @@ export function AllocationModal({ open, mode, client, onOpenChange }: Allocation
                 id="plot"
                 name="plot"
                 placeholder="e.g., Plot K"
-                defaultValue={initialPlot}
+                defaultValue={prefilled.plot}
               />
             </div>
+
             <DialogFooter>
-              <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isPending} type="button">
+              <Button
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={isPending}
+                type="button"
+              >
                 Cancel
               </Button>
               <Button
@@ -123,7 +150,12 @@ export function AllocationModal({ open, mode, client, onOpenChange }: Allocation
                 {isPending ? (
                   <>
                     <RotateCcw className="h-4 w-4 animate-spin" />
-                    {mode === "resend" ? "Resending..." : "Sending..."}
+                    {mode === "assign" ? "Saving..." : mode === "resend" ? "Resending..." : "Sending..."}
+                  </>
+                ) : mode === "assign" ? (
+                  <>
+                    <ClipboardList className="h-4 w-4" />
+                    Save Assignment
                   </>
                 ) : mode === "resend" ? (
                   <>
@@ -133,7 +165,7 @@ export function AllocationModal({ open, mode, client, onOpenChange }: Allocation
                 ) : (
                   <>
                     <Send className="h-4 w-4" />
-                    Send
+                    Send Allocation
                   </>
                 )}
               </Button>
