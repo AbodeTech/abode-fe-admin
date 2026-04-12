@@ -107,7 +107,7 @@ export function MarketplaceDataPoints({ data, isLoading }: MarketplaceDataPoints
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{formatCurrency(data?.total_platform_fees || 0)}</div>
-          <p className="text-xs text-muted-foreground">2% fee from completed sales</p>
+          <p className="text-xs text-muted-foreground">Platform fee from completed sales</p>
         </CardContent>
       </Card>
     </div>

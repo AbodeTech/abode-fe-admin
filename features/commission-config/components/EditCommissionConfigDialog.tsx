@@ -57,6 +57,8 @@ interface FormState {
   // General (displayed as %)
   wht_percentage: number;
   upgrade_commission_percentage: number;
+  // Marketplace
+  marketplace_platform_fee_percentage: number;
   // General (raw NGN)
   high_commission_alert_threshold: number;
   associate_pro_fee: number;
@@ -91,6 +93,7 @@ function initFormState(c: CommissionConfig): FormState {
     fo_removal_upline: toDisplay(c.fullOwnershipRemoval.upline),
     fo_removal_topline: toDisplay(c.fullOwnershipRemoval.topline),
 
+    marketplace_platform_fee_percentage: toDisplay(c.marketplacePlatformFeePercentage),
     wht_percentage: toDisplay(c.whtPercentage),
     upgrade_commission_percentage: toDisplay(c.upgradeCommissionPercentage),
     high_commission_alert_threshold: c.highCommissionAlertThreshold,
@@ -200,6 +203,7 @@ export function EditCommissionConfigDialog({ config }: EditCommissionConfigDialo
       form.flex_removal_associate_pro, form.flex_removal_default,
       form.fo_removal_direct_associate_pro, form.fo_removal_direct_default,
       form.fo_removal_upline, form.fo_removal_topline,
+      form.marketplace_platform_fee_percentage,
       form.wht_percentage, form.upgrade_commission_percentage,
     ];
     if (percentFields.some((v) => v < 0 || v > 100)) {
@@ -252,6 +256,7 @@ export function EditCommissionConfigDialog({ config }: EditCommissionConfigDialo
           upline: toDecimal(form.fo_removal_upline),
           topline: toDecimal(form.fo_removal_topline),
         },
+        marketplacePlatformFeePercentage: toDecimal(form.marketplace_platform_fee_percentage),
         whtPercentage: toDecimal(form.wht_percentage),
         highCommissionAlertThreshold: form.high_commission_alert_threshold,
         upgradeCommissionPercentage: toDecimal(form.upgrade_commission_percentage),
@@ -342,6 +347,7 @@ export function EditCommissionConfigDialog({ config }: EditCommissionConfigDialo
           <div className="grid grid-cols-2 gap-3">
             <PercentField id="wht" label="WHT" value={form.wht_percentage} onChange={(v) => set("wht_percentage", v)} disabled={isPending} />
             <PercentField id="upgrade_comm" label="Upgrade Commission" value={form.upgrade_commission_percentage} onChange={(v) => set("upgrade_commission_percentage", v)} disabled={isPending} />
+            <PercentField id="marketplace_fee" label="Marketplace Platform Fee" value={form.marketplace_platform_fee_percentage} onChange={(v) => set("marketplace_platform_fee_percentage", v)} disabled={isPending} />
             <CurrencyField id="alert_threshold" label="High Commission Alert (NGN)" value={form.high_commission_alert_threshold} onChange={(v) => set("high_commission_alert_threshold", v)} disabled={isPending} />
             <CurrencyField id="ap_fee" label="Associate Pro Fee (NGN)" value={form.associate_pro_fee} onChange={(v) => set("associate_pro_fee", v)} disabled={isPending} />
           </div>

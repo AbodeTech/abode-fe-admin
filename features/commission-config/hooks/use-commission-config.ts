@@ -56,6 +56,7 @@ export interface CommissionConfig {
   highCommissionAlertThreshold: number;
   upgradeCommissionPercentage: number;
   associateProFee: number;
+  marketplacePlatformFeePercentage: number;
   version: number;
   updatedAt: string;
   createdAt: string;
@@ -114,6 +115,7 @@ const GET_COMMISSION_CONFIG = `
       highCommissionAlertThreshold
       upgradeCommissionPercentage
       associateProFee
+      marketplacePlatformFeePercentage
       version
       updatedAt
       createdAt
@@ -203,6 +205,7 @@ export interface UpdateCommissionConfigInput {
   highCommissionAlertThreshold?: number;
   upgradeCommissionPercentage?: number;
   associateProFee?: number;
+  marketplacePlatformFeePercentage?: number;
   changeDescription: string;
 }
 

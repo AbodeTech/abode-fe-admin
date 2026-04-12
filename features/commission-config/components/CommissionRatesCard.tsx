@@ -121,6 +121,7 @@ export function CommissionRatesCard({ config }: CommissionRatesCardProps) {
           <RateRow label="WHT" value={toPercent(config.whtPercentage)} />
           <RateRow label="High Commission Alert" value={toNGN(config.highCommissionAlertThreshold)} />
           <RateRow label="Upgrade Commission" value={toPercent(config.upgradeCommissionPercentage)} />
+          <RateRow label="Marketplace Platform Fee" value={toPercent(config.marketplacePlatformFeePercentage)} />
           <RateRow label="Associate Pro Fee" value={toNGN(config.associateProFee)} />
           <Separator className="my-2" />
           <RateRow label="Version" value={`v${config.version}`} />
