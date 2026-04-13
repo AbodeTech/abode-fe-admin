@@ -100,6 +100,7 @@ interface ExportUsersByFilterResponse {
       address?: string | null;
       country?: string | null;
       createdAt?: string | null;
+      last_login?: string | null;
       referral?: {
         firstName?: string | null;
         lastName?: string | null;
