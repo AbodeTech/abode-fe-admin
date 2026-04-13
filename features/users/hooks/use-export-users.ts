@@ -21,6 +21,7 @@ const EXPORT_USERS_BY_FILTER_QUERY = `
         _id
         firstName
         lastName
+        last_login
         email
         gender
         occupation

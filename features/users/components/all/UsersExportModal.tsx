@@ -158,6 +158,7 @@ export function UsersExportModal() {
             ? `${row.referral.firstName} ${row.referral.lastName}`
             : "",
           referrerEmail: row.referral?.email || "",
+          last_login: formatDate(row.last_login),
           createdAt: formatDate(row.createdAt),
         }));
 
