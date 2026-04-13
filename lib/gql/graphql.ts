@@ -601,6 +601,25 @@ export type AssetBreakdownHamper = {
   totalSqmSold?: Maybe<Scalars['Float']['output']>;
 };
 
+export type AssetCommissionOverride = {
+  __typename?: 'AssetCommissionOverride';
+  _id: Scalars['ID']['output'];
+  asset: AssetOverrideSummary;
+  createdAt?: Maybe<Scalars['Date']['output']>;
+  flexCommission?: Maybe<FlexCommissionConfigOptional>;
+  flexRemoval?: Maybe<FlexRemovalConfigOptional>;
+  fullOwnershipCommission?: Maybe<FullOwnershipCommissionConfigOptional>;
+  fullOwnershipRemoval?: Maybe<FullOwnershipRemovalConfigOptional>;
+  lastModifiedBy?: Maybe<Scalars['ID']['output']>;
+  updatedAt?: Maybe<Scalars['Date']['output']>;
+};
+
+export type AssetCommissionOverrideListResponse = {
+  __typename?: 'AssetCommissionOverrideListResponse';
+  overrides: Array<AssetCommissionOverride>;
+  pagination: PaginationInfo;
+};
+
 export type AssetDashBoard = {
   __typename?: 'AssetDashBoard';
   _id: Scalars['ID']['output'];
@@ -731,6 +750,13 @@ export type AssetOptionInput = {
   twelve_months?: InputMaybe<Scalars['Int']['input']>;
   unit: Scalars['Int']['input'];
   zero_months?: InputMaybe<Scalars['Int']['input']>;
+};
+
+export type AssetOverrideSummary = {
+  __typename?: 'AssetOverrideSummary';
+  _id: Scalars['ID']['output'];
+  asset_name: Scalars['String']['output'];
+  asset_type: Scalars['String']['output'];
 };
 
 export type AssetQuestion = {
@@ -1925,6 +1951,7 @@ export type FilteredUserAdminDetail = {
   firstName?: Maybe<Scalars['String']['output']>;
   gender?: Maybe<Scalars['String']['output']>;
   lastName?: Maybe<Scalars['String']['output']>;
+  last_login?: Maybe<Scalars['Date']['output']>;
   occupation?: Maybe<Scalars['String']['output']>;
   phoneNumber?: Maybe<Scalars['String']['output']>;
   referral?: Maybe<Referrer>;
@@ -2016,6 +2043,11 @@ export type FlexCommissionConfig = {
   direct: FlexDirectRates;
 };
 
+export type FlexCommissionConfigOptional = {
+  __typename?: 'FlexCommissionConfigOptional';
+  direct?: Maybe<FlexDirectRatesOptional>;
+};
+
 export type FlexCommissionInput = {
   direct?: InputMaybe<FlexDirectRatesInput>;
 };
@@ -2033,6 +2065,14 @@ export type FlexDirectRatesInput = {
   default?: InputMaybe<Scalars['Float']['input']>;
   founder?: InputMaybe<Scalars['Float']['input']>;
   premium?: InputMaybe<Scalars['Float']['input']>;
+};
+
+export type FlexDirectRatesOptional = {
+  __typename?: 'FlexDirectRatesOptional';
+  associate_pro?: Maybe<Scalars['Float']['output']>;
+  default?: Maybe<Scalars['Float']['output']>;
+  founder?: Maybe<Scalars['Float']['output']>;
+  premium?: Maybe<Scalars['Float']['output']>;
 };
 
 export type FlexPaymentPlan = {
@@ -2059,6 +2099,11 @@ export type FlexRemovalConfig = {
   direct: FlexRemovalDirectRates;
 };
 
+export type FlexRemovalConfigOptional = {
+  __typename?: 'FlexRemovalConfigOptional';
+  direct?: Maybe<FlexRemovalDirectRatesOptional>;
+};
+
 export type FlexRemovalDirectRates = {
   __typename?: 'FlexRemovalDirectRates';
   associate_pro: Scalars['Float']['output'];
@@ -2068,6 +2113,12 @@ export type FlexRemovalDirectRates = {
 export type FlexRemovalDirectRatesInput = {
   associate_pro?: InputMaybe<Scalars['Float']['input']>;
   default?: InputMaybe<Scalars['Float']['input']>;
+};
+
+export type FlexRemovalDirectRatesOptional = {
+  __typename?: 'FlexRemovalDirectRatesOptional';
+  associate_pro?: Maybe<Scalars['Float']['output']>;
+  default?: Maybe<Scalars['Float']['output']>;
 };
 
 export type FlexRemovalInput = {
@@ -2103,19 +2154,19 @@ export type FullOwnership = {
 
 export type FullOwnershipAssetOptionInput = {
   development_fee: Scalars['Int']['input'];
-  five_months: Scalars['Int']['input'];
-  five_months_initial_payment: Scalars['Int']['input'];
-  initial_payment: Scalars['Int']['input'];
+  five_months?: InputMaybe<Scalars['Int']['input']>;
+  five_months_initial_payment?: InputMaybe<Scalars['Int']['input']>;
+  initial_payment?: InputMaybe<Scalars['Int']['input']>;
   monthly_installment: Scalars['Int']['input'];
-  one_month: Scalars['Int']['input'];
-  one_month_initial_payment: Scalars['Int']['input'];
+  one_month?: InputMaybe<Scalars['Int']['input']>;
+  one_month_initial_payment?: InputMaybe<Scalars['Int']['input']>;
   price: Scalars['Int']['input'];
-  seven_months: Scalars['Int']['input'];
-  seven_months_initial_payment: Scalars['Int']['input'];
-  six_months: Scalars['Int']['input'];
+  seven_months?: InputMaybe<Scalars['Int']['input']>;
+  seven_months_initial_payment?: InputMaybe<Scalars['Int']['input']>;
+  six_months?: InputMaybe<Scalars['Int']['input']>;
   size: Scalars['Int']['input'];
   three_months: Scalars['Int']['input'];
-  twelve_months: Scalars['Int']['input'];
+  twelve_months?: InputMaybe<Scalars['Int']['input']>;
   unit: Scalars['Int']['input'];
   zero_months: Scalars['Int']['input'];
 };
@@ -2125,6 +2176,13 @@ export type FullOwnershipCommissionConfig = {
   direct: FullOwnershipDirectRates;
   topline: FullOwnershipToplineRates;
   upline: FullOwnershipUplineRates;
+};
+
+export type FullOwnershipCommissionConfigOptional = {
+  __typename?: 'FullOwnershipCommissionConfigOptional';
+  direct?: Maybe<FullOwnershipDirectRatesOptional>;
+  topline?: Maybe<FullOwnershipToplineRatesOptional>;
+  upline?: Maybe<FullOwnershipUplineRatesOptional>;
 };
 
 export type FullOwnershipCommissionInput = {
@@ -2148,11 +2206,26 @@ export type FullOwnershipDirectRatesInput = {
   premium?: InputMaybe<Scalars['Float']['input']>;
 };
 
+export type FullOwnershipDirectRatesOptional = {
+  __typename?: 'FullOwnershipDirectRatesOptional';
+  associate_pro?: Maybe<Scalars['Float']['output']>;
+  default?: Maybe<Scalars['Float']['output']>;
+  founder?: Maybe<Scalars['Float']['output']>;
+  premium?: Maybe<Scalars['Float']['output']>;
+};
+
 export type FullOwnershipRemovalConfig = {
   __typename?: 'FullOwnershipRemovalConfig';
   direct: FullOwnershipRemovalDirectRates;
   topline: Scalars['Float']['output'];
   upline: Scalars['Float']['output'];
+};
+
+export type FullOwnershipRemovalConfigOptional = {
+  __typename?: 'FullOwnershipRemovalConfigOptional';
+  direct?: Maybe<FullOwnershipRemovalDirectRatesOptional>;
+  topline?: Maybe<Scalars['Float']['output']>;
+  upline?: Maybe<Scalars['Float']['output']>;
 };
 
 export type FullOwnershipRemovalDirectRates = {
@@ -2164,6 +2237,12 @@ export type FullOwnershipRemovalDirectRates = {
 export type FullOwnershipRemovalDirectRatesInput = {
   associate_pro?: InputMaybe<Scalars['Float']['input']>;
   default?: InputMaybe<Scalars['Float']['input']>;
+};
+
+export type FullOwnershipRemovalDirectRatesOptional = {
+  __typename?: 'FullOwnershipRemovalDirectRatesOptional';
+  associate_pro?: Maybe<Scalars['Float']['output']>;
+  default?: Maybe<Scalars['Float']['output']>;
 };
 
 export type FullOwnershipRemovalInput = {
@@ -2183,6 +2262,12 @@ export type FullOwnershipToplineRatesInput = {
   founder?: InputMaybe<Scalars['Float']['input']>;
 };
 
+export type FullOwnershipToplineRatesOptional = {
+  __typename?: 'FullOwnershipToplineRatesOptional';
+  associate_pro?: Maybe<Scalars['Float']['output']>;
+  founder?: Maybe<Scalars['Float']['output']>;
+};
+
 export type FullOwnershipUplineRates = {
   __typename?: 'FullOwnershipUplineRates';
   associate_pro: Scalars['Float']['output'];
@@ -2194,6 +2279,13 @@ export type FullOwnershipUplineRatesInput = {
   associate_pro?: InputMaybe<Scalars['Float']['input']>;
   founder?: InputMaybe<Scalars['Float']['input']>;
   premium?: InputMaybe<Scalars['Float']['input']>;
+};
+
+export type FullOwnershipUplineRatesOptional = {
+  __typename?: 'FullOwnershipUplineRatesOptional';
+  associate_pro?: Maybe<Scalars['Float']['output']>;
+  founder?: Maybe<Scalars['Float']['output']>;
+  premium?: Maybe<Scalars['Float']['output']>;
 };
 
 export type HamperLeaderboardEntry = {
@@ -2435,6 +2527,7 @@ export type Mutation = {
   declineUserBvn: Scalars['String']['output'];
   declineUserKyc: Scalars['String']['output'];
   deleteAsset: Scalars['String']['output'];
+  deleteAssetCommissionOverride: Scalars['Boolean']['output'];
   deleteCoupon: DeleteCouponResponse;
   deleteUserFlexAsset: Scalars['String']['output'];
   deleteUserFullOwnershipAsset: Scalars['String']['output'];
@@ -2517,6 +2610,7 @@ export type Mutation = {
   updateUserTin: UpdateTinResponse;
   upgradeToAssociate: Scalars['String']['output'];
   upgradeToAssociatePro: Scalars['String']['output'];
+  upsertAssetCommissionOverride: AssetCommissionOverride;
   verifyAdminEmail: EmailVerifcation;
   verifyEmail: EmailVerifcation;
   verifyPaystack: Scalars['String']['output'];
@@ -2751,6 +2845,11 @@ export type MutationDeclineUserKycArgs = {
 
 export type MutationDeleteAssetArgs = {
   id: Scalars['ID']['input'];
+};
+
+
+export type MutationDeleteAssetCommissionOverrideArgs = {
+  assetId: Scalars['ID']['input'];
 };
 
 
@@ -3018,7 +3117,7 @@ export type MutationSigninUserArgs = {
 
 
 export type MutationSignupAdminArgs = {
-  signupAdminInput: LegacyAdminSignupInput;
+  signupAdminInput: AdminSignupInput;
 };
 
 
@@ -3168,6 +3267,11 @@ export type MutationUpgradeToAssociateProArgs = {
   couponCode?: InputMaybe<Scalars['String']['input']>;
   file_Url: Scalars['String']['input'];
   reference_no: Scalars['String']['input'];
+};
+
+
+export type MutationUpsertAssetCommissionOverrideArgs = {
+  input: UpsertAssetCommissionOverrideInput;
 };
 
 
@@ -3449,6 +3553,8 @@ export type Query = {
   getAllUpgradeRequests: UpgradeRequestsResponse;
   getAllUsers?: Maybe<UserAdminResponse>;
   getAllUsersWithFilters?: Maybe<FilteredUserAdminResponse>;
+  getAssetCommissionOverride?: Maybe<AssetCommissionOverride>;
+  getAssetCommissionOverrides: AssetCommissionOverrideListResponse;
   getAssetInventoryData?: Maybe<AssetInventoryResponse>;
   getAssetTransaction?: Maybe<TransactionAdminResponse>;
   getAssetTransactionData?: Maybe<TransactionAdminAssetResponse>;
@@ -3666,6 +3772,17 @@ export type QueryGetAllUsersWithFiltersArgs = {
   page: Scalars['Int']['input'];
   referralStatus?: InputMaybe<Scalars['String']['input']>;
   searchQuery?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryGetAssetCommissionOverrideArgs = {
+  assetId: Scalars['ID']['input'];
+};
+
+
+export type QueryGetAssetCommissionOverridesArgs = {
+  limit: Scalars['Int']['input'];
+  page: Scalars['Int']['input'];
 };
 
 
@@ -4573,6 +4690,7 @@ export type TicketDetail = {
   amountPaid: Scalars['Float']['output'];
   createdDate: Scalars['Date']['output'];
   isActive: Scalars['Boolean']['output'];
+  referrerEmail?: Maybe<Scalars['String']['output']>;
   referrerFullName?: Maybe<Scalars['String']['output']>;
   ticketId: Scalars['String']['output'];
   ticketType: Scalars['String']['output'];
@@ -4858,6 +4976,15 @@ export type UpgradeTypeStats = {
   __typename?: 'UpgradeTypeStats';
   count: Scalars['Int']['output'];
   percentage: Scalars['Float']['output'];
+};
+
+export type UpsertAssetCommissionOverrideInput = {
+  assetId: Scalars['ID']['input'];
+  changeDescription: Scalars['String']['input'];
+  flexCommission?: InputMaybe<FlexCommissionInput>;
+  flexRemoval?: InputMaybe<FlexRemovalInput>;
+  fullOwnershipCommission?: InputMaybe<FullOwnershipCommissionInput>;
+  fullOwnershipRemoval?: InputMaybe<FullOwnershipRemovalInput>;
 };
 
 export enum UsageLimitType {
@@ -5272,7 +5399,7 @@ export type AdminSigninInput = {
   password: Scalars['String']['input'];
 };
 
-export type LegacyAdminSignupInput = {
+export type AdminSignupInput = {
   email: Scalars['String']['input'];
   password: Scalars['String']['input'];
   role: Scalars['String']['input'];
@@ -5457,13 +5584,6 @@ export type ViewAssetOptionDataByNameQueryVariables = Exact<{
 
 
 export type ViewAssetOptionDataByNameQuery = { __typename?: 'Query', viewAssetOptionDataByName?: { __typename?: 'AssetSizeDetailsResponse', sizes: Array<{ __typename?: 'AssetSizeDetails', size: number, available_unit: number, value: number, unit_sold: number, expected_return: number }> } | null };
-
-export type ViewAssetQueryVariables = Exact<{
-  id: Scalars['ID']['input'];
-}>;
-
-
-export type ViewAssetQuery = { __typename?: 'Query', viewAsset: { __typename?: 'Asset', _id?: string | null, asset_name?: string | null, asset_location?: string | null, asset_type?: string | null, description?: string | null, title?: string | null, asset_pictures?: Array<string | null> | null, amenities?: Array<string | null> | null, asset_history?: any | null, basic_details?: Array<{ __typename?: 'BasicDetails', allocation_qualification?: number | null } | null> | null, documents?: { __typename?: 'Documents', deed_of_assignment?: string | null, survey?: string | null, contract_of_sales?: string | null, estate_layout?: string | null } | null, asset_option?: Array<{ __typename?: 'AssetOption', size?: number | null, unit?: string | null, price?: number | null, zero_months?: number | null, three_months?: number | null, six_months?: number | null, twelve_months?: number | null, one_month?: number | null, five_months?: number | null, seven_months?: number | null, development_fee?: number | null, initial_payment?: number | null, monthly_installment?: number | null, one_month_initial_payment?: number | null, five_months_initial_payment?: number | null, seven_months_initial_payment?: number | null, flex_payment_plans?: Array<{ __typename?: 'FlexPaymentPlan', description?: string | null, duration_months: number, initial_payment?: number | null, monthly_installment: number, price?: number | null, unit?: number | null } | null> | null } | null> | null } };
 
 export type CreateFlexAssetMutationVariables = Exact<{
   createFlexAssetInput: CreateFlexAssetInput;
@@ -6316,7 +6436,6 @@ export const GetFeatureAdminAssetsDocument = {"kind":"Document","definitions":[{
 export const FeatureAssetStatisticsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"FeatureAssetStatistics"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAssetInventoryData"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"statistics"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"AssetInventoryOverview_statistics"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"AssetInventoryOverview_statistics"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"AssetInventoryStatistics"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"totalAssets"}},{"kind":"Field","name":{"kind":"Name","value":"totalWorth"}},{"kind":"Field","name":{"kind":"Name","value":"totalFlexAssets"}},{"kind":"Field","name":{"kind":"Name","value":"totalFlexWorth"}},{"kind":"Field","name":{"kind":"Name","value":"totalFullOwnershipAssets"}},{"kind":"Field","name":{"kind":"Name","value":"totalFullOwnershipWorth"}}]}}]} as unknown as DocumentNode<FeatureAssetStatisticsQuery, FeatureAssetStatisticsQueryVariables>;
 export const ViewAssetByNameDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ViewAssetByName"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"assetName"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"assetType"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"viewAssetByName"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"assetName"},"value":{"kind":"Variable","name":{"kind":"Name","value":"assetName"}}},{"kind":"Argument","name":{"kind":"Name","value":"assetType"},"value":{"kind":"Variable","name":{"kind":"Name","value":"assetType"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"available_unit"}},{"kind":"Field","name":{"kind":"Name","value":"unit_sold"}},{"kind":"Field","name":{"kind":"Name","value":"expected_return"}},{"kind":"Field","name":{"kind":"Name","value":"total_value"}},{"kind":"Field","name":{"kind":"Name","value":"sizes"}}]}}]}}]} as unknown as DocumentNode<ViewAssetByNameQuery, ViewAssetByNameQueryVariables>;
 export const ViewAssetOptionDataByNameDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ViewAssetOptionDataByName"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"assetName"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"assetType"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"viewAssetOptionDataByName"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"assetName"},"value":{"kind":"Variable","name":{"kind":"Name","value":"assetName"}}},{"kind":"Argument","name":{"kind":"Name","value":"assetType"},"value":{"kind":"Variable","name":{"kind":"Name","value":"assetType"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"sizes"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"size"}},{"kind":"Field","name":{"kind":"Name","value":"available_unit"}},{"kind":"Field","name":{"kind":"Name","value":"value"}},{"kind":"Field","name":{"kind":"Name","value":"unit_sold"}},{"kind":"Field","name":{"kind":"Name","value":"expected_return"}}]}}]}}]}}]} as unknown as DocumentNode<ViewAssetOptionDataByNameQuery, ViewAssetOptionDataByNameQueryVariables>;
-export const ViewAssetDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ViewAsset"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"viewAsset"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"asset_name"}},{"kind":"Field","name":{"kind":"Name","value":"asset_location"}},{"kind":"Field","name":{"kind":"Name","value":"asset_type"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"basic_details"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"allocation_qualification"}}]}},{"kind":"Field","name":{"kind":"Name","value":"asset_pictures"}},{"kind":"Field","name":{"kind":"Name","value":"amenities"}},{"kind":"Field","name":{"kind":"Name","value":"asset_history"}},{"kind":"Field","name":{"kind":"Name","value":"documents"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deed_of_assignment"}},{"kind":"Field","name":{"kind":"Name","value":"survey"}},{"kind":"Field","name":{"kind":"Name","value":"contract_of_sales"}},{"kind":"Field","name":{"kind":"Name","value":"estate_layout"}}]}},{"kind":"Field","name":{"kind":"Name","value":"asset_option"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"size"}},{"kind":"Field","name":{"kind":"Name","value":"unit"}},{"kind":"Field","name":{"kind":"Name","value":"price"}},{"kind":"Field","name":{"kind":"Name","value":"flex_payment_plans"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"duration_months"}},{"kind":"Field","name":{"kind":"Name","value":"initial_payment"}},{"kind":"Field","name":{"kind":"Name","value":"monthly_installment"}},{"kind":"Field","name":{"kind":"Name","value":"price"}},{"kind":"Field","name":{"kind":"Name","value":"unit"}}]}},{"kind":"Field","name":{"kind":"Name","value":"zero_months"}},{"kind":"Field","name":{"kind":"Name","value":"three_months"}},{"kind":"Field","name":{"kind":"Name","value":"six_months"}},{"kind":"Field","name":{"kind":"Name","value":"twelve_months"}},{"kind":"Field","name":{"kind":"Name","value":"one_month"}},{"kind":"Field","name":{"kind":"Name","value":"five_months"}},{"kind":"Field","name":{"kind":"Name","value":"seven_months"}},{"kind":"Field","name":{"kind":"Name","value":"development_fee"}},{"kind":"Field","name":{"kind":"Name","value":"initial_payment"}},{"kind":"Field","name":{"kind":"Name","value":"monthly_installment"}},{"kind":"Field","name":{"kind":"Name","value":"one_month_initial_payment"}},{"kind":"Field","name":{"kind":"Name","value":"five_months_initial_payment"}},{"kind":"Field","name":{"kind":"Name","value":"seven_months_initial_payment"}}]}}]}}]}}]} as unknown as DocumentNode<ViewAssetQuery, ViewAssetQueryVariables>;
 export const CreateFlexAssetDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateFlexAsset"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"createFlexAssetInput"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"CreateFlexAssetInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createFlexAsset"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"createFlexAssetInput"},"value":{"kind":"Variable","name":{"kind":"Name","value":"createFlexAssetInput"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"asset_name"}}]}}]}}]} as unknown as DocumentNode<CreateFlexAssetMutation, CreateFlexAssetMutationVariables>;
 export const CreateFullOwnershipAssetDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateFullOwnershipAsset"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"createFullOwnershipAssetInput"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"CreateFullOwnershipAssetInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createFullOwnershipAsset"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"createFullOwnershipAssetInput"},"value":{"kind":"Variable","name":{"kind":"Name","value":"createFullOwnershipAssetInput"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"asset_name"}}]}}]}}]} as unknown as DocumentNode<CreateFullOwnershipAssetMutation, CreateFullOwnershipAssetMutationVariables>;
 export const UpdateAssetDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"UpdateAsset"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"updateAssetInput"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"UpdateFlexAssetInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"updateAsset"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"updateAssetInput"},"value":{"kind":"Variable","name":{"kind":"Name","value":"updateAssetInput"}}}]}]}}]} as unknown as DocumentNode<UpdateAssetMutation, UpdateAssetMutationVariables>;
