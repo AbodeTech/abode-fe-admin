@@ -1,3 +1,5 @@
+"use client";
+
 import { AnalyticsFilters } from "@/features/analytics/components/AnalyticsFilters";
 import { FinancialSummary } from "@/features/analytics/components/FinancialSummary";
 import { AssetBreakdown } from "@/features/analytics/components/AssetBreakdown";
@@ -6,15 +8,24 @@ import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 import { MoveLeft } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 
-export default function SalesAnalyticsPage() {
+function SalesAnalyticsContent() {
+  const searchParams = useSearchParams();
+
+  const filters = {
+    startDate: searchParams.get("start_date") || null,
+    endDate: searchParams.get("end_date") || null,
+    assetType: searchParams.get("assetType") || null,
+    location: searchParams.get("location") || null,
+  };
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      {/* Header */}
       <div className="flex items-center justify-between px-6 pt-6 pb-2">
         <div className="flex items-center gap-4">
-          <Link 
-            href="/sales" 
+          <Link
+            href="/sales"
             className="group flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
             <div className="flex items-center justify-center size-8 rounded-full border group-hover:bg-muted transition-colors">
@@ -25,26 +36,24 @@ export default function SalesAnalyticsPage() {
           <div className="h-4 w-px bg-border mx-2" />
           <h1 className="text-2xl font-bold tracking-tight">Sales Intelligence</h1>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Live Mode</span>
-          <div className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-        </div>
       </div>
 
-      <Suspense fallback={<AnalyticsSkeleton />}>
-        {/* Filters Panel */}
-        <AnalyticsFilters />
+      <AnalyticsFilters filters={filters} />
+      <FinancialSummary filters={filters} />
 
-        {/* Financial Summary */}
-        <FinancialSummary />
-
-        {/* Main Content Area */}
-        <div className="flex-1 overflow-auto">
-          <RevenueTimeline />
-          <AssetBreakdown />
-        </div>
-      </Suspense>
+      <div className="flex-1 overflow-auto">
+        <RevenueTimeline filters={filters} />
+        <AssetBreakdown filters={filters} />
+      </div>
     </div>
+  );
+}
+
+export default function SalesAnalyticsPage() {
+  return (
+    <Suspense fallback={<AnalyticsSkeleton />}>
+      <SalesAnalyticsContent />
+    </Suspense>
   );
 }
 

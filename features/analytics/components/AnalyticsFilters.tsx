@@ -1,108 +1,75 @@
 "use client";
 
-import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { FilterSelect } from "@/components/shared/FilterSelect";
 import { DateFilter } from "@/components/shared/DateFilter";
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { useSalesAssetBreakdown, type SalesAnalyticsFilters } from "@/features/analytics";
 
-interface Asset {
-  _id: string;
-  asset_name: string;
-  asset_location: string;
-  asset_type: string;
+interface AnalyticsFiltersProps {
+  filters: SalesAnalyticsFilters;
 }
 
-const MOCK_ASSETS: Asset[] = [
-  { _id: "1", asset_name: "Abode Heights Ph I", asset_location: "Epe, Lagos", asset_type: "Flex" },
-  { _id: "2", asset_name: "Greenfield Estate", asset_location: "Ibeju-Lekki", asset_type: "Full Ownership" },
-  { _id: "3", asset_name: "The Vantage Flex", asset_location: "Lekki Ph 1", asset_type: "Flex" },
-  { _id: "4", asset_name: "Epe Heritage Gardens", asset_location: "Epe, Lagos", asset_type: "Flex" },
-  { _id: "5", asset_name: "Lekki Pride", asset_location: "Lekki Ph 1", asset_type: "Full Ownership" },
+const ASSET_TYPE_OPTIONS = [
+  { label: "All Types", value: "all" },
+  { label: "Flex", value: "flex" },
+  { label: "Full Ownership", value: "full-ownership" },
 ];
 
-export function AnalyticsFilters() {
+export function AnalyticsFilters({ filters }: AnalyticsFiltersProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
 
-  const assets = MOCK_ASSETS;
-  const isLoading = false;
+  const { data } = useSalesAssetBreakdown({
+    startDate: filters.startDate,
+    endDate: filters.endDate,
+    assetType: filters.assetType,
+    location: null,
+  });
 
-  const currentAssetType = searchParams.get("assetType") || "all";
-  const currentLocation = searchParams.get("location") || "all";
-  const currentAssetName = searchParams.get("assetName") || "all";
+  const locationOptions = useMemo(() => {
+    const set = new Set<string>();
 
-  const filteredByAssetType = useMemo(() => {
-    if (!currentAssetType || currentAssetType === "all") return assets;
-    return assets.filter((a) => a?.asset_type === currentAssetType);
-  }, [assets, currentAssetType]);
+    (data || []).forEach((entry) => {
+      if (entry?.location) set.add(entry.location);
+    });
 
-  const uniqueLocations = useMemo(() => {
-    const locations = filteredByAssetType
-      .map((a) => a?.asset_location)
-      .filter((loc): loc is string => !!loc);
-    return ["all", ...Array.from(new Set(locations))];
-  }, [filteredByAssetType]);
+    return [
+      { label: "All Locations", value: "all" },
+      ...Array.from(set).sort((a, b) => a.localeCompare(b)).map((location) => ({
+        label: location,
+        value: location,
+      })),
+    ];
+  }, [data]);
 
-  const filteredByLocation = useMemo(() => {
-    if (!currentLocation || currentLocation === "all") return filteredByAssetType;
-    return filteredByAssetType.filter((a) => a?.asset_location === currentLocation);
-  }, [filteredByAssetType, currentLocation]);
+  useEffect(() => {
+    if (!filters.location || filters.location === "all") return;
 
-  const uniqueAssetNames = useMemo(() => {
-    const names = filteredByLocation
-      .map((a) => a?.asset_name)
-      .filter((name): name is string => !!name);
-    return ["all", ...Array.from(new Set(names))];
-  }, [filteredByLocation]);
+    const isLocationAvailable = locationOptions.some(
+      (option) => option.value === filters.location
+    );
 
-const updateFilters = (key: string, value: string) => {
-    // This is now purely for design demonstration
-    const params = new URLSearchParams(searchParams.toString());
-    if (value === "all") {
-      params.delete(key);
-    } else {
-      params.set(key, value);
+    if (!isLocationAvailable) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("location");
+      params.set("page", "1");
+      router.push(`${pathname}?${params.toString()}`);
     }
-    params.set("page", "1");
-    router.push(`${pathname}?${params.toString()}`);
-  };
+  }, [filters.location, locationOptions, pathname, router, searchParams]);
 
   return (
     <div className="sticky top-0 z-20 flex w-full flex-col gap-4 border-b bg-background/95 pb-4 pt-4 backdrop-blur-md">
       <div className="flex flex-wrap items-center gap-4 px-6">
         <div className="flex flex-col gap-1.5">
           <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Asset Type</span>
-          <FilterSelect
-            data={[
-              { label: "All Types", value: "all" },
-              { label: "Flex", value: "Flex" },
-              { label: "Full Ownership", value: "Full Ownership" },
-            ]}
-            queryKey="assetType"
-          />
+          <FilterSelect data={ASSET_TYPE_OPTIONS} queryKey="assetType" />
         </div>
 
         <div className="flex flex-col gap-1.5">
           <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Location</span>
-          <FilterSelect
-            data={uniqueLocations.map((loc) => ({
-              label: loc === "all" ? "All Locations" : loc,
-              value: loc,
-            }))}
-            queryKey="location"
-          />
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Asset Name</span>
-          <FilterSelect
-            data={uniqueAssetNames.map((name) => ({
-              label: name === "all" ? "All Assets" : name,
-              value: name,
-            }))}
-            queryKey="assetName"
-          />
+          <FilterSelect data={locationOptions} queryKey="location" />
         </div>
 
         <div className="flex flex-col gap-1.5">
