@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { editUserPaymentPlanByAdmin } from "@/lib/api/admin/user-assets.client";
 import { EditUserPaymentPlanFormValues, editUserPaymentPlanSchema } from "@/lib/schemas/admin/user-assets.schema";
@@ -66,6 +67,7 @@ export function EditUserPaymentPlanModal({ isOpen, onClose, asset, userId }: Edi
         amount_payable: pd.amount_payable,
         document_amount_paid: doc?.amount_paid ?? undefined,
         document_balance: doc?.balance ?? undefined,
+        create_transaction: false,
       });
     }
   }, [isOpen, pd, doc, userId, reset]);
@@ -96,6 +98,7 @@ export function EditUserPaymentPlanModal({ isOpen, onClose, asset, userId }: Edi
         amount_payable: data.amount_payable,
         document_amount_paid: data.document_amount_paid ? data.document_amount_paid : null,
         document_balance: data.document_balance ? data.document_balance : null,
+        create_transaction: Boolean(data.create_transaction),
       });
       toast.success("Payment plan updated successfully");
       queryClient.invalidateQueries({ queryKey: ["userAssets", userId] });
@@ -197,6 +200,22 @@ export function EditUserPaymentPlanModal({ isOpen, onClose, asset, userId }: Edi
               {renderNumberInput("size", "Size")}
               {renderNumberInput("default_amount", "Default Amount")}
               {renderNumberInput("amount_payable", "Amount Payable")}
+            </div>
+            <div className="mt-4 flex items-center gap-2 px-1">
+              <Controller
+                name="create_transaction"
+                control={control}
+                render={({ field }) => (
+                  <Checkbox
+                    id="create_transaction"
+                    checked={Boolean(field.value)}
+                    onCheckedChange={(checked) => field.onChange(checked === true)}
+                  />
+                )}
+              />
+              <Label htmlFor="create_transaction" className="cursor-pointer">
+                Create transaction for amount paid change
+              </Label>
             </div>
           </ScrollArea>
           <DialogFooter className="mt-4">

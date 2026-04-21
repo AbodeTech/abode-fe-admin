@@ -49,12 +49,13 @@ export function CommissionExport() {
   const searchParams = useSearchParams();
   const startDate = searchParams.get("start_date") || null;
   const endDate = searchParams.get("end_date") || null;
+  const commissionSource = searchParams.get("commissionsource") || null;
 
   const { mutateAsync: exportCommission, isPending } = useCommissionExport();
 
   const handleExport = async () => {
     try {
-      const response = await exportCommission({ startDate, endDate });
+      const response = await exportCommission({ startDate, endDate, commissionSource });
       const rows = response.getCommissionTransactions?.data ?? [];
 
       if (!rows.length) {

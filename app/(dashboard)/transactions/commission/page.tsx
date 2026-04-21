@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { useCommissionTransactions, CommissionTransactionsTable, CommissionExport } from "@/features/transactions";
 import { Pagination } from "@/components/shared/Pagination";
 import { DateFilter } from "@/components/shared/DateFilter";
+import { FilterSelect } from "@/components/shared/FilterSelect";
 
 function CommissionTransactionsContent() {
   const searchParams = useSearchParams();
@@ -12,8 +13,15 @@ function CommissionTransactionsContent() {
   const limit = 100;
   const startDate = searchParams.get("start_date") || null;
   const endDate = searchParams.get("end_date") || null;
+  const commissionSource = searchParams.get("commissionsource") || null;
 
-  const { data, isLoading, error } = useCommissionTransactions({ page, limit, startDate, endDate });
+  const { data, isLoading, error } = useCommissionTransactions({
+    page,
+    limit,
+    startDate,
+    endDate,
+    commissionSource: commissionSource === "all" ? null : commissionSource,
+  });
 
   const transactions = data?.data;
   const totalCount = data?.count || 0;
@@ -27,6 +35,16 @@ function CommissionTransactionsContent() {
           <p className="text-sm text-[#667085] mt-0.5">View and manage all user commissions</p>
         </div>
         <div className="flex items-center gap-3">
+          <FilterSelect
+            queryKey="commissionsource"
+            placeholder="All Commission Sources"
+            data={[
+              { label: "All Commission Sources", value: "all" },
+              { label: "Flex", value: "flex" },
+              { label: "Full-Ownership", value: "full-ownership" },
+              { label: "Upgrade", value: "upgrade" },
+            ]}
+          />
           <CommissionExport />
           <DateFilter />
         </div>
