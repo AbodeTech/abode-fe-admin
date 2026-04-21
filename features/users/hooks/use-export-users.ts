@@ -9,6 +9,7 @@ const EXPORT_USERS_BY_FILTER_QUERY = `
     $hasReferral: Boolean
     $hasAsset: Boolean
     $referralStatus: String
+    $hasTin: Boolean
   ) {
     getAllUsersWithFilters(
       page: $page
@@ -16,6 +17,7 @@ const EXPORT_USERS_BY_FILTER_QUERY = `
       hasReferral: $hasReferral
       hasAsset: $hasAsset
       referralStatus: $referralStatus
+      hasTin: $hasTin
     ) {
       data {
         _id
@@ -23,6 +25,7 @@ const EXPORT_USERS_BY_FILTER_QUERY = `
         lastName
         last_login
         email
+        tin
         gender
         occupation
         phoneNumber
@@ -85,6 +88,7 @@ export interface ExportUsersByFilterInput {
   referralStatus?: string;
   hasAsset?: boolean;
   hasReferral?: boolean;
+  hasTin?: boolean;
 }
 
 interface ExportUsersByFilterResponse {
@@ -94,6 +98,7 @@ interface ExportUsersByFilterResponse {
       firstName?: string | null;
       lastName?: string | null;
       email?: string | null;
+      tin?: string | null;
       gender?: string | null;
       occupation?: string | null;
       phoneNumber?: string | null;
@@ -165,6 +170,7 @@ export const useExportUsersByFilter = () => {
         referralStatus: input.referralStatus,
         hasAsset: input.hasAsset,
         hasReferral: input.hasReferral,
+        hasTin: input.hasTin,
       }),
   });
 };

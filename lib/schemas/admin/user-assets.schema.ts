@@ -121,6 +121,7 @@ export const editUserPaymentPlanSchema = z.object({
   amount_payable: z.number().nonnegative(),
   document_amount_paid: z.number().nonnegative().optional(),
   document_balance: z.number().nonnegative().optional(),
+  create_transaction: z.boolean().optional(),
 });
 
 export type EditUserPaymentPlanFormValues = z.infer<typeof editUserPaymentPlanSchema>;

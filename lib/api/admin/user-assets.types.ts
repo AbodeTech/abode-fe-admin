@@ -179,8 +179,9 @@ export interface EditUserPaymentPlanInput {
   document_amount_paid?: number | null;
   document_balance?: number | null;
   size: number;
+  create_transaction?: boolean;
 }
 
 export interface EditUserPaymentPlanResponse {
-  updateUserPaymentDetails: boolean;
+  updateUserPaymentDetails: string;
 }
