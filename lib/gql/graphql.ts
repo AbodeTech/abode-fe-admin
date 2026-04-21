@@ -5399,13 +5399,6 @@ export type AdminSigninInput = {
   password: Scalars['String']['input'];
 };
 
-export type AdminSignupInput = {
-  email: Scalars['String']['input'];
-  password: Scalars['String']['input'];
-  role: Scalars['String']['input'];
-  userName: Scalars['String']['input'];
-};
-
 export type CustomersAsset = {
   __typename?: 'customersAsset';
   amount_paid?: Maybe<Scalars['Float']['output']>;
