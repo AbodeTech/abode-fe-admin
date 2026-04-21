@@ -123,16 +123,16 @@ function AssociateUpgradeContent() {
   const handleConfirm = async () => {
     if (!activeRow) return;
     const upgrade = getFragmentData(UpgradeRowFragment, activeRow);
-    const id = upgrade._id;
+    const id = upgrade.user?._id;
     const upgradeType = upgrade.user_upgrade_type;
 
     try {
       if (confirmMode === "approve") {
-        if (!id) throw new Error("Invalid upgrade request ID");
+        if (!id) throw new Error("Invalid user ID for upgrade request");
         await approveUpgrade({ id, upgradeType });
         toast.success("Upgrade approved");
       } else {
-        if (!id) throw new Error("Invalid upgrade request ID");
+        if (!id) throw new Error("Invalid user ID for upgrade request");
         await declineUpgrade(id);
         toast.success("Upgrade declined");
       }
