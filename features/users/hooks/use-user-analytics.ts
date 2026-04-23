@@ -2,8 +2,13 @@ import { useQuery } from '@tanstack/react-query';
 import { executeRaw } from '@/lib/graphql-client';
 
 const GET_USER_ANALYTICS_QUERY = `
-  query GetUserAnalytics($startDate: String, $endDate: String) {
-    getUserAnalytics(startDate: $startDate, endDate: $endDate) {
+  query GetUserAnalytics($startDate: String, $endDate: String, $userStatus: String) {
+    getUserAnalytics(startDate: $startDate, endDate: $endDate, userStatus: $userStatus) {
+      totalUsers
+      referredCount
+      notReferredCount
+      referredPercentage
+      notReferredPercentage
       acquisition {
         registrationTrend {
           month
@@ -43,39 +48,55 @@ export interface HowYouHeardPoint {
   count: number;
 }
 
-export interface UserAnalyticsResponse {
-  getUserAnalytics: {
-    acquisition: {
-      registrationTrend: RegistrationTrendPoint[];
-      howYouHeard: HowYouHeardPoint[];
-    };
-    demographics: {
-      gender: AnalyticsDataPoint[];
-      ageGroups: AnalyticsDataPoint[];
-      maritalStatus: AnalyticsDataPoint[];
-      locations: AnalyticsDataPoint[];
-      employmentStatus: AnalyticsDataPoint[];
-      educationLevel: AnalyticsDataPoint[];
-      experienceLevel: AnalyticsDataPoint[];
-      topOccupations: AnalyticsDataPoint[];
-    };
+export interface UserAnalyticsData {
+  totalUsers: number;
+  referredCount: number;
+  notReferredCount: number;
+  referredPercentage: number;
+  notReferredPercentage: number;
+  acquisition: {
+    registrationTrend: RegistrationTrendPoint[];
+    howYouHeard: HowYouHeardPoint[];
   };
+  demographics: {
+    gender: AnalyticsDataPoint[];
+    ageGroups: AnalyticsDataPoint[];
+    maritalStatus: AnalyticsDataPoint[];
+    locations: AnalyticsDataPoint[];
+    employmentStatus: AnalyticsDataPoint[];
+    educationLevel: AnalyticsDataPoint[];
+    experienceLevel: AnalyticsDataPoint[];
+    topOccupations: AnalyticsDataPoint[];
+  };
+}
+
+interface UserAnalyticsResponse {
+  getUserAnalytics: UserAnalyticsData;
 }
 
 interface UseUserAnalyticsParams {
   startDate?: string | null;
   endDate?: string | null;
+  userStatus?: string | null;
 }
 
+const toOptional = (value?: string | null) => {
+  if (!value || value === 'all') return undefined;
+  return value;
+};
+
 export const useUserAnalytics = (params?: UseUserAnalyticsParams) => {
-  const { startDate, endDate } = params ?? {};
+  const startDate = toOptional(params?.startDate);
+  const endDate = toOptional(params?.endDate);
+  const userStatus = toOptional(params?.userStatus);
 
   return useQuery({
-    queryKey: ['users', 'analytics', { startDate, endDate }],
+    queryKey: ['users', 'analytics', { startDate, endDate, userStatus }],
     queryFn: () =>
       executeRaw<UserAnalyticsResponse>(GET_USER_ANALYTICS_QUERY, {
-        startDate: startDate || undefined,
-        endDate: endDate || undefined,
+        startDate,
+        endDate,
+        userStatus,
       }),
     select: (data) => data.getUserAnalytics,
   });

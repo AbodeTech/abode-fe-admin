@@ -1,7 +1,7 @@
 // Hooks
 export { useUsers, useUserDetails, useSystemUsersOverview } from './hooks/use-users';
 export { useUserAnalytics } from './hooks/use-user-analytics';
-export type { UserAnalyticsResponse, AnalyticsDataPoint, RegistrationTrendPoint, HowYouHeardPoint } from './hooks/use-user-analytics';
+export type { UserAnalyticsData, AnalyticsDataPoint, RegistrationTrendPoint, HowYouHeardPoint } from './hooks/use-user-analytics';
 export type { UsersData, UserDetailsData, SystemUsersOverviewData } from './hooks/use-users';
 export { useUserReferrals, useDeleteUserReferral } from './hooks/use-user-referrals';
 export type { UserReferralData } from './hooks/use-user-referrals';

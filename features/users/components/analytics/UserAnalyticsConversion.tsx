@@ -1,34 +1,11 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { ArrowRight, Crown, UserCheck, Users } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
-
-// --- Mock Data ---
-
-const MOCK = {
-  totalUsers: 3660,
-  totalAssociates: 820,
-  totalAssociatePro: 310,
-  activeAssociate: 540,
-  activeAssociatePro: 280,
-};
-
-const userToProRate = Math.round((MOCK.totalAssociatePro / MOCK.totalUsers) * 100);
-const assocToProRate = Math.round((MOCK.totalAssociatePro / MOCK.totalAssociates) * 100);
-
-const totalAssociatesAll = MOCK.totalAssociates + MOCK.totalAssociatePro;
-const activeAll = MOCK.activeAssociate + MOCK.activeAssociatePro;
-const dormantAll = totalAssociatesAll - activeAll;
-const activityRate = Math.round((activeAll / totalAssociatesAll) * 100);
-
-const ACTIVITY_DATA = [
-  { name: "Active", value: activeAll },
-  { name: "Dormant", value: dormantAll },
-];
-
-// ---
+import { useSystemUsersOverview } from "@/features/users/hooks/use-users";
 
 interface Props {
   startDate?: string | null;
@@ -36,7 +13,44 @@ interface Props {
   userStatus?: string | null;
 }
 
-export function UserAnalyticsConversion({ startDate: _startDate, endDate: _endDate, userStatus: _userStatus }: Props) {
+export function UserAnalyticsConversion({ startDate, endDate }: Props) {
+  const { data: metrics, isLoading } = useSystemUsersOverview({
+    startDate: startDate ?? undefined,
+    endDate: endDate ?? undefined,
+  });
+
+  const totalUsers = metrics?.totalUsers ?? 0;
+  const totalAssociates = metrics?.referralStatusCounts?.associate ?? 0;
+  const totalAssociatePro = metrics?.referralStatusCounts?.associatePro ?? 0;
+  const activeAssociate = metrics?.active_associate ?? 0;
+  const activeAssociatePro = metrics?.active_associate_pro ?? 0;
+
+  const userToProRate = totalUsers > 0 ? Math.round((totalAssociatePro / totalUsers) * 100) : 0;
+  const assocToProRate = totalAssociates > 0 ? Math.round((totalAssociatePro / totalAssociates) * 100) : 0;
+
+  const totalAssociatesAll = totalAssociates + totalAssociatePro;
+  const activeAll = activeAssociate + activeAssociatePro;
+  const dormantAll = totalAssociatesAll - activeAll;
+  const activityRate = totalAssociatesAll > 0 ? Math.round((activeAll / totalAssociatesAll) * 100) : 0;
+
+  const ACTIVITY_DATA = [
+    { name: "Active", value: activeAll },
+    { name: "Dormant", value: dormantAll },
+  ];
+
+  if (isLoading) {
+    return (
+      <section className="space-y-4">
+        <h2 className="text-lg font-semibold text-foreground">Conversion & Growth</h2>
+        <div className="grid gap-4 lg:grid-cols-3">
+          <Skeleton className="h-48 rounded-xl" />
+          <Skeleton className="h-48 rounded-xl" />
+          <Skeleton className="h-48 rounded-xl" />
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="space-y-4">
       <h2 className="text-lg font-semibold text-foreground">Conversion & Growth</h2>
@@ -54,14 +68,14 @@ export function UserAnalyticsConversion({ startDate: _startDate, endDate: _endDa
               <div className="flex items-center justify-between gap-2">
                 <div className="text-center flex-1">
                   <Users className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
-                  <p className="text-2xl font-bold">{MOCK.totalUsers.toLocaleString()}</p>
+                  <p className="text-2xl font-bold">{totalUsers.toLocaleString()}</p>
                   <p className="text-xs text-muted-foreground">Total Users</p>
                 </div>
                 <ArrowRight className="h-5 w-5 text-muted-foreground shrink-0" />
                 <div className="text-center flex-1">
                   <Crown className="h-5 w-5 mx-auto mb-1 text-yellow-500" />
                   <p className="text-2xl font-bold text-yellow-600">
-                    {MOCK.totalAssociatePro.toLocaleString()}
+                    {totalAssociatePro.toLocaleString()}
                   </p>
                   <p className="text-xs text-muted-foreground">Associate Pro</p>
                 </div>
@@ -89,14 +103,14 @@ export function UserAnalyticsConversion({ startDate: _startDate, endDate: _endDa
               <div className="flex items-center justify-between gap-2">
                 <div className="text-center flex-1">
                   <UserCheck className="h-5 w-5 mx-auto mb-1 text-blue-500" />
-                  <p className="text-2xl font-bold">{MOCK.totalAssociates.toLocaleString()}</p>
+                  <p className="text-2xl font-bold">{totalAssociates.toLocaleString()}</p>
                   <p className="text-xs text-muted-foreground">Associates</p>
                 </div>
                 <ArrowRight className="h-5 w-5 text-muted-foreground shrink-0" />
                 <div className="text-center flex-1">
                   <Crown className="h-5 w-5 mx-auto mb-1 text-yellow-500" />
                   <p className="text-2xl font-bold text-yellow-600">
-                    {MOCK.totalAssociatePro.toLocaleString()}
+                    {totalAssociatePro.toLocaleString()}
                   </p>
                   <p className="text-xs text-muted-foreground">Associate Pro</p>
                 </div>

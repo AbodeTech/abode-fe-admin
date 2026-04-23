@@ -23,10 +23,15 @@ export const TopAssociatesTableRowFragment = graphql(`
     email
     sales_person
     no_of_clients
+    referred_user_count
+    referred_associate_count
+    referred_associate_pro_count
     units_sold
     size_sold
     expected_revenue
     received_revenue
+    balance
+    collection_rate
     commission
   }
 `);
@@ -47,17 +52,14 @@ const formatCurrency = (amount?: number | null) =>
 const formatNumber = (value?: number | null) =>
   new Intl.NumberFormat("en-NG").format(value ?? 0);
 
-// Mock client breakdown for design — replace with real fields when backend adds them
-function deriveClientBreakdown(total: number) {
-  const users     = Math.round(total * 0.38);
-  const clients   = Math.round(total * 0.35);
-  const assoc     = Math.round(total * 0.19);
-  const pro       = total - users - clients - assoc;
-  return { users, clients, assoc, pro: Math.max(0, pro) };
+interface ClientBreakdownProps {
+  total: number;
+  users: number;
+  associates: number;
+  associatePros: number;
 }
 
-function ClientBreakdown({ total }: { total: number }) {
-  const { users, clients, assoc, pro } = deriveClientBreakdown(total);
+function ClientBreakdown({ total, users, associates, associatePros }: ClientBreakdownProps) {
   return (
     <div className="flex flex-col gap-1.5">
       <span className="text-sm font-bold tabular-nums leading-none">{formatNumber(total)}</span>
@@ -67,15 +69,11 @@ function ClientBreakdown({ total }: { total: number }) {
           <span className="ml-0.5 font-medium">usr</span>
         </span>
         <span className="text-[10px] tabular-nums text-muted-foreground/70 leading-none">
-          <span className="font-black text-blue-500">{clients}</span>
-          <span className="ml-0.5 font-medium">cli</span>
-        </span>
-        <span className="text-[10px] tabular-nums text-muted-foreground/70 leading-none">
-          <span className="font-black text-emerald-600">{assoc}</span>
+          <span className="font-black text-emerald-600">{associates}</span>
           <span className="ml-0.5 font-medium">asc</span>
         </span>
         <span className="text-[10px] tabular-nums text-muted-foreground/70 leading-none">
-          <span className="font-black text-blue-700">{pro}</span>
+          <span className="font-black text-blue-700">{associatePros}</span>
           <span className="ml-0.5 font-medium">pro</span>
         </span>
       </div>
@@ -206,15 +204,12 @@ export function TopAssociatesTable({ data, isLoading }: TopAssociatesTableProps)
             const rank = idx + 1;
             const { border, bg } = rankStyle(rank);
             const isOpen = expanded.has(idx);
-            const balance =
-              (associate.expected_revenue ?? 0) - (associate.received_revenue ?? 0);
-            const rate = associate.expected_revenue
-              ? Math.round(
-                  ((associate.received_revenue ?? 0) /
-                    associate.expected_revenue) *
-                    100
-                )
-              : 0;
+            const balance = associate.balance
+              ?? (associate.expected_revenue ?? 0) - (associate.received_revenue ?? 0);
+            const rate = associate.collection_rate
+              ?? (associate.expected_revenue
+                ? Math.round(((associate.received_revenue ?? 0) / associate.expected_revenue) * 100)
+                : 0);
 
             return (
               <React.Fragment key={`${associate.email}-${idx}`}>
@@ -247,7 +242,12 @@ export function TopAssociatesTable({ data, isLoading }: TopAssociatesTableProps)
 
                   {/* Clients */}
                   <TableCell>
-                    <ClientBreakdown total={associate.no_of_clients ?? 0} />
+                    <ClientBreakdown
+                      total={associate.no_of_clients ?? 0}
+                      users={associate.referred_user_count ?? 0}
+                      associates={associate.referred_associate_count ?? 0}
+                      associatePros={associate.referred_associate_pro_count ?? 0}
+                    />
                   </TableCell>
 
                   {/* Expected */}

@@ -16,7 +16,7 @@ export type AssociateSortKey =
   | "expected_revenue"
   | "received_revenue"
   | "commission"
-  | "defaulting_rate";
+  | "collection_rate";
 
 interface TopAssociatesHeaderProps {
   sortKey: AssociateSortKey;
@@ -57,7 +57,7 @@ export function TopAssociatesHeader({
               <SelectItem value="expected_revenue">Expected Revenue</SelectItem>
               <SelectItem value="received_revenue">Received Revenue</SelectItem>
               <SelectItem value="commission">Commission</SelectItem>
-              <SelectItem value="defaulting_rate">Defaulting Rate</SelectItem>
+              <SelectItem value="collection_rate">Collection Rate</SelectItem>
             </SelectContent>
           </Select>
           <Button variant="outline" size="icon" onClick={toggleDirection} aria-label="Toggle sort direction">

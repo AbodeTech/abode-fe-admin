@@ -21,7 +21,7 @@ const ASSOCIATE_SORT_KEYS: AssociateSortKey[] = [
   "expected_revenue",
   "received_revenue",
   "commission",
-  "defaulting_rate",
+  "collection_rate",
 ];
 
 const parseSort = (value?: string | null) => {
@@ -48,11 +48,19 @@ function TopAssociatesContent() {
 
   const page = Number(searchParams.get("page")) || 1;
   const { sortKey, sortDirection, sortParam } = parseSort(searchParams.get("sort"));
+  const startDate = searchParams.get("start_date") || null;
+  const endDate = searchParams.get("end_date") || null;
+  const assetType = searchParams.get("assettype") || null;
+  const assetName = searchParams.get("assetname") || null;
 
   const { data, isLoading, error } = useTopAssociates({
     page,
     limit: DEFAULT_TOP_ASSOCIATES_LIMIT,
     sortBy: sortParam,
+    startDate,
+    endDate,
+    assetType,
+    assetName,
   });
 
   const rows = useMemo(
