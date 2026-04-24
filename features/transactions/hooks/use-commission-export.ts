@@ -14,6 +14,7 @@ const EXPORT_COMMISSION_TRANSACTIONS_QUERY = `
       count
       data {
         _id
+        tin
         admin_status
         amount
         asset_type
@@ -49,6 +50,7 @@ interface ExportCommissionResponse {
     count?: number | null;
     data?: Array<{
       _id?: string | null;
+      tin?: string | null;
       admin_status?: string | null;
       amount?: number | null;
       asset_type?: string | null;
