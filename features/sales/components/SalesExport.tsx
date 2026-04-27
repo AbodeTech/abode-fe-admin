@@ -3,7 +3,7 @@
 'use client'
 
 import React, { useState, useMemo, useEffect } from 'react'
-import { format } from 'date-fns'
+import { format as formatDateFn } from 'date-fns'
 import { useMutation } from '@tanstack/react-query'
 import { useAuthStore } from '@/store/auth-store'
 import { Button } from '@/components/ui/button'
@@ -383,7 +383,7 @@ export function SalesExport({ filters }: { filters: SalesFilters }) {
     if (!dateString) return ''
     const date = new Date(dateString)
     if (isNaN(date.getTime())) return ''
-    return format(date, 'yyyy/MM/dd')
+    return formatDateFn(date, 'yyyy/MM/dd')
   }
 
   const processRecord = (record: any, index: number) => {
