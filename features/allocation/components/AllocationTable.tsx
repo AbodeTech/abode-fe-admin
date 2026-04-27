@@ -14,8 +14,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import { MapPin, RotateCcw, Send, ClipboardList } from "lucide-react";
+import { MapPin, RotateCcw, Send } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export const AllocationTableRowFragment = graphql(`
@@ -43,24 +42,10 @@ export const AllocationTableRowFragment = graphql(`
   }
 `);
 
-export type ClientAllocationStatus = "unassigned" | "assigned" | "allocated";
-
-export function getClientAllocationStatus(client: {
-  allocation?: string | null;
-  allocationDate?: string | null;
-}): ClientAllocationStatus {
-  if (!client.allocation) return "unassigned";
-  if (client.allocationDate) return "allocated";
-  return "assigned";
-}
-
 interface AllocationTableProps {
   rows?: (FragmentType<typeof AllocationTableRowFragment> | null)[] | null;
   isLoading?: boolean;
-  selectedIds?: Set<string>;
-  onSelectionChange?: (paymentPlanId: string, checked: boolean) => void;
-  onAssign: (client: FragmentType<typeof AllocationTableRowFragment>) => void;
-  onAllocate: (client: FragmentType<typeof AllocationTableRowFragment>) => void;
+  onSend: (client: FragmentType<typeof AllocationTableRowFragment>) => void;
   onResend: (client: FragmentType<typeof AllocationTableRowFragment>) => void;
 }
 
@@ -88,15 +73,7 @@ const formatDate = (value?: string | null) => {
   return date.toLocaleDateString();
 };
 
-export function AllocationTable({
-  rows,
-  isLoading,
-  selectedIds,
-  onSelectionChange,
-  onAssign,
-  onAllocate,
-  onResend,
-}: AllocationTableProps) {
+export function AllocationTable({ rows, isLoading, onSend, onResend }: AllocationTableProps) {
   if (isLoading) {
     return (
       <Card className="border-none shadow-sm">
@@ -114,27 +91,6 @@ export function AllocationTable({
     (item): item is NonNullable<typeof item> => item !== null
   );
 
-  const assignedRows = safeRows.filter((row) => {
-    const client = getFragmentData(AllocationTableRowFragment, row);
-    return getClientAllocationStatus(client) === "assigned";
-  });
-
-  const allAssignedSelected =
-    assignedRows.length > 0 &&
-    assignedRows.every((row) => {
-      const client = getFragmentData(AllocationTableRowFragment, row);
-      return client.paymentPlan ? selectedIds?.has(client.paymentPlan) : false;
-    });
-
-  const handleSelectAll = (checked: boolean) => {
-    assignedRows.forEach((row) => {
-      const client = getFragmentData(AllocationTableRowFragment, row);
-      if (client.paymentPlan) {
-        onSelectionChange?.(client.paymentPlan, checked);
-      }
-    });
-  };
-
   return (
     <Card className="border-none shadow-sm">
       <CardContent className="p-0">
@@ -142,15 +98,6 @@ export function AllocationTable({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-10">
-                  {assignedRows.length > 0 && (
-                    <Checkbox
-                      checked={allAssignedSelected}
-                      onCheckedChange={(checked) => handleSelectAll(Boolean(checked))}
-                      aria-label="Select all assigned"
-                    />
-                  )}
-                </TableHead>
                 <TableHead>Client Name</TableHead>
                 <TableHead>Referrer</TableHead>
                 <TableHead>Asset Name</TableHead>
@@ -163,41 +110,23 @@ export function AllocationTable({
                 <TableHead>Location</TableHead>
                 <TableHead>Bought Date</TableHead>
                 <TableHead>Allocation #</TableHead>
-                <TableHead>Status</TableHead>
                 <TableHead>Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {safeRows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={15} className="text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={13} className="text-center text-sm text-muted-foreground">
                     No eligible clients found.
                   </TableCell>
                 </TableRow>
               ) : (
                 safeRows.map((row, idx) => {
                   const client = getFragmentData(AllocationTableRowFragment, row);
-                  const status = getClientAllocationStatus(client);
-                  const isSelectable = status === "assigned";
-                  const isSelected = client.paymentPlan ? selectedIds?.has(client.paymentPlan) : false;
+                  const hasAllocation = Boolean(client.allocation);
 
                   return (
-                    <TableRow
-                      key={`${client.email}-${idx}`}
-                      data-state={isSelected ? "selected" : undefined}
-                      className={isSelected ? "bg-muted/40" : undefined}
-                    >
-                      <TableCell>
-                        {isSelectable && client.paymentPlan && (
-                          <Checkbox
-                            checked={isSelected}
-                            onCheckedChange={(checked) =>
-                              onSelectionChange?.(client.paymentPlan!, Boolean(checked))
-                            }
-                            aria-label={`Select ${client.firstName} ${client.lastName}`}
-                          />
-                        )}
-                      </TableCell>
+                    <TableRow key={`${client.email}-${idx}`}>
                       <TableCell className="max-w-[200px] text-wrap">
                         {client.firstName} {client.lastName}
                       </TableCell>
@@ -221,7 +150,7 @@ export function AllocationTable({
                       </TableCell>
                       <TableCell>{formatDate(client.end_date)}</TableCell>
                       <TableCell>
-                        {client.allocation ? (
+                        {hasAllocation ? (
                           <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
                             {client.allocation}
                           </Badge>
@@ -232,45 +161,7 @@ export function AllocationTable({
                         )}
                       </TableCell>
                       <TableCell>
-                        {status === "unassigned" && (
-                          <Badge variant="secondary" className="bg-slate-100 text-slate-600 text-xs">
-                            Unassigned
-                          </Badge>
-                        )}
-                        {status === "assigned" && (
-                          <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 text-xs">
-                            Assigned
-                          </Badge>
-                        )}
-                        {status === "allocated" && (
-                          <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 text-xs">
-                            Allocated
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {status === "unassigned" && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="flex items-center gap-1"
-                            onClick={() => onAssign(row)}
-                          >
-                            <ClipboardList className="h-4 w-4" />
-                            Assign
-                          </Button>
-                        )}
-                        {status === "assigned" && (
-                          <Button
-                            size="sm"
-                            className="flex items-center gap-1"
-                            onClick={() => onAllocate(row)}
-                          >
-                            <Send className="h-4 w-4" />
-                            Allocate
-                          </Button>
-                        )}
-                        {status === "allocated" && (
+                        {hasAllocation ? (
                           <Button
                             variant="outline"
                             size="sm"
@@ -279,6 +170,15 @@ export function AllocationTable({
                           >
                             <RotateCcw className="h-4 w-4" />
                             Resend
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            className="flex items-center gap-1"
+                            onClick={() => onSend(row)}
+                          >
+                            <Send className="h-4 w-4" />
+                            Send Allocation
                           </Button>
                         )}
                       </TableCell>
