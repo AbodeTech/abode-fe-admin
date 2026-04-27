@@ -1,13 +1,14 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { forgotPasswordSchema, type ForgotPasswordValues } from "@/lib/schemas/auth";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Loader2, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
-// UI Components
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -19,34 +20,79 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 
+const RESET_AUTH_TOKEN_KEY = "adminResetAuthToken";
+const RESET_EMAIL_KEY = "adminResetEmail";
+
+async function sendAdminEmailVerification(email: string): Promise<{ authToken: string }> {
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+  if (!API_BASE_URL) {
+    throw new Error("NEXT_PUBLIC_API_BASE_URL is not defined");
+  }
+
+  const query = `
+    mutation SendAdminEmailVerification($emailInput: EmailInput!) {
+      sendAdminEmailVerification(emailInput: $emailInput) {
+        success
+        data {
+          message
+          authToken
+        }
+      }
+    }
+  `;
+
+  const response = await fetch(API_BASE_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({
+      query,
+      variables: { emailInput: { email } },
+      operationName: "SendAdminEmailVerification",
+    }),
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error("Network error while sending verification email");
+  }
+
+  const { data, errors } = await response.json();
+  if (errors?.length) {
+    throw new Error(errors[0]?.message || "Failed to send verification email");
+  }
+
+  const authToken = data?.sendAdminEmailVerification?.data?.authToken;
+  if (!authToken) {
+    throw new Error("No verification token returned");
+  }
+
+  return { authToken };
+}
+
 export function ForgotPasswordForm() {
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const form = useForm<ForgotPasswordValues>({
     resolver: zodResolver(forgotPasswordSchema),
-    defaultValues: {
-      email: "",
-    },
+    defaultValues: { email: "" },
   });
 
   async function onSubmit(data: ForgotPasswordValues) {
     setIsLoading(true);
     setError(null);
-    setSuccessMessage(null);
     try {
-      // TODO: Implement GraphQL mutation for Forgot Password
-      console.warn("Forgot Password not implemented yet");
-
-      // Simulate API call for now
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      setSuccessMessage("If an account exists with this email, you will receive a password reset link.");
-      form.reset();
+      const { authToken } = await sendAdminEmailVerification(data.email);
+      sessionStorage.setItem(RESET_AUTH_TOKEN_KEY, authToken);
+      sessionStorage.setItem(RESET_EMAIL_KEY, data.email);
+      router.push("/reset-password");
     } catch (err: any) {
       console.error(err);
-      setError(err.response?.data?.message || "Failed to process request.");
+      setError(err?.message || "Failed to process request.");
     } finally {
       setIsLoading(false);
     }
@@ -63,14 +109,10 @@ export function ForgotPasswordForm() {
 
       <div className="mb-8">
         <h2 className="text-2xl font-bold text-foreground">Forgot Password?</h2>
-        <p className="text-sm text-muted-foreground mt-2">Enter your email to receive reset instructions.</p>
+        <p className="text-sm text-muted-foreground mt-2">
+          Enter your email and we&apos;ll send you a verification code.
+        </p>
       </div>
-
-      {successMessage && (
-        <div className="mb-4 p-3 text-sm text-green-600 bg-green-50 rounded-md border border-green-200">
-          {successMessage}
-        </div>
-      )}
 
       {error && (
         <div className="mb-4 p-3 text-sm text-red-500 bg-red-50 rounded-md border border-red-200">
@@ -104,7 +146,7 @@ export function ForgotPasswordForm() {
             disabled={isLoading}
           >
             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            Send Link
+            Send Code
           </Button>
         </form>
       </Form>
