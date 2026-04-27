@@ -29,6 +29,8 @@ type ExportCategory =
   | "defaulters"
   | "without-refs"
   | "with-refs"
+  | "without-tin"
+  | "with-tin"
   | "status-users"
   | "status-associates"
   | "status-associates-pro"
@@ -42,6 +44,8 @@ const CATEGORY_OPTIONS: Array<{ value: ExportCategory; label: string }> = [
   { value: "defaulters", label: "Defaulters" },
   { value: "without-refs", label: "Users without Refs" },
   { value: "with-refs", label: "Users with Refs" },
+  { value: "without-tin", label: "Users without TIN" },
+  { value: "with-tin", label: "Users with TIN" },
   { value: "status-users", label: "Status Users" },
   { value: "status-associates", label: "Status Associates" },
   { value: "status-associates-pro", label: "Status Associates Pro" },
@@ -129,12 +133,14 @@ export function UsersExportModal() {
       } else {
         const filterMap: Record<
           Exclude<ExportCategory, "with-assets" | "flex" | "full-ownership">,
-          { referralStatus?: string; hasAsset?: boolean; hasReferral?: boolean }
+          { referralStatus?: string; hasAsset?: boolean; hasReferral?: boolean; hasTin?: boolean }
         > = {
           all: {},
           defaulters: { referralStatus: "null" },
           "without-refs": { hasReferral: false },
           "with-refs": { hasReferral: true },
+          "without-tin": { hasTin: false },
+          "with-tin": { hasTin: true },
           "status-users": { referralStatus: "user" },
           "status-associates": { referralStatus: "associate" },
           "status-associates-pro": { referralStatus: "associate-pro" },
@@ -149,6 +155,7 @@ export function UsersExportModal() {
           firstName: row.firstName || "",
           lastName: row.lastName || "",
           email: row.email || "",
+          tin: row.tin || "",
           gender: row.gender || "",
           occupation: row.occupation || "",
           phoneNumber: row.phoneNumber ? `'${row.phoneNumber}` : "",
@@ -158,6 +165,7 @@ export function UsersExportModal() {
             ? `${row.referral.firstName} ${row.referral.lastName}`
             : "",
           referrerEmail: row.referral?.email || "",
+          last_login: formatDate(row.last_login),
           createdAt: formatDate(row.createdAt),
         }));
 

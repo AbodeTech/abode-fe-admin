@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { execute } from '@/lib/graphql-client';
+import { execute, executeRaw } from '@/lib/graphql-client';
 import { graphql } from '@/lib/gql';
 import { transactionKeys } from './query-keys';
 type TransactionType = "credit" | "debit" | "asset" | "commission" | "document";
@@ -39,16 +39,41 @@ const GET_DOCUMENT_TRANSACTION_QUERY = graphql(`
   }
 `);
 
-const GET_COMMISSION_TRANSACTIONS_QUERY = graphql(`
-  query GetCommissionTransactions($page: Int!, $limit: Int!, $startDate: String, $endDate: String) {
-    getCommissionTransactions(page: $page, startDate: $startDate, endDate: $endDate, limit: $limit) {
+const GET_COMMISSION_TRANSACTIONS_QUERY = `
+  query GetCommissionTransactions($page: Int!, $limit: Int!, $startDate: String, $endDate: String, $commissionSource: String) {
+    getCommissionTransactions(
+      page: $page,
+      startDate: $startDate,
+      endDate: $endDate,
+      limit: $limit,
+      commissionSource: $commissionSource
+    ) {
       count
       data {
-        ...CommissionTransactionsTable_data
+        _id
+        tin
+        admin_status
+        amount
+        asset_type
+        description
+        user {
+          _id
+          firstName
+          lastName
+          referrer
+          referral_status
+          email
+          tin
+        }
+        plot_size
+        status
+        referral
+        transaction_type
+        time_of_transaction
       }
     }
   }
-`);
+`;
 
 const GET_TRANSACTION_DATA_POINTS_QUERY = graphql(`
   query AdminTransactionDataPoint($dataPointInput: DataPointInput!) {
@@ -124,16 +149,17 @@ interface UseCommissionTransactionsParams {
   limit?: number;
   startDate?: string | null;
   endDate?: string | null;
+  commissionSource?: string | null;
 }
 
 export const useCommissionTransactions = (params?: UseCommissionTransactionsParams) => {
-  const { page = 1, limit = 10, startDate = null, endDate = null } = params ?? {};
+  const { page = 1, limit = 10, startDate = null, endDate = null, commissionSource = null } = params ?? {};
 
   return useQuery({
-    queryKey: transactionKeys.commissionList({ page, limit, startDate, endDate }),
+    queryKey: transactionKeys.commissionList({ page, limit, startDate, endDate, commissionSource }),
     queryFn: () =>
-      execute(GET_COMMISSION_TRANSACTIONS_QUERY, { page, limit, startDate, endDate }),
-    select: (data) => data.getCommissionTransactions,
+      executeRaw(GET_COMMISSION_TRANSACTIONS_QUERY, { page, limit, startDate, endDate, commissionSource }),
+    select: (data: any) => data.getCommissionTransactions,
   });
 };
 

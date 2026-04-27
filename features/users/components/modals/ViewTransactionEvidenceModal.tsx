@@ -27,14 +27,13 @@ export function ViewTransactionEvidenceModal({ image, trigger }: ViewTransaction
   }
 
   const handleDownload = () => {
-    if (image) {
-      const link = document.createElement("a")
-      link.href = image
-      link.download = `transaction-evidence-${Date.now()}`
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-    }
+    if (!image) return
+    const link = document.createElement("a")
+    link.href = image
+    link.download = `transaction-evidence-${Date.now()}`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
   }
 
   const handleOpenChange = (nextOpen: boolean) => {
@@ -127,12 +126,12 @@ export function ViewTransactionEvidenceModal({ image, trigger }: ViewTransaction
                     style={{ maxHeight: "100%" }}
                   />
                 ) : (
-                  <div className="w-[600px] h-[800px] bg-white border border-border rounded-lg shadow-sm overflow-hidden flex items-center justify-center">
-                    <p className="text-muted-foreground p-4 text-center">
-                      PDF Preview not fully supported in simple modal.<br />
-                      Please download to view.
-                    </p>
-                  </div>
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={image.replace(".pdf", ".webp")}
+                    alt="PDF Preview"
+                    className="w-[600px] h-[800px] object-contain rounded-lg shadow-sm border border-border"
+                  />
                 )}
               </div>
             </div>

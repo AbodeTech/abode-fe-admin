@@ -1,7 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 'use client'
 
 import React, { useState, useMemo, useEffect } from 'react'
+import { format as formatDateFn } from 'date-fns'
 import { useMutation } from '@tanstack/react-query'
 import { useAuthStore } from '@/store/auth-store'
 import { Button } from '@/components/ui/button'
@@ -380,8 +382,8 @@ export function SalesExport({ filters }: { filters: SalesFilters }) {
   const formatDate = (dateString: any) => {
     if (!dateString) return ''
     const date = new Date(dateString)
-    if (isNaN(date.getTime())) return dateString
-    return date.toLocaleDateString()
+    if (isNaN(date.getTime())) return ''
+    return formatDateFn(date, 'yyyy/MM/dd')
   }
 
   const processRecord = (record: any, index: number) => {
@@ -537,7 +539,6 @@ export function SalesExport({ filters }: { filters: SalesFilters }) {
   }
 
   const toggleCategory = (categoryKey: string) => {
-    // @ts-ignore
     const category = FIELD_CONFIG[categoryKey as keyof typeof FIELD_CONFIG]
     const catFields = Object.keys(category.fields)
     const allSelected = catFields.every(f => columnOrder.includes(f))

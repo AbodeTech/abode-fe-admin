@@ -49,12 +49,13 @@ export function CommissionExport() {
   const searchParams = useSearchParams();
   const startDate = searchParams.get("start_date") || null;
   const endDate = searchParams.get("end_date") || null;
+  const commissionSource = searchParams.get("commissionsource") || null;
 
   const { mutateAsync: exportCommission, isPending } = useCommissionExport();
 
   const handleExport = async () => {
     try {
-      const response = await exportCommission({ startDate, endDate });
+      const response = await exportCommission({ startDate, endDate, commissionSource });
       const rows = response.getCommissionTransactions?.data ?? [];
 
       if (!rows.length) {
@@ -66,26 +67,29 @@ export function CommissionExport() {
         .filter((row): row is NonNullable<typeof row> => row !== null)
         .map((row) => {
           const parsed = parseCommissionDescription(row.description ?? "");
-          const transactionAmount = Number(row.amount ?? 0);
+          const amount = Number(row.amount ?? 0);
           const taxAmount = parsed.taxAmount ? Number(parsed.taxAmount) : null;
-          const gross = taxAmount !== null ? taxAmount + transactionAmount : null;
+          const gross = taxAmount !== null ? taxAmount + amount : null;
           const percentageEarned =
             gross !== null && gross > 0
-              ? ((100 * transactionAmount) / (gross * 0.95)).toFixed(2)
+              ? (100 * (amount / (gross * 0.95)))
               : "N/A";
+          const commission = amount > 0 ? (amount / 0.95) : "N/A";
+          const whtTax = amount > 0 ? ((amount / 0.95) - amount) : "N/A";
 
           return {
-            date: formatDate(row.time_of_transaction),
-            clientName: parsed.clientName || "N/A",
-            transactionAmount: gross !== null ? gross : "N/A",
-            assetType: parsed.assetType || row.asset_type || "N/A",
-            associateName: `${row.user?.firstName ?? ""} ${row.user?.lastName ?? ""}`.trim() || "N/A",
-            associateStatus: row.user?.referral_status || "N/A",
-            percentageEarned,
-            commission: row.amount ?? "N/A",
-            taxPayerId: row.user?.tin || "N/A",
-            transactionStatus: row.status || "N/A",
-            balance: parsed.balance || "N/A",
+            Date: formatDate(row.time_of_transaction),
+            Client_name: parsed.clientName || "N/A",
+            Transaction_amount: gross !== null ? gross : "N/A",
+            Asset_type: parsed.assetType || row.asset_type || "N/A",
+            Associate_name: `${row.user?.firstName ?? ""} ${row.user?.lastName ?? ""}`.trim() || "N/A",
+            Associate_status: row.user?.referral_status || "N/A",
+            Percentage_earned: percentageEarned,
+            Commission: commission,
+            Tax_Payer_ID: row.tin || row.user?.tin || "N/A",
+            WHT_tax: whtTax,
+            Comission_earned: amount || "N/A",
+            Commission_status: row.status || "N/A",
           };
         });
 
