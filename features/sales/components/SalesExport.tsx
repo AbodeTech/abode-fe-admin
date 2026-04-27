@@ -639,7 +639,7 @@ export function SalesExport({ filters }: { filters: SalesFilters }) {
                   </DropdownMenuContent>
                 </DropdownMenu>
 
-                <div className="h-4 w-[1px] bg-border mx-1" />
+                <div className="h-4 w-px bg-border mx-1" />
 
                 <Button
                   variant="ghost"
@@ -718,8 +718,8 @@ export function SalesExport({ filters }: { filters: SalesFilters }) {
                 </div>
               </div>
 
-              <ScrollArea className="flex-1 p-6">
-                <div className="grid gap-6">
+              <div className="flex-1 overflow-y-auto p-6">
+                <div className="grid gap-6 pb-10">
                   {Object.entries(FIELD_CONFIG).map(([catKey, category]) => {
                     // @ts-ignore
                     const fields = category.fields as Record<string, { label: string }>;
@@ -771,7 +771,7 @@ export function SalesExport({ filters }: { filters: SalesFilters }) {
                     )
                   })}
                 </div>
-              </ScrollArea>
+              </div>
             </TabsContent>
 
             {/* Tab 2: Arrange */}
@@ -785,7 +785,7 @@ export function SalesExport({ filters }: { filters: SalesFilters }) {
                       <RotateCcw className="mr-1 h-3 w-3" /> Reset
                     </Button>
                   </div>
-                  <ScrollArea className="flex-1 min-h-0 p-3">
+                  <ScrollArea className="flex-1 h-full min-h-0 p-3">
                     <DndContext
                       sensors={sensors}
                       collisionDetection={closestCenter}
