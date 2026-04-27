@@ -14,6 +14,10 @@ export const forgotPasswordSchema = z.object({
 export type ForgotPasswordValues = z.infer<typeof forgotPasswordSchema>;
 
 export const resetPasswordSchema = z.object({
+  code: z
+    .string()
+    .min(1, "Verification code is required")
+    .regex(/^\d+$/, "Verification code must be numeric"),
   password: z.string().min(8, "Password must be at least 8 characters"),
   confirmPassword: z.string().min(1, "Confirm Password is required"),
 }).refine((data) => data.password === data.confirmPassword, {
