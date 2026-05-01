@@ -160,7 +160,7 @@ export function DocumentTransactionsTable({ data, isLoading }: DocumentTransacti
                 >
                   <TableCell className="py-4 w-[120px]">
                     <Link
-                      href={`/admin/dashboard/user/${transaction.user?._id ?? ""}`}
+                      href={`/users/${transaction.user?._id ?? ""}`}
                       className="text-black hover:text-gray-700 font-medium hover:underline transition-colors truncate block"
                     >
                       {transaction.user?.lastName} {transaction.user?.firstName}
