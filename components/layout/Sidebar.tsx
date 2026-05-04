@@ -21,8 +21,10 @@ import {
   MessageSquare,
   Percent,
   ScrollText,
+  Settings,
   ShieldCheck,
   ShoppingCart,
+  Store,
   TrendingUp,
   Upload,
   UserPlus,
@@ -44,6 +46,7 @@ const navGroups = [
       { name: "Sales", link: "/sales", icon: <ShoppingCart /> },
       { name: "Agency", link: "/agency", icon: <Building2 /> },
       { name: "Allocation", link: "/allocation", icon: <Building2 /> },
+      { name: "Marketplace", link: "/marketplace", icon: <Store /> },
       { name: "Requests", link: "/requests", icon: <ClipboardList /> },
     ]
   },
@@ -98,6 +101,14 @@ const navGroups = [
     items: [
       { name: "Admin Logs", link: "/security/adminlogs", icon: <ScrollText /> },
       { name: "Roles and Permissions", link: "/security/roles", icon: <ShieldCheck /> },
+    ]
+  },
+  {
+    title: "Settings",
+    isCollapsible: true,
+    icon: <Settings />,
+    items: [
+      { name: "Commission Config", link: "/settings/commission-config", icon: <Percent /> },
     ]
   }
 ];

@@ -1,0 +1,185 @@
+"use client";
+
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  ShoppingCart,
+  User as UserIcon,
+  Calendar,
+  DollarSign,
+  Eye,
+  Ban,
+  CheckCircle,
+} from "lucide-react";
+import { format } from "date-fns";
+import type { MarketplaceListingAdmin } from "../hooks/use-marketplace-listings";
+
+interface MarketplaceListingsTableProps {
+  data: MarketplaceListingAdmin[] | null | undefined;
+  isLoading?: boolean;
+  onSuspend?: (listing: MarketplaceListingAdmin) => void;
+  onUnsuspend?: (listing: MarketplaceListingAdmin) => void;
+}
+
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+    minimumFractionDigits: 0,
+  }).format(amount);
+};
+
+const formatDate = (dateString: string) => {
+  try {
+    return format(new Date(dateString), "dd MMM yyyy");
+  } catch {
+    return "N/A";
+  }
+};
+
+const statusStyles: Record<string, string> = {
+  active: "bg-[#ECFDF3] text-[#027A48] border-[#ABEFC6]",
+  pending_payment: "bg-[#FFFAEB] text-[#B54708] border-[#FEDF89]",
+  pending_approval: "bg-[#FFF6ED] text-[#C4320A] border-[#F9DBAF]",
+  sold: "bg-[#EFF8FF] text-[#175CD3] border-[#B2DDFF]",
+  cancelled: "bg-[#F2F4F7] text-[#344054] border-[#E4E7EC]",
+  expired: "bg-[#FEF3F2] text-[#B42318] border-[#FECDCA]",
+  suspended: "bg-[#FEF3F2] text-[#B42318] border-[#FECDCA]",
+};
+
+const statusLabels: Record<string, string> = {
+  active: "Active",
+  pending_payment: "Pending Payment",
+  pending_approval: "Pending Approval",
+  sold: "Sold",
+  cancelled: "Cancelled",
+  expired: "Expired",
+  suspended: "Suspended",
+};
+
+export function MarketplaceListingsTable({
+  data,
+  isLoading,
+  onSuspend,
+  onUnsuspend,
+}: MarketplaceListingsTableProps) {
+  if (isLoading) {
+    return <div className="p-8 text-center text-gray-500">Loading listings...</div>;
+  }
+
+  if (!data || data.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <ShoppingCart className="h-12 w-12 text-gray-400 mb-4" />
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">No listings found</h3>
+        <p className="text-gray-600 text-center max-w-md">
+          There are no marketplace listings to display.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full">
+      <Table>
+        <TableHeader className="bg-[#F9FAFB] border-b border-[#E5EAEF]">
+          <TableRow className="text-xs font-medium text-[#5D6679]">
+            <TableHead className="py-4 px-4 font-medium">
+              <div className="flex items-center gap-2">
+                <UserIcon className="h-4 w-4" />
+                Seller
+              </div>
+            </TableHead>
+            <TableHead className="py-4 px-4 font-medium">Asset</TableHead>
+            <TableHead className="py-4 px-4 font-medium">
+              <div className="flex items-center gap-2">
+                Price
+              </div>
+            </TableHead>
+            <TableHead className="py-4 px-4 font-medium">Type</TableHead>
+            <TableHead className="py-4 px-4 font-medium text-center">Units</TableHead>
+            <TableHead className="py-4 px-4 font-medium">Status</TableHead>
+            <TableHead className="py-4 px-4 font-medium">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                Listed
+              </div>
+            </TableHead>
+            <TableHead className="py-4 px-4 font-medium">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {data.map((listing) => (
+            <TableRow
+              key={listing._id}
+              className="hover:bg-gray-50 transition-colors border-b border-[#E5EAEF] bg-white"
+            >
+              <TableCell className="py-5 px-4 text-sm font-medium text-[#333333]">
+                {listing.seller
+                  ? `${listing.seller.firstName} ${listing.seller.lastName}`
+                  : "N/A"}
+              </TableCell>
+              <TableCell className="py-5 px-4 text-sm text-[#667085]">
+                {listing.asset?.asset_name || "N/A"}
+              </TableCell>
+              <TableCell className="py-5 px-4 text-sm font-semibold text-[#333333]">
+                {formatCurrency(listing.listing_price)}
+              </TableCell>
+              <TableCell className="py-5 px-4 text-sm text-[#667085] capitalize">
+                {listing.asset_type}
+              </TableCell>
+              <TableCell className="py-5 px-4 text-sm text-[#333333] text-center font-medium">
+                {listing.no_of_units}
+              </TableCell>
+              <TableCell className="py-5 px-4">
+                <Badge
+                  variant="outline"
+                  className={`${statusStyles[listing.status] || statusStyles.cancelled} font-medium border`}
+                >
+                  {statusLabels[listing.status] || listing.status}
+                </Badge>
+              </TableCell>
+              <TableCell className="py-5 px-4 text-sm text-[#333333]">
+                {formatDate(listing.listed_at || listing.createdAt)}
+              </TableCell>
+              <TableCell className="py-5 px-4">
+                <div className="flex items-center gap-1">
+                  {listing.status === "active" && onSuspend && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-red-500 hover:text-red-700"
+                      onClick={() => onSuspend(listing)}
+                      title="Suspend"
+                    >
+                      <Ban className="h-4 w-4" />
+                    </Button>
+                  )}
+                  {listing.status === "suspended" && onUnsuspend && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-green-500 hover:text-green-700"
+                      onClick={() => onUnsuspend(listing)}
+                      title="Unsuspend"
+                    >
+                      <CheckCircle className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
