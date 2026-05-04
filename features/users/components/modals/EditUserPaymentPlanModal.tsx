@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { editUserPaymentPlanByAdmin } from "@/lib/api/admin/user-assets.client";
 import { EditUserPaymentPlanFormValues, editUserPaymentPlanSchema } from "@/lib/schemas/admin/user-assets.schema";
@@ -39,13 +40,12 @@ export function EditUserPaymentPlanModal({ isOpen, onClose, asset, userId }: Edi
     handleSubmit,
     control,
     reset,
-    getValues,
     formState: { errors },
   } = useForm<EditUserPaymentPlanFormValues>({
     resolver: zodResolver(editUserPaymentPlanSchema),
   });
 
-  const assetType = getValues("asset_type");
+  const assetType = pd?.asset_type;
 
   useEffect(() => {
     if (isOpen && pd) {
@@ -56,11 +56,10 @@ export function EditUserPaymentPlanModal({ isOpen, onClose, asset, userId }: Edi
         balance: pd.balance,
         asset_price: pd.asset_price,
         next_date_of_payment: pd.next_date_of_payment ? new Date(pd.next_date_of_payment) : new Date(),
-        asset_type: pd.asset_type,
         start_date: pd.start_date ? new Date(pd.start_date) : new Date(),
         no_of_units: pd.no_of_units,
-        fullownership_landprice: pd.fullownerhsip_landprice ?? undefined,
-        fullownership_documentprice: pd.fullownerhsip_documentprice ?? undefined,
+        fullownerhsip_landprice: pd.fullownerhsip_landprice ?? undefined,
+        fullownerhsip_documentprice: pd.fullownerhsip_documentprice ?? undefined,
         months_covered: pd.months_covered,
         month_subscription: pd.month_subscription,
         size: Number(pd.size),
@@ -68,34 +67,45 @@ export function EditUserPaymentPlanModal({ isOpen, onClose, asset, userId }: Edi
         amount_payable: pd.amount_payable,
         document_amount_paid: doc?.amount_paid ?? undefined,
         document_balance: doc?.balance ?? undefined,
+        create_transaction: false,
       });
     }
   }, [isOpen, pd, doc, userId, reset]);
 
   const mutation = useMutation({
     mutationFn: editUserPaymentPlanByAdmin,
-    onSuccess: () => {
+  });
+
+  const onSubmit = async (data: EditUserPaymentPlanFormValues) => {
+    const monthsRemaining = (data.month_subscription || 0) - (data.months_covered || 0);
+    try {
+      await mutation.mutateAsync({
+        userId: data.userId,
+        uniqueAssetId: data.uniqueAssetId,
+        amount_paid: data.amount_paid,
+        balance: data.balance,
+        asset_price: data.fullownerhsip_landprice || data.asset_price,
+        next_date_of_payment: data.next_date_of_payment,
+        start_date: data.start_date,
+        no_of_units: data.no_of_units,
+        fullownerhsip_landprice: data.fullownerhsip_landprice ? data.fullownerhsip_landprice : null,
+        fullownerhsip_documentprice: data.fullownerhsip_documentprice ? data.fullownerhsip_documentprice : null,
+        months_covered: data.months_covered,
+        month_remaining: monthsRemaining,
+        month_subscription: data.month_subscription,
+        size: data.size,
+        default_amount: data.default_amount,
+        amount_payable: data.amount_payable,
+        document_amount_paid: data.document_amount_paid ? data.document_amount_paid : null,
+        document_balance: data.document_balance ? data.document_balance : null,
+        create_transaction: Boolean(data.create_transaction),
+      });
       toast.success("Payment plan updated successfully");
       queryClient.invalidateQueries({ queryKey: ["userAssets", userId] });
       onClose();
-    },
-    onError: (error: unknown) => {
+    } catch (error: unknown) {
       toast.error(getErrorMessage(error, "Failed to update payment plan"));
-    },
-  });
-
-  const onSubmit = (data: EditUserPaymentPlanFormValues) => {
-    const monthsRemaining = (data.month_subscription || 0) - (data.months_covered || 0);
-
-    mutation.mutate({
-      ...data,
-      asset_price: data.fullownership_landprice || data.asset_price,
-      month_remaining: monthsRemaining,
-      fullownerhsip_landprice: data.fullownership_landprice ?? null,
-      fullownerhsip_documentprice: data.fullownership_documentprice ?? null,
-      document_amount_paid: data.document_amount_paid ?? null,
-      document_balance: data.document_balance ?? null,
-    });
+    }
   };
 
   const formatNumber = (value: number | string | undefined) => {
@@ -116,7 +126,7 @@ export function EditUserPaymentPlanModal({ isOpen, onClose, asset, userId }: Edi
             onChange={(e) => {
               const raw = e.target.value.replace(/,/g, "");
               const num = Number(raw);
-              field.onChange(isNaN(num) ? 0 : num);
+              field.onChange(isNaN(num) ? undefined : num);
             }}
           />
         )}
@@ -178,8 +188,8 @@ export function EditUserPaymentPlanModal({ isOpen, onClose, asset, userId }: Edi
 
               {assetType === "full-ownership" && (
                 <>
-                  {renderNumberInput("fullownership_landprice", "Full Ownership Land Price")}
-                  {renderNumberInput("fullownership_documentprice", "Full Ownership Document Price")}
+                  {renderNumberInput("fullownerhsip_landprice", "Full Ownership Land Price")}
+                  {renderNumberInput("fullownerhsip_documentprice", "Full Ownership Document Price")}
                   {renderNumberInput("document_amount_paid", "Document Amount Paid")}
                   {renderNumberInput("document_balance", "Document Balance")}
                 </>
@@ -190,6 +200,22 @@ export function EditUserPaymentPlanModal({ isOpen, onClose, asset, userId }: Edi
               {renderNumberInput("size", "Size")}
               {renderNumberInput("default_amount", "Default Amount")}
               {renderNumberInput("amount_payable", "Amount Payable")}
+            </div>
+            <div className="mt-4 flex items-center gap-2 px-1">
+              <Controller
+                name="create_transaction"
+                control={control}
+                render={({ field }) => (
+                  <Checkbox
+                    id="create_transaction"
+                    checked={Boolean(field.value)}
+                    onCheckedChange={(checked) => field.onChange(checked === true)}
+                  />
+                )}
+              />
+              <Label htmlFor="create_transaction" className="cursor-pointer">
+                Create transaction for amount paid change
+              </Label>
             </div>
           </ScrollArea>
           <DialogFooter className="mt-4">

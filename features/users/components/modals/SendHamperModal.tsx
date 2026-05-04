@@ -26,14 +26,17 @@ interface SendHamperModalProps {
 export function SendHamperModal({ isOpen, onClose, uniqueAssetId, email }: SendHamperModalProps) {
   const mutation = useMutation({
     mutationFn: () => sendHamperNotificationEmail(email, uniqueAssetId),
-    onSuccess: () => {
+  });
+
+  const handleSend = async () => {
+    try {
+      await mutation.mutateAsync();
       toast.success("Hamper notification sent successfully");
       onClose();
-    },
-    onError: (error: unknown) => {
+    } catch (error: unknown) {
       toast.error(getErrorMessage(error, "Failed to send hamper notification."));
-    },
-  });
+    }
+  };
 
   return (
     <AlertDialog open={isOpen} onOpenChange={onClose}>
@@ -46,7 +49,7 @@ export function SendHamperModal({ isOpen, onClose, uniqueAssetId, email }: SendH
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel onClick={onClose}>Cancel</AlertDialogCancel>
-          <Button onClick={() => mutation.mutate()} disabled={mutation.isPending}>
+          <Button onClick={handleSend} disabled={mutation.isPending}>
             {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Continue
           </Button>

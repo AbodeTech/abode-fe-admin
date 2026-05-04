@@ -156,8 +156,8 @@ export interface EditUserAssetQuestionInput {
   address: string;
 }
 
-export interface EditUserAssetQuestionResponse {
-  editUserAssetQuestion: boolean;
+export interface UpdateUserAssetQuestionResponse {
+  updateUserAssetQuestion: string;
 }
 
 export interface EditUserPaymentPlanInput {
@@ -179,8 +179,9 @@ export interface EditUserPaymentPlanInput {
   document_amount_paid?: number | null;
   document_balance?: number | null;
   size: number;
+  create_transaction?: boolean;
 }
 
 export interface EditUserPaymentPlanResponse {
-  editUserPaymentPlanByAdmin: boolean;
+  updateUserPaymentDetails: string;
 }

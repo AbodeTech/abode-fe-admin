@@ -107,14 +107,13 @@ export const editUserPaymentPlanSchema = z.object({
   userId: z.string(),
   uniqueAssetId: z.string(),
   amount_paid: z.number().nonnegative(),
-  balance: z.number(), // Can be negative indicating overpayment? Legacy schema allows nonnegative but balance can be 0 or check if it can be negative. Legacy said nonnegative.
+  balance: z.number().nonnegative(),
   asset_price: z.number().positive(),
   next_date_of_payment: z.date(),
-  asset_type: z.string(),
   start_date: z.date(),
   no_of_units: z.number().int().positive(),
-  fullownership_landprice: z.number().nonnegative().optional(),
-  fullownership_documentprice: z.number().nonnegative().optional(),
+  fullownerhsip_landprice: z.number().nonnegative().optional(),
+  fullownerhsip_documentprice: z.number().nonnegative().optional(),
   months_covered: z.number().int().nonnegative(),
   month_subscription: z.number().int().positive(),
   size: z.number().nonnegative(),
@@ -122,6 +121,7 @@ export const editUserPaymentPlanSchema = z.object({
   amount_payable: z.number().nonnegative(),
   document_amount_paid: z.number().nonnegative().optional(),
   document_balance: z.number().nonnegative().optional(),
+  create_transaction: z.boolean().optional(),
 });
 
 export type EditUserPaymentPlanFormValues = z.infer<typeof editUserPaymentPlanSchema>;

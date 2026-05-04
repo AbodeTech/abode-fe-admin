@@ -5,7 +5,7 @@ loadEnv({ path: '.env.local' });
 
 const config: CodegenConfig = {
   overwrite: true,
-  schema: process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://e0swwow440owgo0c4s8gs04g.abodeflex.com.ng/graphql",
+  schema: process.env.NEXT_PUBLIC_API_BASE_URL,
   documents: [
     "lib/**/*.{ts,tsx}",
     "actions/**/*.{ts,tsx}",

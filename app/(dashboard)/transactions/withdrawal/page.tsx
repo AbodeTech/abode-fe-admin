@@ -2,7 +2,13 @@
 
 import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense } from "react";
-import { useWithdrawalTransactions, WithdrawalTransactionsTable, useApproveWithdrawalTransaction, useDeclineWithdrawalTransaction } from "@/features/transactions";
+import {
+  useWithdrawalTransactions,
+  WithdrawalTransactionsTable,
+  useApproveWithdrawalTransaction,
+  useDeclineWithdrawalTransaction,
+  WithdrawalExport,
+} from "@/features/transactions";
 import { TransactionDataPoints } from "@/components/shared/TransactionDataPoints";
 import { Pagination } from "@/components/shared/Pagination";
 import { FilterSelect } from "@/components/shared/FilterSelect";
@@ -69,7 +75,8 @@ function WithdrawalTransactionsContent() {
       </div>
 
       {/* Filter */}
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        <WithdrawalExport />
         <FilterSelect
           data={[
             { label: 'All Transactions Status', value: 'all' },

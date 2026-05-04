@@ -1,7 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 'use client'
 
 import React, { useState, useMemo, useEffect } from 'react'
+import { format as formatDateFn } from 'date-fns'
 import { useMutation } from '@tanstack/react-query'
 import { useAuthStore } from '@/store/auth-store'
 import { Button } from '@/components/ui/button'
@@ -380,8 +382,8 @@ export function SalesExport({ filters }: { filters: SalesFilters }) {
   const formatDate = (dateString: any) => {
     if (!dateString) return ''
     const date = new Date(dateString)
-    if (isNaN(date.getTime())) return dateString
-    return date.toLocaleDateString()
+    if (isNaN(date.getTime())) return ''
+    return formatDateFn(date, 'yyyy/MM/dd')
   }
 
   const processRecord = (record: any, index: number) => {
@@ -537,7 +539,6 @@ export function SalesExport({ filters }: { filters: SalesFilters }) {
   }
 
   const toggleCategory = (categoryKey: string) => {
-    // @ts-ignore
     const category = FIELD_CONFIG[categoryKey as keyof typeof FIELD_CONFIG]
     const catFields = Object.keys(category.fields)
     const allSelected = catFields.every(f => columnOrder.includes(f))
@@ -639,7 +640,7 @@ export function SalesExport({ filters }: { filters: SalesFilters }) {
                   </DropdownMenuContent>
                 </DropdownMenu>
 
-                <div className="h-4 w-[1px] bg-border mx-1" />
+                <div className="h-4 w-px bg-border mx-1" />
 
                 <Button
                   variant="ghost"
@@ -718,8 +719,8 @@ export function SalesExport({ filters }: { filters: SalesFilters }) {
                 </div>
               </div>
 
-              <ScrollArea className="flex-1 p-6">
-                <div className="grid gap-6">
+              <div className="flex-1 overflow-y-auto p-6">
+                <div className="grid gap-6 pb-10">
                   {Object.entries(FIELD_CONFIG).map(([catKey, category]) => {
                     // @ts-ignore
                     const fields = category.fields as Record<string, { label: string }>;
@@ -771,7 +772,7 @@ export function SalesExport({ filters }: { filters: SalesFilters }) {
                     )
                   })}
                 </div>
-              </ScrollArea>
+              </div>
             </TabsContent>
 
             {/* Tab 2: Arrange */}
@@ -785,7 +786,7 @@ export function SalesExport({ filters }: { filters: SalesFilters }) {
                       <RotateCcw className="mr-1 h-3 w-3" /> Reset
                     </Button>
                   </div>
-                  <ScrollArea className="flex-1 min-h-0 p-3">
+                  <ScrollArea className="flex-1 h-full min-h-0 p-3">
                     <DndContext
                       sensors={sensors}
                       collisionDetection={closestCenter}

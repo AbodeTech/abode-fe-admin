@@ -31,6 +31,8 @@ import { SendCompletionCertificateModal } from "../modals/SendCompletionCertific
 import { SendHamperModal } from "../modals/SendHamperModal";
 import { SendFlexTermsAndConditionModal } from "../modals/SendFlexTermsAndConditionModal";
 import { getErrorMessage } from "../../utils/error-message";
+import { useAuthStore } from "@/store/auth-store";
+import { useRouter, useSearchParams } from "next/navigation";
 
 interface UserAssetActionsProps {
   userId: string;
@@ -44,12 +46,19 @@ export function UserAssetActions({
   email,
 }: UserAssetActionsProps) {
   const queryClient = useQueryClient();
+  const currentUser = useAuthStore((state) => state.user);
+  const permissions = currentUser?.permissions ?? [];
+  const canEditPaymentPlan = permissions.includes("update-payment-plan");
+  const canEditAssetQuestion = permissions.includes("update-asset-question");
+  const canDeleteAsset = permissions.includes("delete-user-asset");
+  const canSendContract = permissions.includes("send-contract");
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showSuspendDialog, setShowSuspendDialog] = useState(false);
 
   // Modal states
-  const [showEditPlan, setShowEditPlan] = useState(false);
-  const [showEditQuestion, setShowEditQuestion] = useState(false);
   const [showSendContract, setShowSendContract] = useState(false);
   const [showSendCert, setShowSendCert] = useState(false);
   const [showSendHamper, setShowSendHamper] = useState(false);
@@ -61,29 +70,62 @@ export function UserAssetActions({
   const uniqueAssetId = pd.unique_asset_id;
   const assetType = pd.asset_type === "flex" ? "flex" : "full-ownership";
 
+  const setModalParam = (value: string | null, withAssetId = false) => {
+    const params = new URLSearchParams(searchParams?.toString() || "");
+    if (value) {
+      params.set("modal", value);
+      if (withAssetId) {
+        params.set("uniqueAssetId", uniqueAssetId);
+      }
+    } else {
+      params.delete("modal");
+      params.delete("uniqueAssetId");
+    }
+    const next = params.toString();
+    router.push(next ? `?${next}` : "?");
+  };
+
+  // Keep parity with legacy behavior: modal query alone can open, and
+  // uniqueAssetId (if provided) should only scope to the matching asset row.
+  const modal = searchParams?.get("modal");
+  const paramAssetId = searchParams?.get("uniqueAssetId");
+  const isMatchingAsset = !paramAssetId || paramAssetId === uniqueAssetId;
+  const showEditPlan = canEditPaymentPlan && modal === "updatepaymentplan" && isMatchingAsset;
+  const showEditQuestion = canEditAssetQuestion && modal === "edituserassetquestion" && isMatchingAsset;
+
   const deleteMutation = useMutation({
     mutationFn: assetType === "flex" ? deleteUserFlexAsset : deleteUserFullOwnershipAsset,
-    onSuccess: () => {
-      toast.success("Asset deleted successfully");
-      queryClient.invalidateQueries({ queryKey: ["userAssets", userId] });
-      setShowDeleteDialog(false);
-    },
-    onError: (error: unknown) => {
-      toast.error(getErrorMessage(error, "Failed to delete asset"));
-    },
   });
 
   const suspendMutation = useMutation({
     mutationFn: isSuspended ? unSuspendPaymentPlan : suspendPaymentPlan,
-    onSuccess: () => {
+  });
+
+  const handleDelete = async () => {
+    try {
+      await deleteMutation.mutateAsync({ userId, assetId: asset._id, unique_asset_id: uniqueAssetId });
+      toast.success("Asset deleted successfully");
+      queryClient.invalidateQueries({ queryKey: ["userAssets", userId] });
+      setShowDeleteDialog(false);
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, "Failed to delete asset"));
+    }
+  };
+
+  const handleSuspend = async () => {
+    try {
+      await suspendMutation.mutateAsync({ uniqueAssetId });
       toast.success(isSuspended ? "Asset transactions resumed" : "Asset transactions suspended");
       queryClient.invalidateQueries({ queryKey: ["userAssets", userId] });
       setShowSuspendDialog(false);
-    },
-    onError: (error: unknown) => {
+    } catch (error: unknown) {
       toast.error(getErrorMessage(error, "Failed to update suspension status"));
-    },
-  });
+    }
+  };
+
+  if (!canEditPaymentPlan && !canEditAssetQuestion && !canDeleteAsset && !canSendContract) {
+    return null;
+  }
 
   return (
     <>
@@ -94,24 +136,40 @@ export function UserAssetActions({
             <MoreHorizontal className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-          <DropdownMenuSeparator />
+      <DropdownMenuContent align="end">
+        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+        <DropdownMenuSeparator />
 
-          <DropdownMenuItem onClick={() => setShowEditPlan(true)}>
+        {canEditPaymentPlan && (
+          <DropdownMenuItem
+            onSelect={(event) => {
+              event.preventDefault();
+              setModalParam("updatepaymentplan", true);
+            }}
+          >
             Edit Payment Plan
           </DropdownMenuItem>
+        )}
 
-          <DropdownMenuItem onClick={() => setShowEditQuestion(true)}>
+        {canEditAssetQuestion && (
+          <DropdownMenuItem
+            onSelect={(event) => {
+              event.preventDefault();
+              setModalParam("edituserassetquestion", true);
+            }}
+          >
             Edit Asset Question
           </DropdownMenuItem>
+        )}
 
+        {canSendContract && (
           <DropdownMenuItem onClick={() => setShowSendContract(true)}>
             Send Contract of Sale
           </DropdownMenuItem>
+        )}
 
-          {email && (
-            <>
+        {email && (
+          <>
               <DropdownMenuItem onClick={() => setShowSendCert(true)}>
                 Send Completion Certificate
               </DropdownMenuItem>
@@ -134,34 +192,46 @@ export function UserAssetActions({
             {isSuspended ? "Resume Transactions" : "Suspend Transactions"}
           </DropdownMenuItem>
 
-          <DropdownMenuItem onClick={() => setShowDeleteDialog(true)} className="text-red-600 focus:text-red-600">
-            Delete Asset
-          </DropdownMenuItem>
+          {canDeleteAsset && (
+            <DropdownMenuItem onClick={() => setShowDeleteDialog(true)} className="text-red-600 focus:text-red-600">
+              Delete Asset
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 
       {/* Modals */}
-      <EditUserPaymentPlanModal
-        isOpen={showEditPlan}
-        onClose={() => setShowEditPlan(false)}
-        asset={asset}
-        userId={userId}
-      />
+      {canEditPaymentPlan && (
+        <EditUserPaymentPlanModal
+          isOpen={showEditPlan}
+          onClose={() => {
+            setModalParam(null);
+          }}
+          asset={asset}
+          userId={userId}
+        />
+      )}
 
-      <EditUserAssetQuestionModal
-        isOpen={showEditQuestion}
-        onClose={() => setShowEditQuestion(false)}
-        uniqueAssetId={uniqueAssetId}
-        currentName={question?.name_of_property || ""}
-        currentAddress={question?.address || ""}
-        userId={userId}
-      />
+      {canEditAssetQuestion && (
+        <EditUserAssetQuestionModal
+          isOpen={showEditQuestion}
+          onClose={() => {
+            setModalParam(null);
+          }}
+          uniqueAssetId={uniqueAssetId}
+          currentName={question?.name_of_property || ""}
+          currentAddress={question?.address || ""}
+          userId={userId}
+        />
+      )}
 
-      <SendContractOfSalesModal
-        isOpen={showSendContract}
-        onClose={() => setShowSendContract(false)}
-        uniqueAssetId={uniqueAssetId}
-      />
+      {canSendContract && (
+        <SendContractOfSalesModal
+          isOpen={showSendContract}
+          onClose={() => setShowSendContract(false)}
+          uniqueAssetId={uniqueAssetId}
+        />
+      )}
 
       {email && (
         <>
@@ -202,7 +272,7 @@ export function UserAssetActions({
               disabled={deleteMutation.isPending}
               onClick={(e) => {
                 e.preventDefault();
-                deleteMutation.mutate({ userId, assetId: asset._id, unique_asset_id: uniqueAssetId });
+                handleDelete();
               }}
             >
               {deleteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -230,7 +300,7 @@ export function UserAssetActions({
             <Button
               onClick={(e) => {
                 e.preventDefault();
-                suspendMutation.mutate({ uniqueAssetId });
+                handleSuspend();
               }}
               disabled={suspendMutation.isPending}
             >

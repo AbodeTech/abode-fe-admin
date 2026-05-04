@@ -22,6 +22,7 @@ import {
   CheckCircle2,
   XCircle,
   TrendingUp,
+  Calendar,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuthStore } from "@/store/auth-store";
@@ -119,6 +120,12 @@ export function UpgradeTable({ data, onApprove, onDecline }: UpgradeTableProps) 
                 Status
               </div>
             </TableHead>
+            <TableHead className="py-4 font-semibold">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                Created At
+              </div>
+            </TableHead>
             {canManageUpgrade && <TableHead className="py-4 font-semibold">Action</TableHead>}
             <TableHead className="py-4 font-semibold">
               <div className="flex items-center gap-2">
@@ -161,6 +168,9 @@ export function UpgradeTable({ data, onApprove, onDecline }: UpgradeTableProps) 
                 <TableCell className="py-4 text-gray-700">{upgrade.fee_amount || "N/A"}</TableCell>
                 <TableCell className="py-4 text-gray-700">
                   <TransactionStatus status={upgrade.admin_status || undefined} />
+                </TableCell>
+                <TableCell className="py-4 text-gray-700 whitespace-nowrap">
+                  {upgrade.createdAt ? new Date(upgrade.createdAt).toLocaleDateString() : "N/A"}
                 </TableCell>
                 {canManageUpgrade && (
                   <TableCell className="py-4">

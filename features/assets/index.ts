@@ -22,3 +22,7 @@ export { EditFullOwnershipAssetForm } from './components/EditFullOwnershipAssetF
 // Detail components
 export { AssetDetailHeader } from './components/detail/AssetDetailHeader';
 export { SubscribedCustomers } from './components/detail/SubscribedCustomers';
+
+// Page client components (used by app/ pages)
+export { default as EditFlexAssetPageClient } from './components/EditFlexAssetPageClient';
+export { default as EditFullOwnershipAssetPageClient } from './components/EditFullOwnershipAssetPageClient';

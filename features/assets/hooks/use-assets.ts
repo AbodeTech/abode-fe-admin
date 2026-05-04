@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { execute } from '@/lib/graphql-client';
+import { execute, executeRaw } from '@/lib/graphql-client';
 import { graphql } from '@/lib/gql';
 import { assetKeys } from './query-keys';
 
@@ -110,7 +110,7 @@ export const useAssetOptionsByName = (assetName: string, assetType: string) => {
   });
 };
 
-const GET_ASSET_DETAILS_QUERY = graphql(`
+const GET_ASSET_DETAILS_QUERY = `
   query ViewAsset($id: ID!) {
     viewAsset(id: $id) {
       _id
@@ -124,7 +124,13 @@ const GET_ASSET_DETAILS_QUERY = graphql(`
       }
       asset_pictures
       amenities
+      asset_purpose
+      google_map: gogle_map
+      gogle_map
+      topography
+      landmark
       asset_history
+      asset_documents
       documents {
         deed_of_assignment
         survey
@@ -159,12 +165,12 @@ const GET_ASSET_DETAILS_QUERY = graphql(`
       }
     }
   }
-`);
+`;
 
 export const useAssetDetails = (id: string) => {
   return useQuery({
     queryKey: ['asset', 'details', id],
-    queryFn: () => execute(GET_ASSET_DETAILS_QUERY, { id }),
+    queryFn: () => executeRaw<{ viewAsset: any }>(GET_ASSET_DETAILS_QUERY, { id }),
     select: (data) => data.viewAsset,
     enabled: !!id,
   });

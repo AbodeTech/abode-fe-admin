@@ -7,9 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { updateFlexAsset } from "@/lib/api/admin/assets.client";
-import { uploadToCloudinary } from "@/lib/utils/upload";
 import { toast } from "sonner";
-import { Plus, X, Trash2 } from "lucide-react";
+import { Plus, X, Trash2, FileText, ExternalLink } from "lucide-react";
 import {
   updateFlexAssetSchema,
   UpdateFlexAssetFormValues,
@@ -172,70 +171,12 @@ export function EditFlexAssetForm({ initialData }: EditFlexAssetFormProps) {
   async function onSubmit(data: UpdateFlexAssetFormValues) {
     setIsSubmitting(true);
     try {
-      // 1. Upload Images (New Files only)
-      // data.asset_pictures contains both strings and Files
-      const pictures = data.asset_pictures || [];
-      const newFiles = pictures.filter((p): p is File => p instanceof File);
-      const existingUrls = pictures.filter((p): p is string => typeof p === "string");
-
-      const uploadedPictures = await Promise.all(
-        newFiles.map((file) => uploadToCloudinary(file, "assets"))
-      );
-      const newPictureUrls = uploadedPictures.map((res) => res.secure_url);
-
-      const finalPictureUrls = [...existingUrls, ...newPictureUrls];
-
-      // 2. Upload Documents (if new files provided)
-      let deedUrl = typeof data.deed_of_assignment === 'string' ? data.deed_of_assignment : "";
-      if (data.deed_of_assignment instanceof File) {
-        const res = await uploadToCloudinary(data.deed_of_assignment, "documents");
-        deedUrl = res.secure_url;
-      }
-
-      let surveyUrl = typeof data.survey === 'string' ? data.survey : "";
-      if (data.survey instanceof File) {
-        const res = await uploadToCloudinary(data.survey, "documents");
-        surveyUrl = res.secure_url;
-      }
-
-      let contractUrl = typeof data.contract_of_sales === 'string' ? data.contract_of_sales : "";
-      if (data.contract_of_sales instanceof File) {
-        const res = await uploadToCloudinary(data.contract_of_sales, "documents");
-        contractUrl = res.secure_url;
-      }
-
-      let estateLayoutUrl = typeof data.estate_layout === 'string' ? data.estate_layout : "";
-      if (data.estate_layout instanceof File) {
-        const res = await uploadToCloudinary(data.estate_layout, "documents");
-        estateLayoutUrl = res.secure_url;
-      }
-
-      // 3. Format Asset History
-      // Convert array back to object/record if API expects Record<string, any>
-      // The updateFlexAsset input expects asset_history as Record<string, any> or similar.
-      // Let's check updateFlexAsset types. It says: asset_history?: Record<string, any>;
-      const assetHistoryRecord: Record<string, any> = {};
-      if (data.asset_history) {
-        data.asset_history.forEach(item => {
-          assetHistoryRecord[item.year.toString()] = item.value;
-        });
-      }
-
       await updateFlexAsset({
         id: data.id,
         asset_name: data.asset_name,
         asset_location: data.asset_location,
         title: data.title,
-        asset_type: data.asset_type,
         description: data.description,
-        allocation_qualification: data.allocation_qualification,
-        amenities: data.amenities.split(",").map((s) => s.trim()),
-        asset_pictures: finalPictureUrls,
-        deed_of_assignment: deedUrl,
-        survey: surveyUrl,
-        contract_of_sales: contractUrl,
-        estate_layout: estateLayoutUrl,
-        asset_history: assetHistoryRecord,
         asset_option: data.asset_option as any, // Cast to avoid minor type mismatches with input/output types
       });
 
@@ -335,16 +276,34 @@ export function EditFlexAssetForm({ initialData }: EditFlexAssetFormProps) {
                       <FormLabel className="capitalize">{docName.split('_').join(' ')}</FormLabel>
                       <div className="space-y-2">
                         {field.value && typeof field.value === 'string' && (
-                          <div className="flex items-center gap-2 text-sm bg-gray-50 p-2 rounded">
-                            <span className="truncate max-w-[200px] text-blue-600 underline">
-                              <a href={field.value} target="_blank" rel="noopener noreferrer">View Current</a>
-                            </span>
-                            <Button
-                              type="button" variant="ghost" size="sm" className="h-6 w-6 p-0"
-                              onClick={() => field.onChange(undefined)} // Clear value to allow replacement check
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
+                          <div className="flex items-center justify-between gap-3 bg-muted/40 border rounded-lg px-3 py-2.5">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className="shrink-0 flex items-center justify-center w-8 h-8 rounded bg-rose-50 border border-rose-100">
+                                <FileText className="h-4 w-4 text-rose-500" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-xs font-medium truncate max-w-[180px]">
+                                  {decodeURIComponent(field.value.split('/').pop()?.split('?')[0] || 'document.pdf')}
+                                </p>
+                                <p className="text-[10px] text-muted-foreground">PDF · Cloudinary</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <Button
+                                type="button" variant="ghost" size="icon" className="h-7 w-7"
+                                asChild
+                              >
+                                <a href={field.value} target="_blank" rel="noopener noreferrer">
+                                  <ExternalLink className="h-3.5 w-3.5" />
+                                </a>
+                              </Button>
+                              <Button
+                                type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                onClick={() => field.onChange(undefined)}
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
                           </div>
                         )}
                         <FormControl>

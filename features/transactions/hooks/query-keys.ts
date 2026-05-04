@@ -18,7 +18,7 @@ export const transactionKeys = {
 
   // Commission transactions
   commission: () => [...transactionKeys.all, 'commission'] as const,
-  commissionList: (filters?: { page?: number; limit?: number; startDate?: string | null; endDate?: string | null }) =>
+  commissionList: (filters?: { page?: number; limit?: number; startDate?: string | null; endDate?: string | null; commissionSource?: string | null }) =>
     [...transactionKeys.commission(), 'list', filters] as const,
 
   // Asset transactions

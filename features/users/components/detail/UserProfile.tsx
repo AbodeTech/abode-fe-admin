@@ -9,18 +9,31 @@ interface UserProfileProps {
   user: UserDetail
 }
 
-// Helper to get random avatar (placeholder logic)
-const getRandomAvatar = (userId: string) => {
-  const num = (userId.charCodeAt(0) % 5) + 1
-  return `/avatars/0${num}.png`
+const femaleAvatars = [
+  "/adminPages/avatars/01.png",
+  "/adminPages/avatars/03.png",
+  "/adminPages/avatars/05.png",
+]
+
+const maleAvatars = [
+  "/adminPages/avatars/02.png",
+  "/adminPages/avatars/04.png",
+]
+
+const getRandomAvatar = (gender?: string | null) => {
+  if (!gender) return null
+  const isMale = gender.toLowerCase() === "male"
+  const pool = isMale ? maleAvatars : femaleAvatars
+  return pool[Math.floor(Math.random() * pool.length)]
 }
 
 export function UserProfile({ user }: UserProfileProps) {
+  const avatar = getRandomAvatar(user.gender)
   return (
     <div className='mt-6 font-noto_sans flex justify-between items-center'>
       <div className="flex gap-x-2 lg:items-center">
         <Avatar className="h-[76px] w-[76px]">
-          <AvatarImage src={user.profile_pic || getRandomAvatar(user._id || "a")} />
+          <AvatarImage src={avatar || undefined} />
           <AvatarFallback>
             {user.lastName?.charAt(0).toUpperCase()}
             {user.firstName?.charAt(0).toUpperCase()}

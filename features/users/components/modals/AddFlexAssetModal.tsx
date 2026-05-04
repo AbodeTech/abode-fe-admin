@@ -63,14 +63,6 @@ export function AddFlexAssetModal({ userId, isOpen, onClose }: AddFlexAssetModal
 
   const mutation = useMutation({
     mutationFn: addUserFlexAssetByAdmin,
-    onSuccess: () => {
-      toast.success("Asset added successfully");
-      queryClient.invalidateQueries({ queryKey: ["user", userId] });
-      onClose();
-    },
-    onError: (error: unknown) => {
-      toast.error(getErrorMessage(error, "Something went wrong, please try again"));
-    },
   });
 
   const formatNumber = (value: string) => {
@@ -80,24 +72,30 @@ export function AddFlexAssetModal({ userId, isOpen, onClose }: AddFlexAssetModal
     return parts.join(".");
   };
 
-  const onSubmit = (data: AddFlexAssetFormValues) => {
+  const onSubmit = async (data: AddFlexAssetFormValues) => {
     const parseAmount = (value: string) => Number.parseFloat(value.replace(/,/g, ""));
-
-    mutation.mutate({
-      user_id: userId,
-      number_of_units: Number(data.unit),
-      asset_id: data.asset,
-      size: Number(data.assetSize),
-      amount: parseAmount(data.amount).toString(),
-      asset_purchase_price: parseAmount(data.purchasePrice),
-      date_of_payment: data.date,
-      credit_referral: data.commissionPayment === "yes",
-      monthly_installment: parseAmount(data.monthlyPrice),
-      referral_amount: parseAmount(data.commissionAmount),
-      name_of_property: data.owner_name,
-      address: data.owner_address,
-      send_receipt_email: data.sendReceiptEmail === "yes",
-    });
+    try {
+      await mutation.mutateAsync({
+        user_id: userId,
+        number_of_units: Number(data.unit),
+        asset_id: data.asset,
+        size: Number(data.assetSize),
+        amount: parseAmount(data.amount).toString(),
+        asset_purchase_price: parseAmount(data.purchasePrice),
+        date_of_payment: data.date,
+        credit_referral: data.commissionPayment === "yes",
+        monthly_installment: parseAmount(data.monthlyPrice),
+        referral_amount: parseAmount(data.commissionAmount),
+        name_of_property: data.owner_name,
+        address: data.owner_address,
+        send_receipt_email: data.sendReceiptEmail === "yes",
+      });
+      toast.success("Asset added successfully");
+      queryClient.invalidateQueries({ queryKey: ["user", userId] });
+      onClose();
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, "Something went wrong, please try again"));
+    }
   };
 
   return (

@@ -97,7 +97,7 @@ export function DocumentTransactionsTable({ data, isLoading }: DocumentTransacti
     <div className="w-full">
       <Card className="border border-gray-200">
         <ScrollArea className="w-full">
-          <Table>
+          <Table className="min-w-[1100px]">
             <TableHeader className="bg-gray-50 border-b border-gray-200">
               <TableRow className="text-sm font-bold text-black">
                 <TableHead className="py-4 font-semibold">
@@ -142,8 +142,8 @@ export function DocumentTransactionsTable({ data, isLoading }: DocumentTransacti
                     Status
                   </div>
                 </TableHead>
-                {canManageDocumentTransactions && <TableHead className="py-4 font-semibold">Action</TableHead>}
-                <TableHead className="py-4 font-semibold">
+                {canManageDocumentTransactions && <TableHead className="py-4 font-semibold w-[130px] text-center">Action</TableHead>}
+                <TableHead className="py-4 font-semibold w-[100px] text-center">
                   <div className="flex items-center gap-2">
                     <Eye className="h-4 w-4" />
                     View
@@ -160,7 +160,7 @@ export function DocumentTransactionsTable({ data, isLoading }: DocumentTransacti
                 >
                   <TableCell className="py-4 w-[120px]">
                     <Link
-                      href={`/admin/dashboard/user/${transaction.user?._id ?? ""}`}
+                      href={`/users/${transaction.user?._id ?? ""}`}
                       className="text-black hover:text-gray-700 font-medium hover:underline transition-colors truncate block"
                     >
                       {transaction.user?.lastName} {transaction.user?.firstName}
@@ -169,7 +169,7 @@ export function DocumentTransactionsTable({ data, isLoading }: DocumentTransacti
                   <TableCell className="py-4 text-gray-700 w-[100px] truncate">
                     {transaction.referral || "No Referrer"}
                   </TableCell>
-                  <TableCell className="py-4 text-gray-700 max-w-[220px] wrap-break-word">
+                  <TableCell className="py-4 text-gray-700 max-w-[220px] wrap-break-word whitespace-normal">
                     {transaction.asset_type || ""} - {updatedString(`${transaction.description ?? ""}(${transaction.plot_size ?? ""}sqm)`)}
                   </TableCell>
                   <TableCell className="py-4 text-gray-700 w-[100px]">{transaction.transaction_type ?? ""}</TableCell>
@@ -183,7 +183,7 @@ export function DocumentTransactionsTable({ data, isLoading }: DocumentTransacti
                     <TransactionStatus status={transaction.admin_status || undefined} />
                   </TableCell>
                   {canManageDocumentTransactions && (
-                    <TableCell className="py-4">
+                    <TableCell className="py-4 w-[130px] text-center">
                       <TransactionAction
                         status={transaction.admin_status ?? ""}
                         transactionId={transaction._id ?? ""}
@@ -194,7 +194,7 @@ export function DocumentTransactionsTable({ data, isLoading }: DocumentTransacti
                       />
                     </TableCell>
                   )}
-                  <TableCell className="py-4">
+                  <TableCell className="py-4 w-[100px] text-center">
                     {transaction.transfer_file ? (
                       <ViewTransactionEvidence
                         image={transaction.transfer_file.file ?? undefined}

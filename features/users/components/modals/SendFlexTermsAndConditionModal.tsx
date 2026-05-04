@@ -26,14 +26,17 @@ interface SendFlexTermsModalProps {
 export function SendFlexTermsAndConditionModal({ isOpen, onClose, uniqueAssetId, email }: SendFlexTermsModalProps) {
   const mutation = useMutation({
     mutationFn: () => sendFlexTermsAndConditionEmail(email, uniqueAssetId),
-    onSuccess: () => {
+  });
+
+  const handleSend = async () => {
+    try {
+      await mutation.mutateAsync();
       toast.success("Flex Terms and Conditions sent successfully");
       onClose();
-    },
-    onError: (error: unknown) => {
+    } catch (error: unknown) {
       toast.error(getErrorMessage(error, "Failed to send Flex Terms and Conditions."));
-    },
-  });
+    }
+  };
 
   return (
     <AlertDialog open={isOpen} onOpenChange={onClose}>
@@ -46,7 +49,7 @@ export function SendFlexTermsAndConditionModal({ isOpen, onClose, uniqueAssetId,
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel onClick={onClose}>Cancel</AlertDialogCancel>
-          <Button onClick={() => mutation.mutate()} disabled={mutation.isPending}>
+          <Button onClick={handleSend} disabled={mutation.isPending}>
             {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Continue
           </Button>

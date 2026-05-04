@@ -19,6 +19,7 @@ import { useState } from "react";
 import { useSuspendUser, useUnsuspendUser } from "../../hooks/use-user-mutations";
 import { toast } from "sonner";
 import { getErrorMessage } from "../../utils/error-message";
+import { useAuthStore } from "@/store/auth-store";
 
 interface UserStatsProps {
   user: UserDetail;
@@ -58,6 +59,12 @@ export function UserStats({ user }: UserStatsProps) {
   const suspendUser = useSuspendUser();
   const unsuspendUser = useUnsuspendUser();
   const isSuspended = user.is_suspended;
+  const currentUser = useAuthStore((state) => state.user);
+  const permissions = currentUser?.permissions ?? [];
+  const isAdmin = currentUser?.role === "admin";
+  const canSuspendUser = permissions.includes("suspend-user");
+  const canUnsuspendUser = permissions.includes("unsuspend-user");
+  const canToggleStatus = isAdmin && (isSuspended ? canUnsuspendUser : canSuspendUser);
 
   const handleUserStatusToggle = async () => {
     try {
@@ -131,24 +138,26 @@ export function UserStats({ user }: UserStatsProps) {
     <div className="mt-8 space-y-8">
       <div className="flex justify-between items-center">
         <h3 className="text-2xl font-bold text-[#101828]">User Data Points</h3>
-        {isSuspended ? (
-          <Button
-            variant="outline"
-            className="text-green-700 border-green-200 bg-green-50 hover:bg-green-100 hover:text-green-800"
-            onClick={() => setShowStatusDialog(true)}
-            disabled={isUpdatingStatus}
-          >
-            Unsuspend User
-          </Button>
-        ) : (
-          <Button
-            variant="destructive"
-            className="bg-[#D92D20] hover:bg-[#B42318]"
-            onClick={() => setShowStatusDialog(true)}
-            disabled={isUpdatingStatus}
-          >
-            Suspend User
-          </Button>
+        {canToggleStatus && (
+          isSuspended ? (
+            <Button
+              variant="outline"
+              className="text-green-700 border-green-200 bg-green-50 hover:bg-green-100 hover:text-green-800"
+              onClick={() => setShowStatusDialog(true)}
+              disabled={isUpdatingStatus}
+            >
+              Unsuspend User
+            </Button>
+          ) : (
+            <Button
+              variant="destructive"
+              className="bg-[#D92D20] hover:bg-[#B42318]"
+              onClick={() => setShowStatusDialog(true)}
+              disabled={isUpdatingStatus}
+            >
+              Suspend User
+            </Button>
+          )
         )}
       </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

@@ -23,6 +23,7 @@ export function exportToCsv<T>(rows: T[], columns: Column<T>[], filename: string
   );
 
   const csv = [headerLine, ...dataLines].join('\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  // Add UTF-8 BOM so Excel reliably detects the encoding (important for symbols like ₦).
+  const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
   saveAs(blob, filename);
 }

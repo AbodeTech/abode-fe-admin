@@ -9,7 +9,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
   import { Button } from "@/components/ui/button";
-import { Download, ZoomIn, ZoomOut, RotateCw, FileText, ImageIcon, AlertCircle, Eye } from "lucide-react";
+import { Download, ZoomIn, ZoomOut, RotateCw, FileText, ImageIcon, AlertCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 interface ViewTransactionEvidenceProps {
@@ -43,9 +43,13 @@ export function ViewTransactionEvidence({ image, trigger }: ViewTransactionEvide
   };
 
   const handleDownload = () => {
-    if (image) {
-      window.open(image, "_blank");
-    }
+    if (!image) return;
+    const link = document.createElement("a");
+    link.href = image;
+    link.download = `transaction-evidence-${Date.now()}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleImageError = () => {
@@ -155,13 +159,15 @@ export function ViewTransactionEvidence({ image, trigger }: ViewTransactionEvide
                       style={{ display: imageLoading ? "none" : "block" }}
                     />
                   ) : (
-                    <div className="w-[600px] h-[500px] bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
-                      <iframe
-                        src={image}
-                        className="w-full h-full"
-                        title="Transaction Evidence PDF"
-                      />
-                    </div>
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={image.replace(".pdf", ".webp")}
+                      alt="PDF Preview"
+                      className="w-[600px] h-[800px] object-contain rounded-lg shadow-lg border border-gray-200"
+                      onError={handleImageError}
+                      onLoad={handleImageLoad}
+                      style={{ display: imageLoading ? "none" : "block" }}
+                    />
                   )}
                 </div>
               )}
