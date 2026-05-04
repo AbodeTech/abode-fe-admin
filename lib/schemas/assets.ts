@@ -44,7 +44,7 @@ export type FlexPaymentPlan = z.infer<typeof paymentPlanSchema>;
 
 export const fullOwnershipAssetOptionSchema = z.object({
   size: z.coerce.number().min(1, "Size is required"),
-  unit: z.coerce.number().min(1, "Units must be at least 1"),
+  unit: z.coerce.number().min(0, "Units must be 0 or greater"),
   price: z.coerce.number().min(0, "Price must be valid"),
   zero_months: z.coerce.number().optional(),
   three_months: z.coerce.number().optional(),
