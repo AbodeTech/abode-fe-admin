@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, Suspense } from "react";
+import { useCallback, useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Pagination } from "@/components/shared/Pagination";
 import {
   AllocationFilters,
   AllocationModal,
+  AllocationModalMode,
   AllocationTable,
   AllocationTableRowFragment,
   DEFAULT_ALLOCATION_LIMIT,
@@ -40,6 +41,9 @@ function AllocationContent() {
   const endDateParam = searchParams.get("endDate");
 
   const [searchTerm, setSearchTerm] = useState(searchParam);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<AllocationModalMode>("send");
+  const [modalClient, setModalClient] = useState<FragmentType<typeof AllocationTableRowFragment> | null>(null);
 
   const filters = {
     page,
@@ -55,19 +59,8 @@ function AllocationContent() {
   const { data: assets } = useAllocationAssets();
   const { mutateAsync: exportAlloc, isPending: isExporting } = useAllocationExport();
 
-  const rows = useMemo(
-    () => (data?.data ?? []).filter((item): item is NonNullable<typeof item> => Boolean(item)),
-    [data?.data]
-  );
-
-  const [modalOpen, setModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState<"send" | "resend">("send");
-  const [modalClient, setModalClient] = useState<FragmentType<typeof AllocationTableRowFragment> | null>(null);
-
   useEffect(() => {
-    if (!modalOpen) {
-      setModalClient(null);
-    }
+    if (!modalOpen) setModalClient(null);
   }, [modalOpen]);
 
   const updateParams = useCallback(
@@ -91,7 +84,6 @@ function AllocationContent() {
     [router, searchParams]
   );
 
-  // debounce search sync to URL
   useEffect(() => {
     const timer = setTimeout(() => {
       if (searchTerm !== searchParam) {
@@ -130,12 +122,12 @@ function AllocationContent() {
         startDate: startDateParam,
         endDate: endDateParam,
       });
-      const rows = result?.eligibleClientsForLand?.data ?? [];
-      if (!rows.length) {
+      const exportRows = result?.eligibleClientsForLand?.data ?? [];
+      if (!exportRows.length) {
         toast.info("No data to export");
         return;
       }
-      const parsed = rows.map((row) => {
+      const parsed = exportRows.map((row) => {
         const client = getFragmentData(AllocationTableRowFragment, row);
         return {
           clientName: `${client.firstName ?? ""} ${client.lastName ?? ""}`.trim(),
@@ -172,7 +164,7 @@ function AllocationContent() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-24">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Land Allocation System</h1>
@@ -206,7 +198,7 @@ function AllocationContent() {
       />
 
       <AllocationTable
-        rows={rows}
+        rows={data?.data}
         isLoading={isLoading}
         onSend={handleSend}
         onResend={handleResend}

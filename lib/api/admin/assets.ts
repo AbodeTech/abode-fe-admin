@@ -71,12 +71,14 @@ const GET_ASSET_INVENTORY_DATA_QUERY = graphql(`
   query Statistics {
     getAssetInventoryData {
       statistics {
-        totalAssets
-        totalWorth
-        totalFlexAssets
-        totalFlexWorth
-        totalFullOwnershipAssets
-        totalFullOwnershipWorth
+        assetsSummary {
+          totalAssets
+          totalWorth
+          totalFlexAssets
+          totalFlexWorth
+          totalFullOwnershipAssets
+          totalFullOwnershipWorth
+        }
       }
     }
   }

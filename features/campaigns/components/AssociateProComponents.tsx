@@ -153,6 +153,7 @@ export const AssociateProTicketHolderFragment = graphql(`
     userFullName
     userEmail
     referrerFullName
+    referrerEmail
     amountPaid
     createdDate
     isActive
@@ -977,25 +978,41 @@ export function AssociateProExportPanel({ upgrades, tickets }: AssociateProExpor
           <Button
             variant="outline"
             className="h-24 flex-col gap-2 hover:border-primary hover:text-primary"
-            onClick={() =>
+            onClick={() => {
+              const userTickets = ticketRows.filter((row) => row.ticketType === "user");
               downloadCsv(
-                ticketRows.map((row) => ({
+                userTickets.map((row) => ({
                   "Ticket ID": row.ticketId,
-                  "Ticket Type": row.ticketType,
                   "User Name": row.userFullName ?? "-",
                   "User Email": row.userEmail ?? "-",
-                  Referrer: row.referrerFullName ?? "-",
-                  "Amount Paid": formatCurrency(row.amountPaid),
-                  "Date Issued": formatDate(row.createdDate),
-                  "Is Active": row.isActive ? "Yes" : "No",
                 })),
-                `raffle_entries_${new Date().toISOString().slice(0, 10)}.csv`
-              )
-            }
-            disabled={ticketRows.length === 0}
+                `user_tickets_${new Date().toISOString().slice(0, 10)}.csv`
+              );
+            }}
+            disabled={ticketRows.filter((r) => r.ticketType === "user").length === 0}
           >
             <Ticket className="h-6 w-6" />
-            <span>Export Raffle Entries</span>
+            <span>Export User Tickets</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            className="h-24 flex-col gap-2 hover:border-primary hover:text-primary"
+            onClick={() => {
+              const referralTickets = ticketRows.filter((row) => row.ticketType === "referral");
+              downloadCsv(
+                referralTickets.map((row) => ({
+                  "Ticket ID": row.ticketId,
+                  "Referrer Name": row.referrerFullName ?? "-",
+                  "Referrer Email": row.referrerEmail ?? "-",
+                })),
+                `referral_tickets_${new Date().toISOString().slice(0, 10)}.csv`
+              );
+            }}
+            disabled={ticketRows.filter((r) => r.ticketType === "referral").length === 0}
+          >
+            <Ticket className="h-6 w-6" />
+            <span>Export Referral Tickets</span>
           </Button>
         </div>
       </CardContent>

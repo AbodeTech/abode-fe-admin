@@ -10,6 +10,7 @@ import { getAssetSubscribers } from "@/lib/api/admin/assets.client";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import * as XLSX from "xlsx";
+import { cn } from "@/lib/utils";
 import { saveAs } from "file-saver";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { FilterSelect } from "@/components/shared/FilterSelect";
@@ -97,23 +98,10 @@ export function SubscribedCustomers({ assetName, assetType }: Props) {
   };
 
   return (
-    <section className="py-8 w-full overflow-x-auto">
-      <div className="mx-auto px-4">
-        <h2 className="text-3xl font-bold mb-8 text-center">Subscribed Customers</h2>
-
-        {/* Metrics Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-          <MetricCard title="Total Sales" value={formatNaira(metrics.expectedEarning)} icon={<DollarSign className="h-4 w-4" />} />
-          <MetricCard title="Inflow" value={formatNaira(metrics.earningReceived)} icon={<DollarSign className="h-4 w-4" />} />
-          <MetricCard title="Units" value={metrics.unitSold} icon={<ShoppingCart className="h-4 w-4" />} />
-          <MetricCard title="Total Plots Sold" value={metrics.totalPlotsSold} icon={<LandPlot className="h-4 w-4" />} />
-          <MetricCard title="Total Subscribers" value={metrics.totalSubscribers} icon={<Users className="h-4 w-4" />} />
-          <MetricCard title="Defaulted Subscribers" value={metrics.defaultedUsers} icon={<UserMinus className="h-4 w-4" />} />
-          <MetricCard title="Suspended Subscribers" value={metrics.suspendedUsers} icon={<UserX className="h-4 w-4" />} />
-          <MetricCard title="Completed Payments" value={metrics.completedPayments} icon={<CheckCircle className="h-4 w-4" />} />
-        </div>
-
-        <div className="mb-6 flex flex-wrap items-center gap-3">
+    <section className="py-12 w-full overflow-x-auto">
+      <div className="mx-auto px-4 max-w-[1600px]">
+        {/* Filtering Strategy */}
+        <div className="mb-8 flex flex-wrap items-center gap-3 p-1">
           <FilterSelect
             data={[
               { label: "All Subscribers", value: "all" },
@@ -146,72 +134,111 @@ export function SubscribedCustomers({ assetName, assetType }: Props) {
           </Button>
         </div>
 
-        {/* Subscribers Table */}
-        <Card className="overflow-hidden">
-          <CardHeader>
-            <div className="flex flex-col gap-3 md:flex-row items-center justify-between">
-              <CardTitle>Subscribers Details</CardTitle>
-              <div className="flex gap-2">
-                <SendAssetStatementsModal assetId={assetId} />
-                <Button variant={"outline"} onClick={downloadSubscribersData}>Download Excel</Button>
-              </div>
+        {/* Subscribers Details Table */}
+        <div className="rounded-2xl border border-border/50 bg-background overflow-hidden shadow-sm">
+          <div className="p-6 border-b border-border/50 flex flex-col gap-4 md:flex-row items-center justify-between bg-white">
+            <div>
+              <h3 className="text-xl font-bold tracking-tight">Subscribers Directory</h3>
+              <p className="text-xs text-muted-foreground font-medium mt-1 uppercase tracking-wider">Granular Customer Collection Tracking</p>
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              {subscribers.length === 0 ? (
-                <div className="text-center py-4 text-muted-foreground">No subscribers found.</div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Size </TableHead>
-                      <TableHead>Land Price</TableHead>
-                      <TableHead>Land Amount Paid</TableHead>
-                      {assetType === 'flex' && <TableHead>Month Subscription</TableHead>}
-                      {assetType === 'full-ownership' && <TableHead>Document Price</TableHead>}
-                      {assetType === 'full-ownership' && <TableHead>Document Amount Paid</TableHead>}
-                      <TableHead>Start Date</TableHead>
-                      <TableHead>Next Payment Date</TableHead>
-                      <TableHead>Defaulted</TableHead>
-                      <TableHead>Suspended</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {subscribers.map((subscriber, index) => (
-                      <TableRow key={index}>
-                        <TableCell className="font-medium">
-                          {subscriber._id ? (
-                            <Link href={`/users/${subscriber._id}`} className="hover:underline">
-                              {subscriber.name}
-                            </Link>
-                          ) : (
-                            subscriber.name
-                          )}
-                        </TableCell>
-                        <TableCell>{Number(subscriber.sizeBought ?? 0) * Number(subscriber.unitPurchased ?? 0)}</TableCell>
-                        <TableCell>{formatNaira(subscriber.landPrice ?? 0)}</TableCell>
-                        <TableCell>{formatNaira(subscriber.landAmountPaid ?? 0)}</TableCell>
-                        {assetType === 'flex' && <TableCell>{subscriber.month_subscription ?? 0}</TableCell>}
-                        {assetType === 'full-ownership' && <TableCell>{formatNaira(subscriber.documentPrice ?? 0)}</TableCell>}
-                        {assetType === 'full-ownership' && <TableCell>{formatNaira(subscriber.documentAmountPaid ?? 0)}</TableCell>}
-                        <TableCell>{formatDate(subscriber.startDate || "")}</TableCell>
-                        <TableCell>{formatDate(subscriber.nextPaymentDate || "")}</TableCell>
+            <div className="flex gap-2">
+              <SendAssetStatementsModal assetId={assetId} />
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={downloadSubscribersData}
+                className="text-xs font-bold uppercase tracking-wider h-9"
+              >
+                Export Registry
+              </Button>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            {subscribers.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground italic">No historical data found for current filters.</div>
+            ) : (
+              <Table>
+                <TableHeader className="bg-muted/30">
+                  <TableRow className="hover:bg-transparent border-b">
+                    <TableHead className="text-[10px] font-bold uppercase tracking-wider h-10">Subscriber</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase tracking-wider h-10 hidden sm:table-cell">Lease Size</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase tracking-wider h-10 hidden md:table-cell">Land Value</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase tracking-wider h-10">Collected</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase tracking-wider h-10 text-center">Collection Progress</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase tracking-wider h-10 hidden lg:table-cell text-right">Next Due</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {subscribers.map((subscriber, index) => {
+                    const progress = subscriber.landPrice ? Math.round((subscriber.landAmountPaid / subscriber.landPrice) * 100) : 0;
+                    return (
+                      <TableRow key={index} className="group hover:bg-muted/30 transition-colors border-b last:border-0">
                         <TableCell>
-                          <StatusBadge isNegative={!!subscriber.isDefaulted} />
+                          <div className="flex flex-col">
+                            {subscriber._id ? (
+                              <Link href={`/users/${subscriber._id}`} className="text-sm font-bold text-slate-900 group-hover:text-primary transition-colors">
+                                {subscriber.name}
+                              </Link>
+                            ) : (
+                              <span className="text-sm font-bold">{subscriber.name}</span>
+                            )}
+                            <span className="text-[10px] text-muted-foreground font-medium truncate w-32">{subscriber.email}</span>
+                          </div>
                         </TableCell>
+                        <TableCell className="text-xs font-bold hidden sm:table-cell">
+                          {Number(subscriber.sizeBought ?? 0) * Number(subscriber.unitPurchased ?? 0)} SQM
+                        </TableCell>
+                        <TableCell className="text-xs font-medium tabular-nums hidden md:table-cell">{formatNaira(subscriber.landPrice ?? 0)}</TableCell>
+                        <TableCell className="text-xs font-bold tabular-nums">{formatNaira(subscriber.landAmountPaid ?? 0)}</TableCell>
                         <TableCell>
-                          <StatusBadge isNegative={!!subscriber.isSuspended} />
+                          <div className="flex flex-col items-center gap-1.5 min-w-[120px]">
+                            <div className="flex items-center gap-2 w-full justify-center">
+                              <span className="text-[10px] font-black w-8 text-right underline decoration-primary/20">{progress}%</span>
+                              <div 
+                                className="h-1.5 w-full max-w-[80px] bg-muted rounded-full overflow-hidden"
+                                role="progressbar"
+                                aria-valuenow={progress}
+                                aria-valuemin={0}
+                                aria-valuemax={100}
+                                aria-label={`${subscriber.name}'s Payment Progress`}
+                              >
+                                <div 
+                                  className={cn(
+                                    "h-full rounded-full transition-all duration-1000",
+                                    progress >= 100 ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.3)]" : 
+                                    subscriber.isDefaulted ? "bg-rose-500" : "bg-primary"
+                                  )} 
+                                  style={{ width: `${progress}%` }}
+                                />
+                              </div>
+                            </div>
+                            <span
+                              className={cn(
+                                "px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter shadow-sm border leading-none self-center",
+                                subscriber.isDefaulted 
+                                  ? "bg-rose-50 border-rose-100 text-rose-700" 
+                                  : subscriber.isSuspended 
+                                  ? "bg-amber-50 border-amber-100 text-amber-700"
+                                  : progress >= 100
+                                  ? "bg-emerald-50 border-emerald-100 text-emerald-700"
+                                  : "bg-white border-slate-200 text-slate-500"
+                              )}
+                            >
+                              {subscriber.isDefaulted ? "Defaulted" : subscriber.isSuspended ? "Suspended" : progress >= 100 ? "Completed" : "In Progress"}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-[10px] font-bold text-muted-foreground uppercase tracking-tighter text-right hidden lg:table-cell">
+                          {formatDate(subscriber.nextPaymentDate || "") || "N/A"}
                         </TableCell>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+        </div>
       </div>
     </section>
   );

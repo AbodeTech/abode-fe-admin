@@ -62,27 +62,18 @@ const formatNumber = (value?: number | null) =>
 
 const formatDate = (value?: string | null) => {
   if (!value) return "—";
-
   const trimmed = value.trim();
   let normalizedValue: string | number = trimmed;
-
   if (/^\d+$/.test(trimmed)) {
     const numeric = Number(trimmed);
-    // Support both epoch seconds and epoch milliseconds.
     normalizedValue = numeric < 1_000_000_000_000 ? numeric * 1000 : numeric;
   }
-
   const date = new Date(normalizedValue);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleDateString();
 };
 
-export function AllocationTable({
-  rows,
-  isLoading,
-  onSend,
-  onResend,
-}: AllocationTableProps) {
+export function AllocationTable({ rows, isLoading, onSend, onResend }: AllocationTableProps) {
   if (isLoading) {
     return (
       <Card className="border-none shadow-sm">
@@ -132,7 +123,8 @@ export function AllocationTable({
               ) : (
                 safeRows.map((row, idx) => {
                   const client = getFragmentData(AllocationTableRowFragment, row);
-                  const isAllocated = Boolean(client.allocation);
+                  const hasAllocation = Boolean(client.allocation);
+
                   return (
                     <TableRow key={`${client.email}-${idx}`}>
                       <TableCell className="max-w-[200px] text-wrap">
@@ -158,7 +150,7 @@ export function AllocationTable({
                       </TableCell>
                       <TableCell>{formatDate(client.end_date)}</TableCell>
                       <TableCell>
-                        {client.allocation ? (
+                        {hasAllocation ? (
                           <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
                             {client.allocation}
                           </Badge>
@@ -169,7 +161,7 @@ export function AllocationTable({
                         )}
                       </TableCell>
                       <TableCell>
-                        {isAllocated ? (
+                        {hasAllocation ? (
                           <Button
                             variant="outline"
                             size="sm"

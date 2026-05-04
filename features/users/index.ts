@@ -1,5 +1,7 @@
 // Hooks
 export { useUsers, useUserDetails, useSystemUsersOverview } from './hooks/use-users';
+export { useUserAnalytics } from './hooks/use-user-analytics';
+export type { UserAnalyticsData, AnalyticsDataPoint, RegistrationTrendPoint, HowYouHeardPoint } from './hooks/use-user-analytics';
 export type { UsersData, UserDetailsData, SystemUsersOverviewData } from './hooks/use-users';
 export { useUserReferrals, useDeleteUserReferral } from './hooks/use-user-referrals';
 export type { UserReferralData } from './hooks/use-user-referrals';
@@ -56,3 +58,8 @@ export { SuspendedPaymentPlansTable } from './components/suspended-payment-plans
 
 // Table components
 export { UserReferralsTable } from './components/detail/tables/UserReferralsTable';
+
+// Analytics components
+export { UserAnalyticsAcquisition } from './components/analytics/UserAnalyticsAcquisition';
+export { UserAnalyticsDemographics } from './components/analytics/UserAnalyticsDemographics';
+export { UserAnalyticsConversion } from './components/analytics/UserAnalyticsConversion';

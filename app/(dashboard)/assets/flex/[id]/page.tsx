@@ -1,6 +1,10 @@
 import { AssetDetailHeader } from "@/features/assets";
-import { AssetInventory } from "@/features/assets/components/detail/AssetInventory";
-import { SubscribedCustomers } from "@/features/assets/components/detail/SubscribedCustomers";
+import {
+  AssetDetailFilters,
+  AssetAnalyticsSection,
+  PlotsManager,
+  SubscribedCustomers
+} from "@/features/assets/components/detail";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -12,9 +16,11 @@ export default async function ViewFlexAssetPage({ params }: PageProps) {
   const assetType = "flex";
 
   return (
-    <div>
+    <div className="max-w-[1600px] mx-auto px-4 py-8">
       <AssetDetailHeader assetName={assetName} assetType={assetType} />
-      <AssetInventory id={assetName} assetType={assetType} />
+      <AssetDetailFilters />
+      <AssetAnalyticsSection />
+      <PlotsManager assetName={assetName} assetType={assetType} />
       <SubscribedCustomers assetName={assetName} assetType={assetType} />
     </div>
   );
