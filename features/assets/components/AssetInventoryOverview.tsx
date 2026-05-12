@@ -21,8 +21,8 @@ interface Props {
 
 export function AssetInventoryOverview({ data }: Props) {
   const inventoryData = useFragment(AssetInventoryOverviewFragment, data);
-
   const summary = inventoryData?.assetsSummary;
+
   const items = summary
     ? [
       { title: "Total Assets", value: summary.totalAssets ?? 0, subValue: summary.totalWorth ?? 0, icon: Boxes },

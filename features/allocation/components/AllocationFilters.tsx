@@ -19,6 +19,9 @@ export const AllocationAssetOptionFragment = graphql(`
     _id
     asset_name
     asset_type
+    asset_option {
+      size
+    }
   }
 `);
 
@@ -53,9 +56,9 @@ export function AllocationFilters({
     (item): item is NonNullable<typeof item> => item !== null
   );
 
-  const mappedAssets = safeAssets.map((asset) =>
-    getFragmentData(AllocationAssetOptionFragment, asset)
-  );
+  const mappedAssets = safeAssets
+    .map((asset) => getFragmentData(AllocationAssetOptionFragment, asset))
+    .filter((asset) => (asset.asset_option?.length ?? 0) > 0);
 
   return (
     <section className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5 mt-2">

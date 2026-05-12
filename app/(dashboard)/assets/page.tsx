@@ -3,7 +3,8 @@ import {
   useAssets,
   useAssetInventory,
   AssetPageHeader,
-  AssetInventoryOverview,
+  InventoryHealthBar,
+  AssetCategoryHealth,
   AssetFlexTable,
   AssetFullOwnershipTable,
 } from "@/features/assets";
@@ -33,21 +34,28 @@ export default function AssetsPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       <AssetPageHeader />
 
-      <section>
-        <h2 className="text-2xl font-bold mb-4">Inventory Overview</h2>
-        <AssetInventoryOverview data={inventoryData} />
-      </section>
+      <InventoryHealthBar data={inventoryData} />
 
-      <section>
-        <AssetFlexTable data={assetsData?.data?.filter((asset): asset is NonNullable<typeof asset> => asset !== null) || []} />
-      </section>
+      <AssetCategoryHealth data={inventoryData} />
 
-      <section>
-        <AssetFullOwnershipTable data={assetsData?.data?.filter((asset): asset is NonNullable<typeof asset> => asset !== null) || []} />
-      </section>
+      <div className="space-y-12">
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold tracking-tight">Flex Assets Inventory</h2>
+          </div>
+          <AssetFlexTable data={assetsData?.data?.filter((asset): asset is NonNullable<typeof asset> => asset !== null) || []} />
+        </section>
+
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold tracking-tight">Full Ownership Inventory</h2>
+          </div>
+          <AssetFullOwnershipTable data={assetsData?.data?.filter((asset): asset is NonNullable<typeof asset> => asset !== null) || []} />
+        </section>
+      </div>
     </div>
   );
 }

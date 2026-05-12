@@ -12,4 +12,6 @@ export const assetKeys = {
     [...assetKeys.all, 'options', assetName, assetType] as const,
   subscribers: (assetName: string, assetType: string, filters?: object) =>
     [...assetKeys.all, 'subscribers', assetName, assetType, filters] as const,
+  analytics: (assetId: string, filter: string, startDate?: string, endDate?: string) =>
+    [...assetKeys.all, 'analytics', assetId, filter, startDate, endDate] as const,
 };

@@ -29,6 +29,7 @@ export const AssetFlexTableFragment = graphql(`
     asset_location
     sold
     asset_type
+    collectionEfficiencyRate
     asset_option {
       size
       unit
@@ -76,6 +77,7 @@ function transformAssetData(data: AssetFlexTable_AssetFragment) {
         return [opt.price || 0];
       })
     ) : 0,
+    efficiency: data.collectionEfficiencyRate ?? 0,
   };
 }
 
@@ -99,98 +101,92 @@ export function FlexAssetsTable({ data }: Props) {
   );
 
   return (
-    <div>
-      <h2 className="text-2xl font-bold mb-4">Flex Assets</h2>
-      <div className="rounded-md border bg-white">
-        <Table>
-          <TableHeader>
+    <div className="rounded-xl border bg-background overflow-hidden shadow-sm">
+      <Table>
+        <TableHeader className="bg-muted/30">
+          <TableRow className="hover:bg-transparent border-b">
+            <TableHead className="text-[10px] font-bold uppercase tracking-wider h-10 w-[20%]">Asset Name</TableHead>
+            <TableHead className="text-[10px] font-bold uppercase tracking-wider h-10 hidden md:table-cell">Location</TableHead>
+            <TableHead className="text-[10px] font-bold uppercase tracking-wider h-10 hidden sm:table-cell">Status</TableHead>
+            <TableHead className="text-[10px] font-bold uppercase tracking-wider h-10 hidden lg:table-cell">Available Sizes</TableHead>
+            <TableHead className="text-[10px] font-bold uppercase tracking-wider h-10 hidden lg:table-cell text-center">Units</TableHead>
+            <TableHead className="text-[10px] font-bold uppercase tracking-wider h-10">Pricing (₦)</TableHead>
+            <TableHead className="text-[10px] font-bold uppercase tracking-wider h-10 text-right">Health</TableHead>
+            <TableHead className="text-[10px] font-bold uppercase tracking-wider h-10 text-right">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {transformedFlexNewAsset.length === 0 ? (
             <TableRow>
-              <TableHead>Asset Name</TableHead>
-              <TableHead>Available Sizes</TableHead>
-              <TableHead>Location</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Units Available</TableHead>
-              <TableHead>Min. Price (₦)</TableHead>
-              <TableHead>Max. Price (₦)</TableHead>
-              <TableHead>Actions</TableHead>
+              <TableCell colSpan={7} className="h-32 text-center text-muted-foreground italic">
+                No active assets found.
+              </TableCell>
             </TableRow>
-          </TableHeader>
-          <TableBody>
-            {transformedFlexNewAsset.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center">
-                  No results.
+          ) : (
+            transformedFlexNewAsset.map((asset) => (
+              <TableRow key={asset.id} className="group hover:bg-muted/30 transition-colors">
+                <TableCell className="font-bold text-slate-900 group-hover:text-primary transition-colors cursor-pointer" onClick={() => { updateAssetId(asset.id || ""); window.location.href = `/assets/flex/${asset.name}`; }}>
+                  {asset.name}
+                </TableCell>
+                <TableCell className="text-xs font-medium text-slate-500 hidden md:table-cell uppercase tracking-tight"> {asset.location} </TableCell>
+                <TableCell className="hidden sm:table-cell">
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-tighter shadow-sm border ${
+                    asset.status?.toLowerCase() === "active" ? "bg-emerald-50 border-emerald-100 text-emerald-700" : "bg-white border-slate-200 text-slate-500"
+                  }`}>
+                    {asset.status}
+                  </span>
+                </TableCell>
+                <TableCell className="text-xs font-bold tabular-nums hidden lg:table-cell"> {asset.availableSizes} </TableCell>
+                <TableCell className="text-xs font-bold tabular-nums text-center hidden lg:table-cell"> {asset.unitsAvailable} </TableCell>
+                <TableCell className="text-xs font-medium text-slate-600 tabular-nums whitespace-nowrap">
+                  {asset.minPrice === asset.maxPrice
+                    ? asset.minPrice.toLocaleString("en-NG", { style: "currency", currency: "NGN", minimumFractionDigits: 0, maximumFractionDigits: 0 })
+                    : `${asset.minPrice.toLocaleString("en-NG", { style: "currency", currency: "NGN", minimumFractionDigits: 0, maximumFractionDigits: 0 })} – ${asset.maxPrice.toLocaleString("en-NG", { style: "currency", currency: "NGN", minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+                  }
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold">{asset.efficiency.toFixed(1)}%</span>
+                    <div className="h-1.5 w-12 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-primary rounded-full"
+                        style={{ width: `${asset.efficiency}%` }}
+                      />
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell className="text-right">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-muted">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-40">
+                      <DropdownMenuItem asChild>
+                        <Link
+                          href={`/assets/flex/${asset.name}`}
+                          onClick={() => updateAssetId(asset.id || "")}
+                        >
+                          View Details
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link
+                          href={`/assets/flex/${asset.name}/edit`}
+                          onClick={() => updateAssetId(asset.id || "")}
+                        >
+                          Modify Asset
+                        </Link>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </TableCell>
               </TableRow>
-            ) : (
-              transformedFlexNewAsset.map((asset) => (
-                <TableRow key={asset.id} className="cursor-pointer hover:bg-muted/50">
-                  <TableCell>
-                    <Link
-                      href={`/assets/flex/${asset.name}`}
-                      className="block w-full h-full"
-                      onClick={() => updateAssetId(asset.id || "")}
-                    >
-                      {asset.name}
-                    </Link>
-                  </TableCell>
-                  <TableCell>{asset.availableSizes}</TableCell>
-                  <TableCell>{asset.location}</TableCell>
-                  <TableCell>
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs ${asset.status === "Active"
-                        ? "bg-green-100 text-green-800"
-                        : "bg-red-100 text-red-800"
-                        }`}
-                    >
-                      {asset.status}
-                    </span>
-                  </TableCell>
-                  <TableCell>{asset.unitsAvailable}</TableCell>
-                  <TableCell>
-                    {asset.minPrice.toLocaleString("en-NG", {
-                      style: "currency",
-                      currency: "NGN",
-                      minimumFractionDigits: 0,
-                      maximumFractionDigits: 0,
-                    })}
-                  </TableCell>
-                  <TableCell>
-                    {asset.maxPrice.toLocaleString("en-NG", {
-                      style: "currency",
-                      currency: "NGN",
-                      minimumFractionDigits: 0,
-                      maximumFractionDigits: 0,
-                    })}
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-40">
-                        <DropdownMenuItem asChild>
-                          <Link href={`/assets/flex/${asset.name}`}>View</Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link
-                            href={`/assets/flex/${asset.name}/edit`}
-                            onClick={() => updateAssetId(asset.id || "")}
-                          >
-                            Edit
-                          </Link>
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+            ))
+          )}
+        </TableBody>
+      </Table>
     </div>
   );
 }
