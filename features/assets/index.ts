@@ -1,6 +1,8 @@
 // Hooks
-export { useAssets, useAssetInventory, useAssetByName, useAssetOptionsByName, useAssetDetails, useAssetAnalytics } from './hooks/use-assets';
+export { useAssets, useAssetInventory, useAssetByName, useAssetOptionsByName, useAssetDetails, useAssetAnalytics, useAssetIdByName } from './hooks/use-assets';
 export type { AssetsData, AssetInventoryData } from './hooks/use-assets';
+export { useAssetPlots, useCreateAssetPlot, useUpdateAssetPlot, useDeleteAssetPlot, plotKeys } from './hooks/use-asset-plots';
+export type { CreateAssetPlotInput, UpdateAssetPlotInput, DeleteAssetPlotInput } from './hooks/use-asset-plots';
 export { useAssetSubscribers } from './hooks/use-asset-subscribers';
 export type { AssetSubscribersData } from './hooks/use-asset-subscribers';
 export { useCreateFlexAsset, useCreateFullOwnershipAsset } from './hooks/use-create-asset';

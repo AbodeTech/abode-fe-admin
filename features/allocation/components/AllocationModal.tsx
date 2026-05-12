@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { FragmentType, useFragment as getFragmentData } from "@/lib/gql";
 import { AllocationTableRowFragment } from "./AllocationTable";
 import {
@@ -24,8 +24,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { RotateCcw, Send, Sparkles, Pencil, ArrowLeft, Check } from "lucide-react";
+import {
+  RotateCcw,
+  Send,
+  Sparkles,
+  Pencil,
+  ArrowLeft,
+  Check,
+  Loader2,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAssetPlots } from "@/features/assets";
+import { useSuggestNextAllocation } from "../hooks/use-suggest-next-allocation";
+import { useAllocateLand } from "../hooks/use-allocate-land";
 
 export type AllocationModalMode = "send" | "resend";
 
@@ -36,76 +47,51 @@ interface AllocationModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
-interface AssetPlotMock {
-  label: string;
-  totalBlocks: number;
-  allocatedBlockNumbers: number[];
-}
-
-// MOCK: in production these come from useAssetPlots(assetName)
-const MOCK_ASSET_PLOTS: AssetPlotMock[] = [
-  { label: "A", totalBlocks: 50, allocatedBlockNumbers: Array.from({ length: 12 }, (_, i) => i + 1) },
-  { label: "B", totalBlocks: 30, allocatedBlockNumbers: [1, 2, 3] },
-  { label: "C", totalBlocks: 40, allocatedBlockNumbers: [] },
-];
-
 interface Suggestion {
   plotLabel: string;
   blockNumbers: number[];
 }
 
-function findContiguousRun(
-  taken: Set<number>,
-  totalBlocks: number,
-  units: number
-): number[] | null {
-  let runStart = -1;
-  let runLen = 0;
-
-  for (let i = 1; i <= totalBlocks; i++) {
-    if (!taken.has(i)) {
-      if (runStart === -1) runStart = i;
-      runLen += 1;
-      if (runLen >= units) {
-        return Array.from({ length: units }, (_, k) => runStart + k);
-      }
-    } else {
-      runStart = -1;
-      runLen = 0;
-    }
-  }
-  return null;
-}
-
-function suggestNextAllocation(plots: AssetPlotMock[], units: number): Suggestion | null {
-  for (const plot of plots) {
-    const taken = new Set(plot.allocatedBlockNumbers);
-    const run = findContiguousRun(taken, plot.totalBlocks, units);
-    if (run) {
-      return { plotLabel: plot.label, blockNumbers: run };
-    }
-  }
-  return null;
-}
-
-export function AllocationModal({ open, mode, client, onOpenChange }: AllocationModalProps) {
+export function AllocationModal({
+  open,
+  mode,
+  client,
+  onOpenChange,
+}: AllocationModalProps) {
   const allocationClient = getFragmentData(AllocationTableRowFragment, client);
   const units = allocationClient?.unit ?? 1;
+  const assetName = allocationClient?.assetName ?? "";
+  const assetType = allocationClient?.assetType ?? "";
+  const paymentPlanId = allocationClient?.paymentPlan ?? "";
 
-  const suggestion = useMemo(
-    () => (allocationClient ? suggestNextAllocation(MOCK_ASSET_PLOTS, units) : null),
-    [allocationClient, units]
+  const queriesEnabled = open && !!assetName && !!assetType;
+
+  const { data: plots = [], isLoading: isLoadingPlots } = useAssetPlots(
+    queriesEnabled ? assetName : "",
+    queriesEnabled ? assetType : ""
   );
+
+  const { data: suggestionsRaw, isLoading: isLoadingSuggestion } =
+    useSuggestNextAllocation({
+      assetName,
+      assetType,
+      requestedUnits: units,
+      enabled: queriesEnabled,
+    });
+
+  const suggestion: Suggestion | null = useMemo(() => {
+    const first = suggestionsRaw?.[0];
+    if (!first) return null;
+    return { plotLabel: first.plotLabel, blockNumbers: [...first.blockNumbers] };
+  }, [suggestionsRaw]);
 
   const [isOverriding, setIsOverriding] = useState(false);
-  const [overridePlot, setOverridePlot] = useState<string>(suggestion?.plotLabel ?? "");
-  const [overrideStart, setOverrideStart] = useState<string>(
-    suggestion ? String(suggestion.blockNumbers[0]) : ""
-  );
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [overridePlot, setOverridePlot] = useState<string>("");
+  const [overrideStart, setOverrideStart] = useState<string>("");
 
-  // reset override state whenever modal reopens with a different client
-  React.useEffect(() => {
+  const allocateLand = useAllocateLand();
+
+  useEffect(() => {
     if (open) {
       setIsOverriding(false);
       setOverridePlot(suggestion?.plotLabel ?? "");
@@ -115,45 +101,70 @@ export function AllocationModal({ open, mode, client, onOpenChange }: Allocation
 
   const finalAllocation: Suggestion | null = useMemo(() => {
     if (!isOverriding) return suggestion;
-    const plot = MOCK_ASSET_PLOTS.find((p) => p.label === overridePlot);
+    const plot = plots.find((p) => p.label === overridePlot);
     if (!plot) return null;
     const start = Number(overrideStart);
-    if (!Number.isFinite(start) || start < 1 || start + units - 1 > plot.totalBlocks) return null;
+    if (
+      !Number.isFinite(start) ||
+      start < 1 ||
+      start + units - 1 > plot.totalBlocks
+    )
+      return null;
     const blocks = Array.from({ length: units }, (_, i) => start + i);
     const taken = new Set(plot.allocatedBlockNumbers);
     if (blocks.some((b) => taken.has(b))) return null;
     return { plotLabel: plot.label, blockNumbers: blocks };
-  }, [isOverriding, suggestion, overridePlot, overrideStart, units]);
+  }, [isOverriding, suggestion, overridePlot, overrideStart, units, plots]);
 
   const overrideError = useMemo(() => {
     if (!isOverriding) return null;
     if (!overridePlot) return "Pick a plot";
-    const plot = MOCK_ASSET_PLOTS.find((p) => p.label === overridePlot);
+    const plot = plots.find((p) => p.label === overridePlot);
     if (!plot) return "Plot not found";
     const start = Number(overrideStart);
-    if (!Number.isFinite(start) || start < 1) return "Enter a valid starting block";
+    if (!Number.isFinite(start) || start < 1)
+      return "Enter a valid starting block";
     if (start + units - 1 > plot.totalBlocks) {
       return `Range exceeds plot capacity (max start: ${plot.totalBlocks - units + 1})`;
     }
     const taken = new Set(plot.allocatedBlockNumbers);
-    const conflict = Array.from({ length: units }, (_, i) => start + i).find((b) => taken.has(b));
-    if (conflict !== undefined) return `Block ${plot.label}-${conflict} is already allocated`;
-    return null;
-  }, [isOverriding, overridePlot, overrideStart, units]);
-
-  const handleConfirm = async () => {
-    if (!finalAllocation || !allocationClient?.paymentPlan) return;
-    setIsSubmitting(true);
-    // Mock API call delay
-    await new Promise((r) => setTimeout(r, 600));
-    setIsSubmitting(false);
-    toast.success(
-      mode === "resend"
-        ? `Allocation resent: ${finalAllocation.plotLabel}-${finalAllocation.blockNumbers.join(", ")}`
-        : `Allocated ${finalAllocation.blockNumbers.length} block(s): ${finalAllocation.plotLabel}-${finalAllocation.blockNumbers.join(", ")}`
+    const conflict = Array.from({ length: units }, (_, i) => start + i).find(
+      (b) => taken.has(b)
     );
-    onOpenChange(false);
+    if (conflict !== undefined)
+      return `Block ${plot.label}-${conflict} is already allocated`;
+    return null;
+  }, [isOverriding, overridePlot, overrideStart, units, plots]);
+
+  const handleConfirm = () => {
+    if (!finalAllocation || !paymentPlanId) return;
+
+    const blockString = finalAllocation.blockNumbers.join(",");
+    const plotString = finalAllocation.plotLabel;
+
+    allocateLand.mutate(
+      {
+        paymentPlanId,
+        block: blockString,
+        plot: plotString,
+      },
+      {
+        onSuccess: (data) => {
+          const message =
+            data.allocateLand?.message ||
+            (mode === "resend"
+              ? `Allocation resent: ${plotString}-${blockString}`
+              : `Allocated ${finalAllocation.blockNumbers.length} block(s): ${plotString}-${blockString}`);
+          toast.success(message);
+          onOpenChange(false);
+        },
+        onError: (err: Error) => toast.error(err.message),
+      }
+    );
   };
+
+  const isLoadingData = isLoadingPlots || isLoadingSuggestion;
+  const isSubmitting = allocateLand.isPending;
 
   const title = mode === "resend" ? "Resend Allocation" : "Send Allocation";
   const description =
@@ -180,7 +191,9 @@ export function AllocationModal({ open, mode, client, onOpenChange }: Allocation
               <p className="text-sm font-medium">
                 {allocationClient.firstName} {allocationClient.lastName}
               </p>
-              <p className="text-xs text-muted-foreground">{allocationClient.email}</p>
+              <p className="text-xs text-muted-foreground">
+                {allocationClient.email}
+              </p>
               <Separator className="my-2" />
               <div className="text-xs space-y-1">
                 <p>Asset: {allocationClient.assetName}</p>
@@ -204,18 +217,29 @@ export function AllocationModal({ open, mode, client, onOpenChange }: Allocation
             </div>
 
             {/* Suggestion / override block */}
-            {!suggestion && !isOverriding ? (
+            {isLoadingData ? (
+              <div className="rounded-md border border-dashed p-6 text-center">
+                <Loader2 className="h-5 w-5 mx-auto mb-2 animate-spin text-muted-foreground" />
+                <p className="text-xs text-muted-foreground">
+                  Loading allocation suggestion…
+                </p>
+              </div>
+            ) : !suggestion && !isOverriding ? (
               <div className="rounded-md border border-rose-200 bg-rose-50 p-4 text-sm">
-                <p className="font-semibold text-rose-900">No contiguous range available</p>
+                <p className="font-semibold text-rose-900">
+                  No contiguous range available
+                </p>
                 <p className="text-rose-700 text-xs mt-1">
-                  Could not find {units} contiguous free block(s) across any plot. You can
-                  override manually or seed more plots on the asset page.
+                  Could not find {units} contiguous free block(s) across any
+                  plot. You can override manually or seed more plots on the
+                  asset page.
                 </p>
                 <Button
                   variant="outline"
                   size="sm"
                   className="mt-3"
                   onClick={() => setIsOverriding(true)}
+                  disabled={plots.length === 0}
                 >
                   <Pencil className="h-3.5 w-3.5 mr-1" />
                   Override manually
@@ -233,11 +257,12 @@ export function AllocationModal({ open, mode, client, onOpenChange }: Allocation
                         Suggested allocation
                       </p>
                       <p className="text-lg font-bold text-emerald-900 mt-0.5">
-                        Plot {finalAllocation.plotLabel} —{" "}
-                        Blocks {finalAllocation.blockNumbers.join(", ")}
+                        Plot {finalAllocation.plotLabel} — Blocks{" "}
+                        {finalAllocation.blockNumbers.join(", ")}
                       </p>
                       <p className="text-xs text-emerald-700 mt-1">
-                        Next contiguous range of {units} block{units > 1 ? "s" : ""}.
+                        Next contiguous range of {units} block
+                        {units > 1 ? "s" : ""}.
                       </p>
                     </div>
                   </div>
@@ -268,26 +293,31 @@ export function AllocationModal({ open, mode, client, onOpenChange }: Allocation
                   <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                     Manual override
                   </p>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setIsOverriding(false)}
-                    className="text-xs h-7 px-2"
-                  >
-                    <ArrowLeft className="h-3 w-3 mr-1" />
-                    Use suggestion
-                  </Button>
+                  {suggestion && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsOverriding(false)}
+                      className="text-xs h-7 px-2"
+                    >
+                      <ArrowLeft className="h-3 w-3 mr-1" />
+                      Use suggestion
+                    </Button>
+                  )}
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label htmlFor="override-plot" className="text-xs">Plot</Label>
+                    <Label htmlFor="override-plot" className="text-xs">
+                      Plot
+                    </Label>
                     <Select value={overridePlot} onValueChange={setOverridePlot}>
                       <SelectTrigger id="override-plot">
                         <SelectValue placeholder="Pick a plot" />
                       </SelectTrigger>
                       <SelectContent>
-                        {MOCK_ASSET_PLOTS.map((plot) => {
-                          const free = plot.totalBlocks - plot.allocatedBlockNumbers.length;
+                        {plots.map((plot) => {
+                          const free =
+                            plot.totalBlocks - plot.allocatedBlockNumbers.length;
                           return (
                             <SelectItem
                               key={plot.label}
@@ -335,7 +365,9 @@ export function AllocationModal({ open, mode, client, onOpenChange }: Allocation
                   </div>
                 )}
                 {overrideError && (
-                  <p className="text-xs text-rose-600 font-medium">{overrideError}</p>
+                  <p className="text-xs text-rose-600 font-medium">
+                    {overrideError}
+                  </p>
                 )}
               </div>
             )}
@@ -351,7 +383,7 @@ export function AllocationModal({ open, mode, client, onOpenChange }: Allocation
               </Button>
               <Button
                 type="button"
-                disabled={isSubmitting || !finalAllocation}
+                disabled={isSubmitting || !finalAllocation || !paymentPlanId}
                 onClick={handleConfirm}
                 className={cn("flex items-center gap-2")}
               >
@@ -367,7 +399,11 @@ export function AllocationModal({ open, mode, client, onOpenChange }: Allocation
                   </>
                 ) : (
                   <>
-                    {isOverriding ? <Check className="h-4 w-4" /> : <Send className="h-4 w-4" />}
+                    {isOverriding ? (
+                      <Check className="h-4 w-4" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
                     {isOverriding ? "Confirm override" : "Confirm & send"}
                   </>
                 )}

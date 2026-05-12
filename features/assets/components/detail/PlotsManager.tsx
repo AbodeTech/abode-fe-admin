@@ -24,62 +24,85 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Pencil, Trash2, Layers, AlertTriangle } from "lucide-react";
+import { Plus, Pencil, Trash2, Layers, AlertTriangle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import {
+  useAssetPlots,
+  useAssetIdByName,
+  useCreateAssetPlot,
+  useUpdateAssetPlot,
+  useDeleteAssetPlot,
+} from "@/features/assets";
 
 export interface AssetPlot {
-  id: string;
   label: string;
   totalBlocks: number;
   allocatedBlockNumbers: number[];
 }
-
-const MOCK_PLOTS: AssetPlot[] = [
-  { id: "p1", label: "A", totalBlocks: 50, allocatedBlockNumbers: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] },
-  { id: "p2", label: "B", totalBlocks: 30, allocatedBlockNumbers: [1, 2, 3] },
-  { id: "p3", label: "C", totalBlocks: 40, allocatedBlockNumbers: [] },
-];
 
 interface PlotsManagerProps {
   assetName: string;
   assetType: string;
 }
 
-export function PlotsManager({ assetName }: PlotsManagerProps) {
-  const [plots, setPlots] = useState<AssetPlot[]>(MOCK_PLOTS);
+export function PlotsManager({ assetName, assetType }: PlotsManagerProps) {
+  const decodedAssetName = decodeURIComponent(assetName);
+
+  const { data: assetId, isLoading: isResolvingAssetId } = useAssetIdByName(
+    assetName,
+    assetType
+  );
+  const {
+    data: plots = [],
+    isLoading: isLoadingPlots,
+    isError: isPlotsError,
+  } = useAssetPlots(decodedAssetName, assetType);
+
+  const createPlot = useCreateAssetPlot(decodedAssetName, assetType);
+  const updatePlot = useUpdateAssetPlot(decodedAssetName, assetType);
+  const deletePlot = useDeleteAssetPlot(decodedAssetName, assetType);
+
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingPlot, setEditingPlot] = useState<AssetPlot | null>(null);
   const [deletingPlot, setDeletingPlot] = useState<AssetPlot | null>(null);
 
   const totals = useMemo(() => {
     const totalBlocks = plots.reduce((sum, p) => sum + p.totalBlocks, 0);
-    const allocated = plots.reduce((sum, p) => sum + p.allocatedBlockNumbers.length, 0);
+    const allocated = plots.reduce(
+      (sum, p) => sum + p.allocatedBlockNumbers.length,
+      0
+    );
     return { totalBlocks, allocated, available: totalBlocks - allocated };
   }, [plots]);
 
   const handleCreate = (label: string, totalBlocks: number) => {
+    if (!assetId) {
+      toast.error("Asset not yet resolved — try again in a moment");
+      return;
+    }
     const trimmed = label.trim().toUpperCase();
     if (plots.some((p) => p.label.toUpperCase() === trimmed)) {
       toast.error(`Plot "${trimmed}" already exists`);
       return;
     }
-    setPlots((prev) => [
-      ...prev,
+    createPlot.mutate(
+      { assetId, label: trimmed, totalBlocks },
       {
-        id: `p${Date.now()}`,
-        label: trimmed,
-        totalBlocks,
-        allocatedBlockNumbers: [],
-      },
-    ]);
-    toast.success(`Plot "${trimmed}" created with ${totalBlocks} blocks`);
-    setIsCreateOpen(false);
+        onSuccess: () => {
+          toast.success(`Plot "${trimmed}" created with ${totalBlocks} blocks`);
+          setIsCreateOpen(false);
+        },
+        onError: (err: Error) => toast.error(err.message),
+      }
+    );
   };
 
-  const handleUpdate = (plotId: string, totalBlocks: number) => {
-    const plot = plots.find((p) => p.id === plotId);
-    if (!plot) return;
+  const handleUpdate = (plot: AssetPlot, totalBlocks: number) => {
+    if (!assetId) {
+      toast.error("Asset not yet resolved — try again in a moment");
+      return;
+    }
 
     const maxAllocated = Math.max(0, ...plot.allocatedBlockNumbers);
     if (totalBlocks < maxAllocated) {
@@ -89,26 +112,47 @@ export function PlotsManager({ assetName }: PlotsManagerProps) {
       return;
     }
 
-    setPlots((prev) =>
-      prev.map((p) => (p.id === plotId ? { ...p, totalBlocks } : p))
+    updatePlot.mutate(
+      {
+        assetId,
+        plotId: plot.label,
+        label: plot.label,
+        newTotalBlocks: totalBlocks,
+      },
+      {
+        onSuccess: () => {
+          toast.success(`Plot "${plot.label}" updated to ${totalBlocks} blocks`);
+          setEditingPlot(null);
+        },
+        onError: (err: Error) => toast.error(err.message),
+      }
     );
-    toast.success(`Plot "${plot.label}" updated to ${totalBlocks} blocks`);
-    setEditingPlot(null);
   };
 
-  const handleDelete = (plotId: string) => {
-    const plot = plots.find((p) => p.id === plotId);
-    if (!plot) return;
-
-    if (plot.allocatedBlockNumbers.length > 0) {
-      toast.error(`Cannot delete plot "${plot.label}" — ${plot.allocatedBlockNumbers.length} block(s) allocated`);
+  const handleDelete = (plot: AssetPlot) => {
+    if (!assetId) {
+      toast.error("Asset not yet resolved — try again in a moment");
       return;
     }
-
-    setPlots((prev) => prev.filter((p) => p.id !== plotId));
-    toast.success(`Plot "${plot.label}" deleted`);
-    setDeletingPlot(null);
+    if (plot.allocatedBlockNumbers.length > 0) {
+      toast.error(
+        `Cannot delete plot "${plot.label}" — ${plot.allocatedBlockNumbers.length} block(s) allocated`
+      );
+      return;
+    }
+    deletePlot.mutate(
+      { assetId, label: plot.label },
+      {
+        onSuccess: () => {
+          toast.success(`Plot "${plot.label}" deleted`);
+          setDeletingPlot(null);
+        },
+        onError: (err: Error) => toast.error(err.message),
+      }
+    );
   };
+
+  const isLoading = isLoadingPlots || isResolvingAssetId;
 
   return (
     <Card className="mt-6">
@@ -119,7 +163,7 @@ export function PlotsManager({ assetName }: PlotsManagerProps) {
             Plot Inventory
           </CardTitle>
           <p className="text-xs text-muted-foreground mt-1">
-            Define plots and their block capacity for {assetName}.
+            Define plots and their block capacity for {decodedAssetName}.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -130,14 +174,22 @@ export function PlotsManager({ assetName }: PlotsManagerProps) {
             </div>
             <div>
               <span className="text-muted-foreground">Allocated: </span>
-              <span className="font-bold tabular-nums text-amber-600">{totals.allocated}</span>
+              <span className="font-bold tabular-nums text-amber-600">
+                {totals.allocated}
+              </span>
             </div>
             <div>
               <span className="text-muted-foreground">Available: </span>
-              <span className="font-bold tabular-nums text-emerald-600">{totals.available}</span>
+              <span className="font-bold tabular-nums text-emerald-600">
+                {totals.available}
+              </span>
             </div>
           </div>
-          <Button size="sm" onClick={() => setIsCreateOpen(true)}>
+          <Button
+            size="sm"
+            onClick={() => setIsCreateOpen(true)}
+            disabled={!assetId || isLoading}
+          >
             <Plus className="h-4 w-4 mr-1" />
             Add Plot
           </Button>
@@ -145,7 +197,17 @@ export function PlotsManager({ assetName }: PlotsManagerProps) {
       </CardHeader>
 
       <CardContent>
-        {plots.length === 0 ? (
+        {isLoading ? (
+          <div className="rounded-lg border border-dashed py-12 text-center">
+            <Loader2 className="h-6 w-6 mx-auto mb-2 text-muted-foreground/60 animate-spin" />
+            <p className="text-sm text-muted-foreground">Loading plot inventory…</p>
+          </div>
+        ) : isPlotsError ? (
+          <div className="rounded-lg border border-rose-200 bg-rose-50 py-8 text-center">
+            <AlertTriangle className="h-6 w-6 mx-auto mb-2 text-rose-500" />
+            <p className="text-sm text-rose-700">Could not load plots.</p>
+          </div>
+        ) : plots.length === 0 ? (
           <div className="rounded-lg border border-dashed py-12 text-center">
             <Layers className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
             <p className="text-sm text-muted-foreground">No plots seeded yet.</p>
@@ -154,6 +216,7 @@ export function PlotsManager({ assetName }: PlotsManagerProps) {
               size="sm"
               className="mt-2"
               onClick={() => setIsCreateOpen(true)}
+              disabled={!assetId}
             >
               Add your first plot
             </Button>
@@ -163,14 +226,15 @@ export function PlotsManager({ assetName }: PlotsManagerProps) {
             {plots.map((plot) => {
               const allocated = plot.allocatedBlockNumbers.length;
               const available = plot.totalBlocks - allocated;
-              const occupancyPct = plot.totalBlocks > 0
-                ? Math.round((allocated / plot.totalBlocks) * 100)
-                : 0;
+              const occupancyPct =
+                plot.totalBlocks > 0
+                  ? Math.round((allocated / plot.totalBlocks) * 100)
+                  : 0;
               const isFull = available === 0;
 
               return (
                 <div
-                  key={plot.id}
+                  key={plot.label}
                   className={cn(
                     "rounded-xl border p-4 space-y-3 transition-colors",
                     isFull && "bg-muted/30"
@@ -182,14 +246,19 @@ export function PlotsManager({ assetName }: PlotsManagerProps) {
                         {plot.label}
                       </div>
                       <div>
-                        <p className="font-semibold leading-none">Plot {plot.label}</p>
+                        <p className="font-semibold leading-none">
+                          Plot {plot.label}
+                        </p>
                         <p className="text-xs text-muted-foreground mt-0.5">
                           {plot.totalBlocks} blocks
                         </p>
                       </div>
                     </div>
                     {isFull && (
-                      <Badge variant="secondary" className="bg-amber-100 text-amber-800 hover:bg-amber-100 text-[10px]">
+                      <Badge
+                        variant="secondary"
+                        className="bg-amber-100 text-amber-800 hover:bg-amber-100 text-[10px]"
+                      >
                         Full
                       </Badge>
                     )}
@@ -198,7 +267,9 @@ export function PlotsManager({ assetName }: PlotsManagerProps) {
                   <div className="space-y-1.5">
                     <div className="flex justify-between text-xs">
                       <span className="text-muted-foreground">Occupancy</span>
-                      <span className="font-semibold tabular-nums">{occupancyPct}%</span>
+                      <span className="font-semibold tabular-nums">
+                        {occupancyPct}%
+                      </span>
                     </div>
                     <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                       <div
@@ -215,11 +286,17 @@ export function PlotsManager({ assetName }: PlotsManagerProps) {
                     </div>
                     <div className="flex justify-between text-[11px] pt-1">
                       <span>
-                        <span className="text-amber-600 font-bold tabular-nums">{allocated}</span>
-                        <span className="text-muted-foreground ml-1">allocated</span>
+                        <span className="text-amber-600 font-bold tabular-nums">
+                          {allocated}
+                        </span>
+                        <span className="text-muted-foreground ml-1">
+                          allocated
+                        </span>
                       </span>
                       <span>
-                        <span className="text-emerald-600 font-bold tabular-nums">{available}</span>
+                        <span className="text-emerald-600 font-bold tabular-nums">
+                          {available}
+                        </span>
                         <span className="text-muted-foreground ml-1">free</span>
                       </span>
                     </div>
@@ -241,7 +318,11 @@ export function PlotsManager({ assetName }: PlotsManagerProps) {
                       className="h-8 w-8 p-0 text-rose-600 hover:text-rose-700 hover:bg-rose-50"
                       onClick={() => setDeletingPlot(plot)}
                       disabled={allocated > 0}
-                      title={allocated > 0 ? "Cannot delete — has allocated blocks" : "Delete plot"}
+                      title={
+                        allocated > 0
+                          ? "Cannot delete — has allocated blocks"
+                          : "Delete plot"
+                      }
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
@@ -257,30 +338,43 @@ export function PlotsManager({ assetName }: PlotsManagerProps) {
         open={isCreateOpen}
         onOpenChange={setIsCreateOpen}
         onSubmit={handleCreate}
+        isSubmitting={createPlot.isPending}
       />
 
       <EditPlotDialog
         plot={editingPlot}
         onClose={() => setEditingPlot(null)}
-        onSubmit={(totalBlocks) => editingPlot && handleUpdate(editingPlot.id, totalBlocks)}
+        onSubmit={(totalBlocks) =>
+          editingPlot && handleUpdate(editingPlot, totalBlocks)
+        }
+        isSubmitting={updatePlot.isPending}
       />
 
-      <AlertDialog open={!!deletingPlot} onOpenChange={(open) => !open && setDeletingPlot(null)}>
+      <AlertDialog
+        open={!!deletingPlot}
+        onOpenChange={(open) => !open && setDeletingPlot(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete plot &quot;{deletingPlot?.label}&quot;?</AlertDialogTitle>
+            <AlertDialogTitle>
+              Delete plot &quot;{deletingPlot?.label}&quot;?
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently remove plot {deletingPlot?.label} ({deletingPlot?.totalBlocks} blocks)
-              from this asset. This action cannot be undone.
+              This will permanently remove plot {deletingPlot?.label} (
+              {deletingPlot?.totalBlocks} blocks) from this asset. This action
+              cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deletePlot.isPending}>
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => deletingPlot && handleDelete(deletingPlot.id)}
+              onClick={() => deletingPlot && handleDelete(deletingPlot)}
+              disabled={deletePlot.isPending}
               className="bg-rose-600 hover:bg-rose-700"
             >
-              Delete
+              {deletePlot.isPending ? "Deleting…" : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -293,9 +387,15 @@ interface CreatePlotDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (label: string, totalBlocks: number) => void;
+  isSubmitting?: boolean;
 }
 
-function CreatePlotDialog({ open, onOpenChange, onSubmit }: CreatePlotDialogProps) {
+function CreatePlotDialog({
+  open,
+  onOpenChange,
+  onSubmit,
+  isSubmitting,
+}: CreatePlotDialogProps) {
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
@@ -322,7 +422,11 @@ function CreatePlotDialog({ open, onOpenChange, onSubmit }: CreatePlotDialogProp
             Define a plot label and the number of blocks it contains.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4" key={open ? "open" : "closed"}>
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-4"
+          key={open ? "open" : "closed"}
+        >
           <div className="space-y-2">
             <Label htmlFor="label">Plot label</Label>
             <Input
@@ -352,10 +456,17 @@ function CreatePlotDialog({ open, onOpenChange, onSubmit }: CreatePlotDialogProp
             </p>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={isSubmitting}
+            >
               Cancel
             </Button>
-            <Button type="submit">Create plot</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Creating…" : "Create plot"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -367,9 +478,15 @@ interface EditPlotDialogProps {
   plot: AssetPlot | null;
   onClose: () => void;
   onSubmit: (totalBlocks: number) => void;
+  isSubmitting?: boolean;
 }
 
-function EditPlotDialog({ plot, onClose, onSubmit }: EditPlotDialogProps) {
+function EditPlotDialog({
+  plot,
+  onClose,
+  onSubmit,
+  isSubmitting,
+}: EditPlotDialogProps) {
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
@@ -403,13 +520,14 @@ function EditPlotDialog({ plot, onClose, onSubmit }: EditPlotDialogProps) {
                 {allocated} block{allocated > 1 ? "s" : ""} currently allocated.
               </p>
               <p className="text-amber-800 mt-0.5">
-                Highest allocated: {plot.label}-{maxAllocated}. You cannot reduce below this number.
+                Highest allocated: {plot.label}-{maxAllocated}. You cannot reduce
+                below this number.
               </p>
             </div>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4" key={plot.id}>
+        <form onSubmit={handleSubmit} className="space-y-4" key={plot.label}>
           <div className="space-y-2">
             <Label htmlFor="totalBlocks">Number of blocks</Label>
             <Input
@@ -426,10 +544,17 @@ function EditPlotDialog({ plot, onClose, onSubmit }: EditPlotDialogProps) {
             </p>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              disabled={isSubmitting}
+            >
               Cancel
             </Button>
-            <Button type="submit">Save changes</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Saving…" : "Save changes"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
