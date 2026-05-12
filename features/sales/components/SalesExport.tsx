@@ -166,6 +166,14 @@ const FIELD_CONFIG = {
       endDate: { label: 'End Date', default: true },
     }
   },
+  status: {
+    label: 'Status',
+    color: 'bg-rose-100 text-rose-700',
+    fields: {
+      defaulted: { label: 'Defaulted', default: true },
+      terminated: { label: 'Terminated', default: true },
+    }
+  },
 }
 
 // Flatten fields for easy lookup
@@ -422,6 +430,8 @@ export function SalesExport({ filters }: { filters: SalesFilters }) {
       month_subscription: record.month_subscription || '',
       startDate: formatDate(record.start_date),
       endDate: formatDate(record.next_date),
+      defaulted: Number(record.default_amount) > 0 ? 'Yes' : 'No',
+      terminated: record.is_suspended ? 'Yes' : 'No',
     }
 
     const orderedRecord: Record<string, any> = {}

@@ -1,12 +1,14 @@
 export type AssetInventoryData = {
   getAssetInventoryData: {
     statistics: {
-      totalAssets: number;
-      totalWorth: number;
-      totalFlexAssets: number;
-      totalFlexWorth: number;
-      totalFullOwnershipAssets: number;
-      totalFullOwnershipWorth: number;
+      assetsSummary: {
+        totalAssets: number;
+        totalWorth: number;
+        totalFlexAssets: number;
+        totalFlexWorth: number;
+        totalFullOwnershipAssets: number;
+        totalFullOwnershipWorth: number;
+      };
     };
   };
 };
