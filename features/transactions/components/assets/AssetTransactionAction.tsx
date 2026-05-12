@@ -19,7 +19,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+
+const CUSTOM_REASON_VALUE = "Other";
 
 interface AssetTransactionActionProps {
   status: string;
@@ -34,6 +37,7 @@ export function AssetTransactionAction({ status, assetId, onApprove, onDecline }
   const [approveLoading, setApproveLoading] = useState(false);
   const [declineLoading, setDeclineLoading] = useState(false);
   const [declineReason, setDeclineReason] = useState("");
+  const [customReason, setCustomReason] = useState("");
 
   const reasons = [
     "Price Fluctuation",
@@ -43,6 +47,8 @@ export function AssetTransactionAction({ status, assetId, onApprove, onDecline }
     "Wrong Payment Receipt",
     "Payment Receipt uploaded twice",
   ];
+
+  const isCustom = declineReason === CUSTOM_REASON_VALUE;
 
   const handleApprove = async () => {
     setApproveLoading(true);
@@ -63,17 +69,31 @@ export function AssetTransactionAction({ status, assetId, onApprove, onDecline }
       toast.error("Please provide a reason for transaction decline");
       return;
     }
+    if (isCustom && !customReason.trim()) {
+      toast.error("Please enter a reason for transaction decline");
+      return;
+    }
+    const message = isCustom ? customReason.trim() : declineReason;
     setDeclineLoading(true);
     try {
-      await onDecline(assetId, declineReason);
+      await onDecline(assetId, message);
       toast.success("Transaction Declined");
       setIsDeclineOpen(false);
       setDeclineReason("");
+      setCustomReason("");
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "An error occurred while declining";
-      toast.error(message);
+      const errorMessage = error instanceof Error ? error.message : "An error occurred while declining";
+      toast.error(errorMessage);
     } finally {
       setDeclineLoading(false);
+    }
+  };
+
+  const handleDeclineOpenChange = (open: boolean) => {
+    setIsDeclineOpen(open);
+    if (!open) {
+      setDeclineReason("");
+      setCustomReason("");
     }
   };
 
@@ -121,7 +141,7 @@ export function AssetTransactionAction({ status, assetId, onApprove, onDecline }
       </AlertDialog>
 
       {/* Decline Action */}
-      <AlertDialog open={isDeclineOpen} onOpenChange={setIsDeclineOpen}>
+      <AlertDialog open={isDeclineOpen} onOpenChange={handleDeclineOpenChange}>
         <AlertDialogTrigger asChild>
           <button className="p-1 hover:bg-red-50 rounded-full transition-colors">
             <XCircle className="w-5 h-5 text-[#B42318]" />
@@ -145,14 +165,26 @@ export function AssetTransactionAction({ status, assetId, onApprove, onDecline }
                       {reason}
                     </SelectItem>
                   ))}
+                  <SelectItem value={CUSTOM_REASON_VALUE}>Other (custom reason)</SelectItem>
                 </SelectContent>
               </Select>
+              {isCustom && (
+                <div className="mt-3">
+                  <Textarea
+                    value={customReason}
+                    onChange={(e) => setCustomReason(e.target.value)}
+                    placeholder="Enter reason for declining"
+                    maxLength={500}
+                    rows={3}
+                  />
+                </div>
+              )}
             </div>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <Button
               variant="outline"
-              onClick={() => setIsDeclineOpen(false)}
+              onClick={() => handleDeclineOpenChange(false)}
               disabled={declineLoading}
             >
               Cancel

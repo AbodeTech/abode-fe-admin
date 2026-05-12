@@ -83,12 +83,14 @@ export function UserAssetsList({ userId, userEmail, readOnly = false }: UserAsse
     return formatDateWord(date);
   };
 
-  const isPaymentUrgent = (nextPaymentDate: Date | string): boolean => {
+  const isPaymentUrgent = (nextPaymentDate: Date | string, balance: number): boolean => {
+    if (balance <= 0) return false;
     const days = getDaysUntilNextPayment(nextPaymentDate);
     return days <= 7 && days >= 0;
   };
 
-  const isPaymentOverdue = (nextPaymentDate: Date | string): boolean => {
+  const isPaymentOverdue = (nextPaymentDate: Date | string, balance: number): boolean => {
+    if (balance <= 0) return false;
     return getDaysUntilNextPayment(nextPaymentDate) < 0;
   };
 
@@ -135,8 +137,8 @@ export function UserAssetsList({ userId, userEmail, readOnly = false }: UserAsse
               const pd = asset.payment_details!;
               const question = asset.asset_questions?.find((q) => q.unique_asset_id === pd.unique_asset_id);
               const paymentProgress = pd.asset_price > 0 ? Math.round((pd.amount_paid / pd.asset_price) * 100) : 0;
-              const isUrgent = isPaymentUrgent(pd.next_date_of_payment);
-              const isOverdue = isPaymentOverdue(pd.next_date_of_payment);
+              const isUrgent = isPaymentUrgent(pd.next_date_of_payment, pd.balance);
+              const isOverdue = isPaymentOverdue(pd.next_date_of_payment, pd.balance);
 
               return (
                 <Card key={asset._id} className={`py-0 ${pd.is_suspended ? "opacity-75 border-red-200" : ""}`}>
@@ -338,7 +340,7 @@ export function UserAssetsList({ userId, userEmail, readOnly = false }: UserAsse
 
               const landProgress = landPrice > 0 ? (amountPaid / landPrice) * 100 : 0;
               const documentProgress = documentPrice > 0 ? (documentAmountPaid / documentPrice) * 100 : 0;
-              const isLandPaymentOverdue = isPaymentOverdue(pd.next_date_of_payment);
+              const isLandPaymentOverdue = isPaymentOverdue(pd.next_date_of_payment, balance);
               const monthsCovered = pd.month_subscription - pd.month_remaining;
               const monthlyPayment = pd.month_subscription > 0 ? landPrice / pd.month_subscription : null;
 
