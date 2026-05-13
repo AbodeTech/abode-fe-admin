@@ -11,7 +11,6 @@ import {
   UserReferralsTable,
 } from "@/features/users";
 import { ViewClientAssetModal } from "@/features/users/components/modals/ViewClientAssetModal";
-import { ManagerAssignmentCard } from "@/features/associate-managers/components/ManagerAssignmentCard";
 import type { UserDetail } from "@/features/users";
 import type { UserReferralResponse } from "@/lib/api/admin/referrals.types";
 import type { TransactionListResponse } from "@/lib/api/admin/transactions.types";
@@ -73,8 +72,6 @@ export default function UserDetailsPage() {
       <UserProfile user={userData} />
 
       <UserInfo user={userData} />
-
-      <ManagerAssignmentCard user={userData} />
 
       <UserStats user={userData} />
 

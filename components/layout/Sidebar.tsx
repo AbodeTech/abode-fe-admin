@@ -70,7 +70,6 @@ const navGroups = [
       { name: "Associates Upgrade", link: "/associate-upgrade", icon: <UserPlus /> },
       { name: "Upgrade Coupons", link: "/associate-upgrade/coupons", icon: <Gift /> },
       { name: "Top associates", link: "/associates", icon: <TrendingUp /> },
-      { name: "Manager Performance", link: "/associates/managers", icon: <ShieldCheck /> },
     ]
   },
   {
