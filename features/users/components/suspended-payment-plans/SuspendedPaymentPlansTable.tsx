@@ -42,7 +42,7 @@ export function SuspendedPaymentPlansTable({ plans }: SuspendedPaymentPlansTable
   const validRows = rows.filter((plan): plan is NonNullable<typeof plan> => plan !== null && plan !== undefined);
 
   return (
-    <Table>
+    <Table className="min-w-[1320px]">
       <TableHeader>
         <TableRow>
           <TableHead>First Name</TableHead>
@@ -66,10 +66,10 @@ export function SuspendedPaymentPlansTable({ plans }: SuspendedPaymentPlansTable
             <TableRow key={`${row.email}-${idx}`}>
               <TableCell>{row.firstName}</TableCell>
               <TableCell>{row.lastName}</TableCell>
-              <TableCell>{row.email}</TableCell>
+              <TableCell className="max-w-[200px] whitespace-normal wrap-break-word">{row.email}</TableCell>
               <TableCell>{row.phoneNumber}</TableCell>
               <TableCell>{row.referrer}</TableCell>
-              <TableCell>{row.asset_name}</TableCell>
+              <TableCell className="max-w-[180px] whitespace-normal wrap-break-word">{row.asset_name}</TableCell>
               <TableCell>{row.size}</TableCell>
               <TableCell>
                 <Badge variant={row.asset_type === "Flex" ? "default" : "secondary"}>

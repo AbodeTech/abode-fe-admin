@@ -57,6 +57,15 @@ export function DateFilter() {
   const [selectedOption, setSelectedOption] = useState<DateOption>(initialOption);
   const [dateRange, setDateRange] = useState<DateRange>(initialRange);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [isNarrowScreen, setIsNarrowScreen] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 640px)");
+    const update = () => setIsNarrowScreen(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
 
   const updateURL = (from: Date | null, to: Date | null) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -70,7 +79,7 @@ export function DateFilter() {
     }
 
     params.set("page", "1");
-    router.push(`?${params.toString()}`);
+    router.push(`?${params.toString()}`, { scroll: false });
   };
 
   const handleOptionChange = (value: DateOption) => {
@@ -105,9 +114,9 @@ export function DateFilter() {
   };
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
       <Select value={selectedOption} onValueChange={handleOptionChange}>
-        <SelectTrigger className="w-fit min-w-[120px] bg-white">
+        <SelectTrigger className="h-10 w-full min-w-0 bg-white sm:h-9 sm:w-fit sm:min-w-[120px]">
           <SelectValue placeholder="Time range" />
         </SelectTrigger>
         <SelectContent>
@@ -128,15 +137,17 @@ export function DateFilter() {
             <Button
               variant="outline"
               className={cn(
-                "justify-start text-left font-normal bg-white",
+                "h-auto min-h-10 w-full justify-start whitespace-normal px-3 py-2 text-left text-sm font-normal leading-snug sm:h-9 sm:min-h-0 sm:w-fit sm:whitespace-nowrap sm:py-2 bg-white",
                 !dateRange && "text-muted-foreground"
               )}
             >
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {format(dateRange.from, "MMM d")} - {format(dateRange.to, "MMM d, yyyy")}
+              <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
+              <span className="min-w-0 wrap-break-word">
+                {format(dateRange.from, "MMM d")} – {format(dateRange.to, "MMM d, yyyy")}
+              </span>
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
+          <PopoverContent className="w-[min(100vw-1.5rem,36rem)] max-w-[calc(100vw-1.5rem)] p-0 sm:w-auto" align="start" sideOffset={4}>
             <Calendar
               initialFocus
               mode="range"
@@ -149,7 +160,7 @@ export function DateFilter() {
                   setIsCalendarOpen(false);
                 }
               }}
-              numberOfMonths={2}
+              numberOfMonths={isNarrowScreen ? 1 : 2}
             />
           </PopoverContent>
         </Popover>

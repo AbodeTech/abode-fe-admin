@@ -69,10 +69,12 @@ function AgencyTransactionsContent() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Agency Transactions</h1>
-        <p className="text-muted-foreground">Review transactions by agency and drill into details.</p>
+    <div className="mx-auto w-full min-w-0 max-w-[1600px] space-y-4 sm:space-y-6">
+      <div className="min-w-0">
+        <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Agency Transactions</h1>
+        <p className="text-sm text-muted-foreground sm:text-base">
+          Review transactions by agency and drill into details.
+        </p>
       </div>
 
       <AgencySystemMetrics data={data?.dashboard} />

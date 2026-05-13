@@ -12,16 +12,18 @@ interface GenericTableProps {
 
 export function GenericTable({ title, columns, rows }: GenericTableProps) {
   return (
-    <Card className="border-border bg-card overflow-hidden">
-      <div className="border-b border-border px-6 py-4">
+    <Card className="min-w-0 overflow-hidden border-border bg-card">
+      <div className="border-b border-border px-3 py-3 sm:px-6 sm:py-4">
         <h3 className="text-sm font-semibold text-foreground">{title}</h3>
       </div>
-      <div className="overflow-x-auto">
-        <Table>
+      <div className="min-w-0 overflow-x-auto">
+        <Table className="min-w-[720px]">
           <TableHeader>
             <TableRow className="border-border hover:bg-transparent">
               {columns.map((col) => (
-                <TableHead key={col} className="text-muted-foreground whitespace-nowrap px-6">{col}</TableHead>
+                <TableHead key={col} className="whitespace-nowrap px-3 text-muted-foreground sm:px-6">
+                  {col}
+                </TableHead>
               ))}
             </TableRow>
           </TableHeader>
@@ -36,7 +38,10 @@ export function GenericTable({ title, columns, rows }: GenericTableProps) {
               rows.map((row, idx) => (
                 <TableRow key={idx} className="border-border hover:bg-muted/50">
                   {row.map((cell, i) => (
-                    <TableCell key={`${idx}-${i}`} className="px-6 py-4 font-medium text-foreground whitespace-nowrap">
+                    <TableCell
+                      key={`${idx}-${i}`}
+                      className="max-w-[220px] px-3 py-3 text-sm font-medium text-foreground wrap-break-word whitespace-normal sm:px-6 sm:py-4"
+                    >
                       {cell}
                     </TableCell>
                   ))}

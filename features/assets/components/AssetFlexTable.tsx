@@ -101,7 +101,7 @@ export function FlexAssetsTable({ data }: Props) {
   );
 
   return (
-    <div className="rounded-xl border bg-background overflow-hidden shadow-sm">
+    <div className="min-w-0 overflow-x-auto rounded-xl border bg-background shadow-sm">
       <Table>
         <TableHeader className="bg-muted/30">
           <TableRow className="hover:bg-transparent border-b">
@@ -118,14 +118,14 @@ export function FlexAssetsTable({ data }: Props) {
         <TableBody>
           {transformedFlexNewAsset.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={7} className="h-32 text-center text-muted-foreground italic">
+              <TableCell colSpan={8} className="h-32 text-center text-muted-foreground italic">
                 No active assets found.
               </TableCell>
             </TableRow>
           ) : (
             transformedFlexNewAsset.map((asset) => (
               <TableRow key={asset.id} className="group hover:bg-muted/30 transition-colors">
-                <TableCell className="font-bold text-slate-900 group-hover:text-primary transition-colors cursor-pointer" onClick={() => { updateAssetId(asset.id || ""); window.location.href = `/assets/flex/${asset.name}`; }}>
+                <TableCell className="max-w-40 cursor-pointer font-bold wrap-break-word text-slate-900 transition-colors group-hover:text-primary" onClick={() => { updateAssetId(asset.id || ""); window.location.href = `/assets/flex/${asset.name}`; }}>
                   {asset.name}
                 </TableCell>
                 <TableCell className="text-xs font-medium text-slate-500 hidden md:table-cell uppercase tracking-tight"> {asset.location} </TableCell>
@@ -138,7 +138,7 @@ export function FlexAssetsTable({ data }: Props) {
                 </TableCell>
                 <TableCell className="text-xs font-bold tabular-nums hidden lg:table-cell"> {asset.availableSizes} </TableCell>
                 <TableCell className="text-xs font-bold tabular-nums text-center hidden lg:table-cell"> {asset.unitsAvailable} </TableCell>
-                <TableCell className="text-xs font-medium text-slate-600 tabular-nums whitespace-nowrap">
+                <TableCell className="text-xs font-medium tabular-nums text-slate-600 wrap-break-word sm:whitespace-nowrap">
                   {asset.minPrice === asset.maxPrice
                     ? asset.minPrice.toLocaleString("en-NG", { style: "currency", currency: "NGN", minimumFractionDigits: 0, maximumFractionDigits: 0 })
                     : `${asset.minPrice.toLocaleString("en-NG", { style: "currency", currency: "NGN", minimumFractionDigits: 0, maximumFractionDigits: 0 })} – ${asset.maxPrice.toLocaleString("en-NG", { style: "currency", currency: "NGN", minimumFractionDigits: 0, maximumFractionDigits: 0 })}`

@@ -50,8 +50,9 @@ export function CompleteAssetPaymentsTable({ data }: CompleteAssetPaymentsTableP
   const rows = useFragment(CompleteAssetPaymentsFragment, data);
 
   return (
-    <Card className="border border-gray-200 overflow-x-auto mt-4">
-      <Table>
+    <Card className="min-w-0 overflow-hidden border border-gray-200">
+      <div className="min-w-0 overflow-x-auto">
+        <Table className="min-w-[1200px]">
         <TableHeader>
           <TableRow>
             <TableHead>Name</TableHead>
@@ -79,7 +80,7 @@ export function CompleteAssetPaymentsTable({ data }: CompleteAssetPaymentsTableP
             rows.map((row, idx) => (
               <TableRow key={`${row.email}-${idx}`}>
                 <TableCell>{row.name || "-"}</TableCell>
-                <TableCell>{row.email || "-"}</TableCell>
+                <TableCell className="max-w-[200px] whitespace-normal wrap-break-word">{row.email || "-"}</TableCell>
                 <TableCell>{row.phone_number || "-"}</TableCell>
                 <TableCell>{row.sales_person || "-"}</TableCell>
                 <TableCell>{row.asset_name || "-"}</TableCell>
@@ -99,6 +100,7 @@ export function CompleteAssetPaymentsTable({ data }: CompleteAssetPaymentsTableP
           )}
         </TableBody>
       </Table>
+      </div>
     </Card>
   );
 }

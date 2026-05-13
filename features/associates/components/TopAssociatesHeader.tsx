@@ -34,19 +34,19 @@ export function TopAssociatesHeader({
 
   return (
     <div className="flex flex-col gap-4">
-      <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between px-0">
-        <div>
-          <CardTitle className="text-2xl font-bold">Top Associates</CardTitle>
-          <CardDescription>
+      <CardHeader className="flex flex-col gap-3 px-0 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <CardTitle className="text-xl font-bold sm:text-2xl">Top Associates</CardTitle>
+          <CardDescription className="text-sm sm:text-base">
             Ranked by revenue with flexible sorting for performance comparisons.
           </CardDescription>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
           <Select
             value={sortKey}
             onValueChange={(value) => onSortChange(value as AssociateSortKey, sortDirection)}
           >
-            <SelectTrigger className="w-[220px]">
+            <SelectTrigger className="w-full sm:w-[220px]">
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
             <SelectContent>
@@ -71,8 +71,8 @@ export function TopAssociatesHeader({
       </CardHeader>
 
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3 p-4 bg-muted/30 rounded-xl border border-border/50">
-        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Filters</span>
+      <div className="flex flex-col gap-3 rounded-xl border border-border/50 bg-muted/30 p-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3 sm:p-4">
+        <span className="shrink-0 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Filters</span>
         <DateFilter />
         <FilterSelect
           data={[

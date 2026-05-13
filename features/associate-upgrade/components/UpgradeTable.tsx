@@ -80,8 +80,9 @@ export function UpgradeTable({ data, onApprove, onDecline }: UpgradeTableProps) 
   }
 
   return (
-    <Card className="border border-gray-200 overflow-x-auto pt-0!">
-      <Table>
+    <Card className="min-w-0 overflow-hidden border border-gray-200 pt-0">
+      <div className="min-w-0 w-full overflow-x-auto">
+        <Table className="min-w-[1040px]">
         <TableHeader className="bg-gray-50 border-b border-gray-200">
           <TableRow className="text-sm font-bold text-black whitespace-nowrap">
             <TableHead className="py-4 font-semibold">
@@ -142,30 +143,34 @@ export function UpgradeTable({ data, onApprove, onDecline }: UpgradeTableProps) 
             return (
               <TableRow
                 key={upgrade._id || idx}
-                className={`text-sm font-medium text-gray-900 hover:bg-gray-100 transition-colors border-gray-200 whitespace-nowrap ${idx % 2 === 0 ? "bg-gray-50/50" : "bg-white"}`}
+                className={`border-gray-200 text-sm font-medium text-gray-900 transition-colors hover:bg-gray-100 ${idx % 2 === 0 ? "bg-gray-50/50" : "bg-white"}`}
               >
-                <TableCell className="py-4">
+                <TableCell className="max-w-[200px] py-4 whitespace-normal wrap-break-word">
                   <Link
-                    href={`/admin/dashboard/user/${upgrade.user?._id ?? ""}`}
-                    className="text-black hover:text-gray-700 font-medium hover:underline transition-colors"
+                    href={`/users/${upgrade.user?._id ?? ""}`}
+                    className="font-medium text-black transition-colors hover:text-gray-700 hover:underline"
                   >
                     {upgrade.user?.lastName} {upgrade.user?.firstName}
                   </Link>
                 </TableCell>
-                <TableCell className="py-4 text-gray-700">
-                  <div className="flex flex-col gap-1">
+                <TableCell className="max-w-[220px] py-4 text-gray-700">
+                  <div className="flex min-w-0 flex-col gap-1">
                     <Link
-                      href={`/admin/dashboard/user/${upgrade.associate?._id ?? ""}`}
-                      className="text-black hover:text-gray-700 font-medium hover:underline transition-colors"
+                      href={`/users/${upgrade.associate?._id ?? ""}`}
+                      className="font-medium text-black transition-colors hover:text-gray-700 hover:underline"
                     >
                       {upgrade.associate?.firstName} {upgrade.associate?.lastName || "N/A"}
                     </Link>
-                    <span className="text-xs text-gray-500">{upgrade.associate?.email || "N/A"}</span>
+                    <span className="wrap-break-word text-xs text-gray-500">{upgrade.associate?.email || "N/A"}</span>
                   </div>
                 </TableCell>
-                <TableCell className="py-4 text-gray-700">{upgrade.user_upgrade_type || "N/A"}</TableCell>
-                <TableCell className="py-4 text-gray-700">{upgrade.transaction_type || "N/A"}</TableCell>
-                <TableCell className="py-4 text-gray-700">{upgrade.fee_amount || "N/A"}</TableCell>
+                <TableCell className="max-w-[140px] whitespace-normal wrap-break-word py-4 text-gray-700">
+                  {upgrade.user_upgrade_type || "N/A"}
+                </TableCell>
+                <TableCell className="max-w-[120px] whitespace-normal wrap-break-word py-4 text-gray-700">
+                  {upgrade.transaction_type || "N/A"}
+                </TableCell>
+                <TableCell className="py-4 text-gray-700 whitespace-nowrap">{upgrade.fee_amount || "N/A"}</TableCell>
                 <TableCell className="py-4 text-gray-700">
                   <TransactionStatus status={upgrade.admin_status || undefined} />
                 </TableCell>
@@ -206,6 +211,7 @@ export function UpgradeTable({ data, onApprove, onDecline }: UpgradeTableProps) 
           })}
         </TableBody>
       </Table>
+      </div>
     </Card>
   );
 }

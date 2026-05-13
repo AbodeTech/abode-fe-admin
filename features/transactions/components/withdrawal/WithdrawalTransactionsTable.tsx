@@ -2,7 +2,6 @@
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { User, Hash, CreditCard, DollarSign, Calendar, CheckCircle, Zap } from "lucide-react";
 import Link from "next/link";
 import { TransactionStatus } from "@/components/shared/TransactionStatus";
@@ -107,12 +106,12 @@ export function WithdrawalTransactionsTable({ data, isLoading, onApprove, onDecl
 
   return (
     <div className="w-full">
-      <Card className="border border-gray-200 pt-0! mt-0!">
-        <div className="w-full overflow-x-auto">
+      <Card className="border border-gray-200 pt-0">
+        <div className="min-w-0 w-full overflow-x-auto">
           <Table className="min-w-[980px]">
             <TableHeader className="bg-gray-50 border-b border-gray-200">
               <TableRow className="text-sm font-bold text-black">
-                <TableHead className="py-0! font-semibold">
+                <TableHead className="py-0 font-semibold">
                   <div className="flex items-center gap-2">
                     <User className="h-4 w-4" />
                     Payer
@@ -163,7 +162,7 @@ export function WithdrawalTransactionsTable({ data, isLoading, onApprove, onDecl
                 >
                   <TableCell className="py-4 w-37.5">
                     <Link
-                      href={`/admin/dashboard/user/${transaction.user?._id ?? ""}`}
+                      href={`/users/${transaction.user?._id ?? ""}`}
                       className="text-black hover:text-gray-700 font-medium hover:underline transition-colors"
                     >
                       {transaction.user?.lastName} {transaction.user?.firstName}

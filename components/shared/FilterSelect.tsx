@@ -38,12 +38,12 @@ export function FilterSelect({ data, queryKey, placeholder }: FilterSelectProps)
 
     // Reset to page 1 when filter changes
     params.set("page", "1");
-    router.push(`?${params.toString()}`);
+    router.push(`?${params.toString()}`, { scroll: false });
   };
 
   return (
     <Select value={value} onValueChange={handleChange}>
-      <SelectTrigger className="w-fit min-w-[140px] bg-white">
+      <SelectTrigger className="h-10 w-full min-w-0 bg-white sm:h-9 sm:w-fit sm:min-w-40">
         <SelectValue placeholder={placeholder || "Select"} />
       </SelectTrigger>
       <SelectContent>

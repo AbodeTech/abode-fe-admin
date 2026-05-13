@@ -28,7 +28,7 @@ function Content() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-[calc(100vh-200px)]">
+      <div className="mx-auto flex min-h-[40vh] w-full min-w-0 max-w-[1600px] items-center justify-center px-3 py-16 sm:px-4">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
@@ -36,9 +36,11 @@ function Content() {
 
   if (error) {
     return (
-      <div className="p-4 rounded-md bg-red-50 text-red-500 border border-red-200">
-        <h3 className="font-bold">Error loading admin logs</h3>
-        <p>{(error as Error).message || "An unexpected error occurred."}</p>
+      <div className="mx-auto w-full min-w-0 max-w-[1600px] px-3 sm:px-4">
+        <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-500">
+          <h3 className="font-bold">Error loading admin logs</h3>
+          <p>{(error as Error).message || "An unexpected error occurred."}</p>
+        </div>
       </div>
     );
   }
@@ -47,9 +49,9 @@ function Content() {
   const count = data?.count || 0;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="text-2xl font-bold tracking-tight">Admin Logs</h1>
+    <div className="mx-auto mt-4 w-full min-w-0 max-w-[1600px] space-y-6 px-3 pb-16 sm:px-4 sm:pb-20">
+      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="min-w-0 text-2xl font-bold tracking-tight">Admin Logs</h1>
         <AdminLogsExport
           filters={{
             page,
@@ -60,7 +62,7 @@ function Content() {
         />
       </div>
 
-      <Card className="p-4">
+      <Card className="min-w-0 overflow-hidden p-4">
         <AdminLogFilters />
       </Card>
 
@@ -73,7 +75,13 @@ function Content() {
 
 export default function AdminLogsPage() {
   return (
-    <Suspense fallback={<div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+    <Suspense
+      fallback={
+        <div className="mx-auto flex w-full min-w-0 max-w-[1600px] justify-center px-3 py-16 sm:px-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      }
+    >
       <Content />
     </Suspense>
   );

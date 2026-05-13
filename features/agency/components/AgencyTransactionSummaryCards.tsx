@@ -37,53 +37,57 @@ export function AgencyTransactionSummaryCards({ transactions }: AgencyTransactio
   );
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-      <Card className="border border-gray-200">
-        <CardHeader className="pb-2 flex flex-row items-center justify-between">
-          <CardTitle className="text-sm text-muted-foreground">Total Transactions</CardTitle>
-          <ReceiptText className="h-4 w-4 text-muted-foreground" />
+    <div className="grid min-w-0 grid-cols-1 gap-3 min-[380px]:grid-cols-2 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <Card className="min-w-0 overflow-hidden border border-gray-200">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="min-w-0 text-sm font-medium text-muted-foreground">Total Transactions</CardTitle>
+          <ReceiptText className="h-4 w-4 shrink-0 text-muted-foreground" />
         </CardHeader>
-        <CardContent className="text-2xl font-semibold">{totalTransactions}</CardContent>
+        <CardContent className="text-xl font-semibold tabular-nums sm:text-2xl">{totalTransactions}</CardContent>
       </Card>
 
-      <Card className="border border-gray-200">
-        <CardHeader className="pb-2 flex flex-row items-center justify-between">
-          <CardTitle className="text-sm text-muted-foreground">Total Amount</CardTitle>
-          <DollarSign className="h-4 w-4 text-muted-foreground" />
+      <Card className="min-w-0 overflow-hidden border border-gray-200">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="min-w-0 text-sm font-medium text-muted-foreground">Total Amount</CardTitle>
+          <DollarSign className="h-4 w-4 shrink-0 text-muted-foreground" />
         </CardHeader>
-        <CardContent className="text-2xl font-semibold">{formatCurrency(totalAmount)}</CardContent>
+        <CardContent className="text-lg font-semibold tabular-nums wrap-break-word sm:text-xl md:text-2xl">
+          {formatCurrency(totalAmount)}
+        </CardContent>
       </Card>
 
-      <Card className="border border-gray-200">
-        <CardHeader className="pb-2 flex flex-row items-center justify-between">
-          <CardTitle className="text-sm text-muted-foreground">Approved Amount</CardTitle>
-          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+      <Card className="min-w-0 overflow-hidden border border-gray-200">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="min-w-0 text-sm font-medium text-muted-foreground">Approved Amount</CardTitle>
+          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
         </CardHeader>
-        <CardContent className="text-2xl font-semibold">{formatCurrency(approvedAmount)}</CardContent>
+        <CardContent className="text-lg font-semibold tabular-nums wrap-break-word sm:text-xl md:text-2xl">
+          {formatCurrency(approvedAmount)}
+        </CardContent>
       </Card>
 
-      <Card className="border border-gray-200">
-        <CardHeader className="pb-2 flex flex-row items-center justify-between">
-          <CardTitle className="text-sm text-muted-foreground">Approved Transactions</CardTitle>
-          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+      <Card className="min-w-0 overflow-hidden border border-gray-200">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="min-w-0 text-sm font-medium text-muted-foreground">Approved Transactions</CardTitle>
+          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
         </CardHeader>
-        <CardContent className="text-2xl font-semibold">{approvedTransactions.length}</CardContent>
+        <CardContent className="text-xl font-semibold tabular-nums sm:text-2xl">{approvedTransactions.length}</CardContent>
       </Card>
 
-      <Card className="border border-gray-200">
-        <CardHeader className="pb-2 flex flex-row items-center justify-between">
-          <CardTitle className="text-sm text-muted-foreground">Pending Transactions</CardTitle>
-          <Clock3 className="h-4 w-4 text-amber-600" />
+      <Card className="min-w-0 overflow-hidden border border-gray-200">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="min-w-0 text-sm font-medium text-muted-foreground">Pending Transactions</CardTitle>
+          <Clock3 className="h-4 w-4 shrink-0 text-amber-600" />
         </CardHeader>
-        <CardContent className="text-2xl font-semibold">{pendingTransactions.length}</CardContent>
+        <CardContent className="text-xl font-semibold tabular-nums sm:text-2xl">{pendingTransactions.length}</CardContent>
       </Card>
 
-      <Card className="border border-gray-200">
-        <CardHeader className="pb-2 flex flex-row items-center justify-between">
-          <CardTitle className="text-sm text-muted-foreground">Declined Transactions</CardTitle>
-          <XCircle className="h-4 w-4 text-rose-600" />
+      <Card className="min-w-0 overflow-hidden border border-gray-200">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="min-w-0 text-sm font-medium text-muted-foreground">Declined Transactions</CardTitle>
+          <XCircle className="h-4 w-4 shrink-0 text-rose-600" />
         </CardHeader>
-        <CardContent className="text-2xl font-semibold">{declinedTransactions.length}</CardContent>
+        <CardContent className="text-xl font-semibold tabular-nums sm:text-2xl">{declinedTransactions.length}</CardContent>
       </Card>
     </div>
   );

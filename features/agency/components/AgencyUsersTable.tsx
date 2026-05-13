@@ -25,8 +25,8 @@ export function AgencyUsersTable({ users }: AgencyUsersTableProps) {
   const rows = users ?? [];
 
   return (
-    <div className="border border-gray-200 rounded-md overflow-x-auto">
-      <Table>
+    <div className="min-w-0 overflow-x-auto rounded-md border border-gray-200">
+      <Table className="min-w-[560px]">
         <TableHeader>
           <TableRow>
             <TableHead>Name</TableHead>
@@ -44,11 +44,13 @@ export function AgencyUsersTable({ users }: AgencyUsersTableProps) {
           ) : (
             rows.map((user) => (
               <TableRow key={user._id} className="hover:bg-muted/30">
-                <TableCell className="font-medium">
-                  {[user.firstName, user.lastName].filter(Boolean).join(" ") || "-"}
+                <TableCell className="max-w-48 font-medium">
+                  <span className="wrap-break-word">
+                    {[user.firstName, user.lastName].filter(Boolean).join(" ") || "-"}
+                  </span>
                 </TableCell>
-                <TableCell>{user.email || "-"}</TableCell>
-                <TableCell>{user.phoneNumber || "-"}</TableCell>
+                <TableCell className="max-w-48 wrap-break-word text-sm">{user.email || "-"}</TableCell>
+                <TableCell className="max-w-40 wrap-break-word text-sm">{user.phoneNumber || "-"}</TableCell>
               </TableRow>
             ))
           )}

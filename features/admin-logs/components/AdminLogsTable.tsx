@@ -58,9 +58,9 @@ export function AdminLogsTable({ logs }: { logs: FragmentType<typeof AdminLogsRo
   return (
     <>
       {/* Mobile cards */}
-      <div className="lg:hidden space-y-3">
+      <div className="lg:hidden min-w-0 space-y-3">
         {items.map((log) => (
-          <Card key={log._id} className="border-border bg-card">
+          <Card key={log._id} className="min-w-0 border-border bg-card">
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center justify-between text-base">
                 <span>{formatTimestamp(log.timestamp)}</span>
@@ -88,9 +88,9 @@ export function AdminLogsTable({ logs }: { logs: FragmentType<typeof AdminLogsRo
       </div>
 
       {/* Desktop table */}
-      <Card className="border-border bg-card overflow-hidden hidden lg:block">
-        <div className="w-full overflow-x-auto">
-          <Table>
+      <Card className="hidden min-w-0 overflow-hidden border-border bg-card lg:block">
+        <div className="min-w-0 overflow-x-auto">
+          <Table className="min-w-[900px]">
             <TableHeader>
               <TableRow className="border-border hover:bg-transparent">
                 <TableHead className="text-muted-foreground whitespace-nowrap px-6">Timestamp</TableHead>

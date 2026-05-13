@@ -44,7 +44,7 @@ function SalesContent() {
 
   if (summaryLoading || listLoading) {
     return (
-      <div className="flex items-center justify-center h-[calc(100vh-200px)]">
+      <div className="flex min-h-[40vh] items-center justify-center py-16">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
@@ -60,28 +60,30 @@ function SalesContent() {
   }
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div className="flex items-center gap-4">
-          <h1 className="text-2xl font-bold tracking-tight">Sales</h1>
+    <div className="mx-auto w-full min-w-0 max-w-[1600px] space-y-4 sm:space-y-6 md:space-y-8">
+      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-4">
+        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Sales</h1>
           <Link
             href="/analytics/sales"
-            className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline group"
+            className="inline-flex w-fit items-center gap-1.5 text-sm font-semibold text-primary hover:underline group"
           >
             View Analytics
-            <ArrowRight className="size-4 group-hover:translate-x-0.5 transition-transform" />
+            <ArrowRight className="size-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
           </Link>
         </div>
-        <SalesExport
-          filters={{
-            page,
-            limit: DEFAULT_SALES_LIMIT,
-            search,
-            startDate,
-            endDate,
-            assetType,
-          }}
-        />
+        <div className="w-full min-w-0 sm:w-auto sm:shrink-0">
+          <SalesExport
+            filters={{
+              page,
+              limit: DEFAULT_SALES_LIMIT,
+              search,
+              startDate,
+              endDate,
+              assetType,
+            }}
+          />
+        </div>
       </div>
 
       {summaryError && (
@@ -94,7 +96,7 @@ function SalesContent() {
 
       <SalesTable records={list?.data?.filter((item): item is NonNullable<typeof item> => item !== null)} />
 
-      <div className="px-4">
+      <div className="min-w-0 px-0 sm:px-2">
         <Pagination count={totalCount} currentIdx={page} limit={DEFAULT_SALES_LIMIT} />
       </div>
     </div>

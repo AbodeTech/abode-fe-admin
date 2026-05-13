@@ -27,15 +27,15 @@ interface RolesGridProps {
 export function RolesGrid({ roles, isLoading }: RolesGridProps) {
   if (isLoading) {
     return (
-      <Card className="border-border bg-card">
-        <CardHeader className="flex flex-row items-center justify-between">
+      <Card className="min-w-0 border-border bg-card">
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <Shield className="h-5 w-5" />
             <CardTitle>Roles Management</CardTitle>
           </div>
           <Skeleton className="h-9 w-32" />
         </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <CardContent className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, idx) => (
             <Skeleton key={idx} className="h-32 w-full" />
           ))}
@@ -49,26 +49,28 @@ export function RolesGrid({ roles, isLoading }: RolesGridProps) {
   );
 
   return (
-    <section className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Shield className="h-5 w-5 text-muted-foreground" />
-          <h2 className="text-2xl font-semibold text-foreground">Roles Management</h2>
+    <section className="min-w-0 space-y-4">
+      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-2">
+          <Shield className="h-5 w-5 shrink-0 text-muted-foreground" />
+          <h2 className="min-w-0 text-2xl font-semibold text-foreground">Roles Management</h2>
         </div>
-        <CreateRoleDialog />
+        <div className="w-full sm:ml-auto sm:w-auto">
+          <CreateRoleDialog />
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid min-w-0 grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
         {safeRoles.map((role) => {
           const data = getFragmentData(RoleCardFragment, role);
           return (
-            <Card key={data._id} className="border-border bg-card hover:shadow-sm transition">
-              <CardHeader className="pb-3 flex flex-row items-start justify-between">
-                <div>
+            <Card key={data._id} className="min-w-0 border-border bg-card transition hover:shadow-sm">
+              <CardHeader className="flex flex-row items-start justify-between gap-2 pb-3">
+                <div className="min-w-0">
                   <CardTitle className="text-lg font-semibold text-foreground">
                     {data.name}
                   </CardTitle>
-                  <p className="text-sm text-muted-foreground mt-1">{data.description}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{data.description}</p>
                 </div>
                 <Button variant="ghost" size="icon" className="text-destructive" disabled>
                   <Trash2 className="h-4 w-4" />

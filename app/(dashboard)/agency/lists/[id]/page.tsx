@@ -30,7 +30,7 @@ export default function AgencyDetailPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="mx-auto w-full min-w-0 max-w-[1600px] space-y-4 sm:space-y-6">
       <AgencyDetailView
         agency={data?.agency}
         statistics={data?.statistics}

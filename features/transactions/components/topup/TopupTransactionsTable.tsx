@@ -2,7 +2,6 @@
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { User, CreditCard, DollarSign, Calendar, CheckCircle, Eye, Upload } from "lucide-react";
 import Link from "next/link";
 import { TransactionStatus } from "@/components/shared/TransactionStatus";
@@ -94,9 +93,9 @@ export function TopupTransactionsTable({ data, isLoading, onApprove, onDecline, 
   return (
     <div className="w-full">
       {/* Desktop Table Layout */}
-      <Card className="border border-gray-200 pt-0! mt-0!">
-        <ScrollArea className="w-full">
-          <Table>
+      <Card className="border border-gray-200 pt-0">
+        <div className="min-w-0 w-full overflow-x-auto">
+          <Table className="min-w-[920px]">
             <TableHeader className="bg-gray-50 border-b border-gray-200">
               <TableRow className="text-sm font-bold text-black">
                 <TableHead className="py-4 font-semibold">
@@ -147,7 +146,7 @@ export function TopupTransactionsTable({ data, isLoading, onApprove, onDecline, 
                 >
                   <TableCell className="py-4 w-[150px]">
                     <Link
-                      href={`/admin/dashboard/user/${transaction.user?._id ?? ""}`}
+                      href={`/users/${transaction.user?._id ?? ""}`}
                       className="text-black hover:text-gray-700 font-medium hover:underline transition-colors"
                     >
                       {transaction.user?.lastName} {transaction.user?.firstName}
@@ -195,7 +194,7 @@ export function TopupTransactionsTable({ data, isLoading, onApprove, onDecline, 
               ))}
             </TableBody>
           </Table>
-        </ScrollArea>
+        </div>
       </Card>
     </div>
   );

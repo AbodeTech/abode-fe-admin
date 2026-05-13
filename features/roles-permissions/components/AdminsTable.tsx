@@ -38,8 +38,8 @@ interface AdminsTableProps {
 export function AdminsTable({ admins, isLoading }: AdminsTableProps) {
   if (isLoading) {
     return (
-      <Card className="border-border bg-card">
-        <div className="p-4 flex items-center justify-between">
+      <Card className="min-w-0 border-border bg-card">
+        <div className="p-4 sm:flex sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <Users className="h-5 w-5" />
             <h2 className="text-xl font-semibold">Admin Management</h2>
@@ -60,19 +60,20 @@ export function AdminsTable({ admins, isLoading }: AdminsTableProps) {
   );
 
   return (
-    <section className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Users className="h-5 w-5 text-muted-foreground" />
-          <h2 className="text-2xl font-semibold text-foreground">Admin Management</h2>
+    <section className="min-w-0 space-y-3">
+      <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-2">
+          <Users className="h-5 w-5 shrink-0 text-muted-foreground" />
+          <h2 className="min-w-0 text-2xl font-semibold text-foreground">Admin Management</h2>
         </div>
-        <div className="text-sm text-muted-foreground flex items-center gap-1">
+        <div className="flex shrink-0 items-center gap-1 text-sm text-muted-foreground">
           <Users className="h-4 w-4" />
           {rows.length} total admins
         </div>
       </div>
-      <Card className="border-border bg-card">
-        <Table>
+      <Card className="min-w-0 overflow-hidden border-border bg-card">
+        <div className="min-w-0 overflow-x-auto">
+          <Table className="min-w-[720px]">
           <TableHeader>
             <TableRow className="border-border hover:bg-transparent">
               <TableHead className="font-semibold text-foreground">Admin</TableHead>
@@ -93,15 +94,15 @@ export function AdminsTable({ admins, isLoading }: AdminsTableProps) {
                 const admin = getFragmentData(AdminRowFragment, row);
                 return (
                   <TableRow key={admin.adminId || idx}>
-                    <TableCell>
+                    <TableCell className="max-w-[220px] align-top">
                       <div className="font-medium">{admin.adminName}</div>
-                      <div className="text-xs text-muted-foreground">{admin.adminEmail}</div>
+                      <div className="break-all text-xs text-muted-foreground">{admin.adminEmail}</div>
                     </TableCell>
                     <TableCell>
                       <Badge className="bg-primary/10 text-primary hover:bg-primary/20 border-primary/20">{admin.role}</Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="flex flex-wrap gap-1">
+                      <div className="flex min-w-0 flex-wrap gap-1">
                         {(admin.permissions || []).slice(0, 3).map((perm, i) => (
                           <Badge key={`${admin.adminId}-${i}`} variant="outline" className="text-xs bg-muted/30 border-border">
                             {perm}
@@ -115,7 +116,7 @@ export function AdminsTable({ admins, isLoading }: AdminsTableProps) {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
+                      <div className="flex min-w-0 flex-wrap items-center gap-2">
                         <ChangeRoleDialog admin={admin} />
                         <Button variant="outline" size="sm" asChild>
                           <Link href={`/security/roles/${admin.adminId}`}>View</Link>
@@ -128,6 +129,7 @@ export function AdminsTable({ admins, isLoading }: AdminsTableProps) {
             )}
           </TableBody>
         </Table>
+        </div>
       </Card>
     </section>
   );

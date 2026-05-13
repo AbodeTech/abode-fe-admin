@@ -47,7 +47,7 @@ export function AgencyListTable({ rows, isLoading }: AgencyListTableProps) {
 
   if (isLoading) {
     return (
-      <Card className="border border-gray-200 p-4 space-y-3">
+      <Card className="min-w-0 border border-gray-200 p-4 space-y-3">
         <Skeleton className="h-6 w-48" />
         {Array.from({ length: 5 }).map((_, index) => (
           <Skeleton key={index} className="h-10 w-full" />
@@ -59,20 +59,21 @@ export function AgencyListTable({ rows, isLoading }: AgencyListTableProps) {
   const items = rows ?? [];
 
   return (
-    <Card className="border border-gray-200 overflow-x-auto">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Agency Name</TableHead>
-            <TableHead>Contact</TableHead>
-            <TableHead>Sales Volume</TableHead>
-            <TableHead>Amount Paid</TableHead>
-            <TableHead>Balance</TableHead>
-            <TableHead>Commission</TableHead>
-            <TableHead>Clients</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
+    <Card className="min-w-0 border border-gray-200">
+      <div className="min-w-0 overflow-x-auto">
+        <Table className="min-w-[880px]">
+          <TableHeader>
+            <TableRow>
+              <TableHead>Agency Name</TableHead>
+              <TableHead>Contact</TableHead>
+              <TableHead>Sales Volume</TableHead>
+              <TableHead>Amount Paid</TableHead>
+              <TableHead>Balance</TableHead>
+              <TableHead>Commission</TableHead>
+              <TableHead>Clients</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
         <TableBody>
           {items.length === 0 ? (
             <TableRow>
@@ -87,21 +88,35 @@ export function AgencyListTable({ rows, isLoading }: AgencyListTableProps) {
                 className="cursor-pointer hover:bg-muted/40"
                 onClick={() => router.push(`/agency/lists/${agency._id}`)}
               >
-                <TableCell className="font-medium">{agency.agency_name}</TableCell>
-                <TableCell>
-                  <div className="text-sm">{agency.contact?.email || "-"}</div>
-                  <div className="text-xs text-muted-foreground">{agency.contact?.phoneNumber || "-"}</div>
+                <TableCell className="max-w-48 font-medium">
+                  <span className="line-clamp-2 wrap-break-word" title={agency.agency_name}>
+                    {agency.agency_name}
+                  </span>
                 </TableCell>
-                <TableCell>{formatCurrency(agency.total_sales_volume)}</TableCell>
-                <TableCell>{formatCurrency(agency.total_amount_paid)}</TableCell>
-                <TableCell className="text-rose-600">{formatCurrency(agency.total_balance)}</TableCell>
-                <TableCell>{agency.commission_percentage}%</TableCell>
-                <TableCell>{agency.total_referrals}</TableCell>
+                <TableCell className="max-w-44">
+                  <div className="wrap-break-word text-sm" title={agency.contact?.email ?? undefined}>
+                    {agency.contact?.email || "-"}
+                  </div>
+                  <div className="wrap-break-word text-xs text-muted-foreground">
+                    {agency.contact?.phoneNumber || "-"}
+                  </div>
+                </TableCell>
+                <TableCell className="max-w-36 tabular-nums wrap-break-word">
+                  {formatCurrency(agency.total_sales_volume)}
+                </TableCell>
+                <TableCell className="max-w-36 tabular-nums wrap-break-word">
+                  {formatCurrency(agency.total_amount_paid)}
+                </TableCell>
+                <TableCell className="max-w-36 tabular-nums wrap-break-word text-rose-600">
+                  {formatCurrency(agency.total_balance)}
+                </TableCell>
+                <TableCell className="tabular-nums">{agency.commission_percentage}%</TableCell>
+                <TableCell className="tabular-nums">{agency.total_referrals}</TableCell>
                 <TableCell className="text-right">
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="rounded-full"
+                    className="inline-flex rounded-full"
                     asChild
                     onClick={(event) => event.stopPropagation()}
                   >
@@ -114,7 +129,8 @@ export function AgencyListTable({ rows, isLoading }: AgencyListTableProps) {
             ))
           )}
         </TableBody>
-      </Table>
+        </Table>
+      </div>
     </Card>
   );
 }

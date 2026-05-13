@@ -2,9 +2,8 @@
 
 import { useParams } from "next/navigation";
 import { useAdminWithRole } from "@/features/roles-permissions";
-import { AdminDetailHeader, AdminDetailFragment } from "@/features/roles-permissions/components/AdminDetailHeader";
+import { AdminDetailHeader, AdminDetailFragment, type AdminLogLike } from "@/features/roles-permissions/components/AdminDetailHeader";
 import { AdminLogsTable, DEFAULT_ADMIN_LOGS_LIMIT, useAdminLogs } from "@/features/admin-logs";
-import { AdminLogsRowFragment } from "@/features/admin-logs/components/AdminLogsTable";
 import { useFragment } from "@/lib/gql";
 import { Pagination } from "@/components/shared/Pagination";
 import { Loader2 } from "lucide-react";
@@ -24,15 +23,17 @@ export default function AdminDetailPage() {
 
   if (adminError) {
     return (
-      <div className="p-4 rounded-md bg-red-50 text-red-500 border border-red-200">
-        <h3 className="font-bold">Error loading admin</h3>
-        <p>{(adminError as Error).message || "An unexpected error occurred."}</p>
+      <div className="mx-auto w-full min-w-0 max-w-[1600px] px-3 sm:px-4">
+        <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-500">
+          <h3 className="font-bold">Error loading admin</h3>
+          <p>{(adminError as Error).message || "An unexpected error occurred."}</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto mt-4 w-full min-w-0 max-w-[1600px] space-y-6 px-3 pb-16 sm:px-4 sm:pb-20">
       {loadingAdmin && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
@@ -42,14 +43,17 @@ export default function AdminDetailPage() {
 
       <AdminDetailHeader
         admin={adminData}
-        logs={logsData?.data?.filter((log): log is NonNullable<typeof log> => log !== null) || []}
+        logs={
+          (logsData?.data?.filter((log): log is NonNullable<typeof log> => log !== null) ||
+            []) as AdminLogLike[]
+        }
         isLoadingLogs={loadingLogs}
       />
 
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
+      <div className="min-w-0 space-y-3">
+        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h3 className="text-xl font-semibold">Activity History</h3>
-          <span className="text-sm text-muted-foreground">
+          <span className="shrink-0 text-sm text-muted-foreground">
             {logsData?.count ?? 0} total activities
           </span>
         </div>

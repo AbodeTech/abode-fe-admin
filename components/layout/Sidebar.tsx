@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -115,7 +115,7 @@ const navGroups = [
 
 const Sidebar = () => {
   const pathname = usePathname();
-  const { isSidebarCollapsed } = useUIStore();
+  const { isSidebarCollapsed, isMobileNavOpen, closeMobileNav } = useUIStore();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ "Transactions": false, "Users": false });
 
@@ -123,11 +123,19 @@ const Sidebar = () => {
     setOpenGroups(prev => ({ ...prev, [groupTitle]: !prev[groupTitle] }));
   };
 
+  useEffect(() => {
+    closeMobileNav();
+  }, [pathname, closeMobileNav]);
+
   return (
     <div
+      id="dashboard-sidebar"
       className={cn(
-        "hidden-scrollbar bg-[#f5f5f5] flex flex-col h-screen sticky top-0 left-0 transition-all duration-300 ease-in-out border-r border-transparent",
-        isSidebarCollapsed ? "w-[80px]" : "w-[260px]"
+        "hidden-scrollbar bg-[#f5f5f5] flex flex-col h-screen border-r border-transparent transition-[transform,width] duration-300 ease-in-out",
+        isSidebarCollapsed ? "w-[80px]" : "w-[260px]",
+        "max-md:fixed max-md:left-0 max-md:top-0 max-md:z-60 max-md:max-w-[min(280px,100vw-2rem)] max-md:shadow-[4px_0_24px_rgba(0,0,0,0.12)]",
+        isMobileNavOpen ? "max-md:translate-x-0" : "max-md:-translate-x-full",
+        "md:sticky md:top-0 md:translate-x-0 md:shadow-none"
       )}
     >
       {/* Logo Area */}

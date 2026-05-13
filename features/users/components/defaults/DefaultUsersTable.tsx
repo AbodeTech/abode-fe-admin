@@ -39,7 +39,7 @@ export function DefaultUsersTable({ users }: DefaultUsersTableProps) {
   const validRows = rows.filter((user): user is NonNullable<typeof user> => user !== null && user !== undefined);
 
   return (
-    <Table>
+    <Table className="min-w-[960px]">
       <TableHeader>
         <TableRow>
           <TableHead>Name</TableHead>
@@ -62,7 +62,7 @@ export function DefaultUsersTable({ users }: DefaultUsersTableProps) {
                 {user.firstName} {user.lastName}
               </Link>
             </TableCell>
-            <TableCell className="!py-3.5">{user.email}</TableCell>
+            <TableCell className="!py-3.5 max-w-[220px] whitespace-normal wrap-break-word">{user.email}</TableCell>
             <TableCell>{user.phoneNumber || "-"}</TableCell>
             <TableCell className="!py-3.5">
               {user.createdAt ? format(new Date(user.createdAt), "dd/MM/yyyy") : "-"}

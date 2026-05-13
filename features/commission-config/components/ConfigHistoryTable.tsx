@@ -49,8 +49,9 @@ export function ConfigHistoryTable() {
   }
 
   return (
-    <div className="space-y-4">
-      <Table>
+    <div className="min-w-0 space-y-4">
+      <div className="min-w-0 overflow-x-auto rounded-md border border-border">
+        <Table className="min-w-[800px]">
         <TableHeader>
           <TableRow>
             <TableHead className="w-[70px]">Version</TableHead>
@@ -86,17 +87,19 @@ export function ConfigHistoryTable() {
           ))}
         </TableBody>
       </Table>
+      </div>
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
+        <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-center text-sm text-muted-foreground sm:text-left">
             Page {page} of {totalPages} ({total} total)
           </p>
-          <div className="flex items-center gap-2">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:gap-2">
             <Button
               variant="outline"
               size="sm"
+              className="w-full sm:w-auto"
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page <= 1}
             >
@@ -105,6 +108,7 @@ export function ConfigHistoryTable() {
             <Button
               variant="outline"
               size="sm"
+              className="w-full sm:w-auto"
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page >= totalPages}
             >

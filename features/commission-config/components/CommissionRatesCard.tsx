@@ -12,9 +12,9 @@ import type { CommissionConfig } from "../hooks/use-commission-config";
 
 function RateRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between py-1.5">
-      <span className="text-sm text-muted-foreground">{label}</span>
-      <span className="text-sm font-medium">{value}</span>
+    <div className="flex min-w-0 items-start justify-between gap-3 py-1.5">
+      <span className="min-w-0 shrink text-sm text-muted-foreground">{label}</span>
+      <span className="shrink-0 break-all text-right text-sm font-medium tabular-nums">{value}</span>
     </div>
   );
 }
@@ -75,7 +75,7 @@ export function CommissionRatesCard({ config }: CommissionRatesCardProps) {
       </Card>
 
       {/* Full Ownership Commission */}
-      <Card>
+      <Card className="min-w-0 overflow-hidden">
         <CardHeader>
           <CardTitle className="text-base">Full Ownership Commission</CardTitle>
           <CardDescription>Direct, upline, and topline rates</CardDescription>
@@ -90,7 +90,7 @@ export function CommissionRatesCard({ config }: CommissionRatesCardProps) {
       </Card>
 
       {/* Removal Rates */}
-      <Card>
+      <Card className="min-w-0 overflow-hidden">
         <CardHeader>
           <CardTitle className="text-base">Removal Rates</CardTitle>
           <CardDescription>Commission deduction on asset removal</CardDescription>
@@ -112,7 +112,7 @@ export function CommissionRatesCard({ config }: CommissionRatesCardProps) {
       </Card>
 
       {/* General Settings */}
-      <Card>
+      <Card className="min-w-0 overflow-hidden">
         <CardHeader>
           <CardTitle className="text-base">General Settings</CardTitle>
           <CardDescription>Taxes, thresholds, and fees</CardDescription>

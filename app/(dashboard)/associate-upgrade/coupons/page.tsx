@@ -64,21 +64,25 @@ export default function CouponsPage() {
 
   if (error) {
     return (
-      <div className="p-4 rounded-md bg-red-50 text-red-500 border border-red-200">
-        <h3 className="font-bold">Error loading coupons</h3>
-        <p>{(error as Error).message || "An unexpected error occurred."}</p>
+      <div className="mx-auto w-full min-w-0 max-w-[1600px] px-3 sm:px-4">
+        <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-500">
+          <h3 className="font-bold">Error loading coupons</h3>
+          <p>{(error as Error).message || "An unexpected error occurred."}</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Associate Upgrade Coupons</h1>
-          <p className="text-muted-foreground">Manage discount codes for upgrade flows.</p>
+    <div className="mx-auto mt-4 w-full min-w-0 max-w-[1600px] space-y-4 px-3 pb-16 sm:space-y-6 sm:px-4 sm:pb-20">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Associate Upgrade Coupons</h1>
+          <p className="text-sm text-muted-foreground sm:text-base">Manage discount codes for upgrade flows.</p>
         </div>
-        <CreateCouponDialog />
+        <div className="w-full shrink-0 sm:w-auto">
+          <CreateCouponDialog />
+        </div>
       </div>
 
       <CouponFilters status={status} onStatusChange={setStatus} search={search} onSearchChange={setSearch} />

@@ -35,13 +35,18 @@ function CompletedAssetPaymentsUsersContent() {
   const count = data?.count ?? 0;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Users With Completed Asset Payments</h1>
-          <p className="text-muted-foreground">Clients who have completed full payment.</p>
+    <div className="mx-auto mt-4 w-full min-w-0 max-w-[1600px] space-y-4 px-3 pb-20 sm:px-4">
+      <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Users With Completed Asset Payments</h1>
+          <p className="text-sm text-muted-foreground sm:text-base">Clients who have completed full payment.</p>
         </div>
-        <Button variant="outline" onClick={handleExport} disabled={exportMutation.isPending}>
+        <Button
+          variant="outline"
+          className="w-full shrink-0 sm:w-auto"
+          onClick={handleExport}
+          disabled={exportMutation.isPending}
+        >
           {exportMutation.isPending ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -56,8 +61,10 @@ function CompletedAssetPaymentsUsersContent() {
         </Button>
       </div>
 
-      <CompleteAssetPaymentsTable data={rows} />
-      <Pagination count={count} currentIdx={page} limit={DEFAULT_COMPLETE_ASSET_LIMIT} />
+      <div className="min-w-0 space-y-4">
+        <CompleteAssetPaymentsTable data={rows} />
+        <Pagination count={count} currentIdx={page} limit={DEFAULT_COMPLETE_ASSET_LIMIT} />
+      </div>
 
       {isLoading && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">

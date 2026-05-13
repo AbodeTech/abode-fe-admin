@@ -9,13 +9,17 @@ interface DashboardCardProps {
 
 export function DashboardCard({ title, value, icon: Icon }: DashboardCardProps) {
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium capitalize">{title}</CardTitle>
-        <Icon className="h-4 w-4 text-muted-foreground" />
+    <Card className="min-w-0 overflow-hidden">
+      <CardHeader className="flex min-w-0 flex-row items-start justify-between gap-2 space-y-0 pb-2">
+        <CardTitle className="min-w-0 flex-1 text-sm font-medium capitalize leading-snug wrap-break-word pr-1">
+          {title}
+        </CardTitle>
+        <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
       </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
+      <CardContent className="min-w-0">
+        <div className="min-w-0 max-w-full text-xl font-bold tabular-nums leading-tight tracking-tight break-all sm:text-2xl">
+          {value}
+        </div>
       </CardContent>
     </Card>
   );

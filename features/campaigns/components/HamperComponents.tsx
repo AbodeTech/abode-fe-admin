@@ -70,7 +70,7 @@ export function HamperMetricsSection({ salesData, financialData }: HamperMetrics
         percentage={sales?.percentageSold}
       />
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         <MetricCard title="Total Revenue" value={currency(financial?.totalRevenueGenerated)} />
         <MetricCard title="Asset Value Sold" value={currency(financial?.totalAssetValueSold)} />
         <MetricCard title="Avg Payment Plan" value={currency(financial?.averagePaymentPerPlan)} />
@@ -165,19 +165,21 @@ export function HamperTransactionTable() {
         rows={rows}
       />
       {typeof data?.count === 'number' && data.count > limit && (
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
           <Button
             variant="outline"
+            className="w-full sm:w-auto"
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page === 1}
           >
             Previous
           </Button>
-          <span className="text-sm text-muted-foreground">
+          <span className="text-center text-sm text-muted-foreground">
             Page {page} of {Math.ceil(data.count / limit)}
           </span>
           <Button
             variant="outline"
+            className="w-full sm:w-auto"
             onClick={() => setPage((p) => p + 1)}
             disabled={page >= Math.ceil(data.count / limit)}
           >
@@ -227,27 +229,27 @@ export function HamperLeaderboardSection() {
           <h3 className="text-lg font-semibold text-foreground">Hamper Leaderboard</h3>
           <p className="text-sm text-muted-foreground">Top referrers winning hampers</p>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="grid gap-1">
+        <div className="flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-end">
+          <div className="grid w-full min-w-0 gap-1 sm:w-auto sm:max-w-[11rem]">
             <span className="text-xs text-muted-foreground">Start Date</span>
             <Input
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="w-[150px]"
+              className="w-full min-w-0 sm:w-[150px]"
             />
           </div>
-          <div className="grid gap-1">
+          <div className="grid w-full min-w-0 gap-1 sm:w-auto sm:max-w-[11rem]">
             <span className="text-xs text-muted-foreground">End Date</span>
             <Input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="w-[150px]"
+              className="w-full min-w-0 sm:w-[150px]"
             />
           </div>
-          <div className="grid gap-1 self-end pb-px">
-            <Button variant="outline" onClick={() => { setStartDate(""); setEndDate(""); }}>
+          <div className="grid w-full gap-1 self-end pb-px sm:w-auto">
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => { setStartDate(""); setEndDate(""); }}>
               Clear
             </Button>
           </div>

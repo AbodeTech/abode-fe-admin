@@ -32,19 +32,20 @@ export function AgencyTransactionAgencyTable({ rows }: AgencyTransactionAgencyTa
   const items = rows ?? [];
 
   return (
-    <Card className="border border-gray-200 overflow-x-auto">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Agency</TableHead>
-            <TableHead>Contact</TableHead>
-            <TableHead>Sales Volume</TableHead>
-            <TableHead>Amount Paid</TableHead>
-            <TableHead>Outstanding</TableHead>
-            <TableHead className="text-right">Transactions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
+    <Card className="min-w-0 border border-gray-200">
+      <div className="min-w-0 overflow-x-auto">
+        <Table className="min-w-[800px]">
+          <TableHeader>
+            <TableRow>
+              <TableHead>Agency</TableHead>
+              <TableHead>Contact</TableHead>
+              <TableHead>Sales Volume</TableHead>
+              <TableHead>Amount Paid</TableHead>
+              <TableHead>Outstanding</TableHead>
+              <TableHead className="text-right">Transactions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
           {items.length === 0 ? (
             <TableRow>
               <TableCell colSpan={6} className="text-center text-sm text-muted-foreground">
@@ -58,18 +59,31 @@ export function AgencyTransactionAgencyTable({ rows }: AgencyTransactionAgencyTa
                 className="cursor-pointer hover:bg-muted/40"
                 onClick={() => router.push(`/agency/transactions/${agency._id}`)}
               >
-                <TableCell className="font-medium">{agency.agency_name}</TableCell>
-                <TableCell>
-                  <div className="text-sm">{agency.contact?.email || "-"}</div>
-                  <div className="text-xs text-muted-foreground">{agency.contact?.phoneNumber || "-"}</div>
+                <TableCell className="max-w-48 font-medium">
+                  <span className="line-clamp-2 wrap-break-word" title={agency.agency_name}>
+                    {agency.agency_name}
+                  </span>
                 </TableCell>
-                <TableCell>{formatCurrency(agency.total_sales_volume)}</TableCell>
-                <TableCell>{formatCurrency(agency.total_amount_paid)}</TableCell>
-                <TableCell className="text-rose-600">{formatCurrency(agency.total_balance)}</TableCell>
+                <TableCell className="max-w-44">
+                  <div className="wrap-break-word text-sm">{agency.contact?.email || "-"}</div>
+                  <div className="wrap-break-word text-xs text-muted-foreground">
+                    {agency.contact?.phoneNumber || "-"}
+                  </div>
+                </TableCell>
+                <TableCell className="max-w-36 tabular-nums wrap-break-word">
+                  {formatCurrency(agency.total_sales_volume)}
+                </TableCell>
+                <TableCell className="max-w-36 tabular-nums wrap-break-word">
+                  {formatCurrency(agency.total_amount_paid)}
+                </TableCell>
+                <TableCell className="max-w-36 tabular-nums wrap-break-word text-rose-600">
+                  {formatCurrency(agency.total_balance)}
+                </TableCell>
                 <TableCell className="text-right">
                   <Button
                     variant="outline"
                     size="sm"
+                    className="w-full min-w-[5.5rem] shrink-0 sm:inline-flex sm:w-auto"
                     asChild
                     onClick={(event) => event.stopPropagation()}
                   >
@@ -83,7 +97,8 @@ export function AgencyTransactionAgencyTable({ rows }: AgencyTransactionAgencyTa
             ))
           )}
         </TableBody>
-      </Table>
+        </Table>
+      </div>
     </Card>
   );
 }

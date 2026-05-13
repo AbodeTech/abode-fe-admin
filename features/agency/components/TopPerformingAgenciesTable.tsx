@@ -27,12 +27,13 @@ export function TopPerformingAgenciesTable({ rows }: TopPerformingAgenciesTableP
   const items = rows ?? [];
 
   return (
-    <Card className="border border-gray-200">
-      <CardHeader>
-        <CardTitle>Top Performing Agencies</CardTitle>
+    <Card className="min-w-0 border border-gray-200">
+      <CardHeader className="min-w-0 pb-2 sm:pb-3">
+        <CardTitle className="text-lg sm:text-xl">Top Performing Agencies</CardTitle>
       </CardHeader>
-      <CardContent>
-        <Table>
+      <CardContent className="min-w-0 p-0 sm:p-6">
+        <div className="min-w-0 overflow-x-auto px-4 pb-4 sm:px-0 sm:pb-0">
+          <Table className="min-w-[720px]">
           <TableHeader>
             <TableRow>
               <TableHead>Agency</TableHead>
@@ -52,16 +53,25 @@ export function TopPerformingAgenciesTable({ rows }: TopPerformingAgenciesTableP
             ) : (
               items.map((agency) => (
                 <TableRow key={agency._id}>
-                  <TableCell className="font-medium">{agency.agency_name}</TableCell>
-                  <TableCell>{agency.email || "-"}</TableCell>
-                  <TableCell>{agency.phoneNumber || "-"}</TableCell>
-                  <TableCell>{agency.clients ?? 0}</TableCell>
-                  <TableCell>{formatCurrency(agency.sales_volume)}</TableCell>
+                  <TableCell className="max-w-40 font-medium">
+                    <span className="line-clamp-2 wrap-break-word" title={agency.agency_name}>
+                      {agency.agency_name}
+                    </span>
+                  </TableCell>
+                  <TableCell className="max-w-44 wrap-break-word text-sm" title={agency.email ?? undefined}>
+                    {agency.email || "-"}
+                  </TableCell>
+                  <TableCell className="max-w-36 wrap-break-word text-sm">{agency.phoneNumber || "-"}</TableCell>
+                  <TableCell className="tabular-nums">{agency.clients ?? 0}</TableCell>
+                  <TableCell className="max-w-40 tabular-nums wrap-break-word">
+                    {formatCurrency(agency.sales_volume)}
+                  </TableCell>
                 </TableRow>
               ))
             )}
           </TableBody>
         </Table>
+        </div>
       </CardContent>
     </Card>
   );

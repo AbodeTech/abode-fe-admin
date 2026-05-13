@@ -76,8 +76,8 @@ const formatDate = (value?: string | null) => {
 export function AllocationTable({ rows, isLoading, onSend, onResend }: AllocationTableProps) {
   if (isLoading) {
     return (
-      <Card className="border-none shadow-sm">
-        <CardContent className="p-4 space-y-3">
+      <Card className="min-w-0 border-none shadow-sm">
+        <CardContent className="space-y-3 p-4">
           <Skeleton className="h-6 w-48" />
           {Array.from({ length: 5 }).map((_, idx) => (
             <Skeleton key={idx} className="h-10 w-full" />
@@ -92,103 +92,151 @@ export function AllocationTable({ rows, isLoading, onSend, onResend }: Allocatio
   );
 
   return (
-    <Card className="border-none shadow-sm">
-      <CardContent className="p-0">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
+    <Card className="min-w-0 border-none shadow-sm">
+      <CardContent className="min-w-0 p-3 sm:p-4">
+        <Table className="w-max min-w-[1520px] table-auto text-sm">
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="min-w-44 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Client Name
+              </TableHead>
+              <TableHead className="min-w-40 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Referrer
+              </TableHead>
+              <TableHead className="min-w-52 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Asset Name
+              </TableHead>
+              <TableHead className="min-w-20 whitespace-nowrap px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Land Size
+              </TableHead>
+              <TableHead className="min-w-18 whitespace-nowrap px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Units
+              </TableHead>
+              <TableHead className="min-w-22 whitespace-nowrap px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Payment %
+              </TableHead>
+              <TableHead className="min-w-38 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Amount Paid
+              </TableHead>
+              <TableHead className="min-w-38 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Total Price
+              </TableHead>
+              <TableHead className="min-w-26 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Duration
+              </TableHead>
+              <TableHead className="min-w-48 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Location
+              </TableHead>
+              <TableHead className="min-w-34 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Bought Date
+              </TableHead>
+              <TableHead className="min-w-40 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Allocation #
+              </TableHead>
+              <TableHead className="min-w-38 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Action
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {safeRows.length === 0 ? (
               <TableRow>
-                <TableHead>Client Name</TableHead>
-                <TableHead>Referrer</TableHead>
-                <TableHead>Asset Name</TableHead>
-                <TableHead>Land Size</TableHead>
-                <TableHead>Units</TableHead>
-                <TableHead>Payment %</TableHead>
-                <TableHead>Amount Paid</TableHead>
-                <TableHead>Total Price</TableHead>
-                <TableHead>Duration</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead>Bought Date</TableHead>
-                <TableHead>Allocation #</TableHead>
-                <TableHead>Action</TableHead>
+                <TableCell
+                  colSpan={13}
+                  className="whitespace-normal px-4 py-12 text-center text-sm text-muted-foreground"
+                >
+                  No eligible clients found.
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {safeRows.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={13} className="text-center text-sm text-muted-foreground">
-                    No eligible clients found.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                safeRows.map((row, idx) => {
-                  const client = getFragmentData(AllocationTableRowFragment, row);
-                  const hasAllocation = Boolean(client.allocation);
+            ) : (
+              safeRows.map((row, idx) => {
+                const client = getFragmentData(AllocationTableRowFragment, row);
+                const hasAllocation = Boolean(client.allocation);
 
-                  return (
-                    <TableRow key={`${client.email}-${idx}`}>
-                      <TableCell className="max-w-[200px] text-wrap">
+                return (
+                  <TableRow key={`${client.email}-${idx}`}>
+                    <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed">
+                      <span className="block wrap-break-word font-medium">
                         {client.firstName} {client.lastName}
-                      </TableCell>
-                      <TableCell>{client.referral || "not added yet"}</TableCell>
-                      <TableCell>
-                        {client.assetType
-                          ? `${client.assetName} (${client.assetType})`
-                          : client.assetName}
-                      </TableCell>
-                      <TableCell>{formatNumber(client.assetSize)}</TableCell>
-                      <TableCell>{formatNumber(client.unit)}</TableCell>
-                      <TableCell>{client.paymentPercentage ?? "—"}%</TableCell>
-                      <TableCell>{formatAmount(client.amountPaid)}</TableCell>
-                      <TableCell>{formatAmount(client.totalPrice)}</TableCell>
-                      <TableCell>{client.duration} months</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <MapPin className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">{client.location}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>{formatDate(client.end_date)}</TableCell>
-                      <TableCell>
-                        {hasAllocation ? (
-                          <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
-                            {client.allocation}
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary" className="bg-orange-100 text-orange-800">
-                            Not assigned yet
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {hasAllocation ? (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex items-center gap-1"
-                            onClick={() => onResend(row)}
-                          >
-                            <RotateCcw className="h-4 w-4" />
-                            Resend
-                          </Button>
-                        ) : (
-                          <Button
-                            size="sm"
-                            className="flex items-center gap-1"
-                            onClick={() => onSend(row)}
-                          >
-                            <Send className="h-4 w-4" />
-                            Send Allocation
-                          </Button>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
-        </div>
+                      </span>
+                    </TableCell>
+                    <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed wrap-break-word">
+                      {client.referral || "not added yet"}
+                    </TableCell>
+                    <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed wrap-break-word">
+                      {client.assetType
+                        ? `${client.assetName} (${client.assetType})`
+                        : client.assetName}
+                    </TableCell>
+                    <TableCell className="align-top whitespace-nowrap px-4 py-4 tabular-nums leading-relaxed">
+                      {formatNumber(client.assetSize)}
+                    </TableCell>
+                    <TableCell className="align-top whitespace-nowrap px-4 py-4 tabular-nums leading-relaxed">
+                      {formatNumber(client.unit)}
+                    </TableCell>
+                    <TableCell className="align-top whitespace-nowrap px-4 py-4 tabular-nums leading-relaxed">
+                      {client.paymentPercentage ?? "—"}%
+                    </TableCell>
+                    <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 tabular-nums leading-relaxed wrap-break-word">
+                      {formatAmount(client.amountPaid)}
+                    </TableCell>
+                    <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 tabular-nums leading-relaxed wrap-break-word">
+                      {formatAmount(client.totalPrice)}
+                    </TableCell>
+                    <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed wrap-break-word">
+                      {client.duration} months
+                    </TableCell>
+                    <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed">
+                      <div className="flex min-w-0 items-start gap-2">
+                        <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                        <span className="min-w-0 wrap-break-word">{client.location}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed wrap-break-word">
+                      {formatDate(client.end_date)}
+                    </TableCell>
+                    <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed">
+                      {hasAllocation ? (
+                        <Badge className="inline-block max-w-full wrap-break-word bg-green-100 px-2.5 py-1 text-left text-sm font-normal leading-snug text-green-800 hover:bg-green-100">
+                          {client.allocation}
+                        </Badge>
+                      ) : (
+                        <Badge
+                          variant="secondary"
+                          className="inline-block max-w-full whitespace-normal bg-orange-100 px-2.5 py-1 text-left text-sm font-normal leading-snug text-orange-800"
+                        >
+                          Not assigned yet
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4">
+                      {hasAllocation ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex h-auto min-h-10 w-full flex-col gap-1.5 whitespace-normal px-3 py-2.5 text-center text-sm leading-snug sm:h-9 sm:min-h-0 sm:w-auto sm:flex-row sm:items-center sm:justify-center sm:gap-2"
+                          onClick={() => onResend(row)}
+                        >
+                          <RotateCcw className="h-4 w-4 shrink-0" />
+                          Resend
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          className="flex h-auto min-h-10 w-full flex-col gap-1.5 whitespace-normal px-3 py-2.5 text-center text-sm leading-snug sm:h-9 sm:min-h-0 sm:w-auto sm:flex-row sm:items-center sm:justify-center sm:gap-2"
+                          onClick={() => onSend(row)}
+                        >
+                          <Send className="h-4 w-4 shrink-0" />
+                          Send Allocation
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
+          </TableBody>
+        </Table>
       </CardContent>
     </Card>
   );

@@ -206,8 +206,8 @@ export function CommissionTransactionsTable({ data, isLoading }: CommissionTrans
   };
 
   return (
-    <div className="w-full">
-      <Table>
+    <div className="min-w-0 w-full">
+      <Table className="min-w-[1200px]">
         <TableHeader className="bg-[#F9FAFB] border-b border-[#E5EAEF]">
           <TableRow className="text-xs font-medium text-[#5D6679]">
             <TableHead
@@ -284,7 +284,9 @@ export function CommissionTransactionsTable({ data, isLoading }: CommissionTrans
                     <span className="text-[#667085]">{formattedDate.time}</span>
                   </div>
                 </TableCell>
-                <TableCell className="py-5 px-4 text-sm font-medium text-[#333333]">{commission.clientName}</TableCell>
+                <TableCell className="max-w-[180px] whitespace-normal wrap-break-word py-5 px-4 text-sm font-medium text-[#333333] sm:max-w-none">
+                  {commission.clientName}
+                </TableCell>
                 <TableCell className="py-5 px-4 text-sm font-semibold text-[#333333]">
                   {commission.whtAmount
                     ? `₦${formatNumber(Number(commission.whtAmount) + Number(commission.amount))}`
@@ -296,10 +298,12 @@ export function CommissionTransactionsTable({ data, isLoading }: CommissionTrans
                     {commission.parsedAssetType}
                   </Badge>
                 </TableCell>
-                <TableCell className="py-5 px-4 text-sm font-medium text-[#333333]">
+                <TableCell className="max-w-[160px] whitespace-normal wrap-break-word py-5 px-4 text-sm font-medium text-[#333333] sm:max-w-none">
                   {commission.user?.firstName} {commission.user?.lastName}
                 </TableCell>
-                <TableCell className="py-5 px-4 text-sm text-[#667085]">{commission.user?.referrer || "N/A"}</TableCell>
+                <TableCell className="max-w-[140px] whitespace-normal wrap-break-word py-5 px-4 text-sm text-[#667085] sm:max-w-none">
+                  {commission.user?.referrer || "N/A"}
+                </TableCell>
                 <TableCell className="py-5 px-4">
                   <Badge variant="outline" className="bg-[#F0F1F3] text-[#333333] border-[#E0E2E7] text-xs font-medium">
                     {commission.user?.referral_status ?? "N/A"}

@@ -71,7 +71,7 @@ export function FullOwnershipAssetsTable({ data }: Props) {
   );
 
   return (
-    <div className="rounded-xl border bg-background overflow-hidden shadow-sm">
+    <div className="min-w-0 overflow-x-auto rounded-xl border bg-background shadow-sm">
       <Table>
         <TableHeader className="bg-muted/30">
           <TableRow className="hover:bg-transparent border-b">
@@ -95,7 +95,7 @@ export function FullOwnershipAssetsTable({ data }: Props) {
             transformedFullOwnershipNewAssets.map((asset) => (
               <TableRow key={asset.id} className="group hover:bg-muted/30 transition-colors">
                 <TableCell
-                  className="font-bold text-slate-900 group-hover:text-primary transition-colors cursor-pointer"
+                  className="max-w-40 cursor-pointer font-bold wrap-break-word text-slate-900 transition-colors group-hover:text-primary"
                   onClick={() => {
                     updateAssetId(asset.id || "");
                     window.location.href = `/assets/fullownership/${asset.name}`;
@@ -113,7 +113,7 @@ export function FullOwnershipAssetsTable({ data }: Props) {
                 </TableCell>
                 <TableCell className="text-xs font-bold tabular-nums hidden lg:table-cell"> {asset.availableSizes} </TableCell>
                 <TableCell className="text-xs font-bold tabular-nums text-center hidden lg:table-cell"> {asset.unitsAvailable} </TableCell>
-                <TableCell className="text-[10px] font-medium text-slate-600">
+                <TableCell className="min-w-0 text-[10px] font-medium tabular-nums wrap-break-word text-slate-600 sm:whitespace-nowrap">
                   {asset.minPrice.toLocaleString("en-NG", {
                     style: "currency",
                     currency: "NGN",

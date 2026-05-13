@@ -51,8 +51,8 @@ export function SalesTable({ records }: SalesTableProps) {
   const salesList = data || [];
 
   return (
-    <div className="mt-8 px-4 space-y-4">
-      <div className="rounded-md border bg-white">
+    <div className="mt-4 min-w-0 space-y-4 px-0 sm:mt-8 sm:px-2 md:px-4">
+      <div className="min-w-0 overflow-x-auto rounded-md border bg-white">
         <Table>
           <TableHeader>
             <TableRow>

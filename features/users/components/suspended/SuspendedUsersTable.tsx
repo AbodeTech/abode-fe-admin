@@ -76,7 +76,7 @@ export function SuspendedUsersTable({ users }: SuspendedUsersTableProps) {
   };
 
   return (
-    <Table>
+    <Table className="min-w-[920px]">
       <TableHeader>
         <TableRow>
           <TableHead>Name</TableHead>
@@ -98,7 +98,7 @@ export function SuspendedUsersTable({ users }: SuspendedUsersTableProps) {
                 {user.firstName} {user.lastName}
               </Link>
             </TableCell>
-            <TableCell className="!py-3.5">{user.email}</TableCell>
+            <TableCell className="!py-3.5 max-w-[200px] whitespace-normal wrap-break-word">{user.email}</TableCell>
             <TableCell className="!py-3.5">
               {user.createdAt ? format(new Date(user.createdAt), "dd/MM/yyyy") : "-"}
             </TableCell>

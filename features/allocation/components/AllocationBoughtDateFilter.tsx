@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { CalendarIcon } from "lucide-react";
 import { format, isSameDay, subDays, subWeeks } from "date-fns";
@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
 type DateOption = "all" | "7days" | "2weeks" | "4weeks" | "custom";
@@ -48,7 +49,16 @@ export function AllocationBoughtDateFilter() {
   }, [searchParams]);
 
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [isNarrowScreen, setIsNarrowScreen] = useState(false);
   const selectedOption = determineInitialOption(dateRange.from, dateRange.to);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 640px)");
+    const update = () => setIsNarrowScreen(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
 
   const updateParams = useCallback(
     (updates: Record<string, string | null>) => {
@@ -118,10 +128,10 @@ export function AllocationBoughtDateFilter() {
   };
 
   return (
-    <div className="space-y-2">
-      <p className="text-sm text-muted-foreground">Bought date</p>
+    <div className="min-w-0 space-y-2">
+      <Label className="text-sm text-muted-foreground">Bought date</Label>
       <Select value={selectedOption} onValueChange={handleOptionChange}>
-        <SelectTrigger className="w-full">
+        <SelectTrigger className="h-10 w-full min-w-0 sm:h-9">
           <SelectValue placeholder="Select time range" />
         </SelectTrigger>
         <SelectContent>
@@ -142,28 +152,30 @@ export function AllocationBoughtDateFilter() {
             <Button
               variant="outline"
               className={cn(
-                "w-full justify-start text-left font-normal",
+                "h-auto min-h-10 w-full justify-start px-3 py-2 text-left text-sm font-normal leading-snug sm:h-9 sm:min-h-0 sm:py-2",
                 !dateRange.from || !dateRange.to ? "text-muted-foreground" : ""
               )}
             >
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {formatDateRange()}
+              <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
+              <span className="min-w-0 wrap-break-word">{formatDateRange()}</span>
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
+          <PopoverContent
+            className="w-[min(100vw-1.5rem,36rem)] max-w-[calc(100vw-1.5rem)] p-0 sm:w-auto"
+            align="start"
+            sideOffset={4}
+          >
             <Calendar
               initialFocus
               mode="range"
               defaultMonth={dateRange.from ?? new Date()}
               selected={{ from: dateRange.from ?? undefined, to: dateRange.to ?? undefined }}
               onSelect={handleCalendarSelect}
-              numberOfMonths={2}
+              numberOfMonths={isNarrowScreen ? 1 : 2}
             />
           </PopoverContent>
         </Popover>
       )}
-
-      <div className="text-xs text-muted-foreground">{formatDateRange()}</div>
     </div>
   );
 }

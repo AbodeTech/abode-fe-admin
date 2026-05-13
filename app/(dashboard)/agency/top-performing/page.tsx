@@ -22,10 +22,12 @@ export default function TopPerformingAgenciesPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Top Performing Agencies</h1>
-        <p className="text-muted-foreground">Performance ranking based on client volume and sales value.</p>
+    <div className="mx-auto w-full min-w-0 max-w-[1600px] space-y-4 sm:space-y-6">
+      <div className="min-w-0">
+        <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Top Performing Agencies</h1>
+        <p className="text-sm text-muted-foreground sm:text-base">
+          Performance ranking based on client volume and sales value.
+        </p>
       </div>
 
       <AgencyDashboardPanels

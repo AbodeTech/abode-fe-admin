@@ -44,23 +44,31 @@ function DashboardContent() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
-        <div className="flex items-center gap-3">
-          <DateFilter />
-          {isAdmin && <InviteAdminDialog />}
+    <div className="mx-auto w-full max-w-[1600px] space-y-4 sm:space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-4">
+        <div className="min-w-0 space-y-1">
+          <h2 className="text-xl font-bold tracking-tight sm:text-2xl">Dashboard</h2>
+          <p className="text-sm text-muted-foreground sm:text-base">
+            Welcome back, {user?.firstName || "Admin"}. Here&apos;s an overview of your platform.
+          </p>
+        </div>
+        <div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-3">
+          <div className="min-w-0 flex-1 sm:flex-initial">
+            <DateFilter />
+          </div>
+          {isAdmin && (
+            <div className="shrink-0 [&_button]:w-full sm:[&_button]:w-auto">
+              <InviteAdminDialog />
+            </div>
+          )}
         </div>
       </div>
-      <p className="text-muted-foreground">
-        Welcome back, {user?.firstName || "Admin"}. Here&apos;s an overview of your platform.
-      </p>
 
       {data && (
         <>
           <DashboardQuickOverview data={data} />
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
             <TopSellingProducts data={data.top_selling_prop} />
             <TopAssociates data={data.top_associates} />
           </div>

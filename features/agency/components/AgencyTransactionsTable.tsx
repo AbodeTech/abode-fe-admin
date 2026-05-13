@@ -55,8 +55,8 @@ export function AgencyTransactionsTable({ transactions }: AgencyTransactionsTabl
   const rows = transactions ?? [];
 
   return (
-    <div className="border border-gray-200 rounded-md overflow-x-auto">
-      <Table>
+    <div className="min-w-0 overflow-x-auto rounded-md border border-gray-200">
+      <Table className="min-w-[960px]">
         <TableHeader>
           <TableRow>
             <TableHead>Transaction</TableHead>
@@ -82,30 +82,38 @@ export function AgencyTransactionsTable({ transactions }: AgencyTransactionsTabl
               const transactionId = transaction.transaction_id?._id || "-";
               return (
                 <TableRow key={`${transactionId}-${index}`} className="hover:bg-muted/30">
-                  <TableCell className="font-mono text-xs max-w-[180px] truncate" title={transactionId}>
+                  <TableCell className="max-w-40 truncate font-mono text-xs" title={transactionId}>
                     {transactionId}
                   </TableCell>
-                  <TableCell>
-                    <div className="font-medium">
+                  <TableCell className="max-w-44">
+                    <div className="font-medium wrap-break-word">
                       {[transaction.referral_user?.firstName, transaction.referral_user?.lastName]
                         .filter(Boolean)
                         .join(" ") || "-"}
                     </div>
-                    <div className="text-xs text-muted-foreground">{transaction.referral_user?.email || "-"}</div>
+                    <div className="wrap-break-word text-xs text-muted-foreground">
+                      {transaction.referral_user?.email || "-"}
+                    </div>
                   </TableCell>
-                  <TableCell>
-                    <div className="font-medium">{transaction.asset?.asset_name || "-"}</div>
-                    <div className="text-xs text-muted-foreground">{transaction.asset?.asset_type || "-"}</div>
+                  <TableCell className="max-w-40">
+                    <div className="font-medium wrap-break-word">{transaction.asset?.asset_name || "-"}</div>
+                    <div className="wrap-break-word text-xs text-muted-foreground">
+                      {transaction.asset?.asset_type || "-"}
+                    </div>
                   </TableCell>
-                  <TableCell className="capitalize">{transaction.transaction_type?.replaceAll("_", " ") || "-"}</TableCell>
-                  <TableCell>{formatCurrency(transaction.amount)}</TableCell>
-                  <TableCell>{formatCurrency(transaction.commission_earned)}</TableCell>
+                  <TableCell className="max-w-36 capitalize wrap-break-word">
+                    {transaction.transaction_type?.replaceAll("_", " ") || "-"}
+                  </TableCell>
+                  <TableCell className="tabular-nums wrap-break-word">{formatCurrency(transaction.amount)}</TableCell>
+                  <TableCell className="tabular-nums wrap-break-word">
+                    {formatCurrency(transaction.commission_earned)}
+                  </TableCell>
                   <TableCell>
                     <Badge className={statusTone[status] || "bg-gray-100 text-gray-800"}>
                       {transaction.transaction_id?.admin_status || transaction.transaction_id?.status || "N/A"}
                     </Badge>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="whitespace-nowrap">
                     {transaction.transaction_date
                       ? new Date(transaction.transaction_date).toLocaleDateString()
                       : "-"}

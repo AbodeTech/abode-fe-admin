@@ -35,7 +35,7 @@ function DocumentTransactionsContent() {
           params.delete("search");
         }
         params.set("page", "1");
-        router.push(`?${params.toString()}`);
+        router.push(`?${params.toString()}`, { scroll: false });
       }
     }, 500);
 
@@ -53,20 +53,20 @@ function DocumentTransactionsContent() {
   const totalCount = data?.count || 0;
 
   return (
-    <div className=" mt-4 space-y-4">
+    <div className="mx-auto mt-4 w-full min-w-0 max-w-[1600px] space-y-4 px-3 pb-16 sm:px-4 sm:pb-20">
       {/* Search Bar */}
-      <div className="relative bg-white max-w-2xl">
+      <div className="relative min-w-0 max-w-2xl bg-white">
         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           placeholder="Search for user by firstname, lastname or email"
-          className="pl-8 h-11 bg-white"
+          className="h-11 bg-white pl-8"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
         <FilterSelect
           data={[
             { label: "All Transactions Status", value: "all" },
@@ -81,8 +81,8 @@ function DocumentTransactionsContent() {
       </div>
 
       {/* Title */}
-      <div className="flex items-center justify-between gap-3">
-        <h3 className="font-sans font-semibold text-[#333333] text-xl uppercase">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+        <h3 className="font-sans text-xl font-semibold uppercase text-[#333333]">
           Document / Development Transactions
         </h3>
         <DocumentExport />
@@ -98,7 +98,7 @@ function DocumentTransactionsContent() {
       <TransactionDataPoints type="document" />
 
       {/* Transaction Table */}
-      <div className="bg-white border border-[#E5EAEF] rounded-md overflow-hidden pb-10">
+      <div className="min-w-0 overflow-hidden rounded-md border border-[#E5EAEF] bg-white pb-10">
         <DocumentTransactionsTable data={data?.data} isLoading={isLoading} />
 
         {!isLoading && totalCount > 0 && (

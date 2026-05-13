@@ -3,7 +3,6 @@
 import { approveDocumentTransaction, declineDocumentTransaction } from "@/lib/api/admin/transactions.client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { User, UserCheck, Building, CreditCard, DollarSign, Calendar, CheckCircle, Eye, FileText } from "lucide-react";
 import Link from "next/link";
 import { TransactionStatus } from "@/components/shared/TransactionStatus";
@@ -96,7 +95,7 @@ export function DocumentTransactionsTable({ data, isLoading }: DocumentTransacti
   return (
     <div className="w-full">
       <Card className="border border-gray-200">
-        <ScrollArea className="w-full">
+        <div className="min-w-0 w-full overflow-x-auto">
           <Table className="min-w-[1100px]">
             <TableHeader className="bg-gray-50 border-b border-gray-200">
               <TableRow className="text-sm font-bold text-black">
@@ -214,7 +213,7 @@ export function DocumentTransactionsTable({ data, isLoading }: DocumentTransacti
               ))}
             </TableBody>
           </Table>
-        </ScrollArea>
+        </div>
       </Card>
     </div>
   );

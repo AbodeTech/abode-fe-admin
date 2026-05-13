@@ -8,16 +8,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  ClipboardList,
-  User as UserIcon,
-  DollarSign,
-  CheckCircle,
-  XCircle,
-  Image as ImageIcon,
-} from "lucide-react";
+import { ClipboardList, User as UserIcon, CheckCircle, XCircle, Image as ImageIcon } from "lucide-react";
 import { format } from "date-fns";
 import type { MarketplaceListingAdmin } from "../hooks/use-marketplace-listings";
 
@@ -67,58 +59,62 @@ export function PendingApprovalsTable({
   }
 
   return (
-    <div className="w-full">
-      <Table>
-        <TableHeader className="bg-[#F9FAFB] border-b border-[#E5EAEF]">
+    <div className="min-w-0 w-full overflow-x-auto rounded-lg border border-[#E5EAEF]">
+      <Table className="min-w-[900px]">
+        <TableHeader className="border-b border-[#E5EAEF] bg-[#F9FAFB]">
           <TableRow className="text-xs font-medium text-[#5D6679]">
-            <TableHead className="py-4 px-4 font-medium">
+            <TableHead className="px-3 py-3 font-medium sm:px-4 sm:py-4">
               <div className="flex items-center gap-2">
-                <UserIcon className="h-4 w-4" />
+                <UserIcon className="h-4 w-4 shrink-0" />
                 Buyer
               </div>
             </TableHead>
-            <TableHead className="py-4 px-4 font-medium">Seller</TableHead>
-            <TableHead className="py-4 px-4 font-medium">Asset</TableHead>
-            <TableHead className="py-4 px-4 font-medium">
-              <div className="flex items-center gap-2">
-                Price
-              </div>
+            <TableHead className="px-3 py-3 font-medium sm:px-4 sm:py-4">Seller</TableHead>
+            <TableHead className="px-3 py-3 font-medium sm:px-4 sm:py-4">Asset</TableHead>
+            <TableHead className="px-3 py-3 font-medium sm:px-4 sm:py-4">
+              <div className="flex items-center gap-2">Price</div>
             </TableHead>
-            <TableHead className="py-4 px-4 font-medium">
+            <TableHead className="px-3 py-3 font-medium sm:px-4 sm:py-4">
               <div className="flex items-center gap-2">
-                <ImageIcon className="h-4 w-4" />
+                <ImageIcon className="h-4 w-4 shrink-0" />
                 Receipt
               </div>
             </TableHead>
-            <TableHead className="py-4 px-4 font-medium">Receipt Amt</TableHead>
-            <TableHead className="py-4 px-4 font-medium">Reference</TableHead>
-            <TableHead className="py-4 px-4 font-medium">Submitted</TableHead>
-            <TableHead className="py-4 px-4 font-medium">Actions</TableHead>
+            <TableHead className="px-3 py-3 font-medium sm:px-4 sm:py-4">Receipt Amt</TableHead>
+            <TableHead className="px-3 py-3 font-medium sm:px-4 sm:py-4">Reference</TableHead>
+            <TableHead className="px-3 py-3 font-medium sm:px-4 sm:py-4">Submitted</TableHead>
+            <TableHead className="px-3 py-3 font-medium sm:px-4 sm:py-4">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {data.map((listing) => (
             <TableRow
               key={listing._id}
-              className="hover:bg-gray-50 transition-colors border-b border-[#E5EAEF] bg-white"
+              className="border-b border-[#E5EAEF] bg-white transition-colors hover:bg-gray-50"
             >
-              <TableCell className="py-5 px-4 text-sm font-medium text-[#333333]">
-                {listing.buyer
-                  ? `${listing.buyer.firstName} ${listing.buyer.lastName}`
-                  : "N/A"}
+              <TableCell className="max-w-36 px-3 py-4 text-sm font-medium text-[#333333] sm:px-4 sm:py-5">
+                <span className="line-clamp-2 wrap-break-word" title={listing.buyer ? `${listing.buyer.firstName} ${listing.buyer.lastName}` : undefined}>
+                  {listing.buyer
+                    ? `${listing.buyer.firstName} ${listing.buyer.lastName}`
+                    : "N/A"}
+                </span>
               </TableCell>
-              <TableCell className="py-5 px-4 text-sm text-[#667085]">
-                {listing.seller
-                  ? `${listing.seller.firstName} ${listing.seller.lastName}`
-                  : "N/A"}
+              <TableCell className="max-w-36 px-3 py-4 text-sm text-[#667085] sm:px-4 sm:py-5">
+                <span className="line-clamp-2 wrap-break-word" title={listing.seller ? `${listing.seller.firstName} ${listing.seller.lastName}` : undefined}>
+                  {listing.seller
+                    ? `${listing.seller.firstName} ${listing.seller.lastName}`
+                    : "N/A"}
+                </span>
               </TableCell>
-              <TableCell className="py-5 px-4 text-sm text-[#667085]">
-                {listing.asset?.asset_name || "N/A"}
+              <TableCell className="max-w-44 px-3 py-4 text-sm text-[#667085] sm:px-4 sm:py-5">
+                <span className="line-clamp-2 wrap-break-word" title={listing.asset?.asset_name ?? undefined}>
+                  {listing.asset?.asset_name || "N/A"}
+                </span>
               </TableCell>
-              <TableCell className="py-5 px-4 text-sm font-semibold text-[#333333]">
+              <TableCell className="px-3 py-4 text-sm font-semibold tabular-nums wrap-break-word text-[#333333] sm:px-4 sm:py-5">
                 {formatCurrency(listing.listing_price)}
               </TableCell>
-              <TableCell className="py-5 px-4">
+              <TableCell className="px-3 py-4 sm:px-4 sm:py-5">
                 {listing.receipt_image ? (
                   <a
                     href={listing.receipt_image}
@@ -132,16 +128,16 @@ export function PendingApprovalsTable({
                   <span className="text-gray-400 text-sm">None</span>
                 )}
               </TableCell>
-              <TableCell className="py-5 px-4 text-sm text-[#333333]">
+              <TableCell className="px-3 py-4 text-sm tabular-nums wrap-break-word text-[#333333] sm:px-4 sm:py-5">
                 {listing.receipt_amount ? formatCurrency(listing.receipt_amount) : "N/A"}
               </TableCell>
-              <TableCell className="py-5 px-4 text-sm text-[#667085] font-mono">
+              <TableCell className="max-w-32 px-3 py-4 font-mono text-sm wrap-break-word text-[#667085] sm:px-4 sm:py-5">
                 {listing.receipt_reference || "N/A"}
               </TableCell>
-              <TableCell className="py-5 px-4 text-sm text-[#333333]">
+              <TableCell className="whitespace-nowrap px-3 py-4 text-sm text-[#333333] sm:px-4 sm:py-5">
                 {formatDate(listing.createdAt)}
               </TableCell>
-              <TableCell className="py-5 px-4">
+              <TableCell className="px-3 py-4 sm:px-4 sm:py-5">
                 <div className="flex items-center gap-1">
                   {onApprove && (
                     <Button

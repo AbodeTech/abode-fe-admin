@@ -46,8 +46,8 @@ export function AgencyWalletTransactionsTable({
   emptyText,
 }: AgencyWalletTransactionsTableProps) {
   return (
-    <div className="rounded-md border border-gray-200 overflow-x-auto">
-      <Table>
+    <div className="min-w-0 overflow-x-auto rounded-md border border-gray-200">
+      <Table className="min-w-[920px]">
         <TableHeader>
           <TableRow>
             <TableHead>Transaction ID</TableHead>
@@ -77,22 +77,24 @@ export function AgencyWalletTransactionsTable({
 
               return (
                 <TableRow key={transaction._id}>
-                  <TableCell className="font-mono text-xs">{transaction._id}</TableCell>
-                  <TableCell>{formatDate(transaction.time_of_transaction)}</TableCell>
+                  <TableCell className="max-w-40 font-mono text-xs wrap-break-word">{transaction._id}</TableCell>
+                  <TableCell className="whitespace-nowrap text-sm">{formatDate(transaction.time_of_transaction)}</TableCell>
                   <TableCell className="capitalize">{transaction.type || "-"}</TableCell>
-                  <TableCell className="capitalize">
+                  <TableCell className="max-w-36 capitalize wrap-break-word">
                     {(transaction.transaction_type || "-").replaceAll("_", " ")}
                   </TableCell>
-                  <TableCell className="font-medium">{formatAmount(transaction.amount)}</TableCell>
-                  <TableCell className="max-w-[280px] truncate" title={transaction.description || "-"}>
+                  <TableCell className="max-w-36 font-medium tabular-nums wrap-break-word">
+                    {formatAmount(transaction.amount)}
+                  </TableCell>
+                  <TableCell className="max-w-48 text-sm wrap-break-word" title={transaction.description || "-"}>
                     {transaction.description || "-"}
                   </TableCell>
                   <TableCell>
-                    <Badge className={statusTone[status] || "bg-gray-100 text-gray-800"}>
+                    <Badge className={`${statusTone[status] || "bg-gray-100 text-gray-800"} wrap-break-word`}>
                       {transaction.status || "N/A"}
                     </Badge>
                   </TableCell>
-                  <TableCell className="font-mono text-xs">{reference}</TableCell>
+                  <TableCell className="max-w-36 font-mono text-xs wrap-break-word">{reference}</TableCell>
                 </TableRow>
               );
             })

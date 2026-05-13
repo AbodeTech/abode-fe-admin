@@ -15,7 +15,7 @@ export function SystemUserOverview({ startDate, endDate }: SystemUserOverviewPro
 
   if (isLoading) {
     return (
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+      <div className="grid min-w-0 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
         {[...Array(4)].map((_, i) => (
           <Skeleton key={i} className="h-28 w-full rounded-xl" />
         ))}
@@ -89,17 +89,17 @@ export function SystemUserOverview({ startDate, endDate }: SystemUserOverviewPro
   ];
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-xl font-semibold text-[#101828]">System Overview</h2>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <div className="min-w-0 space-y-4">
+      <h2 className="text-lg font-semibold text-[#101828] sm:text-xl">System Overview</h2>
+      <div className="grid min-w-0 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {stats.map((stat, index) => (
-          <Card key={index} className="border border-[#E5EAEF] shadow-sm">
+          <Card key={index} className="min-w-0 overflow-hidden border border-[#E5EAEF] shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-[#667085]">{stat.title}</CardTitle>
-              <stat.icon className="h-4 w-4 text-[#98A2B3]" />
+              <CardTitle className="min-w-0 pr-2 text-sm font-medium text-[#667085]">{stat.title}</CardTitle>
+              <stat.icon className="h-4 w-4 shrink-0 text-[#98A2B3]" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-[#101828]">{stat.value?.toLocaleString() ?? 0}</div>
+              <div className="wrap-break-word text-xl font-bold text-[#101828] sm:text-2xl">{stat.value?.toLocaleString() ?? 0}</div>
             </CardContent>
           </Card>
         ))}

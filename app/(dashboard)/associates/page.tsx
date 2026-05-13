@@ -77,7 +77,7 @@ function TopAssociatesContent() {
         params.set(key, String(value));
       }
     });
-    router.push(`?${params.toString()}`);
+    router.push(`?${params.toString()}`, { scroll: false });
   };
 
   const handleSortChange = (key: AssociateSortKey, direction: "asc" | "desc") => {
@@ -86,15 +86,17 @@ function TopAssociatesContent() {
 
   if (error) {
     return (
-      <div className="p-4 rounded-md bg-red-50 text-red-500 border border-red-200">
-        <h3 className="font-bold">Error loading top associates</h3>
-        <p>{(error as Error).message || "An unexpected error occurred."}</p>
+      <div className="mx-auto w-full min-w-0 max-w-[1600px] px-3 sm:px-4">
+        <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-500">
+          <h3 className="font-bold">Error loading top associates</h3>
+          <p>{(error as Error).message || "An unexpected error occurred."}</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto mt-4 w-full min-w-0 max-w-[1600px] space-y-4 px-3 pb-16 sm:space-y-6 sm:px-4 sm:pb-20">
       <TopAssociatesHeader
         sortKey={sortKey}
         sortDirection={sortDirection}

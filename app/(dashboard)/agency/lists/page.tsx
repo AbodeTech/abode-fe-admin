@@ -71,13 +71,15 @@ function AgencyListContent() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Agencies</h1>
-          <p className="text-muted-foreground">Manage agency partners and view their performance.</p>
+    <div className="mx-auto w-full min-w-0 max-w-[1600px] space-y-4 sm:space-y-6">
+      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Agencies</h1>
+          <p className="text-sm text-muted-foreground sm:text-base">
+            Manage agency partners and view their performance.
+          </p>
         </div>
-        <Button asChild>
+        <Button className="w-full shrink-0 sm:w-auto" asChild>
           <Link href="/agency/new">
             <Plus className="h-4 w-4 mr-2" />
             Onboard Agency

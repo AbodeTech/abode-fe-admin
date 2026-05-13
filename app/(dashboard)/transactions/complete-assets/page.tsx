@@ -17,9 +17,11 @@ function CompleteAssetPaymentsContent() {
 
   if (error) {
     return (
-      <div className="p-4 rounded-md bg-red-50 text-red-500 border border-red-200">
-        <h3 className="font-bold">Error loading completed payments</h3>
-        <p>{(error as Error).message || "An unexpected error occurred."}</p>
+      <div className="mx-auto w-full min-w-0 max-w-[1600px] px-3 sm:px-4">
+        <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-500">
+          <h3 className="font-bold">Error loading completed payments</h3>
+          <p>{(error as Error).message || "An unexpected error occurred."}</p>
+        </div>
       </div>
     );
   }
@@ -28,14 +30,18 @@ function CompleteAssetPaymentsContent() {
   const count = data?.count ?? 0;
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Completed Asset Payments</h1>
+    <div className="mx-auto mt-4 w-full min-w-0 max-w-[1600px] space-y-4 px-3 pb-16 sm:px-4 sm:pb-20">
+      <div className="min-w-0">
+        <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Completed Asset Payments</h1>
         <p className="text-muted-foreground">Clients who have completed full payment.</p>
       </div>
 
-      <CompleteAssetPaymentsTable data={rows} />
-      <Pagination count={count} currentIdx={page} limit={DEFAULT_COMPLETE_ASSET_LIMIT} />
+      <div className="min-w-0">
+        <CompleteAssetPaymentsTable data={rows} />
+      </div>
+      <div className="min-w-0 px-0 sm:px-1">
+        <Pagination count={count} currentIdx={page} limit={DEFAULT_COMPLETE_ASSET_LIMIT} />
+      </div>
 
       {isLoading && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">

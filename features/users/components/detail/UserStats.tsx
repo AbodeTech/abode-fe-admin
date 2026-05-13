@@ -43,13 +43,13 @@ const formatDateWord = (dateString: string) => {
 };
 
 const DataPoint = ({ title, value, icon, isEven }: { title: string; value: string; icon: React.ReactNode; isEven: boolean }) => (
-  <Card className={`${isEven ? "bg-[#F9FAFB]" : "bg-[#101828] text-white"} border-none shadow-sm`}>
+  <Card className={`${isEven ? "bg-[#F9FAFB]" : "bg-[#101828] text-white"} min-w-0 overflow-hidden border-none shadow-sm`}>
     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
       <CardTitle className={`text-sm font-medium ${isEven ? "text-[#667085]" : "text-gray-300"}`}>{title}</CardTitle>
       {icon}
     </CardHeader>
     <CardContent>
-      <div className={`text-2xl font-bold ${isEven ? "text-[#101828]" : "text-white"}`}>{value}</div>
+      <div className={`text-2xl font-bold wrap-break-word ${isEven ? "text-[#101828]" : "text-white"}`}>{value}</div>
     </CardContent>
   </Card>
 );
@@ -135,14 +135,14 @@ export function UserStats({ user }: UserStatsProps) {
   ];
 
   return (
-    <div className="mt-8 space-y-8">
-      <div className="flex justify-between items-center">
+    <div className="mt-8 space-y-6 sm:space-y-8">
+      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h3 className="text-2xl font-bold text-[#101828]">User Data Points</h3>
         {canToggleStatus && (
           isSuspended ? (
             <Button
               variant="outline"
-              className="text-green-700 border-green-200 bg-green-50 hover:bg-green-100 hover:text-green-800"
+              className="w-full text-green-700 border-green-200 bg-green-50 hover:bg-green-100 hover:text-green-800 sm:w-auto"
               onClick={() => setShowStatusDialog(true)}
               disabled={isUpdatingStatus}
             >
@@ -151,7 +151,7 @@ export function UserStats({ user }: UserStatsProps) {
           ) : (
             <Button
               variant="destructive"
-              className="bg-[#D92D20] hover:bg-[#B42318]"
+              className="w-full bg-[#D92D20] hover:bg-[#B42318] sm:w-auto"
               onClick={() => setShowStatusDialog(true)}
               disabled={isUpdatingStatus}
             >
@@ -160,7 +160,7 @@ export function UserStats({ user }: UserStatsProps) {
           )
         )}
       </div>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid min-w-0 gap-4 min-[380px]:grid-cols-2 md:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat, i) => (
           <DataPoint
             key={i}

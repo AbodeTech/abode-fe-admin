@@ -36,19 +36,27 @@ const metricItems: {
 
 export function AgencySystemMetrics({ data }: AgencySystemMetricsProps) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+    <div className="grid min-w-0 grid-cols-1 gap-3 min-[380px]:grid-cols-2 sm:gap-4 xl:grid-cols-5">
       {metricItems.map((item) => {
         const raw = data?.[item.key] ?? 0;
         const display = item.currency ? formatCurrency(raw as number) : raw;
         const Icon = item.icon;
 
         return (
-          <Card key={item.key} className="border border-gray-200">
-            <CardHeader className="pb-2 flex flex-row items-center justify-between">
-              <CardTitle className="text-sm text-muted-foreground">{item.label}</CardTitle>
-              <Icon className="h-4 w-4 text-muted-foreground" />
+          <Card key={item.key} className="min-w-0 overflow-hidden border border-gray-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="min-w-0 text-sm font-medium text-muted-foreground">{item.label}</CardTitle>
+              <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
             </CardHeader>
-            <CardContent className="text-xl font-semibold">{display}</CardContent>
+            <CardContent
+              className={
+                item.currency
+                  ? "text-lg font-semibold tabular-nums wrap-break-word sm:text-xl"
+                  : "text-xl font-semibold tabular-nums sm:text-2xl"
+              }
+            >
+              {display}
+            </CardContent>
           </Card>
         );
       })}
