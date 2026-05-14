@@ -2,7 +2,7 @@ import { AssetDetailHeader } from "@/features/assets";
 import {
   AssetDetailFilters,
   AssetAnalyticsSection,
-  PlotsManager,
+  BlocksManager,
   SubscribedCustomers
 } from "@/features/assets/components/detail";
 
@@ -22,7 +22,7 @@ export default async function ViewFullOwnershipAssetPage({ params }: PageProps) 
       <AssetDetailHeader assetName={assetName} assetType={assetTypeForHeader} />
       <AssetDetailFilters />
       <AssetAnalyticsSection />
-      <PlotsManager assetName={assetName} assetType={assetTypeForData} />
+      <BlocksManager assetName={assetName} assetType={assetTypeForData} />
       <SubscribedCustomers assetName={assetName} assetType={assetTypeForData} />
     </div>
   );
