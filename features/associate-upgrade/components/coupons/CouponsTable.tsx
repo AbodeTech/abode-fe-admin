@@ -19,6 +19,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { EditCouponDialog } from "./EditCouponDialog";
 import type { Coupon } from "@/lib/gql/graphql";
+import {
+  AdminDesktopTableWrap,
+  AdminMobileCard,
+  AdminMobileField,
+  AdminMobileStack,
+} from "@/components/shared/admin-responsive-table";
 
 interface CouponsTableProps {
   data?: (Coupon | null)[] | null;
@@ -74,6 +80,62 @@ export function CouponsTable({ data, onStatusChange, onDelete, onUpdate, onViewU
 
   return (
     <Card className="min-w-0 overflow-hidden border border-gray-200">
+      <AdminMobileStack className="border-b border-gray-200 p-3">
+        {rows.map((row) => {
+          const coupon = row;
+          const isActive = coupon.status === "active";
+          return (
+            <AdminMobileCard key={coupon._id} title={<span className="font-mono">{coupon.couponCode}</span>} subtitle={formatDate(coupon.expiryDate)}>
+              <AdminMobileField label="Discount" value={`${coupon.discountPercentage}%`} />
+              <AdminMobileField
+                label="Usage limit"
+                value={coupon.usageLimitType === "unlimited" ? "Unlimited" : String(coupon.usageLimit ?? "—")}
+              />
+              <AdminMobileField
+                label="Status"
+                value={
+                  <Badge className={statusTone[coupon.status?.toLowerCase() || ""] || "bg-gray-100 text-gray-800"}>
+                    {coupon.status}
+                  </Badge>
+                }
+              />
+              <div className="flex justify-end border-t border-[#E5EAEF] pt-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <MoreVertical className="h-4 w-4 mr-1" />
+                      Actions
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {onViewUsage && (
+                      <DropdownMenuItem onClick={() => onViewUsage(coupon.couponCode)}>
+                        View Usage
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setEditingCoupon(row);
+                        setIsEditOpen(true);
+                      }}
+                    >
+                      Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onStatusChange(coupon.couponCode, isActive ? "inactive" : "active")}>
+                      {isActive ? "Deactivate" : "Activate"}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="text-red-600" onClick={() => setDeletingCode(coupon.couponCode)}>
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </AdminMobileCard>
+          );
+        })}
+      </AdminMobileStack>
+
+      <AdminDesktopTableWrap>
       <div className="min-w-0 overflow-x-auto">
       <Table className="min-w-[720px]">
         <TableHeader className="bg-gray-50 border-b border-gray-200">
@@ -154,6 +216,7 @@ export function CouponsTable({ data, onStatusChange, onDelete, onUpdate, onViewU
         </TableBody>
       </Table>
       </div>
+      </AdminDesktopTableWrap>
       <AlertDialog open={deletingCode !== null} onOpenChange={(open) => { if (!open) setDeletingCode(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>

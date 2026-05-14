@@ -14,6 +14,12 @@ import {
 import Link from "next/link";
 import { Eye } from "lucide-react";
 import { useRouter } from "next/navigation";
+import {
+  AdminDesktopTableWrap,
+  AdminMobileCard,
+  AdminMobileField,
+  AdminMobileStack,
+} from "@/components/shared/admin-responsive-table";
 
 export interface AgencyListItem {
   _id: string;
@@ -60,6 +66,34 @@ export function AgencyListTable({ rows, isLoading }: AgencyListTableProps) {
 
   return (
     <Card className="min-w-0 border border-gray-200">
+      <AdminMobileStack className="border-b border-gray-200 p-3">
+        {items.length === 0 ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">No agencies found.</p>
+        ) : (
+          items.map((agency) => (
+            <AdminMobileCard
+              key={agency._id}
+              title={agency.agency_name}
+              onClick={() => router.push(`/agency/lists/${agency._id}`)}
+            >
+              <AdminMobileField label="Email" value={agency.contact?.email || "-"} />
+              <AdminMobileField label="Phone" value={agency.contact?.phoneNumber || "-"} />
+              <AdminMobileField label="Sales volume" value={formatCurrency(agency.total_sales_volume)} />
+              <AdminMobileField label="Amount paid" value={formatCurrency(agency.total_amount_paid)} />
+              <AdminMobileField label="Balance" value={formatCurrency(agency.total_balance)} />
+              <AdminMobileField label="Commission" value={`${agency.commission_percentage}%`} />
+              <AdminMobileField label="Clients" value={agency.total_referrals} />
+              <div className="flex justify-end border-t border-border pt-2" onClick={(e) => e.stopPropagation()}>
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/agency/lists/${agency._id}`}>View</Link>
+                </Button>
+              </div>
+            </AdminMobileCard>
+          ))
+        )}
+      </AdminMobileStack>
+
+      <AdminDesktopTableWrap>
       <div className="min-w-0 overflow-x-auto">
         <Table className="min-w-[880px]">
           <TableHeader>
@@ -131,6 +165,7 @@ export function AgencyListTable({ rows, isLoading }: AgencyListTableProps) {
         </TableBody>
         </Table>
       </div>
+      </AdminDesktopTableWrap>
     </Card>
   );
 }

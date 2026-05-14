@@ -72,9 +72,9 @@ export default function DashboardLayout({
               <div className="w-full h-px bg-[#F0F0F0]" />
             </Container>
 
-            {/* Scrollable Page Content */}
-            <div className="flex min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4 md:p-6 lg:p-8 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-              {children}
+            {/* Scrollable Page Content — inner column fills height so centered loaders align in the viewport */}
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden p-3 sm:p-4 md:p-6 lg:p-8 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+              <div className="flex min-h-full min-w-0 flex-1 flex-col">{children}</div>
             </div>
 
           </div>

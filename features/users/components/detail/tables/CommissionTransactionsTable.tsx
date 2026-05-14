@@ -13,6 +13,12 @@ import {
   parseCommissionDescription
 } from "@/lib/utils/transaction-utils"
 import { TransactionListResponse } from "@/lib/api/admin/transactions.types"
+import {
+  AdminDesktopTableWrap,
+  AdminMobileCard,
+  AdminMobileField,
+  AdminMobileStack,
+} from "@/components/shared/admin-responsive-table"
 
 interface CommissionTransactionsTableProps {
   transactions: TransactionListResponse[]
@@ -86,6 +92,49 @@ export function CommissionTransactionsTable({ transactions }: CommissionTransact
         <CardDescription>View and manage commission transactions</CardDescription>
       </CardHeader>
       <CardContent>
+        <AdminMobileStack className="mb-4 space-y-3">
+          {sortedTransactions.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">No commission transactions found</p>
+          ) : (
+            sortedTransactions.map((transaction) => (
+              <AdminMobileCard key={transaction._id} title={transaction._id} subtitle={formatDate(transaction.time_of_transaction)}>
+                <AdminMobileField label="Amount" value={formatAmount(transaction.amount)} />
+                <AdminMobileField
+                  label="Txn type"
+                  value={
+                    <Badge variant="outline" className={getTransactionTypeColor(transaction.transaction_type)}>
+                      {transaction.transaction_type}
+                    </Badge>
+                  }
+                />
+                <AdminMobileField
+                  label="VAT / WHT"
+                  value={
+                    transaction.vatAmount
+                      ? formatAmount(Number(transaction.vatAmount) + Number(transaction.amount))
+                      : "N/A"
+                  }
+                />
+                <AdminMobileField label="Asset" value={transaction.assetType || "N/A"} />
+                <AdminMobileField label="Client" value={transaction.clientName || "N/A"} />
+                <AdminMobileField
+                  label="Balance"
+                  value={transaction.balance ? formatAmount(transaction.balance) : "N/A"}
+                />
+                <AdminMobileField
+                  label="Status"
+                  value={
+                    <Badge variant="outline" className={getStatusColor(transaction.status)}>
+                      {transaction.status}
+                    </Badge>
+                  }
+                />
+              </AdminMobileCard>
+            ))
+          )}
+        </AdminMobileStack>
+
+        <AdminDesktopTableWrap>
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -163,6 +212,7 @@ export function CommissionTransactionsTable({ transactions }: CommissionTransact
             </TableBody>
           </Table>
         </div>
+        </AdminDesktopTableWrap>
       </CardContent>
     </Card>
   )

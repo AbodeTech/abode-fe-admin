@@ -9,7 +9,7 @@ import {
   InviteAdminDialog,
 } from "@/features/dashboard";
 import { useAuthStore } from "@/store/auth-store";
-import { Loader2 } from "lucide-react";
+import { SuspensePageFallback, PageContentLoader } from "@/components/shared/page-content-loader";
 import { DateFilter } from "@/components/shared/DateFilter";
 import { useSearchParams } from "next/navigation";
 
@@ -27,11 +27,7 @@ function DashboardContent() {
   const isAdmin = user?.role === "admin";
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-[calc(100vh-200px)]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <PageContentLoader label="Loading dashboard…" />;
   }
 
   if (error) {
@@ -80,7 +76,7 @@ function DashboardContent() {
 
 export default function DashboardPage() {
   return (
-    <Suspense fallback={<div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+    <Suspense fallback={<SuspensePageFallback />}>
       <DashboardContent />
     </Suspense>
   );

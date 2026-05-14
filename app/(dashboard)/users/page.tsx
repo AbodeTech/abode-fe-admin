@@ -14,6 +14,7 @@ import { DateFilter } from "@/components/shared/DateFilter";
 import { Input } from "@/components/ui/input";
 import { ArrowRight, Search } from "lucide-react";
 import Link from "next/link";
+import { SuspensePageFallback } from "@/components/shared/page-content-loader";
 
 function UsersPageContent() {
   const searchParams = useSearchParams();
@@ -178,7 +179,7 @@ function UsersPageContent() {
 
 export default function UsersPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-center text-gray-500">Loading...</div>}>
+    <Suspense fallback={<SuspensePageFallback />}>
       <UsersPageContent />
     </Suspense>
   );

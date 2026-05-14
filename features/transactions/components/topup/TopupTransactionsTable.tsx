@@ -11,6 +11,12 @@ import { format } from "date-fns";
 import { graphql } from "@/lib/gql";
 import { FragmentType, useFragment } from "@/lib/gql";
 import { useAuthStore } from "@/store/auth-store";
+import {
+  AdminDesktopTableWrap,
+  AdminMobileCard,
+  AdminMobileField,
+  AdminMobileStack,
+} from "@/components/shared/admin-responsive-table";
 
 export const TopupTransactionsFragment = graphql(`
   fragment TopupTransactionsTable_data on AdminTransactions {
@@ -92,7 +98,55 @@ export function TopupTransactionsTable({ data, isLoading, onApprove, onDecline, 
 
   return (
     <div className="w-full">
-      {/* Desktop Table Layout */}
+      <AdminMobileStack className="space-y-3">
+        {validTransactions.map((transaction) => (
+          <AdminMobileCard
+            key={transaction._id}
+            title={
+              <Link href={`/users/${transaction.user?._id ?? ""}`} className="text-primary hover:underline">
+                {transaction.user?.lastName} {transaction.user?.firstName}
+              </Link>
+            }
+          >
+            <AdminMobileField label="Type" value={transaction.transaction_type ?? ""} />
+            <AdminMobileField label="Amount" value={`₦${formatNumber(transaction.amount ?? 0)}`} />
+            <AdminMobileField label="Date" value={formatDateNumerical(transaction.time_of_transaction ?? "")} />
+            <div className="flex items-center justify-between border-t border-border pt-2">
+              <span className="text-sm text-muted-foreground">Status</span>
+              <TransactionStatus status={transaction.admin_status || undefined} />
+            </div>
+            {canManageTopup && (
+              <div className="pt-2">
+                <TransactionAction
+                  status={transaction.admin_status ?? ""}
+                  transactionId={transaction._id ?? ""}
+                  tag="topupTransactions"
+                  declineReasons={DECLINE_REASONS}
+                  onApprove={onApprove}
+                  onDecline={onDecline}
+                />
+              </div>
+            )}
+            <div className="flex justify-end border-t border-border pt-2">
+              {transaction.transfer_file ? (
+                <ViewTransactionEvidence
+                  image={transaction.transfer_file.file ?? undefined}
+                  trigger={
+                    <button type="button" className="rounded-md p-2 text-sm font-medium hover:bg-muted">
+                      <Eye className="mr-1 inline h-4 w-4" />
+                      Evidence
+                    </button>
+                  }
+                />
+              ) : (
+                <span className="text-xs text-muted-foreground">No evidence</span>
+              )}
+            </div>
+          </AdminMobileCard>
+        ))}
+      </AdminMobileStack>
+
+      <AdminDesktopTableWrap>
       <Card className="border border-gray-200 pt-0">
         <div className="min-w-0 w-full overflow-x-auto">
           <Table className="min-w-[920px]">
@@ -196,6 +250,7 @@ export function TopupTransactionsTable({ data, isLoading, onApprove, onDecline, 
           </Table>
         </div>
       </Card>
+      </AdminDesktopTableWrap>
     </div>
   );
 }

@@ -10,6 +10,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { AgencyWalletTransactionRow } from "../hooks/use-agency-transactions";
+import {
+  AdminDesktopTableWrap,
+  AdminMobileCard,
+  AdminMobileField,
+  AdminMobileStack,
+} from "@/components/shared/admin-responsive-table";
 
 interface AgencyWalletTransactionsTableProps {
   transactions: AgencyWalletTransactionRow[];
@@ -46,61 +52,94 @@ export function AgencyWalletTransactionsTable({
   emptyText,
 }: AgencyWalletTransactionsTableProps) {
   return (
-    <div className="min-w-0 overflow-x-auto rounded-md border border-gray-200">
-      <Table className="min-w-[920px]">
-        <TableHeader>
-          <TableRow>
-            <TableHead>Transaction ID</TableHead>
-            <TableHead>Time</TableHead>
-            <TableHead>Type</TableHead>
-            <TableHead>Transaction Type</TableHead>
-            <TableHead>Amount</TableHead>
-            <TableHead>Description</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Reference</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {transactions.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={8} className="text-center text-sm text-muted-foreground">
-                {emptyText}
-              </TableCell>
-            </TableRow>
-          ) : (
-            transactions.map((transaction) => {
-              const status = (transaction.status || "").toLowerCase();
-              const reference =
-                transaction.paystack_reference ||
-                transaction.transfer_reference ||
-                "-";
-
-              return (
-                <TableRow key={transaction._id}>
-                  <TableCell className="max-w-40 font-mono text-xs wrap-break-word">{transaction._id}</TableCell>
-                  <TableCell className="whitespace-nowrap text-sm">{formatDate(transaction.time_of_transaction)}</TableCell>
-                  <TableCell className="capitalize">{transaction.type || "-"}</TableCell>
-                  <TableCell className="max-w-36 capitalize wrap-break-word">
-                    {(transaction.transaction_type || "-").replaceAll("_", " ")}
-                  </TableCell>
-                  <TableCell className="max-w-36 font-medium tabular-nums wrap-break-word">
-                    {formatAmount(transaction.amount)}
-                  </TableCell>
-                  <TableCell className="max-w-48 text-sm wrap-break-word" title={transaction.description || "-"}>
-                    {transaction.description || "-"}
-                  </TableCell>
-                  <TableCell>
+    <div className="w-full min-w-0 space-y-3">
+      <AdminMobileStack>
+        {transactions.length === 0 ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">{emptyText}</p>
+        ) : (
+          transactions.map((transaction) => {
+            const status = (transaction.status || "").toLowerCase();
+            const reference =
+              transaction.paystack_reference || transaction.transfer_reference || "-";
+            return (
+              <AdminMobileCard key={transaction._id} title={transaction._id} subtitle={formatDate(transaction.time_of_transaction)}>
+                <AdminMobileField label="Type" value={transaction.type || "-"} />
+                <AdminMobileField label="Transaction type" value={(transaction.transaction_type || "-").replaceAll("_", " ")} />
+                <AdminMobileField label="Amount" value={formatAmount(transaction.amount)} />
+                <AdminMobileField label="Description" value={transaction.description || "-"} />
+                <AdminMobileField
+                  label="Status"
+                  value={
                     <Badge className={`${statusTone[status] || "bg-gray-100 text-gray-800"} wrap-break-word`}>
                       {transaction.status || "N/A"}
                     </Badge>
+                  }
+                />
+                <AdminMobileField label="Reference" value={reference} />
+              </AdminMobileCard>
+            );
+          })
+        )}
+      </AdminMobileStack>
+
+      <AdminDesktopTableWrap>
+        <div className="min-w-0 overflow-x-auto rounded-md border border-gray-200">
+          <Table className="min-w-[920px]">
+            <TableHeader>
+              <TableRow>
+                <TableHead>Transaction ID</TableHead>
+                <TableHead>Time</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Transaction Type</TableHead>
+                <TableHead>Amount</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Reference</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {transactions.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center text-sm text-muted-foreground">
+                    {emptyText}
                   </TableCell>
-                  <TableCell className="max-w-36 font-mono text-xs wrap-break-word">{reference}</TableCell>
                 </TableRow>
-              );
-            })
-          )}
-        </TableBody>
-      </Table>
+              ) : (
+                transactions.map((transaction) => {
+                  const status = (transaction.status || "").toLowerCase();
+                  const reference =
+                    transaction.paystack_reference ||
+                    transaction.transfer_reference ||
+                    "-";
+
+                  return (
+                    <TableRow key={transaction._id}>
+                      <TableCell className="max-w-40 font-mono text-xs wrap-break-word">{transaction._id}</TableCell>
+                      <TableCell className="whitespace-nowrap text-sm">{formatDate(transaction.time_of_transaction)}</TableCell>
+                      <TableCell className="capitalize">{transaction.type || "-"}</TableCell>
+                      <TableCell className="max-w-36 capitalize wrap-break-word">
+                        {(transaction.transaction_type || "-").replaceAll("_", " ")}
+                      </TableCell>
+                      <TableCell className="max-w-36 font-medium tabular-nums wrap-break-word">
+                        {formatAmount(transaction.amount)}
+                      </TableCell>
+                      <TableCell className="max-w-48 text-sm wrap-break-word" title={transaction.description || "-"}>
+                        {transaction.description || "-"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={`${statusTone[status] || "bg-gray-100 text-gray-800"} wrap-break-word`}>
+                          {transaction.status || "N/A"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="max-w-36 font-mono text-xs wrap-break-word">{reference}</TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </AdminDesktopTableWrap>
     </div>
   );
 }

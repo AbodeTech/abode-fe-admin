@@ -1,6 +1,5 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
 import { useRoles, useAdminsWithRoles } from "@/features/roles-permissions";
 import { RolesGrid } from "@/features/roles-permissions";
 import { AdminsTable } from "@/features/roles-permissions";
@@ -8,8 +7,6 @@ import { AdminsTable } from "@/features/roles-permissions";
 export default function RolesPage() {
   const { data: roles, isLoading: loadingRoles, error: rolesError } = useRoles();
   const { data: admins, isLoading: loadingAdmins, error: adminsError } = useAdminsWithRoles();
-
-  const isLoading = loadingRoles || loadingAdmins;
 
   if (rolesError || adminsError) {
     return (
@@ -24,13 +21,6 @@ export default function RolesPage() {
 
   return (
     <div className="mx-auto mt-4 w-full min-w-0 max-w-[1600px] space-y-8 px-3 pb-16 sm:px-4 sm:pb-20">
-      {(isLoading) && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading roles & admins...
-        </div>
-      )}
-
       <RolesGrid roles={roles} isLoading={loadingRoles} />
       <AdminsTable admins={admins} isLoading={loadingAdmins} />
     </div>

@@ -21,6 +21,12 @@ import { MoreVertical } from "lucide-react";
 import { graphql, FragmentType, useFragment } from "@/lib/gql";
 
 import { AssetFlexTable_AssetFragment } from "@/lib/gql/graphql";
+import {
+  AdminDesktopTableWrap,
+  AdminMobileCard,
+  AdminMobileField,
+  AdminMobileStack,
+} from "@/components/shared/admin-responsive-table";
 
 export const AssetFlexTableFragment = graphql(`
   fragment AssetFlexTable_asset on Asset {
@@ -101,6 +107,58 @@ export function FlexAssetsTable({ data }: Props) {
   );
 
   return (
+    <>
+      <AdminMobileStack className="space-y-3">
+        {transformedFlexNewAsset.length === 0 ? (
+          <p className="rounded-xl border bg-background py-8 text-center text-muted-foreground italic">No active assets found.</p>
+        ) : (
+          transformedFlexNewAsset.map((asset) => (
+            <AdminMobileCard key={asset.id} title={asset.name} subtitle={asset.location}>
+              <AdminMobileField label="Status" value={asset.status} />
+              <AdminMobileField label="Sizes" value={asset.availableSizes} />
+              <AdminMobileField label="Units" value={asset.unitsAvailable} />
+              <AdminMobileField
+                label="Pricing"
+                value={
+                  asset.minPrice === asset.maxPrice
+                    ? asset.minPrice.toLocaleString("en-NG", {
+                        style: "currency",
+                        currency: "NGN",
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 0,
+                      })
+                    : `${asset.minPrice.toLocaleString("en-NG", {
+                        style: "currency",
+                        currency: "NGN",
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 0,
+                      })} – ${asset.maxPrice.toLocaleString("en-NG", {
+                        style: "currency",
+                        currency: "NGN",
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 0,
+                      })}`
+                }
+              />
+              <AdminMobileField label="Health" value={`${asset.efficiency.toFixed(1)}%`} />
+              <div className="flex gap-2 border-t border-border pt-2">
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/assets/flex/${asset.name}`} onClick={() => updateAssetId(asset.id || "")}>
+                    View
+                  </Link>
+                </Button>
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/assets/flex/${asset.name}/edit`} onClick={() => updateAssetId(asset.id || "")}>
+                    Edit
+                  </Link>
+                </Button>
+              </div>
+            </AdminMobileCard>
+          ))
+        )}
+      </AdminMobileStack>
+
+      <AdminDesktopTableWrap>
     <div className="min-w-0 overflow-x-auto rounded-xl border bg-background shadow-sm">
       <Table>
         <TableHeader className="bg-muted/30">
@@ -188,5 +246,7 @@ export function FlexAssetsTable({ data }: Props) {
         </TableBody>
       </Table>
     </div>
+      </AdminDesktopTableWrap>
+    </>
   );
 }

@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Loader2, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/shared/Pagination";
+import { SuspensePageFallback } from "@/components/shared/page-content-loader";
 import {
   AgencyListFilters,
   AgencyListTable,
@@ -98,20 +99,13 @@ function AgencyListContent() {
         currentIdx={data?.currentPage ?? page}
         limit={DEFAULT_AGENCY_LIMIT}
       />
-
-      {isLoading && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading agencies...
-        </div>
-      )}
     </div>
   );
 }
 
 export default function AgencyListPage() {
   return (
-    <Suspense fallback={<div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+    <Suspense fallback={<SuspensePageFallback />}>
       <AgencyListContent />
     </Suspense>
   );

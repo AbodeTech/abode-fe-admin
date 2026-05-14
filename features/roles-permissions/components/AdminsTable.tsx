@@ -18,6 +18,12 @@ import { Button } from "@/components/ui/button";
 import { Users } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChangeRoleDialog } from "@/features/roles-permissions/components/ChangeRoleDialog";
+import {
+  AdminDesktopTableWrap,
+  AdminMobileCard,
+  AdminMobileField,
+  AdminMobileStack,
+} from "@/components/shared/admin-responsive-table";
 
 export const AdminRowFragment = graphql(`
   fragment AdminRowFragment on AdminRoles {
@@ -71,6 +77,39 @@ export function AdminsTable({ admins, isLoading }: AdminsTableProps) {
           {rows.length} total admins
         </div>
       </div>
+      <AdminMobileStack>
+        {rows.map((row, idx) => {
+          const admin = getFragmentData(AdminRowFragment, row);
+          return (
+            <AdminMobileCard key={admin.adminId || idx} title={admin.adminName} subtitle={admin.adminEmail}>
+              <AdminMobileField label="Role" value={<Badge className="bg-primary/10 text-primary hover:bg-primary/20 border-primary/20">{admin.role}</Badge>} />
+              <div className="text-xs text-muted-foreground">
+                {(admin.permissions || []).length} permission{(admin.permissions || []).length === 1 ? "" : "s"}
+              </div>
+              <div className="flex min-w-0 flex-wrap gap-1 pt-1">
+                {(admin.permissions || []).slice(0, 6).map((perm, i) => (
+                  <Badge key={`${admin.adminId}-${i}`} variant="outline" className="text-xs bg-muted/30 border-border">
+                    {perm}
+                  </Badge>
+                ))}
+                {admin.permissions && admin.permissions.length > 6 && (
+                  <Badge variant="outline" className="text-xs bg-muted/30 border-border">
+                    +{admin.permissions.length - 6} more
+                  </Badge>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2 border-t border-border pt-3">
+                <ChangeRoleDialog admin={admin} />
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/security/roles/${admin.adminId}`}>View</Link>
+                </Button>
+              </div>
+            </AdminMobileCard>
+          );
+        })}
+      </AdminMobileStack>
+
+      <AdminDesktopTableWrap>
       <Card className="min-w-0 overflow-hidden border-border bg-card">
         <div className="min-w-0 overflow-x-auto">
           <Table className="min-w-[720px]">
@@ -131,6 +170,7 @@ export function AdminsTable({ admins, isLoading }: AdminsTableProps) {
         </Table>
         </div>
       </Card>
+      </AdminDesktopTableWrap>
     </section>
   );
 }

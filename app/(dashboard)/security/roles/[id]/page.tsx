@@ -6,7 +6,7 @@ import { AdminDetailHeader, AdminDetailFragment, type AdminLogLike } from "@/fea
 import { AdminLogsTable, DEFAULT_ADMIN_LOGS_LIMIT, useAdminLogs } from "@/features/admin-logs";
 import { useFragment } from "@/lib/gql";
 import { Pagination } from "@/components/shared/Pagination";
-import { Loader2 } from "lucide-react";
+import { PageContentLoader } from "@/components/shared/page-content-loader";
 
 export default function AdminDetailPage() {
   const params = useParams();
@@ -32,15 +32,16 @@ export default function AdminDetailPage() {
     );
   }
 
+  if (loadingAdmin) {
+    return (
+      <div className="mx-auto mt-4 w-full min-w-0 max-w-[1600px] px-3 sm:px-4">
+        <PageContentLoader label="Loading admin details…" />
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto mt-4 w-full min-w-0 max-w-[1600px] space-y-6 px-3 pb-16 sm:px-4 sm:pb-20">
-      {loadingAdmin && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading admin details...
-        </div>
-      )}
-
       <AdminDetailHeader
         admin={adminData}
         logs={

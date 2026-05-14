@@ -8,6 +8,7 @@ import { Pagination } from "@/components/shared/Pagination";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { useState, useEffect } from "react";
+import { SuspensePageFallback } from "@/components/shared/page-content-loader";
 import { toast } from "sonner";
 
 function TopupTransactionsContent() {
@@ -113,7 +114,7 @@ function TopupTransactionsContent() {
 
 export default function TopupTransactionsPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-center text-gray-500">Loading...</div>}>
+    <Suspense fallback={<SuspensePageFallback />}>
       <TopupTransactionsContent />
     </Suspense>
   );

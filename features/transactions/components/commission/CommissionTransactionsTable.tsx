@@ -20,6 +20,13 @@ import { format } from "date-fns";
 import { graphql } from "@/lib/gql";
 import { FragmentType, useFragment as getFragmentData } from "@/lib/gql";
 import { CommissionTransactionsTable_DataFragment } from "@/lib/gql/graphql";
+import {
+  AdminDesktopTableWrap,
+  AdminMobileCard,
+  AdminMobileField,
+  AdminMobileStack,
+} from "@/components/shared/admin-responsive-table";
+import Link from "next/link";
 
 export const CommissionTransactionsFragment = graphql(`
   fragment CommissionTransactionsTable_data on AdminTransactions {
@@ -129,7 +136,6 @@ interface CommissionTransactionsTableProps {
 }
 
 export function CommissionTransactionsTable({ data, isLoading }: CommissionTransactionsTableProps) {
-  console.log(data);
   const [sortField, setSortField] = useState("time_of_transaction");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
@@ -206,7 +212,61 @@ export function CommissionTransactionsTable({ data, isLoading }: CommissionTrans
   };
 
   return (
-    <div className="min-w-0 w-full">
+    <div className="min-w-0 w-full space-y-3">
+      <AdminMobileStack>
+        {sortedData.map((commission) => {
+          const formattedDate = formatDate(new Date(commission.time_of_transaction));
+          return (
+            <AdminMobileCard
+              key={commission._id}
+              title={
+                <Link href={`/users/${commission.user?._id ?? ""}`} className="text-primary hover:underline">
+                  {commission.clientName}
+                </Link>
+              }
+              subtitle={`${formattedDate.date} ${formattedDate.time}`}
+            >
+              <AdminMobileField
+                label="Transaction amount"
+                value={
+                  commission.whtAmount
+                    ? `₦${formatNumber(Number(commission.whtAmount) + Number(commission.amount))}`
+                    : "N/A"
+                }
+              />
+              <AdminMobileField label="TIN" value={commission.user?.tin || "N/A"} />
+              <AdminMobileField label="Asset type" value={commission.parsedAssetType} />
+              <AdminMobileField
+                label="Associate"
+                value={`${commission.user?.firstName} ${commission.user?.lastName}`}
+              />
+              <AdminMobileField label="Referrer" value={commission.user?.referrer || "N/A"} />
+              <AdminMobileField label="Associate status" value={commission.user?.referral_status ?? "N/A"} />
+              <AdminMobileField
+                label="% earned"
+                value={
+                  commission.whtAmount
+                    ? `${(
+                        100 *
+                        (Number(commission.amount) /
+                          ((Number(commission.whtAmount) + Number(commission.amount)) * 0.95))
+                      ).toFixed(2)}%`
+                    : "N/A"
+                }
+              />
+              <AdminMobileField label="Commission" value={`₦${formatNumber(commission.amount)}`} />
+              <AdminMobileField label="Txn status" value={commission.status || "N/A"} />
+              <AdminMobileField
+                label="Balance"
+                value={commission.balance ? `₦${formatNumber(commission.balance)}` : "N/A"}
+              />
+            </AdminMobileCard>
+          );
+        })}
+      </AdminMobileStack>
+
+      <AdminDesktopTableWrap>
+      <div className="min-w-0 overflow-x-auto">
       <Table className="min-w-[1200px]">
         <TableHeader className="bg-[#F9FAFB] border-b border-[#E5EAEF]">
           <TableRow className="text-xs font-medium text-[#5D6679]">
@@ -330,6 +390,8 @@ export function CommissionTransactionsTable({ data, isLoading }: CommissionTrans
           })}
         </TableBody>
       </Table>
+      </div>
+      </AdminDesktopTableWrap>
     </div>
   );
 }

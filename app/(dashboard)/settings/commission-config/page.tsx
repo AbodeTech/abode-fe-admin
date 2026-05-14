@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
+import { PageContentLoader } from "@/components/shared/page-content-loader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   useCommissionConfig,
@@ -15,8 +15,8 @@ export default function CommissionConfigPage() {
 
   if (isLoading) {
     return (
-      <div className="mx-auto flex min-h-[40vh] w-full min-w-0 max-w-[1600px] items-center justify-center px-3 py-16 sm:px-4">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="mx-auto flex w-full min-w-0 max-w-[1600px] flex-col px-3 sm:px-4">
+        <PageContentLoader label="Loading commission configuration…" />
       </div>
     );
   }

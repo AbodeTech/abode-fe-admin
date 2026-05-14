@@ -7,6 +7,7 @@ import { Pagination } from "@/components/shared/Pagination";
 import { DefaultUsersTable, useDefaultUsers, useExportDefaultUsers } from "@/features/users";
 import { useSearchParams } from "next/navigation";
 import { Loader2, Download } from "lucide-react";
+import { PageContentLoader, SuspensePageFallback } from "@/components/shared/page-content-loader";
 
 const PAGE_SIZE = 25;
 
@@ -22,11 +23,7 @@ function DefaultUsersContent() {
   };
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-[calc(100vh-200px)]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <PageContentLoader label="Loading default users…" />;
   }
 
   if (error) {
@@ -82,7 +79,7 @@ function DefaultUsersContent() {
 
 export default function DefaultUsersPage() {
   return (
-    <Suspense fallback={<div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+    <Suspense fallback={<SuspensePageFallback />}>
       <DefaultUsersContent />
     </Suspense>
   );

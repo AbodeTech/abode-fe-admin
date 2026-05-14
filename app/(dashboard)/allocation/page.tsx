@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/shared/Pagination";
+import { SuspensePageFallback } from "@/components/shared/page-content-loader";
 import {
   AllocationFilters,
   AllocationModal,
@@ -228,7 +229,7 @@ function AllocationContent() {
 
 export default function AllocationPage() {
   return (
-    <Suspense fallback={<div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+    <Suspense fallback={<SuspensePageFallback />}>
       <AllocationContent />
     </Suspense>
   );

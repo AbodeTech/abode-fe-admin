@@ -1,8 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { Loader2 } from "lucide-react";
-
+import { PageContentLoader } from "@/components/shared/page-content-loader";
 import { AgencyDetailView, useAgency } from "@/features/agency";
 import { getErrorMessage } from "@/features/agency/utils/error-message";
 
@@ -21,7 +20,15 @@ export default function AgencyDetailPage() {
     );
   }
 
-  if (!isLoading && !data?.agency) {
+  if (isLoading) {
+    return (
+      <div className="mx-auto w-full min-w-0 max-w-[1600px] px-3 sm:px-4">
+        <PageContentLoader label="Loading agency details…" />
+      </div>
+    );
+  }
+
+  if (!data?.agency) {
     return (
       <div className="p-4 rounded-md bg-amber-50 text-amber-700 border border-amber-200">
         Agency not found.
@@ -37,13 +44,6 @@ export default function AgencyDetailPage() {
         users={data?.agency?.referrals?.map((item) => item.user).filter((item): item is NonNullable<typeof item> => Boolean(item))}
         transactions={data?.agency?.transactions}
       />
-
-      {isLoading && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading agency details...
-        </div>
-      )}
     </div>
   );
 }

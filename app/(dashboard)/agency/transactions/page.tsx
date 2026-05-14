@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Loader2 } from "lucide-react";
-
+import { PageContentLoader, SuspensePageFallback } from "@/components/shared/page-content-loader";
 import { Pagination } from "@/components/shared/Pagination";
 import {
   AgencyListFilters,
@@ -77,23 +76,22 @@ function AgencyTransactionsContent() {
         </p>
       </div>
 
-      <AgencySystemMetrics data={data?.dashboard} />
+      {isLoading ? (
+        <PageContentLoader label="Loading agency transactions…" />
+      ) : (
+        <>
+          <AgencySystemMetrics data={data?.dashboard} />
 
-      <AgencyListFilters search={query} onSearchChange={setQuery} />
+          <AgencyListFilters search={query} onSearchChange={setQuery} />
 
-      <AgencyTransactionAgencyTable rows={data?.agencies} />
+          <AgencyTransactionAgencyTable rows={data?.agencies} />
 
-      <Pagination
-        count={data?.count ?? 0}
-        currentIdx={data?.currentPage ?? page}
-        limit={DEFAULT_AGENCY_LIMIT}
-      />
-
-      {isLoading && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading agency transactions...
-        </div>
+          <Pagination
+            count={data?.count ?? 0}
+            currentIdx={data?.currentPage ?? page}
+            limit={DEFAULT_AGENCY_LIMIT}
+          />
+        </>
       )}
     </div>
   );
@@ -101,7 +99,7 @@ function AgencyTransactionsContent() {
 
 export default function AgencyTransactionsPage() {
   return (
-    <Suspense fallback={<div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+    <Suspense fallback={<SuspensePageFallback />}>
       <AgencyTransactionsContent />
     </Suspense>
   );

@@ -10,6 +10,7 @@ import { DateFilter } from "@/components/shared/DateFilter";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { useState, useEffect } from "react";
+import { SuspensePageFallback } from "@/components/shared/page-content-loader";
 
 function DocumentTransactionsContent() {
   const searchParams = useSearchParams();
@@ -113,7 +114,7 @@ function DocumentTransactionsContent() {
 
 export default function DocumentTransactionsPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-center text-gray-500">Loading...</div>}>
+    <Suspense fallback={<SuspensePageFallback />}>
       <DocumentTransactionsContent />
     </Suspense>
   );

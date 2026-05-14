@@ -15,6 +15,12 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { ChevronDown, ChevronRight } from "lucide-react";
+import {
+  AdminDesktopTableWrap,
+  AdminMobileCard,
+  AdminMobileField,
+  AdminMobileStack,
+} from "@/components/shared/admin-responsive-table";
 
 export const TopAssociatesTableRowFragment = graphql(`
   fragment TopAssociatesTableRowFragment on Associate {
@@ -188,6 +194,49 @@ export function TopAssociatesTable({ data, isLoading }: TopAssociatesTableProps)
   }
 
   return (
+    <>
+      <AdminMobileStack className="space-y-3">
+        {associates.map((associate, idx) => {
+          const rank = idx + 1;
+          const balance =
+            associate.balance ?? (associate.expected_revenue ?? 0) - (associate.received_revenue ?? 0);
+          const rate =
+            associate.collection_rate ??
+            (associate.expected_revenue
+              ? Math.round(((associate.received_revenue ?? 0) / associate.expected_revenue) * 100)
+              : 0);
+          return (
+            <AdminMobileCard key={`${associate.email}-m-${idx}`} title={associate.name} subtitle={associate.email || undefined}>
+              <div className="flex items-center justify-between gap-2 border-b border-border pb-2">
+                <div className="flex items-center gap-2">{rankLabel(rank)}</div>
+                <StatusBadge status={associate.status} />
+              </div>
+              <div className="py-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Clients</span>
+                <ClientBreakdown
+                  total={associate.no_of_clients ?? 0}
+                  users={associate.referred_user_count ?? 0}
+                  associates={associate.referred_associate_count ?? 0}
+                  associatePros={associate.referred_associate_pro_count ?? 0}
+                />
+              </div>
+              <AdminMobileField label="Expected" value={formatCurrency(associate.expected_revenue)} />
+              <AdminMobileField label="Received" value={formatCurrency(associate.received_revenue)} />
+              <AdminMobileField label="Balance" value={formatCurrency(balance)} />
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm text-muted-foreground">Collection</span>
+                <EfficiencyBar rate={rate} />
+              </div>
+              <AdminMobileField label="Commission" value={formatCurrency(associate.commission)} />
+              <AdminMobileField label="Referred by" value={associate.sales_person || "—"} />
+              <AdminMobileField label="Units sold" value={formatNumber(associate.units_sold)} />
+              <AdminMobileField label="Size sold" value={`${formatNumber(associate.size_sold)} sqm`} />
+            </AdminMobileCard>
+          );
+        })}
+      </AdminMobileStack>
+
+      <AdminDesktopTableWrap>
     <div className="min-w-0 overflow-x-auto rounded-xl border bg-background shadow-sm">
       <Table className="min-w-[1180px]">
         <TableHeader className="bg-muted/20">
@@ -333,5 +382,7 @@ export function TopAssociatesTable({ data, isLoading }: TopAssociatesTableProps)
         </TableBody>
       </Table>
     </div>
+      </AdminDesktopTableWrap>
+    </>
   );
 }

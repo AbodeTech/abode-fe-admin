@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -18,7 +18,6 @@ import {
   LandPlot,
   LayoutDashboard,
   LogOut,
-  MessageSquare,
   Percent,
   ScrollText,
   Settings,
@@ -32,9 +31,6 @@ import {
 } from "lucide-react";
 
 import LogOutModal from "@/components/settings/LogOutModal";
-
-// Mocking useNextStep
-const useNextStep = () => ({ currentStep: null, currentTour: null });
 
 // Grouped Navigation Items
 const navGroups = [
@@ -117,7 +113,11 @@ const Sidebar = () => {
   const pathname = usePathname();
   const { isSidebarCollapsed, isMobileNavOpen, closeMobileNav } = useUIStore();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ "Transactions": false, "Users": false });
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+
+  /** On mobile drawer, always show labels and nested links (collapsed desktop mode hides sub-routes). */
+  const showNavDetails = !isSidebarCollapsed || isMobileNavOpen;
+  const showCollapsibleChildren = (groupTitle: string) => Boolean(openGroups[groupTitle]) && showNavDetails;
 
   const toggleGroup = (groupTitle: string) => {
     setOpenGroups(prev => ({ ...prev, [groupTitle]: !prev[groupTitle] }));
@@ -127,20 +127,36 @@ const Sidebar = () => {
     closeMobileNav();
   }, [pathname, closeMobileNav]);
 
+  useEffect(() => {
+    setOpenGroups((prev) => {
+      const next = { ...prev };
+      for (const group of navGroups) {
+        if (!group.isCollapsible) continue;
+        const activeHere = group.items.some(
+          (item) =>
+            pathname === item.link ||
+            (item.link.length > 1 && pathname.startsWith(`${item.link}/`))
+        );
+        if (activeHere) next[group.title] = true;
+      }
+      return next;
+    });
+  }, [pathname]);
+
   return (
     <div
       id="dashboard-sidebar"
       className={cn(
         "hidden-scrollbar bg-[#f5f5f5] flex flex-col h-screen border-r border-transparent transition-[transform,width] duration-300 ease-in-out",
-        isSidebarCollapsed ? "w-[80px]" : "w-[260px]",
+        isSidebarCollapsed && !isMobileNavOpen ? "w-[80px]" : "w-[260px]",
         "max-md:fixed max-md:left-0 max-md:top-0 max-md:z-60 max-md:max-w-[min(280px,100vw-2rem)] max-md:shadow-[4px_0_24px_rgba(0,0,0,0.12)]",
         isMobileNavOpen ? "max-md:translate-x-0" : "max-md:-translate-x-full",
         "md:sticky md:top-0 md:translate-x-0 md:shadow-none"
       )}
     >
       {/* Logo Area */}
-      <div className={cn("h-20 flex items-center shrink-0", isSidebarCollapsed ? "justify-center" : "pl-6")}>
-        {isSidebarCollapsed ? (
+      <div className={cn("h-20 flex items-center shrink-0", showNavDetails ? "pl-6" : "justify-center")}>
+        {!showNavDetails ? (
           <Image src="/favicon.ico" alt="Abode" width={32} height={32} className="block w-8 h-8 rounded-full" />
         ) : (
           <Image src="/logo.svg" alt="Abode" width={100} height={32} className="block w-auto h-8" />
@@ -150,7 +166,7 @@ const Sidebar = () => {
       {/* Navigation Area */}
       <div className="flex-1 overflow-y-auto py-4 px-3 ">
         {navGroups.map((group, groupIdx) => {
-          const isGroupOpen = openGroups[group.title];
+          const isGroupOpen = Boolean(openGroups[group.title]);
 
           // Special handling for collapsible groups ("Transactions")
           if (group.isCollapsible) {
@@ -160,19 +176,19 @@ const Sidebar = () => {
                   onClick={() => toggleGroup(group.title)}
                   className={cn(
                     "flex items-center w-full p-2 mb-1 rounded-lg text-gray-500 hover:bg-gray-200 transition-colors",
-                    isSidebarCollapsed ? "justify-center" : "justify-between"
+                    showNavDetails ? "justify-between" : "justify-center"
                   )}
-                  title={isSidebarCollapsed ? group.title : undefined}
+                  title={!showNavDetails ? group.title : undefined}
                 >
                   <div className="flex items-center gap-3">
                     {React.cloneElement(group.icon as React.ReactElement<{ className?: string }>, { className: "h-5 w-5" })}
-                    {!isSidebarCollapsed && <span className="font-medium text-sm">{group.title}</span>}
+                    {showNavDetails && <span className="font-medium text-sm">{group.title}</span>}
                   </div>
-                  {!isSidebarCollapsed && <ChevronRight className={cn("h-4 w-4 transition-transform", isGroupOpen && "rotate-90")} />}
+                  {showNavDetails && <ChevronRight className={cn("h-4 w-4 transition-transform", isGroupOpen && "rotate-90")} />}
                 </button>
 
                 {/* Dropdown Items */}
-                {(!isSidebarCollapsed && isGroupOpen) && (
+                {showCollapsibleChildren(group.title) && (
                   <div className="ml-4 pl-2 border-l border-gray-200 space-y-1 mt-1">
                     {group.items.map(item => (
                       <Link
@@ -203,12 +219,12 @@ const Sidebar = () => {
                   className={cn(
                     "flex items-center gap-3 p-2 rounded-lg transition-colors group",
                     pathname === item.link ? "bg-[#E0F2F1] text-[#00695C] font-medium" : "text-gray-500 hover:text-gray-900 hover:bg-gray-100",
-                    isSidebarCollapsed && "justify-center"
+                    !showNavDetails && "justify-center"
                   )}
-                  title={isSidebarCollapsed ? item.name : undefined}
+                  title={!showNavDetails ? item.name : undefined}
                 >
                   {React.cloneElement(item.icon as React.ReactElement<{ className?: string }>, { className: "h-5 w-5 shrink-0" })}
-                  {!isSidebarCollapsed && <span className="text-sm font-medium">{item.name}</span>}
+                  {showNavDetails && <span className="text-sm font-medium">{item.name}</span>}
                 </Link>
               ))}
             </div>
@@ -222,11 +238,11 @@ const Sidebar = () => {
           onClick={() => setIsLogoutModalOpen(true)}
           className={cn(
             "flex items-center gap-3 w-full p-2 rounded-lg text-[#AD1F2A] hover:bg-[#ffebe6] transition-colors",
-            isSidebarCollapsed ? "justify-center" : ""
+            !showNavDetails && "justify-center"
           )}
         >
           <LogOut className="h-5 w-5" />
-          {!isSidebarCollapsed && <span className="text-sm font-medium">Logout</span>}
+          {showNavDetails && <span className="text-sm font-medium">Logout</span>}
         </button>
       </div>
 

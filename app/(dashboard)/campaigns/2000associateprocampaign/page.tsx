@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Loader2 } from "lucide-react";
+import { PageContentLoader } from "@/components/shared/page-content-loader";
 import { useAssociateProCampaign, useAssociateRecruitmentAnalytics } from "@/features/campaigns/hooks/use-campaigns";
 import {
   AssociateProConversionFunnel,
@@ -66,10 +66,7 @@ export default function Campaign2000AssociateProPage() {
       </div>
 
       {isLoading && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading campaign data...
-        </div>
+        <PageContentLoader className="min-h-[min(40vh,18rem)] py-10" label="Loading campaign data…" />
       )}
 
       {dashboard && (

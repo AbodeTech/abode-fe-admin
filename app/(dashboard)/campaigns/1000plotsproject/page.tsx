@@ -1,7 +1,7 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
-import { Loader2 } from "lucide-react";
+import { PageContentLoader } from "@/components/shared/page-content-loader";
 import { useRaffleCampaign } from "@/features/campaigns/hooks/use-campaigns";
 import { RaffleMetricsSection, RaffleAssetTable, RaffleUsersTable, RaffleTicketsSection, RaffleTransactionTable } from "@/features/campaigns/components/RaffleComponents";
 
@@ -33,25 +33,24 @@ export default function Campaign1000PlotsPage() {
         </Badge>
       </div>
 
-      {isLoading && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading campaign data...
-        </div>
+      {isLoading ? (
+        <PageContentLoader label="Loading campaign data…" />
+      ) : (
+        <>
+          <RaffleMetricsSection
+            salesData={data?.salesMetrics}
+            financialData={data?.financialMetrics}
+          />
+
+          <RaffleAssetTable data={data?.assetBreakdown} />
+
+          <RaffleUsersTable data={data?.usersWithTickets} />
+
+          <RaffleTicketsSection />
+
+          <RaffleTransactionTable />
+        </>
       )}
-
-      <RaffleMetricsSection
-        salesData={data?.salesMetrics}
-        financialData={data?.financialMetrics}
-      />
-
-      <RaffleAssetTable data={data?.assetBreakdown} />
-
-      <RaffleUsersTable data={data?.usersWithTickets} />
-
-      <RaffleTicketsSection />
-
-      <RaffleTransactionTable />
     </div>
   );
 }

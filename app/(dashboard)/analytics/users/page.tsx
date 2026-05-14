@@ -2,9 +2,9 @@
 
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { Loader2 } from "lucide-react";
 import { DateFilter } from "@/components/shared/DateFilter";
 import { FilterSelect } from "@/components/shared/FilterSelect";
+import { SuspensePageFallback } from "@/components/shared/page-content-loader";
 import { UserAnalyticsAcquisition } from "@/features/users/components/analytics/UserAnalyticsAcquisition";
 import { UserAnalyticsDemographics } from "@/features/users/components/analytics/UserAnalyticsDemographics";
 import { UserAnalyticsConversion } from "@/features/users/components/analytics/UserAnalyticsConversion";
@@ -50,13 +50,7 @@ function UserAnalyticsContent() {
 
 export default function UserAnalyticsPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="mx-auto flex w-full min-w-0 max-w-[1600px] justify-center px-3 py-16 sm:px-4">
-          <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
-      }
-    >
+    <Suspense fallback={<SuspensePageFallback />}>
       <UserAnalyticsContent />
     </Suspense>
   );

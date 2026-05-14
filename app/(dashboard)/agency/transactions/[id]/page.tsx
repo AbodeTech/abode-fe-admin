@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +15,7 @@ import {
   useAgencyTransactions,
 } from "@/features/agency";
 import { getErrorMessage } from "@/features/agency/utils/error-message";
+import { PageContentLoader } from "@/components/shared/page-content-loader";
 
 const toDateFilterRange = (dateFilter: AgencyTransactionDateFilter) => {
   if (dateFilter === "all") {
@@ -124,29 +125,28 @@ export default function AgencyTransactionsDetailPage() {
         </div>
       </div>
 
-      <AgencyTransactionSummaryCards transactions={filteredTransactions} />
+      {(agencyLoading || transactionsLoading) ? (
+        <PageContentLoader label="Loading transactions…" />
+      ) : (
+        <>
+          <AgencyTransactionSummaryCards transactions={filteredTransactions} />
 
-      <AgencyTransactionFilters
-        search={search}
-        status={status}
-        date={date}
-        onSearchChange={setSearch}
-        onStatusChange={setStatus}
-        onDateChange={setDate}
-        onReset={() => {
-          setSearch("");
-          setStatus("all");
-          setDate("all");
-        }}
-      />
+          <AgencyTransactionFilters
+            search={search}
+            status={status}
+            date={date}
+            onSearchChange={setSearch}
+            onStatusChange={setStatus}
+            onDateChange={setDate}
+            onReset={() => {
+              setSearch("");
+              setStatus("all");
+              setDate("all");
+            }}
+          />
 
-      <AgencyTransactionTabs transactions={filteredTransactions} />
-
-      {(agencyLoading || transactionsLoading) && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading transactions...
-        </div>
+          <AgencyTransactionTabs transactions={filteredTransactions} />
+        </>
       )}
     </div>
   );

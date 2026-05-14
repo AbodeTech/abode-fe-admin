@@ -11,6 +11,12 @@ import { useAuthStore } from "@/store/auth-store";
 import { graphql } from "@/lib/gql";
 import { FragmentType, useFragment as getFragmentData } from "@/lib/gql";
 import { WithdrawalTransactionsTable_DataFragment } from "@/lib/gql/graphql";
+import {
+  AdminDesktopTableWrap,
+  AdminMobileCard,
+  AdminMobileField,
+  AdminMobileStack,
+} from "@/components/shared/admin-responsive-table";
 
 export const WithdrawalTransactionsFragment = graphql(`
   fragment WithdrawalTransactionsTable_data on AdminTransactions {
@@ -106,6 +112,44 @@ export function WithdrawalTransactionsTable({ data, isLoading, onApprove, onDecl
 
   return (
     <div className="w-full">
+      <AdminMobileStack className="space-y-3">
+        {validTransactions.map((transaction) => (
+          <AdminMobileCard
+            key={transaction._id}
+            title={
+              <Link href={`/users/${transaction.user?._id ?? ""}`} className="text-primary hover:underline">
+                {transaction.user?.lastName} {transaction.user?.firstName}
+              </Link>
+            }
+          >
+            <AdminMobileField label="TIN" value={transaction.tin || "N/A"} />
+            <AdminMobileField label="Bank" value={transaction.bank_details?.bankName || "N/A"} />
+            <AdminMobileField label="Account" value={transaction.bank_details?.accountNumber || "N/A"} />
+            <AdminMobileField label="Account name" value={transaction.bank_details?.name || "N/A"} />
+            <AdminMobileField label="Amount" value={`₦${formatNumber(transaction.amount ?? 0)}`} />
+            <AdminMobileField label="Date" value={formatDateNumerical(transaction.time_of_transaction ?? "")} />
+            <AdminMobileField label="Method" value={<ProcessingMethodBadge type={transaction.processing_type ?? undefined} />} />
+            <div className="flex items-center justify-between border-t border-border pt-2">
+              <span className="text-sm text-muted-foreground">Status</span>
+              <TransactionStatus status={transaction.admin_status || undefined} />
+            </div>
+            {canManageWithdrawal && (
+              <div className="pt-2">
+                <TransactionAction
+                  status={transaction.admin_status ?? ""}
+                  transactionId={transaction._id ?? ""}
+                  tag="withdrawalTransactions"
+                  declineReasons={DECLINE_REASONS}
+                  onApprove={onApprove}
+                  onDecline={onDecline}
+                />
+              </div>
+            )}
+          </AdminMobileCard>
+        ))}
+      </AdminMobileStack>
+
+      <AdminDesktopTableWrap>
       <Card className="border border-gray-200 pt-0">
         <div className="min-w-0 w-full overflow-x-auto">
           <Table className="min-w-[980px]">
@@ -202,6 +246,7 @@ export function WithdrawalTransactionsTable({ data, isLoading, onApprove, onDecl
             </Table>
         </div>
         </Card>
+      </AdminDesktopTableWrap>
     </div>
   );
 }

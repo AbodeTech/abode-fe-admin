@@ -2,7 +2,7 @@
 
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { PageContentLoader, SuspensePageFallback } from "@/components/shared/page-content-loader";
 import { Pagination } from "@/components/shared/Pagination";
 import {
   useCompleteAssetTransactions,
@@ -36,18 +36,17 @@ function CompleteAssetPaymentsContent() {
         <p className="text-muted-foreground">Clients who have completed full payment.</p>
       </div>
 
-      <div className="min-w-0">
-        <CompleteAssetPaymentsTable data={rows} />
-      </div>
-      <div className="min-w-0 px-0 sm:px-1">
-        <Pagination count={count} currentIdx={page} limit={DEFAULT_COMPLETE_ASSET_LIMIT} />
-      </div>
-
-      {isLoading && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading completed payments...
-        </div>
+      {isLoading ? (
+        <PageContentLoader label="Loading completed payments…" />
+      ) : (
+        <>
+          <div className="min-w-0">
+            <CompleteAssetPaymentsTable data={rows} />
+          </div>
+          <div className="min-w-0 px-0 sm:px-1">
+            <Pagination count={count} currentIdx={page} limit={DEFAULT_COMPLETE_ASSET_LIMIT} />
+          </div>
+        </>
       )}
     </div>
   );
@@ -55,7 +54,7 @@ function CompleteAssetPaymentsContent() {
 
 export default function CompleteAssetPaymentsPage() {
   return (
-    <Suspense fallback={<div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+    <Suspense fallback={<SuspensePageFallback />}>
       <CompleteAssetPaymentsContent />
     </Suspense>
   );

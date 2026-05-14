@@ -2,7 +2,7 @@
 
 import { Suspense, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { SuspensePageFallback } from "@/components/shared/page-content-loader";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
@@ -230,13 +230,7 @@ function MarketplaceContent() {
 
 export default function MarketplacePage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex justify-center py-8">
-          <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
-      }
-    >
+    <Suspense fallback={<SuspensePageFallback />}>
       <MarketplaceContent />
     </Suspense>
   );

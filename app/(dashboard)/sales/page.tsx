@@ -12,6 +12,7 @@ import {
 } from "@/features/sales";
 import { SalesExport } from "@/features/sales/components/SalesExport";
 import { Pagination } from "@/components/shared/Pagination";
+import { SuspensePageFallback } from "@/components/shared/page-content-loader";
 import { ArrowRight, Loader2 } from "lucide-react";
 import Link from "next/link";
 
@@ -105,7 +106,7 @@ function SalesContent() {
 
 export default function SalesPage() {
   return (
-    <Suspense fallback={<div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+    <Suspense fallback={<SuspensePageFallback />}>
       <SalesContent />
     </Suspense>
   );

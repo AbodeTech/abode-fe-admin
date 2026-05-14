@@ -10,6 +10,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { TopPerformingAgency } from "./AgencyDashboardPanels";
+import {
+  AdminDesktopTableWrap,
+  AdminMobileCard,
+  AdminMobileField,
+  AdminMobileStack,
+} from "@/components/shared/admin-responsive-table";
 
 interface TopPerformingAgenciesTableProps {
   rows?: TopPerformingAgency[] | null;
@@ -31,47 +37,63 @@ export function TopPerformingAgenciesTable({ rows }: TopPerformingAgenciesTableP
       <CardHeader className="min-w-0 pb-2 sm:pb-3">
         <CardTitle className="text-lg sm:text-xl">Top Performing Agencies</CardTitle>
       </CardHeader>
-      <CardContent className="min-w-0 p-0 sm:p-6">
-        <div className="min-w-0 overflow-x-auto px-4 pb-4 sm:px-0 sm:pb-0">
-          <Table className="min-w-[720px]">
-          <TableHeader>
-            <TableRow>
-              <TableHead>Agency</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead>Clients</TableHead>
-              <TableHead>Sales Volume</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {items.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center text-sm text-muted-foreground">
-                  No top-performing agencies found.
-                </TableCell>
-              </TableRow>
-            ) : (
-              items.map((agency) => (
-                <TableRow key={agency._id}>
-                  <TableCell className="max-w-40 font-medium">
-                    <span className="line-clamp-2 wrap-break-word" title={agency.agency_name}>
-                      {agency.agency_name}
-                    </span>
-                  </TableCell>
-                  <TableCell className="max-w-44 wrap-break-word text-sm" title={agency.email ?? undefined}>
-                    {agency.email || "-"}
-                  </TableCell>
-                  <TableCell className="max-w-36 wrap-break-word text-sm">{agency.phoneNumber || "-"}</TableCell>
-                  <TableCell className="tabular-nums">{agency.clients ?? 0}</TableCell>
-                  <TableCell className="max-w-40 tabular-nums wrap-break-word">
-                    {formatCurrency(agency.sales_volume)}
-                  </TableCell>
+      <CardContent className="min-w-0 space-y-3 p-0 sm:p-6">
+        <AdminMobileStack className="border-b border-border px-4 pb-4 sm:border-0 sm:px-0 sm:pb-0">
+          {items.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">No top-performing agencies found.</p>
+          ) : (
+            items.map((agency) => (
+              <AdminMobileCard key={agency._id} title={agency.agency_name} subtitle={agency.email || undefined}>
+                <AdminMobileField label="Phone" value={agency.phoneNumber || "-"} />
+                <AdminMobileField label="Clients" value={agency.clients ?? 0} />
+                <AdminMobileField label="Sales volume" value={formatCurrency(agency.sales_volume)} />
+              </AdminMobileCard>
+            ))
+          )}
+        </AdminMobileStack>
+
+        <AdminDesktopTableWrap>
+          <div className="min-w-0 overflow-x-auto px-4 pb-4 sm:px-0 sm:pb-0">
+            <Table className="min-w-[720px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Agency</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead>Clients</TableHead>
+                  <TableHead>Sales Volume</TableHead>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {items.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center text-sm text-muted-foreground">
+                      No top-performing agencies found.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  items.map((agency) => (
+                    <TableRow key={agency._id}>
+                      <TableCell className="max-w-40 font-medium">
+                        <span className="line-clamp-2 wrap-break-word" title={agency.agency_name}>
+                          {agency.agency_name}
+                        </span>
+                      </TableCell>
+                      <TableCell className="max-w-44 wrap-break-word text-sm" title={agency.email ?? undefined}>
+                        {agency.email || "-"}
+                      </TableCell>
+                      <TableCell className="max-w-36 wrap-break-word text-sm">{agency.phoneNumber || "-"}</TableCell>
+                      <TableCell className="tabular-nums">{agency.clients ?? 0}</TableCell>
+                      <TableCell className="max-w-40 tabular-nums wrap-break-word">
+                        {formatCurrency(agency.sales_volume)}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </AdminDesktopTableWrap>
       </CardContent>
     </Card>
   );

@@ -1,13 +1,12 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
-
 import {
   AgencyDashboardPanels,
   TopPerformingAgenciesTable,
   useAgencyDashboard,
 } from "@/features/agency";
 import { getErrorMessage } from "@/features/agency/utils/error-message";
+import { PageContentLoader } from "@/components/shared/page-content-loader";
 
 export default function TopPerformingAgenciesPage() {
   const { data, isLoading, error } = useAgencyDashboard();
@@ -30,20 +29,19 @@ export default function TopPerformingAgenciesPage() {
         </p>
       </div>
 
-      <AgencyDashboardPanels
-        totalAgencies={data?.total_agencies}
-        totalClientsRecruited={data?.total_clients_recruited}
-        totalLandValueSold={data?.total_land_value_sold}
-        outstandingBalance={data?.outstanding_balance}
-      />
+      {isLoading ? (
+        <PageContentLoader label="Loading top agencies…" />
+      ) : (
+        <>
+          <AgencyDashboardPanels
+            totalAgencies={data?.total_agencies}
+            totalClientsRecruited={data?.total_clients_recruited}
+            totalLandValueSold={data?.total_land_value_sold}
+            outstandingBalance={data?.outstanding_balance}
+          />
 
-      <TopPerformingAgenciesTable rows={data?.top_performing_agencies} />
-
-      {isLoading && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading top agencies...
-        </div>
+          <TopPerformingAgenciesTable rows={data?.top_performing_agencies} />
+        </>
       )}
     </div>
   );

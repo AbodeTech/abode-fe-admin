@@ -15,6 +15,7 @@ import { FilterSelect } from "@/components/shared/FilterSelect";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { useState, useEffect } from "react";
+import { SuspensePageFallback } from "@/components/shared/page-content-loader";
 
 function WithdrawalTransactionsContent() {
   const searchParams = useSearchParams();
@@ -126,7 +127,7 @@ function WithdrawalTransactionsContent() {
 
 export default function WithdrawalTransactionsPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-center text-gray-500">Loading...</div>}>
+    <Suspense fallback={<SuspensePageFallback />}>
       <WithdrawalTransactionsContent />
     </Suspense>
   );

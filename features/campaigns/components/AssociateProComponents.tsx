@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { AdminDesktopTableWrap, AdminMobileCard, AdminMobileField, AdminMobileStack } from "@/components/shared/admin-responsive-table";
 import { FragmentType, graphql, useFragment } from "@/lib/gql";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -431,43 +432,57 @@ export function AssociateProUpgradesTable({ data }: AssociateProUpgradesTablePro
         <CardDescription>Latest members who upgraded from Associate to Pro</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="min-w-0 overflow-x-auto">
-          <Table className="min-w-[880px]">
-            <TableHeader>
-              <TableRow className="border-border hover:bg-transparent">
-                <TableHead className="text-muted-foreground">Name</TableHead>
-                <TableHead className="text-muted-foreground">User Since</TableHead>
-                <TableHead className="text-muted-foreground">Associate Since</TableHead>
-                <TableHead className="text-muted-foreground">Pro Since</TableHead>
-                <TableHead className="text-muted-foreground">Payment</TableHead>
-                <TableHead className="text-muted-foreground">Status</TableHead>
-                <TableHead className="text-muted-foreground">Referrer</TableHead>
-                <TableHead className="text-muted-foreground">Ticket #</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {upgrades.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={8} className="py-4 text-center text-muted-foreground">
-                    No records found.
-                  </TableCell>
-                </TableRow>
-              )}
+        {upgrades.length === 0 ? (
+          <p className="py-4 text-center text-sm text-muted-foreground">No records found.</p>
+        ) : (
+          <>
+            <AdminMobileStack className="px-0.5">
               {upgrades.map((upgrade) => (
-                <TableRow key={upgrade.upgradeId} className="border-border">
-                  <TableCell className="font-medium text-foreground">{upgrade.userFullName ?? "-"}</TableCell>
-                  <TableCell className="text-muted-foreground">{formatDate(upgrade.userSince)}</TableCell>
-                  <TableCell className="text-muted-foreground">{formatDate(upgrade.associateSince)}</TableCell>
-                  <TableCell className="text-foreground">{formatDate(upgrade.associateProSince)}</TableCell>
-                  <TableCell className="text-foreground">{formatCurrency(upgrade.amountPaid)}</TableCell>
-                  <TableCell>{statusBadge(upgrade.adminStatus)}</TableCell>
-                  <TableCell className="text-muted-foreground">{upgrade.referrerFullName ?? "-"}</TableCell>
-                  <TableCell className="font-mono text-xs text-foreground">{upgrade.ticketId ?? "-"}</TableCell>
-                </TableRow>
+                <AdminMobileCard key={upgrade.upgradeId} title={upgrade.userFullName ?? "—"}>
+                  <AdminMobileField label="User since" value={formatDate(upgrade.userSince)} />
+                  <AdminMobileField label="Associate since" value={formatDate(upgrade.associateSince)} />
+                  <AdminMobileField label="Pro since" value={formatDate(upgrade.associateProSince)} />
+                  <AdminMobileField label="Payment" value={formatCurrency(upgrade.amountPaid)} />
+                  <AdminMobileField label="Status" value={statusBadge(upgrade.adminStatus)} />
+                  <AdminMobileField label="Referrer" value={upgrade.referrerFullName ?? "—"} />
+                  <AdminMobileField label="Ticket #" value={<span className="font-mono text-xs">{upgrade.ticketId ?? "—"}</span>} />
+                </AdminMobileCard>
               ))}
-            </TableBody>
-          </Table>
-        </div>
+            </AdminMobileStack>
+            <AdminDesktopTableWrap>
+              <div className="min-w-0 overflow-x-auto">
+                <Table className="min-w-[880px]">
+                  <TableHeader>
+                    <TableRow className="border-border hover:bg-transparent">
+                      <TableHead className="text-muted-foreground">Name</TableHead>
+                      <TableHead className="text-muted-foreground">User Since</TableHead>
+                      <TableHead className="text-muted-foreground">Associate Since</TableHead>
+                      <TableHead className="text-muted-foreground">Pro Since</TableHead>
+                      <TableHead className="text-muted-foreground">Payment</TableHead>
+                      <TableHead className="text-muted-foreground">Status</TableHead>
+                      <TableHead className="text-muted-foreground">Referrer</TableHead>
+                      <TableHead className="text-muted-foreground">Ticket #</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {upgrades.map((upgrade) => (
+                      <TableRow key={upgrade.upgradeId} className="border-border">
+                        <TableCell className="font-medium text-foreground">{upgrade.userFullName ?? "-"}</TableCell>
+                        <TableCell className="text-muted-foreground">{formatDate(upgrade.userSince)}</TableCell>
+                        <TableCell className="text-muted-foreground">{formatDate(upgrade.associateSince)}</TableCell>
+                        <TableCell className="text-foreground">{formatDate(upgrade.associateProSince)}</TableCell>
+                        <TableCell className="text-foreground">{formatCurrency(upgrade.amountPaid)}</TableCell>
+                        <TableCell>{statusBadge(upgrade.adminStatus)}</TableCell>
+                        <TableCell className="text-muted-foreground">{upgrade.referrerFullName ?? "-"}</TableCell>
+                        <TableCell className="font-mono text-xs text-foreground">{upgrade.ticketId ?? "-"}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </AdminDesktopTableWrap>
+          </>
+        )}
       </CardContent>
     </Card>
   );
@@ -529,40 +544,52 @@ export function AssociateProTopPerformers({ data }: AssociateProTopPerformersPro
           </Button>
         </CardHeader>
         <CardContent className="flex min-w-0 flex-1 flex-col justify-between">
-          <div className="min-w-0 overflow-x-auto">
-            <Table className="min-w-[420px]">
-            <TableHeader>
-              <TableRow className="border-border hover:bg-transparent">
-                <TableHead className="w-[50%] text-muted-foreground">Name</TableHead>
-                <TableHead className="text-right text-muted-foreground">Conversions</TableHead>
-                <TableHead className="text-right text-muted-foreground">Performance</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {paginatedReferrals.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={3} className="py-4 text-center text-muted-foreground">
-                    No data available
-                  </TableCell>
-                </TableRow>
-              )}
-              {paginatedReferrals.map((row) => (
-                <TableRow key={row.referrerId} className="border-border">
-                  <TableCell className="py-3 font-medium text-foreground">
-                    <div className="flex flex-col">
-                      <span>{row.referrerFullName ?? "-"}</span>
-                      <span className="text-xs text-muted-foreground">{row.referrerEmail ?? "-"}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right font-bold text-foreground">{row.totalReferrals}</TableCell>
-                  <TableCell className="text-right">
-                    <Progress value={(row.totalReferrals / maxReferrals) * 100} className="ml-auto h-2 w-[60px]" />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          </div>
+          {paginatedReferrals.length === 0 ? (
+            <p className="py-4 text-center text-sm text-muted-foreground">No data available</p>
+          ) : (
+            <>
+              <AdminMobileStack className="px-0.5">
+                {paginatedReferrals.map((row) => (
+                  <AdminMobileCard key={row.referrerId} title={row.referrerFullName ?? "—"} subtitle={row.referrerEmail ?? undefined}>
+                    <AdminMobileField label="Conversions" value={row.totalReferrals} />
+                    <AdminMobileField
+                      label="Performance"
+                      value={<Progress value={(row.totalReferrals / maxReferrals) * 100} className="ml-auto h-2 w-full max-w-[120px]" />}
+                    />
+                  </AdminMobileCard>
+                ))}
+              </AdminMobileStack>
+              <AdminDesktopTableWrap>
+                <div className="min-w-0 overflow-x-auto">
+                  <Table className="min-w-[420px]">
+                    <TableHeader>
+                      <TableRow className="border-border hover:bg-transparent">
+                        <TableHead className="w-[50%] text-muted-foreground">Name</TableHead>
+                        <TableHead className="text-right text-muted-foreground">Conversions</TableHead>
+                        <TableHead className="text-right text-muted-foreground">Performance</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedReferrals.map((row) => (
+                        <TableRow key={row.referrerId} className="border-border">
+                          <TableCell className="py-3 font-medium text-foreground">
+                            <div className="flex flex-col">
+                              <span>{row.referrerFullName ?? "-"}</span>
+                              <span className="text-xs text-muted-foreground">{row.referrerEmail ?? "-"}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right font-bold text-foreground">{row.totalReferrals}</TableCell>
+                          <TableCell className="text-right">
+                            <Progress value={(row.totalReferrals / maxReferrals) * 100} className="ml-auto h-2 w-[60px]" />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </AdminDesktopTableWrap>
+            </>
+          )}
 
           {referralPages > 1 && (
             <div className="flex items-center justify-end space-x-2 py-4">
@@ -604,40 +631,52 @@ export function AssociateProTopPerformers({ data }: AssociateProTopPerformersPro
           </Button>
         </CardHeader>
         <CardContent className="flex min-w-0 flex-1 flex-col justify-between">
-          <div className="min-w-0 overflow-x-auto">
-            <Table className="min-w-[420px]">
-            <TableHeader>
-              <TableRow className="border-border hover:bg-transparent">
-                <TableHead className="w-[50%] text-muted-foreground">Name</TableHead>
-                <TableHead className="text-right text-muted-foreground">Revenue</TableHead>
-                <TableHead className="text-right text-muted-foreground">Share</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {paginatedRevenue.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={3} className="py-4 text-center text-muted-foreground">
-                    No data available
-                  </TableCell>
-                </TableRow>
-              )}
-              {paginatedRevenue.map((row) => (
-                <TableRow key={row.referrerId} className="border-border">
-                  <TableCell className="py-3 font-medium text-foreground">
-                    <div className="flex flex-col">
-                      <span>{row.referrerFullName ?? "-"}</span>
-                      <span className="text-xs text-muted-foreground">{row.referrerEmail ?? "-"}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right font-bold text-foreground">{formatCurrency(row.totalRevenue)}</TableCell>
-                  <TableCell className="text-right">
-                    <Progress value={(row.totalRevenue / maxRevenue) * 100} className="ml-auto h-2 w-[60px]" />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          </div>
+          {paginatedRevenue.length === 0 ? (
+            <p className="py-4 text-center text-sm text-muted-foreground">No data available</p>
+          ) : (
+            <>
+              <AdminMobileStack className="px-0.5">
+                {paginatedRevenue.map((row) => (
+                  <AdminMobileCard key={row.referrerId} title={row.referrerFullName ?? "—"} subtitle={row.referrerEmail ?? undefined}>
+                    <AdminMobileField label="Revenue" value={formatCurrency(row.totalRevenue)} />
+                    <AdminMobileField
+                      label="Share"
+                      value={<Progress value={(row.totalRevenue / maxRevenue) * 100} className="ml-auto h-2 w-full max-w-[120px]" />}
+                    />
+                  </AdminMobileCard>
+                ))}
+              </AdminMobileStack>
+              <AdminDesktopTableWrap>
+                <div className="min-w-0 overflow-x-auto">
+                  <Table className="min-w-[420px]">
+                    <TableHeader>
+                      <TableRow className="border-border hover:bg-transparent">
+                        <TableHead className="w-[50%] text-muted-foreground">Name</TableHead>
+                        <TableHead className="text-right text-muted-foreground">Revenue</TableHead>
+                        <TableHead className="text-right text-muted-foreground">Share</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedRevenue.map((row) => (
+                        <TableRow key={row.referrerId} className="border-border">
+                          <TableCell className="py-3 font-medium text-foreground">
+                            <div className="flex flex-col">
+                              <span>{row.referrerFullName ?? "-"}</span>
+                              <span className="text-xs text-muted-foreground">{row.referrerEmail ?? "-"}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right font-bold text-foreground">{formatCurrency(row.totalRevenue)}</TableCell>
+                          <TableCell className="text-right">
+                            <Progress value={(row.totalRevenue / maxRevenue) * 100} className="ml-auto h-2 w-[60px]" />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </AdminDesktopTableWrap>
+            </>
+          )}
 
           {revenuePages > 1 && (
             <div className="flex items-center justify-end space-x-2 py-4">
@@ -863,45 +902,54 @@ export function AssociateProRecruitmentTable({
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             Loading…
           </div>
+        ) : users.length === 0 ? (
+          <p className="py-4 text-center text-sm text-muted-foreground">No records found.</p>
         ) : (
-          <div className="min-w-0 overflow-x-auto">
-            <Table className="min-w-[720px]">
-              <TableHeader>
-                <TableRow className="border-border hover:bg-transparent">
-                  <TableHead className="text-muted-foreground">Name</TableHead>
-                  <TableHead className="text-muted-foreground">Email</TableHead>
-                  <TableHead className="text-muted-foreground">Joined</TableHead>
-                  <TableHead className="text-muted-foreground">Referrer</TableHead>
-                  <TableHead className="text-muted-foreground">Referrer Email</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {users.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="py-4 text-center text-muted-foreground">
-                      No records found.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  users.map((user, idx) => (
-                    <TableRow key={user._id ?? idx} className="border-border">
-                      <TableCell className="font-medium text-foreground">
-                        {`${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || "-"}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">{user.email ?? "-"}</TableCell>
-                      <TableCell className="text-muted-foreground">{formatDate(user.createdAt)}</TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {user.referral
-                          ? `${user.referral.firstName} ${user.referral.lastName}`.trim()
-                          : "-"}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">{user.referral?.email ?? "-"}</TableCell>
+          <>
+            <AdminMobileStack className="px-0.5">
+              {users.map((user, idx) => {
+                const fullName = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || "—";
+                const refName = user.referral ? `${user.referral.firstName} ${user.referral.lastName}`.trim() : "—";
+                return (
+                  <AdminMobileCard key={user._id ?? idx} title={fullName} subtitle={user.email ?? undefined}>
+                    <AdminMobileField label="Joined" value={formatDate(user.createdAt)} />
+                    <AdminMobileField label="Referrer" value={refName} />
+                    <AdminMobileField label="Referrer email" value={user.referral?.email ?? "—"} />
+                  </AdminMobileCard>
+                );
+              })}
+            </AdminMobileStack>
+            <AdminDesktopTableWrap>
+              <div className="min-w-0 overflow-x-auto">
+                <Table className="min-w-[720px]">
+                  <TableHeader>
+                    <TableRow className="border-border hover:bg-transparent">
+                      <TableHead className="text-muted-foreground">Name</TableHead>
+                      <TableHead className="text-muted-foreground">Email</TableHead>
+                      <TableHead className="text-muted-foreground">Joined</TableHead>
+                      <TableHead className="text-muted-foreground">Referrer</TableHead>
+                      <TableHead className="text-muted-foreground">Referrer Email</TableHead>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                  </TableHeader>
+                  <TableBody>
+                    {users.map((user, idx) => (
+                      <TableRow key={user._id ?? idx} className="border-border">
+                        <TableCell className="font-medium text-foreground">
+                          {`${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || "-"}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{user.email ?? "-"}</TableCell>
+                        <TableCell className="text-muted-foreground">{formatDate(user.createdAt)}</TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {user.referral ? `${user.referral.firstName} ${user.referral.lastName}`.trim() : "-"}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{user.referral?.email ?? "-"}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </AdminDesktopTableWrap>
+          </>
         )}
 
         {totalPages > 1 && (

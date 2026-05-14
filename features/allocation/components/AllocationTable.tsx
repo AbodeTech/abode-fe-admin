@@ -16,6 +16,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { MapPin, RotateCcw, Send } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AdminDesktopTableWrap,
+  AdminMobileCard,
+  AdminMobileField,
+  AdminMobileStack,
+} from "@/components/shared/admin-responsive-table";
 
 export const AllocationTableRowFragment = graphql(`
   fragment AllocationTableRowFragment on EligibleClient {
@@ -93,7 +99,62 @@ export function AllocationTable({ rows, isLoading, onSend, onResend }: Allocatio
 
   return (
     <Card className="min-w-0 border-none shadow-sm">
-      <CardContent className="min-w-0 p-3 sm:p-4">
+      <CardContent className="min-w-0 space-y-3 p-3 sm:p-4">
+        <AdminMobileStack>
+          {safeRows.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">No eligible clients found.</p>
+          ) : (
+            safeRows.map((row, idx) => {
+              const client = getFragmentData(AllocationTableRowFragment, row);
+              const hasAllocation = Boolean(client.allocation);
+              return (
+                <AdminMobileCard key={`${client.email}-${idx}`} title={`${client.firstName} ${client.lastName}`} subtitle={client.email}>
+                  <AdminMobileField label="Phone" value={client.phoneNumber || "—"} />
+                  <AdminMobileField label="Referrer" value={client.referral || "not added yet"} />
+                  <AdminMobileField
+                    label="Asset"
+                    value={client.assetType ? `${client.assetName} (${client.assetType})` : (client.assetName ?? "—")}
+                  />
+                  <AdminMobileField label="Land size" value={formatNumber(client.assetSize)} />
+                  <AdminMobileField label="Units" value={formatNumber(client.unit)} />
+                  <AdminMobileField label="Payment %" value={`${client.paymentPercentage ?? "—"}%`} />
+                  <AdminMobileField label="Amount paid" value={formatAmount(client.amountPaid)} />
+                  <AdminMobileField label="Total price" value={formatAmount(client.totalPrice)} />
+                  <AdminMobileField label="Duration" value={`${client.duration} months`} />
+                  <AdminMobileField label="Location" value={client.location ?? "—"} />
+                  <AdminMobileField label="Bought date" value={formatDate(client.end_date)} />
+                  <AdminMobileField
+                    label="Allocation"
+                    value={
+                      hasAllocation ? (
+                        <Badge className="bg-green-100 text-green-800 hover:bg-green-100">{client.allocation}</Badge>
+                      ) : (
+                        <Badge variant="secondary" className="bg-orange-100 text-orange-800">
+                          Not assigned yet
+                        </Badge>
+                      )
+                    }
+                  />
+                  <div className="border-t border-border pt-2">
+                    {hasAllocation ? (
+                      <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => onResend(row)}>
+                        <RotateCcw className="h-4 w-4" />
+                        Resend
+                      </Button>
+                    ) : (
+                      <Button size="sm" className="w-full gap-2" onClick={() => onSend(row)}>
+                        <Send className="h-4 w-4" />
+                        Send Allocation
+                      </Button>
+                    )}
+                  </div>
+                </AdminMobileCard>
+              );
+            })
+          )}
+        </AdminMobileStack>
+
+        <AdminDesktopTableWrap>
         <Table className="w-max min-w-[1520px] table-auto text-sm">
           <TableHeader>
             <TableRow className="hover:bg-transparent">
@@ -237,6 +298,7 @@ export function AllocationTable({ rows, isLoading, onSend, onResend }: Allocatio
             )}
           </TableBody>
         </Table>
+        </AdminDesktopTableWrap>
       </CardContent>
     </Card>
   );

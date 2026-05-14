@@ -2,9 +2,10 @@
 
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { Loader2, Download } from "lucide-react";
+import { PageContentLoader, SuspensePageFallback } from "@/components/shared/page-content-loader";
 import { Pagination } from "@/components/shared/Pagination";
 import { Button } from "@/components/ui/button";
+import { Loader2, Download } from "lucide-react";
 import {
   useCompleteAssetTransactions,
   DEFAULT_COMPLETE_ASSET_LIMIT,
@@ -62,23 +63,22 @@ function CompletedAssetPaymentsUsersContent() {
       </div>
 
       <div className="min-w-0 space-y-4">
-        <CompleteAssetPaymentsTable data={rows} />
-        <Pagination count={count} currentIdx={page} limit={DEFAULT_COMPLETE_ASSET_LIMIT} />
+        {isLoading ? (
+          <PageContentLoader label="Loading completed payments…" />
+        ) : (
+          <>
+            <CompleteAssetPaymentsTable data={rows} />
+            <Pagination count={count} currentIdx={page} limit={DEFAULT_COMPLETE_ASSET_LIMIT} />
+          </>
+        )}
       </div>
-
-      {isLoading && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading completed payments...
-        </div>
-      )}
     </div>
   );
 }
 
 export default function CompletedAssetPaymentsUsersPage() {
   return (
-    <Suspense fallback={<div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+    <Suspense fallback={<SuspensePageFallback />}>
       <CompletedAssetPaymentsUsersContent />
     </Suspense>
   );

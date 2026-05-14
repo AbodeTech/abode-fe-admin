@@ -1,7 +1,8 @@
 import type { CodegenConfig } from '@graphql-codegen/cli';
 import { config as loadEnv } from 'dotenv';
 
-loadEnv({ path: '.env.local' });
+loadEnv({ path: ".env" });
+loadEnv({ path: ".env.local", override: true });
 
 const config: CodegenConfig = {
   overwrite: true,

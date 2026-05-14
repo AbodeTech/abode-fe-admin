@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { PageContentLoader, SuspensePageFallback } from "@/components/shared/page-content-loader";
 import { toast } from "sonner";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -179,23 +179,22 @@ function AssociateUpgradeContent() {
         onStatusChange={handleStatusChange}
       />
 
-      <UpgradeTable
-        data={upgradeRequests}
-        onApprove={(row) => openConfirm("approve", row)}
-        onDecline={(row) => openConfirm("decline", row)}
-      />
+      {isLoading ? (
+        <PageContentLoader label="Loading upgrade requests…" />
+      ) : (
+        <>
+          <UpgradeTable
+            data={upgradeRequests}
+            onApprove={(row) => openConfirm("approve", row)}
+            onDecline={(row) => openConfirm("decline", row)}
+          />
 
-      <Pagination
-        count={searchParam ? upgradeRequests.length : (data?.pagination.totalCount ?? 0)}
-        currentIdx={searchParam ? 1 : (data?.pagination.currentPage ?? page)}
-        limit={data?.pagination.limit ?? DEFAULT_UPGRADE_LIMIT}
-      />
-
-      {isLoading && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading requests...
-        </div>
+          <Pagination
+            count={searchParam ? upgradeRequests.length : (data?.pagination.totalCount ?? 0)}
+            currentIdx={searchParam ? 1 : (data?.pagination.currentPage ?? page)}
+            limit={data?.pagination.limit ?? DEFAULT_UPGRADE_LIMIT}
+          />
+        </>
       )}
 
       <ConfirmDialog
@@ -213,7 +212,7 @@ function AssociateUpgradeContent() {
 
 export default function AssociateUpgradePage() {
   return (
-    <Suspense fallback={<div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+    <Suspense fallback={<SuspensePageFallback />}>
       <AssociateUpgradeContent />
     </Suspense>
   );

@@ -10,8 +10,6 @@ const GET_TOP_ASSOCIATES_QUERY = graphql(`
     $sortBy: String
     $startDate: String
     $endDate: String
-    $assetType: String
-    $assetName: String
   ) {
     getTopAssociates(
       page: $page
@@ -19,8 +17,6 @@ const GET_TOP_ASSOCIATES_QUERY = graphql(`
       sortBy: $sortBy
       startDate: $startDate
       endDate: $endDate
-      assetType: $assetType
-      assetName: $assetName
     ) {
       count
       data {
@@ -36,8 +32,6 @@ export interface UseTopAssociatesParams {
   sortBy?: string;
   startDate?: string | null;
   endDate?: string | null;
-  assetType?: string | null;
-  assetName?: string | null;
 }
 
 export const DEFAULT_TOP_ASSOCIATES_LIMIT = 25;
@@ -55,8 +49,6 @@ export const useTopAssociates = (params: UseTopAssociatesParams) => {
     sortBy = DEFAULT_TOP_ASSOCIATES_SORT,
     startDate,
     endDate,
-    assetType,
-    assetName,
   } = params;
 
   const variables = {
@@ -65,8 +57,6 @@ export const useTopAssociates = (params: UseTopAssociatesParams) => {
     sortBy,
     startDate: toOptional(startDate),
     endDate: toOptional(endDate),
-    assetType: toOptional(assetType),
-    assetName: toOptional(assetName),
   };
 
   return useQuery({

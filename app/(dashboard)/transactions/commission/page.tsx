@@ -6,6 +6,7 @@ import { useCommissionTransactions, CommissionTransactionsTable, CommissionExpor
 import { Pagination } from "@/components/shared/Pagination";
 import { DateFilter } from "@/components/shared/DateFilter";
 import { FilterSelect } from "@/components/shared/FilterSelect";
+import { SuspensePageFallback } from "@/components/shared/page-content-loader";
 
 function CommissionTransactionsContent() {
   const searchParams = useSearchParams();
@@ -74,7 +75,7 @@ function CommissionTransactionsContent() {
 
 export default function CommissionTransactionsPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-center text-gray-500">Loading...</div>}>
+    <Suspense fallback={<SuspensePageFallback />}>
       <CommissionTransactionsContent />
     </Suspense>
   );

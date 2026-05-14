@@ -12,6 +12,12 @@ import { Button } from "@/components/ui/button";
 import { ClipboardList, User as UserIcon, CheckCircle, XCircle, Image as ImageIcon } from "lucide-react";
 import { format } from "date-fns";
 import type { MarketplaceListingAdmin } from "../hooks/use-marketplace-listings";
+import {
+  AdminDesktopTableWrap,
+  AdminMobileCard,
+  AdminMobileField,
+  AdminMobileStack,
+} from "@/components/shared/admin-responsive-table";
 
 interface PendingApprovalsTableProps {
   data: MarketplaceListingAdmin[] | null | undefined;
@@ -59,6 +65,55 @@ export function PendingApprovalsTable({
   }
 
   return (
+    <>
+      <AdminMobileStack className="space-y-3">
+        {data.map((listing) => (
+          <AdminMobileCard
+            key={listing._id}
+            title={
+              listing.buyer ? `${listing.buyer.firstName} ${listing.buyer.lastName}` : "N/A"
+            }
+            subtitle={listing.seller ? `Seller: ${listing.seller.firstName} ${listing.seller.lastName}` : undefined}
+          >
+            <AdminMobileField label="Asset" value={listing.asset?.asset_name || "N/A"} />
+            <AdminMobileField label="Price" value={formatCurrency(listing.listing_price)} />
+            <AdminMobileField
+              label="Receipt"
+              value={
+                listing.receipt_image ? (
+                  <a href={listing.receipt_image} target="_blank" rel="noopener noreferrer" className="text-primary underline">
+                    View
+                  </a>
+                ) : (
+                  "None"
+                )
+              }
+            />
+            <AdminMobileField
+              label="Receipt amount"
+              value={listing.receipt_amount ? formatCurrency(listing.receipt_amount) : "N/A"}
+            />
+            <AdminMobileField label="Reference" value={listing.receipt_reference || "N/A"} />
+            <AdminMobileField label="Submitted" value={formatDate(listing.createdAt)} />
+            <div className="flex justify-end gap-2 border-t border-border pt-2">
+              {onApprove && (
+                <Button variant="outline" size="sm" onClick={() => onApprove(listing)}>
+                  <CheckCircle className="mr-1 h-4 w-4" />
+                  Approve
+                </Button>
+              )}
+              {onReject && (
+                <Button variant="outline" size="sm" onClick={() => onReject(listing)}>
+                  <XCircle className="mr-1 h-4 w-4" />
+                  Reject
+                </Button>
+              )}
+            </div>
+          </AdminMobileCard>
+        ))}
+      </AdminMobileStack>
+
+      <AdminDesktopTableWrap>
     <div className="min-w-0 w-full overflow-x-auto rounded-lg border border-[#E5EAEF]">
       <Table className="min-w-[900px]">
         <TableHeader className="border-b border-[#E5EAEF] bg-[#F9FAFB]">
@@ -168,5 +223,7 @@ export function PendingApprovalsTable({
         </TableBody>
       </Table>
     </div>
+      </AdminDesktopTableWrap>
+    </>
   );
 }

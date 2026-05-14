@@ -2,7 +2,7 @@
 
 import { useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { SuspensePageFallback } from "@/components/shared/page-content-loader";
 
 import {
   useTopAssociates,
@@ -50,8 +50,6 @@ function TopAssociatesContent() {
   const { sortKey, sortDirection, sortParam } = parseSort(searchParams.get("sort"));
   const startDate = searchParams.get("start_date") || null;
   const endDate = searchParams.get("end_date") || null;
-  const assetType = searchParams.get("assettype") || null;
-  const assetName = searchParams.get("assetname") || null;
 
   const { data, isLoading, error } = useTopAssociates({
     page,
@@ -59,8 +57,6 @@ function TopAssociatesContent() {
     sortBy: sortParam,
     startDate,
     endDate,
-    assetType,
-    assetName,
   });
 
   const rows = useMemo(
@@ -110,20 +106,13 @@ function TopAssociatesContent() {
       )}
 
       <Pagination count={data?.count ?? 0} currentIdx={page} limit={DEFAULT_TOP_ASSOCIATES_LIMIT} />
-
-      {isLoading && (
-        <div className="flex items-center justify-center py-6 text-sm text-muted-foreground">
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Loading associates...
-        </div>
-      )}
     </div>
   );
 }
 
 export default function TopAssociatesPage() {
   return (
-    <Suspense fallback={<div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+    <Suspense fallback={<SuspensePageFallback />}>
       <TopAssociatesContent />
     </Suspense>
   );

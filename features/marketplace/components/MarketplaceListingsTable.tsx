@@ -13,6 +13,12 @@ import { Button } from "@/components/ui/button";
 import { ShoppingCart, User as UserIcon, Calendar, Ban, CheckCircle } from "lucide-react";
 import { format } from "date-fns";
 import type { MarketplaceListingAdmin } from "../hooks/use-marketplace-listings";
+import {
+  AdminDesktopTableWrap,
+  AdminMobileCard,
+  AdminMobileField,
+  AdminMobileStack,
+} from "@/components/shared/admin-responsive-table";
 
 interface MarketplaceListingsTableProps {
   data: MarketplaceListingAdmin[] | null | undefined;
@@ -80,6 +86,47 @@ export function MarketplaceListingsTable({
   }
 
   return (
+    <>
+      <AdminMobileStack className="space-y-3">
+        {data.map((listing) => (
+          <AdminMobileCard
+            key={listing._id}
+            title={
+              listing.seller ? `${listing.seller.firstName} ${listing.seller.lastName}` : "N/A"
+            }
+            subtitle={listing.asset?.asset_name || "N/A"}
+          >
+            <AdminMobileField label="Price" value={formatCurrency(listing.listing_price)} />
+            <AdminMobileField label="Type" value={listing.asset_type} />
+            <AdminMobileField label="Units" value={listing.no_of_units} />
+            <AdminMobileField
+              label="Status"
+              value={
+                <Badge variant="outline" className={`${statusStyles[listing.status] || statusStyles.cancelled} font-medium border`}>
+                  {statusLabels[listing.status] || listing.status}
+                </Badge>
+              }
+            />
+            <AdminMobileField label="Listed" value={formatDate(listing.listed_at || listing.createdAt)} />
+            <div className="flex justify-end gap-1 border-t border-border pt-2">
+              {listing.status === "active" && onSuspend && (
+                <Button variant="outline" size="sm" onClick={() => onSuspend(listing)}>
+                  <Ban className="mr-1 h-4 w-4" />
+                  Suspend
+                </Button>
+              )}
+              {listing.status === "suspended" && onUnsuspend && (
+                <Button variant="outline" size="sm" onClick={() => onUnsuspend(listing)}>
+                  <CheckCircle className="mr-1 h-4 w-4" />
+                  Unsuspend
+                </Button>
+              )}
+            </div>
+          </AdminMobileCard>
+        ))}
+      </AdminMobileStack>
+
+      <AdminDesktopTableWrap>
     <div className="min-w-0 w-full overflow-x-auto rounded-lg border border-[#E5EAEF]">
       <Table className="min-w-[720px]">
         <TableHeader className="border-b border-[#E5EAEF] bg-[#F9FAFB]">
@@ -175,5 +222,7 @@ export function MarketplaceListingsTable({
         </TableBody>
       </Table>
     </div>
+      </AdminDesktopTableWrap>
+    </>
   );
 }

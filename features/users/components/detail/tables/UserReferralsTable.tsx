@@ -44,6 +44,12 @@ import { UserReferralActions } from "../UserReferralActions"
 import { addUserReferralByAdmin } from "@/lib/api/admin/referrals.client"
 import { userKeys } from "../../../hooks/query-keys"
 import { getErrorMessage } from "../../../utils/error-message"
+import {
+  AdminDesktopTableWrap,
+  AdminMobileCard,
+  AdminMobileField,
+  AdminMobileStack,
+} from "@/components/shared/admin-responsive-table"
 
 // Extend transaction-utils with getAssociateColor if not present or create local helper
 const getAssociateColorHelper = (status: string) => {
@@ -129,6 +135,42 @@ export function UserReferralsTable({ referrals }: UserReferralsTableProps) {
         </div>
       </CardHeader>
       <CardContent>
+        <AdminMobileStack className="mb-4 space-y-3">
+          {filteredData.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              No referrals found{statusFilter !== "all" ? ` with status "${statusFilter}"` : ""}
+            </p>
+          ) : (
+            filteredData.map((referral) => (
+              <AdminMobileCard key={referral._id} title={referral.name} subtitle={referral.email}>
+                <AdminMobileField
+                  label="Status"
+                  value={
+                    <Badge variant="outline" className={getAssociateColorHelper(referral.userReferralStatus)}>
+                      {referral.userReferralStatus}
+                    </Badge>
+                  }
+                />
+                <AdminMobileField label="Phone" value={referral.phoneNumber} />
+                <AdminMobileField
+                  label="Account"
+                  value={
+                    <Badge variant="outline" className={getStatusColor(referral.status)}>
+                      {referral.status}
+                    </Badge>
+                  }
+                />
+                <AdminMobileField label="Commission" value={formatAmount(referral.commission)} />
+                <AdminMobileField label="Joined" value={formatDate(referral.createdAt)} />
+                <div className="flex justify-end border-t border-border pt-2">
+                  <UserReferralActions referralId={referral._id} referralName={referral.name} />
+                </div>
+              </AdminMobileCard>
+            ))
+          )}
+        </AdminMobileStack>
+
+        <AdminDesktopTableWrap>
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -182,6 +224,7 @@ export function UserReferralsTable({ referrals }: UserReferralsTableProps) {
             </TableBody>
           </Table>
         </div>
+        </AdminDesktopTableWrap>
       </CardContent>
 
       <Dialog open={isAddOpen && canAddReferral} onOpenChange={setIsAddOpen}>

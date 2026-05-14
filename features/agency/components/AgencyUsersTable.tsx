@@ -8,6 +8,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  AdminDesktopTableWrap,
+  AdminMobileCard,
+  AdminMobileField,
+  AdminMobileStack,
+} from "@/components/shared/admin-responsive-table";
 
 export interface AgencyUserRow {
   _id: string;
@@ -25,6 +31,24 @@ export function AgencyUsersTable({ users }: AgencyUsersTableProps) {
   const rows = users ?? [];
 
   return (
+    <div className="w-full min-w-0 space-y-3">
+      <AdminMobileStack>
+        {rows.length === 0 ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">No users under this agency.</p>
+        ) : (
+          rows.map((user) => (
+            <AdminMobileCard
+              key={user._id}
+              title={[user.firstName, user.lastName].filter(Boolean).join(" ") || "-"}
+              subtitle={user.email || undefined}
+            >
+              <AdminMobileField label="Phone" value={user.phoneNumber || "-"} />
+            </AdminMobileCard>
+          ))
+        )}
+      </AdminMobileStack>
+
+      <AdminDesktopTableWrap>
     <div className="min-w-0 overflow-x-auto rounded-md border border-gray-200">
       <Table className="min-w-[560px]">
         <TableHeader>
@@ -56,6 +80,8 @@ export function AgencyUsersTable({ users }: AgencyUsersTableProps) {
           )}
         </TableBody>
       </Table>
+    </div>
+      </AdminDesktopTableWrap>
     </div>
   );
 }

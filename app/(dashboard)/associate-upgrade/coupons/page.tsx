@@ -6,7 +6,6 @@ import { CouponsTable } from "@/features/associate-upgrade/components/coupons/Co
 import { CouponFilters } from "@/features/associate-upgrade/components/coupons/CouponFilters";
 import { CreateCouponDialog } from "@/features/associate-upgrade/components/coupons/CreateCouponDialog";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
 
 export default function CouponsPage() {
   const { data, isLoading, error } = useCoupons();
@@ -94,13 +93,6 @@ export default function CouponsPage() {
         onDelete={handleDelete}
         onUpdate={handleUpdate}
       />
-
-      {(isLoading || updating || deleting || editing) && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Working...
-        </div>
-      )}
     </div>
   );
 }

@@ -6,7 +6,7 @@ import { useClientRequests, DEFAULT_REQUESTS_LIMIT } from "@/features/requests";
 import { RequestsFilters, SubRequestStats } from "@/features/requests";
 import { RequestsTable } from "@/features/requests";
 import { Pagination } from "@/components/shared/Pagination";
-import { Loader2 } from "lucide-react";
+import { SuspensePageFallback } from "@/components/shared/page-content-loader";
 
 const customStatusOptions = [
   { label: "Pending", value: "pending" },
@@ -120,20 +120,13 @@ function CustomRequestsContent() {
       />
 
       <Pagination count={total} currentIdx={page} limit={limit} />
-
-      {isLoading && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading requests...
-        </div>
-      )}
     </div>
   );
 }
 
 export default function CustomRequestsPage() {
   return (
-    <Suspense fallback={<div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+    <Suspense fallback={<SuspensePageFallback />}>
       <CustomRequestsContent />
     </Suspense>
   );

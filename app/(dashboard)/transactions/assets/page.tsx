@@ -1,6 +1,6 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense } from "react";
 import {
   useAssetTransactions,
@@ -15,7 +15,7 @@ import { DateFilter } from "@/components/shared/DateFilter";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { SuspensePageFallback } from "@/components/shared/page-content-loader";
 
 function AssetTransactionsContent() {
   const searchParams = useSearchParams();
@@ -173,7 +173,7 @@ function AssetTransactionsContent() {
 
 export default function AssetTransactionsPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-center text-gray-500">Loading...</div>}>
+    <Suspense fallback={<SuspensePageFallback />}>
       <AssetTransactionsContent />
     </Suspense>
   );

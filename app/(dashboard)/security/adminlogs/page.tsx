@@ -10,7 +10,7 @@ import {
 } from "@/features/admin-logs";
 import { AdminLogsExport } from "@/features/admin-logs/components/AdminLogsExport";
 import { Pagination } from "@/components/shared/Pagination";
-import { Loader2 } from "lucide-react";
+import { PageContentLoader, SuspensePageFallback } from "@/components/shared/page-content-loader";
 import { Card } from "@/components/ui/card";
 
 function Content() {
@@ -28,8 +28,8 @@ function Content() {
 
   if (isLoading) {
     return (
-      <div className="mx-auto flex min-h-[40vh] w-full min-w-0 max-w-[1600px] items-center justify-center px-3 py-16 sm:px-4">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="mx-auto flex w-full min-w-0 max-w-[1600px] flex-col px-3 sm:px-4">
+        <PageContentLoader label="Loading admin logs…" />
       </div>
     );
   }
@@ -75,13 +75,7 @@ function Content() {
 
 export default function AdminLogsPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="mx-auto flex w-full min-w-0 max-w-[1600px] justify-center px-3 py-16 sm:px-4">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      }
-    >
+    <Suspense fallback={<SuspensePageFallback />}>
       <Content />
     </Suspense>
   );

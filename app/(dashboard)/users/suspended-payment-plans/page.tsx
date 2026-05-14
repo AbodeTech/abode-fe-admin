@@ -13,6 +13,7 @@ import {
   useExportSuspendedPaymentPlans,
 } from "@/features/users";
 import { Loader2, Download, Search } from "lucide-react";
+import { PageContentLoader, SuspensePageFallback } from "@/components/shared/page-content-loader";
 
 const PAGE_SIZE = 25;
 
@@ -48,11 +49,7 @@ function SuspendedPaymentPlansContent() {
   };
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-[calc(100vh-200px)]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <PageContentLoader label="Loading suspended payment plans…" />;
   }
 
   if (error) {
@@ -136,7 +133,7 @@ function SuspendedPaymentPlansContent() {
 
 export default function SuspendedPaymentPlansPage() {
   return (
-    <Suspense fallback={<div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+    <Suspense fallback={<SuspensePageFallback />}>
       <SuspendedPaymentPlansContent />
     </Suspense>
   );
