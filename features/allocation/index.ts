@@ -3,6 +3,8 @@ export * from './hooks/use-allocation-clients';
 export * from './hooks/use-allocation-assets';
 export * from './hooks/use-allocate-land';
 export * from './hooks/use-deallocate-land';
+export * from './hooks/use-reassign-land';
+export * from './hooks/use-send-allocation-email';
 export * from './hooks/use-allocation-export';
 export * from './components/AllocationFilters';
 export * from './components/AllocationTable';

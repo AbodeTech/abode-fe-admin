@@ -33,18 +33,19 @@ import {
   AlertTriangle,
   CheckCircle2,
   Trash2,
-  Loader2,
+  Mail,
+  Shuffle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
-  useAssetBlocks,
   useAssetIdByName,
-  useBlockPlots,
-  type Block,
+  useAvailablePlotsForAsset,
   type Plot,
 } from "@/features/assets";
 import { useAllocateLand } from "../hooks/use-allocate-land";
 import { useDeallocateLand } from "../hooks/use-deallocate-land";
+import { useReassignLand } from "../hooks/use-reassign-land";
+import { useSendAllocationEmail } from "../hooks/use-send-allocation-email";
 
 export type AllocationModalMode = "send" | "resend";
 
@@ -68,14 +69,14 @@ export function AllocationModal({
   const assetName = allocationClient?.assetName ?? "";
   const assetType = allocationClient?.assetType ?? "";
   const paymentPlanId = allocationClient?.paymentPlan ?? "";
+  const hasExistingAllocation = Boolean(allocationClient?.allocation);
 
   const { data: assetId, isLoading: isResolvingAssetId } = useAssetIdByName(
     assetName,
     assetType
   );
-  const { data: blocks = [], isLoading: isLoadingBlocks } = useAssetBlocks(
-    assetId ?? ""
-  );
+  const { data: availablePlots = [], isLoading: isLoadingPlots } =
+    useAvailablePlotsForAsset({ assetId: assetId ?? "" });
 
   const [selectedPlotIds, setSelectedPlotIds] = useState<Set<string>>(new Set());
   const [selectedPlotsMeta, setSelectedPlotsMeta] = useState<
@@ -85,6 +86,8 @@ export function AllocationModal({
 
   const allocateLand = useAllocateLand();
   const deallocateLand = useDeallocateLand();
+  const reassignLand = useReassignLand();
+  const sendAllocationEmail = useSendAllocationEmail();
 
   useEffect(() => {
     if (open) {
@@ -115,8 +118,23 @@ export function AllocationModal({
   const remaining = requiredSqm - selectedSqm;
   const isMatch = requiredSqm > 0 && remaining === 0;
   const isOver = remaining < 0;
+  const hasSelection = selectedPlotIds.size > 0;
 
-  const handleConfirm = () => {
+  // Group plots by block_label for display
+  const plotsByBlock = useMemo(() => {
+    const groups = new Map<string, Plot[]>();
+    for (const plot of availablePlots) {
+      const arr = groups.get(plot.block_label) ?? [];
+      arr.push(plot);
+      groups.set(plot.block_label, arr);
+    }
+    for (const arr of groups.values()) {
+      arr.sort((a, b) => a.plot_number - b.plot_number);
+    }
+    return Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b));
+  }, [availablePlots]);
+
+  const handleAllocate = () => {
     if (!isMatch || !paymentPlanId) return;
     allocateLand.mutate(
       { paymentPlanId, plotIds: Array.from(selectedPlotIds) },
@@ -128,6 +146,31 @@ export function AllocationModal({
         onError: (err: Error) => toast.error(err.message),
       }
     );
+  };
+
+  const handleReassign = () => {
+    if (!isMatch || !paymentPlanId) return;
+    reassignLand.mutate(
+      { paymentPlanId, newPlotIds: Array.from(selectedPlotIds) },
+      {
+        onSuccess: (data) => {
+          toast.success(data.message || "Allocation reassigned");
+          onOpenChange(false);
+        },
+        onError: (err: Error) => toast.error(err.message),
+      }
+    );
+  };
+
+  const handleResendEmail = () => {
+    if (!paymentPlanId) return;
+    sendAllocationEmail.mutate(paymentPlanId, {
+      onSuccess: (data) => {
+        toast.success(data.message || "Allocation email resent");
+        onOpenChange(false);
+      },
+      onError: (err: Error) => toast.error(err.message),
+    });
   };
 
   const handleDeallocate = () => {
@@ -142,10 +185,60 @@ export function AllocationModal({
     });
   };
 
-  const isLoading = isResolvingAssetId || isLoadingBlocks;
-  const hasExistingAllocation = Boolean(allocationClient?.allocation);
+  const isLoading = isResolvingAssetId || isLoadingPlots;
+  const anyMutationPending =
+    allocateLand.isPending ||
+    reassignLand.isPending ||
+    sendAllocationEmail.isPending ||
+    deallocateLand.isPending;
 
-  const title = mode === "resend" ? "Resend Allocation" : "Send Allocation";
+  const title = mode === "resend" ? "Manage Allocation" : "Send Allocation";
+
+  // Determine which primary action is active
+  const primaryAction = useMemo(() => {
+    if (mode === "send") {
+      return {
+        kind: "allocate" as const,
+        label: `Allocate${hasSelection ? ` (${selectedPlotIds.size})` : ""}`,
+        icon: <Send className="h-4 w-4" />,
+        pendingLabel: "Allocating...",
+        disabled: !isMatch,
+        handler: handleAllocate,
+      };
+    }
+    // resend mode
+    if (hasSelection) {
+      return {
+        kind: "reassign" as const,
+        label: `Reassign (${selectedPlotIds.size})`,
+        icon: <Shuffle className="h-4 w-4" />,
+        pendingLabel: "Reassigning...",
+        disabled: !isMatch,
+        handler: handleReassign,
+      };
+    }
+    return {
+      kind: "resend" as const,
+      label: "Resend email",
+      icon: <Mail className="h-4 w-4" />,
+      pendingLabel: "Sending...",
+      disabled: !paymentPlanId || !hasExistingAllocation,
+      handler: handleResendEmail,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    mode,
+    hasSelection,
+    isMatch,
+    selectedPlotIds.size,
+    paymentPlanId,
+    hasExistingAllocation,
+  ]);
+
+  const primaryPending =
+    (primaryAction.kind === "allocate" && allocateLand.isPending) ||
+    (primaryAction.kind === "reassign" && reassignLand.isPending) ||
+    (primaryAction.kind === "resend" && sendAllocationEmail.isPending);
 
   return (
     <>
@@ -156,9 +249,11 @@ export function AllocationModal({
               {allocationClient ? title : "Select a client"}
             </DialogTitle>
             <DialogDescription>
-              {allocationClient
-                ? `Pick plots whose total sqm equals the purchased amount.`
-                : "Select a client to continue."}
+              {!allocationClient
+                ? "Select a client to continue."
+                : mode === "send"
+                ? "Pick plots whose total sqm equals the purchased amount."
+                : "Resend the current allocation email, or pick new plots to reassign."}
             </DialogDescription>
           </DialogHeader>
 
@@ -193,14 +288,16 @@ export function AllocationModal({
                 </div>
               </div>
 
-              {/* Running sum */}
-              <RunningSumBanner
-                selected={selectedSqm}
-                required={requiredSqm}
-                remaining={remaining}
-                isMatch={isMatch}
-                isOver={isOver}
-              />
+              {/* Running sum (only when actively picking) */}
+              {(mode === "send" || hasSelection) && (
+                <RunningSumBanner
+                  selected={selectedSqm}
+                  required={requiredSqm}
+                  remaining={remaining}
+                  isMatch={isMatch}
+                  isOver={isOver}
+                />
+              )}
 
               {/* Plots picker */}
               {isLoading ? (
@@ -212,19 +309,20 @@ export function AllocationModal({
                 <div className="rounded-md border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
                   Could not resolve asset ID.
                 </div>
-              ) : blocks.length === 0 ? (
+              ) : availablePlots.length === 0 ? (
                 <div className="rounded-md border border-dashed p-6 text-center">
                   <p className="text-sm text-muted-foreground">
-                    No blocks seeded for this asset. Go to the asset detail page
-                    to add blocks and plots.
+                    No available plots for this asset. Go to the asset detail
+                    page to seed blocks and plots.
                   </p>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {blocks.map((block) => (
+                  {plotsByBlock.map(([blockLabel, plots]) => (
                     <BlockPlotPicker
-                      key={block._id}
-                      block={block}
+                      key={blockLabel}
+                      blockLabel={blockLabel}
+                      plots={plots}
                       selectedPlotIds={selectedPlotIds}
                       onTogglePlot={togglePlot}
                     />
@@ -239,9 +337,7 @@ export function AllocationModal({
               <Button
                 variant="outline"
                 onClick={() => setIsDeallocateConfirmOpen(true)}
-                disabled={
-                  deallocateLand.isPending || allocateLand.isPending
-                }
+                disabled={anyMutationPending}
                 type="button"
                 className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200"
               >
@@ -255,31 +351,26 @@ export function AllocationModal({
               <Button
                 variant="outline"
                 onClick={() => onOpenChange(false)}
-                disabled={allocateLand.isPending || deallocateLand.isPending}
+                disabled={anyMutationPending}
                 type="button"
               >
                 Cancel
               </Button>
               <Button
                 type="button"
-                disabled={!isMatch || !paymentPlanId || allocateLand.isPending}
-                onClick={handleConfirm}
+                disabled={primaryAction.disabled || anyMutationPending}
+                onClick={primaryAction.handler}
                 className={cn("flex items-center gap-2")}
               >
-                {allocateLand.isPending ? (
+                {primaryPending ? (
                   <>
                     <RotateCcw className="h-4 w-4 animate-spin" />
-                    {mode === "resend" ? "Resending..." : "Allocating..."}
-                  </>
-                ) : mode === "resend" ? (
-                  <>
-                    <RotateCcw className="h-4 w-4" />
-                    Resend
+                    {primaryAction.pendingLabel}
                   </>
                 ) : (
                   <>
-                    <Send className="h-4 w-4" />
-                    Allocate {selectedPlotIds.size > 0 && `(${selectedPlotIds.size})`}
+                    {primaryAction.icon}
+                    {primaryAction.label}
                   </>
                 )}
               </Button>
@@ -367,74 +458,60 @@ function RunningSumBanner({
 }
 
 interface BlockPlotPickerProps {
-  block: Block;
+  blockLabel: string;
+  plots: Plot[];
   selectedPlotIds: Set<string>;
   onTogglePlot: (plot: Plot) => void;
 }
 
 function BlockPlotPicker({
-  block,
+  blockLabel,
+  plots,
   selectedPlotIds,
   onTogglePlot,
 }: BlockPlotPickerProps) {
-  const { data: plots = [], isLoading } = useBlockPlots({
-    blockId: block._id,
-    status: "available",
-  });
-
   return (
     <div className="rounded-md border p-3">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <div className="h-7 w-7 rounded bg-primary/10 flex items-center justify-center font-bold text-xs text-primary">
-            {block.label}
+            {blockLabel}
           </div>
-          <p className="text-sm font-semibold">Block {block.label}</p>
+          <p className="text-sm font-semibold">Block {blockLabel}</p>
         </div>
         <Badge variant="secondary" className="text-[10px]">
-          {isLoading ? "…" : `${plots.length} available`}
+          {plots.length} available
         </Badge>
       </div>
-      {isLoading ? (
-        <div className="py-2 flex items-center gap-2 text-xs text-muted-foreground">
-          <Loader2 className="h-3 w-3 animate-spin" />
-          Loading plots…
-        </div>
-      ) : plots.length === 0 ? (
-        <p className="text-xs text-muted-foreground py-1">
-          No available plots in this block.
-        </p>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1.5">
-          {plots.map((plot) => {
-            const checked = selectedPlotIds.has(plot._id);
-            return (
-              <label
-                key={plot._id}
-                className={cn(
-                  "flex items-center gap-2 rounded-md border p-2 cursor-pointer text-xs transition-colors",
-                  checked
-                    ? "border-primary/50 bg-primary/5"
-                    : "border-transparent bg-muted/30 hover:bg-muted/50"
-                )}
-              >
-                <Checkbox
-                  checked={checked}
-                  onCheckedChange={() => onTogglePlot(plot)}
-                />
-                <div className="min-w-0">
-                  <p className="font-semibold leading-none">
-                    {plot.block_label}-{plot.plot_number}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5 tabular-nums">
-                    {plot.size} sqm
-                  </p>
-                </div>
-              </label>
-            );
-          })}
-        </div>
-      )}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1.5">
+        {plots.map((plot) => {
+          const checked = selectedPlotIds.has(plot._id);
+          return (
+            <label
+              key={plot._id}
+              className={cn(
+                "flex items-center gap-2 rounded-md border p-2 cursor-pointer text-xs transition-colors",
+                checked
+                  ? "border-primary/50 bg-primary/5"
+                  : "border-transparent bg-muted/30 hover:bg-muted/50"
+              )}
+            >
+              <Checkbox
+                checked={checked}
+                onCheckedChange={() => onTogglePlot(plot)}
+              />
+              <div className="min-w-0">
+                <p className="font-semibold leading-none">
+                  {plot.block_label}-{plot.plot_number}
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-0.5 tabular-nums">
+                  {plot.size} sqm
+                </p>
+              </div>
+            </label>
+          );
+        })}
+      </div>
     </div>
   );
 }
