@@ -1,5 +1,6 @@
 # Analytics API Requirements
 
+
 This document outlines all the data the frontend expects from the backend for the **User Analytics** page (`/analytics/users`) and the **Sales Analytics** page (`/analytics/sales`).
 
 All queries follow the existing GraphQL pattern used throughout the project.
