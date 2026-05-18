@@ -423,8 +423,9 @@ function ManageBlockPlotsDialog({ block, onClose }: ManageBlockPlotsDialogProps)
     createPlots.mutate(
       { blockId: block._id, ranges },
       {
-        onSuccess: (created) => {
-          toast.success(`Created ${created.length} plot${created.length === 1 ? "" : "s"}`);
+        onSuccess: (data) => {
+          const count = data.createPlots?.length ?? 0;
+          toast.success(`Created ${count} plot${count === 1 ? "" : "s"}`);
           setIsAddOpen(false);
         },
         onError: (err: Error) => toast.error(err.message),

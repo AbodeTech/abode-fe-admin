@@ -15,6 +15,7 @@ import {
   useAllocationAssets,
   useAllocationClients,
   useAllocationExport,
+  useSendAllocationEmail,
 } from "@/features/allocation";
 import { FragmentType, useFragment as getFragmentData } from "@/lib/gql";
 // @ts-expect-error - json2csv does not ship complete ESM typings in this setup.
@@ -58,6 +59,8 @@ function AllocationContent() {
   const { data, isLoading, error } = useAllocationClients(filters);
   const { data: assets } = useAllocationAssets();
   const { mutateAsync: exportAlloc, isPending: isExporting } = useAllocationExport();
+  const sendAllocationEmail = useSendAllocationEmail();
+  const [sendingEmailFor, setSendingEmailFor] = useState<string | null>(null);
 
   useEffect(() => {
     if (!modalOpen) setModalClient(null);
@@ -111,6 +114,24 @@ function AllocationContent() {
     setModalMode("resend");
     setModalClient(client);
     setModalOpen(true);
+  };
+
+  const handleSendEmail = (
+    rowClient: FragmentType<typeof AllocationTableRowFragment>
+  ) => {
+    const c = getFragmentData(AllocationTableRowFragment, rowClient);
+    if (!c.paymentPlan) return;
+    setSendingEmailFor(c.paymentPlan);
+    sendAllocationEmail.mutate(c.paymentPlan, {
+      onSuccess: (res) => {
+        toast.success(res.sendAllocationEmail?.message || "Allocation email sent");
+        setSendingEmailFor(null);
+      },
+      onError: (err: Error) => {
+        toast.error(err.message);
+        setSendingEmailFor(null);
+      },
+    });
   };
 
   const handleDownload = async () => {
@@ -201,7 +222,9 @@ function AllocationContent() {
         rows={data?.data}
         isLoading={isLoading}
         onSend={handleSend}
+        onSendEmail={handleSendEmail}
         onResend={handleResend}
+        sendingEmailPaymentPlanId={sendingEmailFor}
       />
 
       <Pagination

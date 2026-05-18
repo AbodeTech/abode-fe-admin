@@ -14,7 +14,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { MapPin, RotateCcw, Send } from "lucide-react";
+import { MapPin, RotateCcw, Send, Mail } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export const AllocationTableRowFragment = graphql(`
@@ -46,7 +46,9 @@ interface AllocationTableProps {
   rows?: (FragmentType<typeof AllocationTableRowFragment> | null)[] | null;
   isLoading?: boolean;
   onSend: (client: FragmentType<typeof AllocationTableRowFragment>) => void;
+  onSendEmail: (client: FragmentType<typeof AllocationTableRowFragment>) => void;
   onResend: (client: FragmentType<typeof AllocationTableRowFragment>) => void;
+  sendingEmailPaymentPlanId?: string | null;
 }
 
 const formatAmount = (value?: number | null) =>
@@ -73,7 +75,53 @@ const formatDate = (value?: string | null) => {
   return date.toLocaleDateString();
 };
 
-export function AllocationTable({ rows, isLoading, onSend, onResend }: AllocationTableProps) {
+function AllocationStatusCell({
+  status,
+  allocation,
+}: {
+  status: "pending" | "allocated" | "email_sent";
+  allocation: string | null;
+}) {
+  if (status === "pending") {
+    return (
+      <Badge variant="secondary" className="bg-orange-100 text-orange-800">
+        Not assigned yet
+      </Badge>
+    );
+  }
+  if (status === "allocated") {
+    return (
+      <div className="flex flex-col gap-1">
+        <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 w-fit">
+          Allocated · email not sent
+        </Badge>
+        {allocation && (
+          <span className="text-[11px] text-muted-foreground">{allocation}</span>
+        )}
+      </div>
+    );
+  }
+  // email_sent
+  return (
+    <div className="flex flex-col gap-1">
+      <Badge className="bg-green-100 text-green-800 hover:bg-green-100 w-fit">
+        Email sent
+      </Badge>
+      {allocation && (
+        <span className="text-[11px] text-muted-foreground">{allocation}</span>
+      )}
+    </div>
+  );
+}
+
+export function AllocationTable({
+  rows,
+  isLoading,
+  onSend,
+  onSendEmail,
+  onResend,
+  sendingEmailPaymentPlanId,
+}: AllocationTableProps) {
   if (isLoading) {
     return (
       <Card className="border-none shadow-sm">
@@ -123,7 +171,13 @@ export function AllocationTable({ rows, isLoading, onSend, onResend }: Allocatio
               ) : (
                 safeRows.map((row, idx) => {
                   const client = getFragmentData(AllocationTableRowFragment, row);
-                  const hasAllocation = Boolean(client.allocation);
+                  const status = (client.allocationStatus ?? "pending") as
+                    | "pending"
+                    | "allocated"
+                    | "email_sent";
+                  const isSendingEmail =
+                    sendingEmailPaymentPlanId === client.paymentPlan &&
+                    !!client.paymentPlan;
 
                   return (
                     <TableRow key={`${client.email}-${idx}`}>
@@ -150,28 +204,13 @@ export function AllocationTable({ rows, isLoading, onSend, onResend }: Allocatio
                       </TableCell>
                       <TableCell>{formatDate(client.end_date)}</TableCell>
                       <TableCell>
-                        {hasAllocation ? (
-                          <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
-                            {client.allocation}
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary" className="bg-orange-100 text-orange-800">
-                            Not assigned yet
-                          </Badge>
-                        )}
+                        <AllocationStatusCell
+                          status={status}
+                          allocation={client.allocation ?? null}
+                        />
                       </TableCell>
                       <TableCell>
-                        {hasAllocation ? (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex items-center gap-1"
-                            onClick={() => onResend(row)}
-                          >
-                            <RotateCcw className="h-4 w-4" />
-                            Resend
-                          </Button>
-                        ) : (
+                        {status === "pending" && (
                           <Button
                             size="sm"
                             className="flex items-center gap-1"
@@ -179,6 +218,37 @@ export function AllocationTable({ rows, isLoading, onSend, onResend }: Allocatio
                           >
                             <Send className="h-4 w-4" />
                             Send Allocation
+                          </Button>
+                        )}
+                        {status === "allocated" && (
+                          <Button
+                            size="sm"
+                            className="flex items-center gap-1"
+                            onClick={() => onSendEmail(row)}
+                            disabled={isSendingEmail}
+                          >
+                            {isSendingEmail ? (
+                              <>
+                                <RotateCcw className="h-4 w-4 animate-spin" />
+                                Sending…
+                              </>
+                            ) : (
+                              <>
+                                <Mail className="h-4 w-4" />
+                                Send Email
+                              </>
+                            )}
+                          </Button>
+                        )}
+                        {status === "email_sent" && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex items-center gap-1"
+                            onClick={() => onResend(row)}
+                          >
+                            <RotateCcw className="h-4 w-4" />
+                            Resend / Manage
                           </Button>
                         )}
                       </TableCell>

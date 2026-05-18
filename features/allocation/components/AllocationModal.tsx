@@ -18,7 +18,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -143,7 +142,7 @@ export function AllocationModal({
       { paymentPlanId, plotIds: Array.from(selectedPlotIds) },
       {
         onSuccess: (data) => {
-          toast.success(data.message || "Allocation sent");
+          toast.success(data.allocateLand?.message || "Allocation sent");
           onOpenChange(false);
         },
         onError: (err: Error) => toast.error(err.message),
@@ -157,7 +156,7 @@ export function AllocationModal({
       { paymentPlanId, newPlotIds: Array.from(selectedPlotIds) },
       {
         onSuccess: (data) => {
-          toast.success(data.message || "Allocation reassigned");
+          toast.success(data.reassignLand?.message || "Allocation reassigned");
           onOpenChange(false);
         },
         onError: (err: Error) => toast.error(err.message),
@@ -169,7 +168,9 @@ export function AllocationModal({
     if (!paymentPlanId) return;
     sendAllocationEmail.mutate(paymentPlanId, {
       onSuccess: (data) => {
-        toast.success(data.message || "Allocation email resent");
+        toast.success(
+          data.sendAllocationEmail?.message || "Allocation email resent"
+        );
         onOpenChange(false);
       },
       onError: (err: Error) => toast.error(err.message),
@@ -180,7 +181,7 @@ export function AllocationModal({
     if (!paymentPlanId) return;
     deallocateLand.mutate(paymentPlanId, {
       onSuccess: (data) => {
-        toast.success(data.message || "Allocation cleared");
+        toast.success(data.deallocateLand?.message || "Allocation cleared");
         setIsDeallocateConfirmOpen(false);
         onOpenChange(false);
       },
@@ -398,13 +399,20 @@ export function AllocationModal({
             <AlertDialogCancel disabled={deallocateLand.isPending}>
               Cancel
             </AlertDialogCancel>
-            <AlertDialogAction
+            <Button
               onClick={handleDeallocate}
               disabled={deallocateLand.isPending}
-              className="bg-rose-600 hover:bg-rose-700"
+              className="bg-rose-600 hover:bg-rose-700 text-white"
             >
-              {deallocateLand.isPending ? "Deallocating…" : "Deallocate"}
-            </AlertDialogAction>
+              {deallocateLand.isPending ? (
+                <>
+                  <RotateCcw className="h-4 w-4 mr-1.5 animate-spin" />
+                  Deallocating…
+                </>
+              ) : (
+                "Deallocate"
+              )}
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
