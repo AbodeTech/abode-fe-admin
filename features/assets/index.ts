@@ -3,8 +3,8 @@ export { useAssets, useAssetInventory, useAssetByName, useAssetOptionsByName, us
 export type { AssetsData, AssetInventoryData } from './hooks/use-assets';
 export { useAssetBlocks, useCreateBlock, useDeleteBlock, blockKeys } from './hooks/use-blocks';
 export type { Block, CreateBlockInput } from './hooks/use-blocks';
-export { useBlockPlots, useCreatePlots, useUpdatePlotSize, plotKeys } from './hooks/use-plots';
-export type { Plot, PlotStatus, PlotRangeInput, UseBlockPlotsParams, CreatePlotsInput, UpdatePlotSizeInput } from './hooks/use-plots';
+export { useBlockPlots, useCreatePlots, useUpdatePlotSize, plotKeys, PlotStatus } from './hooks/use-plots';
+export type { Plot, PlotRangeInput, UseBlockPlotsParams, CreatePlotsInput, UpdatePlotSizeInput } from './hooks/use-plots';
 export { useAvailablePlotsForAsset, availablePlotsKeys } from './hooks/use-available-plots';
 export type { UseAvailablePlotsParams } from './hooks/use-available-plots';
 export { useAssetSubscribers } from './hooks/use-asset-subscribers';

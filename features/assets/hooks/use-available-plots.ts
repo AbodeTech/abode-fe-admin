@@ -1,20 +1,20 @@
 import { useQuery } from "@tanstack/react-query";
+import { execute } from "@/lib/graphql-client";
+import { graphql } from "@/lib/gql";
 import type { Plot } from "./use-plots";
 
-// NOTE: GraphQL query commented out until staging deploys v2 block/plot API.
-//
-// const GET_AVAILABLE_PLOTS_FOR_ASSET_QUERY = graphql(`
-//   query GetAvailablePlotsForAsset($assetId: ID!, $size: Int) {
-//     getAvailablePlotsForAsset(assetId: $assetId, size: $size) {
-//       _id
-//       block
-//       block_label
-//       plot_number
-//       size
-//       status
-//     }
-//   }
-// `);
+const GET_AVAILABLE_PLOTS_FOR_ASSET_QUERY = graphql(`
+  query GetAvailablePlotsForAsset($assetId: ID!, $size: Int) {
+    getAvailablePlotsForAsset(assetId: $assetId, size: $size) {
+      _id
+      block
+      block_label
+      plot_number
+      size
+      status
+    }
+  }
+`);
 
 export const availablePlotsKeys = {
   all: ["availablePlots"] as const,
@@ -33,9 +33,14 @@ export const useAvailablePlotsForAsset = ({
   size,
   enabled = true,
 }: UseAvailablePlotsParams) => {
-  return useQuery<Plot[]>({
+  return useQuery({
     queryKey: availablePlotsKeys.list(assetId, size),
-    queryFn: () => Promise.resolve([] as Plot[]),
-    enabled: enabled && !!assetId && false,
+    queryFn: () =>
+      execute(GET_AVAILABLE_PLOTS_FOR_ASSET_QUERY, {
+        assetId,
+        size,
+      }),
+    select: (data) => data.getAvailablePlotsForAsset as Plot[],
+    enabled: enabled && !!assetId,
   });
 };

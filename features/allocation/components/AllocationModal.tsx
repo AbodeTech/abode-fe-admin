@@ -76,7 +76,10 @@ export function AllocationModal({
     assetType
   );
   const { data: availablePlots = [], isLoading: isLoadingPlots } =
-    useAvailablePlotsForAsset({ assetId: assetId ?? "" });
+    useAvailablePlotsForAsset({
+      assetId: assetId ?? "",
+      size: assetSize || undefined,
+    });
 
   const [selectedPlotIds, setSelectedPlotIds] = useState<Set<string>>(new Set());
   const [selectedPlotsMeta, setSelectedPlotsMeta] = useState<

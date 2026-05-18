@@ -3,6 +3,9 @@ import { execute } from '@/lib/graphql-client';
 import { graphql } from '@/lib/gql';
 import { associateKeys } from './query-keys';
 
+// NOTE: assetType / assetName args are NOT yet on the local BE branch
+// (feature/block-plot-allocation-v2). They exist on main. Re-add when BE
+// branches merge.
 const GET_TOP_ASSOCIATES_QUERY = graphql(`
   query GetTopAssociates(
     $page: Int!
@@ -10,8 +13,6 @@ const GET_TOP_ASSOCIATES_QUERY = graphql(`
     $sortBy: String
     $startDate: String
     $endDate: String
-    $assetType: String
-    $assetName: String
   ) {
     getTopAssociates(
       page: $page
@@ -19,8 +20,6 @@ const GET_TOP_ASSOCIATES_QUERY = graphql(`
       sortBy: $sortBy
       startDate: $startDate
       endDate: $endDate
-      assetType: $assetType
-      assetName: $assetName
     ) {
       count
       data {
@@ -59,14 +58,15 @@ export const useTopAssociates = (params: UseTopAssociatesParams) => {
     assetName,
   } = params;
 
+  // assetType / assetName intentionally not sent — BE branch doesn't accept them yet.
+  void assetType;
+  void assetName;
   const variables = {
     page,
     limit,
     sortBy,
     startDate: toOptional(startDate),
     endDate: toOptional(endDate),
-    assetType: toOptional(assetType),
-    assetName: toOptional(assetName),
   };
 
   return useQuery({

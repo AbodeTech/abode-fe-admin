@@ -1,37 +1,36 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { execute } from "@/lib/graphql-client";
+import { graphql } from "@/lib/gql";
 
-// NOTE: GraphQL operations commented out until staging deploys v2 block/plot allocation API.
-// Re-enable after staging picks up the feature/block-plot-allocation-v2 branch.
-//
-// const GET_ASSET_BLOCKS_QUERY = graphql(`
-//   query GetAssetBlocks($assetId: ID!) {
-//     getAssetBlocks(assetId: $assetId) {
-//       _id
-//       asset
-//       label
-//       description
-//       createdAt
-//     }
-//   }
-// `);
-//
-// const CREATE_BLOCK_MUTATION = graphql(`
-//   mutation CreateBlock($assetId: ID!, $label: String!, $description: String) {
-//     createBlock(assetId: $assetId, label: $label, description: $description) {
-//       _id
-//       asset
-//       label
-//       description
-//       createdAt
-//     }
-//   }
-// `);
-//
-// const DELETE_BLOCK_MUTATION = graphql(`
-//   mutation DeleteBlock($blockId: ID!) {
-//     deleteBlock(blockId: $blockId)
-//   }
-// `);
+const GET_ASSET_BLOCKS_QUERY = graphql(`
+  query GetAssetBlocks($assetId: ID!) {
+    getAssetBlocks(assetId: $assetId) {
+      _id
+      asset
+      label
+      description
+      createdAt
+    }
+  }
+`);
+
+const CREATE_BLOCK_MUTATION = graphql(`
+  mutation CreateBlock($assetId: ID!, $label: String!, $description: String) {
+    createBlock(assetId: $assetId, label: $label, description: $description) {
+      _id
+      asset
+      label
+      description
+      createdAt
+    }
+  }
+`);
+
+const DELETE_BLOCK_MUTATION = graphql(`
+  mutation DeleteBlock($blockId: ID!) {
+    deleteBlock(blockId: $blockId)
+  }
+`);
 
 export interface Block {
   _id: string;
@@ -46,15 +45,12 @@ export const blockKeys = {
   list: (assetId: string) => [...blockKeys.all, "list", assetId] as const,
 };
 
-const NOT_DEPLOYED = new Error(
-  "Block/plot allocation v2 API is not yet available on the backend"
-);
-
 export const useAssetBlocks = (assetId: string) => {
-  return useQuery<Block[]>({
+  return useQuery({
     queryKey: blockKeys.list(assetId),
-    queryFn: () => Promise.resolve([] as Block[]),
-    enabled: false,
+    queryFn: () => execute(GET_ASSET_BLOCKS_QUERY, { assetId }),
+    select: (data) => data.getAssetBlocks as Block[],
+    enabled: !!assetId,
   });
 };
 
@@ -67,7 +63,12 @@ export interface CreateBlockInput {
 export const useCreateBlock = (assetId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (_input: CreateBlockInput) => Promise.reject<Block>(NOT_DEPLOYED),
+    mutationFn: (input: CreateBlockInput) =>
+      execute(CREATE_BLOCK_MUTATION, {
+        assetId: input.assetId,
+        label: input.label,
+        description: input.description ?? null,
+      }),
     onSuccess: () => {
       client.invalidateQueries({ queryKey: blockKeys.list(assetId) });
     },
@@ -77,7 +78,8 @@ export const useCreateBlock = (assetId: string) => {
 export const useDeleteBlock = (assetId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (_blockId: string) => Promise.reject<boolean>(NOT_DEPLOYED),
+    mutationFn: (blockId: string) =>
+      execute(DELETE_BLOCK_MUTATION, { blockId }),
     onSuccess: () => {
       client.invalidateQueries({ queryKey: blockKeys.list(assetId) });
     },

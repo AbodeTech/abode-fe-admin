@@ -1,27 +1,27 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { execute } from "@/lib/graphql-client";
+import { graphql } from "@/lib/gql";
 import { allocationKeys } from "./query-keys";
 
-// NOTE: GraphQL mutation commented out until staging deploys v2 allocateLand(plotIds[]).
-//
-// const ALLOCATE_LAND_MUTATION = graphql(`
-//   mutation AllocateLand($paymentPlanId: ID!, $plotIds: [ID!]!) {
-//     allocateLand(paymentPlanId: $paymentPlanId, plotIds: $plotIds) {
-//       success
-//       message
-//       assetName
-//       allocations {
-//         plotId
-//         block_label
-//         plot_number
-//         size
-//       }
-//       user {
-//         name
-//         email
-//       }
-//     }
-//   }
-// `);
+const ALLOCATE_LAND_MUTATION = graphql(`
+  mutation AllocateLand($paymentPlanId: ID!, $plotIds: [ID!]!) {
+    allocateLand(paymentPlanId: $paymentPlanId, plotIds: $plotIds) {
+      success
+      message
+      assetName
+      allocations {
+        plotId
+        block_label
+        plot_number
+        size
+      }
+      user {
+        name
+        email
+      }
+    }
+  }
+`);
 
 export interface AllocateLandInput {
   paymentPlanId: string;
@@ -43,15 +43,14 @@ export interface AllocateLandResult {
   user: { name: string; email: string };
 }
 
-const NOT_DEPLOYED = new Error(
-  "Block/plot allocation v2 API is not yet available on the backend"
-);
-
 export const useAllocateLand = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (_input: AllocateLandInput) =>
-      Promise.reject<AllocateLandResult>(NOT_DEPLOYED),
+    mutationFn: (input: AllocateLandInput) =>
+      execute(ALLOCATE_LAND_MUTATION, {
+        paymentPlanId: input.paymentPlanId,
+        plotIds: input.plotIds,
+      }),
     onSuccess: () => {
       client.invalidateQueries({ queryKey: allocationKeys.all });
     },
