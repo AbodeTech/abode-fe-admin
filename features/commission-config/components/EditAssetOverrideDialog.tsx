@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -17,7 +17,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useUpsertAssetCommissionOverride } from "../hooks/use-asset-commission-overrides";
-import type { AssetCommissionOverride } from "../hooks/use-asset-commission-overrides";
+import type { AssetCommissionOverride, UpsertAssetOverrideInput } from "../hooks/use-asset-commission-overrides";
 import { useCommissionConfig } from "../hooks/use-commission-config";
 
 // Convert decimal to display percentage (0.05 -> 5)
@@ -165,18 +165,19 @@ export function EditAssetOverrideDialog({
   const { data: globalConfig } = useCommissionConfig();
   const { mutateAsync, isPending } = useUpsertAssetCommissionOverride();
 
-  useEffect(() => {
-    if (open) {
+  const handleDialogOpenChange = (next: boolean) => {
+    onOpenChange(next);
+    if (next) {
       setFields(initFields(override));
       setAssetId(override?.asset._id ?? "");
       setChangeDescription("");
     }
-  }, [open, override]);
+  };
 
   const setField = (key: FieldKey, update: Partial<FieldState>) =>
     setFields((prev) => ({ ...prev, [key]: { ...prev[key], ...update } }));
 
-  const buildInput = () => {
+  const buildInput = (): UpsertAssetOverrideInput => {
     const val = (f: FieldState) => (f.enabled ? toDecimal(f.value) : undefined);
 
     const flexCommission = {
@@ -213,7 +214,7 @@ export function EditAssetOverrideDialog({
       },
     };
 
-    const fullOwnershipRemoval: Record<string, any> = {
+    const fullOwnershipRemoval: NonNullable<UpsertAssetOverrideInput["fullOwnershipRemoval"]> = {
       direct: {
         ...(fields.fo_removal_direct_associate_pro.enabled && { associate_pro: val(fields.fo_removal_direct_associate_pro) }),
         ...(fields.fo_removal_direct_default.enabled && { default: val(fields.fo_removal_direct_default) }),
@@ -223,7 +224,7 @@ export function EditAssetOverrideDialog({
     if (fields.fo_removal_topline.enabled) fullOwnershipRemoval.topline = val(fields.fo_removal_topline);
 
     // Only include sections that have at least one enabled field
-    const input: Record<string, any> = {
+    const input: UpsertAssetOverrideInput = {
       assetId,
       changeDescription: changeDescription.trim(),
     };
@@ -237,7 +238,7 @@ export function EditAssetOverrideDialog({
     }
     if (Object.keys(flexRemoval.direct).length > 0) input.flexRemoval = flexRemoval;
     if (
-      Object.keys(fullOwnershipRemoval.direct).length > 0 ||
+      Object.keys(fullOwnershipRemoval.direct ?? {}).length > 0 ||
       fullOwnershipRemoval.upline !== undefined ||
       fullOwnershipRemoval.topline !== undefined
     ) {
@@ -272,7 +273,7 @@ export function EditAssetOverrideDialog({
     }
 
     try {
-      await mutateAsync(buildInput() as any);
+      await mutateAsync(buildInput());
       toast.success(isEdit ? "Override updated" : "Override created");
       onOpenChange(false);
     } catch (err: unknown) {
@@ -283,8 +284,8 @@ export function EditAssetOverrideDialog({
   const gc = globalConfig;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+    <Dialog open={open} onOpenChange={handleDialogOpenChange}>
+      <DialogContent className="max-h-[90dvh] w-[calc(100vw-2rem)] max-w-2xl overflow-y-auto sm:w-full">
         <DialogHeader>
           <DialogTitle>
             {isEdit ? "Edit" : "Create"} Per-Asset Commission Override
@@ -319,7 +320,7 @@ export function EditAssetOverrideDialog({
 
           {/* Flex Commission Direct */}
           <SectionTitle>Flex Commission (Direct)</SectionTitle>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <OverridePercentField id="ov_flex_founder" label="Founder" field={fields.flex_founder} globalValue={gc?.flexCommission.direct.founder} onToggle={(e) => setField("flex_founder", { enabled: e })} onChange={(v) => setField("flex_founder", { value: v })} disabled={isPending} />
             <OverridePercentField id="ov_flex_ap" label="Associate Pro" field={fields.flex_associate_pro} globalValue={gc?.flexCommission.direct.associate_pro} onToggle={(e) => setField("flex_associate_pro", { enabled: e })} onChange={(v) => setField("flex_associate_pro", { value: v })} disabled={isPending} />
             <OverridePercentField id="ov_flex_premium" label="Premium" field={fields.flex_premium} globalValue={gc?.flexCommission.direct.premium} onToggle={(e) => setField("flex_premium", { enabled: e })} onChange={(v) => setField("flex_premium", { value: v })} disabled={isPending} />
@@ -330,7 +331,7 @@ export function EditAssetOverrideDialog({
 
           {/* Full Ownership Direct */}
           <SectionTitle>Full Ownership -- Direct</SectionTitle>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <OverridePercentField id="ov_fo_d_founder" label="Founder" field={fields.fo_direct_founder} globalValue={gc?.fullOwnershipCommission.direct.founder} onToggle={(e) => setField("fo_direct_founder", { enabled: e })} onChange={(v) => setField("fo_direct_founder", { value: v })} disabled={isPending} />
             <OverridePercentField id="ov_fo_d_ap" label="Associate Pro" field={fields.fo_direct_associate_pro} globalValue={gc?.fullOwnershipCommission.direct.associate_pro} onToggle={(e) => setField("fo_direct_associate_pro", { enabled: e })} onChange={(v) => setField("fo_direct_associate_pro", { value: v })} disabled={isPending} />
             <OverridePercentField id="ov_fo_d_premium" label="Premium" field={fields.fo_direct_premium} globalValue={gc?.fullOwnershipCommission.direct.premium} onToggle={(e) => setField("fo_direct_premium", { enabled: e })} onChange={(v) => setField("fo_direct_premium", { value: v })} disabled={isPending} />
@@ -339,7 +340,7 @@ export function EditAssetOverrideDialog({
 
           {/* Full Ownership Upline */}
           <SectionTitle>Full Ownership -- Upline</SectionTitle>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <OverridePercentField id="ov_fo_u_founder" label="Founder" field={fields.fo_upline_founder} globalValue={gc?.fullOwnershipCommission.upline.founder} onToggle={(e) => setField("fo_upline_founder", { enabled: e })} onChange={(v) => setField("fo_upline_founder", { value: v })} disabled={isPending} />
             <OverridePercentField id="ov_fo_u_ap" label="Associate Pro" field={fields.fo_upline_associate_pro} globalValue={gc?.fullOwnershipCommission.upline.associate_pro} onToggle={(e) => setField("fo_upline_associate_pro", { enabled: e })} onChange={(v) => setField("fo_upline_associate_pro", { value: v })} disabled={isPending} />
             <OverridePercentField id="ov_fo_u_premium" label="Premium" field={fields.fo_upline_premium} globalValue={gc?.fullOwnershipCommission.upline.premium} onToggle={(e) => setField("fo_upline_premium", { enabled: e })} onChange={(v) => setField("fo_upline_premium", { value: v })} disabled={isPending} />
@@ -347,7 +348,7 @@ export function EditAssetOverrideDialog({
 
           {/* Full Ownership Topline */}
           <SectionTitle>Full Ownership -- Topline</SectionTitle>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <OverridePercentField id="ov_fo_t_ap" label="Associate Pro" field={fields.fo_topline_associate_pro} globalValue={gc?.fullOwnershipCommission.topline.associate_pro} onToggle={(e) => setField("fo_topline_associate_pro", { enabled: e })} onChange={(v) => setField("fo_topline_associate_pro", { value: v })} disabled={isPending} />
             <OverridePercentField id="ov_fo_t_founder" label="Founder" field={fields.fo_topline_founder} globalValue={gc?.fullOwnershipCommission.topline.founder} onToggle={(e) => setField("fo_topline_founder", { enabled: e })} onChange={(v) => setField("fo_topline_founder", { value: v })} disabled={isPending} />
           </div>
@@ -356,14 +357,14 @@ export function EditAssetOverrideDialog({
 
           {/* Flex Removal */}
           <SectionTitle>Flex Removal (Direct)</SectionTitle>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <OverridePercentField id="ov_flex_rem_ap" label="Associate Pro" field={fields.flex_removal_associate_pro} globalValue={gc?.flexRemoval.direct.associate_pro} onToggle={(e) => setField("flex_removal_associate_pro", { enabled: e })} onChange={(v) => setField("flex_removal_associate_pro", { value: v })} disabled={isPending} />
             <OverridePercentField id="ov_flex_rem_def" label="Default" field={fields.flex_removal_default} globalValue={gc?.flexRemoval.direct.default} onToggle={(e) => setField("flex_removal_default", { enabled: e })} onChange={(v) => setField("flex_removal_default", { value: v })} disabled={isPending} />
           </div>
 
           {/* Full Ownership Removal */}
           <SectionTitle>Full Ownership Removal</SectionTitle>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <OverridePercentField id="ov_fo_rem_d_ap" label="Direct - Associate Pro" field={fields.fo_removal_direct_associate_pro} globalValue={gc?.fullOwnershipRemoval.direct.associate_pro} onToggle={(e) => setField("fo_removal_direct_associate_pro", { enabled: e })} onChange={(v) => setField("fo_removal_direct_associate_pro", { value: v })} disabled={isPending} />
             <OverridePercentField id="ov_fo_rem_d_def" label="Direct - Default" field={fields.fo_removal_direct_default} globalValue={gc?.fullOwnershipRemoval.direct.default} onToggle={(e) => setField("fo_removal_direct_default", { enabled: e })} onChange={(v) => setField("fo_removal_direct_default", { value: v })} disabled={isPending} />
             <OverridePercentField id="ov_fo_rem_u" label="Upline" field={fields.fo_removal_upline} globalValue={gc?.fullOwnershipRemoval.upline} onToggle={(e) => setField("fo_removal_upline", { enabled: e })} onChange={(v) => setField("fo_removal_upline", { value: v })} disabled={isPending} />

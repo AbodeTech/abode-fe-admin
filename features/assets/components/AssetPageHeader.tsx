@@ -18,12 +18,12 @@ export function AssetPageHeader() {
   const canCreate = true; // Temporary default until permission store is ported
 
   return (
-    <div className="flex justify-between items-center mb-8">
-      <h1 className="text-3xl font-bold">Assets</h1>
+    <div className="mb-6 flex min-w-0 flex-col gap-3 sm:mb-8 sm:flex-row sm:items-center sm:justify-between">
+      <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Assets</h1>
       {canCreate && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline">
+            <Button variant="outline" className="w-full shrink-0 sm:w-auto">
               Create Asset <PlusCircle className="ml-2 h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>

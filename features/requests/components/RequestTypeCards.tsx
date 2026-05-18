@@ -48,7 +48,7 @@ interface RequestTypeCardsProps {
 
 export function RequestTypeCards({ stats }: RequestTypeCardsProps) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div className="grid min-w-0 grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2">
       {typeConfig.map((item) => {
         const Icon = item.icon;
         const count = (stats?.[item.statsKey] as number | null | undefined) ?? 0;
@@ -59,18 +59,18 @@ export function RequestTypeCards({ stats }: RequestTypeCardsProps) {
             href={item.route}
             className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-all group block"
           >
-            <div className="bg-black p-6">
-              <div className="flex items-center justify-between text-white">
-                <div>
-                  <h3 className="text-2xl font-bold mb-1">{count.toLocaleString()}</h3>
+            <div className="bg-black p-4 sm:p-6">
+              <div className="flex min-w-0 flex-wrap items-center justify-between gap-4 text-white">
+                <div className="min-w-0">
+                  <h3 className="text-xl font-bold mb-1 sm:text-2xl">{count.toLocaleString()}</h3>
                   <p className="text-white/90 text-sm">Pending Requests</p>
                 </div>
-                <div className="p-4 bg-white/20 rounded-xl group-hover:bg-white/30 transition-colors">
-                  <Icon className="w-8 h-8" />
+                <div className="shrink-0 rounded-xl bg-white/20 p-4 transition-colors group-hover:bg-white/30">
+                  <Icon className="h-8 w-8" />
                 </div>
               </div>
             </div>
-            <div className="p-6">
+            <div className="min-w-0 p-4 sm:p-6">
               <h4 className="text-lg font-semibold text-gray-900 mb-2">{item.title}</h4>
               <p className="text-gray-600 text-sm mb-4">{item.description}</p>
               <div className="flex items-center text-gray-900 font-medium text-sm group-hover:text-gray-700">

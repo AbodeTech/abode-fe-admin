@@ -58,12 +58,12 @@ function Metric({ label, value, subValue, subValueVariant = "positive", classNam
   };
 
   return (
-    <div className={cn("flex flex-col gap-1 px-6 first:pl-0 border-r last:border-0 border-border/50", className)}>
+    <div className={cn("flex min-w-0 flex-col gap-1", className)}>
       <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
         {label}
       </span>
-      <div className="flex items-baseline gap-2">
-        <span className="text-xl font-bold tracking-tight">{value}</span>
+      <div className="flex min-w-0 flex-wrap items-baseline gap-2">
+        <span className="text-lg font-bold tracking-tight tabular-nums wrap-break-word sm:text-xl">{value}</span>
         {subValue && (
           <span className={cn("text-xs font-medium px-1.5 py-0.5 rounded", subValueStyles[subValueVariant])}>
             {subValue}
@@ -84,11 +84,13 @@ export function InventoryHealthBar({ data }: Props) {
   const d = p?.defaulting;
 
   return (
-    <div className="w-full rounded-xl border mb-8 overflow-hidden">
+    <div className="mb-6 w-full overflow-hidden rounded-xl border sm:mb-8">
       {/* Portfolio overview */}
-      <div className="bg-muted/30 px-6 py-5">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-4">Portfolio Overview</p>
-        <div className="flex flex-wrap gap-y-5">
+      <div className="bg-muted/30 px-4 py-4 sm:px-6 sm:py-5">
+        <p className="mb-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          Portfolio Overview
+        </p>
+        <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-4">
           <Metric label="Total Portfolio Value" value={formatNaira(p?.totalPortfolioValue)} />
           <Metric label="Total Capacity" value={formatSqm(p?.totalCapacitySqm)} />
           <Metric label="Active Customers" value={p?.activeCustomers ?? 0} subValue="Healthy" subValueVariant="positive" />
@@ -101,13 +103,13 @@ export function InventoryHealthBar({ data }: Props) {
       </div>
 
       {/* Defaults section */}
-      <div className="bg-rose-500/5 border-t border-rose-200/50 px-6 py-5">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-rose-500 mb-4">Defaults</p>
-        <div className="flex flex-wrap gap-y-5">
+      <div className="border-t border-rose-200/50 bg-rose-500/5 px-4 py-4 sm:px-6 sm:py-5">
+        <p className="mb-4 text-[10px] font-bold uppercase tracking-widest text-rose-500">Defaults</p>
+        <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-2 lg:grid-cols-4">
           <Metric label="Defaulting Customers" value={d?.defaultingCustomers ?? 0} subValue="At Risk" subValueVariant="danger" />
           <Metric label="Value of Defaulted Assets" value={formatNaira(d?.defaultedAssetValue)} subValueVariant="danger" />
           <Metric label="Amount Paid by Defaulters" value={formatNaira(d?.amountPaidByDefaulters)} subValueVariant="neutral" />
-          <Metric label="Amount Still Owing" value={formatNaira(d?.amountStillOwing)} subValue="Unrecovered" subValueVariant="danger" className="pr-0" />
+          <Metric label="Amount Still Owing" value={formatNaira(d?.amountStillOwing)} subValue="Unrecovered" subValueVariant="danger" />
         </div>
       </div>
     </div>

@@ -23,10 +23,12 @@ import {
   XCircle,
   TrendingUp,
   Calendar,
+  Phone,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuthStore } from "@/store/auth-store";
 import { TransactionStatus } from "@/components/shared/TransactionStatus";
+import { AdminDesktopTableWrap, AdminMobileCard, AdminMobileField, AdminMobileStack } from "@/components/shared/admin-responsive-table";
 
 export const UpgradeRowFragment = graphql(`
   fragment UpgradeRowFragment on ReferralUpgrade {
@@ -42,12 +44,14 @@ export const UpgradeRowFragment = graphql(`
       firstName
       lastName
       email
+      phoneNumber
     }
     associate {
       _id
       firstName
       lastName
       email
+      phoneNumber
     }
   }
 `);
@@ -80,132 +84,240 @@ export function UpgradeTable({ data, onApprove, onDecline }: UpgradeTableProps) 
   }
 
   return (
-    <Card className="border border-gray-200 overflow-x-auto pt-0!">
-      <Table>
-        <TableHeader className="bg-gray-50 border-b border-gray-200">
-          <TableRow className="text-sm font-bold text-black whitespace-nowrap">
-            <TableHead className="py-4 font-semibold">
-              <div className="flex items-center gap-2">
-                <User className="h-4 w-4" />
-                User
-              </div>
-            </TableHead>
-            <TableHead className="py-4 font-semibold">
-              <div className="flex items-center gap-2">
-                <User className="h-4 w-4" />
-                Referral
-              </div>
-            </TableHead>
-            <TableHead className="py-4 font-semibold">
-              <div className="flex items-center gap-2">
-                <CreditCard className="h-4 w-4" />
-                User Upgrade Type
-              </div>
-            </TableHead>
-            <TableHead className="py-4 font-semibold">
-              <div className="flex items-center gap-2">
-                <CreditCard className="h-4 w-4" />
-                Transaction Type
-              </div>
-            </TableHead>
-            <TableHead className="py-4 font-semibold">
-              <div className="flex items-center gap-2">
-                <DollarSign className="h-4 w-4" />
-                Amount
-              </div>
-            </TableHead>
-            <TableHead className="py-4 font-semibold">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4" />
-                Status
-              </div>
-            </TableHead>
-            <TableHead className="py-4 font-semibold">
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                Created At
-              </div>
-            </TableHead>
-            {canManageUpgrade && <TableHead className="py-4 font-semibold">Action</TableHead>}
-            <TableHead className="py-4 font-semibold">
-              <div className="flex items-center gap-2">
-                <Eye className="h-4 w-4" />
-                View
-              </div>
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {safeRows.map((row, idx) => {
-            const upgrade = getFragmentData(UpgradeRowFragment, row);
-            const status = (upgrade.admin_status || "").toLowerCase();
-            return (
-              <TableRow
-                key={upgrade._id || idx}
-                className={`text-sm font-medium text-gray-900 hover:bg-gray-100 transition-colors border-gray-200 whitespace-nowrap ${idx % 2 === 0 ? "bg-gray-50/50" : "bg-white"}`}
-              >
-                <TableCell className="py-4">
-                  <Link
-                    href={`/admin/dashboard/user/${upgrade.user?._id ?? ""}`}
-                    className="text-black hover:text-gray-700 font-medium hover:underline transition-colors"
-                  >
-                    {upgrade.user?.lastName} {upgrade.user?.firstName}
-                  </Link>
-                </TableCell>
-                <TableCell className="py-4 text-gray-700">
-                  <div className="flex flex-col gap-1">
+    <Card className="min-w-0 overflow-hidden border border-gray-200 pt-0">
+      <AdminMobileStack className="p-3 pt-4">
+        {safeRows.map((row, idx) => {
+          const upgrade = getFragmentData(UpgradeRowFragment, row);
+          const status = (upgrade.admin_status || "").toLowerCase();
+          return (
+            <AdminMobileCard
+              key={upgrade._id || idx}
+              title={
+                <Link
+                  href={`/users/${upgrade.user?._id ?? ""}`}
+                  className="text-primary hover:underline"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {upgrade.user?.lastName} {upgrade.user?.firstName}
+                </Link>
+              }
+              subtitle={upgrade.user?.email}
+            >
+              <AdminMobileField label="User phone" value={upgrade.user?.phoneNumber || "—"} />
+              <AdminMobileField
+                label="Referral"
+                value={
+                  <span className="block text-right">
                     <Link
-                      href={`/admin/dashboard/user/${upgrade.associate?._id ?? ""}`}
-                      className="text-black hover:text-gray-700 font-medium hover:underline transition-colors"
+                      href={`/users/${upgrade.associate?._id ?? ""}`}
+                      className="font-medium text-foreground hover:underline"
+                      onClick={(e) => e.stopPropagation()}
                     >
                       {upgrade.associate?.firstName} {upgrade.associate?.lastName || "N/A"}
                     </Link>
-                    <span className="text-xs text-gray-500">{upgrade.associate?.email || "N/A"}</span>
-                  </div>
-                </TableCell>
-                <TableCell className="py-4 text-gray-700">{upgrade.user_upgrade_type || "N/A"}</TableCell>
-                <TableCell className="py-4 text-gray-700">{upgrade.transaction_type || "N/A"}</TableCell>
-                <TableCell className="py-4 text-gray-700">{upgrade.fee_amount || "N/A"}</TableCell>
-                <TableCell className="py-4 text-gray-700">
-                  <TransactionStatus status={upgrade.admin_status || undefined} />
-                </TableCell>
-                <TableCell className="py-4 text-gray-700 whitespace-nowrap">
-                  {upgrade.createdAt ? new Date(upgrade.createdAt).toLocaleDateString() : "N/A"}
-                </TableCell>
-                {canManageUpgrade && (
-                  <TableCell className="py-4">
-                    {status === "pending" ? (
-                      <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="icon" onClick={() => onApprove(row)} aria-label="Approve">
-                          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => onDecline(row)} aria-label="Decline">
-                          <XCircle className="h-4 w-4 text-rose-600" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className={`w-6 h-2 rounded-2xl ${status === "approved" ? "bg-[#067647]" : "bg-[#B42318]"}`} />
-                    )}
-                  </TableCell>
-                )}
-                <TableCell className="py-4">
-                  {upgrade.file_Url ? (
-                    <Button variant="ghost" size="icon" asChild aria-label="View evidence">
-                      <Link href={upgrade.file_Url} target="_blank" rel="noopener noreferrer">
-                        <Eye className="w-5 h-5 text-gray-700" />
-                      </Link>
-                    </Button>
-                  ) : (
-                    <div className="p-2">
-                      <Eye className="w-5 h-5 text-gray-300" />
+                    <span className="mt-1 block text-xs font-normal text-muted-foreground">
+                      {upgrade.associate?.email || "N/A"}
+                    </span>
+                  </span>
+                }
+              />
+              <AdminMobileField label="Referral phone" value={upgrade.associate?.phoneNumber || "—"} />
+              <AdminMobileField label="Upgrade type" value={upgrade.user_upgrade_type || "N/A"} />
+              <AdminMobileField label="Transaction type" value={upgrade.transaction_type || "N/A"} />
+              <AdminMobileField label="Amount" value={upgrade.fee_amount ?? "N/A"} />
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm text-muted-foreground">Status</span>
+                <TransactionStatus status={upgrade.admin_status || undefined} />
+              </div>
+              <AdminMobileField
+                label="Created"
+                value={upgrade.createdAt ? new Date(upgrade.createdAt).toLocaleDateString() : "N/A"}
+              />
+              {canManageUpgrade && (
+                <div className="flex items-center justify-between border-t border-[#E5EAEF] pt-2">
+                  <span className="text-sm text-muted-foreground">Actions</span>
+                  {status === "pending" ? (
+                    <div className="flex items-center gap-2">
+                      <Button variant="ghost" size="icon" onClick={() => onApprove(row)} aria-label="Approve">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => onDecline(row)} aria-label="Decline">
+                        <XCircle className="h-4 w-4 text-rose-600" />
+                      </Button>
                     </div>
+                  ) : (
+                    <div className={`h-2 w-6 rounded-2xl ${status === "approved" ? "bg-[#067647]" : "bg-[#B42318]"}`} />
                   )}
-                </TableCell>
+                </div>
+              )}
+              <div className="flex justify-end">
+                {upgrade.file_Url ? (
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={upgrade.file_Url} target="_blank" rel="noopener noreferrer">
+                      <Eye className="mr-1 h-4 w-4" />
+                      Evidence
+                    </Link>
+                  </Button>
+                ) : (
+                  <span className="text-xs text-muted-foreground">No evidence file</span>
+                )}
+              </div>
+            </AdminMobileCard>
+          );
+        })}
+      </AdminMobileStack>
+
+      <AdminDesktopTableWrap>
+        <div className="min-w-0 w-full overflow-x-auto">
+          <Table className="min-w-[1180px]">
+            <TableHeader className="bg-gray-50 border-b border-gray-200">
+              <TableRow className="text-sm font-bold text-black whitespace-nowrap">
+                <TableHead className="py-4 font-semibold">
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    User
+                  </div>
+                </TableHead>
+                <TableHead className="py-4 font-semibold">
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-4 w-4" />
+                    User phone
+                  </div>
+                </TableHead>
+                <TableHead className="py-4 font-semibold">
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    Referral
+                  </div>
+                </TableHead>
+                <TableHead className="py-4 font-semibold">
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-4 w-4" />
+                    Referral phone
+                  </div>
+                </TableHead>
+                <TableHead className="py-4 font-semibold">
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="h-4 w-4" />
+                    User Upgrade Type
+                  </div>
+                </TableHead>
+                <TableHead className="py-4 font-semibold">
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="h-4 w-4" />
+                    Transaction Type
+                  </div>
+                </TableHead>
+                <TableHead className="py-4 font-semibold">
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="h-4 w-4" />
+                    Amount
+                  </div>
+                </TableHead>
+                <TableHead className="py-4 font-semibold">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4" />
+                    Status
+                  </div>
+                </TableHead>
+                <TableHead className="py-4 font-semibold">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    Created At
+                  </div>
+                </TableHead>
+                {canManageUpgrade && <TableHead className="py-4 font-semibold">Action</TableHead>}
+                <TableHead className="py-4 font-semibold">
+                  <div className="flex items-center gap-2">
+                    <Eye className="h-4 w-4" />
+                    View
+                  </div>
+                </TableHead>
               </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
+            </TableHeader>
+            <TableBody>
+              {safeRows.map((row, idx) => {
+                const upgrade = getFragmentData(UpgradeRowFragment, row);
+                const status = (upgrade.admin_status || "").toLowerCase();
+                return (
+                  <TableRow
+                    key={upgrade._id || idx}
+                    className={`border-gray-200 text-sm font-medium text-gray-900 transition-colors hover:bg-gray-100 ${idx % 2 === 0 ? "bg-gray-50/50" : "bg-white"}`}
+                  >
+                    <TableCell className="max-w-[200px] py-4 whitespace-normal wrap-break-word">
+                      <Link
+                        href={`/users/${upgrade.user?._id ?? ""}`}
+                        className="font-medium text-black transition-colors hover:text-gray-700 hover:underline"
+                      >
+                        {upgrade.user?.lastName} {upgrade.user?.firstName}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="max-w-[140px] whitespace-normal wrap-break-word py-4 text-gray-700">
+                      {upgrade.user?.phoneNumber || "—"}
+                    </TableCell>
+                    <TableCell className="max-w-[220px] py-4 text-gray-700">
+                      <div className="flex min-w-0 flex-col gap-1">
+                        <Link
+                          href={`/users/${upgrade.associate?._id ?? ""}`}
+                          className="font-medium text-black transition-colors hover:text-gray-700 hover:underline"
+                        >
+                          {upgrade.associate?.firstName} {upgrade.associate?.lastName || "N/A"}
+                        </Link>
+                        <span className="wrap-break-word text-xs text-gray-500">{upgrade.associate?.email || "N/A"}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="max-w-[140px] whitespace-normal wrap-break-word py-4 text-gray-700">
+                      {upgrade.associate?.phoneNumber || "—"}
+                    </TableCell>
+                    <TableCell className="max-w-[140px] whitespace-normal wrap-break-word py-4 text-gray-700">
+                      {upgrade.user_upgrade_type || "N/A"}
+                    </TableCell>
+                    <TableCell className="max-w-[120px] whitespace-normal wrap-break-word py-4 text-gray-700">
+                      {upgrade.transaction_type || "N/A"}
+                    </TableCell>
+                    <TableCell className="py-4 text-gray-700 whitespace-nowrap">{upgrade.fee_amount || "N/A"}</TableCell>
+                    <TableCell className="py-4 text-gray-700">
+                      <TransactionStatus status={upgrade.admin_status || undefined} />
+                    </TableCell>
+                    <TableCell className="py-4 text-gray-700 whitespace-nowrap">
+                      {upgrade.createdAt ? new Date(upgrade.createdAt).toLocaleDateString() : "N/A"}
+                    </TableCell>
+                    {canManageUpgrade && (
+                      <TableCell className="py-4">
+                        {status === "pending" ? (
+                          <div className="flex items-center gap-2">
+                            <Button variant="ghost" size="icon" onClick={() => onApprove(row)} aria-label="Approve">
+                              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => onDecline(row)} aria-label="Decline">
+                              <XCircle className="h-4 w-4 text-rose-600" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className={`w-6 h-2 rounded-2xl ${status === "approved" ? "bg-[#067647]" : "bg-[#B42318]"}`} />
+                        )}
+                      </TableCell>
+                    )}
+                    <TableCell className="py-4">
+                      {upgrade.file_Url ? (
+                        <Button variant="ghost" size="icon" asChild aria-label="View evidence">
+                          <Link href={upgrade.file_Url} target="_blank" rel="noopener noreferrer">
+                            <Eye className="w-5 h-5 text-gray-700" />
+                          </Link>
+                        </Button>
+                      ) : (
+                        <div className="p-2">
+                          <Eye className="w-5 h-5 text-gray-300" />
+                        </div>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      </AdminDesktopTableWrap>
     </Card>
   );
 }

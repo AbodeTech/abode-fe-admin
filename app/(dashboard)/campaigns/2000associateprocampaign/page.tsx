@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Loader2 } from "lucide-react";
+import { PageContentLoader } from "@/components/shared/page-content-loader";
 import { useAssociateProCampaign, useAssociateRecruitmentAnalytics } from "@/features/campaigns/hooks/use-campaigns";
 import {
   AssociateProConversionFunnel,
@@ -42,36 +42,37 @@ export default function Campaign2000AssociateProPage() {
 
   if (error) {
     return (
-      <div className="p-4 rounded-md bg-red-50 text-red-500 border border-red-200">
-        <h3 className="font-bold">Error loading campaign dashboard</h3>
-        <p>{(error as Error).message || "An unexpected error occurred."}</p>
+      <div className="mx-auto w-full min-w-0 max-w-[1600px] px-3 sm:px-4">
+        <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-500">
+          <h3 className="font-bold">Error loading campaign dashboard</h3>
+          <p>{(error as Error).message || "An unexpected error occurred."}</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between gap-3">
-        <div>
+    <div className="mx-auto mt-4 w-full min-w-0 max-w-[1600px] space-y-6 px-3 pb-16 sm:px-4 sm:pb-20">
+      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold tracking-tight">2000 Associate Pro Campaign</h1>
           <p className="text-muted-foreground">
             Conversion and referral performance dashboard.
           </p>
         </div>
-        <Badge variant="outline">Campaign Active</Badge>
+        <Badge variant="outline" className="shrink-0 self-start sm:self-auto">
+          Campaign Active
+        </Badge>
       </div>
 
       {isLoading && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading campaign data...
-        </div>
+        <PageContentLoader className="min-h-[min(40vh,18rem)] py-10" label="Loading campaign data…" />
       )}
 
       {dashboard && (
         <>
           <AssociateProMetricsSection dashboard={dashboard} />
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="grid min-w-0 gap-6 lg:grid-cols-2">
             <AssociateProConversionFunnel dashboard={dashboard} />
             <AssociateProFinancialOverview dashboard={dashboard} />
           </div>

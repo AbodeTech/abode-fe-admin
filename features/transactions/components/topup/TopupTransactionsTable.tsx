@@ -2,7 +2,6 @@
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { User, CreditCard, DollarSign, Calendar, CheckCircle, Eye, Upload } from "lucide-react";
 import Link from "next/link";
 import { TransactionStatus } from "@/components/shared/TransactionStatus";
@@ -12,6 +11,12 @@ import { format } from "date-fns";
 import { graphql } from "@/lib/gql";
 import { FragmentType, useFragment } from "@/lib/gql";
 import { useAuthStore } from "@/store/auth-store";
+import {
+  AdminDesktopTableWrap,
+  AdminMobileCard,
+  AdminMobileField,
+  AdminMobileStack,
+} from "@/components/shared/admin-responsive-table";
 
 export const TopupTransactionsFragment = graphql(`
   fragment TopupTransactionsTable_data on AdminTransactions {
@@ -93,10 +98,58 @@ export function TopupTransactionsTable({ data, isLoading, onApprove, onDecline, 
 
   return (
     <div className="w-full">
-      {/* Desktop Table Layout */}
-      <Card className="border border-gray-200 pt-0! mt-0!">
-        <ScrollArea className="w-full">
-          <Table>
+      <AdminMobileStack className="space-y-3">
+        {validTransactions.map((transaction) => (
+          <AdminMobileCard
+            key={transaction._id}
+            title={
+              <Link href={`/users/${transaction.user?._id ?? ""}`} className="text-primary hover:underline">
+                {transaction.user?.lastName} {transaction.user?.firstName}
+              </Link>
+            }
+          >
+            <AdminMobileField label="Type" value={transaction.transaction_type ?? ""} />
+            <AdminMobileField label="Amount" value={`₦${formatNumber(transaction.amount ?? 0)}`} />
+            <AdminMobileField label="Date" value={formatDateNumerical(transaction.time_of_transaction ?? "")} />
+            <div className="flex items-center justify-between border-t border-border pt-2">
+              <span className="text-sm text-muted-foreground">Status</span>
+              <TransactionStatus status={transaction.admin_status || undefined} />
+            </div>
+            {canManageTopup && (
+              <div className="pt-2">
+                <TransactionAction
+                  status={transaction.admin_status ?? ""}
+                  transactionId={transaction._id ?? ""}
+                  tag="topupTransactions"
+                  declineReasons={DECLINE_REASONS}
+                  onApprove={onApprove}
+                  onDecline={onDecline}
+                />
+              </div>
+            )}
+            <div className="flex justify-end border-t border-border pt-2">
+              {transaction.transfer_file ? (
+                <ViewTransactionEvidence
+                  image={transaction.transfer_file.file ?? undefined}
+                  trigger={
+                    <button type="button" className="rounded-md p-2 text-sm font-medium hover:bg-muted">
+                      <Eye className="mr-1 inline h-4 w-4" />
+                      Evidence
+                    </button>
+                  }
+                />
+              ) : (
+                <span className="text-xs text-muted-foreground">No evidence</span>
+              )}
+            </div>
+          </AdminMobileCard>
+        ))}
+      </AdminMobileStack>
+
+      <AdminDesktopTableWrap>
+      <Card className="border border-gray-200 pt-0">
+        <div className="min-w-0 w-full overflow-x-auto">
+          <Table className="min-w-[920px]">
             <TableHeader className="bg-gray-50 border-b border-gray-200">
               <TableRow className="text-sm font-bold text-black">
                 <TableHead className="py-4 font-semibold">
@@ -147,7 +200,7 @@ export function TopupTransactionsTable({ data, isLoading, onApprove, onDecline, 
                 >
                   <TableCell className="py-4 w-[150px]">
                     <Link
-                      href={`/admin/dashboard/user/${transaction.user?._id ?? ""}`}
+                      href={`/users/${transaction.user?._id ?? ""}`}
                       className="text-black hover:text-gray-700 font-medium hover:underline transition-colors"
                     >
                       {transaction.user?.lastName} {transaction.user?.firstName}
@@ -195,8 +248,9 @@ export function TopupTransactionsTable({ data, isLoading, onApprove, onDecline, 
               ))}
             </TableBody>
           </Table>
-        </ScrollArea>
+        </div>
       </Card>
+      </AdminDesktopTableWrap>
     </div>
   );
 }

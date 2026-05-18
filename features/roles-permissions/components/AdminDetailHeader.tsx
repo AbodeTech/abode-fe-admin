@@ -20,9 +20,14 @@ export const AdminDetailFragment = graphql(`
   }
 `);
 
+export interface AdminLogLike {
+  action?: string | null;
+  timestamp?: string;
+}
+
 interface AdminDetailHeaderProps {
   admin?: FragmentType<typeof AdminDetailFragment> | null;
-  logs?: any[];
+  logs?: AdminLogLike[];
   isLoadingLogs?: boolean;
 }
 
@@ -32,22 +37,22 @@ export function AdminDetailHeader({ admin, logs = [], isLoadingLogs = false }: A
   if (!data) return null;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <Button variant="outline" size="sm" asChild>
+    <div className="min-w-0 space-y-4">
+      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
+        <Button variant="outline" size="sm" className="w-full shrink-0 sm:w-auto" asChild>
           <Link href="/security/roles">
-            <ArrowLeft className="h-4 w-4 mr-2" />
+            <ArrowLeft className="mr-2 h-4 w-4" />
             Back
           </Link>
         </Button>
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Admin Details</h1>
-          <p className="text-gray-600 mt-1">Role and permission overview</p>
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">Admin Details</h1>
+          <p className="mt-1 text-gray-600">Role and permission overview</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card className="border-border bg-card">
+      <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2">
+        <Card className="min-w-0 border-border bg-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <div className="w-10 h-10 bg-muted/50 rounded-full flex items-center justify-center mr-2 shrink-0">
@@ -62,18 +67,20 @@ export function AdminDetailHeader({ admin, logs = [], isLoadingLogs = false }: A
           <CardContent className="space-y-4 pt-1">
             <div>
               <div className="font-semibold text-xl text-foreground">{data.adminName}</div>
-              <div className="text-[15px] text-muted-foreground">{data.adminEmail}</div>
+              <div className="text-[15px] break-all text-muted-foreground">{data.adminEmail}</div>
             </div>
-            <div className="space-y-2 pt-4 border-t border-border/50">
-              <div className="text-sm flex justify-between items-center bg-muted/20 p-2 rounded-md">
-                <span className="text-muted-foreground font-medium">Admin ID</span>
-                <span className="font-mono text-[13px] font-medium bg-mutedpx-2 py-0.5 rounded text-foreground">{data.adminId}</span>
+            <div className="space-y-2 border-t border-border/50 pt-4">
+              <div className="flex flex-col gap-2 rounded-md bg-muted/20 p-2 sm:flex-row sm:items-center sm:justify-between">
+                <span className="shrink-0 text-sm font-medium text-muted-foreground">Admin ID</span>
+                <span className="break-all rounded py-0.5 text-right font-mono text-[13px] font-medium text-foreground sm:bg-muted sm:px-2">
+                  {data.adminId}
+                </span>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-border bg-card">
+        <Card className="min-w-0 border-border bg-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <div className="w-10 h-10 bg-muted/50 rounded-full flex items-center justify-center mr-2 shrink-0">
@@ -86,13 +93,15 @@ export function AdminDetailHeader({ admin, logs = [], isLoadingLogs = false }: A
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-5 pt-1">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-muted-foreground">Current Role</span>
-              <Badge className="bg-primary/10 text-primary hover:bg-primary/20 border-primary/20 font-semibold px-3">{data.role}</Badge>
+            <div className="flex items-center justify-between gap-2">
+              <span className="shrink-0 text-sm font-medium text-muted-foreground">Current Role</span>
+              <Badge className="min-w-0 max-w-[min(100%,14rem)] whitespace-normal break-words bg-primary/10 px-3 text-center font-semibold text-primary hover:bg-primary/20 border-primary/20 sm:max-w-[55%]">
+                {data.role}
+              </Badge>
             </div>
-            <div className="text-sm flex justify-between items-center bg-muted/20 p-2 rounded-md">
-              <span className="text-muted-foreground font-medium">Role ID</span>
-              <span className="font-mono text-[13px] text-foreground">{data.roleId}</span>
+            <div className="flex flex-col gap-2 rounded-md bg-muted/20 p-2 sm:flex-row sm:items-center sm:justify-between">
+              <span className="shrink-0 text-sm font-medium text-muted-foreground">Role ID</span>
+              <span className="break-all font-mono text-[13px] text-foreground sm:text-right">{data.roleId}</span>
             </div>
             <div className="pt-3 border-t border-border/50">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Permissions ({data.permissions?.length || 0})</p>
@@ -111,7 +120,7 @@ export function AdminDetailHeader({ admin, logs = [], isLoadingLogs = false }: A
         </Card>
 
         {/* Activity Summary Module */}
-        <Card className="border-border bg-card lg:col-span-2">
+        <Card className="min-w-0 border-border bg-card lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Activity className="h-5 w-5 text-muted-foreground" />
@@ -125,7 +134,7 @@ export function AdminDetailHeader({ admin, logs = [], isLoadingLogs = false }: A
                 <span>Generating activity summary...</span>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-3">
                 <div className="text-center p-5 bg-muted/40 border border-border/50 rounded-xl transition-colors hover:bg-muted/60">
                   <div className="text-3xl font-bold text-foreground mb-1">{logs.length}</div>
                   <div className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Total Actions</div>
@@ -139,11 +148,14 @@ export function AdminDetailHeader({ admin, logs = [], isLoadingLogs = false }: A
                 <div className="text-center p-5 bg-muted/40 border border-border/50 rounded-xl transition-colors hover:bg-muted/60">
                   <div className="text-3xl font-bold text-foreground mb-1">
                     {
-                      logs.filter((log) => new Date(log.timestamp).toDateString() === new Date().toDateString())
-                        .length
+                      logs.filter(
+                        (log) =>
+                          log.timestamp &&
+                          new Date(log.timestamp).toDateString() === new Date().toDateString()
+                      ).length
                     }
                   </div>
-                  <div className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Today's Actions</div>
+                  <div className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Today&apos;s Actions</div>
                 </div>
               </div>
             )}

@@ -80,12 +80,12 @@ export function CreateCouponDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm">
+        <Button size="sm" className="w-full shrink-0 sm:w-auto">
           <Plus className="h-4 w-4 mr-2" />
           Create Coupon
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-h-[90vh] w-[calc(100vw-1.5rem)] max-w-lg overflow-y-auto sm:w-full">
         <DialogHeader>
           <DialogTitle>Create Coupon</DialogTitle>
           <DialogDescription>Define discount and usage limits.</DialogDescription>

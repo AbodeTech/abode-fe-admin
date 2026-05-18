@@ -55,6 +55,12 @@ import {
 import revalidate from "@/lib/serverActions/admin/revalidate"
 import { ViewTransactionEvidenceModal } from "../../modals/ViewTransactionEvidenceModal"
 import { getErrorMessage } from "../../../utils/error-message"
+import {
+  AdminDesktopTableWrap,
+  AdminMobileCard,
+  AdminMobileField,
+  AdminMobileStack,
+} from "@/components/shared/admin-responsive-table"
 
 interface OtherTransactionsTableProps {
   transactions: TransactionListResponse[]
@@ -170,6 +176,94 @@ export function OtherTransactionsTable({ transactions }: OtherTransactionsTableP
           <CardDescription>View and manage non-commission transactions</CardDescription>
         </CardHeader>
         <CardContent>
+          <AdminMobileStack className="mb-4 space-y-3">
+            {sortedTransactions.length === 0 ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">No other transactions found</p>
+            ) : (
+              sortedTransactions.map((transaction) => {
+                const evidenceFile = transaction?.transfer_file?.file
+                const canReprocess =
+                  transaction.type === "asset" ||
+                  transaction.description?.startsWith("AP") ||
+                  transaction.description?.startsWith("RAP")
+                const canSendReceipt =
+                  transaction.description?.startsWith("AP") ||
+                  transaction.description?.startsWith("RAP") ||
+                  transaction.description?.startsWith("DP")
+                const isProcessing = processingId === transaction._id
+                const isSendingReceipt = receiptProcessingId === transaction._id
+                return (
+                  <AdminMobileCard key={transaction._id} title={transaction._id} subtitle={formatDate(transaction.time_of_transaction)}>
+                    <AdminMobileField
+                      label="Type"
+                      value={
+                        <Badge variant="outline" className={getTypeColor(transaction.type)}>
+                          {transaction.type}
+                        </Badge>
+                      }
+                    />
+                    <AdminMobileField
+                      label="Txn type"
+                      value={
+                        <Badge variant="outline" className={getTransactionTypeColor(transaction.transaction_type)}>
+                          {transaction.transaction_type}
+                        </Badge>
+                      }
+                    />
+                    <AdminMobileField
+                      label="Status"
+                      value={
+                        <Badge variant="outline" className={getStatusColor(transaction.status)}>
+                          {transaction.status}
+                        </Badge>
+                      }
+                    />
+                    <AdminMobileField label="Amount" value={formatAmount(transaction.amount)} />
+                    <AdminMobileField label="Description" value={transaction.description} />
+                    <div className="border-t border-border pt-2">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="sm" variant="outline" className="w-full" disabled={isProcessing || isSendingReceipt}>
+                            {isProcessing || isSendingReceipt ? <Loader2 className="h-4 w-4 animate-spin" /> : "Actions"}
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {evidenceFile ? (
+                            <ViewTransactionEvidenceModal
+                              image={evidenceFile}
+                              trigger={<DropdownMenuItem onSelect={(e) => e.preventDefault()}>View Receipt</DropdownMenuItem>}
+                            />
+                          ) : (
+                            <DropdownMenuItem disabled>View Receipt (N/A)</DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem
+                            disabled={!canReprocess || isProcessing}
+                            onSelect={(event) => {
+                              event.preventDefault()
+                              handleOpenConfirm(transaction._id)
+                            }}
+                          >
+                            {isProcessing ? "Reprocessing..." : "Reprocess Transaction"}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            disabled={!canSendReceipt || isSendingReceipt}
+                            onSelect={async (event) => {
+                              event.preventDefault()
+                              await handleSendReceipt(transaction._id)
+                            }}
+                          >
+                            {isSendingReceipt ? "Sending..." : "Send Receipt Email"}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </AdminMobileCard>
+                )
+              })
+            )}
+          </AdminMobileStack>
+
+          <AdminDesktopTableWrap>
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
@@ -300,6 +394,7 @@ export function OtherTransactionsTable({ transactions }: OtherTransactionsTableP
               </TableBody>
             </Table>
           </div>
+          </AdminDesktopTableWrap>
         </CardContent>
       </Card>
 

@@ -13,12 +13,12 @@ interface MetricCardProps {
 
 export function MetricCard({ title, value, note }: MetricCardProps) {
   return (
-    <Card className="border-border bg-card">
+    <Card className="min-w-0 overflow-hidden border-border bg-card">
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
+        <CardTitle className="wrap-break-word text-sm font-medium text-muted-foreground">{title}</CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold text-foreground">{value}</div>
+      <CardContent className="min-w-0">
+        <div className="min-w-0 max-w-full break-all text-xl font-bold tabular-nums text-foreground sm:text-2xl">{value}</div>
         {note ? <p className="mt-1 text-xs text-muted-foreground">{note}</p> : null}
       </CardContent>
     </Card>
@@ -35,16 +35,18 @@ interface ProgressCardProps {
 export function ProgressCard({ title, sold, target, percentage }: ProgressCardProps) {
   const pct = Math.max(0, Math.min(100, Number(percentage || 0)));
   return (
-    <Card className="border-border bg-card">
+    <Card className="min-w-0 overflow-hidden border-border bg-card">
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-foreground">{title}</CardTitle>
-          <Badge variant="outline">{pct.toFixed(1)}%</Badge>
+        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <CardTitle className="min-w-0 wrap-break-word text-foreground">{title}</CardTitle>
+          <Badge variant="outline" className="w-fit shrink-0">
+            {pct.toFixed(1)}%
+          </Badge>
         </div>
       </CardHeader>
       <CardContent className="space-y-2">
         <Progress value={pct} className="h-2" />
-        <div className="text-sm text-muted-foreground">
+        <div className="wrap-break-word text-sm text-muted-foreground">
           {Number(sold || 0).toLocaleString()} / {Number(target || 0).toLocaleString()} sqm
         </div>
       </CardContent>

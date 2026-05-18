@@ -105,7 +105,7 @@ export function CommissionExport() {
   };
 
   return (
-    <Button variant="outline" onClick={handleExport} disabled={isPending}>
+    <Button variant="outline" className="w-full shrink-0 sm:w-auto" onClick={handleExport} disabled={isPending}>
       {isPending ? (
         <>
           <Loader2 className="h-4 w-4 mr-2 animate-spin" />

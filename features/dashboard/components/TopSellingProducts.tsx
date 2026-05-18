@@ -35,34 +35,35 @@ export default function TopSellingProducts({ data }: TopSellingProductsProps) {
   const topProducts = useFragment(TopSellingProductsFragment, topProductsRaw);
 
   return (
-    <section className="bg-white rounded-xl p-6 mt-6 shadow-sm">
-      <h3 className="text-lg font-bold mb-4">Top Selling Products</h3>
-      <div className="grid grid-cols-1 gap-y-6">
+    <section className="rounded-xl bg-white p-4 shadow-sm sm:p-6">
+      <h3 className="mb-3 text-base font-bold sm:mb-4 sm:text-lg">Top Selling Products</h3>
+      <div className="grid grid-cols-1 gap-y-4 sm:gap-y-6">
         {topProducts.map((product, idx) => {
           const firstImage = product.asset_pictures?.[0];
           return (
-            <div key={idx} className="flex items-start">
-              <div className="relative w-16 h-12 rounded overflow-hidden bg-gray-100 shrink-0">
+            <div key={idx} className="flex min-w-0 items-start gap-3 sm:gap-4">
+              <div className="relative h-12 w-16 shrink-0 overflow-hidden rounded bg-gray-100 sm:h-12 sm:w-16">
                 {firstImage ? (
                   <Image
                     src={firstImage}
                     alt={product.asset_name || "Product image"}
                     fill
                     className="object-cover"
+                    sizes="64px"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">
+                  <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">
                     No Img
                   </div>
                 )}
               </div>
-              <div className="ml-4">
-                <h3 className="font-medium text-sm capitalize">{product.asset_name}</h3>
-                <p className="text-xs text-gray-500 mt-1">{product.asset_location}</p>
+              <div className="min-w-0 flex-1">
+                <h3 className="line-clamp-2 text-sm font-medium capitalize">{product.asset_name}</h3>
+                <p className="mt-1 line-clamp-2 text-xs text-gray-500">{product.asset_location}</p>
               </div>
-              <div className="ml-auto text-right">
-                <h3 className="font-bold text-sm">{formatCurrency(product.amount_broughtin)}</h3>
-                <p className="text-xs text-gray-500 mt-1">Units: {product.units_subscribed}</p>
+              <div className="shrink-0 text-right">
+                <h3 className="text-xs font-bold tabular-nums sm:text-sm">{formatCurrency(product.amount_broughtin)}</h3>
+                <p className="mt-1 text-xs text-gray-500">Units: {product.units_subscribed}</p>
               </div>
             </div>
           );

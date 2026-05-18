@@ -66,30 +66,36 @@ function SalesCard({
   progressColor: string;
 }) {
   return (
-    <Card className="overflow-hidden">
+    <Card className="min-w-0 overflow-hidden">
       <div className={`h-1.5 ${accentColor}`} />
       <CardHeader className="pb-2">
-        <CardTitle className="text-lg">{title}</CardTitle>
+        <CardTitle className="text-base sm:text-lg">{title}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className={`rounded-lg p-3 ${bgColor}`}>
           <p className="text-sm text-muted-foreground">Total</p>
-          <p className="text-2xl font-bold">{formatCurrency(total)}</p>
+          <p className="text-lg font-bold tabular-nums wrap-break-word sm:text-xl md:text-2xl">
+            {formatCurrency(total)}
+          </p>
         </div>
 
         <div className="space-y-3">
           <div>
-            <div className="flex items-center justify-between mb-1">
+            <div className="mb-1 flex min-w-0 flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-muted-foreground">Received</p>
-              <p className="text-sm font-semibold">{formatCurrency(received)}</p>
+              <p className="text-xs font-semibold tabular-nums wrap-break-word sm:text-sm">
+                {formatCurrency(received)}
+              </p>
             </div>
             <ProgressBar value={received} max={total} color={progressColor} />
           </div>
 
           <div>
-            <div className="flex items-center justify-between mb-1">
+            <div className="mb-1 flex min-w-0 flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-muted-foreground">Outstanding</p>
-              <p className="text-sm font-semibold text-amber-600">{formatCurrency(outstanding)}</p>
+              <p className="text-xs font-semibold tabular-nums wrap-break-word text-amber-600 sm:text-sm">
+                {formatCurrency(outstanding)}
+              </p>
             </div>
             <ProgressBar value={outstanding} max={total} color="bg-amber-400" />
           </div>
@@ -116,33 +122,38 @@ export function SummaryCards({ data }: { data: FragmentType<typeof SummaryCardsF
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap gap-3 items-center">
-        <div className="flex gap-2 max-w-md">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+        <div className="flex w-full min-w-0 max-w-full gap-2 sm:max-w-md">
           <Input
             ref={searchInputRef}
             key={currentSearch}
             defaultValue={currentSearch}
             placeholder="Search sales data..."
+            className="min-w-0"
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
           />
-          <Button onClick={handleSearch} size="icon">
+          <Button type="button" onClick={handleSearch} size="icon" className="shrink-0">
             <Search className="h-4 w-4" />
           </Button>
         </div>
-        <FilterSelect
-          data={[
-            { label: "All Asset Type", value: "all" },
-            { label: "flex", value: "flex" },
-            { label: "full-ownership", value: "full-ownership" },
-          ]}
-          queryKey="assettype"
-          placeholder="Asset type"
-        />
-        <DateFilter />
+        <div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+          <FilterSelect
+            data={[
+              { label: "All Asset Type", value: "all" },
+              { label: "flex", value: "flex" },
+              { label: "full-ownership", value: "full-ownership" },
+            ]}
+            queryKey="assettype"
+            placeholder="Asset type"
+          />
+          <div className="w-full min-w-0 sm:w-auto">
+            <DateFilter />
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2 sm:gap-4 md:gap-4 lg:grid-cols-3">
         <SalesCard
           title="Overall"
           total={summary?.expectedTransactionValue ?? 0}

@@ -2,7 +2,7 @@
 
 import { Suspense, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { SuspensePageFallback } from "@/components/shared/page-content-loader";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
@@ -48,8 +48,8 @@ function MarketplaceContent() {
     try {
       await unsuspendMutation.mutateAsync(listing._id);
       toast.success("Listing unsuspended");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to unsuspend listing");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Failed to unsuspend listing");
     }
   };
 
@@ -61,57 +61,54 @@ function MarketplaceContent() {
       params.delete(key);
     }
     if (key !== "page") params.set("page", "1");
-    router.push(`/marketplace?${params.toString()}`);
+    router.push(`/marketplace?${params.toString()}`, { scroll: false });
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold tracking-tight">Marketplace</h2>
+    <div className="mx-auto w-full min-w-0 max-w-[1600px] space-y-4 sm:space-y-6">
+      <div className="min-w-0">
+        <h2 className="text-xl font-bold tracking-tight sm:text-2xl">Marketplace</h2>
       </div>
 
-      {/* Stats */}
       <MarketplaceDataPoints data={statsQuery.data} isLoading={statsQuery.isLoading} />
 
-      {/* Tabs */}
-      <div className="flex gap-2 border-b">
+      <div className="flex min-w-0 gap-1 overflow-x-auto border-b pb-px sm:gap-2">
         <button
+          type="button"
           onClick={() => setSearchParam("tab", "listings")}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+          className={`shrink-0 px-3 py-2 text-sm font-medium transition-colors sm:px-4 ${
             activeTab === "listings"
-              ? "border-[#00695C] text-[#00695C]"
-              : "border-transparent text-gray-500 hover:text-gray-700"
+              ? "border-b-2 border-[#00695C] text-[#00695C]"
+              : "border-b-2 border-transparent text-gray-500 hover:text-gray-700"
           }`}
         >
           All Listings
         </button>
         <button
+          type="button"
           onClick={() => setSearchParam("tab", "approvals")}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+          className={`flex shrink-0 items-center gap-1 px-3 py-2 text-sm font-medium transition-colors sm:gap-2 sm:px-4 ${
             activeTab === "approvals"
-              ? "border-[#00695C] text-[#00695C]"
-              : "border-transparent text-gray-500 hover:text-gray-700"
+              ? "border-b-2 border-[#00695C] text-[#00695C]"
+              : "border-b-2 border-transparent text-gray-500 hover:text-gray-700"
           }`}
         >
-          Pending Approvals
+          <span className="whitespace-nowrap">Pending Approvals</span>
           {(statsQuery.data?.pending_approval_listings || 0) > 0 && (
-            <span className="ml-2 px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 text-xs font-bold">
+            <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-bold text-orange-700">
               {statsQuery.data?.pending_approval_listings}
             </span>
           )}
         </button>
       </div>
 
-      {/* All Listings Tab */}
       {activeTab === "listings" && (
-        <div className="space-y-4">
-          {/* Filters */}
-          <div className="flex flex-wrap gap-3">
+        <div className="min-w-0 space-y-4">
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-3">
             <select
               value={status || ""}
               onChange={(e) => setSearchParam("status", e.target.value || null)}
-              className="border rounded-lg px-3 py-2 text-sm bg-white"
+              className="h-10 w-full rounded-lg border bg-white px-3 text-sm sm:h-auto sm:min-w-40 sm:w-auto"
             >
               <option value="">All Statuses</option>
               <option value="active">Active</option>
@@ -126,7 +123,7 @@ function MarketplaceContent() {
             <select
               value={assetType || ""}
               onChange={(e) => setSearchParam("asset_type", e.target.value || null)}
-              className="border rounded-lg px-3 py-2 text-sm bg-white"
+              className="h-10 w-full rounded-lg border bg-white px-3 text-sm sm:h-auto sm:min-w-40 sm:w-auto"
             >
               <option value="">All Types</option>
               <option value="flex">Flex</option>
@@ -146,22 +143,24 @@ function MarketplaceContent() {
 
           {/* Pagination */}
           {listingsQuery.data?.pagination && listingsQuery.data.pagination.totalPages > 1 && (
-            <div className="flex justify-center gap-2 py-4">
+            <div className="flex flex-col items-stretch gap-2 py-4 sm:flex-row sm:items-center sm:justify-center sm:gap-2">
               <Button
                 variant="outline"
                 size="sm"
+                className="w-full sm:w-auto"
                 onClick={() => setSearchParam("page", String(page - 1))}
                 disabled={page <= 1}
               >
                 Previous
               </Button>
-              <span className="flex items-center px-3 text-sm text-gray-600">
+              <span className="flex items-center justify-center px-3 text-sm text-gray-600">
                 Page {listingsQuery.data.pagination.currentPage} of{" "}
                 {listingsQuery.data.pagination.totalPages}
               </span>
               <Button
                 variant="outline"
                 size="sm"
+                className="w-full sm:w-auto"
                 onClick={() => setSearchParam("page", String(page + 1))}
                 disabled={page >= listingsQuery.data.pagination.totalPages}
               >
@@ -172,14 +171,41 @@ function MarketplaceContent() {
         </div>
       )}
 
-      {/* Pending Approvals Tab */}
       {activeTab === "approvals" && (
-        <PendingApprovalsTable
-          data={pendingQuery.data?.listings}
-          isLoading={pendingQuery.isLoading}
-          onApprove={(listing) => setApproveListing(listing)}
-          onReject={(listing) => setRejectListing(listing)}
-        />
+        <div className="min-w-0 space-y-4">
+          <PendingApprovalsTable
+            data={pendingQuery.data?.listings}
+            isLoading={pendingQuery.isLoading}
+            onApprove={(listing) => setApproveListing(listing)}
+            onReject={(listing) => setRejectListing(listing)}
+          />
+          {pendingQuery.data?.pagination && pendingQuery.data.pagination.totalPages > 1 && (
+            <div className="flex flex-col items-stretch gap-2 py-4 sm:flex-row sm:items-center sm:justify-center sm:gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full sm:w-auto"
+                onClick={() => setSearchParam("page", String(page - 1))}
+                disabled={page <= 1}
+              >
+                Previous
+              </Button>
+              <span className="flex items-center justify-center px-3 text-sm text-gray-600">
+                Page {pendingQuery.data.pagination.currentPage} of{" "}
+                {pendingQuery.data.pagination.totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full sm:w-auto"
+                onClick={() => setSearchParam("page", String(page + 1))}
+                disabled={page >= pendingQuery.data.pagination.totalPages}
+              >
+                Next
+              </Button>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Dialogs */}
@@ -204,13 +230,7 @@ function MarketplaceContent() {
 
 export default function MarketplacePage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex justify-center py-8">
-          <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
-      }
-    >
+    <Suspense fallback={<SuspensePageFallback />}>
       <MarketplaceContent />
     </Suspense>
   );

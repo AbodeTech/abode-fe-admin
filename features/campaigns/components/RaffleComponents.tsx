@@ -76,7 +76,7 @@ export function RaffleMetricsSection({
         percentage={sales?.percentageSold}
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         <MetricCard title="Total Revenue" value={currency(financial?.totalRevenueGenerated)} />
         <MetricCard title="Asset Value Sold" value={currency(financial?.totalAssetValueSold)} />
         <MetricCard title="Avg Payment Plan" value={currency(financial?.averagePaymentPerPlan)} />
@@ -170,19 +170,21 @@ export function RaffleTransactionTable() {
         rows={rows}
       />
       {typeof data?.count === 'number' && data.count > limit && (
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
           <Button
             variant="outline"
+            className="w-full sm:w-auto"
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page === 1}
           >
             Previous
           </Button>
-          <span className="text-sm text-muted-foreground">
+          <span className="text-center text-sm text-muted-foreground">
             Page {page} of {Math.ceil(data.count / limit)}
           </span>
           <Button
             variant="outline"
+            className="w-full sm:w-auto"
             onClick={() => setPage((p) => p + 1)}
             disabled={page >= Math.ceil(data.count / limit)}
           >
@@ -241,12 +243,12 @@ export function RaffleTicketsSection() {
   };
 
   return (
-    <div className="flex items-center justify-between p-4 bg-card border border-border rounded-lg shadow-sm">
-      <div>
+    <div className="flex flex-col gap-4 rounded-lg border border-border bg-card p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0">
         <h3 className="text-lg font-semibold text-foreground">Raffle Tickets</h3>
         <p className="text-sm text-muted-foreground">Download the full list of generated raffle tickets.</p>
       </div>
-      <Button onClick={handleDownload} disabled={isDownloading || isLoading}>
+      <Button className="w-full shrink-0 sm:w-auto" onClick={handleDownload} disabled={isDownloading || isLoading}>
         <Download className="mr-2 h-4 w-4" />
         {isDownloading ? "Generating..." : "Download CSV"}
       </Button>

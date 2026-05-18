@@ -15,6 +15,12 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { ChevronDown, ChevronRight } from "lucide-react";
+import {
+  AdminDesktopTableWrap,
+  AdminMobileCard,
+  AdminMobileField,
+  AdminMobileStack,
+} from "@/components/shared/admin-responsive-table";
 
 export const TopAssociatesTableRowFragment = graphql(`
   fragment TopAssociatesTableRowFragment on Associate {
@@ -63,7 +69,7 @@ function ClientBreakdown({ total, users, associates, associatePros }: ClientBrea
   return (
     <div className="flex flex-col gap-1.5">
       <span className="text-sm font-bold tabular-nums leading-none">{formatNumber(total)}</span>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <span className="text-[10px] tabular-nums text-muted-foreground/70 leading-none">
           <span className="font-black text-slate-500">{users}</span>
           <span className="ml-0.5 font-medium">usr</span>
@@ -121,7 +127,7 @@ function EfficiencyBar({ rate }: { rate: number }) {
   const color =
     rate >= 90 ? "bg-emerald-500" : rate >= 70 ? "bg-amber-400" : "bg-rose-500";
   return (
-    <div className="flex items-center gap-2 min-w-[100px]">
+    <div className="flex min-w-0 items-center gap-2 sm:min-w-[100px]">
       <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
         <div
           className={cn("h-full rounded-full transition-all duration-700", color)}
@@ -146,7 +152,11 @@ export function TopAssociatesTable({ data, isLoading }: TopAssociatesTableProps)
   const toggle = (idx: number) =>
     setExpanded((prev) => {
       const next = new Set(prev);
-      next.has(idx) ? next.delete(idx) : next.add(idx);
+      if (next.has(idx)) {
+        next.delete(idx);
+      } else {
+        next.add(idx);
+      }
       return next;
     });
 
@@ -157,11 +167,11 @@ export function TopAssociatesTable({ data, isLoading }: TopAssociatesTableProps)
 
   if (isLoading) {
     return (
-      <div className="rounded-xl border bg-background shadow-sm overflow-hidden">
+      <div className="min-w-0 overflow-x-auto rounded-xl border bg-background shadow-sm">
         {Array.from({ length: 6 }).map((_, idx) => (
           <div
             key={idx}
-            className="flex items-center gap-4 px-6 py-4 border-b last:border-0"
+            className="flex min-w-[280px] items-center gap-4 border-b px-4 py-4 last:border-0 sm:px-6"
           >
             <Skeleton className="h-8 w-8 rounded-full shrink-0" />
             <Skeleton className="h-4 w-40" />
@@ -184,18 +194,61 @@ export function TopAssociatesTable({ data, isLoading }: TopAssociatesTableProps)
   }
 
   return (
-    <div className="rounded-xl border bg-background shadow-sm overflow-hidden">
-      <Table>
+    <>
+      <AdminMobileStack className="space-y-3">
+        {associates.map((associate, idx) => {
+          const rank = idx + 1;
+          const balance =
+            associate.balance ?? (associate.expected_revenue ?? 0) - (associate.received_revenue ?? 0);
+          const rate =
+            associate.collection_rate ??
+            (associate.expected_revenue
+              ? Math.round(((associate.received_revenue ?? 0) / associate.expected_revenue) * 100)
+              : 0);
+          return (
+            <AdminMobileCard key={`${associate.email}-m-${idx}`} title={associate.name} subtitle={associate.email || undefined}>
+              <div className="flex items-center justify-between gap-2 border-b border-border pb-2">
+                <div className="flex items-center gap-2">{rankLabel(rank)}</div>
+                <StatusBadge status={associate.status} />
+              </div>
+              <div className="py-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Clients</span>
+                <ClientBreakdown
+                  total={associate.no_of_clients ?? 0}
+                  users={associate.referred_user_count ?? 0}
+                  associates={associate.referred_associate_count ?? 0}
+                  associatePros={associate.referred_associate_pro_count ?? 0}
+                />
+              </div>
+              <AdminMobileField label="Expected" value={formatCurrency(associate.expected_revenue)} />
+              <AdminMobileField label="Received" value={formatCurrency(associate.received_revenue)} />
+              <AdminMobileField label="Balance" value={formatCurrency(balance)} />
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm text-muted-foreground">Collection</span>
+                <EfficiencyBar rate={rate} />
+              </div>
+              <AdminMobileField label="Commission" value={formatCurrency(associate.commission)} />
+              <AdminMobileField label="Referred by" value={associate.sales_person || "—"} />
+              <AdminMobileField label="Units sold" value={formatNumber(associate.units_sold)} />
+              <AdminMobileField label="Size sold" value={`${formatNumber(associate.size_sold)} sqm`} />
+            </AdminMobileCard>
+          );
+        })}
+      </AdminMobileStack>
+
+      <AdminDesktopTableWrap>
+    <div className="min-w-0 overflow-x-auto rounded-xl border bg-background shadow-sm">
+      <Table className="min-w-[1180px]">
         <TableHeader className="bg-muted/20">
           <TableRow className="hover:bg-transparent border-b">
-            <TableHead className="w-12 text-[10px] font-bold uppercase tracking-wider pl-5">#</TableHead>
+            <TableHead className="w-12 pl-3 text-[10px] font-bold uppercase tracking-wider sm:pl-5">#</TableHead>
             <TableHead className="text-[10px] font-bold uppercase tracking-wider">Associate</TableHead>
             <TableHead className="text-[10px] font-bold uppercase tracking-wider">Clients</TableHead>
             <TableHead className="text-[10px] font-bold uppercase tracking-wider text-right">Expected</TableHead>
             <TableHead className="text-[10px] font-bold uppercase tracking-wider text-right">Received</TableHead>
             <TableHead className="text-[10px] font-bold uppercase tracking-wider text-right">Balance</TableHead>
             <TableHead className="text-[10px] font-bold uppercase tracking-wider">Collection</TableHead>
-            <TableHead className="text-[10px] font-bold uppercase tracking-wider text-right pr-6">Commission</TableHead>
+            <TableHead className="pr-3 text-right text-[10px] font-bold uppercase tracking-wider sm:pr-6">Commission</TableHead>
             <TableHead className="w-8" />
           </TableRow>
         </TableHeader>
@@ -224,7 +277,7 @@ export function TopAssociatesTable({ data, isLoading }: TopAssociatesTableProps)
                   onClick={() => toggle(idx)}
                 >
                   {/* Rank */}
-                  <TableCell className="pl-5 w-12">
+                  <TableCell className="w-12 pl-3 sm:pl-5">
                     {rankLabel(rank)}
                   </TableCell>
 
@@ -282,7 +335,7 @@ export function TopAssociatesTable({ data, isLoading }: TopAssociatesTableProps)
                   </TableCell>
 
                   {/* Commission */}
-                  <TableCell className="text-right pr-6">
+                  <TableCell className="pr-3 text-right sm:pr-6">
                     <span className="text-sm font-bold tabular-nums">
                       {formatCurrency(associate.commission)}
                     </span>
@@ -329,5 +382,7 @@ export function TopAssociatesTable({ data, isLoading }: TopAssociatesTableProps)
         </TableBody>
       </Table>
     </div>
+      </AdminDesktopTableWrap>
+    </>
   );
 }
