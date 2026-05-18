@@ -2,7 +2,14 @@
 
 import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { MoreHorizontal, Search, X } from "lucide-react";
+import {
+  CheckCircle2,
+  Circle,
+  MoreHorizontal,
+  Search,
+  X,
+} from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -19,6 +26,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { FilterSelect } from "@/components/shared/FilterSelect";
@@ -26,7 +34,15 @@ import { Pagination } from "@/components/shared/Pagination";
 import { cn } from "@/lib/utils";
 import { ReassignProDialog } from "./dialogs/ReassignProDialog";
 import { BulkReassignDialog } from "./dialogs/BulkReassignDialog";
-import type { AssociateManager, AssociatePro, ProStatus } from "../mock-data";
+import { OnboardingDialog } from "./dialogs/OnboardingDialog";
+import { OnboardingDetailsDialog } from "./dialogs/OnboardingDetailsDialog";
+import {
+  getOnboardedAllTimeCount,
+  getOnboardedThisMonthCount,
+  type AssociateManager,
+  type AssociatePro,
+  type ProStatus,
+} from "../mock-data";
 
 const PAGE_SIZE = 25;
 
@@ -58,6 +74,11 @@ const STATUS_STYLES: Record<ProStatus, { bg: string; text: string; dot: string; 
   abandoned: { bg: "bg-red-50", text: "text-[#AD1F2A]", dot: "bg-[#AD1F2A]", label: "Abandoned" },
 };
 
+const TODAY_MONTH = "2026-05"; // matches mock TODAY_ISO
+
+const isOnboardedThisMonth = (pro: AssociatePro) =>
+  pro.onboardedAt?.slice(0, 7) === TODAY_MONTH;
+
 function StatusBadge({ status }: { status: ProStatus }) {
   const s = STATUS_STYLES[status];
   return (
@@ -65,6 +86,26 @@ function StatusBadge({ status }: { status: ProStatus }) {
       <span className={cn("h-1.5 w-1.5 rounded-full", s.dot)} />
       {s.label}
     </Badge>
+  );
+}
+
+function OnboardedBadge({ onboarded }: { onboarded: boolean }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium",
+        onboarded
+          ? "bg-[#E0F2F1] text-[#00695C]"
+          : "bg-gray-100 text-gray-500"
+      )}
+    >
+      {onboarded ? (
+        <CheckCircle2 className="h-2.5 w-2.5" />
+      ) : (
+        <Circle className="h-2.5 w-2.5" />
+      )}
+      {onboarded ? "Onboarded" : "Not onboarded"}
+    </span>
   );
 }
 
@@ -78,6 +119,16 @@ export function AssociateProsTable({ pros, sourceManager }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [singleReassign, setSingleReassign] = useState<AssociatePro | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [onboardingFor, setOnboardingFor] = useState<AssociatePro | null>(null);
+  const [detailsFor, setDetailsFor] = useState<AssociatePro | null>(null);
+  const [onboardedThisMonthFilter, setOnboardedThisMonthFilter] = useState(false);
+
+  const onboardedThisMonthCount = sourceManager
+    ? getOnboardedThisMonthCount(sourceManager.id)
+    : pros.filter(isOnboardedThisMonth).length;
+  const onboardedAllTimeCount = sourceManager
+    ? getOnboardedAllTimeCount(sourceManager.id)
+    : pros.filter((p) => p.onboardedAt !== null).length;
 
   const filtered = useMemo(() => {
     let rows = pros;
@@ -86,17 +137,22 @@ export function AssociateProsTable({ pros, sourceManager }: Props) {
       rows = rows.filter((p) => p.status === statusParam);
     }
 
+    if (onboardedThisMonthFilter) {
+      rows = rows.filter(isOnboardedThisMonth);
+    }
+
     const term = search.trim().toLowerCase();
     if (term) {
       rows = rows.filter(
         (p) =>
           p.name.toLowerCase().includes(term) ||
-          p.email.toLowerCase().includes(term)
+          p.email.toLowerCase().includes(term) ||
+          (p.phone?.toLowerCase().includes(term) ?? false)
       );
     }
 
     return rows;
-  }, [pros, statusParam, search]);
+  }, [pros, statusParam, search, onboardedThisMonthFilter]);
 
   const start = (page - 1) * PAGE_SIZE;
   const paginated = filtered.slice(start, start + PAGE_SIZE);
@@ -133,15 +189,49 @@ export function AssociateProsTable({ pros, sourceManager }: Props) {
     [pros, selected]
   );
 
+  const handleResendPack = (pro: AssociatePro) => {
+    toast.success(`Pack resent to ${pro.name}`);
+  };
+
   return (
     <section className="space-y-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <h2 className="text-base font-semibold text-gray-900">Associate Pros</h2>
+        <div className="flex items-center gap-3 flex-wrap">
+          <h2 className="text-base font-semibold text-gray-900">Associate Pros</h2>
+          <button
+            type="button"
+            onClick={() => setOnboardedThisMonthFilter((v) => !v)}
+            aria-pressed={onboardedThisMonthFilter}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
+              onboardedThisMonthFilter
+                ? "bg-[#00695C] text-white"
+                : "bg-[#E0F2F1] text-[#00695C] hover:bg-[#c8e6e2]"
+            )}
+            title="Click to filter to Pros onboarded this month"
+          >
+            <CheckCircle2 className="h-3 w-3" />
+            {onboardedThisMonthCount} onboarded this month
+            <span className="text-[#00695C]/70 group-hover:text-[#00695C]">
+              · {onboardedAllTimeCount} all-time
+            </span>
+          </button>
+          {onboardedThisMonthFilter && (
+            <button
+              type="button"
+              onClick={() => setOnboardedThisMonthFilter(false)}
+              className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-900"
+            >
+              <X className="h-3 w-3" />
+              Clear filter
+            </button>
+          )}
+        </div>
         <div className="flex items-center gap-3 flex-wrap">
           <div className="relative w-full sm:w-72">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search by name or email"
+              placeholder="Search by name, email or phone"
               className="pl-8 h-10 bg-white"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -184,6 +274,8 @@ export function AssociateProsTable({ pros, sourceManager }: Props) {
               ) : (
                 paginated.map((pro) => {
                   const isSelected = selected.has(pro.id);
+                  const isOnboarded = pro.onboardedAt !== null;
+
                   return (
                     <TableRow
                       key={pro.id}
@@ -200,9 +292,15 @@ export function AssociateProsTable({ pros, sourceManager }: Props) {
                         />
                       </TableCell>
                       <TableCell>
-                        <div className="flex flex-col">
-                          <span className="font-medium text-gray-900">{pro.name}</span>
-                          <span className="text-xs text-gray-500">{pro.email}</span>
+                        <div className="flex flex-col gap-0.5">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-gray-900">{pro.name}</span>
+                            <OnboardedBadge onboarded={isOnboarded} />
+                          </div>
+                          <span className="text-xs text-gray-500">
+                            {pro.email}
+                            {pro.phone ? ` · ${pro.phone}` : ""}
+                          </span>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -231,6 +329,21 @@ export function AssociateProsTable({ pros, sourceManager }: Props) {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
+                            {isOnboarded ? (
+                              <>
+                                <DropdownMenuItem onSelect={() => handleResendPack(pro)}>
+                                  Resend onboarding pack
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => setDetailsFor(pro)}>
+                                  View onboarding details
+                                </DropdownMenuItem>
+                              </>
+                            ) : (
+                              <DropdownMenuItem onSelect={() => setOnboardingFor(pro)}>
+                                Onboard Associate Pro
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuSeparator />
                             <DropdownMenuItem onSelect={() => setSingleReassign(pro)}>
                               Reassign to manager
                             </DropdownMenuItem>
@@ -296,6 +409,18 @@ export function AssociateProsTable({ pros, sourceManager }: Props) {
         }}
         pros={selectedPros}
         sourceManager={sourceManager}
+      />
+
+      <OnboardingDialog
+        open={!!onboardingFor}
+        onOpenChange={(open) => !open && setOnboardingFor(null)}
+        pro={onboardingFor}
+      />
+
+      <OnboardingDetailsDialog
+        open={!!detailsFor}
+        onOpenChange={(open) => !open && setDetailsFor(null)}
+        pro={detailsFor}
       />
     </section>
   );

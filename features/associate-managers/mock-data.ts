@@ -16,12 +16,33 @@ export interface AssociatePro {
   id: string;
   name: string;
   email: string;
+  phone: string | null;
   status: ProStatus;
   recruitedAt: string;
+  /** ISO date when the manager onboarded this Pro. `null` means not yet onboarded. */
+  onboardedAt: string | null;
   totalSales: number;
   totalRevenue: number;
   lastLogin: string;
 }
+
+export interface OnboardingRecord {
+  proId: string;
+  onboardedAt: string;
+  welcomeCallDone: boolean;
+  welcomeCallDate?: string;
+  /** Array of material `value`s (see ONBOARDING_MATERIALS). */
+  materialsSent: string[];
+  walkthroughDone: boolean;
+  notes?: string;
+}
+
+export const ONBOARDING_MATERIALS: { value: string; label: string }[] = [
+  { value: "welcome_pack", label: "Welcome pack" },
+  { value: "plan_guide", label: "Plan guide" },
+  { value: "commission_sheet", label: "Commission sheet" },
+  { value: "product_catalogue", label: "Product catalogue" },
+];
 
 export interface ManagerTarget {
   id: string;
@@ -125,37 +146,51 @@ export const getManagerMetrics = (managerId: string): ManagerMetrics =>
 
 export const MOCK_PROS_BY_MANAGER: Record<string, AssociatePro[]> = {
   "mgr-001": [
-    { id: "pro-101", name: "Ada Eze", email: "ada@example.ng", status: "active", recruitedAt: "2025-03-12", totalSales: 9, totalRevenue: 14_200_000, lastLogin: "2h ago" },
-    { id: "pro-102", name: "Bayo Akinola", email: "bayo@example.ng", status: "active", recruitedAt: "2025-02-04", totalSales: 7, totalRevenue: 11_750_000, lastLogin: "1d ago" },
-    { id: "pro-103", name: "Chioma Nwosu", email: "chioma@example.ng", status: "active", recruitedAt: "2024-12-18", totalSales: 12, totalRevenue: 22_400_000, lastLogin: "3h ago" },
-    { id: "pro-104", name: "David Obi", email: "david@example.ng", status: "inactive", recruitedAt: "2024-09-22", totalSales: 0, totalRevenue: 0, lastLogin: "2 months ago" },
-    { id: "pro-105", name: "Esther Salami", email: "esther@example.ng", status: "active", recruitedAt: "2025-01-30", totalSales: 4, totalRevenue: 7_300_000, lastLogin: "5h ago" },
-    { id: "pro-106", name: "Femi Ojo", email: "femi@example.ng", status: "abandoned", recruitedAt: "2024-05-10", totalSales: 0, totalRevenue: 0, lastLogin: "8 months ago" },
-    { id: "pro-107", name: "Gloria Eke", email: "gloria@example.ng", status: "active", recruitedAt: "2025-04-02", totalSales: 3, totalRevenue: 4_800_000, lastLogin: "12h ago" },
-    { id: "pro-108", name: "Henry Bassey", email: "henry@example.ng", status: "inactive", recruitedAt: "2024-08-14", totalSales: 1, totalRevenue: 1_200_000, lastLogin: "3 months ago" },
-    { id: "pro-109", name: "Ifeoma Udo", email: "ifeoma@example.ng", status: "active", recruitedAt: "2025-02-21", totalSales: 6, totalRevenue: 9_650_000, lastLogin: "yesterday" },
-    { id: "pro-110", name: "John Adeola", email: "john@example.ng", status: "active", recruitedAt: "2024-11-09", totalSales: 8, totalRevenue: 12_900_000, lastLogin: "4h ago" },
+    { id: "pro-101", name: "Ada Eze", email: "ada@example.ng", phone: "+234 803 555 0101", status: "active", recruitedAt: "2025-03-12", onboardedAt: "2025-03-12", totalSales: 9, totalRevenue: 14_200_000, lastLogin: "2h ago" },
+    { id: "pro-102", name: "Bayo Akinola", email: "bayo@example.ng", phone: "+234 805 555 0102", status: "active", recruitedAt: "2025-02-04", onboardedAt: "2025-02-04", totalSales: 7, totalRevenue: 11_750_000, lastLogin: "1d ago" },
+    { id: "pro-103", name: "Chioma Nwosu", email: "chioma@example.ng", phone: "+234 807 555 0103", status: "active", recruitedAt: "2024-12-18", onboardedAt: "2024-12-18", totalSales: 12, totalRevenue: 22_400_000, lastLogin: "3h ago" },
+    { id: "pro-104", name: "David Obi", email: "david@example.ng", phone: "+234 809 555 0104", status: "inactive", recruitedAt: "2024-09-22", onboardedAt: "2024-09-22", totalSales: 0, totalRevenue: 0, lastLogin: "2 months ago" },
+    { id: "pro-105", name: "Esther Salami", email: "esther@example.ng", phone: "+234 802 555 0105", status: "active", recruitedAt: "2025-01-30", onboardedAt: "2025-01-30", totalSales: 4, totalRevenue: 7_300_000, lastLogin: "5h ago" },
+    { id: "pro-106", name: "Femi Ojo", email: "femi@example.ng", phone: "+234 813 555 0106", status: "abandoned", recruitedAt: "2024-05-10", onboardedAt: "2024-05-10", totalSales: 0, totalRevenue: 0, lastLogin: "8 months ago" },
+    { id: "pro-107", name: "Gloria Eke", email: "gloria@example.ng", phone: "+234 816 555 0107", status: "active", recruitedAt: "2025-04-02", onboardedAt: "2025-04-02", totalSales: 3, totalRevenue: 4_800_000, lastLogin: "12h ago" },
+    { id: "pro-108", name: "Henry Bassey", email: "henry@example.ng", phone: "+234 814 555 0108", status: "inactive", recruitedAt: "2024-08-14", onboardedAt: "2024-08-14", totalSales: 1, totalRevenue: 1_200_000, lastLogin: "3 months ago" },
+    { id: "pro-109", name: "Ifeoma Udo", email: "ifeoma@example.ng", phone: "+234 818 555 0109", status: "active", recruitedAt: "2025-02-21", onboardedAt: "2025-02-21", totalSales: 6, totalRevenue: 9_650_000, lastLogin: "yesterday" },
+    { id: "pro-110", name: "John Adeola", email: "john@example.ng", phone: "+234 803 555 0110", status: "active", recruitedAt: "2024-11-09", onboardedAt: "2024-11-09", totalSales: 8, totalRevenue: 12_900_000, lastLogin: "4h ago" },
+    // Recently recruited — onboarded this month
+    { id: "pro-111", name: "Kemi Olatunji", email: "kemi@example.ng", phone: "+234 803 555 0111", status: "active", recruitedAt: "2026-04-25", onboardedAt: "2026-05-02", totalSales: 1, totalRevenue: 1_400_000, lastLogin: "3h ago" },
+    // Recently recruited — NOT onboarded yet
+    { id: "pro-112", name: "Lekan Ojo", email: "lekan@example.ng", phone: "+234 805 555 0112", status: "active", recruitedAt: "2026-05-08", onboardedAt: null, totalSales: 0, totalRevenue: 0, lastLogin: "yesterday" },
   ],
   "mgr-002": [
-    { id: "pro-201", name: "Kayode Lawal", email: "kayode@example.ng", status: "active", recruitedAt: "2025-01-15", totalSales: 5, totalRevenue: 8_400_000, lastLogin: "1h ago" },
-    { id: "pro-202", name: "Lola Sanusi", email: "lola@example.ng", status: "active", recruitedAt: "2024-10-08", totalSales: 11, totalRevenue: 19_800_000, lastLogin: "6h ago" },
-    { id: "pro-203", name: "Musa Bello", email: "musa@example.ng", status: "inactive", recruitedAt: "2024-07-20", totalSales: 0, totalRevenue: 0, lastLogin: "4 months ago" },
-    { id: "pro-204", name: "Nkechi Obi", email: "nkechi@example.ng", status: "active", recruitedAt: "2025-03-01", totalSales: 4, totalRevenue: 6_700_000, lastLogin: "yesterday" },
-    { id: "pro-205", name: "Oluwaseun Ade", email: "seun@example.ng", status: "abandoned", recruitedAt: "2024-04-12", totalSales: 0, totalRevenue: 0, lastLogin: "7 months ago" },
+    { id: "pro-201", name: "Kayode Lawal", email: "kayode@example.ng", phone: "+234 803 555 0201", status: "active", recruitedAt: "2025-01-15", onboardedAt: "2025-01-15", totalSales: 5, totalRevenue: 8_400_000, lastLogin: "1h ago" },
+    { id: "pro-202", name: "Lola Sanusi", email: "lola@example.ng", phone: "+234 805 555 0202", status: "active", recruitedAt: "2024-10-08", onboardedAt: "2024-10-08", totalSales: 11, totalRevenue: 19_800_000, lastLogin: "6h ago" },
+    { id: "pro-203", name: "Musa Bello", email: "musa@example.ng", phone: "+234 807 555 0203", status: "inactive", recruitedAt: "2024-07-20", onboardedAt: "2024-07-20", totalSales: 0, totalRevenue: 0, lastLogin: "4 months ago" },
+    { id: "pro-204", name: "Nkechi Obi", email: "nkechi@example.ng", phone: "+234 809 555 0204", status: "active", recruitedAt: "2025-03-01", onboardedAt: "2025-03-01", totalSales: 4, totalRevenue: 6_700_000, lastLogin: "yesterday" },
+    { id: "pro-205", name: "Oluwaseun Ade", email: "seun@example.ng", phone: "+234 802 555 0205", status: "abandoned", recruitedAt: "2024-04-12", onboardedAt: "2024-04-12", totalSales: 0, totalRevenue: 0, lastLogin: "7 months ago" },
+    // Recently recruited — NOT onboarded
+    { id: "pro-206", name: "Peace Akande", email: "peace@example.ng", phone: "+234 813 555 0206", status: "active", recruitedAt: "2026-05-10", onboardedAt: null, totalSales: 0, totalRevenue: 0, lastLogin: "1d ago" },
   ],
   "mgr-003": [
-    { id: "pro-301", name: "Patrick Okoro", email: "patrick@example.ng", status: "active", recruitedAt: "2025-02-19", totalSales: 6, totalRevenue: 10_200_000, lastLogin: "2h ago" },
-    { id: "pro-302", name: "Queen Effiong", email: "queen@example.ng", status: "inactive", recruitedAt: "2024-09-05", totalSales: 1, totalRevenue: 1_500_000, lastLogin: "3 months ago" },
-    { id: "pro-303", name: "Rachael Inuwa", email: "rachael@example.ng", status: "active", recruitedAt: "2025-01-22", totalSales: 3, totalRevenue: 5_400_000, lastLogin: "yesterday" },
+    { id: "pro-301", name: "Patrick Okoro", email: "patrick@example.ng", phone: "+234 803 555 0301", status: "active", recruitedAt: "2025-02-19", onboardedAt: "2025-02-19", totalSales: 6, totalRevenue: 10_200_000, lastLogin: "2h ago" },
+    { id: "pro-302", name: "Queen Effiong", email: "queen@example.ng", phone: "+234 805 555 0302", status: "inactive", recruitedAt: "2024-09-05", onboardedAt: "2024-09-05", totalSales: 1, totalRevenue: 1_500_000, lastLogin: "3 months ago" },
+    { id: "pro-303", name: "Rachael Inuwa", email: "rachael@example.ng", phone: "+234 807 555 0303", status: "active", recruitedAt: "2025-01-22", onboardedAt: "2025-01-22", totalSales: 3, totalRevenue: 5_400_000, lastLogin: "yesterday" },
+    // Recently recruited — onboarded this month
+    { id: "pro-304", name: "Sam Okonkwo", email: "sam@example.ng", phone: "+234 809 555 0304", status: "active", recruitedAt: "2026-05-05", onboardedAt: "2026-05-06", totalSales: 1, totalRevenue: 950_000, lastLogin: "6h ago" },
   ],
   "mgr-004": [
-    { id: "pro-401", name: "Sade Coker", email: "sade@example.ng", status: "active", recruitedAt: "2025-03-10", totalSales: 5, totalRevenue: 8_900_000, lastLogin: "2h ago" },
-    { id: "pro-402", name: "Tobi Adams", email: "tobi@example.ng", status: "active", recruitedAt: "2024-11-12", totalSales: 8, totalRevenue: 14_300_000, lastLogin: "1d ago" },
-    { id: "pro-403", name: "Uche Iheanyi", email: "uche@example.ng", status: "inactive", recruitedAt: "2024-06-30", totalSales: 2, totalRevenue: 3_100_000, lastLogin: "2 months ago" },
+    { id: "pro-401", name: "Sade Coker", email: "sade@example.ng", phone: "+234 803 555 0401", status: "active", recruitedAt: "2025-03-10", onboardedAt: "2025-03-10", totalSales: 5, totalRevenue: 8_900_000, lastLogin: "2h ago" },
+    { id: "pro-402", name: "Tobi Adams", email: "tobi@example.ng", phone: "+234 805 555 0402", status: "active", recruitedAt: "2024-11-12", onboardedAt: "2024-11-12", totalSales: 8, totalRevenue: 14_300_000, lastLogin: "1d ago" },
+    { id: "pro-403", name: "Uche Iheanyi", email: "uche@example.ng", phone: "+234 807 555 0403", status: "inactive", recruitedAt: "2024-06-30", onboardedAt: "2024-06-30", totalSales: 2, totalRevenue: 3_100_000, lastLogin: "2 months ago" },
+    // Recently recruited — onboarded this month
+    { id: "pro-404", name: "Vera Okoli", email: "vera@example.ng", phone: "+234 809 555 0404", status: "active", recruitedAt: "2026-05-01", onboardedAt: "2026-05-03", totalSales: 2, totalRevenue: 2_900_000, lastLogin: "4h ago" },
+    // Recently recruited — NOT onboarded
+    { id: "pro-405", name: "Wale Adigun", email: "wale@example.ng", phone: "+234 802 555 0405", status: "active", recruitedAt: "2026-05-11", onboardedAt: null, totalSales: 0, totalRevenue: 0, lastLogin: "2d ago" },
   ],
   "mgr-005": [
-    { id: "pro-501", name: "Victor Ogun", email: "victor@example.ng", status: "active", recruitedAt: "2025-04-01", totalSales: 2, totalRevenue: 3_400_000, lastLogin: "5h ago" },
-    { id: "pro-502", name: "Wendy Imeh", email: "wendy@example.ng", status: "active", recruitedAt: "2025-02-28", totalSales: 4, totalRevenue: 6_900_000, lastLogin: "yesterday" },
+    { id: "pro-501", name: "Victor Ogun", email: "victor@example.ng", phone: "+234 803 555 0501", status: "active", recruitedAt: "2025-04-01", onboardedAt: "2025-04-01", totalSales: 2, totalRevenue: 3_400_000, lastLogin: "5h ago" },
+    { id: "pro-502", name: "Wendy Imeh", email: "wendy@example.ng", phone: "+234 805 555 0502", status: "active", recruitedAt: "2025-02-28", onboardedAt: "2025-02-28", totalSales: 4, totalRevenue: 6_900_000, lastLogin: "yesterday" },
+    // Recently recruited — NOT onboarded
+    { id: "pro-503", name: "Yemi Bola", email: "yemi@example.ng", phone: "+234 807 555 0503", status: "active", recruitedAt: "2026-04-30", onboardedAt: null, totalSales: 0, totalRevenue: 0, lastLogin: "1d ago" },
   ],
 };
 
@@ -233,6 +268,81 @@ export const daysRemaining = (target: ManagerTarget): number => {
   return Math.max(0, Math.ceil(ms / (1000 * 60 * 60 * 24)));
 };
 
+// ---------------------------------------------------------------------------
+// Onboarding records
+// ---------------------------------------------------------------------------
+
+// Detailed records exist only for Pros that were onboarded "properly" through
+// the dialog (not the backfilled ones). For backfilled Pros the helper below
+// returns a stub indicating no detailed record is on file.
+const MOCK_ONBOARDING_RECORDS: Record<string, OnboardingRecord> = {
+  "pro-111": {
+    proId: "pro-111",
+    onboardedAt: "2026-05-02",
+    welcomeCallDone: true,
+    welcomeCallDate: "2026-05-02",
+    materialsSent: ["welcome_pack", "plan_guide", "commission_sheet"],
+    walkthroughDone: true,
+    notes: "Smooth onboarding. Pro is keen, already shadowed two client calls.",
+  },
+  "pro-304": {
+    proId: "pro-304",
+    onboardedAt: "2026-05-06",
+    welcomeCallDone: true,
+    welcomeCallDate: "2026-05-05",
+    materialsSent: ["welcome_pack", "product_catalogue"],
+    walkthroughDone: false,
+    notes: "Walkthrough rescheduled to next week — Pro travelling.",
+  },
+  "pro-404": {
+    proId: "pro-404",
+    onboardedAt: "2026-05-03",
+    welcomeCallDone: true,
+    welcomeCallDate: "2026-05-02",
+    materialsSent: ["welcome_pack", "plan_guide", "commission_sheet", "product_catalogue"],
+    walkthroughDone: true,
+    notes: "All onboarding steps complete.",
+  },
+};
+
+const findProById = (proId: string): AssociatePro | null => {
+  for (const pros of Object.values(MOCK_PROS_BY_MANAGER)) {
+    const found = pros.find((p) => p.id === proId);
+    if (found) return found;
+  }
+  return MOCK_UNASSIGNED_PROS.find((p) => p.id === proId) ?? null;
+};
+
+export const getOnboardingRecord = (proId: string): OnboardingRecord | null => {
+  const stored = MOCK_ONBOARDING_RECORDS[proId];
+  if (stored) return stored;
+
+  const pro = findProById(proId);
+  if (pro?.onboardedAt) {
+    return {
+      proId,
+      onboardedAt: pro.onboardedAt,
+      welcomeCallDone: false,
+      materialsSent: [],
+      walkthroughDone: false,
+      notes: "Backfilled from recruitment date — no detailed record on file.",
+    };
+  }
+  return null;
+};
+
+/** True when `iso` falls inside the calendar month that contains TODAY_ISO. */
+const isThisMonth = (iso: string | null | undefined): boolean => {
+  if (!iso) return false;
+  return iso.slice(0, 7) === TODAY_ISO.slice(0, 7);
+};
+
+export const getOnboardedThisMonthCount = (managerId: string): number =>
+  getProsForManager(managerId).filter((p) => isThisMonth(p.onboardedAt)).length;
+
+export const getOnboardedAllTimeCount = (managerId: string): number =>
+  getProsForManager(managerId).filter((p) => p.onboardedAt !== null).length;
+
 export const formatPeriodLabel = (target: ManagerTarget): string => {
   const start = parseISO(target.periodStart);
   const end = parseISO(target.periodEnd);
@@ -279,7 +389,7 @@ export const UNASSIGNED_POOL_ID = "__unassigned__";
 
 // Unassigned Pros pool (used by Add / Change dialogs).
 export const MOCK_UNASSIGNED_PROS: AssociatePro[] = [
-  { id: "pro-901", name: "Zainab Yusuf", email: "zainab@example.ng", status: "active", recruitedAt: "2025-03-22", totalSales: 1, totalRevenue: 1_800_000, lastLogin: "2d ago" },
-  { id: "pro-902", name: "Ahmed Okafor", email: "ahmed@example.ng", status: "inactive", recruitedAt: "2024-10-15", totalSales: 0, totalRevenue: 0, lastLogin: "5 months ago" },
-  { id: "pro-903", name: "Blessing Etim", email: "blessing@example.ng", status: "active", recruitedAt: "2025-02-08", totalSales: 3, totalRevenue: 4_650_000, lastLogin: "yesterday" },
+  { id: "pro-901", name: "Zainab Yusuf", email: "zainab@example.ng", phone: "+234 803 555 0901", status: "active", recruitedAt: "2025-03-22", onboardedAt: "2025-03-22", totalSales: 1, totalRevenue: 1_800_000, lastLogin: "2d ago" },
+  { id: "pro-902", name: "Ahmed Okafor", email: "ahmed@example.ng", phone: "+234 805 555 0902", status: "inactive", recruitedAt: "2024-10-15", onboardedAt: "2024-10-15", totalSales: 0, totalRevenue: 0, lastLogin: "5 months ago" },
+  { id: "pro-903", name: "Blessing Etim", email: "blessing@example.ng", phone: "+234 807 555 0903", status: "active", recruitedAt: "2025-02-08", onboardedAt: "2025-02-08", totalSales: 3, totalRevenue: 4_650_000, lastLogin: "yesterday" },
 ];
