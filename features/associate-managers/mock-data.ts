@@ -23,6 +23,22 @@ export interface AssociatePro {
   lastLogin: string;
 }
 
+export interface ManagerTarget {
+  id: string;
+  managerId: string;
+  /** ISO date (YYYY-MM-DD), inclusive */
+  periodStart: string;
+  /** ISO date (YYYY-MM-DD), inclusive */
+  periodEnd: string;
+  /** "month" — auto-derived from a calendar month; "custom" — user-defined range */
+  periodKind: "month" | "custom";
+  associateProsRecruited: number;
+  sellingAssociatePros: number;
+  performanceScore: number;
+}
+
+export type TargetStatus = "active" | "upcoming" | "ended";
+
 export interface ManagerMetrics {
   managerId: string;
   recruitment: {
@@ -145,6 +161,92 @@ export const MOCK_PROS_BY_MANAGER: Record<string, AssociatePro[]> = {
 
 export const getProsForManager = (managerId: string): AssociatePro[] =>
   MOCK_PROS_BY_MANAGER[managerId] ?? [];
+
+// ---------------------------------------------------------------------------
+// Targets
+// ---------------------------------------------------------------------------
+
+// Today (set by env mock to 2026-05-13). Helpers operate against this.
+const TODAY_ISO = "2026-05-13";
+
+const parseISO = (iso: string) => new Date(`${iso}T00:00:00Z`);
+
+export const MOCK_TARGETS: ManagerTarget[] = [
+  // mgr-001 Adaeze — Active May, Upcoming Jun, Past Apr/Mar/Feb/Jan
+  { id: "tgt-001-may", managerId: "mgr-001", periodStart: "2026-05-01", periodEnd: "2026-05-31", periodKind: "month", associateProsRecruited: 15, sellingAssociatePros: 16, performanceScore: 9 },
+  { id: "tgt-001-jun", managerId: "mgr-001", periodStart: "2026-06-01", periodEnd: "2026-06-30", periodKind: "month", associateProsRecruited: 18, sellingAssociatePros: 18, performanceScore: 9.5 },
+  { id: "tgt-001-apr", managerId: "mgr-001", periodStart: "2026-04-01", periodEnd: "2026-04-30", periodKind: "month", associateProsRecruited: 12, sellingAssociatePros: 14, performanceScore: 8 },
+  { id: "tgt-001-mar", managerId: "mgr-001", periodStart: "2026-03-01", periodEnd: "2026-03-31", periodKind: "month", associateProsRecruited: 10, sellingAssociatePros: 12, performanceScore: 7 },
+  { id: "tgt-001-feb", managerId: "mgr-001", periodStart: "2026-02-01", periodEnd: "2026-02-28", periodKind: "month", associateProsRecruited: 8, sellingAssociatePros: 10, performanceScore: 6 },
+  { id: "tgt-001-jan", managerId: "mgr-001", periodStart: "2026-01-01", periodEnd: "2026-01-31", periodKind: "month", associateProsRecruited: 6, sellingAssociatePros: 8, performanceScore: 5 },
+
+  // mgr-002 Chukwuma — Active May, Past Apr/Mar
+  { id: "tgt-002-may", managerId: "mgr-002", periodStart: "2026-05-01", periodEnd: "2026-05-31", periodKind: "month", associateProsRecruited: 12, sellingAssociatePros: 12, performanceScore: 8 },
+  { id: "tgt-002-apr", managerId: "mgr-002", periodStart: "2026-04-01", periodEnd: "2026-04-30", periodKind: "month", associateProsRecruited: 10, sellingAssociatePros: 10, performanceScore: 6.5 },
+  { id: "tgt-002-mar", managerId: "mgr-002", periodStart: "2026-03-01", periodEnd: "2026-03-31", periodKind: "month", associateProsRecruited: 8, sellingAssociatePros: 8, performanceScore: 5 },
+
+  // mgr-003 Folake — NO active target (gap), Past Apr/Mar
+  { id: "tgt-003-apr", managerId: "mgr-003", periodStart: "2026-04-01", periodEnd: "2026-04-30", periodKind: "month", associateProsRecruited: 6, sellingAssociatePros: 7, performanceScore: 5 },
+  { id: "tgt-003-mar", managerId: "mgr-003", periodStart: "2026-03-01", periodEnd: "2026-03-31", periodKind: "month", associateProsRecruited: 5, sellingAssociatePros: 6, performanceScore: 4 },
+
+  // mgr-004 Tunde — Active custom Q2 sprint + Upcoming Jun (overlapping protection example)
+  { id: "tgt-004-q2", managerId: "mgr-004", periodStart: "2026-04-15", periodEnd: "2026-05-31", periodKind: "custom", associateProsRecruited: 15, sellingAssociatePros: 12, performanceScore: 8 },
+  { id: "tgt-004-jun", managerId: "mgr-004", periodStart: "2026-06-01", periodEnd: "2026-06-15", periodKind: "custom", associateProsRecruited: 8, sellingAssociatePros: 7, performanceScore: 7 },
+  { id: "tgt-004-mar", managerId: "mgr-004", periodStart: "2026-03-01", periodEnd: "2026-03-31", periodKind: "month", associateProsRecruited: 10, sellingAssociatePros: 9, performanceScore: 6 },
+
+  // mgr-005 Yetunde — no targets at all (full empty state)
+];
+
+const today = parseISO(TODAY_ISO);
+
+export const statusOf = (target: ManagerTarget): TargetStatus => {
+  const start = parseISO(target.periodStart);
+  const end = parseISO(target.periodEnd);
+  if (today < start) return "upcoming";
+  if (today > end) return "ended";
+  return "active";
+};
+
+export const getActiveTarget = (managerId: string): ManagerTarget | null =>
+  MOCK_TARGETS.find((t) => t.managerId === managerId && statusOf(t) === "active") ?? null;
+
+export const getUpcomingTargets = (managerId: string): ManagerTarget[] =>
+  MOCK_TARGETS.filter((t) => t.managerId === managerId && statusOf(t) === "upcoming").sort(
+    (a, b) => parseISO(a.periodStart).getTime() - parseISO(b.periodStart).getTime()
+  );
+
+export const getPastTargets = (managerId: string, limit?: number): ManagerTarget[] => {
+  const past = MOCK_TARGETS.filter(
+    (t) => t.managerId === managerId && statusOf(t) === "ended"
+  ).sort((a, b) => parseISO(b.periodEnd).getTime() - parseISO(a.periodEnd).getTime());
+  return limit ? past.slice(0, limit) : past;
+};
+
+export const getAllTargetsForManager = (managerId: string): ManagerTarget[] =>
+  MOCK_TARGETS.filter((t) => t.managerId === managerId).sort(
+    (a, b) => parseISO(b.periodStart).getTime() - parseISO(a.periodStart).getTime()
+  );
+
+export const daysRemaining = (target: ManagerTarget): number => {
+  const end = parseISO(target.periodEnd);
+  const ms = end.getTime() - today.getTime();
+  return Math.max(0, Math.ceil(ms / (1000 * 60 * 60 * 24)));
+};
+
+export const formatPeriodLabel = (target: ManagerTarget): string => {
+  const start = parseISO(target.periodStart);
+  const end = parseISO(target.periodEnd);
+  const monthOpts: Intl.DateTimeFormatOptions = { month: "short", year: "numeric" };
+  const fullOpts: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric" };
+
+  if (target.periodKind === "month") {
+    return start.toLocaleDateString("en-GB", monthOpts);
+  }
+  // Custom range
+  const startStr = start.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  const endStr = end.toLocaleDateString("en-GB", fullOpts);
+  return `${startStr} – ${endStr}`;
+};
 
 // Reverse lookup: which manager owns this Pro? Returns null when unassigned.
 export const getManagerForPro = (proId: string): AssociateManager | null => {
