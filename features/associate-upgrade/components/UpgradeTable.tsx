@@ -29,6 +29,7 @@ import Link from "next/link";
 import { useAuthStore } from "@/store/auth-store";
 import { TransactionStatus } from "@/components/shared/TransactionStatus";
 import { AdminDesktopTableWrap, AdminMobileCard, AdminMobileField, AdminMobileStack } from "@/components/shared/admin-responsive-table";
+import { ViewTransactionEvidence } from "@/features/transactions";
 
 export const UpgradeRowFragment = graphql(`
   fragment UpgradeRowFragment on ReferralUpgrade {
@@ -152,12 +153,15 @@ export function UpgradeTable({ data, onApprove, onDecline }: UpgradeTableProps) 
               )}
               <div className="flex justify-end">
                 {upgrade.file_Url ? (
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href={upgrade.file_Url} target="_blank" rel="noopener noreferrer">
-                      <Eye className="mr-1 h-4 w-4" />
-                      Evidence
-                    </Link>
-                  </Button>
+                  <ViewTransactionEvidence
+                    image={upgrade.file_Url}
+                    trigger={
+                      <Button variant="outline" size="sm">
+                        <Eye className="mr-1 h-4 w-4" />
+                        Evidence
+                      </Button>
+                    }
+                  />
                 ) : (
                   <span className="text-xs text-muted-foreground">No evidence file</span>
                 )}
@@ -300,11 +304,14 @@ export function UpgradeTable({ data, onApprove, onDecline }: UpgradeTableProps) 
                     )}
                     <TableCell className="py-4">
                       {upgrade.file_Url ? (
-                        <Button variant="ghost" size="icon" asChild aria-label="View evidence">
-                          <Link href={upgrade.file_Url} target="_blank" rel="noopener noreferrer">
-                            <Eye className="w-5 h-5 text-gray-700" />
-                          </Link>
-                        </Button>
+                        <ViewTransactionEvidence
+                          image={upgrade.file_Url}
+                          trigger={
+                            <Button variant="ghost" size="icon" aria-label="View evidence">
+                              <Eye className="w-5 h-5 text-gray-700" />
+                            </Button>
+                          }
+                        />
                       ) : (
                         <div className="p-2">
                           <Eye className="w-5 h-5 text-gray-300" />

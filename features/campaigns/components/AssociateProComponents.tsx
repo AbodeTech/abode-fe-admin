@@ -405,7 +405,7 @@ export function AssociateProFinancialOverview({ dashboard }: AssociateProFinanci
 }
 
 interface AssociateProUpgradesTableProps {
-  data: Array<FragmentType<typeof AssociateProUpgradeDetailFragment>>;
+  data: Array<FragmentType<typeof AssociateProRecruitmentUserFragment> | null> | null | undefined;
 }
 
 const statusBadge = (status: string) => {
@@ -423,60 +423,63 @@ const statusBadge = (status: string) => {
 };
 
 export function AssociateProUpgradesTable({ data }: AssociateProUpgradesTableProps) {
-  const upgrades = useFragment(AssociateProUpgradeDetailFragment, data);
+  const safeRows = (data ?? []).filter(
+    (item): item is NonNullable<typeof item> => item !== null
+  );
+  const pros = useFragment(AssociateProRecruitmentUserFragment, safeRows);
 
   return (
     <Card className="min-w-0 overflow-hidden bg-card border-border">
       <CardHeader>
         <CardTitle className="text-foreground">Recent Pro Upgrades</CardTitle>
-        <CardDescription>Latest members who upgraded from Associate to Pro</CardDescription>
+        <CardDescription>Members currently marked as Associate Pro</CardDescription>
       </CardHeader>
       <CardContent>
-        {upgrades.length === 0 ? (
+        {pros.length === 0 ? (
           <p className="py-4 text-center text-sm text-muted-foreground">No records found.</p>
         ) : (
           <>
             <AdminMobileStack className="px-0.5">
-              {upgrades.map((upgrade) => (
-                <AdminMobileCard key={upgrade.upgradeId} title={upgrade.userFullName ?? "—"}>
-                  <AdminMobileField label="User since" value={formatDate(upgrade.userSince)} />
-                  <AdminMobileField label="Associate since" value={formatDate(upgrade.associateSince)} />
-                  <AdminMobileField label="Pro since" value={formatDate(upgrade.associateProSince)} />
-                  <AdminMobileField label="Payment" value={formatCurrency(upgrade.amountPaid)} />
-                  <AdminMobileField label="Status" value={statusBadge(upgrade.adminStatus)} />
-                  <AdminMobileField label="Referrer" value={upgrade.referrerFullName ?? "—"} />
-                  <AdminMobileField label="Ticket #" value={<span className="font-mono text-xs">{upgrade.ticketId ?? "—"}</span>} />
-                </AdminMobileCard>
-              ))}
+              {pros.map((pro) => {
+                const fullName = [pro.firstName, pro.lastName].filter(Boolean).join(" ") || "—";
+                const referrerName = pro.referral
+                  ? [pro.referral.firstName, pro.referral.lastName].filter(Boolean).join(" ") || pro.referral.email || "—"
+                  : "—";
+                return (
+                  <AdminMobileCard key={pro._id ?? pro.email ?? fullName} title={fullName}>
+                    <AdminMobileField label="Email" value={pro.email ?? "—"} />
+                    <AdminMobileField label="User since" value={formatDate(pro.createdAt)} />
+                    <AdminMobileField label="Referrer" value={referrerName} />
+                  </AdminMobileCard>
+                );
+              })}
             </AdminMobileStack>
             <AdminDesktopTableWrap>
               <div className="min-w-0 overflow-x-auto">
-                <Table className="min-w-[880px]">
+                <Table className="min-w-[720px]">
                   <TableHeader>
                     <TableRow className="border-border hover:bg-transparent">
                       <TableHead className="text-muted-foreground">Name</TableHead>
-                      <TableHead className="text-muted-foreground">User Since</TableHead>
-                      <TableHead className="text-muted-foreground">Associate Since</TableHead>
-                      <TableHead className="text-muted-foreground">Pro Since</TableHead>
-                      <TableHead className="text-muted-foreground">Payment</TableHead>
-                      <TableHead className="text-muted-foreground">Status</TableHead>
+                      <TableHead className="text-muted-foreground">Email</TableHead>
                       <TableHead className="text-muted-foreground">Referrer</TableHead>
-                      <TableHead className="text-muted-foreground">Ticket #</TableHead>
+                      <TableHead className="text-muted-foreground">User Since</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {upgrades.map((upgrade) => (
-                      <TableRow key={upgrade.upgradeId} className="border-border">
-                        <TableCell className="font-medium text-foreground">{upgrade.userFullName ?? "-"}</TableCell>
-                        <TableCell className="text-muted-foreground">{formatDate(upgrade.userSince)}</TableCell>
-                        <TableCell className="text-muted-foreground">{formatDate(upgrade.associateSince)}</TableCell>
-                        <TableCell className="text-foreground">{formatDate(upgrade.associateProSince)}</TableCell>
-                        <TableCell className="text-foreground">{formatCurrency(upgrade.amountPaid)}</TableCell>
-                        <TableCell>{statusBadge(upgrade.adminStatus)}</TableCell>
-                        <TableCell className="text-muted-foreground">{upgrade.referrerFullName ?? "-"}</TableCell>
-                        <TableCell className="font-mono text-xs text-foreground">{upgrade.ticketId ?? "-"}</TableCell>
-                      </TableRow>
-                    ))}
+                    {pros.map((pro) => {
+                      const fullName = [pro.firstName, pro.lastName].filter(Boolean).join(" ") || "-";
+                      const referrerName = pro.referral
+                        ? [pro.referral.firstName, pro.referral.lastName].filter(Boolean).join(" ") || pro.referral.email || "-"
+                        : "-";
+                      return (
+                        <TableRow key={pro._id ?? pro.email ?? fullName} className="border-border">
+                          <TableCell className="font-medium text-foreground">{fullName}</TableCell>
+                          <TableCell className="text-muted-foreground">{pro.email ?? "-"}</TableCell>
+                          <TableCell className="text-muted-foreground">{referrerName}</TableCell>
+                          <TableCell className="text-muted-foreground">{formatDate(pro.createdAt)}</TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
@@ -983,12 +986,15 @@ export function AssociateProRecruitmentTable({
 }
 
 interface AssociateProExportPanelProps {
-  upgrades: Array<FragmentType<typeof AssociateProUpgradeDetailFragment>>;
+  pros: Array<FragmentType<typeof AssociateProRecruitmentUserFragment> | null> | null | undefined;
   tickets: Array<FragmentType<typeof AssociateProTicketHolderFragment>>;
 }
 
-export function AssociateProExportPanel({ upgrades, tickets }: AssociateProExportPanelProps) {
-  const upgradeRows = useFragment(AssociateProUpgradeDetailFragment, upgrades);
+export function AssociateProExportPanel({ pros, tickets }: AssociateProExportPanelProps) {
+  const safePros = (pros ?? []).filter(
+    (item): item is NonNullable<typeof item> => item !== null
+  );
+  const proRows = useFragment(AssociateProRecruitmentUserFragment, safePros);
   const ticketRows = useFragment(AssociateProTicketHolderFragment, tickets);
 
   return (
@@ -1014,20 +1020,23 @@ export function AssociateProExportPanel({ upgrades, tickets }: AssociateProExpor
             className="h-24 flex-col gap-2 hover:border-primary hover:text-primary"
             onClick={() =>
               downloadCsv(
-                upgradeRows.map((row) => ({
-                  "Full Name": row.userFullName ?? "-",
-                  "User Since": formatDate(row.userSince),
-                  "Associate Since": formatDate(row.associateSince),
-                  "Pro Since": formatDate(row.associateProSince),
-                  Referrer: row.referrerFullName ?? "-",
-                  "Amount Paid": formatCurrency(row.amountPaid),
-                  Status: row.adminStatus,
-                  "Ticket ID": row.ticketId ?? "-",
-                })),
+                proRows.map((row) => {
+                  const fullName = [row.firstName, row.lastName].filter(Boolean).join(" ") || "-";
+                  const referrerName = row.referral
+                    ? [row.referral.firstName, row.referral.lastName].filter(Boolean).join(" ") || row.referral.email || "-"
+                    : "-";
+                  return {
+                    "Full Name": fullName,
+                    Email: row.email ?? "-",
+                    Referrer: referrerName,
+                    "Referrer Email": row.referral?.email ?? "-",
+                    "User Since": formatDate(row.createdAt),
+                  };
+                }),
                 `pro_members_${new Date().toISOString().slice(0, 10)}.csv`
               )
             }
-            disabled={upgradeRows.length === 0}
+            disabled={proRows.length === 0}
           >
             <UserCheck className="h-6 w-6" />
             <span>Export Pro Members</span>

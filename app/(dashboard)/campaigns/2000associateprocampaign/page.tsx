@@ -16,6 +16,7 @@ import {
 } from "@/features/campaigns/components/AssociateProComponents";
 
 const RECRUITMENT_LIMIT = 10;
+const ALL_PROS_LIMIT = 10000;
 
 type RecruitmentStatus = "total" | "associate-pro" | "associate";
 
@@ -32,13 +33,22 @@ export default function Campaign2000AssociateProPage() {
     searchQuery: recruitmentSearch || undefined,
     referralStatus: recruitmentStatus === "total" ? undefined : recruitmentStatus,
   });
+  // Source B — all current Associate Pros (no campaign date window).
+  // Feeds both the "Recent Pro Upgrades" table and the export panel so the
+  // download stays in sync with post-CAMPAIGN_END additions on the BE.
+  const { data: allProsData } = useAssociateRecruitmentAnalytics({
+    page: 1,
+    limit: ALL_PROS_LIMIT,
+    hasReferral: true,
+    referralStatus: "associate-pro",
+  });
   const dashboard = data?.getCampaignDashboard;
-  const upgrades = data?.getAssociateProUpgrades?.upgrades ?? [];
   const referral = data?.getReferralAnalytics;
   const tickets = referral?.ticketHolders.tickets ?? [];
   const recruitmentRows = (recruitmentData?.data ?? []).filter(
     (item): item is NonNullable<typeof item> => item !== null
   );
+  const allPros = allProsData?.data ?? [];
 
   if (error) {
     return (
@@ -79,7 +89,7 @@ export default function Campaign2000AssociateProPage() {
         </>
       )}
 
-      <AssociateProUpgradesTable data={upgrades} />
+      <AssociateProUpgradesTable data={allPros} />
 
       {referral && (
         <section>
@@ -109,7 +119,7 @@ export default function Campaign2000AssociateProPage() {
         isLoading={recruitmentLoading}
       />
 
-      <AssociateProExportPanel upgrades={upgrades} tickets={tickets} />
+      <AssociateProExportPanel pros={allPros} tickets={tickets} />
     </div>
   );
 }
