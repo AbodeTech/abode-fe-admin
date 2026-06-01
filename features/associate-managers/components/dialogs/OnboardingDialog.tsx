@@ -1,8 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { format } from "date-fns";
-import { CalendarIcon, ClipboardCheck } from "lucide-react";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  CalendarClock,
+  ClipboardCheck,
+  PhoneCall,
+  PhoneOff,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -14,63 +20,110 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { cn } from "@/lib/utils";
 import {
-  ONBOARDING_MATERIALS,
-  type AssociatePro,
-} from "../../mock-data";
+  onboardingSchema,
+  SUPPORT_OPTIONS,
+  type OnboardingFormValues,
+} from "../../schemas/onboarding.schema";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  pro: AssociatePro | null;
+  pro: { id: string; name: string; email: string; phone: string | null } | null;
 }
 
-const TODAY = new Date("2026-05-13T00:00:00Z");
+const OUTCOMES: {
+  value: "picked" | "not_available" | "rescheduled";
+  label: string;
+  description: string;
+  icon: React.ElementType;
+  tone: string;
+}[] = [
+  {
+    value: "picked",
+    label: "Picked",
+    description: "Pro picked up — fill the onboarding form below.",
+    icon: PhoneCall,
+    tone: "text-[#00695C]",
+  },
+  {
+    value: "not_available",
+    label: "Not Available",
+    description: "Pro didn't pick up. Log the attempt.",
+    icon: PhoneOff,
+    tone: "text-amber-600",
+  },
+  {
+    value: "rescheduled",
+    label: "Rescheduled",
+    description: "Pro picked but asked to talk later.",
+    icon: CalendarClock,
+    tone: "text-blue-600",
+  },
+];
+
+const ATTEMPTS = [
+  { value: "1", label: "1st attempt" },
+  { value: "2", label: "2nd attempt" },
+  { value: "3", label: "3rd attempt" },
+] as const;
+
+const DEFAULTS: OnboardingFormValues = {
+  outcome: undefined as unknown as OnboardingFormValues["outcome"],
+  attempt: undefined,
+  motivation: "",
+  experience: undefined,
+  experienceLength: "",
+  prospects: "",
+  incomeGoal: "",
+  support: undefined,
+  supportOther: "",
+  readDocs: undefined,
+  gotGuide: undefined,
+};
 
 export function OnboardingDialog({ open, onOpenChange, pro }: Props) {
-  const [onboardedAt, setOnboardedAt] = useState<Date>(TODAY);
-  const [onboardedAtOpen, setOnboardedAtOpen] = useState(false);
+  const form = useForm<OnboardingFormValues>({
+    resolver: zodResolver(onboardingSchema),
+    defaultValues: DEFAULTS,
+    mode: "onSubmit",
+  });
 
-  const [welcomeCallDone, setWelcomeCallDone] = useState(false);
-  const [welcomeCallDate, setWelcomeCallDate] = useState<Date | undefined>();
-  const [welcomeCallDateOpen, setWelcomeCallDateOpen] = useState(false);
-
-  const [materials, setMaterials] = useState<Set<string>>(new Set());
-  const [walkthroughDone, setWalkthroughDone] = useState(false);
-  const [notes, setNotes] = useState("");
-
-  // Reset form when (re)opened
+  // Reset whenever the dialog (re)opens.
   useEffect(() => {
-    if (open) {
-      setOnboardedAt(TODAY);
-      setWelcomeCallDone(false);
-      setWelcomeCallDate(undefined);
-      setMaterials(new Set());
-      setWalkthroughDone(false);
-      setNotes("");
-    }
-  }, [open]);
+    if (open) form.reset(DEFAULTS);
+  }, [open, form]);
+
+  const outcome = form.watch("outcome");
+  const experience = form.watch("experience");
+  const support = form.watch("support");
 
   if (!pro) return null;
 
-  const toggleMaterial = (value: string) => {
-    setMaterials((prev) => {
-      const next = new Set(prev);
-      if (next.has(value)) next.delete(value);
-      else next.add(value);
-      return next;
-    });
-  };
-
-  const handleSave = () => {
-    // Design-only: no mutation.
-    toast.success(`${pro.name} onboarded`);
+  const onSubmit = (values: OnboardingFormValues) => {
+    // Mock save — BE doesn't expose an onboarding endpoint yet.
+    if (values.outcome === "picked") toast.success(`${pro.name} onboarded`);
+    else if (values.outcome === "not_available")
+      toast.success(`Attempt ${values.attempt} logged for ${pro.name}`);
+    else toast.success(`${pro.name} marked as rescheduled`);
     onOpenChange(false);
   };
 
@@ -83,151 +136,394 @@ export function OnboardingDialog({ open, onOpenChange, pro }: Props) {
             Onboard Associate Pro
           </DialogTitle>
           <DialogDescription>
-            Record what was done as part of {pro.name}&apos;s onboarding.
+            Record the outcome of {pro.name}&apos;s onboarding call.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="overflow-y-auto flex-1 space-y-5 py-1">
-          {/* Pro context card */}
-          <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-            <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">
-              Associate Pro
-            </p>
-            <p className="text-sm font-medium text-gray-900">{pro.name}</p>
-            <p className="text-xs text-gray-500">
-              {pro.email}
-              {pro.phone ? ` · ${pro.phone}` : ""}
-            </p>
-          </div>
-
-          {/* Onboarding date */}
-          <div className="space-y-1.5">
-            <Label htmlFor="onboarded-at">Onboarding date</Label>
-            <Popover open={onboardedAtOpen} onOpenChange={setOnboardedAtOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  id="onboarded-at"
-                  variant="outline"
-                  className="w-full justify-start bg-white font-normal"
-                >
-                  <CalendarIcon className="h-4 w-4 mr-2" />
-                  {format(onboardedAt, "d MMM yyyy")}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={onboardedAt}
-                  onSelect={(d) => {
-                    if (d) setOnboardedAt(d);
-                    setOnboardedAtOpen(false);
-                  }}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
-
-          {/* Welcome call */}
-          <div className="space-y-2">
-            <Label>Welcome call</Label>
-            <label className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-gray-200 bg-white cursor-pointer">
-              <Checkbox
-                checked={welcomeCallDone}
-                onCheckedChange={(c) => {
-                  const next = c === true;
-                  setWelcomeCallDone(next);
-                  if (!next) setWelcomeCallDate(undefined);
-                }}
-              />
-              <span className="text-sm font-medium text-gray-900">Welcome call done</span>
-            </label>
-
-            {welcomeCallDone && (
-              <div className="ml-1 space-y-1">
-                <Label className="text-xs text-gray-500">Call date</Label>
-                <Popover open={welcomeCallDateOpen} onOpenChange={setWelcomeCallDateOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start bg-white font-normal",
-                        !welcomeCallDate && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="h-4 w-4 mr-2" />
-                      {welcomeCallDate ? format(welcomeCallDate, "d MMM yyyy") : "Pick date"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={welcomeCallDate}
-                      onSelect={(d) => {
-                        setWelcomeCallDate(d);
-                        setWelcomeCallDateOpen(false);
-                      }}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="flex-1 flex flex-col overflow-hidden"
+          >
+            <div className="overflow-y-auto flex-1 space-y-5 py-1">
+              {/* Pro context */}
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">
+                  Associate Pro
+                </p>
+                <p className="text-sm font-medium text-gray-900">{pro.name}</p>
+                <p className="text-xs text-gray-500">
+                  {pro.email}
+                  {pro.phone ? ` · ${pro.phone}` : ""}
+                </p>
               </div>
-            )}
-          </div>
 
-          {/* Materials sent */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label>Materials sent</Label>
-              <span className="text-xs text-gray-500">{materials.size} selected</span>
-            </div>
-            <div className="rounded-lg border border-gray-200 bg-white divide-y divide-gray-100">
-              {ONBOARDING_MATERIALS.map((m) => (
-                <label
-                  key={m.value}
-                  className="flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 cursor-pointer"
-                >
-                  <Checkbox
-                    checked={materials.has(m.value)}
-                    onCheckedChange={() => toggleMaterial(m.value)}
-                  />
-                  <span className="text-sm text-gray-900">{m.label}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          {/* Walkthrough */}
-          <div className="space-y-2">
-            <Label>Account walkthrough</Label>
-            <label className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-gray-200 bg-white cursor-pointer">
-              <Checkbox
-                checked={walkthroughDone}
-                onCheckedChange={(c) => setWalkthroughDone(c === true)}
+              {/* Outcome */}
+              <FormField
+                control={form.control}
+                name="outcome"
+                render={({ field }) => (
+                  <FormItem className="space-y-2">
+                    <FormLabel>Outcome</FormLabel>
+                    <FormControl>
+                      <RadioGroup
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        className="space-y-2"
+                      >
+                        {OUTCOMES.map((o) => {
+                          const Icon = o.icon;
+                          const isActive = field.value === o.value;
+                          return (
+                            <label
+                              key={o.value}
+                              className={cn(
+                                "flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors",
+                                isActive
+                                  ? "border-[#00695C] bg-[#E0F2F1]/30"
+                                  : "border-gray-200 hover:bg-gray-50"
+                              )}
+                            >
+                              <RadioGroupItem
+                                value={o.value}
+                                className="mt-0.5"
+                              />
+                              <Icon
+                                className={cn("h-4 w-4 mt-0.5 shrink-0", o.tone)}
+                              />
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-gray-900">
+                                  {o.label}
+                                </p>
+                                <p className="text-xs text-gray-500 mt-0.5">
+                                  {o.description}
+                                </p>
+                              </div>
+                            </label>
+                          );
+                        })}
+                      </RadioGroup>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-              <span className="text-sm font-medium text-gray-900">Walkthrough completed</span>
-            </label>
-          </div>
 
-          {/* Notes */}
-          <div className="space-y-1.5">
-            <Label htmlFor="notes">Notes (optional)</Label>
-            <Textarea
-              id="notes"
-              placeholder="Anything worth recording from the onboarding..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="bg-white min-h-[80px]"
-            />
-          </div>
-        </div>
+              {/* Not Available — attempt number */}
+              {outcome === "not_available" && (
+                <FormField
+                  control={form.control}
+                  name="attempt"
+                  render={({ field }) => (
+                    <FormItem className="space-y-2">
+                      <FormLabel>Attempt</FormLabel>
+                      <FormControl>
+                        <RadioGroup
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          className="flex flex-wrap gap-2"
+                        >
+                          {ATTEMPTS.map((a) => (
+                            <label
+                              key={a.value}
+                              className={cn(
+                                "flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors text-sm",
+                                field.value === a.value
+                                  ? "border-amber-400 bg-amber-50 text-amber-800"
+                                  : "border-gray-200 hover:bg-gray-50"
+                              )}
+                            >
+                              <RadioGroupItem value={a.value} />
+                              {a.label}
+                            </label>
+                          ))}
+                        </RadioGroup>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button onClick={handleSave}>Save onboarding</Button>
-        </DialogFooter>
+              {/* Picked — full form */}
+              {outcome === "picked" && (
+                <div className="space-y-5 pt-1">
+                  <FormField
+                    control={form.control}
+                    name="motivation"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          What motivated you to join Abode, and what are you
+                          hoping to achieve?
+                        </FormLabel>
+                        <FormControl>
+                          <Textarea
+                            {...field}
+                            placeholder="Their reason for joining + their goal..."
+                            className="bg-white min-h-17.5"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="experience"
+                    render={({ field }) => (
+                      <FormItem className="space-y-2">
+                        <FormLabel>
+                          Any previous experience in real estate or property
+                          sales?
+                        </FormLabel>
+                        <FormControl>
+                          <RadioGroup
+                            value={field.value}
+                            onValueChange={(v) => {
+                              field.onChange(v);
+                              if (v === "no")
+                                form.setValue("experienceLength", "");
+                            }}
+                            className="flex gap-2"
+                          >
+                            {(["yes", "no"] as const).map((v) => (
+                              <label
+                                key={v}
+                                className={cn(
+                                  "flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors text-sm",
+                                  field.value === v
+                                    ? "border-[#00695C] bg-[#E0F2F1]/30"
+                                    : "border-gray-200 hover:bg-gray-50"
+                                )}
+                              >
+                                <RadioGroupItem value={v} />
+                                {v === "yes" ? "Yes" : "No"}
+                              </label>
+                            ))}
+                          </RadioGroup>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {experience === "yes" && (
+                    <FormField
+                      control={form.control}
+                      name="experienceLength"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs text-gray-500">
+                            For how long?
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              placeholder="e.g. 2 years"
+                              className="bg-white"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+
+                  <FormField
+                    control={form.control}
+                    name="prospects"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          Any prospects, clients, or contacts already interested
+                          in buying property?
+                        </FormLabel>
+                        <FormControl>
+                          <Textarea
+                            {...field}
+                            placeholder="Names, leads, anything they already have..."
+                            className="bg-white min-h-15"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="incomeGoal"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          Income goal from real estate over the next 6 months
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            placeholder="e.g. ₦5,000,000"
+                            className="bg-white"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="support"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>How can I support you?</FormLabel>
+                        <FormControl>
+                          <Select
+                            value={field.value}
+                            onValueChange={(v) => {
+                              field.onChange(v);
+                              if (v !== "others")
+                                form.setValue("supportOther", "");
+                            }}
+                          >
+                            <SelectTrigger className="bg-white">
+                              <SelectValue placeholder="Pick the main area of support..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {SUPPORT_OPTIONS.map((o) => (
+                                <SelectItem key={o.value} value={o.value}>
+                                  {o.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {support === "others" && (
+                    <FormField
+                      control={form.control}
+                      name="supportOther"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs text-gray-500">
+                            Specify
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              placeholder="What other support is needed..."
+                              className="bg-white"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+
+                  <FormField
+                    control={form.control}
+                    name="readDocs"
+                    render={({ field }) => (
+                      <FormItem className="space-y-2">
+                        <FormLabel>
+                          Has seen and read through all the onboarding documents
+                          (Commission perk, productivity reward, FAQ, etc.)?
+                        </FormLabel>
+                        <FormControl>
+                          <RadioGroup
+                            value={field.value}
+                            onValueChange={field.onChange}
+                            className="flex flex-wrap gap-2"
+                          >
+                            {(["yes", "no", "uncertain"] as const).map((v) => (
+                              <label
+                                key={v}
+                                className={cn(
+                                  "flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors text-sm",
+                                  field.value === v
+                                    ? "border-[#00695C] bg-[#E0F2F1]/30"
+                                    : "border-gray-200 hover:bg-gray-50"
+                                )}
+                              >
+                                <RadioGroupItem value={v} />
+                                {v === "yes"
+                                  ? "Yes"
+                                  : v === "no"
+                                    ? "No"
+                                    : "Uncertain"}
+                              </label>
+                            ))}
+                          </RadioGroup>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="gotGuide"
+                    render={({ field }) => (
+                      <FormItem className="space-y-2">
+                        <FormLabel>
+                          Got a copy of the 30 Days Sales Guide?
+                        </FormLabel>
+                        <FormControl>
+                          <RadioGroup
+                            value={field.value}
+                            onValueChange={field.onChange}
+                            className="flex gap-2"
+                          >
+                            {(["yes", "no"] as const).map((v) => (
+                              <label
+                                key={v}
+                                className={cn(
+                                  "flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors text-sm",
+                                  field.value === v
+                                    ? "border-[#00695C] bg-[#E0F2F1]/30"
+                                    : "border-gray-200 hover:bg-gray-50"
+                                )}
+                              >
+                                <RadioGroupItem value={v} />
+                                {v === "yes" ? "Yes" : "No"}
+                              </label>
+                            ))}
+                          </RadioGroup>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
+
+              {/* Rescheduled — no extra fields for now */}
+              {outcome === "rescheduled" && (
+                <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
+                  Rescheduled outcome will be logged. A reschedule date field
+                  can be added when business decides whether to track it.
+                </div>
+              )}
+            </div>
+
+            <DialogFooter className="pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit">Save onboarding</Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );

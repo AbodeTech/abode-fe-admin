@@ -1,13 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -15,227 +13,137 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
-import type { ManagerTarget } from "../../mock-data";
+import { useAssignManagerTarget } from "../../hooks/use-assign-manager-target";
+import type { AssociateManagerTargetType } from "@/lib/gql/graphql";
 
 interface Props {
-  existing?: ManagerTarget | null;
-  onSave: (values: {
-    periodKind: "month" | "custom";
-    periodStart: string;
-    periodEnd: string;
-    associateProsRecruited: number;
-    sellingAssociatePros: number;
-    performanceScore: number;
-  }) => void;
+  managerId: string | null;
+  existing?: AssociateManagerTargetType | null;
+  onSaved: () => void;
   onCancel: () => void;
 }
 
-type Mode = "month" | "custom";
-
-// Build a list of the next 12 month options starting from the current month.
+// Build the next 12 months starting from the current month.
 const buildMonthOptions = () => {
-  const opts: { value: string; label: string; start: string; end: string }[] = [];
-  const today = new Date("2026-05-13T00:00:00Z");
+  const opts: { value: string; label: string; month: number; year: number }[] =
+    [];
+  const now = new Date();
+  const months = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+  ];
   for (let i = 0; i < 12; i++) {
-    const d = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + i, 1));
-    const year = d.getUTCFullYear();
-    const month = d.getUTCMonth();
-    const start = new Date(Date.UTC(year, month, 1));
-    const end = new Date(Date.UTC(year, month + 1, 0));
-    const value = `${year}-${String(month + 1).padStart(2, "0")}`;
-    const label = start.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    const month = d.getMonth() + 1;
+    const year = d.getFullYear();
     opts.push({
-      value,
-      label,
-      start: start.toISOString().slice(0, 10),
-      end: end.toISOString().slice(0, 10),
+      value: `${year}-${String(month).padStart(2, "0")}`,
+      label: `${months[month - 1]} ${year}`,
+      month,
+      year,
     });
   }
   return opts;
 };
 
-const MONTH_OPTIONS = buildMonthOptions();
+export function SetTargetForm({
+  managerId,
+  existing,
+  onSaved,
+  onCancel,
+}: Props) {
+  const monthOptions = buildMonthOptions();
 
-const isoOf = (d: Date) => d.toISOString().slice(0, 10);
+  const initialMonthValue = existing
+    ? `${existing.year}-${String(existing.month).padStart(2, "0")}`
+    : monthOptions[0].value;
 
-export function SetTargetForm({ existing, onSave, onCancel }: Props) {
-  const [mode, setMode] = useState<Mode>(existing?.periodKind ?? "month");
-
-  // Month mode state
-  const initialMonthValue =
-    existing?.periodKind === "month"
-      ? `${existing.periodStart.slice(0, 7)}`
-      : MONTH_OPTIONS[0].value;
   const [monthValue, setMonthValue] = useState(initialMonthValue);
-
-  // Custom range state
-  const [customStart, setCustomStart] = useState<Date | undefined>(
-    existing?.periodKind === "custom" ? new Date(`${existing.periodStart}T00:00:00Z`) : undefined
-  );
-  const [customEnd, setCustomEnd] = useState<Date | undefined>(
-    existing?.periodKind === "custom" ? new Date(`${existing.periodEnd}T00:00:00Z`) : undefined
-  );
-  const [startOpen, setStartOpen] = useState(false);
-  const [endOpen, setEndOpen] = useState(false);
-
-  // Target values
   const [recruited, setRecruited] = useState<string>(
-    existing ? String(existing.associateProsRecruited) : ""
+    existing ? String(existing.associate_pro_recruited_target) : ""
   );
   const [selling, setSelling] = useState<string>(
-    existing ? String(existing.sellingAssociatePros) : ""
+    existing ? String(existing.selling_associate_pro_target) : ""
   );
   const [score, setScore] = useState<string>(
-    existing ? String(existing.performanceScore) : ""
+    existing ? String(existing.performance_score_target) : ""
   );
 
-  const periodValid =
-    mode === "month"
-      ? !!monthValue
-      : !!customStart && !!customEnd && customStart <= customEnd;
+  const { mutateAsync, isPending } = useAssignManagerTarget();
 
-  const valuesValid = recruited !== "" && selling !== "" && score !== "";
+  useEffect(() => {
+    // Re-sync when the existing target changes (e.g. switching between create/edit).
+    setMonthValue(initialMonthValue);
+    setRecruited(existing ? String(existing.associate_pro_recruited_target) : "");
+    setSelling(existing ? String(existing.selling_associate_pro_target) : "");
+    setScore(existing ? String(existing.performance_score_target) : "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [existing?._id]);
 
-  const canSave = periodValid && valuesValid;
+  const canSave =
+    !!managerId && recruited !== "" && selling !== "" && score !== "" && !isPending;
 
-  const handleSave = () => {
-    if (!canSave) return;
+  const handleSave = async () => {
+    if (!managerId) return;
 
-    let periodStart: string;
-    let periodEnd: string;
+    const picked = monthOptions.find((o) => o.value === monthValue);
+    // When editing, the month/year are locked to the existing target's period.
+    const month = existing ? existing.month : picked?.month;
+    const year = existing ? existing.year : picked?.year;
 
-    if (mode === "month") {
-      const opt = MONTH_OPTIONS.find((o) => o.value === monthValue)!;
-      periodStart = opt.start;
-      periodEnd = opt.end;
-    } else {
-      periodStart = isoOf(customStart!);
-      periodEnd = isoOf(customEnd!);
+    if (!month || !year) {
+      toast.error("Pick a valid month");
+      return;
     }
 
-    onSave({
-      periodKind: mode,
-      periodStart,
-      periodEnd,
-      associateProsRecruited: Number(recruited),
-      sellingAssociatePros: Number(selling),
-      performanceScore: Number(score),
-    });
+    try {
+      await mutateAsync({
+        managerId,
+        month,
+        year,
+        associate_pro_recruited_target: Number(recruited),
+        selling_associate_pro_target: Number(selling),
+        performance_score_target: Number(score),
+      });
+      toast.success(existing ? "Target updated" : "Target saved");
+      onSaved();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to save target");
+    }
   };
 
   return (
     <div className="rounded-lg border border-gray-200 bg-gray-50/60 p-4 space-y-4">
       <p className="text-sm font-medium text-gray-900">
-        {existing ? "Edit target" : "Set target for new period"}
+        {existing ? "Edit target" : "Set target for new month"}
       </p>
 
-      {/* Period mode */}
       <div className="space-y-2">
-        <Label>Period</Label>
-        <div className="inline-flex rounded-lg border border-gray-200 bg-white p-1">
-          <button
-            type="button"
-            onClick={() => setMode("month")}
-            className={cn(
-              "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
-              mode === "month"
-                ? "bg-[#00695C] text-white"
-                : "text-gray-600 hover:bg-gray-50"
-            )}
-          >
-            Calendar month
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode("custom")}
-            className={cn(
-              "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
-              mode === "custom"
-                ? "bg-[#00695C] text-white"
-                : "text-gray-600 hover:bg-gray-50"
-            )}
-          >
-            Custom range
-          </button>
-        </div>
-
-        {mode === "month" ? (
+        <Label>Month</Label>
+        {existing ? (
+          <div className="rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700">
+            {monthOptions.find((o) => o.value === initialMonthValue)?.label ??
+              `${existing.month}/${existing.year}`}
+            <span className="text-xs text-gray-400 ml-2">
+              (period locked on edit)
+            </span>
+          </div>
+        ) : (
           <Select value={monthValue} onValueChange={setMonthValue}>
             <SelectTrigger className="bg-white">
               <SelectValue placeholder="Pick a month" />
             </SelectTrigger>
             <SelectContent>
-              {MONTH_OPTIONS.map((o) => (
+              {monthOptions.map((o) => (
                 <SelectItem key={o.value} value={o.value}>
                   {o.label}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-        ) : (
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label className="text-xs text-gray-500">Start</Label>
-              <Popover open={startOpen} onOpenChange={setStartOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start bg-white font-normal",
-                      !customStart && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="h-4 w-4 mr-2" />
-                    {customStart ? format(customStart, "d MMM yyyy") : "Pick date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={customStart}
-                    onSelect={(d) => {
-                      setCustomStart(d);
-                      setStartOpen(false);
-                    }}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs text-gray-500">End</Label>
-              <Popover open={endOpen} onOpenChange={setEndOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start bg-white font-normal",
-                      !customEnd && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="h-4 w-4 mr-2" />
-                    {customEnd ? format(customEnd, "d MMM yyyy") : "Pick date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={customEnd}
-                    onSelect={(d) => {
-                      setCustomEnd(d);
-                      setEndOpen(false);
-                    }}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-          </div>
         )}
       </div>
 
-      {/* KPI inputs */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="space-y-1.5">
           <Label htmlFor="recruited">Ass. Pros Recruited</Label>
@@ -267,20 +175,21 @@ export function SetTargetForm({ existing, onSave, onCancel }: Props) {
             id="score"
             type="number"
             min={0}
-            step="0.1"
+            step="1"
             value={score}
             onChange={(e) => setScore(e.target.value)}
-            placeholder="e.g. 8.0"
+            placeholder="e.g. 8"
             className="bg-white"
           />
         </div>
       </div>
 
       <div className="flex justify-end gap-2 pt-1">
-        <Button variant="ghost" size="sm" onClick={onCancel}>
+        <Button variant="ghost" size="sm" onClick={onCancel} disabled={isPending}>
           Cancel
         </Button>
         <Button size="sm" disabled={!canSave} onClick={handleSave}>
+          {isPending && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
           {existing ? "Save changes" : "Save target"}
         </Button>
       </div>

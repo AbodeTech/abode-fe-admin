@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRightLeft, Search } from "lucide-react";
+import { ArrowRightLeft, Loader2, Search } from "lucide-react";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -23,57 +24,102 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  MOCK_MANAGERS,
-  MOCK_UNASSIGNED_PROS,
-  UNASSIGNED_POOL_ID,
-  getProsForManager,
-  type AssociateManager,
-} from "../../mock-data";
+import { useAssociateManagers } from "../../hooks/use-associate-managers";
+import { useAssociateManager } from "../../hooks/use-associate-managers";
+import { useBulkAssignPros } from "../../hooks/use-bulk-assign-pros";
+import { useUnassignedPros } from "../../hooks/use-unassigned-pros";
+
+const UNASSIGNED_POOL_ID = "__unassigned__";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  fromManager?: AssociateManager;
-  /** Pre-select the Unassigned Pool as the source when opening. */
+  /** Admin id of the manager to pre-select as source. Optional. */
+  fromManagerId?: string | null;
+  /** Pre-select the Unassigned Pool as the source. */
   startFromUnassigned?: boolean;
 }
+
+const fullName = (m?: {
+  firstName?: string | null;
+  lastName?: string | null;
+  userName?: string | null;
+  email?: string | null;
+} | null) =>
+  `${m?.firstName ?? ""} ${m?.lastName ?? ""}`.trim() ||
+  m?.userName ||
+  m?.email ||
+  "Manager";
 
 export function ChangeManagerDialog({
   open,
   onOpenChange,
-  fromManager,
+  fromManagerId,
   startFromUnassigned,
 }: Props) {
   const initialSource = startFromUnassigned
     ? UNASSIGNED_POOL_ID
-    : fromManager?.id ?? "";
+    : fromManagerId ?? "";
 
   const [sourceId, setSourceId] = useState<string>(initialSource);
   const [targetManagerId, setTargetManagerId] = useState<string>("");
   const [selectedPros, setSelectedPros] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
 
+  const { data: managersList } = useAssociateManagers({ page: 1, limit: 200 });
+  const allManagers = managersList?.results ?? [];
+
+  const isUnassignedSource = sourceId === UNASSIGNED_POOL_ID;
+
+  const { data: managerDoc } = useAssociateManager(
+    isUnassignedSource || !sourceId ? null : sourceId
+  );
+  const { data: unassignedData } = useUnassignedPros({
+    page: 1,
+    limit: 200,
+    searchQuery: isUnassignedSource ? search || null : null,
+  });
+
+  const { mutateAsync, isPending } = useBulkAssignPros();
+
   useEffect(() => {
     if (open) {
-      setSourceId(startFromUnassigned ? UNASSIGNED_POOL_ID : fromManager?.id ?? "");
+      setSourceId(
+        startFromUnassigned ? UNASSIGNED_POOL_ID : fromManagerId ?? ""
+      );
       setTargetManagerId("");
       setSelectedPros(new Set());
       setSearch("");
     }
-  }, [open, fromManager?.id, startFromUnassigned]);
+  }, [open, fromManagerId, startFromUnassigned]);
 
   const sourcePros = useMemo(() => {
-    if (sourceId === UNASSIGNED_POOL_ID) return MOCK_UNASSIGNED_PROS;
-    if (sourceId) return getProsForManager(sourceId);
+    if (isUnassignedSource) {
+      return (unassignedData?.results ?? []).map((p) => ({
+        id: p._id,
+        firstName: p.firstName ?? "",
+        lastName: p.lastName ?? "",
+        email: p.email ?? "",
+      }));
+    }
+    if (managerDoc?.associate_pros) {
+      return managerDoc.associate_pros.map((p) => ({
+        id: p._id,
+        firstName: p.firstName ?? "",
+        lastName: p.lastName ?? "",
+        email: p.email ?? "",
+      }));
+    }
     return [];
-  }, [sourceId]);
+  }, [isUnassignedSource, unassignedData?.results, managerDoc?.associate_pros]);
 
-  const filteredPros = sourcePros.filter(
-    (p) =>
-      p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.email.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredPros = sourcePros.filter((p) => {
+    const term = search.toLowerCase();
+    return (
+      `${p.firstName} ${p.lastName}`.toLowerCase().includes(term) ||
+      p.email.toLowerCase().includes(term)
+    );
+  });
 
   const togglePro = (id: string) => {
     setSelectedPros((prev) => {
@@ -92,9 +138,28 @@ export function ChangeManagerDialog({
     }
   };
 
-  const otherManagers = MOCK_MANAGERS.filter((m) => m.id !== sourceId);
-  const canSubmit = sourceId && targetManagerId && selectedPros.size > 0;
-  const isUnassignedSource = sourceId === UNASSIGNED_POOL_ID;
+  const otherManagers = allManagers.filter(
+    (m) => m.manager?._id !== sourceId
+  );
+
+  const canSubmit =
+    !!sourceId && !!targetManagerId && selectedPros.size > 0 && !isPending;
+
+  const handleSubmit = async () => {
+    if (!targetManagerId || selectedPros.size === 0) return;
+    try {
+      await mutateAsync({
+        managerId: targetManagerId,
+        associateProIds: Array.from(selectedPros),
+      });
+      toast.success(
+        `Moved ${selectedPros.size} ${selectedPros.size === 1 ? "Pro" : "Pros"}`
+      );
+      onOpenChange(false);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to reassign");
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -105,7 +170,8 @@ export function ChangeManagerDialog({
             Bulk Reassign Associate Pros
           </DialogTitle>
           <DialogDescription>
-            Move one or more Associate Pros between managers, or pull them out of the unassigned pool.
+            Move one or more Associate Pros between managers, or pull them out of
+            the unassigned pool.
           </DialogDescription>
         </DialogHeader>
 
@@ -124,14 +190,18 @@ export function ChangeManagerDialog({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={UNASSIGNED_POOL_ID}>
-                  Unassigned Pool · {MOCK_UNASSIGNED_PROS.length} Pros
+                  Unassigned Pool
                 </SelectItem>
                 <SelectSeparator />
-                {MOCK_MANAGERS.map((m) => (
-                  <SelectItem key={m.id} value={m.id}>
-                    {m.name} · {m.assignedPros} Pros
-                  </SelectItem>
-                ))}
+                {allManagers.map((m) => {
+                  const id = m.manager?._id;
+                  if (!id) return null;
+                  return (
+                    <SelectItem key={id} value={id}>
+                      {fullName(m.manager)} · {m.associate_pros_count ?? 0} Pros
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
           </div>
@@ -143,11 +213,22 @@ export function ChangeManagerDialog({
                 <SelectValue placeholder="Target manager" />
               </SelectTrigger>
               <SelectContent>
-                {otherManagers.map((m) => (
-                  <SelectItem key={m.id} value={m.id}>
-                    {m.name} · {m.assignedPros} Pros
-                  </SelectItem>
-                ))}
+                {otherManagers.length === 0 ? (
+                  <div className="px-2 py-1.5 text-sm text-gray-500">
+                    No other managers
+                  </div>
+                ) : (
+                  otherManagers.map((m) => {
+                    const id = m.manager?._id;
+                    if (!id) return null;
+                    return (
+                      <SelectItem key={id} value={id}>
+                        {fullName(m.manager)} · {m.associate_pros_count ?? 0}{" "}
+                        Pros
+                      </SelectItem>
+                    );
+                  })
+                )}
               </SelectContent>
             </Select>
           </div>
@@ -201,12 +282,11 @@ export function ChangeManagerDialog({
                       onCheckedChange={() => togglePro(pro.id)}
                     />
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900">{pro.name}</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {`${pro.firstName} ${pro.lastName}`.trim() || pro.email}
+                      </p>
                       <p className="text-xs text-gray-500">{pro.email}</p>
                     </div>
-                    <span className="text-xs text-gray-400 tabular-nums">
-                      {pro.totalSales} sales
-                    </span>
                   </label>
                 ))
               )}
@@ -214,15 +294,23 @@ export function ChangeManagerDialog({
           </ScrollArea>
 
           <p className="text-xs text-gray-500">
-            {selectedPros.size} of {sourcePros.length} Pros selected · Changes take effect immediately.
+            {selectedPros.size} of {sourcePros.length} Pros selected · Changes
+            take effect immediately.
           </p>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isPending}
+          >
             Cancel
           </Button>
-          <Button disabled={!canSubmit}>
+          <Button disabled={!canSubmit} onClick={handleSubmit}>
+            {isPending && (
+              <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+            )}
             Move {selectedPros.size > 0 ? selectedPros.size : ""} Pro
             {selectedPros.size === 1 ? "" : "s"}
           </Button>

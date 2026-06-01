@@ -81,7 +81,10 @@ export function ManagerAssignmentCard({ user }: Props) {
           name: proFullName,
           email: user.email ?? "",
         }}
-        currentManager={currentManager}
+        /* Card display uses mock; dialog passes null until BE exposes a
+           per-Pro manager lookup. The dialog will show "From: Unassigned",
+           but the mutation still does the right reassignment on submit. */
+        currentManagerId={null}
       />
     </>
   );

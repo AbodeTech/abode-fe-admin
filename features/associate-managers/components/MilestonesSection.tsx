@@ -1,12 +1,12 @@
 import { Sparkles, Award } from "lucide-react";
 import { StatCard } from "./StatCard";
-import type { ManagerMetrics } from "../mock-data";
+import type { ManagerDashboardMilestones } from "@/lib/gql/graphql";
 
 interface Props {
-  metrics: ManagerMetrics;
+  data: ManagerDashboardMilestones;
 }
 
-export function MilestonesSection({ metrics }: Props) {
+export function MilestonesSection({ data }: Props) {
   return (
     <section className="space-y-3">
       <h2 className="text-base font-semibold text-gray-900">Milestones</h2>
@@ -15,15 +15,15 @@ export function MilestonesSection({ metrics }: Props) {
           icon={Sparkles}
           iconColor="text-purple-600"
           label="New Associate Pro First Sales"
-          value={metrics.milestones.newProFirstSales}
-          hint="First sale within 3 months of upgrade"
+          value={data.earlySellers}
+          hint="First sale within 3 months of upgrade (this period)"
         />
         <StatCard
           icon={Award}
           iconColor="text-blue-600"
           label="First-Time Sellers"
-          value={metrics.milestones.firstTimeSellers}
-          hint="Existing Pros making first sale after 3+ months"
+          value={data.lateFirstSellers}
+          hint="First sale 3+ months after upgrade (this period)"
         />
       </div>
     </section>

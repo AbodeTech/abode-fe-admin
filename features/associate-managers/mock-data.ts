@@ -1,4 +1,19 @@
-// Design-time fixtures. Replace with codegen-typed GraphQL hooks when wiring real data.
+// Mock-data scaffolding for parts of the feature the BE hasn't shipped yet.
+// Everything here is temporary — strip the matching section when the BE
+// endpoint lands.
+//
+// What's still mock (and why):
+//   - ONBOARDING_*           BE has no onboarding endpoint yet
+//   - getOnboardingRecord    same — feeds the OnboardingDetailsDialog
+//   - getMockManagerForUser  no `getManagerForPro(proId)` query for the
+//                            ManagerAssignmentCard on /users/[id]
+//
+// Type re-exports kept for components that still pass legacy-shaped values
+// through (AssociateProsTable adapter, BulkReassignDialog).
+
+// ---------------------------------------------------------------------------
+// Shared types
+// ---------------------------------------------------------------------------
 
 export type Period = "week" | "month" | "year";
 
@@ -19,7 +34,6 @@ export interface AssociatePro {
   phone: string | null;
   status: ProStatus;
   recruitedAt: string;
-  /** ISO date when the manager onboarded this Pro. `null` means not yet onboarded. */
   onboardedAt: string | null;
   totalSales: number;
   totalRevenue: number;
@@ -31,11 +45,14 @@ export interface OnboardingRecord {
   onboardedAt: string;
   welcomeCallDone: boolean;
   welcomeCallDate?: string;
-  /** Array of material `value`s (see ONBOARDING_MATERIALS). */
   materialsSent: string[];
   walkthroughDone: boolean;
   notes?: string;
 }
+
+// ---------------------------------------------------------------------------
+// Onboarding (mock)
+// ---------------------------------------------------------------------------
 
 export const ONBOARDING_MATERIALS: { value: string; label: string }[] = [
   { value: "welcome_pack", label: "Welcome pack" },
@@ -44,352 +61,29 @@ export const ONBOARDING_MATERIALS: { value: string; label: string }[] = [
   { value: "product_catalogue", label: "Product catalogue" },
 ];
 
-export interface ManagerTarget {
-  id: string;
-  managerId: string;
-  /** ISO date (YYYY-MM-DD), inclusive */
-  periodStart: string;
-  /** ISO date (YYYY-MM-DD), inclusive */
-  periodEnd: string;
-  /** "month" — auto-derived from a calendar month; "custom" — user-defined range */
-  periodKind: "month" | "custom";
-  associateProsRecruited: number;
-  sellingAssociatePros: number;
-  performanceScore: number;
-}
-
-export type TargetStatus = "active" | "upcoming" | "ended";
-
-export interface ManagerMetrics {
-  managerId: string;
-  recruitment: {
-    newAssociates: number;
-    newAssociatePros: number;
-    associateProsViaAssociates: number;
-  };
-  sales: {
-    sellingPros: number;
-    totalPros: number;
-    totalRevenue: number;
-    revenuePerSellingPro: number;
-  };
-  activity: {
-    active: number;
-    inactive: number;
-    abandoned: number;
-  };
-  milestones: {
-    newProFirstSales: number;
-    firstTimeSellers: number;
-  };
-  performance: {
-    reviewCount: number;
-    averageRating: number;
-    score: number;
-    rewardAmount: number;
-  };
-}
-
-export const MOCK_MANAGERS: AssociateManager[] = [
-  { id: "mgr-001", name: "Adaeze Okonkwo", email: "adaeze@abode.ng", avatarInitials: "AO", assignedPros: 18 },
-  { id: "mgr-002", name: "Chukwuma Eze", email: "chukwuma@abode.ng", avatarInitials: "CE", assignedPros: 12 },
-  { id: "mgr-003", name: "Folake Adebayo", email: "folake@abode.ng", avatarInitials: "FA", assignedPros: 9 },
-  { id: "mgr-004", name: "Tunde Bello", email: "tunde@abode.ng", avatarInitials: "TB", assignedPros: 14 },
-  { id: "mgr-005", name: "Yetunde Akpan", email: "yetunde@abode.ng", avatarInitials: "YA", assignedPros: 7 },
-];
-
-const METRICS_BY_MANAGER: Record<string, ManagerMetrics> = {
-  "mgr-001": {
-    managerId: "mgr-001",
-    recruitment: { newAssociates: 34, newAssociatePros: 12, associateProsViaAssociates: 6 },
-    sales: { sellingPros: 14, totalPros: 18, totalRevenue: 184_500_000, revenuePerSellingPro: 13_178_571 },
-    activity: { active: 12, inactive: 4, abandoned: 2 },
-    milestones: { newProFirstSales: 5, firstTimeSellers: 3 },
-    performance: { reviewCount: 41, averageRating: 4.7, score: 8.72, rewardAmount: 2_768_500 },
-  },
-  "mgr-002": {
-    managerId: "mgr-002",
-    recruitment: { newAssociates: 19, newAssociatePros: 6, associateProsViaAssociates: 2 },
-    sales: { sellingPros: 8, totalPros: 12, totalRevenue: 96_200_000, revenuePerSellingPro: 12_025_000 },
-    activity: { active: 7, inactive: 3, abandoned: 2 },
-    milestones: { newProFirstSales: 2, firstTimeSellers: 1 },
-    performance: { reviewCount: 23, averageRating: 4.4, score: 5.23, rewardAmount: 1_443_000 },
-  },
-  "mgr-003": {
-    managerId: "mgr-003",
-    recruitment: { newAssociates: 11, newAssociatePros: 3, associateProsViaAssociates: 1 },
-    sales: { sellingPros: 5, totalPros: 9, totalRevenue: 52_700_000, revenuePerSellingPro: 10_540_000 },
-    activity: { active: 5, inactive: 3, abandoned: 1 },
-    milestones: { newProFirstSales: 1, firstTimeSellers: 0 },
-    performance: { reviewCount: 14, averageRating: 4.1, score: 3.41, rewardAmount: 790_500 },
-  },
-  "mgr-004": {
-    managerId: "mgr-004",
-    recruitment: { newAssociates: 24, newAssociatePros: 9, associateProsViaAssociates: 4 },
-    sales: { sellingPros: 11, totalPros: 14, totalRevenue: 128_400_000, revenuePerSellingPro: 11_672_727 },
-    activity: { active: 9, inactive: 4, abandoned: 1 },
-    milestones: { newProFirstSales: 3, firstTimeSellers: 2 },
-    performance: { reviewCount: 28, averageRating: 4.6, score: 6.09, rewardAmount: 1_926_000 },
-  },
-  "mgr-005": {
-    managerId: "mgr-005",
-    recruitment: { newAssociates: 8, newAssociatePros: 2, associateProsViaAssociates: 0 },
-    sales: { sellingPros: 4, totalPros: 7, totalRevenue: 38_100_000, revenuePerSellingPro: 9_525_000 },
-    activity: { active: 4, inactive: 2, abandoned: 1 },
-    milestones: { newProFirstSales: 1, firstTimeSellers: 1 },
-    performance: { reviewCount: 9, averageRating: 4.3, score: 2.09, rewardAmount: 571_500 },
-  },
-};
-
-export const getManagerMetrics = (managerId: string): ManagerMetrics =>
-  METRICS_BY_MANAGER[managerId] ?? METRICS_BY_MANAGER["mgr-001"];
-
-export const MOCK_PROS_BY_MANAGER: Record<string, AssociatePro[]> = {
-  "mgr-001": [
-    { id: "pro-101", name: "Ada Eze", email: "ada@example.ng", phone: "+234 803 555 0101", status: "active", recruitedAt: "2025-03-12", onboardedAt: "2025-03-12", totalSales: 9, totalRevenue: 14_200_000, lastLogin: "2h ago" },
-    { id: "pro-102", name: "Bayo Akinola", email: "bayo@example.ng", phone: "+234 805 555 0102", status: "active", recruitedAt: "2025-02-04", onboardedAt: "2025-02-04", totalSales: 7, totalRevenue: 11_750_000, lastLogin: "1d ago" },
-    { id: "pro-103", name: "Chioma Nwosu", email: "chioma@example.ng", phone: "+234 807 555 0103", status: "active", recruitedAt: "2024-12-18", onboardedAt: "2024-12-18", totalSales: 12, totalRevenue: 22_400_000, lastLogin: "3h ago" },
-    { id: "pro-104", name: "David Obi", email: "david@example.ng", phone: "+234 809 555 0104", status: "inactive", recruitedAt: "2024-09-22", onboardedAt: "2024-09-22", totalSales: 0, totalRevenue: 0, lastLogin: "2 months ago" },
-    { id: "pro-105", name: "Esther Salami", email: "esther@example.ng", phone: "+234 802 555 0105", status: "active", recruitedAt: "2025-01-30", onboardedAt: "2025-01-30", totalSales: 4, totalRevenue: 7_300_000, lastLogin: "5h ago" },
-    { id: "pro-106", name: "Femi Ojo", email: "femi@example.ng", phone: "+234 813 555 0106", status: "abandoned", recruitedAt: "2024-05-10", onboardedAt: "2024-05-10", totalSales: 0, totalRevenue: 0, lastLogin: "8 months ago" },
-    { id: "pro-107", name: "Gloria Eke", email: "gloria@example.ng", phone: "+234 816 555 0107", status: "active", recruitedAt: "2025-04-02", onboardedAt: "2025-04-02", totalSales: 3, totalRevenue: 4_800_000, lastLogin: "12h ago" },
-    { id: "pro-108", name: "Henry Bassey", email: "henry@example.ng", phone: "+234 814 555 0108", status: "inactive", recruitedAt: "2024-08-14", onboardedAt: "2024-08-14", totalSales: 1, totalRevenue: 1_200_000, lastLogin: "3 months ago" },
-    { id: "pro-109", name: "Ifeoma Udo", email: "ifeoma@example.ng", phone: "+234 818 555 0109", status: "active", recruitedAt: "2025-02-21", onboardedAt: "2025-02-21", totalSales: 6, totalRevenue: 9_650_000, lastLogin: "yesterday" },
-    { id: "pro-110", name: "John Adeola", email: "john@example.ng", phone: "+234 803 555 0110", status: "active", recruitedAt: "2024-11-09", onboardedAt: "2024-11-09", totalSales: 8, totalRevenue: 12_900_000, lastLogin: "4h ago" },
-    // Recently recruited — onboarded this month
-    { id: "pro-111", name: "Kemi Olatunji", email: "kemi@example.ng", phone: "+234 803 555 0111", status: "active", recruitedAt: "2026-04-25", onboardedAt: "2026-05-02", totalSales: 1, totalRevenue: 1_400_000, lastLogin: "3h ago" },
-    // Recently recruited — NOT onboarded yet
-    { id: "pro-112", name: "Lekan Ojo", email: "lekan@example.ng", phone: "+234 805 555 0112", status: "active", recruitedAt: "2026-05-08", onboardedAt: null, totalSales: 0, totalRevenue: 0, lastLogin: "yesterday" },
-  ],
-  "mgr-002": [
-    { id: "pro-201", name: "Kayode Lawal", email: "kayode@example.ng", phone: "+234 803 555 0201", status: "active", recruitedAt: "2025-01-15", onboardedAt: "2025-01-15", totalSales: 5, totalRevenue: 8_400_000, lastLogin: "1h ago" },
-    { id: "pro-202", name: "Lola Sanusi", email: "lola@example.ng", phone: "+234 805 555 0202", status: "active", recruitedAt: "2024-10-08", onboardedAt: "2024-10-08", totalSales: 11, totalRevenue: 19_800_000, lastLogin: "6h ago" },
-    { id: "pro-203", name: "Musa Bello", email: "musa@example.ng", phone: "+234 807 555 0203", status: "inactive", recruitedAt: "2024-07-20", onboardedAt: "2024-07-20", totalSales: 0, totalRevenue: 0, lastLogin: "4 months ago" },
-    { id: "pro-204", name: "Nkechi Obi", email: "nkechi@example.ng", phone: "+234 809 555 0204", status: "active", recruitedAt: "2025-03-01", onboardedAt: "2025-03-01", totalSales: 4, totalRevenue: 6_700_000, lastLogin: "yesterday" },
-    { id: "pro-205", name: "Oluwaseun Ade", email: "seun@example.ng", phone: "+234 802 555 0205", status: "abandoned", recruitedAt: "2024-04-12", onboardedAt: "2024-04-12", totalSales: 0, totalRevenue: 0, lastLogin: "7 months ago" },
-    // Recently recruited — NOT onboarded
-    { id: "pro-206", name: "Peace Akande", email: "peace@example.ng", phone: "+234 813 555 0206", status: "active", recruitedAt: "2026-05-10", onboardedAt: null, totalSales: 0, totalRevenue: 0, lastLogin: "1d ago" },
-  ],
-  "mgr-003": [
-    { id: "pro-301", name: "Patrick Okoro", email: "patrick@example.ng", phone: "+234 803 555 0301", status: "active", recruitedAt: "2025-02-19", onboardedAt: "2025-02-19", totalSales: 6, totalRevenue: 10_200_000, lastLogin: "2h ago" },
-    { id: "pro-302", name: "Queen Effiong", email: "queen@example.ng", phone: "+234 805 555 0302", status: "inactive", recruitedAt: "2024-09-05", onboardedAt: "2024-09-05", totalSales: 1, totalRevenue: 1_500_000, lastLogin: "3 months ago" },
-    { id: "pro-303", name: "Rachael Inuwa", email: "rachael@example.ng", phone: "+234 807 555 0303", status: "active", recruitedAt: "2025-01-22", onboardedAt: "2025-01-22", totalSales: 3, totalRevenue: 5_400_000, lastLogin: "yesterday" },
-    // Recently recruited — onboarded this month
-    { id: "pro-304", name: "Sam Okonkwo", email: "sam@example.ng", phone: "+234 809 555 0304", status: "active", recruitedAt: "2026-05-05", onboardedAt: "2026-05-06", totalSales: 1, totalRevenue: 950_000, lastLogin: "6h ago" },
-  ],
-  "mgr-004": [
-    { id: "pro-401", name: "Sade Coker", email: "sade@example.ng", phone: "+234 803 555 0401", status: "active", recruitedAt: "2025-03-10", onboardedAt: "2025-03-10", totalSales: 5, totalRevenue: 8_900_000, lastLogin: "2h ago" },
-    { id: "pro-402", name: "Tobi Adams", email: "tobi@example.ng", phone: "+234 805 555 0402", status: "active", recruitedAt: "2024-11-12", onboardedAt: "2024-11-12", totalSales: 8, totalRevenue: 14_300_000, lastLogin: "1d ago" },
-    { id: "pro-403", name: "Uche Iheanyi", email: "uche@example.ng", phone: "+234 807 555 0403", status: "inactive", recruitedAt: "2024-06-30", onboardedAt: "2024-06-30", totalSales: 2, totalRevenue: 3_100_000, lastLogin: "2 months ago" },
-    // Recently recruited — onboarded this month
-    { id: "pro-404", name: "Vera Okoli", email: "vera@example.ng", phone: "+234 809 555 0404", status: "active", recruitedAt: "2026-05-01", onboardedAt: "2026-05-03", totalSales: 2, totalRevenue: 2_900_000, lastLogin: "4h ago" },
-    // Recently recruited — NOT onboarded
-    { id: "pro-405", name: "Wale Adigun", email: "wale@example.ng", phone: "+234 802 555 0405", status: "active", recruitedAt: "2026-05-11", onboardedAt: null, totalSales: 0, totalRevenue: 0, lastLogin: "2d ago" },
-  ],
-  "mgr-005": [
-    { id: "pro-501", name: "Victor Ogun", email: "victor@example.ng", phone: "+234 803 555 0501", status: "active", recruitedAt: "2025-04-01", onboardedAt: "2025-04-01", totalSales: 2, totalRevenue: 3_400_000, lastLogin: "5h ago" },
-    { id: "pro-502", name: "Wendy Imeh", email: "wendy@example.ng", phone: "+234 805 555 0502", status: "active", recruitedAt: "2025-02-28", onboardedAt: "2025-02-28", totalSales: 4, totalRevenue: 6_900_000, lastLogin: "yesterday" },
-    // Recently recruited — NOT onboarded
-    { id: "pro-503", name: "Yemi Bola", email: "yemi@example.ng", phone: "+234 807 555 0503", status: "active", recruitedAt: "2026-04-30", onboardedAt: null, totalSales: 0, totalRevenue: 0, lastLogin: "1d ago" },
-  ],
-};
-
-export const getProsForManager = (managerId: string): AssociatePro[] =>
-  MOCK_PROS_BY_MANAGER[managerId] ?? [];
-
-// ---------------------------------------------------------------------------
-// Targets
-// ---------------------------------------------------------------------------
-
-// Today (set by env mock to 2026-05-13). Helpers operate against this.
-const TODAY_ISO = "2026-05-13";
-
-const parseISO = (iso: string) => new Date(`${iso}T00:00:00Z`);
-
-export const MOCK_TARGETS: ManagerTarget[] = [
-  // mgr-001 Adaeze — Active May, Upcoming Jun, Past Apr/Mar/Feb/Jan
-  { id: "tgt-001-may", managerId: "mgr-001", periodStart: "2026-05-01", periodEnd: "2026-05-31", periodKind: "month", associateProsRecruited: 15, sellingAssociatePros: 16, performanceScore: 9 },
-  { id: "tgt-001-jun", managerId: "mgr-001", periodStart: "2026-06-01", periodEnd: "2026-06-30", periodKind: "month", associateProsRecruited: 18, sellingAssociatePros: 18, performanceScore: 9.5 },
-  { id: "tgt-001-apr", managerId: "mgr-001", periodStart: "2026-04-01", periodEnd: "2026-04-30", periodKind: "month", associateProsRecruited: 12, sellingAssociatePros: 14, performanceScore: 8 },
-  { id: "tgt-001-mar", managerId: "mgr-001", periodStart: "2026-03-01", periodEnd: "2026-03-31", periodKind: "month", associateProsRecruited: 10, sellingAssociatePros: 12, performanceScore: 7 },
-  { id: "tgt-001-feb", managerId: "mgr-001", periodStart: "2026-02-01", periodEnd: "2026-02-28", periodKind: "month", associateProsRecruited: 8, sellingAssociatePros: 10, performanceScore: 6 },
-  { id: "tgt-001-jan", managerId: "mgr-001", periodStart: "2026-01-01", periodEnd: "2026-01-31", periodKind: "month", associateProsRecruited: 6, sellingAssociatePros: 8, performanceScore: 5 },
-
-  // mgr-002 Chukwuma — Active May, Past Apr/Mar
-  { id: "tgt-002-may", managerId: "mgr-002", periodStart: "2026-05-01", periodEnd: "2026-05-31", periodKind: "month", associateProsRecruited: 12, sellingAssociatePros: 12, performanceScore: 8 },
-  { id: "tgt-002-apr", managerId: "mgr-002", periodStart: "2026-04-01", periodEnd: "2026-04-30", periodKind: "month", associateProsRecruited: 10, sellingAssociatePros: 10, performanceScore: 6.5 },
-  { id: "tgt-002-mar", managerId: "mgr-002", periodStart: "2026-03-01", periodEnd: "2026-03-31", periodKind: "month", associateProsRecruited: 8, sellingAssociatePros: 8, performanceScore: 5 },
-
-  // mgr-003 Folake — NO active target (gap), Past Apr/Mar
-  { id: "tgt-003-apr", managerId: "mgr-003", periodStart: "2026-04-01", periodEnd: "2026-04-30", periodKind: "month", associateProsRecruited: 6, sellingAssociatePros: 7, performanceScore: 5 },
-  { id: "tgt-003-mar", managerId: "mgr-003", periodStart: "2026-03-01", periodEnd: "2026-03-31", periodKind: "month", associateProsRecruited: 5, sellingAssociatePros: 6, performanceScore: 4 },
-
-  // mgr-004 Tunde — Active custom Q2 sprint + Upcoming Jun (overlapping protection example)
-  { id: "tgt-004-q2", managerId: "mgr-004", periodStart: "2026-04-15", periodEnd: "2026-05-31", periodKind: "custom", associateProsRecruited: 15, sellingAssociatePros: 12, performanceScore: 8 },
-  { id: "tgt-004-jun", managerId: "mgr-004", periodStart: "2026-06-01", periodEnd: "2026-06-15", periodKind: "custom", associateProsRecruited: 8, sellingAssociatePros: 7, performanceScore: 7 },
-  { id: "tgt-004-mar", managerId: "mgr-004", periodStart: "2026-03-01", periodEnd: "2026-03-31", periodKind: "month", associateProsRecruited: 10, sellingAssociatePros: 9, performanceScore: 6 },
-
-  // mgr-005 Yetunde — no targets at all (full empty state)
-];
-
-const today = parseISO(TODAY_ISO);
-
-export const statusOf = (target: ManagerTarget): TargetStatus => {
-  const start = parseISO(target.periodStart);
-  const end = parseISO(target.periodEnd);
-  if (today < start) return "upcoming";
-  if (today > end) return "ended";
-  return "active";
-};
-
-export const getActiveTarget = (managerId: string): ManagerTarget | null =>
-  MOCK_TARGETS.find((t) => t.managerId === managerId && statusOf(t) === "active") ?? null;
-
-export const getUpcomingTargets = (managerId: string): ManagerTarget[] =>
-  MOCK_TARGETS.filter((t) => t.managerId === managerId && statusOf(t) === "upcoming").sort(
-    (a, b) => parseISO(a.periodStart).getTime() - parseISO(b.periodStart).getTime()
-  );
-
-export const getPastTargets = (managerId: string, limit?: number): ManagerTarget[] => {
-  const past = MOCK_TARGETS.filter(
-    (t) => t.managerId === managerId && statusOf(t) === "ended"
-  ).sort((a, b) => parseISO(b.periodEnd).getTime() - parseISO(a.periodEnd).getTime());
-  return limit ? past.slice(0, limit) : past;
-};
-
-export const getAllTargetsForManager = (managerId: string): ManagerTarget[] =>
-  MOCK_TARGETS.filter((t) => t.managerId === managerId).sort(
-    (a, b) => parseISO(b.periodStart).getTime() - parseISO(a.periodStart).getTime()
-  );
-
-export const daysRemaining = (target: ManagerTarget): number => {
-  const end = parseISO(target.periodEnd);
-  const ms = end.getTime() - today.getTime();
-  return Math.max(0, Math.ceil(ms / (1000 * 60 * 60 * 24)));
-};
-
-// ---------------------------------------------------------------------------
-// Onboarding records
-// ---------------------------------------------------------------------------
-
-// Detailed records exist only for Pros that were onboarded "properly" through
-// the dialog (not the backfilled ones). For backfilled Pros the helper below
-// returns a stub indicating no detailed record is on file.
-const MOCK_ONBOARDING_RECORDS: Record<string, OnboardingRecord> = {
-  "pro-111": {
-    proId: "pro-111",
-    onboardedAt: "2026-05-02",
-    welcomeCallDone: true,
-    welcomeCallDate: "2026-05-02",
-    materialsSent: ["welcome_pack", "plan_guide", "commission_sheet"],
-    walkthroughDone: true,
-    notes: "Smooth onboarding. Pro is keen, already shadowed two client calls.",
-  },
-  "pro-304": {
-    proId: "pro-304",
-    onboardedAt: "2026-05-06",
-    welcomeCallDone: true,
-    welcomeCallDate: "2026-05-05",
-    materialsSent: ["welcome_pack", "product_catalogue"],
-    walkthroughDone: false,
-    notes: "Walkthrough rescheduled to next week — Pro travelling.",
-  },
-  "pro-404": {
-    proId: "pro-404",
-    onboardedAt: "2026-05-03",
-    welcomeCallDone: true,
-    welcomeCallDate: "2026-05-02",
-    materialsSent: ["welcome_pack", "plan_guide", "commission_sheet", "product_catalogue"],
-    walkthroughDone: true,
-    notes: "All onboarding steps complete.",
-  },
-};
-
-const findProById = (proId: string): AssociatePro | null => {
-  for (const pros of Object.values(MOCK_PROS_BY_MANAGER)) {
-    const found = pros.find((p) => p.id === proId);
-    if (found) return found;
-  }
-  return MOCK_UNASSIGNED_PROS.find((p) => p.id === proId) ?? null;
-};
-
 export const getOnboardingRecord = (proId: string): OnboardingRecord | null => {
-  const stored = MOCK_ONBOARDING_RECORDS[proId];
-  if (stored) return stored;
-
-  const pro = findProById(proId);
-  if (pro?.onboardedAt) {
-    return {
-      proId,
-      onboardedAt: pro.onboardedAt,
-      welcomeCallDone: false,
-      materialsSent: [],
-      walkthroughDone: false,
-      notes: "Backfilled from recruitment date — no detailed record on file.",
-    };
-  }
+  // BE doesn't expose onboarding records yet. Always return null until then.
+  void proId;
   return null;
 };
 
-/** True when `iso` falls inside the calendar month that contains TODAY_ISO. */
-const isThisMonth = (iso: string | null | undefined): boolean => {
-  if (!iso) return false;
-  return iso.slice(0, 7) === TODAY_ISO.slice(0, 7);
-};
+// ---------------------------------------------------------------------------
+// User → Manager mock (for ManagerAssignmentCard on /users/[id])
+// ---------------------------------------------------------------------------
 
-export const getOnboardedThisMonthCount = (managerId: string): number =>
-  getProsForManager(managerId).filter((p) => isThisMonth(p.onboardedAt)).length;
+const MOCK_MANAGERS_FOR_CARD: AssociateManager[] = [
+  { id: "mgr-001", name: "Adaeze Okonkwo", email: "adaeze@abode.ng", avatarInitials: "AO", assignedPros: 0 },
+  { id: "mgr-002", name: "Chukwuma Eze", email: "chukwuma@abode.ng", avatarInitials: "CE", assignedPros: 0 },
+  { id: "mgr-003", name: "Folake Adebayo", email: "folake@abode.ng", avatarInitials: "FA", assignedPros: 0 },
+];
 
-export const getOnboardedAllTimeCount = (managerId: string): number =>
-  getProsForManager(managerId).filter((p) => p.onboardedAt !== null).length;
-
-export const formatPeriodLabel = (target: ManagerTarget): string => {
-  const start = parseISO(target.periodStart);
-  const end = parseISO(target.periodEnd);
-  const monthOpts: Intl.DateTimeFormatOptions = { month: "short", year: "numeric" };
-  const fullOpts: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric" };
-
-  if (target.periodKind === "month") {
-    return start.toLocaleDateString("en-GB", monthOpts);
-  }
-  // Custom range
-  const startStr = start.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-  const endStr = end.toLocaleDateString("en-GB", fullOpts);
-  return `${startStr} – ${endStr}`;
-};
-
-// Reverse lookup: which manager owns this Pro? Returns null when unassigned.
-export const getManagerForPro = (proId: string): AssociateManager | null => {
-  for (const manager of MOCK_MANAGERS) {
-    const pros = MOCK_PROS_BY_MANAGER[manager.id] ?? [];
-    if (pros.some((p) => p.id === proId)) return manager;
-  }
-  return null;
-};
-
-// Design-time stub: pretend any user-id maps to a known manager for the
-// User Details page demo. Returns null for an "unassigned" preview when
-// the user id ends with "0".
-export const getMockManagerForUser = (userId: string): AssociateManager | null => {
-  if (!userId) return MOCK_MANAGERS[0];
+/** Design-time stub: deterministically picks a fake manager based on userId.
+ * User-ids ending in "0" preview the "Unassigned" state. */
+export const getMockManagerForUser = (
+  userId: string
+): AssociateManager | null => {
+  if (!userId) return MOCK_MANAGERS_FOR_CARD[0];
   if (userId.endsWith("0")) return null;
-  const idx = userId.length % MOCK_MANAGERS.length;
-  return MOCK_MANAGERS[idx];
+  const idx = userId.length % MOCK_MANAGERS_FOR_CARD.length;
+  return MOCK_MANAGERS_FOR_CARD[idx];
 };
-
-// Existing admins eligible to become an Associate Manager (Add Manager dialog).
-export const MOCK_ELIGIBLE_ADMINS = [
-  { id: "adm-21", name: "Adekunle Onashile", email: "adekunle@abode.ng" },
-  { id: "adm-22", name: "Bukola Iyer", email: "bukola@abode.ng" },
-  { id: "adm-23", name: "Charles Nwankwo", email: "charles@abode.ng" },
-  { id: "adm-24", name: "Damilola Bakare", email: "damilola@abode.ng" },
-];
-
-export const UNASSIGNED_POOL_ID = "__unassigned__";
-
-// Unassigned Pros pool (used by Add / Change dialogs).
-export const MOCK_UNASSIGNED_PROS: AssociatePro[] = [
-  { id: "pro-901", name: "Zainab Yusuf", email: "zainab@example.ng", phone: "+234 803 555 0901", status: "active", recruitedAt: "2025-03-22", onboardedAt: "2025-03-22", totalSales: 1, totalRevenue: 1_800_000, lastLogin: "2d ago" },
-  { id: "pro-902", name: "Ahmed Okafor", email: "ahmed@example.ng", phone: "+234 805 555 0902", status: "inactive", recruitedAt: "2024-10-15", onboardedAt: "2024-10-15", totalSales: 0, totalRevenue: 0, lastLogin: "5 months ago" },
-  { id: "pro-903", name: "Blessing Etim", email: "blessing@example.ng", phone: "+234 807 555 0903", status: "active", recruitedAt: "2025-02-08", onboardedAt: "2025-02-08", totalSales: 3, totalRevenue: 4_650_000, lastLogin: "yesterday" },
-];

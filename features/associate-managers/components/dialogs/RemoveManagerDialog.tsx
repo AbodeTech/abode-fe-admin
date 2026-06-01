@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { UserMinus, AlertTriangle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { AlertTriangle, Loader2, UserMinus } from "lucide-react";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -20,24 +21,88 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { MOCK_MANAGERS, type AssociateManager } from "../../mock-data";
+import { useAssociateManagers } from "../../hooks/use-associate-managers";
+import { useAssociateManager } from "../../hooks/use-associate-managers";
+import { useBulkAssignPros } from "../../hooks/use-bulk-assign-pros";
+import { useRemoveManager } from "../../hooks/use-remove-manager";
+
+export interface ManagerDisplay {
+  id: string;
+  name: string;
+  email: string;
+  avatarInitials: string;
+  assignedProsCount: number;
+}
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  manager?: AssociateManager;
+  manager?: ManagerDisplay;
 }
 
 type ReassignMode = "transfer" | "unassign";
+
+const fullName = (m?: {
+  firstName?: string | null;
+  lastName?: string | null;
+  userName?: string | null;
+  email?: string | null;
+} | null) =>
+  `${m?.firstName ?? ""} ${m?.lastName ?? ""}`.trim() ||
+  m?.userName ||
+  m?.email ||
+  "Manager";
 
 export function RemoveManagerDialog({ open, onOpenChange, manager }: Props) {
   const [mode, setMode] = useState<ReassignMode>("transfer");
   const [targetManager, setTargetManager] = useState<string>("");
 
+  const { data: managersList } = useAssociateManagers({ page: 1, limit: 200 });
+  // Fetch the full source manager doc (to get pro IDs for the transfer flow).
+  const { data: sourceDoc } = useAssociateManager(manager?.id ?? null);
+
+  const { mutateAsync: bulkAssign, isPending: assigning } = useBulkAssignPros();
+  const { mutateAsync: remove, isPending: removing } = useRemoveManager();
+
+  useEffect(() => {
+    if (open) {
+      setMode("transfer");
+      setTargetManager("");
+    }
+  }, [open]);
+
   if (!manager) return null;
 
-  const otherManagers = MOCK_MANAGERS.filter((m) => m.id !== manager.id);
-  const canSubmit = mode === "unassign" || (mode === "transfer" && targetManager);
+  const otherManagers = (managersList?.results ?? []).filter(
+    (m) => m.manager?._id !== manager.id
+  );
+
+  const isWorking = assigning || removing;
+  const canSubmit =
+    !isWorking &&
+    (mode === "unassign" || (mode === "transfer" && targetManager));
+
+  const handleSubmit = async () => {
+    try {
+      // Transfer flow: move all Pros to the target manager first.
+      if (mode === "transfer" && targetManager) {
+        const proIds =
+          sourceDoc?.associate_pros?.map((p) => p._id).filter(Boolean) ?? [];
+        if (proIds.length > 0) {
+          await bulkAssign({
+            managerId: targetManager,
+            associateProIds: proIds as string[],
+          });
+        }
+      }
+      // Then remove the manager designation.
+      await remove({ managerId: manager.id });
+      toast.success("Associate Manager removed");
+      onOpenChange(false);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to remove manager");
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -48,7 +113,8 @@ export function RemoveManagerDialog({ open, onOpenChange, manager }: Props) {
             Remove Associate Manager
           </DialogTitle>
           <DialogDescription>
-            Removing this manager will require their {manager.assignedPros} Associate Pros to be reassigned.
+            Removing this manager will require their {manager.assignedProsCount}{" "}
+            Associate Pros to be reassigned.
           </DialogDescription>
         </DialogHeader>
 
@@ -63,34 +129,57 @@ export function RemoveManagerDialog({ open, onOpenChange, manager }: Props) {
             </div>
             <div className="ml-auto text-right">
               <p className="text-xs uppercase tracking-wide text-gray-500">Pros</p>
-              <p className="text-lg font-semibold text-gray-900">{manager.assignedPros}</p>
+              <p className="text-lg font-semibold text-gray-900">
+                {manager.assignedProsCount}
+              </p>
             </div>
           </div>
 
           <div className="space-y-3">
             <Label>What should happen to their Associate Pros?</Label>
 
-            <RadioGroup value={mode} onValueChange={(v) => setMode(v as ReassignMode)} className="space-y-2">
+            <RadioGroup
+              value={mode}
+              onValueChange={(v) => setMode(v as ReassignMode)}
+              className="space-y-2"
+            >
               <label className="flex items-start gap-3 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer">
                 <RadioGroupItem value="transfer" className="mt-0.5" />
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-900">Transfer to another manager</p>
+                  <p className="text-sm font-medium text-gray-900">
+                    Transfer to another manager
+                  </p>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    All Pros will be moved to the selected manager immediately.
+                    All Pros will be moved to the selected manager immediately,
+                    then this manager is removed.
                   </p>
 
                   {mode === "transfer" && (
                     <div className="mt-3">
-                      <Select value={targetManager} onValueChange={setTargetManager}>
+                      <Select
+                        value={targetManager}
+                        onValueChange={setTargetManager}
+                      >
                         <SelectTrigger className="bg-white">
                           <SelectValue placeholder="Select target manager..." />
                         </SelectTrigger>
                         <SelectContent>
-                          {otherManagers.map((m) => (
-                            <SelectItem key={m.id} value={m.id}>
-                              {m.name} · {m.assignedPros} Pros
-                            </SelectItem>
-                          ))}
+                          {otherManagers.length === 0 ? (
+                            <div className="px-2 py-1.5 text-sm text-gray-500">
+                              No other managers
+                            </div>
+                          ) : (
+                            otherManagers.map((m) => {
+                              const id = m.manager?._id;
+                              if (!id) return null;
+                              return (
+                                <SelectItem key={id} value={id}>
+                                  {fullName(m.manager)} ·{" "}
+                                  {m.associate_pros_count ?? 0} Pros
+                                </SelectItem>
+                              );
+                            })
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
@@ -101,9 +190,12 @@ export function RemoveManagerDialog({ open, onOpenChange, manager }: Props) {
               <label className="flex items-start gap-3 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer">
                 <RadioGroupItem value="unassign" className="mt-0.5" />
                 <div>
-                  <p className="text-sm font-medium text-gray-900">Leave unassigned</p>
+                  <p className="text-sm font-medium text-gray-900">
+                    Leave unassigned
+                  </p>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    Pros will sit in the unassigned pool until a manager picks them up.
+                    Pros will sit in the unassigned pool until a manager picks
+                    them up.
                   </p>
                 </div>
               </label>
@@ -113,19 +205,28 @@ export function RemoveManagerDialog({ open, onOpenChange, manager }: Props) {
           <div className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 p-3 text-xs text-amber-800">
             <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
             <p>
-              The manager will lose the Associate Manager role immediately. Their wallet balance and historical metrics are preserved.
+              The manager designation will be removed immediately. Historical
+              targets and logs are preserved.
             </p>
           </div>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isWorking}
+          >
             Cancel
           </Button>
           <Button
             disabled={!canSubmit}
+            onClick={handleSubmit}
             className="bg-[#AD1F2A] hover:bg-[#8c1721] text-white"
           >
+            {isWorking && (
+              <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+            )}
             Remove Manager
           </Button>
         </DialogFooter>

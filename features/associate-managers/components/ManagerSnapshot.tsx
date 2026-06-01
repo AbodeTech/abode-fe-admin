@@ -5,7 +5,6 @@ import {
   TrendingUp,
   Briefcase,
   Star,
-  Award,
   Info,
   Target,
   AlertCircle,
@@ -19,30 +18,17 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { ManageTargetsDialog } from "./dialogs/ManageTargetsDialog";
-import {
-  daysRemaining,
-  formatPeriodLabel,
-  getActiveTarget,
-  type AssociateManager,
-  type ManagerMetrics,
-  type ManagerTarget,
-} from "../mock-data";
+import type {
+  AssociateManagerListItem,
+  ManagerDashboardResponse,
+} from "@/lib/gql/graphql";
 
 interface Props {
   viewAs: "super-admin" | "manager";
-  manager: AssociateManager;
-  metrics: ManagerMetrics;
+  /** Active manager (from the managers list lookup). Null for manager view. */
+  manager: AssociateManagerListItem | null;
+  dashboard: ManagerDashboardResponse;
 }
-
-const formatCurrency = (n: number) =>
-  `₦${n.toLocaleString("en-NG", { maximumFractionDigits: 0 })}`;
-
-const formatCurrencyShort = (n: number) => {
-  if (n >= 1_000_000_000) return `₦${(n / 1_000_000_000).toFixed(1)}B`;
-  if (n >= 1_000_000) return `₦${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `₦${(n / 1_000).toFixed(1)}K`;
-  return formatCurrency(n);
-};
 
 type Tone = "exceeded" | "on-track" | "approaching" | "behind";
 
@@ -53,7 +39,10 @@ const toneFor = (pct: number): Tone => {
   return "behind";
 };
 
-const TONE_STYLES: Record<Tone, { bar: string; pillBg: string; pillText: string; label: string }> = {
+const TONE_STYLES: Record<
+  Tone,
+  { bar: string; pillBg: string; pillText: string; label: string }
+> = {
   exceeded: {
     bar: "bg-[#00695C]",
     pillBg: "bg-[#00695C]",
@@ -79,6 +68,40 @@ const TONE_STYLES: Record<Tone, { bar: string; pillBg: string; pillText: string;
     label: "Below target",
   },
 };
+
+const MONTHS = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+const formatPeriod = (period: ManagerDashboardResponse["period"]) => {
+  if (period.periodType === "MONTH" && period.month && period.year) {
+    return `${MONTHS[period.month - 1]} ${period.year}`;
+  }
+  if (period.periodType === "YEAR" && period.year) {
+    return `${period.year}`;
+  }
+  if (period.periodType === "WEEK") {
+    return "Last 7 days";
+  }
+  // CUSTOM
+  const s = new Date(period.start);
+  const e = new Date(period.end);
+  const sStr = `${s.getDate()} ${MONTHS[s.getMonth()]}`;
+  const eStr = `${e.getDate()} ${MONTHS[e.getMonth()]} ${e.getFullYear()}`;
+  return `${sStr} – ${eStr}`;
+};
+
+const daysRemaining = (periodEnd: Date | string) => {
+  const end = new Date(periodEnd);
+  const ms = end.getTime() - Date.now();
+  return Math.max(0, Math.ceil(ms / (1000 * 60 * 60 * 24)));
+};
+
+const hasActiveTarget = (target: ManagerDashboardResponse["target"]) =>
+  target.recruitedTarget > 0 ||
+  target.sellingTarget > 0 ||
+  target.performanceScoreTarget > 0;
 
 interface KpiTileProps {
   icon: React.ElementType;
@@ -129,7 +152,9 @@ function KpiTile({
       <p className="text-sm text-gray-600 mb-2">{label}</p>
 
       <div className="flex items-baseline gap-1.5 mb-3">
-        <span className="text-2xl font-bold text-gray-900">{actualDisplay}</span>
+        <span className="text-2xl font-bold text-gray-900">
+          {actualDisplay}
+        </span>
         {hasTarget && (
           <span className="text-sm text-gray-400">/ {targetDisplay}</span>
         )}
@@ -143,7 +168,6 @@ function KpiTile({
               style={{ width: `${cappedPercent}%` }}
             />
           </div>
-
           <div className="flex items-center justify-between">
             <span
               className={cn(
@@ -166,40 +190,17 @@ function KpiTile({
   );
 }
 
-function RewardTile({ amount }: { amount: number }) {
-  return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5">
-      <div className="flex items-center justify-between mb-3">
-        <div className="p-2.5 rounded-lg bg-[#E0F2F1]">
-          <Award className="h-5 w-5 text-[#00695C]" />
-        </div>
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Info className="h-3.5 w-3.5 text-gray-400 cursor-help" />
-            </TooltipTrigger>
-            <TooltipContent side="top" className="max-w-xs text-xs">
-              25% of (10 × Associate Pro Revenue) + 0.5% of total deposits.
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      </div>
-
-      <p className="text-sm text-gray-600 mb-2">Performance Reward</p>
-
-      <p className="text-2xl font-bold text-gray-900 mb-3">{formatCurrencyShort(amount)}</p>
-
-      <p className="text-xs text-gray-500">{formatCurrency(amount)} · this period</p>
-    </div>
-  );
-}
-
-function ActiveTargetPill({ target }: { target: ManagerTarget }) {
-  const remaining = daysRemaining(target);
+function ActiveTargetPill({
+  periodLabel,
+  remaining,
+}: {
+  periodLabel: string;
+  remaining: number;
+}) {
   return (
     <div className="inline-flex items-center gap-2 rounded-full bg-[#E0F2F1] text-[#00695C] px-3 py-1.5 text-xs font-medium">
       <Target className="h-3.5 w-3.5" />
-      Active target: {formatPeriodLabel(target)}
+      Active target: {periodLabel}
       <span className="text-[#00695C]/70">
         ·{" "}
         {remaining > 0
@@ -240,34 +241,56 @@ function NoActiveTargetBanner({
   );
 }
 
-export function ManagerSnapshot({ viewAs, manager, metrics }: Props) {
+const initialsOf = (m?: AssociateManagerListItem["manager"] | null) =>
+  ((m?.firstName?.[0] ?? "") + (m?.lastName?.[0] ?? "")).toUpperCase() || "?";
+
+const fullName = (m?: AssociateManagerListItem["manager"] | null) =>
+  `${m?.firstName ?? ""} ${m?.lastName ?? ""}`.trim() ||
+  m?.userName ||
+  m?.email ||
+  "Manager";
+
+export function ManagerSnapshot({ viewAs, manager, dashboard }: Props) {
   const [dialogOpen, setDialogOpen] = useState(false);
-  const active = getActiveTarget(manager.id);
 
-  const recruitedActual = metrics.recruitment.newAssociatePros;
-  const sellingActual = metrics.sales.sellingPros;
-  const scoreActual = metrics.performance.score;
+  const target = dashboard.target;
+  const period = dashboard.period;
+  const score = dashboard.performanceScore;
+  const active = hasActiveTarget(target);
+  const periodLabel = formatPeriod(period);
+  const remaining = daysRemaining(period.end);
 
-  const recruitedPct = active
-    ? (recruitedActual / active.associateProsRecruited) * 100
-    : undefined;
-  const sellingPct = active
-    ? (sellingActual / active.sellingAssociatePros) * 100
-    : undefined;
-  const scorePct = active ? (scoreActual / active.performanceScore) * 100 : undefined;
+  const recruitedPct =
+    target.recruitedTarget > 0
+      ? (target.recruitedSoFar / target.recruitedTarget) * 100
+      : undefined;
+  const sellingPct =
+    target.sellingTarget > 0
+      ? (target.sellingSoFar / target.sellingTarget) * 100
+      : undefined;
+  const scorePct =
+    target.performanceScoreTarget > 0
+      ? (target.performanceScoreSoFar / target.performanceScoreTarget) * 100
+      : undefined;
+
+  const managerAdminId = manager?.manager?._id ?? null;
 
   return (
     <>
       <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-5">
-        {viewAs === "super-admin" && (
+        {viewAs === "super-admin" && manager && (
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-full bg-[#E0F2F1] text-[#00695C] flex items-center justify-center font-semibold text-sm">
-              {manager.avatarInitials}
+              {initialsOf(manager.manager)}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">{manager.name}</p>
+              <p className="text-sm font-medium text-gray-900 truncate">
+                {fullName(manager.manager)}
+              </p>
               <p className="text-xs text-gray-500 truncate">
-                {manager.email} · {manager.assignedPros} Pros assigned
+                {manager.manager?.email}
+                {" · "}
+                {manager.associate_pros_count ?? 0} Pros assigned
               </p>
             </div>
           </div>
@@ -276,34 +299,43 @@ export function ManagerSnapshot({ viewAs, manager, metrics }: Props) {
         {/* Active target row */}
         <div className="flex items-center justify-between gap-3 flex-wrap">
           {active ? (
-            <ActiveTargetPill target={active} />
-          ) : viewAs === "super-admin" ? (
-            <div className="flex-1">
-              <NoActiveTargetBanner viewAs={viewAs} onSet={() => setDialogOpen(true)} />
-            </div>
+            <ActiveTargetPill periodLabel={periodLabel} remaining={remaining} />
           ) : (
-            <NoActiveTargetBanner viewAs={viewAs} onSet={() => setDialogOpen(true)} />
+            <div className="flex-1">
+              <NoActiveTargetBanner
+                viewAs={viewAs}
+                onSet={() => setDialogOpen(true)}
+              />
+            </div>
           )}
 
           {viewAs === "super-admin" && active && (
-            <Button variant="outline" size="sm" onClick={() => setDialogOpen(true)}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setDialogOpen(true)}
+            >
               <Target className="h-3.5 w-3.5 mr-1.5" />
               Manage targets
             </Button>
           )}
         </div>
 
-        {/* KPI tiles */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* KPI tiles — 3 (reward descoped per blueprint §8) */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <KpiTile
             icon={TrendingUp}
             iconColor="text-[#00695C]"
             iconBg="bg-[#E0F2F1]"
             label="Associate Pros Recruited"
-            actualDisplay={recruitedActual.toLocaleString()}
-            targetDisplay={active ? active.associateProsRecruited.toLocaleString() : undefined}
+            actualDisplay={target.recruitedSoFar.toLocaleString()}
+            targetDisplay={
+              target.recruitedTarget > 0
+                ? target.recruitedTarget.toLocaleString()
+                : undefined
+            }
             percent={recruitedPct}
-            tooltip="New Associate Pro upgrades this period vs. active target."
+            tooltip="Approved Associate Pro upgrades this period vs. active target."
           />
 
           <KpiTile
@@ -311,8 +343,12 @@ export function ManagerSnapshot({ viewAs, manager, metrics }: Props) {
             iconColor="text-blue-600"
             iconBg="bg-blue-50"
             label="Selling Associate Pros"
-            actualDisplay={sellingActual.toLocaleString()}
-            targetDisplay={active ? active.sellingAssociatePros.toLocaleString() : undefined}
+            actualDisplay={target.sellingSoFar.toLocaleString()}
+            targetDisplay={
+              target.sellingTarget > 0
+                ? target.sellingTarget.toLocaleString()
+                : undefined
+            }
             percent={sellingPct}
             tooltip="Pros who made at least one sale this period vs. active target."
           />
@@ -322,21 +358,21 @@ export function ManagerSnapshot({ viewAs, manager, metrics }: Props) {
             iconColor="text-amber-600"
             iconBg="bg-amber-50"
             label="Performance Score"
-            actualDisplay={scoreActual.toFixed(2)}
-            targetDisplay={active ? active.performanceScore.toFixed(2) : undefined}
+            actualDisplay={score.actual.toFixed(2)}
+            targetDisplay={
+              score.target > 0 ? score.target.toFixed(2) : undefined
+            }
             percent={scorePct}
-            tooltip="Number of customer reviews ÷ average rating, vs. active target."
+            tooltip="Today, derived from target progress. Will switch to review-based when reviews ship."
           />
-
-          <RewardTile amount={metrics.performance.rewardAmount} />
         </div>
       </div>
 
       <ManageTargetsDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        manager={manager}
-        metrics={metrics}
+        managerId={managerAdminId}
+        managerName={fullName(manager?.manager)}
       />
     </>
   );

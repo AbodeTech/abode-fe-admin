@@ -1,9 +1,9 @@
 import { Briefcase, CircleDollarSign, BarChart3 } from "lucide-react";
 import { StatCard } from "./StatCard";
-import type { ManagerMetrics } from "../mock-data";
+import type { ManagerDashboardSalesRevenue } from "@/lib/gql/graphql";
 
 interface Props {
-  metrics: ManagerMetrics;
+  data: ManagerDashboardSalesRevenue;
 }
 
 const formatCurrency = (n: number) =>
@@ -16,8 +16,14 @@ const formatCurrencyShort = (n: number) => {
   return formatCurrency(n);
 };
 
-export function SalesRevenueSection({ metrics }: Props) {
-  const { sellingPros, totalPros, totalRevenue, revenuePerSellingPro } = metrics.sales;
+export function SalesRevenueSection({ data }: Props) {
+  const { sellingPros, sellingProsTarget, totalRevenue, revenuePerSellingPro } =
+    data;
+
+  const sellingDisplay =
+    sellingProsTarget > 0
+      ? `${sellingPros} / ${sellingProsTarget}`
+      : sellingPros.toLocaleString();
 
   return (
     <section className="space-y-3">
@@ -27,7 +33,7 @@ export function SalesRevenueSection({ metrics }: Props) {
           icon={Briefcase}
           iconColor="text-blue-600"
           label="Selling Associate Pros"
-          value={`${sellingPros} / ${totalPros}`}
+          value={sellingDisplay}
           hint="Pros who made at least one sale this period"
         />
         <StatCard

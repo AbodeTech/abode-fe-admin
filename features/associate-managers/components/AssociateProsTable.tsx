@@ -2,14 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import {
-  CheckCircle2,
-  Circle,
-  MoreHorizontal,
-  Search,
-  X,
-} from "lucide-react";
-import { toast } from "sonner";
+import { MoreHorizontal, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -35,20 +28,15 @@ import { cn } from "@/lib/utils";
 import { ReassignProDialog } from "./dialogs/ReassignProDialog";
 import { BulkReassignDialog } from "./dialogs/BulkReassignDialog";
 import { OnboardingDialog } from "./dialogs/OnboardingDialog";
-import { OnboardingDetailsDialog } from "./dialogs/OnboardingDetailsDialog";
-import {
-  getOnboardedAllTimeCount,
-  getOnboardedThisMonthCount,
-  type AssociateManager,
-  type AssociatePro,
-  type ProStatus,
-} from "../mock-data";
+import type { ManagerDashboardProRow } from "@/lib/gql/graphql";
+import type { AssociatePro, ProStatus } from "../mock-data";
 
 const PAGE_SIZE = 25;
 
 interface Props {
-  pros: AssociatePro[];
-  sourceManager: AssociateManager | null;
+  pros: ManagerDashboardProRow[];
+  /** The Admin id of the manager whose roster is being viewed. */
+  sourceManagerId: string | null;
 }
 
 const STATUS_OPTIONS = [
@@ -61,55 +49,100 @@ const STATUS_OPTIONS = [
 const formatCurrency = (n: number) =>
   `₦${n.toLocaleString("en-NG", { maximumFractionDigits: 0 })}`;
 
-const formatDate = (iso: string) =>
-  new Date(iso).toLocaleDateString("en-GB", {
+const formatDate = (iso: Date | string | null | undefined) => {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("en-GB", {
     day: "numeric",
     month: "short",
     year: "numeric",
   });
-
-const STATUS_STYLES: Record<ProStatus, { bg: string; text: string; dot: string; label: string }> = {
-  active: { bg: "bg-[#E0F2F1]", text: "text-[#00695C]", dot: "bg-[#00695C]", label: "Active" },
-  inactive: { bg: "bg-amber-50", text: "text-amber-700", dot: "bg-amber-500", label: "Inactive" },
-  abandoned: { bg: "bg-red-50", text: "text-[#AD1F2A]", dot: "bg-[#AD1F2A]", label: "Abandoned" },
 };
 
-const TODAY_MONTH = "2026-05"; // matches mock TODAY_ISO
+const formatRelativeOrDate = (iso: Date | string | null | undefined) => {
+  if (!iso) return "Never";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  const diffMs = Date.now() - d.getTime();
+  const min = 60 * 1000;
+  const hr = 60 * min;
+  const day = 24 * hr;
+  if (diffMs < hr) return `${Math.max(1, Math.round(diffMs / min))}m ago`;
+  if (diffMs < day) return `${Math.round(diffMs / hr)}h ago`;
+  if (diffMs < 7 * day) return `${Math.round(diffMs / day)}d ago`;
+  return formatDate(iso);
+};
 
-const isOnboardedThisMonth = (pro: AssociatePro) =>
-  pro.onboardedAt?.slice(0, 7) === TODAY_MONTH;
+const STATUS_STYLES: Record<
+  ProStatus,
+  { bg: string; text: string; dot: string; label: string }
+> = {
+  active: {
+    bg: "bg-[#E0F2F1]",
+    text: "text-[#00695C]",
+    dot: "bg-[#00695C]",
+    label: "Active",
+  },
+  inactive: {
+    bg: "bg-amber-50",
+    text: "text-amber-700",
+    dot: "bg-amber-500",
+    label: "Inactive",
+  },
+  abandoned: {
+    bg: "bg-red-50",
+    text: "text-[#AD1F2A]",
+    dot: "bg-[#AD1F2A]",
+    label: "Abandoned",
+  },
+};
 
-function StatusBadge({ status }: { status: ProStatus }) {
-  const s = STATUS_STYLES[status];
+const normalizeStatus = (s: string): ProStatus => {
+  if (s === "active" || s === "inactive" || s === "abandoned") return s;
+  return "inactive";
+};
+
+function StatusBadge({ status }: { status: string }) {
+  const s = STATUS_STYLES[normalizeStatus(status)];
   return (
-    <Badge variant="outline" className={cn("border-transparent gap-1.5 font-medium", s.bg, s.text)}>
+    <Badge
+      variant="outline"
+      className={cn(
+        "border-transparent gap-1.5 font-medium",
+        s.bg,
+        s.text
+      )}
+    >
       <span className={cn("h-1.5 w-1.5 rounded-full", s.dot)} />
       {s.label}
     </Badge>
   );
 }
 
-function OnboardedBadge({ onboarded }: { onboarded: boolean }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium",
-        onboarded
-          ? "bg-[#E0F2F1] text-[#00695C]"
-          : "bg-gray-100 text-gray-500"
-      )}
-    >
-      {onboarded ? (
-        <CheckCircle2 className="h-2.5 w-2.5" />
-      ) : (
-        <Circle className="h-2.5 w-2.5" />
-      )}
-      {onboarded ? "Onboarded" : "Not onboarded"}
-    </span>
-  );
-}
+const fullName = (p: ManagerDashboardProRow) =>
+  `${p.firstName ?? ""} ${p.lastName ?? ""}`.trim() || p.email || "Pro";
 
-export function AssociateProsTable({ pros, sourceManager }: Props) {
+/** Adapter: live ManagerDashboardProRow → legacy AssociatePro shape that the
+ * Reassign/Bulk dialogs still consume. Removed once those dialogs are refactored. */
+const toLegacyPro = (p: ManagerDashboardProRow): AssociatePro => ({
+  id: p.id,
+  name: fullName(p),
+  email: p.email ?? "",
+  phone: p.phoneNumber ?? null,
+  status: normalizeStatus(p.status),
+  recruitedAt: p.dateRecruited
+    ? new Date(p.dateRecruited).toISOString().slice(0, 10)
+    : "",
+  onboardedAt: null,
+  totalSales: p.totalSales,
+  totalRevenue: p.revenueGenerated,
+  lastLogin: p.lastLogin
+    ? formatRelativeOrDate(p.lastLogin)
+    : "Never",
+});
+
+export function AssociateProsTable({ pros, sourceManagerId }: Props) {
   const searchParams = useSearchParams();
   const page = Number(searchParams.get("page")) || 1;
   const statusParam = searchParams.get("status");
@@ -117,18 +150,11 @@ export function AssociateProsTable({ pros, sourceManager }: Props) {
 
   const [search, setSearch] = useState(searchParam);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [singleReassign, setSingleReassign] = useState<AssociatePro | null>(null);
+  const [singleReassign, setSingleReassign] =
+    useState<ManagerDashboardProRow | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
-  const [onboardingFor, setOnboardingFor] = useState<AssociatePro | null>(null);
-  const [detailsFor, setDetailsFor] = useState<AssociatePro | null>(null);
-  const [onboardedThisMonthFilter, setOnboardedThisMonthFilter] = useState(false);
-
-  const onboardedThisMonthCount = sourceManager
-    ? getOnboardedThisMonthCount(sourceManager.id)
-    : pros.filter(isOnboardedThisMonth).length;
-  const onboardedAllTimeCount = sourceManager
-    ? getOnboardedAllTimeCount(sourceManager.id)
-    : pros.filter((p) => p.onboardedAt !== null).length;
+  const [onboardingFor, setOnboardingFor] =
+    useState<ManagerDashboardProRow | null>(null);
 
   const filtered = useMemo(() => {
     let rows = pros;
@@ -137,28 +163,27 @@ export function AssociateProsTable({ pros, sourceManager }: Props) {
       rows = rows.filter((p) => p.status === statusParam);
     }
 
-    if (onboardedThisMonthFilter) {
-      rows = rows.filter(isOnboardedThisMonth);
-    }
-
     const term = search.trim().toLowerCase();
     if (term) {
-      rows = rows.filter(
-        (p) =>
-          p.name.toLowerCase().includes(term) ||
-          p.email.toLowerCase().includes(term) ||
-          (p.phone?.toLowerCase().includes(term) ?? false)
-      );
+      rows = rows.filter((p) => {
+        const name = fullName(p).toLowerCase();
+        return (
+          name.includes(term) ||
+          (p.email?.toLowerCase().includes(term) ?? false) ||
+          (p.phoneNumber?.toLowerCase().includes(term) ?? false)
+        );
+      });
     }
 
     return rows;
-  }, [pros, statusParam, search, onboardedThisMonthFilter]);
+  }, [pros, statusParam, search]);
 
   const start = (page - 1) * PAGE_SIZE;
   const paginated = filtered.slice(start, start + PAGE_SIZE);
 
   const pageIds = paginated.map((p) => p.id);
-  const allOnPageSelected = pageIds.length > 0 && pageIds.every((id) => selected.has(id));
+  const allOnPageSelected =
+    pageIds.length > 0 && pageIds.every((id) => selected.has(id));
   const someOnPageSelected = pageIds.some((id) => selected.has(id));
 
   const togglePro = (id: string) => {
@@ -173,60 +198,25 @@ export function AssociateProsTable({ pros, sourceManager }: Props) {
   const togglePage = () => {
     setSelected((prev) => {
       const next = new Set(prev);
-      if (allOnPageSelected) {
-        pageIds.forEach((id) => next.delete(id));
-      } else {
-        pageIds.forEach((id) => next.add(id));
-      }
+      if (allOnPageSelected) pageIds.forEach((id) => next.delete(id));
+      else pageIds.forEach((id) => next.add(id));
       return next;
     });
   };
 
   const clearSelection = () => setSelected(new Set());
 
-  const selectedPros = useMemo(
-    () => pros.filter((p) => selected.has(p.id)),
+  const selectedProsLegacy = useMemo(
+    () => pros.filter((p) => selected.has(p.id)).map(toLegacyPro),
     [pros, selected]
   );
-
-  const handleResendPack = (pro: AssociatePro) => {
-    toast.success(`Pack resent to ${pro.name}`);
-  };
 
   return (
     <section className="space-y-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-3 flex-wrap">
-          <h2 className="text-base font-semibold text-gray-900">Associate Pros</h2>
-          <button
-            type="button"
-            onClick={() => setOnboardedThisMonthFilter((v) => !v)}
-            aria-pressed={onboardedThisMonthFilter}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
-              onboardedThisMonthFilter
-                ? "bg-[#00695C] text-white"
-                : "bg-[#E0F2F1] text-[#00695C] hover:bg-[#c8e6e2]"
-            )}
-            title="Click to filter to Pros onboarded this month"
-          >
-            <CheckCircle2 className="h-3 w-3" />
-            {onboardedThisMonthCount} onboarded this month
-            <span className="text-[#00695C]/70 group-hover:text-[#00695C]">
-              · {onboardedAllTimeCount} all-time
-            </span>
-          </button>
-          {onboardedThisMonthFilter && (
-            <button
-              type="button"
-              onClick={() => setOnboardedThisMonthFilter(false)}
-              className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-900"
-            >
-              <X className="h-3 w-3" />
-              Clear filter
-            </button>
-          )}
-        </div>
+        <h2 className="text-base font-semibold text-gray-900">
+          Associate Pros
+        </h2>
         <div className="flex items-center gap-3 flex-wrap">
           <div className="relative w-full sm:w-72">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -237,7 +227,11 @@ export function AssociateProsTable({ pros, sourceManager }: Props) {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <FilterSelect data={STATUS_OPTIONS} queryKey="status" placeholder="Status" />
+          <FilterSelect
+            data={STATUS_OPTIONS}
+            queryKey="status"
+            placeholder="Status"
+          />
         </div>
       </div>
 
@@ -249,7 +243,11 @@ export function AssociateProsTable({ pros, sourceManager }: Props) {
                 <TableHead className="w-10">
                   <Checkbox
                     checked={
-                      allOnPageSelected ? true : someOnPageSelected ? "indeterminate" : false
+                      allOnPageSelected
+                        ? true
+                        : someOnPageSelected
+                          ? "indeterminate"
+                          : false
                     }
                     onCheckedChange={togglePage}
                     aria-label="Select all on this page"
@@ -274,8 +272,6 @@ export function AssociateProsTable({ pros, sourceManager }: Props) {
               ) : (
                 paginated.map((pro) => {
                   const isSelected = selected.has(pro.id);
-                  const isOnboarded = pro.onboardedAt !== null;
-
                   return (
                     <TableRow
                       key={pro.id}
@@ -288,18 +284,17 @@ export function AssociateProsTable({ pros, sourceManager }: Props) {
                         <Checkbox
                           checked={isSelected}
                           onCheckedChange={() => togglePro(pro.id)}
-                          aria-label={`Select ${pro.name}`}
+                          aria-label={`Select ${fullName(pro)}`}
                         />
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col gap-0.5">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-gray-900">{pro.name}</span>
-                            <OnboardedBadge onboarded={isOnboarded} />
-                          </div>
+                          <span className="font-medium text-gray-900">
+                            {fullName(pro)}
+                          </span>
                           <span className="text-xs text-gray-500">
                             {pro.email}
-                            {pro.phone ? ` · ${pro.phone}` : ""}
+                            {pro.phoneNumber ? ` · ${pro.phoneNumber}` : ""}
                           </span>
                         </div>
                       </TableCell>
@@ -307,15 +302,17 @@ export function AssociateProsTable({ pros, sourceManager }: Props) {
                         <StatusBadge status={pro.status} />
                       </TableCell>
                       <TableCell className="text-gray-700">
-                        {formatDate(pro.recruitedAt)}
+                        {formatDate(pro.dateRecruited)}
                       </TableCell>
                       <TableCell className="text-right tabular-nums text-gray-900">
                         {pro.totalSales}
                       </TableCell>
                       <TableCell className="text-right tabular-nums text-gray-900">
-                        {formatCurrency(pro.totalRevenue)}
+                        {formatCurrency(pro.revenueGenerated)}
                       </TableCell>
-                      <TableCell className="text-gray-600">{pro.lastLogin}</TableCell>
+                      <TableCell className="text-gray-600">
+                        {formatRelativeOrDate(pro.lastLogin)}
+                      </TableCell>
                       <TableCell>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -329,22 +326,18 @@ export function AssociateProsTable({ pros, sourceManager }: Props) {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            {isOnboarded ? (
-                              <>
-                                <DropdownMenuItem onSelect={() => handleResendPack(pro)}>
-                                  Resend onboarding pack
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onSelect={() => setDetailsFor(pro)}>
-                                  View onboarding details
-                                </DropdownMenuItem>
-                              </>
-                            ) : (
-                              <DropdownMenuItem onSelect={() => setOnboardingFor(pro)}>
-                                Onboard Associate Pro
-                              </DropdownMenuItem>
-                            )}
+                            {/* Onboarding is still mock until BE exposes onboardedAt.
+                                "Onboard" stays open to all Pros; Resend / View details
+                                are hidden until we can tell who's onboarded. */}
+                            <DropdownMenuItem
+                              onSelect={() => setOnboardingFor(pro)}
+                            >
+                              Onboard Associate Pro
+                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onSelect={() => setSingleReassign(pro)}>
+                            <DropdownMenuItem
+                              onSelect={() => setSingleReassign(pro)}
+                            >
                               Reassign to manager
                             </DropdownMenuItem>
                           </DropdownMenuContent>
@@ -360,7 +353,11 @@ export function AssociateProsTable({ pros, sourceManager }: Props) {
 
         {filtered.length > 0 && (
           <div className="px-4 py-3 border-t border-[#E5EAEF]">
-            <Pagination count={filtered.length} currentIdx={page} limit={PAGE_SIZE} />
+            <Pagination
+              count={filtered.length}
+              currentIdx={page}
+              limit={PAGE_SIZE}
+            />
           </div>
         )}
       </div>
@@ -397,8 +394,16 @@ export function AssociateProsTable({ pros, sourceManager }: Props) {
       <ReassignProDialog
         open={!!singleReassign}
         onOpenChange={(open) => !open && setSingleReassign(null)}
-        pro={singleReassign}
-        currentManager={sourceManager}
+        pro={
+          singleReassign
+            ? {
+                id: singleReassign.id,
+                name: fullName(singleReassign),
+                email: singleReassign.email ?? "",
+              }
+            : null
+        }
+        currentManagerId={sourceManagerId}
       />
 
       <BulkReassignDialog
@@ -407,20 +412,23 @@ export function AssociateProsTable({ pros, sourceManager }: Props) {
           setBulkOpen(open);
           if (!open) clearSelection();
         }}
-        pros={selectedPros}
-        sourceManager={sourceManager}
+        pros={selectedProsLegacy}
+        sourceManagerId={sourceManagerId}
       />
 
       <OnboardingDialog
         open={!!onboardingFor}
         onOpenChange={(open) => !open && setOnboardingFor(null)}
-        pro={onboardingFor}
-      />
-
-      <OnboardingDetailsDialog
-        open={!!detailsFor}
-        onOpenChange={(open) => !open && setDetailsFor(null)}
-        pro={detailsFor}
+        pro={
+          onboardingFor
+            ? {
+                id: onboardingFor.id,
+                name: fullName(onboardingFor),
+                email: onboardingFor.email ?? "",
+                phone: onboardingFor.phoneNumber ?? null,
+              }
+            : null
+        }
       />
     </section>
   );
