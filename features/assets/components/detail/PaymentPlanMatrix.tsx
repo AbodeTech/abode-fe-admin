@@ -26,6 +26,7 @@ export const PaymentPlanMatrixFragment = graphql(`
         totalPlans
         totalDefaultingUsers
         totalDefaultedValue
+        totalDefaultedBalance
         totalBalance
         totalTerminatedPlans
         totalTerminatedValue
@@ -145,7 +146,7 @@ export function PaymentPlanMatrix({ data }: Props) {
                   totalPlans: plans.reduce((s, p) => s + (p?.totalPlans ?? 0), 0),
                   defaultedCount: plans.reduce((s, p) => s + (p?.totalDefaultingUsers ?? 0), 0),
                   defaultedValue: plans.reduce((s, p) => s + (p?.totalDefaultedValue ?? 0), 0),
-                  defaultedBalance: plans.reduce((s, p) => s + (p?.totalBalance ?? 0), 0),
+                  defaultedBalance: plans.reduce((s, p) => s + (p?.totalDefaultedBalance ?? 0), 0),
                   terminatedCount: plans.reduce((s, p) => s + (p?.totalTerminatedPlans ?? 0), 0),
                   terminatedValue: plans.reduce((s, p) => s + (p?.totalTerminatedValue ?? 0), 0),
                   terminatedBalance: plans.reduce((s, p) => s + (p?.totalTerminatedBalance ?? 0), 0),
@@ -214,7 +215,7 @@ export function PaymentPlanMatrix({ data }: Props) {
                             </span>
                           </TableCell>
                           <TableCell className="text-sm font-medium tabular-nums text-rose-600 whitespace-nowrap">{formatNaira(plan.totalDefaultedValue)}</TableCell>
-                          <TableCell className="text-sm font-medium tabular-nums text-rose-500 whitespace-nowrap">{formatNaira(plan.totalBalance)}</TableCell>
+                          <TableCell className="text-sm font-medium tabular-nums text-rose-500 whitespace-nowrap">{formatNaira(plan.totalDefaultedBalance)}</TableCell>
                           {/* Terminations */}
                           <TableCell className="border-l">
                             <span className={cn("text-sm font-bold", (plan.totalTerminatedPlans ?? 0) > 0 ? "text-amber-600" : "text-muted-foreground")}>

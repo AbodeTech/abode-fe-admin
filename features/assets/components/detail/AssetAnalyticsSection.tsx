@@ -13,10 +13,11 @@ export function AssetAnalyticsSection() {
 
   const startDate = searchParams.get("start_date") ?? undefined;
   const endDate = searchParams.get("end_date") ?? undefined;
+  const filter = startDate && endDate ? "custom" : "all_time";
 
   const { data, isLoading, error } = useAssetAnalytics({
     assetId: assetId ?? "",
-    filter: "all",
+    filter,
     startDate,
     endDate,
   });

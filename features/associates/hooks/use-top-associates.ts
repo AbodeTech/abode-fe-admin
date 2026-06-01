@@ -3,8 +3,9 @@ import { execute } from '@/lib/graphql-client';
 import { graphql } from '@/lib/gql';
 import { associateKeys } from './query-keys';
 
-// NOTE: assetType / assetName args are NOT yet on the active BE branch.
-// They exist on main. Re-add when BE branches merge.
+// NOTE: assetType / assetName args are NOT yet on the local BE branch
+// (feature/block-plot-allocation-v2). They exist on main. Re-add when BE
+// branches merge.
 const GET_TOP_ASSOCIATES_QUERY = graphql(`
   query GetTopAssociates(
     $page: Int!
