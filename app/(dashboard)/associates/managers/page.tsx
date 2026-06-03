@@ -11,6 +11,7 @@ import {
   ActivitySection,
   MilestonesSection,
   AssociateProsTable,
+  NoManagersEmptyState,
   useAssociateManagers,
   useAdminManagerDashboard,
   useManagerDashboard,
@@ -152,6 +153,13 @@ function AssociateManagersContent() {
         <p>{message || "An unexpected error occurred."}</p>
       </div>
     );
+  }
+
+  // No Associate Managers exist yet — show a friendly empty state with a
+  // primary "Add" CTA instead of dead-ending on "No dashboard data". Only
+  // Super Admin can land here (a manager would always have at least themselves).
+  if (viewAs === "super-admin" && managers.length === 0) {
+    return <NoManagersEmptyState />;
   }
 
   if (!dashboard) {
