@@ -14,6 +14,12 @@ import {
 import { Eye } from "lucide-react";
 import { AgencyListItem } from "./AgencyListTable";
 import { useRouter } from "next/navigation";
+import {
+  AdminDesktopTableWrap,
+  AdminMobileCard,
+  AdminMobileField,
+  AdminMobileStack,
+} from "@/components/shared/admin-responsive-table";
 
 interface AgencyTransactionAgencyTableProps {
   rows?: AgencyListItem[] | null;
@@ -32,19 +38,49 @@ export function AgencyTransactionAgencyTable({ rows }: AgencyTransactionAgencyTa
   const items = rows ?? [];
 
   return (
-    <Card className="border border-gray-200 overflow-x-auto">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Agency</TableHead>
-            <TableHead>Contact</TableHead>
-            <TableHead>Sales Volume</TableHead>
-            <TableHead>Amount Paid</TableHead>
-            <TableHead>Outstanding</TableHead>
-            <TableHead className="text-right">Transactions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
+    <Card className="min-w-0 border border-gray-200">
+      <AdminMobileStack className="border-b border-gray-200 p-3">
+        {items.length === 0 ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">No agency records found.</p>
+        ) : (
+          items.map((agency) => (
+            <AdminMobileCard
+              key={agency._id}
+              title={agency.agency_name}
+              onClick={() => router.push(`/agency/transactions/${agency._id}`)}
+            >
+              <AdminMobileField label="Email" value={agency.contact?.email || "-"} />
+              <AdminMobileField label="Phone" value={agency.contact?.phoneNumber || "-"} />
+              <AdminMobileField label="Sales volume" value={formatCurrency(agency.total_sales_volume)} />
+              <AdminMobileField label="Amount paid" value={formatCurrency(agency.total_amount_paid)} />
+              <AdminMobileField label="Outstanding" value={formatCurrency(agency.total_balance)} />
+              <div className="flex justify-end border-t border-border pt-2" onClick={(e) => e.stopPropagation()}>
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/agency/transactions/${agency._id}`} aria-label={`View ${agency.agency_name} transactions`}>
+                    <Eye className="mr-2 h-4 w-4" />
+                    View
+                  </Link>
+                </Button>
+              </div>
+            </AdminMobileCard>
+          ))
+        )}
+      </AdminMobileStack>
+
+      <AdminDesktopTableWrap>
+      <div className="min-w-0 overflow-x-auto">
+        <Table className="min-w-[800px]">
+          <TableHeader>
+            <TableRow>
+              <TableHead>Agency</TableHead>
+              <TableHead>Contact</TableHead>
+              <TableHead>Sales Volume</TableHead>
+              <TableHead>Amount Paid</TableHead>
+              <TableHead>Outstanding</TableHead>
+              <TableHead className="text-right">Transactions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
           {items.length === 0 ? (
             <TableRow>
               <TableCell colSpan={6} className="text-center text-sm text-muted-foreground">
@@ -58,18 +94,31 @@ export function AgencyTransactionAgencyTable({ rows }: AgencyTransactionAgencyTa
                 className="cursor-pointer hover:bg-muted/40"
                 onClick={() => router.push(`/agency/transactions/${agency._id}`)}
               >
-                <TableCell className="font-medium">{agency.agency_name}</TableCell>
-                <TableCell>
-                  <div className="text-sm">{agency.contact?.email || "-"}</div>
-                  <div className="text-xs text-muted-foreground">{agency.contact?.phoneNumber || "-"}</div>
+                <TableCell className="max-w-48 font-medium">
+                  <span className="line-clamp-2 wrap-break-word" title={agency.agency_name}>
+                    {agency.agency_name}
+                  </span>
                 </TableCell>
-                <TableCell>{formatCurrency(agency.total_sales_volume)}</TableCell>
-                <TableCell>{formatCurrency(agency.total_amount_paid)}</TableCell>
-                <TableCell className="text-rose-600">{formatCurrency(agency.total_balance)}</TableCell>
+                <TableCell className="max-w-44">
+                  <div className="wrap-break-word text-sm">{agency.contact?.email || "-"}</div>
+                  <div className="wrap-break-word text-xs text-muted-foreground">
+                    {agency.contact?.phoneNumber || "-"}
+                  </div>
+                </TableCell>
+                <TableCell className="max-w-36 tabular-nums wrap-break-word">
+                  {formatCurrency(agency.total_sales_volume)}
+                </TableCell>
+                <TableCell className="max-w-36 tabular-nums wrap-break-word">
+                  {formatCurrency(agency.total_amount_paid)}
+                </TableCell>
+                <TableCell className="max-w-36 tabular-nums wrap-break-word text-rose-600">
+                  {formatCurrency(agency.total_balance)}
+                </TableCell>
                 <TableCell className="text-right">
                   <Button
                     variant="outline"
                     size="sm"
+                    className="w-full min-w-[5.5rem] shrink-0 sm:inline-flex sm:w-auto"
                     asChild
                     onClick={(event) => event.stopPropagation()}
                   >
@@ -83,7 +132,9 @@ export function AgencyTransactionAgencyTable({ rows }: AgencyTransactionAgencyTa
             ))
           )}
         </TableBody>
-      </Table>
+        </Table>
+      </div>
+      </AdminDesktopTableWrap>
     </Card>
   );
 }

@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Loader2 } from "lucide-react";
-
+import { PageContentLoader, SuspensePageFallback } from "@/components/shared/page-content-loader";
 import { Pagination } from "@/components/shared/Pagination";
 import {
   AgencyListFilters,
@@ -69,29 +68,30 @@ function AgencyTransactionsContent() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Agency Transactions</h1>
-        <p className="text-muted-foreground">Review transactions by agency and drill into details.</p>
+    <div className="mx-auto w-full min-w-0 max-w-[1600px] space-y-4 sm:space-y-6">
+      <div className="min-w-0">
+        <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Agency Transactions</h1>
+        <p className="text-sm text-muted-foreground sm:text-base">
+          Review transactions by agency and drill into details.
+        </p>
       </div>
 
-      <AgencySystemMetrics data={data?.dashboard} />
+      {isLoading ? (
+        <PageContentLoader label="Loading agency transactions…" />
+      ) : (
+        <>
+          <AgencySystemMetrics data={data?.dashboard} />
 
-      <AgencyListFilters search={query} onSearchChange={setQuery} />
+          <AgencyListFilters search={query} onSearchChange={setQuery} />
 
-      <AgencyTransactionAgencyTable rows={data?.agencies} />
+          <AgencyTransactionAgencyTable rows={data?.agencies} />
 
-      <Pagination
-        count={data?.count ?? 0}
-        currentIdx={data?.currentPage ?? page}
-        limit={DEFAULT_AGENCY_LIMIT}
-      />
-
-      {isLoading && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading agency transactions...
-        </div>
+          <Pagination
+            count={data?.count ?? 0}
+            currentIdx={data?.currentPage ?? page}
+            limit={DEFAULT_AGENCY_LIMIT}
+          />
+        </>
       )}
     </div>
   );
@@ -99,7 +99,7 @@ function AgencyTransactionsContent() {
 
 export default function AgencyTransactionsPage() {
   return (
-    <Suspense fallback={<div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+    <Suspense fallback={<SuspensePageFallback />}>
       <AgencyTransactionsContent />
     </Suspense>
   );

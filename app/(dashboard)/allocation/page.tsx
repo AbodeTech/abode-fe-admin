@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/shared/Pagination";
+import { SuspensePageFallback } from "@/components/shared/page-content-loader";
 import {
   AllocationFilters,
   AllocationModal,
@@ -15,7 +16,6 @@ import {
   useAllocationAssets,
   useAllocationClients,
   useAllocationExport,
-  useSendAllocationEmail,
 } from "@/features/allocation";
 import { FragmentType, useFragment as getFragmentData } from "@/lib/gql";
 // @ts-expect-error - json2csv does not ship complete ESM typings in this setup.
@@ -59,8 +59,6 @@ function AllocationContent() {
   const { data, isLoading, error } = useAllocationClients(filters);
   const { data: assets } = useAllocationAssets();
   const { mutateAsync: exportAlloc, isPending: isExporting } = useAllocationExport();
-  const sendAllocationEmail = useSendAllocationEmail();
-  const [sendingEmailFor, setSendingEmailFor] = useState<string | null>(null);
 
   useEffect(() => {
     if (!modalOpen) setModalClient(null);
@@ -116,24 +114,6 @@ function AllocationContent() {
     setModalOpen(true);
   };
 
-  const handleSendEmail = (
-    rowClient: FragmentType<typeof AllocationTableRowFragment>
-  ) => {
-    const c = getFragmentData(AllocationTableRowFragment, rowClient);
-    if (!c.paymentPlan) return;
-    setSendingEmailFor(c.paymentPlan);
-    sendAllocationEmail.mutate(c.paymentPlan, {
-      onSuccess: (res) => {
-        toast.success(res.sendAllocationEmail?.message || "Allocation email sent");
-        setSendingEmailFor(null);
-      },
-      onError: (err: Error) => {
-        toast.error(err.message);
-        setSendingEmailFor(null);
-      },
-    });
-  };
-
   const handleDownload = async () => {
     try {
       const result = await exportAlloc({
@@ -185,15 +165,21 @@ function AllocationContent() {
   }
 
   return (
-    <div className="space-y-6 pb-24">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Land Allocation System</h1>
-          <p className="text-muted-foreground">
+    <div className="mx-auto w-full min-w-0 max-w-[1600px] space-y-4 pb-24 sm:space-y-6">
+      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Land Allocation System</h1>
+          <p className="text-sm text-muted-foreground sm:text-base">
             Manage and track allocations for eligible clients.
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={handleDownload} disabled={isExporting}>
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full shrink-0 sm:w-auto"
+          onClick={handleDownload}
+          disabled={isExporting}
+        >
           {isExporting ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -222,9 +208,7 @@ function AllocationContent() {
         rows={data?.data}
         isLoading={isLoading}
         onSend={handleSend}
-        onSendEmail={handleSendEmail}
         onResend={handleResend}
-        sendingEmailPaymentPlanId={sendingEmailFor}
       />
 
       <Pagination
@@ -245,7 +229,7 @@ function AllocationContent() {
 
 export default function AllocationPage() {
   return (
-    <Suspense fallback={<div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+    <Suspense fallback={<SuspensePageFallback />}>
       <AllocationContent />
     </Suspense>
   );

@@ -12,12 +12,12 @@ interface AgencyListFiltersProps {
 
 export function AgencyListFilters({ search, onSearchChange }: AgencyListFiltersProps) {
   return (
-    <div className="max-w-xl rounded-lg border border-[#E5EAEF] bg-white p-4 space-y-2">
+    <div className="w-full min-w-0 max-w-full rounded-lg border border-[#E5EAEF] bg-white p-3 sm:max-w-xl sm:p-4">
       <Label className="text-sm text-muted-foreground">Search agencies</Label>
-      <div className="relative">
-        <Search className="h-4 w-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+      <div className="relative mt-2">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          className="pl-9 pr-10"
+          className="min-w-0 pl-9 pr-10"
           placeholder="Search by agency name, email or phone"
           value={search}
           onChange={(event) => onSearchChange(event.target.value)}

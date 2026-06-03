@@ -64,7 +64,7 @@ export default function UserDetailsPage() {
   })) as unknown) as TransactionListResponse[];
 
   return (
-    <main className="mx-6 mt-4 pb-20 space-y-8">
+    <main className="mx-auto mt-4 w-full min-w-0 max-w-[1600px] space-y-6 px-3 pb-20 sm:mt-6 sm:space-y-8 sm:px-4">
       <div>
         <h3 className="font-semibold font-noto_sans text-3xl text-abodeBlack text-[#101828]">User</h3>
         <h3 className="text-sm text-[#8A8B9F] ml-1">User &gt; <span className="text-[#7F56D9]">Details</span></h3>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -179,9 +179,10 @@ export function EditCommissionConfigDialog({ config }: EditCommissionConfigDialo
   const [form, setForm] = useState<FormState>(() => initFormState(config));
   const { mutateAsync, isPending } = useUpdateCommissionConfig();
 
-  useEffect(() => {
-    if (open) setForm(initFormState(config));
-  }, [open, config]);
+  const handleOpenChange = (next: boolean) => {
+    setOpen(next);
+    if (next) setForm(initFormState(config));
+  };
 
   const set = <K extends keyof FormState>(key: K, val: FormState[K]) =>
     setForm((prev) => ({ ...prev, [key]: val }));
@@ -264,21 +265,21 @@ export function EditCommissionConfigDialog({ config }: EditCommissionConfigDialo
         changeDescription: form.changeDescription.trim(),
       });
       toast.success("Commission configuration updated");
-      setOpen(false);
+      handleOpenChange(false);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Failed to update configuration");
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button size="sm">
-          <Pencil className="h-4 w-4 mr-2" />
+        <Button size="sm" className="w-full sm:w-auto">
+          <Pencil className="mr-2 h-4 w-4" />
           Edit Configuration
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-h-[90dvh] w-[calc(100vw-2rem)] max-w-2xl overflow-y-auto sm:w-full">
         <DialogHeader>
           <DialogTitle>Edit Commission Configuration</DialogTitle>
           <DialogDescription>
@@ -289,7 +290,7 @@ export function EditCommissionConfigDialog({ config }: EditCommissionConfigDialo
         <form className="space-y-4" onSubmit={handleSubmit}>
           {/* Flex Commission Direct */}
           <SectionTitle>Flex Commission (Direct)</SectionTitle>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <PercentField id="flex_founder" label="Founder" value={form.flex_founder} onChange={(v) => set("flex_founder", v)} disabled={isPending} />
             <PercentField id="flex_associate_pro" label="Associate Pro" value={form.flex_associate_pro} onChange={(v) => set("flex_associate_pro", v)} disabled={isPending} />
             <PercentField id="flex_premium" label="Premium" value={form.flex_premium} onChange={(v) => set("flex_premium", v)} disabled={isPending} />
@@ -300,7 +301,7 @@ export function EditCommissionConfigDialog({ config }: EditCommissionConfigDialo
 
           {/* Full Ownership Direct */}
           <SectionTitle>Full Ownership — Direct</SectionTitle>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <PercentField id="fo_d_founder" label="Founder" value={form.fo_direct_founder} onChange={(v) => set("fo_direct_founder", v)} disabled={isPending} />
             <PercentField id="fo_d_ap" label="Associate Pro" value={form.fo_direct_associate_pro} onChange={(v) => set("fo_direct_associate_pro", v)} disabled={isPending} />
             <PercentField id="fo_d_premium" label="Premium" value={form.fo_direct_premium} onChange={(v) => set("fo_direct_premium", v)} disabled={isPending} />
@@ -309,7 +310,7 @@ export function EditCommissionConfigDialog({ config }: EditCommissionConfigDialo
 
           {/* Full Ownership Upline — no default */}
           <SectionTitle>Full Ownership — Upline</SectionTitle>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <PercentField id="fo_u_founder" label="Founder" value={form.fo_upline_founder} onChange={(v) => set("fo_upline_founder", v)} disabled={isPending} />
             <PercentField id="fo_u_ap" label="Associate Pro" value={form.fo_upline_associate_pro} onChange={(v) => set("fo_upline_associate_pro", v)} disabled={isPending} />
             <PercentField id="fo_u_premium" label="Premium" value={form.fo_upline_premium} onChange={(v) => set("fo_upline_premium", v)} disabled={isPending} />
@@ -317,7 +318,7 @@ export function EditCommissionConfigDialog({ config }: EditCommissionConfigDialo
 
           {/* Full Ownership Topline — only associate_pro, founder */}
           <SectionTitle>Full Ownership — Topline</SectionTitle>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <PercentField id="fo_t_ap" label="Associate Pro" value={form.fo_topline_associate_pro} onChange={(v) => set("fo_topline_associate_pro", v)} disabled={isPending} />
             <PercentField id="fo_t_founder" label="Founder" value={form.fo_topline_founder} onChange={(v) => set("fo_topline_founder", v)} disabled={isPending} />
           </div>
@@ -326,14 +327,14 @@ export function EditCommissionConfigDialog({ config }: EditCommissionConfigDialo
 
           {/* Flex Removal — direct only (associate_pro, default) */}
           <SectionTitle>Flex Removal (Direct)</SectionTitle>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <PercentField id="flex_removal_ap" label="Associate Pro" value={form.flex_removal_associate_pro} onChange={(v) => set("flex_removal_associate_pro", v)} disabled={isPending} />
             <PercentField id="flex_removal_def" label="Default" value={form.flex_removal_default} onChange={(v) => set("flex_removal_default", v)} disabled={isPending} />
           </div>
 
           {/* Full Ownership Removal */}
           <SectionTitle>Full Ownership Removal</SectionTitle>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <PercentField id="fo_removal_d_ap" label="Direct — Associate Pro" value={form.fo_removal_direct_associate_pro} onChange={(v) => set("fo_removal_direct_associate_pro", v)} disabled={isPending} />
             <PercentField id="fo_removal_d_def" label="Direct — Default" value={form.fo_removal_direct_default} onChange={(v) => set("fo_removal_direct_default", v)} disabled={isPending} />
             <PercentField id="fo_removal_u" label="Upline" value={form.fo_removal_upline} onChange={(v) => set("fo_removal_upline", v)} disabled={isPending} />
@@ -344,7 +345,7 @@ export function EditCommissionConfigDialog({ config }: EditCommissionConfigDialo
 
           {/* General Settings */}
           <SectionTitle>General Settings</SectionTitle>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <PercentField id="wht" label="WHT" value={form.wht_percentage} onChange={(v) => set("wht_percentage", v)} disabled={isPending} />
             <PercentField id="upgrade_comm" label="Upgrade Commission" value={form.upgrade_commission_percentage} onChange={(v) => set("upgrade_commission_percentage", v)} disabled={isPending} />
             <PercentField id="marketplace_fee" label="Marketplace Platform Fee" value={form.marketplace_platform_fee_percentage} onChange={(v) => set("marketplace_platform_fee_percentage", v)} disabled={isPending} />
@@ -370,7 +371,7 @@ export function EditCommissionConfigDialog({ config }: EditCommissionConfigDialo
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={isPending}>
+            <Button type="button" variant="outline" onClick={() => handleOpenChange(false)} disabled={isPending}>
               Cancel
             </Button>
             <Button type="submit" disabled={isPending || !form.changeDescription.trim()}>

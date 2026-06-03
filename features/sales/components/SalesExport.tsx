@@ -569,11 +569,12 @@ export function SalesExport({ filters }: { filters: SalesFilters }) {
   if (role !== 'admin') return null
 
   return (
-    <div className="flex justify-end mb-3 mt-5 gap-2">
+    <div className="mb-0 mt-0 flex w-full min-w-0 flex-col gap-2 sm:mb-3 sm:mt-5 sm:flex-row sm:flex-wrap sm:justify-end sm:gap-2">
       <Button
         variant="outline"
         onClick={handleDownload}
         disabled={mutation.isPending}
+        className="w-full sm:w-auto"
       >
         <Download className="mr-2 h-4 w-4" />
         Quick Download
@@ -581,23 +582,23 @@ export function SalesExport({ filters }: { filters: SalesFilters }) {
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
-          <Button variant="default">
+          <Button variant="default" className="w-full sm:w-auto">
             <Settings2 className="mr-2 h-4 w-4" />
             Custom Export
           </Button>
         </DialogTrigger>
-        <DialogContent className="max-w-7xl! h-[85vh] flex flex-col p-0 gap-0 w-[800px]!">
+        <DialogContent className="flex h-[min(85vh,900px)] w-[min(100vw-1rem,56rem)] max-w-[calc(100vw-1rem)] flex-col gap-0 overflow-hidden p-0 sm:max-h-[85vh]">
 
           {/* Header */}
-          <div className="px-6 py-4 border-b bg-muted/20">
-            <div className="flex items-start justify-between">
-              <div>
-                <DialogTitle className="text-xl font-semibold flex items-center gap-3">
+          <div className="shrink-0 border-b bg-muted/20 px-4 py-3 sm:px-6 sm:py-4">
+            <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <DialogTitle className="flex flex-wrap items-center gap-2 text-lg font-semibold sm:text-xl">
                   Export Data
                   {currentTemplate && (
-                    <Badge variant="secondary" className="font-normal text-xs gap-1">
-                      <LayoutTemplate className="h-3 w-3" />
-                      {currentTemplate.name}
+                    <Badge variant="secondary" className="max-w-full gap-1 font-normal text-xs">
+                      <LayoutTemplate className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{currentTemplate.name}</span>
                     </Badge>
                   )}
                 </DialogTitle>
@@ -607,7 +608,7 @@ export function SalesExport({ filters }: { filters: SalesFilters }) {
               </div>
 
               {/* Template Toolbar */}
-              <div className="flex items-center gap-2 bg-background border rounded-lg p-1 shadow-sm">
+              <div className="flex w-full min-w-0 flex-wrap items-center gap-2 rounded-lg border bg-background p-1 shadow-sm sm:w-auto sm:shrink-0">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm" className="h-8 gap-2">
@@ -671,19 +672,23 @@ export function SalesExport({ filters }: { filters: SalesFilters }) {
 
           {/* Main Content Area */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
-            <div className="px-6 py-2 border-b flex items-center justify-between bg-background">
-              <TabsList className="grid w-[400px] grid-cols-2">
-                <TabsTrigger value="select">1. Select Fields ({columnOrder.length})</TabsTrigger>
-                <TabsTrigger value="arrange">2. Arrange Order</TabsTrigger>
-              </TabsList>
+            <div className="flex min-h-0 min-w-0 shrink-0 flex-col border-b bg-background px-3 py-2 sm:px-6">
+              <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <TabsList className="grid h-auto w-full grid-cols-2 sm:h-9 sm:max-w-md">
+                  <TabsTrigger value="select" className="px-2 text-xs sm:text-sm">
+                    1. Select Fields ({columnOrder.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="arrange" className="px-2 text-xs sm:text-sm">
+                    2. Arrange Order
+                  </TabsTrigger>
+                </TabsList>
 
-              {/* Format Selector */}
-              <div className="flex items-center gap-3">
-                <Label className="text-sm text-muted-foreground">Format:</Label>
-                <Select value={format} onValueChange={(v: any) => setFormat(v)}>
-                  <SelectTrigger className="w-[200px] h-8">
-                    <SelectValue />
-                  </SelectTrigger>
+                <div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:gap-3">
+                  <Label className="text-sm text-muted-foreground sm:shrink-0">Format:</Label>
+                  <Select value={format} onValueChange={(v: any) => setFormat(v)}>
+                    <SelectTrigger className="h-9 w-full sm:w-[200px]">
+                      <SelectValue />
+                    </SelectTrigger>
                   <SelectContent>
                     {FORMAT_OPTIONS.map(opt => (
                       <SelectItem key={opt.value} value={opt.value}>
@@ -692,6 +697,7 @@ export function SalesExport({ filters }: { filters: SalesFilters }) {
                     ))}
                   </SelectContent>
                 </Select>
+                </div>
               </div>
             </div>
 
@@ -729,7 +735,7 @@ export function SalesExport({ filters }: { filters: SalesFilters }) {
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-6">
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6">
                 <div className="grid gap-6 pb-10">
                   {Object.entries(FIELD_CONFIG).map(([catKey, category]) => {
                     // @ts-ignore
@@ -757,7 +763,7 @@ export function SalesExport({ filters }: { filters: SalesFilters }) {
                             </Badge>
                           </Label>
                         </div>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pl-6">
+                        <div className="grid grid-cols-1 gap-3 pl-0 sm:grid-cols-2 sm:pl-6 md:grid-cols-4">
                           {matchingFields.map(fieldKey => (
                             <div
                               key={fieldKey}
@@ -868,12 +874,12 @@ export function SalesExport({ filters }: { filters: SalesFilters }) {
             </TabsContent>
           </Tabs>
 
-          <DialogFooter className="px-6 py-4 border-t bg-background z-10">
-            <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+          <DialogFooter className="z-10 flex shrink-0 flex-col gap-2 border-t bg-background px-4 py-3 sm:flex-row sm:justify-end sm:px-6 sm:py-4">
+            <Button variant="ghost" className="w-full sm:w-auto" onClick={() => setOpen(false)}>Cancel</Button>
             <Button
               onClick={handleDownload}
               disabled={columnOrder.length === 0 || mutation.isPending}
-              className="w-32"
+              className="w-full sm:w-32"
             >
               {mutation.isPending ? (
                 <span className="flex items-center gap-2"><Clock className="animate-spin h-4 w-4" /> Processing</span>

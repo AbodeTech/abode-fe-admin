@@ -8,6 +8,7 @@ import { Pagination } from "@/components/shared/Pagination";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { useState, useEffect } from "react";
+import { SuspensePageFallback } from "@/components/shared/page-content-loader";
 import { toast } from "sonner";
 
 function TopupTransactionsContent() {
@@ -31,7 +32,7 @@ function TopupTransactionsContent() {
           params.delete("search");
         }
         params.set("page", "1");
-        router.push(`?${params.toString()}`);
+        router.push(`?${params.toString()}`, { scroll: false });
       }
     }, 500);
 
@@ -65,13 +66,13 @@ function TopupTransactionsContent() {
   };
 
   return (
-    <div className="mt-4 space-y-4">
+    <div className="mx-auto mt-4 w-full min-w-0 max-w-[1600px] space-y-4 px-3 pb-16 sm:px-4 sm:pb-20">
       {/* Search Bar */}
-      <div className="relative bg-white max-w-2xl">
+      <div className="relative min-w-0 max-w-2xl bg-white">
         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           placeholder="Search for user by firstname, lastname or email"
-          className="pl-8 h-11 bg-white"
+          className="h-11 bg-white pl-8"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
@@ -92,7 +93,7 @@ function TopupTransactionsContent() {
       <TransactionDataPoints type="credit" />
 
       {/* Transaction Table */}
-      <div className="bg-white border border-[#E5EAEF] rounded-md overflow-hidden pb-6">
+      <div className="min-w-0 overflow-hidden rounded-md border border-[#E5EAEF] bg-white pb-6">
         <TopupTransactionsTable
           data={data?.data}
           isLoading={isLoading}
@@ -113,7 +114,7 @@ function TopupTransactionsContent() {
 
 export default function TopupTransactionsPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-center text-gray-500">Loading...</div>}>
+    <Suspense fallback={<SuspensePageFallback />}>
       <TopupTransactionsContent />
     </Suspense>
   );

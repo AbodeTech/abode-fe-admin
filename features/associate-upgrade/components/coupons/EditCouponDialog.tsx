@@ -71,7 +71,7 @@ export function EditCouponDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-h-[90vh] w-[calc(100vw-1.5rem)] max-w-lg overflow-y-auto sm:w-full">
         <DialogHeader>
           <DialogTitle>Edit Coupon</DialogTitle>
           <DialogDescription>Update coupon settings for {coupon.couponCode}.</DialogDescription>

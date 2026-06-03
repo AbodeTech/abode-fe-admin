@@ -16,7 +16,7 @@ export default async function ViewFlexAssetPage({ params }: PageProps) {
   const assetType = "flex";
 
   return (
-    <div className="max-w-[1600px] mx-auto px-4 py-8">
+    <div className="mx-auto mt-4 w-full min-w-0 max-w-[1600px] space-y-6 px-3 pb-16 sm:px-4 sm:pb-20">
       <AssetDetailHeader assetName={assetName} assetType={assetType} />
       <AssetDetailFilters />
       <AssetAnalyticsSection />

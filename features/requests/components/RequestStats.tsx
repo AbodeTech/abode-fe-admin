@@ -41,7 +41,7 @@ interface RequestStatsProps {
 
 export function RequestStats({ stats }: RequestStatsProps) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {cards.map((card, index) => {
         const Icon = card.icon;
         const raw = stats?.[card.key] ?? 0;
@@ -54,7 +54,7 @@ export function RequestStats({ stats }: RequestStatsProps) {
         return (
           <div
             key={card.key}
-            className={`${bg} rounded-xl p-6 border border-gray-200 hover:shadow-md transition-shadow`}
+            className={`${bg} min-w-0 rounded-xl p-4 sm:p-6 border border-gray-200 hover:shadow-md transition-shadow`}
           >
             <div className="flex items-start justify-between mb-4">
               <div className="p-3 rounded-lg bg-gray-100">
@@ -62,7 +62,7 @@ export function RequestStats({ stats }: RequestStatsProps) {
               </div>
             </div>
             <p className="text-sm text-gray-600 mb-1">{card.label}</p>
-            <p className="text-2xl font-bold text-gray-900">{display}</p>
+            <p className="text-xl font-bold wrap-break-word text-gray-900 sm:text-2xl">{display}</p>
           </div>
         );
       })}

@@ -7,6 +7,7 @@ import { Pagination } from "@/components/shared/Pagination";
 import { DefaultUsersTable, useDefaultUsers, useExportDefaultUsers } from "@/features/users";
 import { useSearchParams } from "next/navigation";
 import { Loader2, Download } from "lucide-react";
+import { PageContentLoader, SuspensePageFallback } from "@/components/shared/page-content-loader";
 
 const PAGE_SIZE = 25;
 
@@ -22,11 +23,7 @@ function DefaultUsersContent() {
   };
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-[calc(100vh-200px)]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <PageContentLoader label="Loading default users…" />;
   }
 
   if (error) {
@@ -42,10 +39,15 @@ function DefaultUsersContent() {
   const count = data?.count ?? 0;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold tracking-tight">Default Users</h2>
-        <Button variant="outline" onClick={handleExport} disabled={exportMutation.isPending}>
+    <div className="mx-auto mt-4 w-full min-w-0 max-w-[1600px] space-y-4 px-3 pb-20 sm:px-4">
+      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="text-xl font-bold tracking-tight sm:text-2xl">Default Users</h2>
+        <Button
+          variant="outline"
+          className="w-full shrink-0 sm:w-auto"
+          onClick={handleExport}
+          disabled={exportMutation.isPending}
+        >
           {exportMutation.isPending ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -60,12 +62,14 @@ function DefaultUsersContent() {
         </Button>
       </div>
 
-      <Card>
-        <CardHeader>
+      <Card className="min-w-0 overflow-hidden">
+        <CardHeader className="px-4">
           <CardTitle>Users in default status</CardTitle>
         </CardHeader>
-        <CardContent>
-          <DefaultUsersTable users={rows} />
+        <CardContent className="min-w-0 space-y-4 px-4">
+          <div className="min-w-0 overflow-x-auto">
+            <DefaultUsersTable users={rows} />
+          </div>
           <Pagination count={count} currentIdx={page} limit={PAGE_SIZE} />
         </CardContent>
       </Card>
@@ -75,7 +79,7 @@ function DefaultUsersContent() {
 
 export default function DefaultUsersPage() {
   return (
-    <Suspense fallback={<div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+    <Suspense fallback={<SuspensePageFallback />}>
       <DefaultUsersContent />
     </Suspense>
   );

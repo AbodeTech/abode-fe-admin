@@ -20,15 +20,15 @@ export function AdminLogsExport({ filters }: { filters: AdminLogFilters }) {
     try {
       await mutateAsync({ filters, format });
       toast.success(`Admin logs ${format.toUpperCase()} download started`);
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to export logs");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to export logs");
     }
   };
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" disabled={isPending}>
+        <Button variant="outline" size="sm" className="w-full shrink-0 sm:w-auto" disabled={isPending}>
           <Download className="h-4 w-4 mr-2" /> Export
         </Button>
       </DropdownMenuTrigger>

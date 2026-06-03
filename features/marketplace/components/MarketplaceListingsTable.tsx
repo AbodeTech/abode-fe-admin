@@ -10,17 +10,15 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  ShoppingCart,
-  User as UserIcon,
-  Calendar,
-  DollarSign,
-  Eye,
-  Ban,
-  CheckCircle,
-} from "lucide-react";
+import { ShoppingCart, User as UserIcon, Calendar, Ban, CheckCircle } from "lucide-react";
 import { format } from "date-fns";
 import type { MarketplaceListingAdmin } from "../hooks/use-marketplace-listings";
+import {
+  AdminDesktopTableWrap,
+  AdminMobileCard,
+  AdminMobileField,
+  AdminMobileStack,
+} from "@/components/shared/admin-responsive-table";
 
 interface MarketplaceListingsTableProps {
   data: MarketplaceListingAdmin[] | null | undefined;
@@ -88,58 +86,101 @@ export function MarketplaceListingsTable({
   }
 
   return (
-    <div className="w-full">
-      <Table>
-        <TableHeader className="bg-[#F9FAFB] border-b border-[#E5EAEF]">
+    <>
+      <AdminMobileStack className="space-y-3">
+        {data.map((listing) => (
+          <AdminMobileCard
+            key={listing._id}
+            title={
+              listing.seller ? `${listing.seller.firstName} ${listing.seller.lastName}` : "N/A"
+            }
+            subtitle={listing.asset?.asset_name || "N/A"}
+          >
+            <AdminMobileField label="Price" value={formatCurrency(listing.listing_price)} />
+            <AdminMobileField label="Type" value={listing.asset_type} />
+            <AdminMobileField label="Units" value={listing.no_of_units} />
+            <AdminMobileField
+              label="Status"
+              value={
+                <Badge variant="outline" className={`${statusStyles[listing.status] || statusStyles.cancelled} font-medium border`}>
+                  {statusLabels[listing.status] || listing.status}
+                </Badge>
+              }
+            />
+            <AdminMobileField label="Listed" value={formatDate(listing.listed_at || listing.createdAt)} />
+            <div className="flex justify-end gap-1 border-t border-border pt-2">
+              {listing.status === "active" && onSuspend && (
+                <Button variant="outline" size="sm" onClick={() => onSuspend(listing)}>
+                  <Ban className="mr-1 h-4 w-4" />
+                  Suspend
+                </Button>
+              )}
+              {listing.status === "suspended" && onUnsuspend && (
+                <Button variant="outline" size="sm" onClick={() => onUnsuspend(listing)}>
+                  <CheckCircle className="mr-1 h-4 w-4" />
+                  Unsuspend
+                </Button>
+              )}
+            </div>
+          </AdminMobileCard>
+        ))}
+      </AdminMobileStack>
+
+      <AdminDesktopTableWrap>
+    <div className="min-w-0 w-full overflow-x-auto rounded-lg border border-[#E5EAEF]">
+      <Table className="min-w-[720px]">
+        <TableHeader className="border-b border-[#E5EAEF] bg-[#F9FAFB]">
           <TableRow className="text-xs font-medium text-[#5D6679]">
-            <TableHead className="py-4 px-4 font-medium">
+            <TableHead className="px-3 py-3 font-medium sm:px-4 sm:py-4">
               <div className="flex items-center gap-2">
-                <UserIcon className="h-4 w-4" />
+                <UserIcon className="h-4 w-4 shrink-0" />
                 Seller
               </div>
             </TableHead>
-            <TableHead className="py-4 px-4 font-medium">Asset</TableHead>
-            <TableHead className="py-4 px-4 font-medium">
-              <div className="flex items-center gap-2">
-                Price
-              </div>
+            <TableHead className="px-3 py-3 font-medium sm:px-4 sm:py-4">Asset</TableHead>
+            <TableHead className="px-3 py-3 font-medium sm:px-4 sm:py-4">
+              <div className="flex items-center gap-2">Price</div>
             </TableHead>
-            <TableHead className="py-4 px-4 font-medium">Type</TableHead>
-            <TableHead className="py-4 px-4 font-medium text-center">Units</TableHead>
-            <TableHead className="py-4 px-4 font-medium">Status</TableHead>
-            <TableHead className="py-4 px-4 font-medium">
+            <TableHead className="px-3 py-3 font-medium sm:px-4 sm:py-4">Type</TableHead>
+            <TableHead className="px-3 py-3 text-center font-medium sm:px-4 sm:py-4">Units</TableHead>
+            <TableHead className="px-3 py-3 font-medium sm:px-4 sm:py-4">Status</TableHead>
+            <TableHead className="px-3 py-3 font-medium sm:px-4 sm:py-4">
               <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
+                <Calendar className="h-4 w-4 shrink-0" />
                 Listed
               </div>
             </TableHead>
-            <TableHead className="py-4 px-4 font-medium">Actions</TableHead>
+            <TableHead className="px-3 py-3 font-medium sm:px-4 sm:py-4">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {data.map((listing) => (
             <TableRow
               key={listing._id}
-              className="hover:bg-gray-50 transition-colors border-b border-[#E5EAEF] bg-white"
+              className="border-b border-[#E5EAEF] bg-white transition-colors hover:bg-gray-50"
             >
-              <TableCell className="py-5 px-4 text-sm font-medium text-[#333333]">
-                {listing.seller
-                  ? `${listing.seller.firstName} ${listing.seller.lastName}`
-                  : "N/A"}
+              <TableCell className="max-w-[10rem] px-3 py-4 text-sm font-medium text-[#333333] sm:px-4 sm:py-5">
+                <span className="line-clamp-2 wrap-break-word" title={listing.seller ? `${listing.seller.firstName} ${listing.seller.lastName}` : undefined}>
+                  {listing.seller
+                    ? `${listing.seller.firstName} ${listing.seller.lastName}`
+                    : "N/A"}
+                </span>
               </TableCell>
-              <TableCell className="py-5 px-4 text-sm text-[#667085]">
-                {listing.asset?.asset_name || "N/A"}
+              <TableCell className="max-w-[12rem] px-3 py-4 text-sm text-[#667085] sm:px-4 sm:py-5">
+                <span className="line-clamp-2 wrap-break-word" title={listing.asset?.asset_name ?? undefined}>
+                  {listing.asset?.asset_name || "N/A"}
+                </span>
               </TableCell>
-              <TableCell className="py-5 px-4 text-sm font-semibold text-[#333333]">
+              <TableCell className="px-3 py-4 text-sm font-semibold tabular-nums wrap-break-word text-[#333333] sm:px-4 sm:py-5">
                 {formatCurrency(listing.listing_price)}
               </TableCell>
-              <TableCell className="py-5 px-4 text-sm text-[#667085] capitalize">
+              <TableCell className="px-3 py-4 text-sm capitalize text-[#667085] sm:px-4 sm:py-5">
                 {listing.asset_type}
               </TableCell>
-              <TableCell className="py-5 px-4 text-sm text-[#333333] text-center font-medium">
+              <TableCell className="px-3 py-4 text-center text-sm font-medium text-[#333333] sm:px-4 sm:py-5">
                 {listing.no_of_units}
               </TableCell>
-              <TableCell className="py-5 px-4">
+              <TableCell className="px-3 py-4 sm:px-4 sm:py-5">
                 <Badge
                   variant="outline"
                   className={`${statusStyles[listing.status] || statusStyles.cancelled} font-medium border`}
@@ -147,10 +188,10 @@ export function MarketplaceListingsTable({
                   {statusLabels[listing.status] || listing.status}
                 </Badge>
               </TableCell>
-              <TableCell className="py-5 px-4 text-sm text-[#333333]">
+              <TableCell className="whitespace-nowrap px-3 py-4 text-sm text-[#333333] sm:px-4 sm:py-5">
                 {formatDate(listing.listed_at || listing.createdAt)}
               </TableCell>
-              <TableCell className="py-5 px-4">
+              <TableCell className="px-3 py-4 sm:px-4 sm:py-5">
                 <div className="flex items-center gap-1">
                   {listing.status === "active" && onSuspend && (
                     <Button
@@ -181,5 +222,7 @@ export function MarketplaceListingsTable({
         </TableBody>
       </Table>
     </div>
+      </AdminDesktopTableWrap>
+    </>
   );
 }

@@ -41,8 +41,6 @@ export interface UseTopAssociatesParams {
   sortBy?: string;
   startDate?: string | null;
   endDate?: string | null;
-  assetType?: string | null;
-  assetName?: string | null;
 }
 
 export const DEFAULT_TOP_ASSOCIATES_LIMIT = 25;
@@ -60,13 +58,9 @@ export const useTopAssociates = (params: UseTopAssociatesParams) => {
     sortBy = DEFAULT_TOP_ASSOCIATES_SORT,
     startDate,
     endDate,
-    assetType,
-    assetName,
   } = params;
 
   // assetType / assetName intentionally not sent — BE branch doesn't accept them yet.
-  void assetType;
-  void assetName;
   const variables = {
     page,
     limit,

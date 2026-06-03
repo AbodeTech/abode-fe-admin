@@ -40,31 +40,34 @@ export default function TopAssociates({ data }: TopAssociatesProps) {
   const topAssociates = useFragment(TopAssociatesFragment, topAssociatesRaw);
 
   return (
-    <section className="bg-white rounded-xl p-6 mt-6 shadow-sm">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-bold">Top Associates</h3>
-        <Button variant="outline" size="sm" asChild>
+    <section className="rounded-xl bg-white p-4 shadow-sm sm:p-6">
+      <div className="mb-3 flex flex-col gap-2 sm:mb-4 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+        <h3 className="text-base font-bold sm:text-lg">Top Associates</h3>
+        <Button variant="outline" size="sm" className="w-full shrink-0 sm:w-auto" asChild>
           <Link href="/associates">View All</Link>
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 gap-y-6">
+      <div className="grid grid-cols-1 gap-y-4 sm:gap-y-6">
         {topAssociates.map((associate, idx) => (
-          <div key={idx} className="flex items-start">
-            <Avatar className="h-12 w-12">
-              <AvatarFallback className="bg-primary/10 text-primary">
-                {associate.firstName?.[0]?.toUpperCase()}{associate.lastName?.[0]?.toUpperCase()}
+          <div key={idx} className="flex min-w-0 items-start gap-3 sm:gap-4">
+            <Avatar className="h-11 w-11 shrink-0 sm:h-12 sm:w-12">
+              <AvatarFallback className="bg-primary/10 text-primary text-xs sm:text-sm">
+                {associate.firstName?.[0]?.toUpperCase()}
+                {associate.lastName?.[0]?.toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <div className="ml-4">
-              <h3 className="font-medium text-sm capitalize">
+            <div className="min-w-0 flex-1">
+              <h3 className="line-clamp-2 text-sm font-medium capitalize">
                 {associate.firstName} {associate.lastName}
               </h3>
-              <p className="text-xs text-gray-500">{associate.email}</p>
+              <p className="mt-1 truncate text-xs text-gray-500" title={associate.email ?? undefined}>
+                {associate.email}
+              </p>
             </div>
-            <div className="ml-auto text-right">
-              <h3 className="font-bold text-sm">{formatCurrency(associate.amount_brought)}</h3>
-              <p className="text-xs text-gray-500 mt-1">
+            <div className="shrink-0 text-right">
+              <h3 className="text-xs font-bold tabular-nums sm:text-sm">{formatCurrency(associate.amount_brought)}</h3>
+              <p className="mt-1 text-xs text-gray-500">
                 Ref: {associate.no_of_referral}
               </p>
             </div>

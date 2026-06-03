@@ -26,7 +26,7 @@ export function Pagination({ count, currentIdx = 1, limit = 10 }: PaginationProp
   };
 
   const handlePageChange = (page: number) => {
-    router.push(createPageURL(page));
+    router.push(createPageURL(page), { scroll: false });
   };
 
   if (totalPages <= 1) return null;
@@ -62,22 +62,22 @@ export function Pagination({ count, currentIdx = 1, limit = 10 }: PaginationProp
   };
 
   return (
-    <div className="flex items-center justify-between px-2 py-4">
-      <div className="text-sm text-gray-500">
+    <div className="flex min-w-0 flex-col gap-3 px-0 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-2">
+      <div className="shrink-0 text-center text-xs text-gray-500 sm:text-left sm:text-sm">
         Page {currentPage} of {totalPages}
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex min-w-0 items-center justify-center gap-2 sm:justify-end">
         <Button
           variant="outline"
           size="icon"
           onClick={() => handlePageChange(currentPage - 1)}
           disabled={currentPage <= 1}
-          className="h-8 w-8"
+          className="h-9 w-9 shrink-0 sm:h-8 sm:w-8"
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
 
-        <div className="flex items-center gap-1">
+        <div className="flex max-w-[min(100%,16rem)] flex-wrap items-center justify-center gap-1 overflow-x-auto sm:max-w-none">
           {getPageNumbers().map((page, index) => (
             page === "..." ? (
               <span key={`ellipsis-${index}`} className="px-2 text-gray-400">...</span>
@@ -87,7 +87,7 @@ export function Pagination({ count, currentIdx = 1, limit = 10 }: PaginationProp
                 variant={currentPage === page ? "default" : "outline"}
                 size="sm"
                 onClick={() => handlePageChange(Number(page))}
-                className={`h-8 w-8 p-0 ${currentPage === page ? "pointer-events-none" : ""}`}
+                className={`h-9 w-9 p-0 sm:h-8 sm:w-8 ${currentPage === page ? "pointer-events-none" : ""}`}
               >
                 {page}
               </Button>
@@ -100,7 +100,7 @@ export function Pagination({ count, currentIdx = 1, limit = 10 }: PaginationProp
           size="icon"
           onClick={() => handlePageChange(currentPage + 1)}
           disabled={currentPage >= totalPages}
-          className="h-8 w-8"
+          className="h-9 w-9 shrink-0 sm:h-8 sm:w-8"
         >
           <ChevronRight className="h-4 w-4" />
         </Button>

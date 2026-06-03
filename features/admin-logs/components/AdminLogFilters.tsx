@@ -4,19 +4,20 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
-export function AdminLogFilters() {
+function AdminLogFiltersForm({
+  initialEmail,
+  initialAction,
+}: {
+  initialEmail: string;
+  initialAction: string;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [email, setEmail] = useState("");
-  const [action, setAction] = useState("all");
-
-  useEffect(() => {
-    setEmail(searchParams.get("query") || "");
-    setAction(searchParams.get("action") || "all");
-  }, [searchParams]);
+  const [email, setEmail] = useState(initialEmail);
+  const [action, setAction] = useState(initialAction);
 
   const applyFilters = () => {
     const params = new URLSearchParams(searchParams.toString());
@@ -25,20 +26,20 @@ export function AdminLogFilters() {
     if (action !== "all") params.set("action", action);
     else params.delete("action");
     params.set("page", "1");
-    router.push(`?${params.toString()}`);
+    router.push(`?${params.toString()}`, { scroll: false });
   };
 
   return (
-    <div className="flex flex-wrap gap-3 items-center">
+    <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
       <Input
         placeholder="Search by admin email"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && applyFilters()}
-        className="w-64"
+        className="min-w-0 w-full sm:w-64"
       />
       <Select value={action} onValueChange={setAction}>
-        <SelectTrigger className="w-[180px]">
+        <SelectTrigger className="w-full sm:w-[180px]">
           <SelectValue placeholder="Action" />
         </SelectTrigger>
         <SelectContent>
@@ -56,7 +57,19 @@ export function AdminLogFilters() {
           <SelectItem value="edit-wallet-details">Edit Wallet Details</SelectItem>
         </SelectContent>
       </Select>
-      <Button onClick={applyFilters}>Apply</Button>
+      <Button className="w-full shrink-0 sm:w-auto" onClick={applyFilters}>
+        Apply
+      </Button>
     </div>
   );
+}
+
+/** Remounts when URL query changes so draft fields stay in sync without syncing in an effect. */
+export function AdminLogFilters() {
+  const searchParams = useSearchParams();
+  const initialEmail = searchParams.get("query") || "";
+  const initialAction = searchParams.get("action") || "all";
+  const syncKey = `${initialEmail}\0${initialAction}`;
+
+  return <AdminLogFiltersForm key={syncKey} initialEmail={initialEmail} initialAction={initialAction} />;
 }

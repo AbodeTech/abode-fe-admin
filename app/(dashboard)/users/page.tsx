@@ -14,6 +14,7 @@ import { DateFilter } from "@/components/shared/DateFilter";
 import { Input } from "@/components/ui/input";
 import { ArrowRight, Search } from "lucide-react";
 import Link from "next/link";
+import { SuspensePageFallback } from "@/components/shared/page-content-loader";
 
 function UsersPageContent() {
   const searchParams = useSearchParams();
@@ -39,7 +40,7 @@ function UsersPageContent() {
           params.delete("search");
         }
         params.set("page", "1");
-        router.push(`?${params.toString()}`);
+        router.push(`?${params.toString()}`, { scroll: false });
       }
       setIsSearchPending(false);
     }, 500);
@@ -80,31 +81,33 @@ function UsersPageContent() {
   const totalCount = data?.count || 0;
 
   return (
-    <div className="mt-4 space-y-4">
-      <div className="flex justify-between items-start gap-4 flex-wrap">
-        <div>
-          <div className="flex items-center gap-4">
+    <div className="mx-auto mt-4 w-full min-w-0 max-w-[1600px] space-y-4 px-3 pb-20 sm:px-4">
+      <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <div className="flex min-[400px]:flex-row min-[400px]:items-center min-[400px]:gap-4 flex-col gap-2">
             <h1 className="text-2xl font-semibold text-[#101828]">Users</h1>
             <Link
               href="/analytics/users"
-              className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline group"
+              className="group inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
             >
               View Analytics
-              <ArrowRight className="size-4 group-hover:translate-x-0.5 transition-transform" />
+              <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
             </Link>
           </div>
-          <p className="text-sm text-[#667085] mt-1">Manage all users and their details</p>
+          <p className="mt-1 text-sm text-[#667085]">Manage all users and their details</p>
         </div>
-        <UsersPageActions />
+        <div className="w-full min-w-0 sm:w-auto sm:shrink-0">
+          <UsersPageActions />
+        </div>
       </div>
 
       <SystemUserOverview startDate={startDate} endDate={endDate} />
 
       <div className="relative w-full sm:max-w-md">
-        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           placeholder="Search by name, email..."
-          className="pl-8 h-10 bg-white"
+          className="h-10 bg-white pl-8"
           value={searchTerm}
           onChange={(e) => {
             setSearchTerm(e.target.value);
@@ -113,7 +116,7 @@ function UsersPageContent() {
         />
       </div>
 
-      <div className="flex flex-wrap gap-3">
+      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap">
         <FilterSelect
           data={[
             { label: "Has Asset - all", value: "all" },
@@ -159,13 +162,13 @@ function UsersPageContent() {
         <DateFilter />
       </div>
 
-      <div className="bg-white border border-[#E5EAEF] rounded-lg overflow-hidden">
+      <div className="overflow-hidden rounded-lg border border-[#E5EAEF] bg-white">
         <div className="overflow-x-auto">
           <UsersTable data={users} isLoading={isLoading || isSearchPending} />
         </div>
 
         {!isLoading && totalCount > 0 && (
-          <div className="px-6 py-4 border-t border-[#E5EAEF]">
+          <div className="border-t border-[#E5EAEF] px-4 py-4">
             <Pagination count={totalCount} currentIdx={page} limit={limit} />
           </div>
         )}
@@ -176,7 +179,7 @@ function UsersPageContent() {
 
 export default function UsersPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-center text-gray-500">Loading...</div>}>
+    <Suspense fallback={<SuspensePageFallback />}>
       <UsersPageContent />
     </Suspense>
   );

@@ -109,12 +109,12 @@ export function CreateUpgradeTransactionDialog() {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
-        <Button>
+        <Button className="w-full shrink-0 sm:w-auto">
           <Plus className="h-4 w-4 mr-2" />
           Create Transaction
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[620px]">
+      <DialogContent className="max-h-[90vh] w-[calc(100vw-1.5rem)] max-w-[620px] overflow-y-auto sm:w-full">
         <DialogHeader>
           <DialogTitle>Create Upgrade Transaction</DialogTitle>
           <DialogDescription>Enter details to create a manual associate upgrade transaction.</DialogDescription>
@@ -124,15 +124,15 @@ export function CreateUpgradeTransactionDialog() {
           <div className="space-y-2 relative">
             <Label>Search User</Label>
             {selectedUser ? (
-              <div className="flex items-center justify-between p-3 border rounded-md bg-gray-50">
-                <div>
+              <div className="flex flex-col gap-3 rounded-md border bg-gray-50 p-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
                   <p className="font-medium text-sm">{selectedUser.firstName} {selectedUser.lastName}</p>
                   <p className="text-xs text-gray-500">{selectedUser.email}</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setSelectedUser(null)}
-                  className="inline-flex items-center gap-1 text-xs text-red-500 hover:text-red-700"
+                  className="inline-flex shrink-0 items-center gap-1 self-start text-xs text-red-500 hover:text-red-700 sm:self-center"
                 >
                   <X className="h-3 w-3" />
                   Change

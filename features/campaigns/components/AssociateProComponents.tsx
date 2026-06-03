@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { AdminDesktopTableWrap, AdminMobileCard, AdminMobileField, AdminMobileStack } from "@/components/shared/admin-responsive-table";
 import { FragmentType, graphql, useFragment } from "@/lib/gql";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -189,14 +190,14 @@ export function AssociateProMetricsSection({ dashboard }: AssociateProMetricsSec
   const data = useFragment(AssociateProMetricsSectionDashboardFragment, dashboard);
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      <Card className="bg-card border-border">
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">Pro Signup Goal</CardTitle>
-          <TrendingUp className="h-4 w-4 text-foreground" />
+    <div className="grid min-w-0 gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <Card className="min-w-0 overflow-hidden bg-card border-border">
+        <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
+          <CardTitle className="min-w-0 wrap-break-word text-sm font-medium text-muted-foreground">Pro Signup Goal</CardTitle>
+          <TrendingUp className="h-4 w-4 shrink-0 text-foreground" />
         </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold text-foreground">
+        <CardContent className="min-w-0">
+          <div className="min-w-0 max-w-full break-all text-xl font-bold tabular-nums text-foreground sm:text-2xl">
             {data.associateProProgress.currentAssociatePro.toLocaleString()}
             <span className="text-sm font-normal text-muted-foreground">
               {" "}/ {data.associateProProgress.targetAssociatePro.toLocaleString()}
@@ -207,13 +208,13 @@ export function AssociateProMetricsSection({ dashboard }: AssociateProMetricsSec
         </CardContent>
       </Card>
 
-      <Card className="bg-card border-border">
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">Total Revenue</CardTitle>
-          <Banknote className="h-4 w-4 text-foreground" />
+      <Card className="min-w-0 overflow-hidden bg-card border-border">
+        <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
+          <CardTitle className="min-w-0 wrap-break-word text-sm font-medium text-muted-foreground">Total Revenue</CardTitle>
+          <Banknote className="h-4 w-4 shrink-0 text-foreground" />
         </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold text-foreground">{formatCurrency(data.revenueMetrics.totalRevenue)}</div>
+        <CardContent className="min-w-0">
+          <div className="min-w-0 max-w-full break-all text-xl font-bold text-foreground sm:text-2xl">{formatCurrency(data.revenueMetrics.totalRevenue)}</div>
           <Progress value={data.revenueMetrics.percentageComplete} className="mt-2 h-2" />
           <p className="mt-1 text-xs text-muted-foreground">
             {data.revenueMetrics.percentageComplete.toFixed(1)}% of {formatCurrency(data.revenueMetrics.revenueGoal)} goal
@@ -221,24 +222,26 @@ export function AssociateProMetricsSection({ dashboard }: AssociateProMetricsSec
         </CardContent>
       </Card>
 
-      <Card className="bg-card border-border">
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">Days Remaining</CardTitle>
-          <Calendar className="h-4 w-4 text-foreground" />
+      <Card className="min-w-0 overflow-hidden bg-card border-border">
+        <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
+          <CardTitle className="min-w-0 wrap-break-word text-sm font-medium text-muted-foreground">Days Remaining</CardTitle>
+          <Calendar className="h-4 w-4 shrink-0 text-foreground" />
         </CardHeader>
-        <CardContent>
+        <CardContent className="min-w-0">
           <div className="text-2xl font-bold text-foreground">{data.campaignPeriod.daysRemaining}</div>
           <p className="mt-1 text-xs text-muted-foreground">Campaign ends {formatDate(data.campaignPeriod.endDate)}</p>
         </CardContent>
       </Card>
 
-      <Card className="bg-card border-border">
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">Raffle Tickets</CardTitle>
-          <Ticket className="h-4 w-4 text-foreground" />
+      <Card className="min-w-0 overflow-hidden bg-card border-border">
+        <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
+          <CardTitle className="min-w-0 wrap-break-word text-sm font-medium text-muted-foreground">Raffle Tickets</CardTitle>
+          <Ticket className="h-4 w-4 shrink-0 text-foreground" />
         </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold text-foreground">{data.ticketMetrics.totalTicketsIssued.toLocaleString()}</div>
+        <CardContent className="min-w-0">
+          <div className="min-w-0 max-w-full break-all text-xl font-bold tabular-nums text-foreground sm:text-2xl">
+            {data.ticketMetrics.totalTicketsIssued.toLocaleString()}
+          </div>
           <p className="mt-1 text-xs text-muted-foreground">Tickets issued to Pro members</p>
         </CardContent>
       </Card>
@@ -258,13 +261,14 @@ export function AssociateProConversionFunnel({ dashboard }: AssociateProConversi
   const maxDaily = Math.max(...daily.map((point) => point.count), 1);
 
   return (
-    <Card className="bg-card border-border">
+    <Card className="min-w-0 overflow-hidden bg-card border-border">
       <CardHeader>
         <CardTitle className="text-foreground">Conversion Funnels</CardTitle>
         <CardDescription>Track conversions to Associate Pro from different sources</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="mb-8 grid gap-6 md:grid-cols-2">
+        <div className="mb-8 min-w-0 overflow-x-auto">
+        <div className="grid min-w-[520px] gap-6 md:grid-cols-2">
           <div className="rounded-lg border border-border p-4">
             <h3 className="mb-4 text-center text-sm font-medium text-muted-foreground">User to Associate Pro</h3>
             <div className="flex flex-col items-center gap-2">
@@ -317,6 +321,7 @@ export function AssociateProConversionFunnel({ dashboard }: AssociateProConversi
             </div>
           </div>
         </div>
+        </div>
 
         <div>
           <h3 className="mb-4 text-sm font-medium text-muted-foreground">Daily Pro Conversions (User to Pro)</h3>
@@ -354,29 +359,30 @@ export function AssociateProFinancialOverview({ dashboard }: AssociateProFinanci
   const max = Math.max(...trend.map((point) => point.amount), 1);
 
   return (
-    <Card className="bg-card border-border">
+    <Card className="min-w-0 overflow-hidden bg-card border-border">
       <CardHeader>
         <CardTitle className="text-foreground">Financial Overview</CardTitle>
         <CardDescription>Revenue collection and payment status</CardDescription>
       </CardHeader>
-      <CardContent>
-        <div className="mb-6 grid grid-cols-2 gap-4">
-          <div className="rounded-lg bg-primary/10 p-4">
+      <CardContent className="min-w-0">
+        <div className="mb-6 grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="min-w-0 rounded-lg bg-primary/10 p-4">
             <p className="text-sm text-muted-foreground">Collected</p>
-            <p className="text-xl font-bold text-primary">{formatCurrency(data.revenueMetrics.totalRevenue)}</p>
+            <p className="break-all text-lg font-bold text-primary sm:text-xl">{formatCurrency(data.revenueMetrics.totalRevenue)}</p>
           </div>
-          <div className="rounded-lg bg-secondary p-4">
+          <div className="min-w-0 rounded-lg bg-secondary p-4">
             <p className="text-sm text-muted-foreground">Goal</p>
-            <p className="text-xl font-bold text-foreground">{formatCurrency(data.revenueMetrics.revenueGoal)}</p>
+            <p className="break-all text-lg font-bold text-foreground sm:text-xl">{formatCurrency(data.revenueMetrics.revenueGoal)}</p>
           </div>
         </div>
 
-        <div className="space-y-2">
-          <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
+        <div className="min-w-0 space-y-2">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
             <span>Daily Revenue Trend</span>
-            <span>{formatCurrency(max)} max</span>
+            <span className="break-all">{formatCurrency(max)} max</span>
           </div>
-          <div className="flex h-[180px] items-end gap-2">
+          <div className="min-w-0 overflow-x-auto pb-1">
+            <div className="flex h-[180px] min-w-[360px] items-end gap-2">
             {trend.slice(-10).map((point) => (
               <div key={point.date} className="flex flex-1 flex-col items-center gap-1">
                 <div className="flex w-full items-end justify-center" style={{ height: "150px" }}>
@@ -390,6 +396,7 @@ export function AssociateProFinancialOverview({ dashboard }: AssociateProFinanci
                 </span>
               </div>
             ))}
+            </div>
           </div>
         </div>
       </CardContent>
@@ -398,7 +405,7 @@ export function AssociateProFinancialOverview({ dashboard }: AssociateProFinanci
 }
 
 interface AssociateProUpgradesTableProps {
-  data: Array<FragmentType<typeof AssociateProUpgradeDetailFragment>>;
+  data: Array<FragmentType<typeof AssociateProRecruitmentUserFragment> | null> | null | undefined;
 }
 
 const statusBadge = (status: string) => {
@@ -416,52 +423,69 @@ const statusBadge = (status: string) => {
 };
 
 export function AssociateProUpgradesTable({ data }: AssociateProUpgradesTableProps) {
-  const upgrades = useFragment(AssociateProUpgradeDetailFragment, data);
+  const safeRows = (data ?? []).filter(
+    (item): item is NonNullable<typeof item> => item !== null
+  );
+  const pros = useFragment(AssociateProRecruitmentUserFragment, safeRows);
 
   return (
-    <Card className="bg-card border-border">
+    <Card className="min-w-0 overflow-hidden bg-card border-border">
       <CardHeader>
         <CardTitle className="text-foreground">Recent Pro Upgrades</CardTitle>
-        <CardDescription>Latest members who upgraded from Associate to Pro</CardDescription>
+        <CardDescription>Members currently marked as Associate Pro</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="border-border hover:bg-transparent">
-                <TableHead className="text-muted-foreground">Name</TableHead>
-                <TableHead className="text-muted-foreground">User Since</TableHead>
-                <TableHead className="text-muted-foreground">Associate Since</TableHead>
-                <TableHead className="text-muted-foreground">Pro Since</TableHead>
-                <TableHead className="text-muted-foreground">Payment</TableHead>
-                <TableHead className="text-muted-foreground">Status</TableHead>
-                <TableHead className="text-muted-foreground">Referrer</TableHead>
-                <TableHead className="text-muted-foreground">Ticket #</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {upgrades.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={8} className="py-4 text-center text-muted-foreground">
-                    No records found.
-                  </TableCell>
-                </TableRow>
-              )}
-              {upgrades.map((upgrade) => (
-                <TableRow key={upgrade.upgradeId} className="border-border">
-                  <TableCell className="font-medium text-foreground">{upgrade.userFullName ?? "-"}</TableCell>
-                  <TableCell className="text-muted-foreground">{formatDate(upgrade.userSince)}</TableCell>
-                  <TableCell className="text-muted-foreground">{formatDate(upgrade.associateSince)}</TableCell>
-                  <TableCell className="text-foreground">{formatDate(upgrade.associateProSince)}</TableCell>
-                  <TableCell className="text-foreground">{formatCurrency(upgrade.amountPaid)}</TableCell>
-                  <TableCell>{statusBadge(upgrade.adminStatus)}</TableCell>
-                  <TableCell className="text-muted-foreground">{upgrade.referrerFullName ?? "-"}</TableCell>
-                  <TableCell className="font-mono text-xs text-foreground">{upgrade.ticketId ?? "-"}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+        {pros.length === 0 ? (
+          <p className="py-4 text-center text-sm text-muted-foreground">No records found.</p>
+        ) : (
+          <>
+            <AdminMobileStack className="px-0.5">
+              {pros.map((pro) => {
+                const fullName = [pro.firstName, pro.lastName].filter(Boolean).join(" ") || "—";
+                const referrerName = pro.referral
+                  ? [pro.referral.firstName, pro.referral.lastName].filter(Boolean).join(" ") || pro.referral.email || "—"
+                  : "—";
+                return (
+                  <AdminMobileCard key={pro._id ?? pro.email ?? fullName} title={fullName}>
+                    <AdminMobileField label="Email" value={pro.email ?? "—"} />
+                    <AdminMobileField label="User since" value={formatDate(pro.createdAt)} />
+                    <AdminMobileField label="Referrer" value={referrerName} />
+                  </AdminMobileCard>
+                );
+              })}
+            </AdminMobileStack>
+            <AdminDesktopTableWrap>
+              <div className="min-w-0 overflow-x-auto">
+                <Table className="min-w-[720px]">
+                  <TableHeader>
+                    <TableRow className="border-border hover:bg-transparent">
+                      <TableHead className="text-muted-foreground">Name</TableHead>
+                      <TableHead className="text-muted-foreground">Email</TableHead>
+                      <TableHead className="text-muted-foreground">Referrer</TableHead>
+                      <TableHead className="text-muted-foreground">User Since</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pros.map((pro) => {
+                      const fullName = [pro.firstName, pro.lastName].filter(Boolean).join(" ") || "-";
+                      const referrerName = pro.referral
+                        ? [pro.referral.firstName, pro.referral.lastName].filter(Boolean).join(" ") || pro.referral.email || "-"
+                        : "-";
+                      return (
+                        <TableRow key={pro._id ?? pro.email ?? fullName} className="border-border">
+                          <TableCell className="font-medium text-foreground">{fullName}</TableCell>
+                          <TableCell className="text-muted-foreground">{pro.email ?? "-"}</TableCell>
+                          <TableCell className="text-muted-foreground">{referrerName}</TableCell>
+                          <TableCell className="text-muted-foreground">{formatDate(pro.createdAt)}</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </AdminDesktopTableWrap>
+          </>
+        )}
       </CardContent>
     </Card>
   );
@@ -496,17 +520,17 @@ export function AssociateProTopPerformers({ data }: AssociateProTopPerformersPro
   const maxRevenue = topByRevenue[0]?.totalRevenue ?? 1;
 
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      <Card className="bg-card border-border flex flex-col">
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <div className="space-y-1">
+    <div className="grid min-w-0 gap-4 lg:grid-cols-2">
+      <Card className="flex min-w-0 flex-col overflow-hidden bg-card border-border">
+        <CardHeader className="flex flex-col gap-3 pb-2 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 space-y-1">
             <CardTitle className="text-foreground">Most Referrals</CardTitle>
             <CardDescription>Leaders in Associate Pro conversions</CardDescription>
           </div>
           <Button
             variant="outline"
             size="sm"
-            className="h-8 gap-1"
+            className="h-8 w-full shrink-0 gap-1 sm:w-auto"
             onClick={() =>
               downloadCsv(
                 topByReferrals.map((row) => ({
@@ -522,39 +546,53 @@ export function AssociateProTopPerformers({ data }: AssociateProTopPerformersPro
             Export
           </Button>
         </CardHeader>
-        <CardContent className="flex flex-1 flex-col justify-between">
-          <Table>
-            <TableHeader>
-              <TableRow className="border-border hover:bg-transparent">
-                <TableHead className="w-[50%] text-muted-foreground">Name</TableHead>
-                <TableHead className="text-right text-muted-foreground">Conversions</TableHead>
-                <TableHead className="text-right text-muted-foreground">Performance</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {paginatedReferrals.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={3} className="py-4 text-center text-muted-foreground">
-                    No data available
-                  </TableCell>
-                </TableRow>
-              )}
-              {paginatedReferrals.map((row) => (
-                <TableRow key={row.referrerId} className="border-border">
-                  <TableCell className="py-3 font-medium text-foreground">
-                    <div className="flex flex-col">
-                      <span>{row.referrerFullName ?? "-"}</span>
-                      <span className="text-xs text-muted-foreground">{row.referrerEmail ?? "-"}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right font-bold text-foreground">{row.totalReferrals}</TableCell>
-                  <TableCell className="text-right">
-                    <Progress value={(row.totalReferrals / maxReferrals) * 100} className="ml-auto h-2 w-[60px]" />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        <CardContent className="flex min-w-0 flex-1 flex-col justify-between">
+          {paginatedReferrals.length === 0 ? (
+            <p className="py-4 text-center text-sm text-muted-foreground">No data available</p>
+          ) : (
+            <>
+              <AdminMobileStack className="px-0.5">
+                {paginatedReferrals.map((row) => (
+                  <AdminMobileCard key={row.referrerId} title={row.referrerFullName ?? "—"} subtitle={row.referrerEmail ?? undefined}>
+                    <AdminMobileField label="Conversions" value={row.totalReferrals} />
+                    <AdminMobileField
+                      label="Performance"
+                      value={<Progress value={(row.totalReferrals / maxReferrals) * 100} className="ml-auto h-2 w-full max-w-[120px]" />}
+                    />
+                  </AdminMobileCard>
+                ))}
+              </AdminMobileStack>
+              <AdminDesktopTableWrap>
+                <div className="min-w-0 overflow-x-auto">
+                  <Table className="min-w-[420px]">
+                    <TableHeader>
+                      <TableRow className="border-border hover:bg-transparent">
+                        <TableHead className="w-[50%] text-muted-foreground">Name</TableHead>
+                        <TableHead className="text-right text-muted-foreground">Conversions</TableHead>
+                        <TableHead className="text-right text-muted-foreground">Performance</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedReferrals.map((row) => (
+                        <TableRow key={row.referrerId} className="border-border">
+                          <TableCell className="py-3 font-medium text-foreground">
+                            <div className="flex flex-col">
+                              <span>{row.referrerFullName ?? "-"}</span>
+                              <span className="text-xs text-muted-foreground">{row.referrerEmail ?? "-"}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right font-bold text-foreground">{row.totalReferrals}</TableCell>
+                          <TableCell className="text-right">
+                            <Progress value={(row.totalReferrals / maxReferrals) * 100} className="ml-auto h-2 w-[60px]" />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </AdminDesktopTableWrap>
+            </>
+          )}
 
           {referralPages > 1 && (
             <div className="flex items-center justify-end space-x-2 py-4">
@@ -570,16 +608,16 @@ export function AssociateProTopPerformers({ data }: AssociateProTopPerformersPro
         </CardContent>
       </Card>
 
-      <Card className="bg-card border-border flex flex-col">
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <div className="space-y-1">
+      <Card className="flex min-w-0 flex-col overflow-hidden bg-card border-border">
+        <CardHeader className="flex flex-col gap-3 pb-2 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 space-y-1">
             <CardTitle className="text-foreground">Revenue Leaders</CardTitle>
             <CardDescription>Top revenue generated from direct referrals</CardDescription>
           </div>
           <Button
             variant="outline"
             size="sm"
-            className="h-8 gap-1"
+            className="h-8 w-full shrink-0 gap-1 sm:w-auto"
             onClick={() =>
               downloadCsv(
                 topByRevenue.map((row) => ({
@@ -595,39 +633,53 @@ export function AssociateProTopPerformers({ data }: AssociateProTopPerformersPro
             Export
           </Button>
         </CardHeader>
-        <CardContent className="flex flex-1 flex-col justify-between">
-          <Table>
-            <TableHeader>
-              <TableRow className="border-border hover:bg-transparent">
-                <TableHead className="w-[50%] text-muted-foreground">Name</TableHead>
-                <TableHead className="text-right text-muted-foreground">Revenue</TableHead>
-                <TableHead className="text-right text-muted-foreground">Share</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {paginatedRevenue.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={3} className="py-4 text-center text-muted-foreground">
-                    No data available
-                  </TableCell>
-                </TableRow>
-              )}
-              {paginatedRevenue.map((row) => (
-                <TableRow key={row.referrerId} className="border-border">
-                  <TableCell className="py-3 font-medium text-foreground">
-                    <div className="flex flex-col">
-                      <span>{row.referrerFullName ?? "-"}</span>
-                      <span className="text-xs text-muted-foreground">{row.referrerEmail ?? "-"}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right font-bold text-foreground">{formatCurrency(row.totalRevenue)}</TableCell>
-                  <TableCell className="text-right">
-                    <Progress value={(row.totalRevenue / maxRevenue) * 100} className="ml-auto h-2 w-[60px]" />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        <CardContent className="flex min-w-0 flex-1 flex-col justify-between">
+          {paginatedRevenue.length === 0 ? (
+            <p className="py-4 text-center text-sm text-muted-foreground">No data available</p>
+          ) : (
+            <>
+              <AdminMobileStack className="px-0.5">
+                {paginatedRevenue.map((row) => (
+                  <AdminMobileCard key={row.referrerId} title={row.referrerFullName ?? "—"} subtitle={row.referrerEmail ?? undefined}>
+                    <AdminMobileField label="Revenue" value={formatCurrency(row.totalRevenue)} />
+                    <AdminMobileField
+                      label="Share"
+                      value={<Progress value={(row.totalRevenue / maxRevenue) * 100} className="ml-auto h-2 w-full max-w-[120px]" />}
+                    />
+                  </AdminMobileCard>
+                ))}
+              </AdminMobileStack>
+              <AdminDesktopTableWrap>
+                <div className="min-w-0 overflow-x-auto">
+                  <Table className="min-w-[420px]">
+                    <TableHeader>
+                      <TableRow className="border-border hover:bg-transparent">
+                        <TableHead className="w-[50%] text-muted-foreground">Name</TableHead>
+                        <TableHead className="text-right text-muted-foreground">Revenue</TableHead>
+                        <TableHead className="text-right text-muted-foreground">Share</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedRevenue.map((row) => (
+                        <TableRow key={row.referrerId} className="border-border">
+                          <TableCell className="py-3 font-medium text-foreground">
+                            <div className="flex flex-col">
+                              <span>{row.referrerFullName ?? "-"}</span>
+                              <span className="text-xs text-muted-foreground">{row.referrerEmail ?? "-"}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right font-bold text-foreground">{formatCurrency(row.totalRevenue)}</TableCell>
+                          <TableCell className="text-right">
+                            <Progress value={(row.totalRevenue / maxRevenue) * 100} className="ml-auto h-2 w-[60px]" />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </AdminDesktopTableWrap>
+            </>
+          )}
 
           {revenuePages > 1 && (
             <div className="flex items-center justify-end space-x-2 py-4">
@@ -661,14 +713,14 @@ export function AssociateProSourceAnalytics({ data }: AssociateProSourceAnalytic
   const totalResponses = referralAnalytics.howYouHeardBreakdown.totalResponses;
 
   return (
-    <Card className="bg-card border-border">
+    <Card className="min-w-0 overflow-hidden bg-card border-border">
       <CardHeader>
         <CardTitle className="text-foreground">Source Analytics</CardTitle>
         <CardDescription>Breakdown of where Associate Pros heard about us</CardDescription>
       </CardHeader>
-      <CardContent>
-        <div className="flex flex-col items-center justify-between gap-8 lg:flex-row">
-          <div className="flex h-[300px] w-full items-center justify-center lg:w-1/2">
+      <CardContent className="min-w-0">
+        <div className="flex min-w-0 flex-col items-center justify-between gap-8 lg:flex-row">
+          <div className="flex h-[300px] w-full min-w-0 shrink-0 items-center justify-center lg:w-1/2">
             {chartData.length > 0 ? (
               <div className="relative flex h-[220px] w-[220px] items-center justify-center">
                 <div
@@ -703,8 +755,8 @@ export function AssociateProSourceAnalytics({ data }: AssociateProSourceAnalytic
             )}
           </div>
 
-          <div className="w-full space-y-6 lg:w-1/2">
-            <div className="grid grid-cols-2 gap-4">
+          <div className="w-full min-w-0 space-y-6 lg:w-1/2">
+            <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="rounded-lg border border-border p-4 text-center">
                 <p className="text-sm text-muted-foreground">Total Responses</p>
                 <p className="text-2xl font-bold text-foreground">{totalResponses}</p>
@@ -716,10 +768,10 @@ export function AssociateProSourceAnalytics({ data }: AssociateProSourceAnalytic
               <div className="space-y-3">
                 {chartData.map((item, index) => (
                   <div key={`${item.name}-${index}`} className="space-y-1">
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-2">
-                        <div className="h-3 w-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
-                        <span className="text-foreground">{item.name}</span>
+                    <div className="flex min-w-0 items-center justify-between gap-2 text-sm">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <div className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+                        <span className="min-w-0 break-words text-foreground">{item.name}</span>
                       </div>
                       <div className="flex items-center gap-3">
                         <span className="font-semibold text-foreground">{item.value}</span>
@@ -795,17 +847,17 @@ export function AssociateProRecruitmentTable({
   const totalPages = Math.ceil((count ?? 0) / limit);
 
   return (
-    <Card className="bg-card border-border">
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <div className="space-y-1">
+    <Card className="min-w-0 overflow-hidden bg-card border-border">
+      <CardHeader className="flex min-w-0 flex-col gap-4 pb-2 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 space-y-1">
           <CardTitle className="text-foreground">Associate Recruitment Leaders</CardTitle>
           <CardDescription>Users with active referrals in the campaign</CardDescription>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full shrink-0 justify-stretch sm:w-auto sm:justify-end">
           <Button
             variant="outline"
             size="sm"
-            className="h-8 gap-1"
+            className="h-8 w-full gap-1 sm:w-auto"
             disabled={users.length === 0}
             onClick={() =>
               downloadCsv(
@@ -829,7 +881,7 @@ export function AssociateProRecruitmentTable({
       </CardHeader>
       <CardContent className="space-y-4">
         <Tabs value={status} onValueChange={(v) => onStatusChange(v as RecruitmentStatus)}>
-          <TabsList>
+          <TabsList className="h-auto min-h-9 w-full max-w-full flex-wrap justify-start gap-1 sm:w-fit">
             {(Object.keys(RECRUITMENT_STATUS_LABELS) as RecruitmentStatus[]).map((key) => (
               <TabsTrigger key={key} value={key}>
                 {RECRUITMENT_STATUS_LABELS[key]}
@@ -853,65 +905,74 @@ export function AssociateProRecruitmentTable({
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             Loading…
           </div>
+        ) : users.length === 0 ? (
+          <p className="py-4 text-center text-sm text-muted-foreground">No records found.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-border hover:bg-transparent">
-                  <TableHead className="text-muted-foreground">Name</TableHead>
-                  <TableHead className="text-muted-foreground">Email</TableHead>
-                  <TableHead className="text-muted-foreground">Joined</TableHead>
-                  <TableHead className="text-muted-foreground">Referrer</TableHead>
-                  <TableHead className="text-muted-foreground">Referrer Email</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {users.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="py-4 text-center text-muted-foreground">
-                      No records found.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  users.map((user, idx) => (
-                    <TableRow key={user._id ?? idx} className="border-border">
-                      <TableCell className="font-medium text-foreground">
-                        {`${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || "-"}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">{user.email ?? "-"}</TableCell>
-                      <TableCell className="text-muted-foreground">{formatDate(user.createdAt)}</TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {user.referral
-                          ? `${user.referral.firstName} ${user.referral.lastName}`.trim()
-                          : "-"}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">{user.referral?.email ?? "-"}</TableCell>
+          <>
+            <AdminMobileStack className="px-0.5">
+              {users.map((user, idx) => {
+                const fullName = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || "—";
+                const refName = user.referral ? `${user.referral.firstName} ${user.referral.lastName}`.trim() : "—";
+                return (
+                  <AdminMobileCard key={user._id ?? idx} title={fullName} subtitle={user.email ?? undefined}>
+                    <AdminMobileField label="Joined" value={formatDate(user.createdAt)} />
+                    <AdminMobileField label="Referrer" value={refName} />
+                    <AdminMobileField label="Referrer email" value={user.referral?.email ?? "—"} />
+                  </AdminMobileCard>
+                );
+              })}
+            </AdminMobileStack>
+            <AdminDesktopTableWrap>
+              <div className="min-w-0 overflow-x-auto">
+                <Table className="min-w-[720px]">
+                  <TableHeader>
+                    <TableRow className="border-border hover:bg-transparent">
+                      <TableHead className="text-muted-foreground">Name</TableHead>
+                      <TableHead className="text-muted-foreground">Email</TableHead>
+                      <TableHead className="text-muted-foreground">Joined</TableHead>
+                      <TableHead className="text-muted-foreground">Referrer</TableHead>
+                      <TableHead className="text-muted-foreground">Referrer Email</TableHead>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                  </TableHeader>
+                  <TableBody>
+                    {users.map((user, idx) => (
+                      <TableRow key={user._id ?? idx} className="border-border">
+                        <TableCell className="font-medium text-foreground">
+                          {`${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || "-"}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{user.email ?? "-"}</TableCell>
+                        <TableCell className="text-muted-foreground">{formatDate(user.createdAt)}</TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {user.referral ? `${user.referral.firstName} ${user.referral.lastName}`.trim() : "-"}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{user.referral?.email ?? "-"}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </AdminDesktopTableWrap>
+          </>
         )}
 
         {totalPages > 1 && (
-          <div className="flex items-center justify-end space-x-2 pt-2">
+          <div className="flex flex-wrap items-center justify-center gap-2 pt-2 sm:justify-end">
             <Button
               variant="outline"
               size="icon"
-              className="h-8 w-8"
+              className="h-8 w-8 shrink-0"
               onClick={() => onPageChange(Math.max(1, page - 1))}
               disabled={page === 1}
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <div className="text-xs text-muted-foreground">
+            <div className="min-w-[8rem] text-center text-xs text-muted-foreground">
               Page {page} of {totalPages}
             </div>
             <Button
               variant="outline"
               size="icon"
-              className="h-8 w-8"
+              className="h-8 w-8 shrink-0"
               onClick={() => onPageChange(Math.min(totalPages, page + 1))}
               disabled={page === totalPages}
             >
@@ -925,22 +986,25 @@ export function AssociateProRecruitmentTable({
 }
 
 interface AssociateProExportPanelProps {
-  upgrades: Array<FragmentType<typeof AssociateProUpgradeDetailFragment>>;
+  pros: Array<FragmentType<typeof AssociateProRecruitmentUserFragment> | null> | null | undefined;
   tickets: Array<FragmentType<typeof AssociateProTicketHolderFragment>>;
 }
 
-export function AssociateProExportPanel({ upgrades, tickets }: AssociateProExportPanelProps) {
-  const upgradeRows = useFragment(AssociateProUpgradeDetailFragment, upgrades);
+export function AssociateProExportPanel({ pros, tickets }: AssociateProExportPanelProps) {
+  const safePros = (pros ?? []).filter(
+    (item): item is NonNullable<typeof item> => item !== null
+  );
+  const proRows = useFragment(AssociateProRecruitmentUserFragment, safePros);
   const ticketRows = useFragment(AssociateProTicketHolderFragment, tickets);
 
   return (
-    <Card className="bg-card border-border">
+    <Card className="min-w-0 overflow-hidden border-border bg-card">
       <CardHeader>
         <CardTitle className="text-foreground">Export Data</CardTitle>
         <CardDescription>Download lists for outreach and reporting</CardDescription>
       </CardHeader>
-      <CardContent>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <CardContent className="min-w-0">
+        <div className="grid min-w-0 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Button variant="outline" className="h-24 cursor-not-allowed flex-col gap-2 opacity-50" disabled>
             <Users className="h-6 w-6" />
             <span>Users Only (Not converted)</span>
@@ -956,20 +1020,23 @@ export function AssociateProExportPanel({ upgrades, tickets }: AssociateProExpor
             className="h-24 flex-col gap-2 hover:border-primary hover:text-primary"
             onClick={() =>
               downloadCsv(
-                upgradeRows.map((row) => ({
-                  "Full Name": row.userFullName ?? "-",
-                  "User Since": formatDate(row.userSince),
-                  "Associate Since": formatDate(row.associateSince),
-                  "Pro Since": formatDate(row.associateProSince),
-                  Referrer: row.referrerFullName ?? "-",
-                  "Amount Paid": formatCurrency(row.amountPaid),
-                  Status: row.adminStatus,
-                  "Ticket ID": row.ticketId ?? "-",
-                })),
+                proRows.map((row) => {
+                  const fullName = [row.firstName, row.lastName].filter(Boolean).join(" ") || "-";
+                  const referrerName = row.referral
+                    ? [row.referral.firstName, row.referral.lastName].filter(Boolean).join(" ") || row.referral.email || "-"
+                    : "-";
+                  return {
+                    "Full Name": fullName,
+                    Email: row.email ?? "-",
+                    Referrer: referrerName,
+                    "Referrer Email": row.referral?.email ?? "-",
+                    "User Since": formatDate(row.createdAt),
+                  };
+                }),
                 `pro_members_${new Date().toISOString().slice(0, 10)}.csv`
               )
             }
-            disabled={upgradeRows.length === 0}
+            disabled={proRows.length === 0}
           >
             <UserCheck className="h-6 w-6" />
             <span>Export Pro Members</span>

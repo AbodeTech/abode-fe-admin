@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -26,9 +26,6 @@ interface UserEditActionsProps {
 }
 
 export function UserEditActions({ user }: UserEditActionsProps) {
-  const [activeModal, setActiveModal] = useState<
-    "profile" | "refStatus" | "wallet" | "commission" | "tin" | "clearTin" | null
-  >(null)
   const currentUser = useAuthStore((state) => state.user)
   const permissions = currentUser?.permissions ?? []
   const isAdmin = currentUser?.role === "admin"
@@ -37,9 +34,29 @@ export function UserEditActions({ user }: UserEditActionsProps) {
   const searchParams = useSearchParams()
   const router = useRouter()
 
-  if (!isAdmin || (!canEditUser && !canModifyRefStatus)) {
-    return null
-  }
+  const modalParam = searchParams?.get("modal")
+
+  const activeModal = useMemo<
+    "profile" | "refStatus" | "wallet" | "commission" | "tin" | "clearTin" | null
+  >(() => {
+    if (!modalParam) return null
+    switch (modalParam) {
+      case "edituserprofile":
+        return "profile"
+      case "changeRef":
+        return "refStatus"
+      case "edituserbalance":
+        return "wallet"
+      case "editusercommissionbalance":
+        return "commission"
+      case "editusertin":
+        return "tin"
+      case "clearusertin":
+        return "clearTin"
+      default:
+        return null
+    }
+  }, [modalParam])
 
   const setModalParam = (value: string | null) => {
     const params = new URLSearchParams(searchParams?.toString() || "")
@@ -49,45 +66,18 @@ export function UserEditActions({ user }: UserEditActionsProps) {
       params.delete("modal")
     }
     const next = params.toString()
-    router.push(next ? `?${next}` : "?")
+    router.push(next ? `?${next}` : "?", { scroll: false })
   }
 
-  useEffect(() => {
-    const modal = searchParams?.get("modal")
-    if (!modal) {
-      setActiveModal(null)
-      return
-    }
-    switch (modal) {
-      case "edituserprofile":
-        setActiveModal("profile")
-        break
-      case "changeRef":
-        setActiveModal("refStatus")
-        break
-      case "edituserbalance":
-        setActiveModal("wallet")
-        break
-      case "editusercommissionbalance":
-        setActiveModal("commission")
-        break
-      case "editusertin":
-        setActiveModal("tin")
-        break
-      case "clearusertin":
-        setActiveModal("clearTin")
-        break
-      default:
-        setActiveModal(null)
-        break
-    }
-  }, [searchParams])
+  if (!isAdmin || (!canEditUser && !canModifyRefStatus)) {
+    return null
+  }
 
   return (
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button className='bg-[#7F56D9] hover:bg-[#6941C6] text-white px-6 py-2.5 rounded-lg text-sm font-medium flex items-center gap-x-3'>
+          <Button className="flex w-full items-center gap-x-3 rounded-lg bg-[#7F56D9] px-6 py-2.5 text-sm font-medium text-white hover:bg-[#6941C6] sm:w-auto">
             Edit Profile
             <Plus className="h-4 w-4" />
           </Button>

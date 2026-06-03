@@ -13,6 +13,7 @@ import {
   useExportSuspendedPaymentPlans,
 } from "@/features/users";
 import { Loader2, Download, Search } from "lucide-react";
+import { PageContentLoader, SuspensePageFallback } from "@/components/shared/page-content-loader";
 
 const PAGE_SIZE = 25;
 
@@ -40,7 +41,7 @@ function SuspendedPaymentPlansContent() {
       params.delete("search");
     }
     params.set("page", "1");
-    router.push(`?${params.toString()}`);
+    router.push(`?${params.toString()}`, { scroll: false });
   };
 
   const handleExport = async () => {
@@ -48,11 +49,7 @@ function SuspendedPaymentPlansContent() {
   };
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-[calc(100vh-200px)]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <PageContentLoader label="Loading suspended payment plans…" />;
   }
 
   if (error) {
@@ -68,26 +65,27 @@ function SuspendedPaymentPlansContent() {
   const count = data?.count ?? 0;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <h2 className="text-2xl font-bold tracking-tight">Suspended Payment Plans</h2>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <div className="relative">
+    <div className="mx-auto mt-4 w-full min-w-0 max-w-[1600px] space-y-4 px-3 pb-20 sm:px-4">
+      <div className="flex min-w-0 flex-col gap-4">
+        <h2 className="text-xl font-bold tracking-tight sm:text-2xl">Suspended Payment Plans</h2>
+        <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+          <div className="flex min-w-0 w-full flex-col gap-2 sm:w-auto sm:max-w-md sm:flex-row sm:items-center">
+            <div className="relative w-full min-w-0 flex-1">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search by email or name"
-                className="pl-8 w-64"
+                className="w-full min-w-0 pl-8"
                 value={searchValue}
                 onChange={(e) => setSearchValue(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
               />
             </div>
-            <Button variant="outline" onClick={handleSearch}>
+            <Button variant="outline" className="w-full shrink-0 sm:w-auto" onClick={handleSearch}>
               Apply
             </Button>
           </div>
-          <FilterSelect
+          <div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
+            <FilterSelect
             data={[
               { label: "All users", value: "all" },
               { label: "Flex", value: "flex" },
@@ -96,7 +94,12 @@ function SuspendedPaymentPlansContent() {
             queryKey="assettype"
             placeholder="Asset type"
           />
-          <Button variant="outline" onClick={handleExport} disabled={exportMutation.isPending}>
+          <Button
+            variant="outline"
+            className="w-full shrink-0 sm:w-auto"
+            onClick={handleExport}
+            disabled={exportMutation.isPending}
+          >
             {exportMutation.isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -109,15 +112,18 @@ function SuspendedPaymentPlansContent() {
               </>
             )}
           </Button>
+          </div>
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
+      <Card className="min-w-0 overflow-hidden">
+        <CardHeader className="px-4">
           <CardTitle>Users with suspended payment plans</CardTitle>
         </CardHeader>
-        <CardContent>
-          <SuspendedPaymentPlansTable plans={rows} />
+        <CardContent className="min-w-0 space-y-4 px-4">
+          <div className="min-w-0 overflow-x-auto">
+            <SuspendedPaymentPlansTable plans={rows} />
+          </div>
           <Pagination count={count} currentIdx={page} limit={PAGE_SIZE} />
         </CardContent>
       </Card>
@@ -127,7 +133,7 @@ function SuspendedPaymentPlansContent() {
 
 export default function SuspendedPaymentPlansPage() {
   return (
-    <Suspense fallback={<div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+    <Suspense fallback={<SuspensePageFallback />}>
       <SuspendedPaymentPlansContent />
     </Suspense>
   );

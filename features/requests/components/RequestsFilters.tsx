@@ -73,9 +73,9 @@ export function RequestsFilters({
   hasAssetOptions,
 }: RequestsFiltersProps) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4">
-      <div className="flex flex-wrap items-end gap-4">
-        <div className="min-w-[160px] flex-1 space-y-2 sm:flex-none">
+    <div className="min-w-0 rounded-xl border border-gray-200 bg-white p-4">
+      <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end">
+        <div className="w-full min-w-0 space-y-2 sm:w-auto sm:min-w-[160px]">
           <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Status</Label>
           <Select
             value={status ?? "all"}
@@ -96,7 +96,7 @@ export function RequestsFilters({
         </div>
 
         {showPaymentStatus && (
-          <div className="min-w-[160px] flex-1 space-y-2 sm:flex-none">
+          <div className="w-full min-w-0 space-y-2 sm:w-auto sm:min-w-[160px]">
             <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Payment Status</Label>
             <Select
               value={paymentStatus ?? "all"}
@@ -115,7 +115,7 @@ export function RequestsFilters({
         )}
 
         {categoryOptions && onCategoryChange && (
-          <div className="min-w-[170px] flex-1 space-y-2 sm:flex-none">
+          <div className="w-full min-w-0 space-y-2 sm:w-auto sm:min-w-[170px]">
             <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Category</Label>
             <Select
               value={category ?? "all"}
@@ -137,7 +137,7 @@ export function RequestsFilters({
         )}
 
         {updateTypeOptions && onUpdateTypeChange && (
-          <div className="min-w-[170px] flex-1 space-y-2 sm:flex-none">
+          <div className="w-full min-w-0 space-y-2 sm:w-auto sm:min-w-[170px]">
             <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Update Type</Label>
             <Select
               value={updateType ?? "all"}
@@ -159,7 +159,7 @@ export function RequestsFilters({
         )}
 
         {assetTypeOptions && onAssetTypeChange && (
-          <div className="min-w-[170px] flex-1 space-y-2 sm:flex-none">
+          <div className="w-full min-w-0 space-y-2 sm:w-auto sm:min-w-[170px]">
             <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Asset Type</Label>
             <Select
               value={assetType ?? "all"}
@@ -181,7 +181,7 @@ export function RequestsFilters({
         )}
 
         {hasAssetOptions && onHasAssetChange && (
-          <div className="min-w-[170px] flex-1 space-y-2 sm:flex-none">
+          <div className="w-full min-w-0 space-y-2 sm:w-auto sm:min-w-[170px]">
             <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Asset Status</Label>
             <Select
               value={hasAsset ?? "all"}
@@ -202,7 +202,7 @@ export function RequestsFilters({
           </div>
         )}
 
-        <div className="min-w-[260px] flex-[2] space-y-2">
+        <div className="w-full min-w-0 space-y-2 sm:min-w-[260px] sm:flex-[2]">
           <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Search</Label>
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -215,7 +215,7 @@ export function RequestsFilters({
           </div>
         </div>
 
-        <div className="min-w-[160px] space-y-2">
+        <div className="w-full min-w-0 space-y-2 sm:w-auto sm:min-w-[160px]">
           <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Date</Label>
           <DateFilter />
         </div>
