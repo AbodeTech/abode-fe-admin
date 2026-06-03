@@ -14,6 +14,11 @@ const config: CodegenConfig = {
     "components/**/*.{ts,tsx}",
     "hooks/**/*.{ts,tsx}",
     "features/**/*.{ts,tsx}",
+    // TEMP exclusions — FE queries ahead of / drifted from BE staging schema.
+    // Remove each once the BE schema catches up (or the FE hook is updated).
+    "!features/assets/hooks/use-plots.ts",
+    "!features/allocation/hooks/use-allocate-land.ts",
+    "!features/associates/hooks/use-top-associates.ts",
   ],
   generates: {
     "lib/gql/": {

@@ -16,6 +16,18 @@ const GET_ALL_ADMIN_ASSETS_QUERY = graphql(`
   }
 `);
 
+const GET_ASSET_ID_BY_NAME_QUERY = graphql(`
+  query GetAssetIdByName($page: Int!, $limit: Int!) {
+    getAllAdminAssets(page: $page, limit: $limit) {
+      data {
+        _id
+        asset_name
+        asset_type
+      }
+    }
+  }
+`);
+
 const GET_ASSET_INVENTORY_DATA_QUERY = graphql(`
   query FeatureAssetStatistics {
     getAssetInventoryData {
@@ -110,6 +122,27 @@ export const useAssetOptionsByName = (assetName: string, assetType: string) => {
   });
 };
 
+export const useAssetIdByName = (assetName: string, assetType: string) => {
+  const decodedName = decodeURIComponent(assetName ?? "").trim().toLowerCase();
+  const normalizedType = (assetType ?? "").trim().toLowerCase();
+
+  return useQuery({
+    queryKey: [...assetKeys.all, "idByName", decodedName, normalizedType] as const,
+    queryFn: () => execute(GET_ASSET_ID_BY_NAME_QUERY, { page: 1, limit: 5000 }),
+    select: (data) => {
+      const match = data.getAllAdminAssets?.data?.find((asset) => {
+        if (!asset) return false;
+        const name = (asset.asset_name ?? "").trim().toLowerCase();
+        const type = (asset.asset_type ?? "").trim().toLowerCase();
+        return name === decodedName && type === normalizedType;
+      });
+      return match?._id ?? null;
+    },
+    enabled: !!decodedName && !!normalizedType,
+    staleTime: 5 * 60 * 1000,
+  });
+};
+
 const GET_ASSET_DETAILS_QUERY = `
   query ViewAsset($id: ID!) {
     viewAsset(id: $id) {
@@ -183,7 +216,7 @@ interface UseAssetAnalyticsParams {
   endDate?: string;
 }
 
-export const useAssetAnalytics = ({ assetId, filter = 'all', startDate, endDate }: UseAssetAnalyticsParams) => {
+export const useAssetAnalytics = ({ assetId, filter = 'all_time', startDate, endDate }: UseAssetAnalyticsParams) => {
   return useQuery({
     queryKey: assetKeys.analytics(assetId, filter, startDate, endDate),
     queryFn: () => execute(GET_ASSET_ANALYTICS_QUERY, { assetId, filter, startDate, endDate }),

@@ -31,6 +31,8 @@ import {
 } from "lucide-react";
 
 import LogOutModal from "@/components/settings/LogOutModal";
+import { useAuthStore } from "@/store/auth-store";
+import { useIsCurrentUserManager } from "@/features/associate-managers";
 
 // Grouped Navigation Items
 const navGroups = [
@@ -66,6 +68,7 @@ const navGroups = [
       { name: "Associates Upgrade", link: "/associate-upgrade", icon: <UserPlus /> },
       { name: "Upgrade Coupons", link: "/associate-upgrade/coupons", icon: <Gift /> },
       { name: "Top associates", link: "/associates", icon: <TrendingUp /> },
+      { name: "Manager Performance", link: "/associates/managers", icon: <ShieldCheck />, requiresAdminOrManager: true },
     ]
   },
   {
@@ -112,6 +115,8 @@ const navGroups = [
 const Sidebar = () => {
   const pathname = usePathname();
   const { isSidebarCollapsed, isMobileNavOpen, closeMobileNav } = useUIStore();
+  const { user } = useAuthStore();
+  const { isManager } = useIsCurrentUserManager();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
@@ -123,10 +128,12 @@ const Sidebar = () => {
     setOpenGroups(prev => ({ ...prev, [groupTitle]: !prev[groupTitle] }));
   };
 
+  // Close the mobile drawer when navigating.
   useEffect(() => {
     closeMobileNav();
   }, [pathname, closeMobileNav]);
 
+  // Auto-open the collapsible group whose active route matches the current path.
   useEffect(() => {
     setOpenGroups((prev) => {
       const next = { ...prev };
@@ -142,6 +149,29 @@ const Sidebar = () => {
       return next;
     });
   }, [pathname]);
+
+  const isSuperAdmin = user?.role === "admin";
+
+  // Strip out items the current user shouldn't see. Each gate is a small
+  // predicate keyed off a flag on the item.
+  const visibleNavGroups = navGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => {
+        const flags = item as {
+          restrictedToRoles?: string[];
+          requiresAdminOrManager?: boolean;
+        };
+        if (flags.requiresAdminOrManager) {
+          return isSuperAdmin || isManager;
+        }
+        if (flags.restrictedToRoles) {
+          return !!user?.role && flags.restrictedToRoles.includes(user.role);
+        }
+        return true;
+      }),
+    }))
+    .filter((group) => group.items.length > 0);
 
   return (
     <div
@@ -165,7 +195,7 @@ const Sidebar = () => {
 
       {/* Navigation Area */}
       <div className="flex-1 overflow-y-auto py-4 px-3 ">
-        {navGroups.map((group, groupIdx) => {
+        {visibleNavGroups.map((group, groupIdx) => {
           const isGroupOpen = Boolean(openGroups[group.title]);
 
           // Special handling for collapsible groups ("Transactions")

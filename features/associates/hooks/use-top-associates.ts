@@ -1,8 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
+import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
 import { execute } from '@/lib/graphql-client';
 import { graphql } from '@/lib/gql';
 import { associateKeys } from './query-keys';
 
+// NOTE: assetType / assetName args are NOT yet on the local BE branch
+// (feature/block-plot-allocation-v2). They exist on main. Re-add when BE
+// branches merge.
+// Codegen silently drops this op (under investigation); cast to a typed
+// document so consumers retain inferred types.
 const GET_TOP_ASSOCIATES_QUERY = graphql(`
   query GetTopAssociates(
     $page: Int!
@@ -24,7 +30,10 @@ const GET_TOP_ASSOCIATES_QUERY = graphql(`
       }
     }
   }
-`);
+`) as unknown as TypedDocumentNode<
+  { getTopAssociates: { count: number; data: Array<{ [key: string]: unknown } | null> } | null },
+  { page: number; limit: number; sortBy?: string; startDate?: string; endDate?: string }
+>;
 
 export interface UseTopAssociatesParams {
   page?: number;
@@ -51,6 +60,7 @@ export const useTopAssociates = (params: UseTopAssociatesParams) => {
     endDate,
   } = params;
 
+  // assetType / assetName intentionally not sent — BE branch doesn't accept them yet.
   const variables = {
     page,
     limit,
