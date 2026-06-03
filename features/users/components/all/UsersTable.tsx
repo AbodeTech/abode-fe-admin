@@ -1,5 +1,6 @@
 "use client";
 
+import type { TypedDocumentNode } from "@graphql-typed-document-node/core";
 import { graphql } from "@/lib/gql";
 import { FragmentType, useFragment } from "@/lib/gql";
 import { UsersTableFragmentFragment as UsersTableFragmentType } from "@/lib/gql/graphql";
@@ -22,6 +23,7 @@ import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { AdminDesktopTableWrap, AdminMobileCard, AdminMobileField, AdminMobileStack } from "@/components/shared/admin-responsive-table";
 
+// Cast required for Vercel/stricter TS builds — see commit 16038d7 for context.
 export const UsersTableFragment = graphql(`
   fragment UsersTableFragment on UserAdmin {
     _id
@@ -36,7 +38,7 @@ export const UsersTableFragment = graphql(`
     virtual_subscriptions
     virtual_networth
   }
-`);
+`) as unknown as TypedDocumentNode<UsersTableFragmentType, unknown>;
 
 interface UsersTableProps {
   data: FragmentType<typeof UsersTableFragment>[] | null | undefined;

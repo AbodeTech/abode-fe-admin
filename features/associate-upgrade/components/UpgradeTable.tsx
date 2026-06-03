@@ -1,8 +1,10 @@
 "use client";
 
 import React from "react";
+import type { TypedDocumentNode } from "@graphql-typed-document-node/core";
 import { graphql } from "@/lib/gql";
 import { FragmentType, useFragment as getFragmentData } from "@/lib/gql";
+import type { UpgradeRowFragmentFragment } from "@/lib/gql/graphql";
 import {
   Table,
   TableBody,
@@ -31,6 +33,11 @@ import { TransactionStatus } from "@/components/shared/TransactionStatus";
 import { AdminDesktopTableWrap, AdminMobileCard, AdminMobileField, AdminMobileStack } from "@/components/shared/admin-responsive-table";
 import { ViewTransactionEvidence } from "@/features/transactions";
 
+// NOTE: codegen silently drops this fragment's overload mapping in some
+// build envs (Vercel + stricter TS), so `typeof UpgradeRowFragment` would
+// resolve to `unknown` and break `FragmentType<typeof …>` below. Cast it
+// explicitly to the codegen-generated fragment type. Same workaround
+// pattern as commit 16038d7.
 export const UpgradeRowFragment = graphql(`
   fragment UpgradeRowFragment on ReferralUpgrade {
     _id
@@ -55,7 +62,7 @@ export const UpgradeRowFragment = graphql(`
       phoneNumber
     }
   }
-`);
+`) as unknown as TypedDocumentNode<UpgradeRowFragmentFragment, unknown>;
 
 interface UpgradeTableProps {
   data?: (FragmentType<typeof UpgradeRowFragment> | null)[] | null;
