@@ -3,8 +3,10 @@
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { format } from "date-fns";
 import {
   CalendarClock,
+  CalendarIcon,
   ClipboardCheck,
   PhoneCall,
   PhoneOff,
@@ -37,10 +39,13 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import {
   onboardingSchema,
   SUPPORT_OPTIONS,
+  TIME_OF_DAY_OPTIONS,
   type OnboardingFormValues,
 } from "../../schemas/onboarding.schema";
 
@@ -98,6 +103,9 @@ const DEFAULTS: OnboardingFormValues = {
   supportOther: "",
   readDocs: undefined,
   gotGuide: undefined,
+  rescheduleDate: undefined,
+  rescheduleTimeOfDay: undefined,
+  rescheduleNote: "",
 };
 
 export function OnboardingDialog({ open, onOpenChange, pro }: Props) {
@@ -123,6 +131,10 @@ export function OnboardingDialog({ open, onOpenChange, pro }: Props) {
     if (values.outcome === "picked") toast.success(`${pro.name} onboarded`);
     else if (values.outcome === "not_available")
       toast.success(`Attempt ${values.attempt} logged for ${pro.name}`);
+    else if (values.outcome === "rescheduled" && values.rescheduleDate)
+      toast.success(
+        `Rescheduled · ${format(values.rescheduleDate, "EEE d MMM")}`
+      );
     else toast.success(`${pro.name} marked as rescheduled`);
     onOpenChange(false);
   };
@@ -503,11 +515,98 @@ export function OnboardingDialog({ open, onOpenChange, pro }: Props) {
                 </div>
               )}
 
-              {/* Rescheduled — no extra fields for now */}
+              {/* Rescheduled — capture when to call back and any context. */}
               {outcome === "rescheduled" && (
-                <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
-                  Rescheduled outcome will be logged. A reschedule date field
-                  can be added when business decides whether to track it.
+                <div className="space-y-5 pt-1">
+                  <FormField
+                    control={form.control}
+                    name="rescheduleDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Reschedule date</FormLabel>
+                        <FormControl>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                className={cn(
+                                  "w-full justify-start bg-white font-normal",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                              >
+                                <CalendarIcon className="h-4 w-4 mr-2" />
+                                {field.value
+                                  ? format(field.value, "EEE d MMM yyyy")
+                                  : "Pick a date"}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent
+                              className="w-auto p-0"
+                              align="start"
+                            >
+                              <Calendar
+                                mode="single"
+                                selected={field.value}
+                                onSelect={field.onChange}
+                                disabled={(d) =>
+                                  d < new Date(new Date().toDateString())
+                                }
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="rescheduleTimeOfDay"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Time of day (optional)</FormLabel>
+                        <FormControl>
+                          <Select
+                            value={field.value}
+                            onValueChange={field.onChange}
+                          >
+                            <SelectTrigger className="bg-white">
+                              <SelectValue placeholder="Anytime is fine — or pick a preference" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {TIME_OF_DAY_OPTIONS.map((o) => (
+                                <SelectItem key={o.value} value={o.value}>
+                                  {o.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="rescheduleNote"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Note (optional)</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            {...field}
+                            placeholder="Why now isn't a good time, anything to remember for the next call..."
+                            className="bg-white min-h-15"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
               )}
             </div>

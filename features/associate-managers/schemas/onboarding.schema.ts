@@ -15,6 +15,14 @@ export const SUPPORT_OPTIONS = [
 ] as const;
 const SUPPORT_VALUES = ["materials", "training", "accountability", "others"] as const;
 
+export const TIME_OF_DAY_OPTIONS = [
+  { value: "morning", label: "Morning" },
+  { value: "afternoon", label: "Afternoon" },
+  { value: "evening", label: "Evening" },
+  { value: "anytime", label: "Anytime" },
+] as const;
+const TIME_OF_DAY_VALUES = ["morning", "afternoon", "evening", "anytime"] as const;
+
 export const onboardingSchema = z
   .object({
     outcome: z.enum(ONBOARDING_OUTCOMES),
@@ -30,6 +38,10 @@ export const onboardingSchema = z
     supportOther: z.string().optional(),
     readDocs: z.enum(YES_NO_MAYBE).optional(),
     gotGuide: z.enum(YES_NO).optional(),
+    // Rescheduled
+    rescheduleDate: z.date().optional(),
+    rescheduleTimeOfDay: z.enum(TIME_OF_DAY_VALUES).optional(),
+    rescheduleNote: z.string().optional(),
   })
   .superRefine((data, ctx) => {
     if (data.outcome === "not_available" && !data.attempt) {
@@ -37,6 +49,13 @@ export const onboardingSchema = z
         code: z.ZodIssueCode.custom,
         path: ["attempt"],
         message: "Pick the attempt number",
+      });
+    }
+    if (data.outcome === "rescheduled" && !data.rescheduleDate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["rescheduleDate"],
+        message: "Pick the reschedule date",
       });
     }
     if (
