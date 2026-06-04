@@ -27,6 +27,8 @@ export {
   useUnassignedProsCount,
 } from "./hooks/use-unassigned-pros";
 export { useIsCurrentUserManager } from "./hooks/use-is-current-user-manager";
+export { useOnboardingAttempts } from "./hooks/use-onboarding-attempts";
+export type { OnboardingAttemptData } from "./hooks/use-onboarding-attempts";
 
 // Hooks — mutations
 export { useAddManager } from "./hooks/use-add-manager";
@@ -34,3 +36,4 @@ export { useRemoveManager } from "./hooks/use-remove-manager";
 export { useReassignPro } from "./hooks/use-reassign-pro";
 export { useBulkAssignPros } from "./hooks/use-bulk-assign-pros";
 export { useAssignManagerTarget } from "./hooks/use-assign-manager-target";
+export { useLogOnboardingAttempt } from "./hooks/use-log-onboarding-attempt";

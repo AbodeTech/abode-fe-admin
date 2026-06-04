@@ -3,7 +3,6 @@ import * as z from "zod";
 export const ONBOARDING_OUTCOMES = ["picked", "not_available", "rescheduled"] as const;
 export type OnboardingOutcome = (typeof ONBOARDING_OUTCOMES)[number];
 
-export const ATTEMPT_VALUES = ["1", "2", "3"] as const;
 const YES_NO = ["yes", "no"] as const;
 const YES_NO_MAYBE = ["yes", "no", "uncertain"] as const;
 
@@ -26,8 +25,6 @@ const TIME_OF_DAY_VALUES = ["morning", "afternoon", "evening", "anytime"] as con
 export const onboardingSchema = z
   .object({
     outcome: z.enum(ONBOARDING_OUTCOMES),
-    // Not Available
-    attempt: z.enum(ATTEMPT_VALUES).optional(),
     // Picked — all optional individually; the manager fills what's relevant
     motivation: z.string().optional(),
     experience: z.enum(YES_NO).optional(),
@@ -44,13 +41,6 @@ export const onboardingSchema = z
     rescheduleNote: z.string().optional(),
   })
   .superRefine((data, ctx) => {
-    if (data.outcome === "not_available" && !data.attempt) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["attempt"],
-        message: "Pick the attempt number",
-      });
-    }
     if (data.outcome === "rescheduled" && !data.rescheduleDate) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

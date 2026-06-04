@@ -41,4 +41,9 @@ export const managerKeys = {
     [...managerKeys.unassigned(), "list", filters] as const,
   unassignedCount: (searchQuery?: string | null) =>
     [...managerKeys.unassigned(), "count", searchQuery ?? null] as const,
+
+  // Onboarding attempts per Pro
+  onboarding: () => [...managerKeys.all, "onboarding"] as const,
+  onboardingAttempts: (proId: string) =>
+    [...managerKeys.onboarding(), "pro", proId] as const,
 };

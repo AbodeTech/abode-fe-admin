@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { MoreHorizontal, Search, X } from "lucide-react";
+import { CheckCircle2, MoreHorizontal, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -134,7 +134,9 @@ const toLegacyPro = (p: ManagerDashboardProRow): AssociatePro => ({
   recruitedAt: p.dateRecruited
     ? new Date(p.dateRecruited).toISOString().slice(0, 10)
     : "",
-  onboardedAt: null,
+  onboardedAt: p.onboardedAt
+    ? new Date(p.onboardedAt).toISOString().slice(0, 10)
+    : null,
   totalSales: p.totalSales,
   totalRevenue: p.revenueGenerated,
   lastLogin: p.lastLogin
@@ -289,9 +291,20 @@ export function AssociateProsTable({ pros, sourceManagerId }: Props) {
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col gap-0.5">
-                          <span className="font-medium text-gray-900">
-                            {fullName(pro)}
-                          </span>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-medium text-gray-900">
+                              {fullName(pro)}
+                            </span>
+                            {pro.onboardedAt && (
+                              <span
+                                className="inline-flex items-center gap-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-medium px-1.5 py-0.5 border border-emerald-100"
+                                title={`Onboarded ${formatDate(pro.onboardedAt)}`}
+                              >
+                                <CheckCircle2 className="h-3 w-3" />
+                                Onboarded
+                              </span>
+                            )}
+                          </div>
                           <span className="text-xs text-gray-500">
                             {pro.email}
                             {pro.phoneNumber ? ` · ${pro.phoneNumber}` : ""}
@@ -326,13 +339,12 @@ export function AssociateProsTable({ pros, sourceManagerId }: Props) {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            {/* Onboarding is still mock until BE exposes onboardedAt.
-                                "Onboard" stays open to all Pros; Resend / View details
-                                are hidden until we can tell who's onboarded. */}
                             <DropdownMenuItem
                               onSelect={() => setOnboardingFor(pro)}
                             >
-                              Onboard Associate Pro
+                              {pro.onboardedAt
+                                ? "View onboarding"
+                                : "Onboard Associate Pro"}
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
