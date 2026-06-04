@@ -1,10 +1,9 @@
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { execute } from '@/lib/graphql-client';
 import { graphql, useFragment as getFragmentData } from '@/lib/gql';
+import { SuspendedPaymentPlansRowFragment } from '../components/suspended-payment-plans/SuspendedPaymentPlansTable';
 import { userKeys } from './query-keys';
 import { exportToCsv } from '../utils/export-csv';
-import { SuspendedPaymentPlansRowFragment } from '../components/suspended-payment-plans/SuspendedPaymentPlansTable';
-
 
 const GET_SUSPENDED_PAYMENT_PLANS_QUERY = graphql(`
   query GetSuspendedPaymentPlans($page: Int!, $limit: Int!, $searchQuery: String, $assetType: String) {
@@ -16,7 +15,6 @@ const GET_SUSPENDED_PAYMENT_PLANS_QUERY = graphql(`
     }
   }
 `);
-
 
 const EXPORT_SUSPENDED_PAYMENT_PLANS_QUERY = graphql(`
   query ExportSuspendedPaymentPlans($page: Int!, $limit: Int!, $searchQuery: String, $assetType: String) {
@@ -31,7 +29,13 @@ const EXPORT_SUSPENDED_PAYMENT_PLANS_QUERY = graphql(`
 export const SUSPENDED_PAYMENT_PLANS_PAGE_SIZE = 25;
 const EXPORT_LIMIT = 1_000_000;
 
-export const useSuspendedPaymentPlans = (params: { page?: number; limit?: number; searchQuery?: string | null; assetType?: string | null }) => {
+export const useSuspendedPaymentPlans = (params: {
+  page?: number;
+  limit?: number;
+  searchQuery?: string | null;
+  assetType?: string | null;
+  enabled?: boolean;
+}) => {
   const page = params.page ?? 1;
   const limit = params.limit ?? SUSPENDED_PAYMENT_PLANS_PAGE_SIZE;
   const searchQuery = params.searchQuery ?? null;
@@ -47,6 +51,7 @@ export const useSuspendedPaymentPlans = (params: { page?: number; limit?: number
         assetType,
       }),
     select: (data) => data.getSuspendedPaymentPlans,
+    enabled: params.enabled ?? true,
   });
 };
 
@@ -62,7 +67,7 @@ export const useExportSuspendedPaymentPlans = () => {
     onSuccess: (data) => {
       const plansRaw = data.getSuspendedPaymentPlans?.data ?? [];
       const rows = plansRaw.map((plan) => getFragmentData(SuspendedPaymentPlansRowFragment, plan));
-      const validRows = rows.filter((plan): plan is NonNullable<typeof plan> => plan !== null && plan !== undefined);
+      const validRows = rows.filter((plan): plan is NonNullable<typeof plan> => plan != null);
 
       if (!validRows.length) return;
 
@@ -80,7 +85,7 @@ export const useExportSuspendedPaymentPlans = () => {
         { header: 'Amount Left', accessor: (r) => r.balance },
         { header: 'Start Date', accessor: (r) => r.start_date },
         { header: 'End Date', accessor: (r) => r.next_date },
-      ], 'suspended-payment-plans.csv');
+      ], 'termination-payment-plans.csv');
     },
   });
 };

@@ -24,6 +24,7 @@ const config: CodegenConfig = {
     },
   },
   ignoreNoDocuments: true,
+  allowPartialOutputs: true,
 };
 
 export default config;

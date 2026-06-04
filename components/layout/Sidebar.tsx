@@ -54,7 +54,7 @@ const navGroups = [
       { name: "All Users", link: "/users", icon: <Users /> },
       { name: "Default Users", link: "/users/defaults", icon: <ShieldCheck /> },
       { name: "Suspended Users", link: "/users/suspended", icon: <ShieldCheck /> },
-      { name: "Suspended Payment Plans", link: "/users/suspended-payment-plans", icon: <ScrollText /> },
+      { name: "Termination Payment Plans", link: "/users/suspended-payment-plans", icon: <ScrollText /> },
       { name: "Completed Asset Payments", link: "/users/completed-asset-payments", icon: <CheckCircle /> },
     ]
   },
