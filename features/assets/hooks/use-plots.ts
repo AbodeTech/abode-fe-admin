@@ -22,14 +22,7 @@ const GET_BLOCK_PLOTS_QUERY = graphql(`
 
 const CREATE_PLOTS_MUTATION = graphql(`
   mutation CreatePlots($blockId: ID!, $ranges: [PlotRangeInput!]!) {
-    createPlots(blockId: $blockId, ranges: $ranges) {
-      _id
-      block
-      block_label
-      plot_number
-      size
-      status
-    }
+    createPlots(blockId: $blockId, ranges: $ranges)
   }
 `);
 
