@@ -35,9 +35,9 @@ export function AgencyTransactionFilters({
   onReset,
 }: AgencyTransactionFiltersProps) {
   return (
-    <div className="rounded-lg border border-[#E5EAEF] bg-white p-4">
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <div className="space-y-2 xl:col-span-2">
+    <div className="min-w-0 rounded-lg border border-[#E5EAEF] bg-white p-3 sm:p-4">
+      <div className="grid min-w-0 grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="min-w-0 space-y-2 md:col-span-2 xl:col-span-2">
           <Label>Search</Label>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -45,7 +45,7 @@ export function AgencyTransactionFilters({
               value={search}
               onChange={(event) => onSearchChange(event.target.value)}
               placeholder="Search by transaction id, reference or description"
-              className="pl-9 pr-10"
+              className="h-10 min-w-0 pl-9 pr-10 sm:h-9"
             />
             {search && (
               <Button
@@ -61,10 +61,10 @@ export function AgencyTransactionFilters({
           </div>
         </div>
 
-        <div className="space-y-2">
+        <div className="min-w-0 space-y-2">
           <Label>Status</Label>
           <Select value={status} onValueChange={onStatusChange}>
-            <SelectTrigger>
+            <SelectTrigger className="h-10 w-full min-w-0 sm:h-9">
               <SelectValue placeholder="All Status" />
             </SelectTrigger>
             <SelectContent>
@@ -76,10 +76,10 @@ export function AgencyTransactionFilters({
           </Select>
         </div>
 
-        <div className="space-y-2">
+        <div className="min-w-0 space-y-2">
           <Label>Date</Label>
           <Select value={date} onValueChange={(value) => onDateChange(value as AgencyTransactionDateFilter)}>
-            <SelectTrigger>
+            <SelectTrigger className="h-10 w-full min-w-0 sm:h-9">
               <SelectValue placeholder="All Time" />
             </SelectTrigger>
             <SelectContent>
@@ -92,8 +92,8 @@ export function AgencyTransactionFilters({
         </div>
       </div>
 
-      <div className="mt-3 flex justify-end">
-        <Button type="button" variant="outline" size="sm" onClick={onReset}>
+      <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:justify-end">
+        <Button type="button" variant="outline" size="sm" className="w-full sm:w-auto" onClick={onReset}>
           Reset Filters
         </Button>
       </div>

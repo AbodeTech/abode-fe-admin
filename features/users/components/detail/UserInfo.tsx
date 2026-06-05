@@ -36,14 +36,14 @@ export function UserInfo({ user }: UserInfoProps) {
   ];
 
   return (
-    <div className="bg-white rounded-lg border border-[#E5EAEF] px-8 pt-6 pb-12 mt-8 grid grid-cols-1 lg:grid-cols-2 gap-x-40 gap-y-8">
-      <div>
+    <div className="mt-8 grid min-w-0 grid-cols-1 gap-x-8 gap-y-8 rounded-lg border border-[#E5EAEF] bg-white px-4 pb-12 pt-6 sm:px-6 lg:grid-cols-2 lg:gap-x-16 xl:gap-x-24">
+      <div className="min-w-0">
         <h3 className="font-semibold text-lg font-noto_sans text-abodeBlack text-[#101828]">Personal Info</h3>
-        <ul className="mt-5 w-full max-w-[450px] grid grid-cols-1 gap-y-4">
+        <ul className="mt-5 grid w-full max-w-full grid-cols-1 gap-y-4 sm:max-w-[450px]">
           {infoItems.map((item, index) => (
-            <li key={index} className="flex justify-between items-center">
-              <span className="text-sm font-medium text-[#8A8B9F]">{item.label}:</span>
-              <span className="text-sm text-right font-medium text-[#101828] capitalize">
+            <li key={index} className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+              <span className="shrink-0 text-sm font-medium text-[#8A8B9F]">{item.label}:</span>
+              <span className="min-w-0 wrap-break-word text-sm font-medium capitalize text-[#101828] sm:max-w-[60%] sm:text-right">
                 {item.value || "Empty"}
               </span>
             </li>

@@ -1,8 +1,11 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import type { TypedDocumentNode } from "@graphql-typed-document-node/core";
 import { execute } from "@/lib/graphql-client";
 import { graphql } from "@/lib/gql";
 import { allocationKeys } from "./query-keys";
 
+// NOTE: codegen silently drops this op for an unknown reason. Cast to a typed
+// document so consumers retain inferred types. Investigate codegen later.
 const ALLOCATE_LAND_MUTATION = graphql(`
   mutation AllocateLand($paymentPlanId: ID!, $plotIds: [ID!]!) {
     allocateLand(paymentPlanId: $paymentPlanId, plotIds: $plotIds) {
@@ -21,7 +24,10 @@ const ALLOCATE_LAND_MUTATION = graphql(`
       }
     }
   }
-`);
+`) as unknown as TypedDocumentNode<
+  { allocateLand: AllocateLandResult },
+  { paymentPlanId: string; plotIds: string[] }
+>;
 
 export interface AllocateLandInput {
   paymentPlanId: string;

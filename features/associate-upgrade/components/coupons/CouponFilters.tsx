@@ -28,13 +28,13 @@ export function CouponFilters({ status, onStatusChange, search, onSearchChange }
   };
 
   return (
-    <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-      <div className="w-full sm:w-64">
+    <div className="flex min-w-0 flex-col items-stretch gap-4 sm:flex-row sm:items-center">
+      <div className="w-full min-w-0 sm:w-64 sm:shrink-0">
         <Select
           value={status ?? "all"}
           onValueChange={(value) => onStatusChange(value === "all" ? null : value)}
         >
-          <SelectTrigger>
+          <SelectTrigger className="w-full min-w-0">
             <SelectValue placeholder="All status" />
           </SelectTrigger>
           <SelectContent>
@@ -46,13 +46,13 @@ export function CouponFilters({ status, onStatusChange, search, onSearchChange }
         </Select>
       </div>
 
-      <div className="relative w-full sm:flex-1">
+      <div className="relative min-w-0 w-full sm:flex-1">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
         <Input
           placeholder="Search by coupon code..."
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="pl-10"
+          className="w-full min-w-0 pl-10"
         />
       </div>
 

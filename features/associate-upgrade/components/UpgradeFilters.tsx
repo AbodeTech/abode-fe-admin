@@ -25,22 +25,23 @@ export function UpgradeFilters({
   onStatusChange,
 }: UpgradeFiltersProps) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <div className="space-y-2 md:col-span-2">
+    <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="min-w-0 space-y-2 md:col-span-2">
         <Label className="text-sm text-muted-foreground">Search by user or referral</Label>
         <Input
           placeholder="Search by name or email"
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
+          className="w-full min-w-0"
         />
       </div>
-      <div className="space-y-2">
+      <div className="min-w-0 space-y-2">
         <Label className="text-sm text-muted-foreground">Status</Label>
         <Select
           value={status ?? "all"}
           onValueChange={(value) => onStatusChange(value === "all" ? null : value)}
         >
-          <SelectTrigger>
+          <SelectTrigger className="w-full min-w-0">
             <SelectValue placeholder="All statuses" />
           </SelectTrigger>
           <SelectContent>

@@ -29,6 +29,8 @@ const EXPORT_SALES_QUERY = graphql(`
         month_subscription
         start_date
         next_date
+        default_amount
+        is_suspended
       }
     }
   }

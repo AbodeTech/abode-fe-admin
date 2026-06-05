@@ -53,13 +53,13 @@ const nairaKeys = new Set([
 
 function DashboardCardSkeleton() {
   return (
-    <Card>
+    <Card className="min-w-0 overflow-hidden">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
         <div className="h-4 w-4 bg-gray-200 rounded animate-pulse" />
       </CardHeader>
       <CardContent>
-        <div className="h-8 w-32 bg-gray-200 rounded animate-pulse" />
+        <div className="h-8 max-w-full min-w-0 rounded bg-gray-200 animate-pulse" />
       </CardContent>
     </Card>
   );
@@ -94,7 +94,7 @@ export function AssetTransactionDataPoints() {
 
   if (isLoading) {
     return (
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         {[...Array(9)].map((_, index) => (
           <DashboardCardSkeleton key={index} />
         ))}
@@ -111,7 +111,7 @@ export function AssetTransactionDataPoints() {
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+    <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
       {dashboardData.map((item, index) => (
         <DashboardCard key={index} title={item.title} value={item.value} icon={item.icon} />
       ))}

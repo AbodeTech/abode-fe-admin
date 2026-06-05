@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { PageContentLoader, SuspensePageFallback } from "@/components/shared/page-content-loader";
 import { toast } from "sonner";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -91,10 +91,11 @@ function AssociateUpgradeContent() {
       });
       const query = params.toString();
       const url = query ? `?${query}` : "";
+      const nav = { scroll: false as const };
       if (options?.replace) {
-        router.replace(url);
+        router.replace(url, nav);
       } else {
-        router.push(url);
+        router.push(url, nav);
       }
     },
     [router, searchParams]
@@ -145,25 +146,27 @@ function AssociateUpgradeContent() {
 
   if (error) {
     return (
-      <div className="p-4 rounded-md bg-red-50 text-red-500 border border-red-200">
-        <h3 className="font-bold">Error loading upgrade requests</h3>
-        <p>{(error as Error).message || "An unexpected error occurred."}</p>
+      <div className="mx-auto w-full min-w-0 max-w-[1600px] px-3 sm:px-4">
+        <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-500">
+          <h3 className="font-bold">Error loading upgrade requests</h3>
+          <p>{(error as Error).message || "An unexpected error occurred."}</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Associate Upgrade Requests</h1>
-          <p className="text-muted-foreground">
+    <div className="mx-auto mt-4 w-full min-w-0 max-w-[1600px] space-y-4 px-3 pb-16 sm:space-y-6 sm:px-4 sm:pb-20">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Associate Upgrade Requests</h1>
+          <p className="text-sm text-muted-foreground sm:text-base">
             Review and manage associate/associate-pro upgrade submissions.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end">
           <CreateUpgradeTransactionDialog />
-          <Button asChild>
+          <Button asChild className="w-full shrink-0 sm:w-auto">
             <Link href="/associate-upgrade/coupons">Coupon Management</Link>
           </Button>
         </div>
@@ -176,23 +179,22 @@ function AssociateUpgradeContent() {
         onStatusChange={handleStatusChange}
       />
 
-      <UpgradeTable
-        data={upgradeRequests}
-        onApprove={(row) => openConfirm("approve", row)}
-        onDecline={(row) => openConfirm("decline", row)}
-      />
+      {isLoading ? (
+        <PageContentLoader label="Loading upgrade requests…" />
+      ) : (
+        <>
+          <UpgradeTable
+            data={upgradeRequests}
+            onApprove={(row) => openConfirm("approve", row)}
+            onDecline={(row) => openConfirm("decline", row)}
+          />
 
-      <Pagination
-        count={searchParam ? upgradeRequests.length : (data?.pagination.totalCount ?? 0)}
-        currentIdx={searchParam ? 1 : (data?.pagination.currentPage ?? page)}
-        limit={data?.pagination.limit ?? DEFAULT_UPGRADE_LIMIT}
-      />
-
-      {isLoading && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading requests...
-        </div>
+          <Pagination
+            count={searchParam ? upgradeRequests.length : (data?.pagination.totalCount ?? 0)}
+            currentIdx={searchParam ? 1 : (data?.pagination.currentPage ?? page)}
+            limit={data?.pagination.limit ?? DEFAULT_UPGRADE_LIMIT}
+          />
+        </>
       )}
 
       <ConfirmDialog
@@ -210,7 +212,7 @@ function AssociateUpgradeContent() {
 
 export default function AssociateUpgradePage() {
   return (
-    <Suspense fallback={<div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+    <Suspense fallback={<SuspensePageFallback />}>
       <AssociateUpgradeContent />
     </Suspense>
   );

@@ -22,6 +22,12 @@ import { MoreVertical } from "lucide-react";
 import { graphql, FragmentType, useFragment } from "@/lib/gql";
 
 import { AssetFullOwnershipTable_AssetFragment } from "@/lib/gql/graphql";
+import {
+  AdminDesktopTableWrap,
+  AdminMobileCard,
+  AdminMobileField,
+  AdminMobileStack,
+} from "@/components/shared/admin-responsive-table";
 
 export const AssetFullOwnershipTableFragment = graphql(`
   fragment AssetFullOwnershipTable_asset on Asset {
@@ -71,7 +77,45 @@ export function FullOwnershipAssetsTable({ data }: Props) {
   );
 
   return (
-    <div className="rounded-xl border bg-background overflow-hidden shadow-sm">
+    <>
+      <AdminMobileStack className="space-y-3">
+        {transformedFullOwnershipNewAssets.length === 0 ? (
+          <p className="rounded-xl border bg-background py-8 text-center text-muted-foreground italic">No active assets found.</p>
+        ) : (
+          transformedFullOwnershipNewAssets.map((asset) => (
+            <AdminMobileCard key={asset.id} title={asset.name} subtitle={asset.location}>
+              <AdminMobileField label="Status" value={asset.status} />
+              <AdminMobileField label="Sizes" value={asset.availableSizes} />
+              <AdminMobileField label="Units" value={asset.unitsAvailable} />
+              <AdminMobileField
+                label="Pricing"
+                value={asset.minPrice.toLocaleString("en-NG", {
+                  style: "currency",
+                  currency: "NGN",
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0,
+                })}
+              />
+              <AdminMobileField label="Health" value={`${asset.efficiency.toFixed(1)}%`} />
+              <div className="flex gap-2 border-t border-border pt-2">
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/assets/fullownership/${asset.name}`} onClick={() => updateAssetId(asset.id || "")}>
+                    View
+                  </Link>
+                </Button>
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/assets/fullownership/${asset.name}/edit`} onClick={() => updateAssetId(asset.id || "")}>
+                    Edit
+                  </Link>
+                </Button>
+              </div>
+            </AdminMobileCard>
+          ))
+        )}
+      </AdminMobileStack>
+
+      <AdminDesktopTableWrap>
+    <div className="min-w-0 overflow-x-auto rounded-xl border bg-background shadow-sm">
       <Table>
         <TableHeader className="bg-muted/30">
           <TableRow className="hover:bg-transparent border-b">
@@ -95,7 +139,7 @@ export function FullOwnershipAssetsTable({ data }: Props) {
             transformedFullOwnershipNewAssets.map((asset) => (
               <TableRow key={asset.id} className="group hover:bg-muted/30 transition-colors">
                 <TableCell
-                  className="font-bold text-slate-900 group-hover:text-primary transition-colors cursor-pointer"
+                  className="max-w-40 cursor-pointer font-bold wrap-break-word text-slate-900 transition-colors group-hover:text-primary"
                   onClick={() => {
                     updateAssetId(asset.id || "");
                     window.location.href = `/assets/fullownership/${asset.name}`;
@@ -113,7 +157,7 @@ export function FullOwnershipAssetsTable({ data }: Props) {
                 </TableCell>
                 <TableCell className="text-xs font-bold tabular-nums hidden lg:table-cell"> {asset.availableSizes} </TableCell>
                 <TableCell className="text-xs font-bold tabular-nums text-center hidden lg:table-cell"> {asset.unitsAvailable} </TableCell>
-                <TableCell className="text-[10px] font-medium text-slate-600">
+                <TableCell className="min-w-0 text-[10px] font-medium tabular-nums wrap-break-word text-slate-600 sm:whitespace-nowrap">
                   {asset.minPrice.toLocaleString("en-NG", {
                     style: "currency",
                     currency: "NGN",
@@ -175,5 +219,7 @@ export function FullOwnershipAssetsTable({ data }: Props) {
         </TableBody>
       </Table>
     </div>
+      </AdminDesktopTableWrap>
+    </>
   );
 }

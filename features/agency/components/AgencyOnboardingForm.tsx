@@ -53,7 +53,7 @@ export function AgencyOnboardingForm() {
   };
 
   return (
-    <Card className="border border-gray-200 max-w-3xl">
+    <Card className="w-full min-w-0 max-w-3xl border border-gray-200">
       <CardHeader>
         <CardTitle>Onboard New Agency</CardTitle>
         <CardDescription>
@@ -103,7 +103,7 @@ export function AgencyOnboardingForm() {
             <div className="space-y-2">
               <Label>Communication Preference</Label>
               <Select value={communicationPreference} onValueChange={setCommunicationPreference}>
-                <SelectTrigger>
+                <SelectTrigger className="h-10 w-full min-w-0 sm:h-9">
                   <SelectValue placeholder="Select preference" />
                 </SelectTrigger>
                 <SelectContent>
@@ -115,9 +115,9 @@ export function AgencyOnboardingForm() {
 
             <div className="space-y-2">
               <Label>Commission Rate</Label>
-              <div className="flex gap-2">
+              <div className="flex min-w-0 flex-col gap-2 sm:flex-row">
                 <Select value={commissionType} onValueChange={setCommissionType}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-10 w-full min-w-0 sm:h-9">
                     <SelectValue placeholder="Select rate" />
                   </SelectTrigger>
                   <SelectContent>
@@ -137,7 +137,7 @@ export function AgencyOnboardingForm() {
                     placeholder="Rate %"
                     required
                     disabled={isPending}
-                    className="max-w-32"
+                    className="h-10 w-full min-w-0 sm:h-9 sm:max-w-32"
                   />
                 )}
               </div>
@@ -145,11 +145,17 @@ export function AgencyOnboardingForm() {
           </div>
         </CardContent>
 
-        <CardFooter className="flex justify-end gap-3">
-          <Button type="button" variant="outline" onClick={() => router.push("/agency/lists")} disabled={isPending}>
+        <CardFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full sm:w-auto"
+            onClick={() => router.push("/agency/lists")}
+            disabled={isPending}
+          >
             Cancel
           </Button>
-          <Button type="submit" disabled={isPending}>
+          <Button type="submit" className="w-full sm:w-auto" disabled={isPending}>
             {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             Create Agency
           </Button>

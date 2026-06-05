@@ -64,9 +64,9 @@ interface CategoryProps {
 
 function StatRow({ label, value, valueClassName }: { label: string; value: string; valueClassName?: string }) {
   return (
-    <div className="flex items-center justify-between">
-      <span className="text-xs text-muted-foreground font-medium">{label}</span>
-      <span className={cn("text-xs font-bold tabular-nums", valueClassName)}>{value}</span>
+    <div className="flex min-w-0 flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between">
+      <span className="text-xs font-medium text-muted-foreground">{label}</span>
+      <span className={cn("min-w-0 text-xs font-bold tabular-nums wrap-break-word", valueClassName)}>{value}</span>
     </div>
   );
 }
@@ -88,15 +88,15 @@ function CategoryCard({
   defaultersOwing,
 }: CategoryProps) {
   return (
-    <div className="flex-1 min-w-[320px] bg-background rounded-xl border shadow-sm overflow-hidden group hover:border-primary/20 transition-all">
+    <div className="group w-full min-w-0 flex-1 overflow-hidden rounded-xl border bg-background shadow-sm transition-all hover:border-primary/20">
       {/* Header */}
-      <div className="p-6 pb-4">
-        <div className="flex justify-between items-start mb-6">
-          <div>
-            <h4 className="text-lg font-bold tracking-tight">{title}</h4>
+      <div className="p-4 pb-4 sm:p-6">
+        <div className="mb-6 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <h4 className="text-base font-bold tracking-tight wrap-break-word sm:text-lg">{title}</h4>
             <span className="text-xs text-muted-foreground font-medium">{count} Active Assets</span>
           </div>
-          <Badge variant="secondary" className="bg-muted/50 text-[10px] font-bold tracking-wider uppercase">
+          <Badge variant="secondary" className="shrink-0 bg-muted/50 text-[10px] font-bold uppercase tracking-wider">
             Category View
           </Badge>
         </div>
@@ -131,7 +131,7 @@ function CategoryCard({
         </div>
 
         {/* Portfolio stats */}
-        <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 mb-2">
+        <div className="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2 mb-2">
           <StatRow label="Total SQM" value={sqm} />
           <StatRow label="Gross Revenue" value={revenue} />
           <StatRow label="Value Sold" value={valueSold} />
@@ -142,9 +142,9 @@ function CategoryCard({
       </div>
 
       {/* Defaults section */}
-      <div className="bg-rose-500/5 border-t border-rose-200/50 px-6 py-4">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-rose-500 mb-3">Defaults</p>
-        <div className="grid grid-cols-2 gap-x-6 gap-y-1.5">
+      <div className="border-t border-rose-200/50 bg-rose-500/5 px-4 py-4 sm:px-6">
+        <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-rose-500">Defaults</p>
+        <div className="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2">
           <StatRow
             label="Defaulted Asset Value"
             value={defaultedAssetValue}
@@ -178,7 +178,7 @@ export function AssetCategoryHealth({ data }: Props) {
   const fullOwnership = categories.find((c) => c?.category === "full-ownership");
 
   return (
-    <div className="flex flex-wrap gap-6 mb-12">
+    <div className="mb-8 flex min-w-0 flex-col gap-6 lg:mb-12 lg:flex-row lg:items-stretch">
       <CategoryCard
         title="Flex Assets"
         count={flex?.activeAssetCount ?? 0}

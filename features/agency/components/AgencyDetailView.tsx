@@ -136,79 +136,91 @@ export function AgencyDetailView({ agency, statistics, users, transactions }: Ag
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" asChild>
+    <div className="min-w-0 space-y-4 sm:space-y-6">
+      <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+        <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
+          <Button variant="outline" size="sm" className="w-full shrink-0 sm:w-fit" asChild>
             <Link href="/agency/lists">
-              <ArrowLeft className="h-4 w-4 mr-2" />
+              <ArrowLeft className="mr-2 h-4 w-4" />
               Back
             </Link>
           </Button>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">{agency.agency_name}</h1>
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold tracking-tight wrap-break-word sm:text-2xl">{agency.agency_name}</h1>
             <p className="text-sm text-muted-foreground">Agency profile and performance metrics</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          <Button variant="outline" asChild>
+        <div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end">
+          <Button variant="outline" className="w-full sm:w-auto" asChild>
             <Link href={`/agency/transactions/${agency._id}`}>View Transactions</Link>
           </Button>
-          <Button variant="outline" onClick={() => setCommissionOpen(true)}>
+          <Button variant="outline" className="w-full sm:w-auto" onClick={() => setCommissionOpen(true)}>
             Edit Commission
           </Button>
           {agency.is_suspended ? (
-            <Button onClick={handleReactivate} disabled={reactivating}>
-              {reactivating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            <Button className="w-full sm:w-auto" onClick={handleReactivate} disabled={reactivating}>
+              {reactivating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Reactivate Agency
             </Button>
           ) : (
-            <Button variant="destructive" onClick={() => setSuspendOpen(true)}>
+            <Button variant="destructive" className="w-full sm:w-auto" onClick={() => setSuspendOpen(true)}>
               Suspend Agency
             </Button>
           )}
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <Card className="border border-gray-200">
+      <div className="grid min-w-0 grid-cols-1 gap-3 min-[380px]:grid-cols-2 sm:gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <Card className="min-w-0 overflow-hidden border border-gray-200">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-muted-foreground">Available Balance</CardTitle>
           </CardHeader>
-          <CardContent className="text-xl font-semibold">
+          <CardContent className="text-lg font-semibold tabular-nums wrap-break-word sm:text-xl">
             {formatCurrency(statistics?.available_balance ?? agency.available_commission_balance)}
           </CardContent>
         </Card>
-        <Card className="border border-gray-200">
+        <Card className="min-w-0 overflow-hidden border border-gray-200">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-muted-foreground">Total Referrals</CardTitle>
           </CardHeader>
-          <CardContent className="text-xl font-semibold">{statistics?.total_referrals ?? agency.total_referrals ?? 0}</CardContent>
+          <CardContent className="text-xl font-semibold tabular-nums sm:text-2xl">
+            {statistics?.total_referrals ?? agency.total_referrals ?? 0}
+          </CardContent>
         </Card>
-        <Card className="border border-gray-200">
+        <Card className="min-w-0 overflow-hidden border border-gray-200">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-muted-foreground">Transactions</CardTitle>
           </CardHeader>
-          <CardContent className="text-xl font-semibold">{statistics?.total_transactions ?? transactions?.length ?? 0}</CardContent>
+          <CardContent className="text-xl font-semibold tabular-nums sm:text-2xl">
+            {statistics?.total_transactions ?? transactions?.length ?? 0}
+          </CardContent>
         </Card>
-        <Card className="border border-gray-200">
+        <Card className="min-w-0 overflow-hidden border border-gray-200">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-muted-foreground">Commission Earned</CardTitle>
           </CardHeader>
-          <CardContent className="text-xl font-semibold">{formatCurrency(statistics?.total_commission_earned ?? agency.total_commission_earned)}</CardContent>
+          <CardContent className="text-lg font-semibold tabular-nums wrap-break-word sm:text-xl">
+            {formatCurrency(statistics?.total_commission_earned ?? agency.total_commission_earned)}
+          </CardContent>
         </Card>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card className="border border-gray-200">
+      <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2">
+        <Card className="min-w-0 border border-gray-200">
           <CardHeader>
             <CardTitle>Agency Profile</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <p><span className="text-muted-foreground">Agency Code:</span> {agency.agency_code}</p>
-            <p><span className="text-muted-foreground">Email:</span> {agency.email}</p>
-            <p><span className="text-muted-foreground">Phone:</span> {agency.phoneNumber}</p>
+          <CardContent className="space-y-2 text-sm wrap-break-word">
+            <p>
+              <span className="text-muted-foreground">Agency Code:</span> {agency.agency_code}
+            </p>
+            <p>
+              <span className="text-muted-foreground">Email:</span> {agency.email}
+            </p>
+            <p>
+              <span className="text-muted-foreground">Phone:</span> {agency.phoneNumber}
+            </p>
             <p>
               <span className="text-muted-foreground">Address:</span>{" "}
               {[agency.address, agency.city, agency.state, agency.country].filter(Boolean).join(", ") || "-"}
@@ -218,7 +230,7 @@ export function AgencyDetailView({ agency, statistics, users, transactions }: Ag
           </CardContent>
         </Card>
 
-        <Card className="border border-gray-200">
+        <Card className="min-w-0 border border-gray-200">
           <CardHeader>
             <CardTitle>Status</CardTitle>
           </CardHeader>
@@ -249,26 +261,30 @@ export function AgencyDetailView({ agency, statistics, users, transactions }: Ag
         </Card>
       </div>
 
-      <Card className="border border-gray-200">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-xl">Users under Agency ({users?.length ?? 0})</CardTitle>
+      <Card className="min-w-0 border border-gray-200">
+        <CardHeader className="min-w-0 pb-3">
+          <CardTitle className="text-lg wrap-break-word sm:text-xl">
+            Users under Agency ({users?.length ?? 0})
+          </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="min-w-0">
           <AgencyUsersTable users={users} />
         </CardContent>
       </Card>
 
-      <Card className="border border-gray-200">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-xl">Agency Transactions ({transactions?.length ?? 0})</CardTitle>
+      <Card className="min-w-0 border border-gray-200">
+        <CardHeader className="min-w-0 pb-3">
+          <CardTitle className="text-lg wrap-break-word sm:text-xl">
+            Agency Transactions ({transactions?.length ?? 0})
+          </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="min-w-0">
           <AgencyTransactionsTable transactions={transactions} />
         </CardContent>
       </Card>
 
       <Dialog open={commissionOpen} onOpenChange={setCommissionOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Edit Commission</DialogTitle>
             <DialogDescription>Update commission percentage for this agency.</DialogDescription>
@@ -295,7 +311,7 @@ export function AgencyDetailView({ agency, statistics, users, transactions }: Ag
       </Dialog>
 
       <Dialog open={suspendOpen} onOpenChange={setSuspendOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Suspend Agency</DialogTitle>
             <DialogDescription>Provide a reason for suspension.</DialogDescription>

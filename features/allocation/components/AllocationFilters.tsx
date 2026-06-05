@@ -61,14 +61,14 @@ export function AllocationFilters({
     .filter((asset) => (asset.asset_option?.length ?? 0) > 0);
 
   return (
-    <section className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5 mt-2">
-      <div className="space-y-2">
+    <section className="mt-2 grid min-w-0 grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-5">
+      <div className="min-w-0 space-y-2">
         <Label className="text-sm text-muted-foreground">Filter by asset</Label>
         <Select
           value={assetName ?? "all"}
           onValueChange={(value) => onAssetNameChange(value === "all" ? null : value)}
         >
-          <SelectTrigger className="w-full">
+          <SelectTrigger className="h-10 w-full min-w-0 sm:h-9">
             <SelectValue placeholder="All assets" />
           </SelectTrigger>
           <SelectContent>
@@ -83,13 +83,13 @@ export function AllocationFilters({
         </Select>
       </div>
 
-      <div className="space-y-2">
+      <div className="min-w-0 space-y-2">
         <Label className="text-sm text-muted-foreground">Percentage paid</Label>
         <Select
           value={percentage}
           onValueChange={(value) => onPercentageChange(value)}
         >
-          <SelectTrigger className="w-full">
+          <SelectTrigger className="h-10 w-full min-w-0 sm:h-9">
             <SelectValue placeholder="Select percentage" />
           </SelectTrigger>
           <SelectContent>
@@ -102,16 +102,19 @@ export function AllocationFilters({
         </Select>
       </div>
 
-      <div className="space-y-2 md:col-span-2 lg:col-span-2">
+      <div className="min-w-0 space-y-2 md:col-span-2 lg:col-span-2">
         <Label className="text-sm text-muted-foreground">Search</Label>
         <Input
+          className="min-w-0"
           placeholder="Search by name, email, or asset"
           value={search}
           onChange={(event) => onSearchChange(event.target.value)}
         />
       </div>
 
-      <AllocationBoughtDateFilter />
+      <div className="min-w-0">
+        <AllocationBoughtDateFilter />
+      </div>
     </section>
   );
 }

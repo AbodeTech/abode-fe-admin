@@ -74,12 +74,12 @@ export function CreateRoleDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" className="bg-black text-white hover:bg-gray-800">
+        <Button size="sm" className="w-full bg-black text-white hover:bg-gray-800 sm:w-auto">
           <Plus className="h-4 w-4 mr-2" />
           Create Role
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-h-[90dvh] w-[calc(100vw-2rem)] max-w-2xl overflow-y-auto sm:w-full">
         <DialogHeader>
           <DialogTitle>Create New Role</DialogTitle>
           <DialogDescription>Define a role and assign permissions.</DialogDescription>

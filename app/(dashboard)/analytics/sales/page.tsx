@@ -21,27 +21,29 @@ function SalesAnalyticsContent() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
-      <div className="flex items-center justify-between px-6 pt-6 pb-2">
-        <div className="flex items-center gap-4">
+    <div className="mx-auto flex w-full min-w-0 max-w-[1600px] flex-col bg-background px-3 pb-16 sm:px-4 sm:pb-20">
+      <div className="flex min-w-0 flex-col gap-4 pt-2 pb-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:pt-4">
+        <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
           <Link
             href="/sales"
-            className="group flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            className="group flex min-w-0 items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
-            <div className="flex items-center justify-center size-8 rounded-full border group-hover:bg-muted transition-colors">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-full border transition-colors group-hover:bg-muted">
               <MoveLeft className="size-4" />
             </div>
-            Back to Sales
+            <span className="truncate">Back to Sales</span>
           </Link>
-          <div className="h-4 w-px bg-border mx-2" />
-          <h1 className="text-2xl font-bold tracking-tight">Sales Intelligence</h1>
+          <div className="mx-0 hidden h-4 w-px bg-border sm:mx-2 sm:block" />
+          <h1 className="min-w-0 text-2xl font-bold tracking-tight">Sales Intelligence</h1>
         </div>
       </div>
 
-      <AnalyticsFilters filters={filters} />
+      <div className="min-w-0">
+        <AnalyticsFilters filters={filters} />
+      </div>
       <FinancialSummary filters={filters} />
 
-      <div className="flex-1 overflow-auto">
+      <div className="min-w-0 flex-1 overflow-x-hidden">
         <RevenueTimeline filters={filters} />
         <AssetBreakdown filters={filters} />
       </div>
@@ -59,10 +61,10 @@ export default function SalesAnalyticsPage() {
 
 function AnalyticsSkeleton() {
   return (
-    <div className="flex flex-col gap-8 p-6">
+    <div className="mx-auto flex w-full min-w-0 max-w-[1600px] flex-col gap-8 px-3 py-8 sm:px-4">
       <Skeleton className="h-16 w-full rounded-xl" />
       <Skeleton className="h-48 w-full rounded-xl" />
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
         <Skeleton className="h-[400px] rounded-xl" />
         <Skeleton className="h-[400px] rounded-xl" />
       </div>

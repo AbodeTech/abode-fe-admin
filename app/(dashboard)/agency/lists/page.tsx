@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Loader2, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/shared/Pagination";
+import { SuspensePageFallback } from "@/components/shared/page-content-loader";
 import {
   AgencyListFilters,
   AgencyListTable,
@@ -71,13 +72,15 @@ function AgencyListContent() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Agencies</h1>
-          <p className="text-muted-foreground">Manage agency partners and view their performance.</p>
+    <div className="mx-auto w-full min-w-0 max-w-[1600px] space-y-4 sm:space-y-6">
+      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Agencies</h1>
+          <p className="text-sm text-muted-foreground sm:text-base">
+            Manage agency partners and view their performance.
+          </p>
         </div>
-        <Button asChild>
+        <Button className="w-full shrink-0 sm:w-auto" asChild>
           <Link href="/agency/new">
             <Plus className="h-4 w-4 mr-2" />
             Onboard Agency
@@ -96,20 +99,13 @@ function AgencyListContent() {
         currentIdx={data?.currentPage ?? page}
         limit={DEFAULT_AGENCY_LIMIT}
       />
-
-      {isLoading && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading agencies...
-        </div>
-      )}
     </div>
   );
 }
 
 export default function AgencyListPage() {
   return (
-    <Suspense fallback={<div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+    <Suspense fallback={<SuspensePageFallback />}>
       <AgencyListContent />
     </Suspense>
   );

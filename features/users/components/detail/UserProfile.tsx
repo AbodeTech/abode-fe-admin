@@ -30,24 +30,24 @@ const getRandomAvatar = (gender?: string | null) => {
 export function UserProfile({ user }: UserProfileProps) {
   const avatar = getRandomAvatar(user.gender)
   return (
-    <div className='mt-6 font-noto_sans flex justify-between items-center'>
-      <div className="flex gap-x-2 lg:items-center">
-        <Avatar className="h-[76px] w-[76px]">
+    <div className="mt-6 flex min-w-0 flex-col gap-4 font-noto_sans sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex min-w-0 items-center gap-3 sm:gap-x-2 lg:items-center">
+        <Avatar className="h-16 w-16 shrink-0 sm:h-[76px] sm:w-[76px]">
           <AvatarImage src={avatar || undefined} />
           <AvatarFallback>
             {user.lastName?.charAt(0).toUpperCase()}
             {user.firstName?.charAt(0).toUpperCase()}
           </AvatarFallback>
         </Avatar>
-        <div className="lg:mb-3">
-          <h3 className="text-[#101828] font-semibold text-xs lg:font-medium lg:text-2xl lg:min-w-fit">
+        <div className="min-w-0 lg:mb-3">
+          <h3 className="truncate text-base font-semibold text-[#101828] sm:text-lg lg:font-medium lg:text-2xl">
             {user.lastName} {user.firstName}
           </h3>
-          <p className="text-[0.5rem] lg:text-sm text-[#8A8B9F] mt-1">{user.email}</p>
+          <p className="mt-1 break-all text-xs text-[#8A8B9F] sm:text-sm">{user.email}</p>
         </div>
       </div>
 
-      <div className='flex flex-col gap-y-3'>
+      <div className="flex w-full min-w-0 shrink-0 flex-col gap-y-3 sm:w-auto sm:items-end">
         <UserEditActions user={user} />
       </div>
     </div>

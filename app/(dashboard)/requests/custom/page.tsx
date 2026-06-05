@@ -6,7 +6,7 @@ import { useClientRequests, DEFAULT_REQUESTS_LIMIT } from "@/features/requests";
 import { RequestsFilters, SubRequestStats } from "@/features/requests";
 import { RequestsTable } from "@/features/requests";
 import { Pagination } from "@/components/shared/Pagination";
-import { Loader2 } from "lucide-react";
+import { SuspensePageFallback } from "@/components/shared/page-content-loader";
 
 const customStatusOptions = [
   { label: "Pending", value: "pending" },
@@ -68,7 +68,7 @@ function CustomRequestsContent() {
         }
       });
       const qs = params.toString();
-      router.push(qs ? `?${qs}` : "");
+      router.push(qs ? `?${qs}` : "", { scroll: false });
     },
     [router, searchParams]
   );
@@ -88,10 +88,10 @@ function CustomRequestsContent() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Custom Requests</h1>
-        <p className="text-muted-foreground">Manage bespoke client requests.</p>
+    <div className="mx-auto mt-4 w-full min-w-0 max-w-[1600px] space-y-4 px-4 pb-20 sm:space-y-6 sm:px-6">
+      <div className="min-w-0">
+        <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Custom Requests</h1>
+        <p className="text-sm text-muted-foreground sm:text-base">Manage bespoke client requests.</p>
       </div>
 
       <SubRequestStats analytics={data?.analytics} />
@@ -120,20 +120,13 @@ function CustomRequestsContent() {
       />
 
       <Pagination count={total} currentIdx={page} limit={limit} />
-
-      {isLoading && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading requests...
-        </div>
-      )}
     </div>
   );
 }
 
 export default function CustomRequestsPage() {
   return (
-    <Suspense fallback={<div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+    <Suspense fallback={<SuspensePageFallback />}>
       <CustomRequestsContent />
     </Suspense>
   );

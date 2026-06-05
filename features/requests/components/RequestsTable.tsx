@@ -15,6 +15,11 @@ import {
 } from "@/components/ui/table";
 import { RequestDetailModal } from "./RequestDetailModal";
 import type { ClientRequest } from "../hooks/use-client-requests";
+import {
+  AdminDesktopTableWrap,
+  AdminMobileCard,
+  AdminMobileStack,
+} from "@/components/shared/admin-responsive-table";
 
 interface RequestsTableProps {
   requests?: ClientRequest[];
@@ -69,7 +74,7 @@ function renderUser(req: ClientRequest) {
   const fullName = `${req.user?.lastName ?? ""} ${req.user?.firstName ?? ""}`.trim() || "Unknown user";
   if (!userId) return <span className="font-medium">{fullName}</span>;
   return (
-    <Link href={`/admin/dashboard/user/${userId}`} className="text-black hover:text-gray-700 font-medium hover:underline transition-colors">
+    <Link href={`/users/${userId}`} className="text-black hover:text-gray-700 font-medium hover:underline transition-colors">
       {fullName}
     </Link>
   );
@@ -159,8 +164,32 @@ export function RequestsTable({ requests, isLoading, requestTypeFilter }: Reques
   const type = requestTypeFilter || "generic";
 
   return (
-    <Card className="border border-gray-200 overflow-x-auto pt-0!">
-      <Table>
+    <>
+      <AdminMobileStack className="space-y-3">
+        {rows.length === 0 ? (
+          <p className="rounded-lg border border-gray-200 py-12 text-center text-sm text-muted-foreground">No requests found.</p>
+        ) : (
+          rows.map((req) => {
+            const requestId = req.requestId || (req._id ? req._id.slice(-8) : "—");
+            return (
+              <AdminMobileCard key={req._id} title={`Request ${requestId}`} subtitle={formatDate(req.createdAt)}>
+                <div className="space-y-2 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">User: </span>
+                    {renderUser(req)}
+                  </div>
+                  <div>{statusBadge(req.status)}</div>
+                  <RequestDetailModal request={req} />
+                </div>
+              </AdminMobileCard>
+            );
+          })
+        )}
+      </AdminMobileStack>
+
+      <AdminDesktopTableWrap>
+    <Card className="border border-gray-200">
+      <Table className="min-w-[1180px]">
         <TableHeader className="bg-gray-50 border-b border-gray-200">
           <TableRow className="text-sm font-bold text-black">
             <TableHead className="py-4 font-semibold">Request ID</TableHead>
@@ -371,5 +400,7 @@ export function RequestsTable({ requests, isLoading, requestTypeFilter }: Reques
         </TableBody>
       </Table>
     </Card>
+      </AdminDesktopTableWrap>
+    </>
   );
 }

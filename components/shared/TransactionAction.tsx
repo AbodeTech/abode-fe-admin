@@ -20,8 +20,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+
+const CUSTOM_REASON_VALUE = "Other";
 
 interface TransactionActionProps {
   status: string;
@@ -137,32 +140,49 @@ function DeclineButton({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [declineReason, setDeclineReason] = useState("");
+  const [customReason, setCustomReason] = useState("");
   const queryClient = useQueryClient();
 
+  const isCustom = declineReason === CUSTOM_REASON_VALUE;
+  const resolvedMessage = isCustom ? customReason.trim() : declineReason;
+
   const mutation = useMutation({
-    mutationFn: () => onDecline(transactionId, declineReason),
+    mutationFn: () => onDecline(transactionId, resolvedMessage),
     onSuccess: () => {
       toast.success("Transaction Declined");
       queryClient.invalidateQueries({ queryKey: [tag] });
       queryClient.invalidateQueries({ queryKey: ["transactionDataPoints"] });
       setIsOpen(false);
       setDeclineReason("");
+      setCustomReason("");
     },
     onError: (error: any) => {
       toast.error(error.message || "Failed to decline transaction");
     },
   });
 
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    if (!open) {
+      setDeclineReason("");
+      setCustomReason("");
+    }
+  };
+
   const handleContinue = () => {
     if (!declineReason) {
       toast.error("Please provide a reason for declining");
+      return;
+    }
+    if (isCustom && !customReason.trim()) {
+      toast.error("Please enter a reason for declining");
       return;
     }
     mutation.mutate();
   };
 
   return (
-    <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
+    <AlertDialog open={isOpen} onOpenChange={handleOpenChange}>
       <AlertDialogTrigger asChild>
         <button className="p-1 hover:bg-gray-100 rounded transition-colors">
           <XCircle className="w-5 h-5 text-[#B42318]" />
@@ -186,14 +206,26 @@ function DeclineButton({
                         {reason}
                       </SelectItem>
                     ))}
+                    <SelectItem value={CUSTOM_REASON_VALUE}>Other (custom reason)</SelectItem>
                   </SelectContent>
                 </Select>
+                {isCustom && (
+                  <div className="mt-3">
+                    <Textarea
+                      value={customReason}
+                      onChange={(e) => setCustomReason(e.target.value)}
+                      placeholder="Enter reason for declining"
+                      maxLength={500}
+                      rows={3}
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <Button variant="outline" onClick={() => setIsOpen(false)} disabled={mutation.isPending}>
+          <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={mutation.isPending}>
             Cancel
           </Button>
           <Button onClick={handleContinue} disabled={mutation.isPending}>

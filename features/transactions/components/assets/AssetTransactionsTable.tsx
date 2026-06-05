@@ -87,17 +87,16 @@ export function AssetTransactionsTable({ data, isLoading, onApprove, onDecline }
     <div className="w-full">
       {/* Mobile Card Layout */}
       <div className="lg:hidden space-y-4 p-4">
-        {validTransactions.map((transaction, idx) => (
-          <MobileTransactionCard key={transaction._id} data={transaction}  onApprove={onApprove} onDecline={onDecline} />
+        {validTransactions.map((transaction) => (
+          <MobileTransactionCard key={transaction._id} data={transaction} onApprove={onApprove} onDecline={onDecline} />
         ))}
       </div>
 
       {/* Desktop Table Layout */}
       <div className="hidden lg:block">
-        <Card className="border border-gray-200 pt-0!
-        ">
-          <div className="w-full overflow-x-auto">
-            <Table>
+        <Card className="border border-gray-200 pt-0">
+          <div className="min-w-0 w-full overflow-x-auto">
+            <Table className="min-w-[1150px]">
               <TableHeader className="bg-gray-50 border-b border-gray-200">
                 <TableRow className="text-sm font-bold text-black">
                   <TableHead className="py-4 font-semibold">

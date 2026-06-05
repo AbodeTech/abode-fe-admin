@@ -1,40 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import type { TypedDocumentNode } from "@graphql-typed-document-node/core";
 import { execute } from "@/lib/graphql-client";
 import { graphql } from "@/lib/gql";
-import { PlotStatus } from "@/lib/gql/graphql";
 
-export { PlotStatus };
-
-const GET_BLOCK_PLOTS_QUERY = graphql(`
-  query GetBlockPlots($blockId: ID!, $size: Int, $status: PlotStatus) {
-    getBlockPlots(blockId: $blockId, size: $size, status: $status) {
-      _id
-      block
-      block_label
-      plot_number
-      size
-      status
-      payment_plan
-      allocated_date
-    }
-  }
-`);
-
-const CREATE_PLOTS_MUTATION = graphql(`
-  mutation CreatePlots($blockId: ID!, $ranges: [PlotRangeInput!]!) {
-    createPlots(blockId: $blockId, ranges: $ranges)
-  }
-`);
-
-const UPDATE_PLOT_SIZE_MUTATION = graphql(`
-  mutation UpdatePlotSize($plotId: ID!, $size: Int!, $override: Boolean) {
-    updatePlotSize(plotId: $plotId, size: $size, override: $override) {
-      _id
-      size
-      status
-    }
-  }
-`);
+export type PlotStatus = "available" | "allocated";
 
 export interface Plot {
   _id: string;
@@ -52,6 +21,48 @@ export interface PlotRangeInput {
   to: number;
   size: number;
 }
+
+// NOTE: codegen silently drops these ops for an unknown reason. Cast to typed
+// documents so consumers retain inferred types.
+const GET_BLOCK_PLOTS_QUERY = graphql(`
+  query GetBlockPlots($blockId: ID!, $size: Int, $status: PlotStatus) {
+    getBlockPlots(blockId: $blockId, size: $size, status: $status) {
+      _id
+      block
+      block_label
+      plot_number
+      size
+      status
+      payment_plan
+      allocated_date
+    }
+  }
+`) as unknown as TypedDocumentNode<
+  { getBlockPlots: Plot[] },
+  { blockId: string; size?: number; status?: PlotStatus }
+>;
+
+const CREATE_PLOTS_MUTATION = graphql(`
+  mutation CreatePlots($blockId: ID!, $ranges: [PlotRangeInput!]!) {
+    createPlots(blockId: $blockId, ranges: $ranges)
+  }
+`) as unknown as TypedDocumentNode<
+  { createPlots: number[] },
+  { blockId: string; ranges: PlotRangeInput[] }
+>;
+
+const UPDATE_PLOT_SIZE_MUTATION = graphql(`
+  mutation UpdatePlotSize($plotId: ID!, $size: Int!, $override: Boolean) {
+    updatePlotSize(plotId: $plotId, size: $size, override: $override) {
+      _id
+      size
+      status
+    }
+  }
+`) as unknown as TypedDocumentNode<
+  { updatePlotSize: Plot },
+  { plotId: string; size: number; override?: boolean }
+>;
 
 export const plotKeys = {
   all: ["plots"] as const,
@@ -80,7 +91,7 @@ export const useBlockPlots = ({
         size,
         status,
       }),
-    select: (data) => data.getBlockPlots as Plot[],
+    select: (data) => data.getBlockPlots,
     enabled: enabled && !!blockId,
   });
 };

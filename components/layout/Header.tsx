@@ -17,17 +17,22 @@ export function Header() {
 
   const isLoading = false; // Mock loading state
 
-  const { toggleSidebar } = useUIStore();
+  const { toggleSidebar, isSidebarCollapsed } = useUIStore();
 
   return (
-    <header className="sticky top-0 z-50 bg-[#FDFDFD] border-b border-[#E6E6E6] rounded-t-[12px]">
+    <header className="sticky top-0 z-40 border-b border-[#E6E6E6] bg-[#FDFDFD] rounded-t-[12px] md:z-50">
       {snackbarOpen ? (
         <TopSnackbar cancel={() => setSnackbarOpen(false)} />
       ) : (
-        <div className="hidden w-full md:flex items-center h-20"> {/* Adjusted height/alignment */}
+        <div className="hidden w-full md:flex items-center h-20">
           <Container className="flex items-center justify-between gap-6">
-            <div className="flex items-center gap-4">
-              <button onClick={toggleSidebar} className="p-2 hover:bg-gray-100 rounded-md">
+            <div className="flex min-w-0 items-center gap-4">
+              <button
+                type="button"
+                onClick={toggleSidebar}
+                className="shrink-0 p-2 hover:bg-gray-100 rounded-md"
+                aria-label={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              >
                 <Menu className="h-6 w-6 text-[#222222]" />
               </button>
 
@@ -37,16 +42,16 @@ export function Header() {
                   <span className="text-3xl -mt-1 opacity-50">👋🏽</span>
                 </div>
               ) : (
-                <div className="flex items-center gap-2">
-                  <h1 className="font-bold text-[#222222] text-2xl">
+                <div className="flex min-w-0 items-center gap-2">
+                  <h1 className="truncate font-bold text-[#222222] text-xl lg:text-2xl">
                     Hello, {user?.firstName || "User"}
                   </h1>
-                  <span className="text-3xl -mt-1">👋🏽</span>
+                  <span className="shrink-0 text-3xl -mt-1">👋🏽</span>
                 </div>
               )}
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex shrink-0 items-center gap-4">
               {/* Right side cleared as requested */}
             </div>
           </Container>

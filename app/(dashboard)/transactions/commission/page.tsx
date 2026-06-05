@@ -6,6 +6,7 @@ import { useCommissionTransactions, CommissionTransactionsTable, CommissionExpor
 import { Pagination } from "@/components/shared/Pagination";
 import { DateFilter } from "@/components/shared/DateFilter";
 import { FilterSelect } from "@/components/shared/FilterSelect";
+import { SuspensePageFallback } from "@/components/shared/page-content-loader";
 
 function CommissionTransactionsContent() {
   const searchParams = useSearchParams();
@@ -27,14 +28,14 @@ function CommissionTransactionsContent() {
   const totalCount = data?.count || 0;
 
   return (
-    <div className="mt-4 space-y-4">
+    <div className="mx-auto mt-4 w-full min-w-0 max-w-[1600px] space-y-4 px-3 pb-16 sm:px-4 sm:pb-20">
       {/* Header Section */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
           <h1 className="text-lg font-semibold text-[#333333]">Central Commission Table</h1>
-          <p className="text-sm text-[#667085] mt-0.5">View and manage all user commissions</p>
+          <p className="mt-0.5 text-sm text-[#667085]">View and manage all user commissions</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
           <FilterSelect
             queryKey="commissionsource"
             placeholder="All Commission Sources"
@@ -57,13 +58,13 @@ function CommissionTransactionsContent() {
       )}
 
       {/* Table Section */}
-      <div className="bg-white border border-[#E5EAEF] rounded-lg overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="min-w-0 overflow-hidden rounded-lg border border-[#E5EAEF] bg-white">
+        <div className="min-w-0 overflow-x-auto">
           <CommissionTransactionsTable data={transactions} isLoading={isLoading} />
         </div>
 
         {!isLoading && totalCount > 0 && (
-          <div className="px-6 py-4 border-t border-[#E5EAEF]">
+          <div className="border-t border-[#E5EAEF] px-4 py-4 sm:px-6">
             <Pagination count={totalCount} currentIdx={page} limit={limit} />
           </div>
         )}
@@ -74,7 +75,7 @@ function CommissionTransactionsContent() {
 
 export default function CommissionTransactionsPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-center text-gray-500">Loading...</div>}>
+    <Suspense fallback={<SuspensePageFallback />}>
       <CommissionTransactionsContent />
     </Suspense>
   );
