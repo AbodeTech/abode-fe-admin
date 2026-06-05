@@ -21,6 +21,7 @@ export const AssetTransactionsFragment = graphql(`
     plot_size
     asset_type
     referral
+    property_owner
     transaction_type
     transfer_file {
       file
@@ -106,6 +107,12 @@ export function AssetTransactionsTable({ data, isLoading, onApprove, onDecline }
                   </TableHead>
                   <TableHead className="py-4 font-semibold">
                     <div className="flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      Property Owner
+                    </div>
+                  </TableHead>
+                  <TableHead className="py-4 font-semibold">
+                    <div className="flex items-center gap-2">
                       <UserCheck className="h-4 w-4" />
                       Referrer
                     </div>
@@ -163,6 +170,9 @@ export function AssetTransactionsTable({ data, isLoading, onApprove, onDecline }
                       >
                         {transaction.user?.lastName} {transaction.user?.firstName}
                       </Link>
+                    </TableCell>
+                    <TableCell className="py-4 text-gray-700 w-30 truncate">
+                      {transaction.property_owner || "—"}
                     </TableCell>
                     <TableCell className="py-4 text-gray-700 w-25 truncate">
                       {transaction.referral ?? "No Referrer"}
@@ -266,6 +276,14 @@ function MobileTransactionCard({
               Type
             </span>
             <span className="text-sm font-medium text-gray-900">{data.transaction_type ?? ""}</span>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-600 flex items-center gap-2">
+              <User className="h-4 w-4" />
+              Property Owner
+            </span>
+            <span className="text-sm font-medium text-gray-900">{data.property_owner || "—"}</span>
           </div>
 
           <div className="flex items-center justify-between">
