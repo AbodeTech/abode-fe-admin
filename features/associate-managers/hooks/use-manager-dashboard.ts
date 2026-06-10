@@ -28,6 +28,7 @@ const ADMIN_GET_MANAGER_DASHBOARD_QUERY = graphql(`
       recruitment {
         newSignupsInPeriod
         upgradesInPeriod
+        onboardedInPeriod
         totalAssigned
       }
       salesAndRevenue {
@@ -63,6 +64,7 @@ const ADMIN_GET_MANAGER_DASHBOARD_QUERY = graphql(`
         totalSales
         revenueGenerated
         lastLogin
+        onboardedAt
       }
     }
   }
@@ -107,6 +109,7 @@ const MANAGER_DASHBOARD_QUERY = graphql(`
       recruitment {
         newSignupsInPeriod
         upgradesInPeriod
+        onboardedInPeriod
         totalAssigned
       }
       salesAndRevenue {
@@ -142,6 +145,7 @@ const MANAGER_DASHBOARD_QUERY = graphql(`
         totalSales
         revenueGenerated
         lastLogin
+        onboardedAt
       }
     }
   }
