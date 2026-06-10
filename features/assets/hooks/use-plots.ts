@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { TypedDocumentNode } from "@graphql-typed-document-node/core";
+import { parse } from "graphql";
 import { execute } from "@/lib/graphql-client";
-import { graphql } from "@/lib/gql";
 
 export type PlotStatus = "available" | "allocated";
 
@@ -22,9 +22,10 @@ export interface PlotRangeInput {
   size: number;
 }
 
-// NOTE: codegen silently drops these ops for an unknown reason. Cast to typed
-// documents so consumers retain inferred types.
-const GET_BLOCK_PLOTS_QUERY = graphql(`
+// NOTE: this file is excluded from codegen (see codegen.ts), so the codegen
+// `graphql()` helper returns `{}` at runtime and execute(print({})) crashes
+// with an "AST node" error. Parse the operations manually instead.
+const GET_BLOCK_PLOTS_QUERY = parse(`
   query GetBlockPlots($blockId: ID!, $size: Int, $status: PlotStatus) {
     getBlockPlots(blockId: $blockId, size: $size, status: $status) {
       _id
@@ -42,7 +43,7 @@ const GET_BLOCK_PLOTS_QUERY = graphql(`
   { blockId: string; size?: number; status?: PlotStatus }
 >;
 
-const CREATE_PLOTS_MUTATION = graphql(`
+const CREATE_PLOTS_MUTATION = parse(`
   mutation CreatePlots($blockId: ID!, $ranges: [PlotRangeInput!]!) {
     createPlots(blockId: $blockId, ranges: $ranges)
   }
@@ -51,7 +52,7 @@ const CREATE_PLOTS_MUTATION = graphql(`
   { blockId: string; ranges: PlotRangeInput[] }
 >;
 
-const UPDATE_PLOT_SIZE_MUTATION = graphql(`
+const UPDATE_PLOT_SIZE_MUTATION = parse(`
   mutation UpdatePlotSize($plotId: ID!, $size: Int!, $override: Boolean) {
     updatePlotSize(plotId: $plotId, size: $size, override: $override) {
       _id

@@ -1,12 +1,13 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { TypedDocumentNode } from "@graphql-typed-document-node/core";
+import { parse } from "graphql";
 import { execute } from "@/lib/graphql-client";
-import { graphql } from "@/lib/gql";
 import { allocationKeys } from "./query-keys";
 
-// NOTE: codegen silently drops this op for an unknown reason. Cast to a typed
-// document so consumers retain inferred types. Investigate codegen later.
-const ALLOCATE_LAND_MUTATION = graphql(`
+// NOTE: this file is excluded from codegen (see codegen.ts), so the codegen
+// `graphql()` helper returns `{}` at runtime and execute(print({})) crashes
+// with an "AST node" error. Parse the operation manually instead.
+const ALLOCATE_LAND_MUTATION = parse(`
   mutation AllocateLand($paymentPlanId: ID!, $plotIds: [ID!]!) {
     allocateLand(paymentPlanId: $paymentPlanId, plotIds: $plotIds) {
       success
