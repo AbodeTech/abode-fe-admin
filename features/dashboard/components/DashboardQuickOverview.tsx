@@ -120,7 +120,7 @@ export default function DashboardQuickOverview(props: DashboardQuickOverviewProp
       <Link href="/users/suspended-payment-plans" className="block min-w-0">
         <Card className="h-full min-w-0 overflow-hidden transition-colors hover:bg-muted/50 cursor-pointer">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Suspended Payment Plans</CardTitle>
+            <CardTitle className="text-sm font-medium">Termination Payment Plans</CardTitle>
             <UsersIcon className="h-4 w-4 shrink-0 text-destructive" />
           </CardHeader>
           <CardContent>

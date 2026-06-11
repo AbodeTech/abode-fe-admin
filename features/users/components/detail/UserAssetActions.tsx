@@ -22,7 +22,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { deleteUserFlexAsset, deleteUserFullOwnershipAsset, suspendPaymentPlan, unSuspendPaymentPlan } from "@/lib/api/admin/user-assets.client";
+import { deleteUserFlexAsset, deleteUserFullOwnershipAsset } from "@/lib/api/admin/user-assets.client";
+import { UserPaymentPlanUnSuspend } from "../modals/UserPaymentPlanUnSuspend";
+import { UserPaymentPlanSuspend } from "../modals/UserPaymentPlanSuspend";
 import { UserAsset } from "@/lib/api/admin/user-assets.types";
 import { EditUserPaymentPlanModal } from "../modals/EditUserPaymentPlanModal";
 import { EditUserAssetQuestionModal } from "../modals/EditUserAssetQuestionModal";
@@ -56,7 +58,6 @@ export function UserAssetActions({
   const router = useRouter();
 
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [showSuspendDialog, setShowSuspendDialog] = useState(false);
 
   // Modal states
   const [showSendContract, setShowSendContract] = useState(false);
@@ -97,10 +98,6 @@ export function UserAssetActions({
     mutationFn: assetType === "flex" ? deleteUserFlexAsset : deleteUserFullOwnershipAsset,
   });
 
-  const suspendMutation = useMutation({
-    mutationFn: isSuspended ? unSuspendPaymentPlan : suspendPaymentPlan,
-  });
-
   const handleDelete = async () => {
     try {
       await deleteMutation.mutateAsync({ userId, assetId: asset._id, unique_asset_id: uniqueAssetId });
@@ -109,17 +106,6 @@ export function UserAssetActions({
       setShowDeleteDialog(false);
     } catch (error: unknown) {
       toast.error(getErrorMessage(error, "Failed to delete asset"));
-    }
-  };
-
-  const handleSuspend = async () => {
-    try {
-      await suspendMutation.mutateAsync({ uniqueAssetId });
-      toast.success(isSuspended ? "Asset transactions resumed" : "Asset transactions suspended");
-      queryClient.invalidateQueries({ queryKey: ["userAssets", userId] });
-      setShowSuspendDialog(false);
-    } catch (error: unknown) {
-      toast.error(getErrorMessage(error, "Failed to update suspension status"));
     }
   };
 
@@ -188,8 +174,15 @@ export function UserAssetActions({
             </>
           )}
 
-          <DropdownMenuItem onClick={() => setShowSuspendDialog(true)}>
-            {isSuspended ? "Resume Transactions" : "Suspend Transactions"}
+          <DropdownMenuItem
+            className="pr-8"
+            onSelect={(event) => event.preventDefault()}
+          >
+            {isSuspended ? (
+              <UserPaymentPlanUnSuspend uniqueAssetId={uniqueAssetId} userId={userId} />
+            ) : (
+              <UserPaymentPlanSuspend uniqueAssetId={uniqueAssetId} userId={userId} />
+            )}
           </DropdownMenuItem>
 
           {canDeleteAsset && (
@@ -282,34 +275,6 @@ export function UserAssetActions({
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Suspend/Unsuspend Dialog */}
-      <AlertDialog open={showSuspendDialog} onOpenChange={setShowSuspendDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {isSuspended ? "Resume Transactions?" : "Suspend Transactions?"}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {isSuspended
-                ? "Resuming transactions will re-enable all financial activities linked to this asset."
-                : "Suspending transactions will disable all financial activities associated with this asset."}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <Button
-              onClick={(e) => {
-                e.preventDefault();
-                handleSuspend();
-              }}
-              disabled={suspendMutation.isPending}
-            >
-              {suspendMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isSuspended ? "Resume" : "Suspend"}
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 }

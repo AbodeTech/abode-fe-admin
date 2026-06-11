@@ -10,13 +10,15 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { graphql, useFragment as getFragmentData, FragmentType } from "@/lib/gql";
+import type { FragmentType } from "@/lib/gql";
+import { graphql, useFragment as getFragmentData } from "@/lib/gql";
 import {
   AdminDesktopTableWrap,
   AdminMobileCard,
   AdminMobileField,
   AdminMobileStack,
 } from "@/components/shared/admin-responsive-table";
+import { PaymentPlanTerminationStatusSelect } from "./PaymentPlanTerminationStatusSelect";
 
 export const SuspendedPaymentPlansRowFragment = graphql(`
   fragment SuspendedPaymentPlansRow_plan on SuspendedPaymentPlans {
@@ -33,19 +35,22 @@ export const SuspendedPaymentPlansRowFragment = graphql(`
     balance
     start_date
     next_date
+    user_id
+    unique_asset_id
+    is_suspended
   }
 `);
 
-type SuspendedPaymentPlanRow = FragmentType<typeof SuspendedPaymentPlansRowFragment>;
+type PlanRow = FragmentType<typeof SuspendedPaymentPlansRowFragment>;
 
 interface SuspendedPaymentPlansTableProps {
-  plans: (SuspendedPaymentPlanRow | null)[] | null | undefined;
+  plans: (PlanRow | null)[] | null | undefined;
 }
 
 export function SuspendedPaymentPlansTable({ plans }: SuspendedPaymentPlansTableProps) {
-  const plansRaw = plans || [];
+  const plansRaw = plans ?? [];
   const rows = plansRaw.map((plan) => getFragmentData(SuspendedPaymentPlansRowFragment, plan));
-  const validRows = rows.filter((plan): plan is NonNullable<typeof plan> => plan !== null && plan !== undefined);
+  const validRows = rows.filter((plan): plan is NonNullable<typeof plan> => plan != null);
 
   return (
     <div className="w-full min-w-0 space-y-3">
@@ -70,13 +75,20 @@ export function SuspendedPaymentPlansTable({ plans }: SuspendedPaymentPlansTable
               value={row.start_date ? format(new Date(row.start_date), "dd/MM/yyyy") : "-"}
             />
             <AdminMobileField label="Next" value={row.next_date ? format(new Date(row.next_date), "dd/MM/yyyy") : "-"} />
+            <div className="border-t border-border pt-2">
+              <PaymentPlanTerminationStatusSelect
+                uniqueAssetId={row.unique_asset_id}
+                userId={row.user_id}
+                isSuspended={row.is_suspended ?? true}
+              />
+            </div>
           </AdminMobileCard>
         ))}
       </AdminMobileStack>
 
       <AdminDesktopTableWrap>
         <div className="min-w-0 overflow-x-auto">
-          <Table className="min-w-[1320px]">
+          <Table className="min-w-[1200px]">
             <TableHeader>
               <TableRow>
                 <TableHead>First Name</TableHead>
@@ -92,6 +104,7 @@ export function SuspendedPaymentPlansTable({ plans }: SuspendedPaymentPlansTable
                 <TableHead className="text-right">Amount Left</TableHead>
                 <TableHead>Start Date</TableHead>
                 <TableHead>End Date</TableHead>
+                <TableHead>Termination</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -117,12 +130,19 @@ export function SuspendedPaymentPlansTable({ plans }: SuspendedPaymentPlansTable
                     <TableCell>
                       {row.next_date ? format(new Date(row.next_date), "dd/MM/yyyy") : "-"}
                     </TableCell>
+                    <TableCell>
+                      <PaymentPlanTerminationStatusSelect
+                        uniqueAssetId={row.unique_asset_id}
+                        userId={row.user_id}
+                        isSuspended={row.is_suspended ?? true}
+                      />
+                    </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={13} className="py-6 text-center">
-                    No users found with suspended payment plans.
+                  <TableCell colSpan={14} className="py-6 text-center">
+                    No users found with termination payment plans.
                   </TableCell>
                 </TableRow>
               )}
