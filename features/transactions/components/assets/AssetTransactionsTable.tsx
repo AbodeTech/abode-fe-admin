@@ -105,7 +105,7 @@ export function AssetTransactionsTable({ data, isLoading, onApprove, onDecline }
                       Payer
                     </div>
                   </TableHead>
-                  <TableHead className="py-4 font-semibold">
+                  <TableHead className="py-4 font-semibold max-w-40">
                     <div className="flex items-center gap-2">
                       <User className="h-4 w-4" />
                       Property Owner
@@ -171,7 +171,7 @@ export function AssetTransactionsTable({ data, isLoading, onApprove, onDecline }
                         {transaction.user?.lastName} {transaction.user?.firstName}
                       </Link>
                     </TableCell>
-                    <TableCell className="py-4 text-gray-700 w-30 truncate">
+                    <TableCell className="py-4 text-gray-700 max-w-40 truncate">
                       {transaction.property_owner || "—"}
                     </TableCell>
                     <TableCell className="py-4 text-gray-700 w-25 truncate">
