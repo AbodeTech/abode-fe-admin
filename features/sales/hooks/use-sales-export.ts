@@ -31,6 +31,15 @@ const EXPORT_SALES_QUERY = graphql(`
         next_date
         default_amount
         is_suspended
+        amount_payable
+        balance
+        payment_plan_id
+        unique_asset_id
+        months_covered
+        month_remaining
+        allocation_status
+        payment_plan_created_at
+        payment_plan_updated_at
       }
     }
   }
@@ -47,7 +56,7 @@ export const downloadSalesData = async ({ payload }: { payload: SalesFilters }) 
     filters: {
       search,
       startDate,
-      nextDate: endDate,
+      endDate,
       assetType,
     },
   });

@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { execute } from '@/lib/graphql-client';
 import { graphql } from '@/lib/gql';
 import { salesKeys } from './query-keys';
+import { derivePaymentStatus } from '../lib/payment-status';
 
 const GET_SALES_RECORD_QUERY = graphql(`
   query GetSalesRecord($filters: SalesRecordFilters, $limit: Int!, $page: Int!) {
@@ -46,11 +47,71 @@ export const useSalesRecords = (filters: SalesFilters) => {
         filters: {
           search,
           startDate,
-          nextDate: endDate,
+          endDate,
           assetType,
         },
       }),
     select: (data) => data.getSalesRecord,
+  });
+};
+
+const GET_SALES_STATUS_COUNTS_QUERY = graphql(`
+  query GetSalesStatusCounts($filters: SalesRecordFilters, $limit: Int!, $page: Int!) {
+    getSalesRecord(filters: $filters, limit: $limit, page: $page) {
+      count
+      data {
+        amount_paid
+        amount_payable
+        balance
+        price
+      }
+    }
+  }
+`);
+
+export interface SalesStatusCounts {
+  total: number;
+  paid: number;
+  stillPaying: number;
+  unpaid: number;
+}
+
+export const useSalesStatusCounts = (
+  filters: Pick<SalesFilters, 'search' | 'startDate' | 'endDate' | 'assetType'>
+) => {
+  const { search, startDate, endDate, assetType } = filters;
+
+  return useQuery({
+    queryKey: salesKeys.statusCounts({ search, startDate, endDate, assetType }),
+    queryFn: () =>
+      execute(GET_SALES_STATUS_COUNTS_QUERY, {
+        page: 1,
+        limit: 1_000_000,
+        filters: {
+          search,
+          startDate,
+          endDate,
+          assetType,
+        },
+      }),
+    staleTime: 5 * 60 * 1000,
+    select: (data): SalesStatusCounts => {
+      const records = data.getSalesRecord?.data || [];
+      const counts: SalesStatusCounts = {
+        total: data.getSalesRecord?.count || records.length,
+        paid: 0,
+        stillPaying: 0,
+        unpaid: 0,
+      };
+      for (const record of records) {
+        if (!record) continue;
+        const status = derivePaymentStatus(record);
+        if (status === 'Paid') counts.paid += 1;
+        else if (status === 'Still Paying') counts.stillPaying += 1;
+        else counts.unpaid += 1;
+      }
+      return counts;
+    },
   });
 };
 

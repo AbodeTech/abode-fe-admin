@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import {
   SummaryCards,
   SalesTable,
+  SalesStatusChips,
   useSalesRecords,
   useSalesSummary,
   DEFAULT_SALES_LIMIT,
@@ -94,6 +95,8 @@ function SalesContent() {
         </div>
       )}
       {summary && <SummaryCards data={summary} />}
+
+      <SalesStatusChips filters={{ search, startDate, endDate, assetType }} />
 
       <SalesTable records={list?.data?.filter((item): item is NonNullable<typeof item> => item !== null)} />
 
