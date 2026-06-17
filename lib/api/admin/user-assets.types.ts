@@ -78,6 +78,9 @@ export interface UserAsset {
   asset_questions?: {
     name_of_property: string;
     address: string;
+    mode_of_communication?: string;
+    source_of_funds?: string;
+    desired_landuse?: string;
     unique_asset_id: string;
   }[];
 }

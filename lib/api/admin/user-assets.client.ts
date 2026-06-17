@@ -75,6 +75,9 @@ export const getUserAssetsByAdmin = async (id: string) => {
         asset_questions {
           name_of_property
           address
+          mode_of_communication
+          source_of_funds
+          desired_landuse
           unique_asset_id
         }
       }

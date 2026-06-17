@@ -28,6 +28,7 @@ import { UserPaymentPlanSuspend } from "../modals/UserPaymentPlanSuspend";
 import { UserAsset } from "@/lib/api/admin/user-assets.types";
 import { EditUserPaymentPlanModal } from "../modals/EditUserPaymentPlanModal";
 import { EditUserAssetQuestionModal } from "../modals/EditUserAssetQuestionModal";
+import { ChangeAssetLocationModal } from "../modals/ChangeAssetLocationModal";
 import { SendContractOfSalesModal } from "../modals/SendContractOfSalesModal";
 import { SendCompletionCertificateModal } from "../modals/SendCompletionCertificateModal";
 import { SendHamperModal } from "../modals/SendHamperModal";
@@ -54,6 +55,7 @@ export function UserAssetActions({
   const canEditAssetQuestion = permissions.includes("update-asset-question");
   const canDeleteAsset = permissions.includes("delete-user-asset");
   const canSendContract = permissions.includes("send-contract");
+  const canChangeAssetLocation = permissions.includes("change-asset-location");
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -64,6 +66,7 @@ export function UserAssetActions({
   const [showSendCert, setShowSendCert] = useState(false);
   const [showSendHamper, setShowSendHamper] = useState(false);
   const [showSendTerms, setShowSendTerms] = useState(false);
+  const [showChangeLocation, setShowChangeLocation] = useState(false);
 
   const pd = asset.payment_details!;
   const question = asset.asset_questions?.find(q => q.unique_asset_id === pd.unique_asset_id);
@@ -109,7 +112,13 @@ export function UserAssetActions({
     }
   };
 
-  if (!canEditPaymentPlan && !canEditAssetQuestion && !canDeleteAsset && !canSendContract) {
+  if (
+    !canEditPaymentPlan &&
+    !canEditAssetQuestion &&
+    !canDeleteAsset &&
+    !canSendContract &&
+    !canChangeAssetLocation
+  ) {
     return null;
   }
 
@@ -145,6 +154,17 @@ export function UserAssetActions({
             }}
           >
             Edit Asset Question
+          </DropdownMenuItem>
+        )}
+
+        {canChangeAssetLocation && (
+          <DropdownMenuItem
+            onSelect={(event) => {
+              event.preventDefault();
+              setShowChangeLocation(true);
+            }}
+          >
+            Change Asset Location
           </DropdownMenuItem>
         )}
 
@@ -214,6 +234,15 @@ export function UserAssetActions({
           uniqueAssetId={uniqueAssetId}
           currentName={question?.name_of_property || ""}
           currentAddress={question?.address || ""}
+          userId={userId}
+        />
+      )}
+
+      {canChangeAssetLocation && (
+        <ChangeAssetLocationModal
+          isOpen={showChangeLocation}
+          onClose={() => setShowChangeLocation(false)}
+          asset={asset}
           userId={userId}
         />
       )}
