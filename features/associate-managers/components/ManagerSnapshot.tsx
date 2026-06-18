@@ -302,14 +302,18 @@ export function ManagerSnapshot({ viewAs, manager, dashboard }: Props) {
             <ActiveTargetPill periodLabel={periodLabel} remaining={remaining} />
           ) : (
             <div className="flex-1">
-              <NoActiveTargetBanner
-                viewAs={viewAs}
-                onSet={() => setDialogOpen(true)}
-              />
+              {/* In combined "all managers" view there's no single manager to
+                  set targets on, so suppress the per-manager call-to-action. */}
+              {manager && (
+                <NoActiveTargetBanner
+                  viewAs={viewAs}
+                  onSet={() => setDialogOpen(true)}
+                />
+              )}
             </div>
           )}
 
-          {viewAs === "super-admin" && active && (
+          {viewAs === "super-admin" && active && manager && (
             <Button
               variant="outline"
               size="sm"
@@ -335,7 +339,7 @@ export function ManagerSnapshot({ viewAs, manager, dashboard }: Props) {
                 : undefined
             }
             percent={recruitedPct}
-            tooltip="Approved Associate Pro upgrades this period vs. active target."
+            tooltip="Associate Pros recruited by your team this period vs. active target."
           />
 
           <KpiTile

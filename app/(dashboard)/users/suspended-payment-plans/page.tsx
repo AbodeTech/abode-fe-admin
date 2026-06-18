@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,17 +11,22 @@ import {
   SuspendedPaymentPlansTable,
   TerminationPaymentPlansSummary,
   useSuspendedPaymentPlans,
+  useSuspendedPaymentPlansSummary,
   useExportSuspendedPaymentPlans,
   SUSPENDED_PAYMENT_PLANS_PAGE_SIZE,
 } from "@/features/users";
-import {
-  computeTerminationPaymentPlansMetrics,
-  parseTerminationPaymentPlanRows,
-} from "@/features/users/utils/compute-termination-payment-plans-metrics";
+import type { TerminationPaymentPlansMetrics } from "@/features/users/utils/compute-termination-payment-plans-metrics";
 import { Loader2, Download, Search } from "lucide-react";
 import { PageContentLoader, SuspensePageFallback } from "@/components/shared/page-content-loader";
 
-const METRICS_FETCH_CAP = 10_000;
+const EMPTY_METRICS: TerminationPaymentPlansMetrics = {
+  totalPlans: 0,
+  totalUnits: 0,
+  totalAmountPaid: 0,
+  totalOutstanding: 0,
+  flexPlans: 0,
+  fullOwnershipPlans: 0,
+};
 
 function TerminationPaymentPlansContent() {
   const searchParams = useSearchParams();
@@ -39,22 +44,21 @@ function TerminationPaymentPlansContent() {
   });
   const count = data?.count ?? 0;
 
-  const { data: metricsData, isLoading: metricsLoading } = useSuspendedPaymentPlans({
-    page: 1,
-    limit: Math.min(count, METRICS_FETCH_CAP),
+  const { data: summary, isLoading: metricsLoading } = useSuspendedPaymentPlansSummary({
     searchQuery,
     assetType,
-    enabled: !isLoading && count > 0,
   });
 
   const exportMutation = useExportSuspendedPaymentPlans();
 
-  const metrics = useMemo(() => {
-    const rows = parseTerminationPaymentPlanRows(
-      count > 0 ? (metricsData?.data ?? data?.data) : []
-    );
-    return computeTerminationPaymentPlansMetrics(rows, count);
-  }, [metricsData?.data, data?.data, count]);
+  const metrics: TerminationPaymentPlansMetrics = {
+    totalPlans: summary?.totalPlans ?? EMPTY_METRICS.totalPlans,
+    totalUnits: summary?.totalUnits ?? EMPTY_METRICS.totalUnits,
+    totalAmountPaid: summary?.totalAmountPaid ?? EMPTY_METRICS.totalAmountPaid,
+    totalOutstanding: summary?.totalOutstanding ?? EMPTY_METRICS.totalOutstanding,
+    flexPlans: summary?.flexPlans ?? EMPTY_METRICS.flexPlans,
+    fullOwnershipPlans: summary?.fullOwnershipPlans ?? EMPTY_METRICS.fullOwnershipPlans,
+  };
 
   const handleSearch = () => {
     const params = new URLSearchParams(searchParams.toString());
@@ -138,7 +142,7 @@ function TerminationPaymentPlansContent() {
         </div>
       </div>
 
-      <TerminationPaymentPlansSummary metrics={metrics} isLoading={metricsLoading && count > 0} />
+      <TerminationPaymentPlansSummary metrics={metrics} isLoading={metricsLoading} />
 
       <Card className="min-w-0 overflow-hidden">
         <CardHeader className="px-4">

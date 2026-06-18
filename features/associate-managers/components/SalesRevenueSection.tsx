@@ -4,6 +4,9 @@ import type { ManagerDashboardSalesRevenue } from "@/lib/gql/graphql";
 
 interface Props {
   data: ManagerDashboardSalesRevenue;
+  /** Which tier of users the roster represents. Switches labels between
+   * "Selling Pros" (manager dashboard) and "Selling Associates" (system view). */
+  roster?: "associate-pro" | "associate";
 }
 
 const formatCurrency = (n: number) =>
@@ -16,9 +19,16 @@ const formatCurrencyShort = (n: number) => {
   return formatCurrency(n);
 };
 
-export function SalesRevenueSection({ data }: Props) {
-  const { sellingPros, sellingProsTarget, totalRevenue, revenuePerSellingPro } =
-    data;
+export function SalesRevenueSection({ data, roster = "associate-pro" }: Props) {
+  const {
+    sellingPros,
+    sellingProsTarget,
+    totalRevenue,
+    initialSalesRevenue,
+    recurringRevenue,
+    revenuePerSellingPro,
+  } = data;
+  const isAssociate = roster === "associate";
 
   const sellingDisplay =
     sellingProsTarget > 0
@@ -32,21 +42,25 @@ export function SalesRevenueSection({ data }: Props) {
         <StatCard
           icon={Briefcase}
           iconColor="text-blue-600"
-          label="Selling Associate Pros"
+          label={isAssociate ? "Selling Associates" : "Selling Associate Pros"}
           value={sellingDisplay}
-          hint="Pros who made at least one sale this period"
+          hint={
+            isAssociate
+              ? "Associates who closed a new sale this period"
+              : "Pros who closed a new sale this period"
+          }
         />
         <StatCard
           icon={CircleDollarSign}
           iconColor="text-green-600"
           label="Total Revenue from Associate Sales"
           value={formatCurrencyShort(totalRevenue)}
-          hint={formatCurrency(totalRevenue)}
+          hint={`${formatCurrencyShort(initialSalesRevenue)} initial · ${formatCurrencyShort(recurringRevenue)} recurring`}
         />
         <StatCard
           icon={BarChart3}
           iconColor="text-orange-600"
-          label="Revenue per Selling Pro"
+          label={isAssociate ? "Revenue per Selling Associate" : "Revenue per Selling Pro"}
           value={formatCurrencyShort(revenuePerSellingPro)}
           hint={formatCurrency(revenuePerSellingPro)}
         />

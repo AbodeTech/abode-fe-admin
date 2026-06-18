@@ -35,11 +35,16 @@ const ADMIN_GET_MANAGER_DASHBOARD_QUERY = graphql(`
         sellingPros
         sellingProsTarget
         totalRevenue
+        initialSalesRevenue
+        recurringRevenue
         revenuePerSellingPro
       }
       activity {
         activeCount
         activePct
+        recentLoginCount
+        recentSaleCount
+        recentRecruitCount
         inactiveCount
         inactivePct
         abandonedCount
@@ -116,11 +121,16 @@ const MANAGER_DASHBOARD_QUERY = graphql(`
         sellingPros
         sellingProsTarget
         totalRevenue
+        initialSalesRevenue
+        recurringRevenue
         revenuePerSellingPro
       }
       activity {
         activeCount
         activePct
+        recentLoginCount
+        recentSaleCount
+        recentRecruitCount
         inactiveCount
         inactivePct
         abandonedCount

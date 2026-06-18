@@ -4,12 +4,25 @@ import type { ManagerDashboardActivity } from "@/lib/gql/graphql";
 
 interface Props {
   data: ManagerDashboardActivity;
+  /** Switches the noun used in labels between "Associate Pros" and "Associates". */
+  roster?: "associate-pro" | "associate";
 }
 
-export function ActivitySection({ data }: Props) {
-  const { activeCount, activePct, inactiveCount, inactivePct, abandonedCount, abandonedPct } =
-    data;
+export function ActivitySection({ data, roster = "associate-pro" }: Props) {
+  const {
+    activeCount,
+    activePct,
+    recentLoginCount,
+    recentSaleCount,
+    recentRecruitCount,
+    inactiveCount,
+    inactivePct,
+    abandonedCount,
+    abandonedPct,
+  } = data;
   const total = activeCount + inactiveCount + abandonedCount;
+  const isAssociate = roster === "associate";
+  const noun = isAssociate ? "Associates" : "Associate Pros";
 
   return (
     <section className="space-y-3">
@@ -18,9 +31,11 @@ export function ActivitySection({ data }: Props) {
       {/* Stacked bar */}
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <div className="flex items-center justify-between mb-3">
-          <p className="text-sm text-gray-600">Pro activity distribution</p>
+          <p className="text-sm text-gray-600">
+            {isAssociate ? "Associate" : "Pro"} activity distribution
+          </p>
           <p className="text-sm font-medium text-gray-900">
-            {total} Associate Pros
+            {total} {noun}
           </p>
         </div>
         <div className="flex h-3 w-full overflow-hidden rounded-full bg-gray-100">
@@ -61,15 +76,15 @@ export function ActivitySection({ data }: Props) {
           icon={CheckCircle2}
           iconColor="text-[#00695C]"
           iconBg="bg-[#E0F2F1]"
-          label="Active Associate Pros"
+          label={`Active ${noun}`}
           value={activeCount}
-          hint="Sale, recruitment, or login in last 90 days"
+          hint={`${recentLoginCount.toLocaleString()} logged in · ${recentSaleCount.toLocaleString()} sold · ${recentRecruitCount.toLocaleString()} recruited (last 90 days)`}
         />
         <StatCard
           icon={Clock}
           iconColor="text-amber-600"
           iconBg="bg-amber-50"
-          label="Inactive Associate Pros"
+          label={`Inactive ${noun}`}
           value={inactiveCount}
           hint="No activity in last 90 days"
         />
@@ -77,7 +92,7 @@ export function ActivitySection({ data }: Props) {
           icon={AlertOctagon}
           iconColor="text-[#AD1F2A]"
           iconBg="bg-red-50"
-          label="Abandoned Associate Pros"
+          label={`Abandoned ${noun}`}
           value={abandonedCount}
           hint="No login in last 6 months"
         />

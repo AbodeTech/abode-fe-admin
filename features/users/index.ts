@@ -17,6 +17,7 @@ export {
 } from './hooks/use-suspended-users';
 export {
   useSuspendedPaymentPlans,
+  useSuspendedPaymentPlansSummary,
   useExportSuspendedPaymentPlans,
   SUSPENDED_PAYMENT_PLANS_PAGE_SIZE,
 } from './hooks/use-suspended-payment-plans';

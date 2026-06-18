@@ -4,9 +4,11 @@ import type { ManagerDashboardMilestones } from "@/lib/gql/graphql";
 
 interface Props {
   data: ManagerDashboardMilestones;
+  roster?: "associate-pro" | "associate";
 }
 
-export function MilestonesSection({ data }: Props) {
+export function MilestonesSection({ data, roster = "associate-pro" }: Props) {
+  const isAssociate = roster === "associate";
   return (
     <section className="space-y-3">
       <h2 className="text-base font-semibold text-gray-900">Milestones</h2>
@@ -14,7 +16,7 @@ export function MilestonesSection({ data }: Props) {
         <StatCard
           icon={Sparkles}
           iconColor="text-purple-600"
-          label="New Associate Pro First Sales"
+          label={isAssociate ? "New Associate First Sales" : "New Associate Pro First Sales"}
           value={data.earlySellers}
           hint="First sale within 3 months of upgrade (this period)"
         />

@@ -3,7 +3,12 @@
     "allow": [
       "Bash(grep -l \"useMutation\\\\|useQuery\" /Users/user/projects/work/abode/migration/abode-admin-fe/features/**/components/*.tsx)",
       "Bash(find \"/Users/user/projects/work/abode/migration/abode-admin-fe/app/\\(dashboard\\)/agency/transactions\" -type f)",
-      "Bash(npm run codegen)"
+      "Bash(npm run codegen)",
+      "Bash(git merge *)",
+      "Bash(awk 'NR>=2139 && NR<=2480' src/repository/transactionRepository.ts)",
+      "Bash(grep -n 'filters\\\\|asset_type\\\\|balance\\\\|amount_paid\\\\|is_defaulted\\\\|is_suspended\\\\|completed\\\\|nextDate\\\\|startDate\\\\|endDate\\\\|next_date\\\\|$match\\\\|query\\\\.\\\\|status\\\\|sortBy\\\\|paid\\\\|payable')",
+      "Bash(curl -s -X POST 'https://e0swwow440owgo0c4s8gs04g.abodeflex.com.ng/graphql' -H 'Content-Type: application/json' --data '{\"query\":\"{ __type\\(name:\\\\\"SalesRecord\\\\\"\\){ name } }\"}')",
+      "Bash(curl -s -X POST 'https://e0swwow440owgo0c4s8gs04g.abodeflex.com.ng/graphql' -H 'Content-Type: application/json' --data '{\"query\":\"{ __type\\(name:\\\\\"SuspendedPaymentPlansSummary\\\\\"\\){ name } }\"}')"
     ]
   }
 }

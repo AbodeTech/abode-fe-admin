@@ -26,8 +26,38 @@ const EXPORT_SUSPENDED_PAYMENT_PLANS_QUERY = graphql(`
   }
 `);
 
+const GET_SUSPENDED_PAYMENT_PLANS_SUMMARY_QUERY = graphql(`
+  query GetSuspendedPaymentPlansSummary($searchQuery: String, $assetType: String) {
+    getSuspendedPaymentPlansSummary(searchQuery: $searchQuery, assetType: $assetType) {
+      totalPlans
+      totalUnits
+      totalAmountPaid
+      totalOutstanding
+      flexPlans
+      fullOwnershipPlans
+    }
+  }
+`);
+
 export const SUSPENDED_PAYMENT_PLANS_PAGE_SIZE = 25;
 const EXPORT_LIMIT = 1_000_000;
+
+export const useSuspendedPaymentPlansSummary = (params: {
+  searchQuery?: string | null;
+  assetType?: string | null;
+  enabled?: boolean;
+}) => {
+  const searchQuery = params.searchQuery ?? null;
+  const assetType = params.assetType ?? null;
+
+  return useQuery({
+    queryKey: userKeys.suspendedPaymentPlansSummary({ searchQuery, assetType }),
+    queryFn: () =>
+      execute(GET_SUSPENDED_PAYMENT_PLANS_SUMMARY_QUERY, { searchQuery, assetType }),
+    select: (data) => data.getSuspendedPaymentPlansSummary,
+    enabled: params.enabled ?? true,
+  });
+};
 
 export const useSuspendedPaymentPlans = (params: {
   page?: number;

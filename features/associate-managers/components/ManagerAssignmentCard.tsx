@@ -4,7 +4,14 @@ import { useState } from "react";
 import { AlertCircle, Pencil, UserPlus, UserCog } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ReassignProDialog } from "./dialogs/ReassignProDialog";
-import { getMockManagerForUser } from "../mock-data";
+
+interface AssignedManager {
+  id: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  userName?: string | null;
+  email?: string | null;
+}
 
 interface Props {
   user: {
@@ -13,16 +20,18 @@ interface Props {
     lastName?: string | null;
     email?: string | null;
     referral_status?: string | null;
+    associate_manager?: AssignedManager | null;
   };
 }
+
+const managerDisplayName = (m: AssignedManager) => {
+  const full = `${m.firstName ?? ""} ${m.lastName ?? ""}`.trim();
+  return full || m.userName || m.email || "Associate Manager";
+};
 
 /**
  * Shown on the User Details page when the user is an Associate Pro.
  * Surfaces the user's assigned manager + a single-click reassign / assign action.
- *
- * Design-time only: uses `getMockManagerForUser(user._id)` to pretend a manager
- * is attached to the user. Replace with real data when the backend exposes
- * `assignedManager` on the user resource.
  */
 export function ManagerAssignmentCard({ user }: Props) {
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -30,7 +39,7 @@ export function ManagerAssignmentCard({ user }: Props) {
   // Only render for Associate Pros.
   if (user.referral_status !== "associate-pro") return null;
 
-  const currentManager = getMockManagerForUser(user._id);
+  const currentManager = user.associate_manager ?? null;
   const proFullName = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || "Associate Pro";
 
   return (
@@ -45,7 +54,7 @@ export function ManagerAssignmentCard({ user }: Props) {
               <p className="text-xs uppercase tracking-wide text-gray-500">Assigned Manager</p>
               {currentManager ? (
                 <div className="mt-0.5">
-                  <p className="text-base font-semibold text-gray-900">{currentManager.name}</p>
+                  <p className="text-base font-semibold text-gray-900">{managerDisplayName(currentManager)}</p>
                   <p className="text-xs text-gray-500">{currentManager.email}</p>
                 </div>
               ) : (
@@ -81,10 +90,7 @@ export function ManagerAssignmentCard({ user }: Props) {
           name: proFullName,
           email: user.email ?? "",
         }}
-        /* Card display uses mock; dialog passes null until BE exposes a
-           per-Pro manager lookup. The dialog will show "From: Unassigned",
-           but the mutation still does the right reassignment on submit. */
-        currentManagerId={null}
+        currentManagerId={currentManager?.id ?? null}
       />
     </>
   );

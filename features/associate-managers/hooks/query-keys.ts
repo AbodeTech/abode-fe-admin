@@ -46,4 +46,42 @@ export const managerKeys = {
   onboarding: () => [...managerKeys.all, "onboarding"] as const,
   onboardingAttempts: (proId: string) =>
     [...managerKeys.onboarding(), "pro", proId] as const,
+
+  // Team sales (per manager). `self` covers the logged-in-manager endpoint;
+  // `admin` is the super-admin view of a specific manager's team sales.
+  teamSales: () => [...managerKeys.all, "team-sales"] as const,
+  teamSalesSelf: (filters?: unknown) =>
+    [...managerKeys.teamSales(), "self", filters] as const,
+  teamSalesAdmin: (managerId: string, filters?: unknown) =>
+    [...managerKeys.teamSales(), "admin", managerId, filters] as const,
+
+  // System-wide associates dashboard (super-admin only) — treats all
+  // associate-tier users as a single virtual roster.
+  systemAssociatesDashboard: (
+    filter?: ManagerDashboardFilterInput | null,
+    page?: number | null,
+    limit?: number | null,
+  ) =>
+    [
+      ...managerKeys.all,
+      "system-associates",
+      filter,
+      page ?? null,
+      limit ?? null,
+    ] as const,
+
+  // Combined dashboard across every manager's roster (super-admin only).
+  // Targets are summed across all managers for the period.
+  allManagersDashboard: (
+    filter?: ManagerDashboardFilterInput | null,
+    page?: number | null,
+    limit?: number | null,
+  ) =>
+    [
+      ...managerKeys.dashboards(),
+      "all-managers",
+      filter,
+      page ?? null,
+      limit ?? null,
+    ] as const,
 };
