@@ -142,7 +142,7 @@ export function AllocationModal({
       { paymentPlanId, plotIds: Array.from(selectedPlotIds) },
       {
         onSuccess: (data) => {
-          toast.success(data.allocateLand?.message || "Allocation sent");
+          toast.success(data.allocateLand?.message || "Plots assigned");
           onOpenChange(false);
         },
         onError: (err: Error) => toast.error(err.message),
@@ -196,16 +196,16 @@ export function AllocationModal({
     sendAllocationEmail.isPending ||
     deallocateLand.isPending;
 
-  const title = mode === "resend" ? "Manage Allocation" : "Send Allocation";
+  const title = mode === "resend" ? "Manage Allocation" : "Assign Plots";
 
   // Determine which primary action is active
   const primaryAction = useMemo(() => {
     if (mode === "send") {
       return {
         kind: "allocate" as const,
-        label: `Allocate${hasSelection ? ` (${selectedPlotIds.size})` : ""}`,
+        label: `Assign${hasSelection ? ` (${selectedPlotIds.size})` : ""}`,
         icon: <Send className="h-4 w-4" />,
-        pendingLabel: "Allocating...",
+        pendingLabel: "Assigning...",
         disabled: !isMatch,
         handler: handleAllocate,
       };

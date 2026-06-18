@@ -144,7 +144,7 @@ export function AllocationTable({ rows, isLoading, onSend, onResend }: Allocatio
                     ) : (
                       <Button size="sm" className="w-full gap-2" onClick={() => onSend(row)}>
                         <Send className="h-4 w-4" />
-                        Send Allocation
+                        Assign Plots
                       </Button>
                     )}
                   </div>
@@ -288,7 +288,7 @@ export function AllocationTable({ rows, isLoading, onSend, onResend }: Allocatio
                           onClick={() => onSend(row)}
                         >
                           <Send className="h-4 w-4 shrink-0" />
-                          Send Allocation
+                          Assign Plots
                         </Button>
                       )}
                     </TableCell>
