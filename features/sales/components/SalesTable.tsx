@@ -10,6 +10,12 @@ import {
   AdminMobileField,
   AdminMobileStack,
 } from "@/components/shared/admin-responsive-table";
+import {
+  derivePaymentStatus,
+  outstandingBalance,
+  paymentProgress,
+  PAYMENT_STATUS_BADGE_CLASSES,
+} from "../lib/payment-status";
 
 export const SalesRowFragment = graphql(`
   fragment SalesRowFragment on SalesRecord {
@@ -29,6 +35,10 @@ export const SalesRowFragment = graphql(`
     size
     price
     amount_paid
+    amount_payable
+    balance
+    default_amount
+    is_suspended
     start_date
     next_date
   }
@@ -65,12 +75,30 @@ export function SalesTable({ records }: SalesTableProps) {
             const size = Number(sale.size) || 0;
             const totalSize = size * units;
             const assetType = sale.asset_type?.toLowerCase() || "";
+            const status = derivePaymentStatus(sale);
+            const progress = paymentProgress(sale);
             return (
               <AdminMobileCard
                 key={idx}
                 title={`${sale.user_firstName} ${sale.user_lastName}`}
                 subtitle={sale.email}
               >
+                <AdminMobileField
+                  label="Status"
+                  value={
+                    <span className="flex flex-wrap items-center gap-1">
+                      <span className={`rounded-full px-2 py-1 text-xs ${PAYMENT_STATUS_BADGE_CLASSES[status]}`}>
+                        {status}
+                      </span>
+                      {sale.is_suspended && (
+                        <span className="rounded-full bg-gray-200 px-2 py-1 text-xs text-gray-700">Suspended</span>
+                      )}
+                      {Number(sale.default_amount) > 0 && (
+                        <span className="rounded-full bg-amber-100 px-2 py-1 text-xs text-amber-800">Defaulting</span>
+                      )}
+                    </span>
+                  }
+                />
                 <AdminMobileField label="Buyer phone" value={sale.user_phone || "—"} />
                 <AdminMobileField label="Referrer" value={sale.referrer_name || "No referrer"} />
                 <AdminMobileField label="Referrer email" value={sale.referrer_email || "—"} />
@@ -91,6 +119,8 @@ export function SalesTable({ records }: SalesTableProps) {
                 <AdminMobileField label="Size (total sqm)" value={totalSize} />
                 <AdminMobileField label="Price" value={formatCurrency(Number(sale.price))} />
                 <AdminMobileField label="Amount paid" value={formatCurrency(Number(sale.amount_paid))} />
+                <AdminMobileField label="Balance" value={formatCurrency(outstandingBalance(sale))} />
+                <AdminMobileField label="Progress" value={progress != null ? `${progress}%` : "—"} />
                 <AdminMobileField label="Document price" value={formatCurrency(Number(sale.fullownerhsip_documentprice) || 0)} />
                 <AdminMobileField label="Document paid" value={formatCurrency(Number(sale.document_amount_paid))} />
                 <AdminMobileField label="Months subscription" value={sale.month_subscription} />
@@ -117,9 +147,12 @@ export function SalesTable({ records }: SalesTableProps) {
                 <TableHead>Referrer Phone</TableHead>
                 <TableHead>Asset Name</TableHead>
                 <TableHead>Asset Type</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead>Size</TableHead>
                 <TableHead>Price</TableHead>
                 <TableHead>Amount Paid</TableHead>
+                <TableHead>Balance</TableHead>
+                <TableHead>Progress</TableHead>
                 <TableHead>Document Price</TableHead>
                 <TableHead>Document Amount Paid</TableHead>
                 <TableHead>Month Subscription</TableHead>
@@ -134,6 +167,8 @@ export function SalesTable({ records }: SalesTableProps) {
                   const size = Number(sale.size) || 0;
                   const totalSize = size * units;
                   const assetType = sale.asset_type?.toLowerCase() || "";
+                  const status = derivePaymentStatus(sale);
+                  const progress = paymentProgress(sale);
 
                   return (
                     <TableRow key={idx}>
@@ -155,9 +190,28 @@ export function SalesTable({ records }: SalesTableProps) {
                           {sale.asset_type}
                         </span>
                       </TableCell>
+                      <TableCell>
+                        <span className="flex flex-wrap items-center gap-1">
+                          <span className={`whitespace-nowrap rounded-full px-2 py-1 text-xs ${PAYMENT_STATUS_BADGE_CLASSES[status]}`}>
+                            {status}
+                          </span>
+                          {sale.is_suspended && (
+                            <span className="whitespace-nowrap rounded-full bg-gray-200 px-2 py-1 text-xs text-gray-700">
+                              Suspended
+                            </span>
+                          )}
+                          {Number(sale.default_amount) > 0 && (
+                            <span className="whitespace-nowrap rounded-full bg-amber-100 px-2 py-1 text-xs text-amber-800">
+                              Defaulting
+                            </span>
+                          )}
+                        </span>
+                      </TableCell>
                       <TableCell>{totalSize}</TableCell>
                       <TableCell>{formatCurrency(Number(sale.price))}</TableCell>
                       <TableCell>{formatCurrency(Number(sale.amount_paid))}</TableCell>
+                      <TableCell>{formatCurrency(outstandingBalance(sale))}</TableCell>
+                      <TableCell>{progress != null ? `${progress}%` : "—"}</TableCell>
                       <TableCell>{formatCurrency(Number(sale.fullownerhsip_documentprice) || 0)}</TableCell>
                       <TableCell>{formatCurrency(Number(sale.document_amount_paid))}</TableCell>
                       <TableCell>{sale.month_subscription}</TableCell>
@@ -168,7 +222,7 @@ export function SalesTable({ records }: SalesTableProps) {
                 })
               ) : (
                 <TableRow>
-                  <TableCell colSpan={16} className="py-4 text-center">
+                  <TableCell colSpan={19} className="py-4 text-center">
                     No sales records found
                   </TableCell>
                 </TableRow>

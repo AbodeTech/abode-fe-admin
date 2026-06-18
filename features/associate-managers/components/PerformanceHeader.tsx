@@ -21,6 +21,8 @@ interface Props {
   viewAs: "super-admin" | "manager";
   managers: AssociateManagerListItem[];
   activeManagerId: string | null;
+  /** True when the combined "all managers" view is active. */
+  isAllManagers?: boolean;
   /** From the dashboard payload: totalAssigned. Drives the manager-view subtitle. */
   assignedProsCount: number;
 }
@@ -35,6 +37,7 @@ export function PerformanceHeader({
   viewAs,
   managers,
   activeManagerId,
+  isAllManagers = false,
   assignedProsCount,
 }: Props) {
   const router = useRouter();
@@ -71,7 +74,7 @@ export function PerformanceHeader({
         <div className="flex flex-wrap items-center gap-3">
           {viewAs === "super-admin" && (
             <Select
-              value={activeManagerId ?? ""}
+              value={isAllManagers ? "all" : (activeManagerId ?? "")}
               onValueChange={handleManagerChange}
             >
               <SelectTrigger className="w-fit min-w-55 bg-white">
@@ -83,15 +86,18 @@ export function PerformanceHeader({
                     No managers yet
                   </div>
                 ) : (
-                  managers.map((m) => {
-                    const id = m.manager?._id;
-                    if (!id) return null;
-                    return (
-                      <SelectItem key={id} value={id}>
-                        {fullName(m.manager)}
-                      </SelectItem>
-                    );
-                  })
+                  <>
+                    <SelectItem value="all">All managers (combined)</SelectItem>
+                    {managers.map((m) => {
+                      const id = m.manager?._id;
+                      if (!id) return null;
+                      return (
+                        <SelectItem key={id} value={id}>
+                          {fullName(m.manager)}
+                        </SelectItem>
+                      );
+                    })}
+                  </>
                 )}
               </SelectContent>
             </Select>

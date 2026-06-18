@@ -4,9 +4,13 @@ import type { ManagerDashboardRecruitment } from "@/lib/gql/graphql";
 
 interface Props {
   data: ManagerDashboardRecruitment;
+  /** Which tier of users the roster represents. Switches labels and hides
+   * irrelevant cards (e.g. associates aren't onboarded). */
+  roster?: "associate-pro" | "associate";
 }
 
-export function RecruitmentSection({ data }: Props) {
+export function RecruitmentSection({ data, roster = "associate-pro" }: Props) {
+  const isAssociate = roster === "associate";
   return (
     <section className="space-y-3">
       <h2 className="text-base font-semibold text-gray-900">Recruitment</h2>
@@ -14,32 +18,40 @@ export function RecruitmentSection({ data }: Props) {
         <StatCard
           icon={UserPlus}
           iconColor="text-cyan-600"
-          label="New Sign-ups This Period"
+          label="New Recruits This Period"
           value={data.newSignupsInPeriod.toLocaleString()}
-          hint="Assigned Pros who signed up during this period"
+          hint={
+            isAssociate
+              ? "People associates brought in this period (all tiers)"
+              : "People your pros brought in this period (all tiers)"
+          }
         />
         <StatCard
           icon={TrendingUp}
           iconColor="text-[#00695C]"
           iconBg="bg-[#E0F2F1]"
-          label="New Associate Pro Upgrades"
+          label="Recruits Promoted to Associate Pro"
           value={data.upgradesInPeriod.toLocaleString()}
-          hint="Approved Associate Pro upgrades this period"
+          hint="Recruits who upgraded to Associate Pro this period"
         />
-        <StatCard
-          icon={CheckCircle2}
-          iconColor="text-emerald-600"
-          iconBg="bg-emerald-50"
-          label="Onboarded This Period"
-          value={data.onboardedInPeriod.toLocaleString()}
-          hint="Pros whose first call landed in Picked this period"
-        />
+        {/* Associates aren't onboarded (onboarding is the associate-pro flow),
+            so the metric is always 0 for that roster — hide rather than mislead. */}
+        {!isAssociate && (
+          <StatCard
+            icon={CheckCircle2}
+            iconColor="text-emerald-600"
+            iconBg="bg-emerald-50"
+            label="Onboarded This Period"
+            value={data.onboardedInPeriod.toLocaleString()}
+            hint="Pros whose first call landed in Picked this period"
+          />
+        )}
         <StatCard
           icon={Users}
           iconColor="text-purple-600"
-          label="Total Pros Assigned"
+          label={isAssociate ? "Total Associates" : "Total Pros Assigned"}
           value={data.totalAssigned.toLocaleString()}
-          hint="Roster size for this manager"
+          hint={isAssociate ? "All associate-tier users" : "Roster size for this manager"}
         />
       </div>
     </section>

@@ -12,8 +12,10 @@ import {
   MilestonesSection,
   AssociateProsTable,
   NoManagersEmptyState,
+  TeamSalesSection,
   useAssociateManagers,
   useAdminManagerDashboard,
+  useAllManagersDashboard,
   useManagerDashboard,
   useIsCurrentUserManager,
 } from "@/features/associate-managers";
@@ -90,19 +92,30 @@ function AssociateManagersContent() {
   const managers = managersQuery.data?.results ?? [];
 
   // Resolve the active manager id from URL, fall back to first.
-  const activeManagerId =
-    managerIdParam ?? managers[0]?.manager?._id ?? null;
+  // Special sentinel "all" = combined view across every manager.
+  const isAllManagers = managerIdParam === "all";
+  const activeManagerId = isAllManagers
+    ? null
+    : (managerIdParam ?? managers[0]?.manager?._id ?? null);
 
-  const activeManager =
-    managers.find((m) => m.manager?._id === activeManagerId) ?? null;
+  const activeManager = isAllManagers
+    ? null
+    : managers.find((m) => m.manager?._id === activeManagerId) ?? null;
 
-  // Dashboard data — one of two endpoints depending on viewer role.
-  // Both are gated on `isAuthorized` so unauthorized users skip the round-trip.
+  // Dashboard data — three super-admin endpoints + one self endpoint.
+  // All gated on `isAuthorized` so unauthorized users skip the round-trip.
   const adminDashboardQuery = useAdminManagerDashboard(
     activeManagerId,
     filter,
-    { enabled: isAuthorized && viewAs === "super-admin" }
+    {
+      enabled:
+        isAuthorized && viewAs === "super-admin" && !isAllManagers,
+    }
   );
+  const allManagersDashboardQuery = useAllManagersDashboard({
+    filter,
+    enabled: isAuthorized && viewAs === "super-admin" && isAllManagers,
+  });
   const selfDashboardQuery = useManagerDashboard(filter, {
     enabled: isAuthorized && viewAs === "manager",
   });
@@ -124,7 +137,11 @@ function AssociateManagersContent() {
   }
 
   const dashboardQuery =
-    viewAs === "super-admin" ? adminDashboardQuery : selfDashboardQuery;
+    viewAs === "super-admin"
+      ? isAllManagers
+        ? allManagersDashboardQuery
+        : adminDashboardQuery
+      : selfDashboardQuery;
   const dashboard = dashboardQuery.data;
 
   const isLoading = managersQuery.isLoading || dashboardQuery.isLoading;
@@ -176,6 +193,7 @@ function AssociateManagersContent() {
         viewAs={viewAs}
         managers={managers}
         activeManagerId={activeManagerId}
+        isAllManagers={isAllManagers}
         assignedProsCount={dashboard.recruitment.totalAssigned}
       />
 
@@ -194,6 +212,17 @@ function AssociateManagersContent() {
         pros={dashboard.associatePros}
         sourceManagerId={activeManagerId}
       />
+
+      {/* Team sales is scoped to a single manager's roster — skip it when the
+          super admin is looking at the combined "all managers" view. */}
+      {!isAllManagers && (
+        <TeamSalesSection
+          viewAs={viewAs}
+          activeManagerId={activeManagerId}
+          startDate={startDate}
+          endDate={endDate}
+        />
+      )}
     </div>
   );
 }

@@ -11,6 +11,11 @@ import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
 import { downloadSalesData } from '../hooks/use-sales-export'
 import { SalesFilters } from '@/features/sales'
+import {
+  derivePaymentStatus,
+  PAYMENT_STATUS_ORDER,
+  type PaymentStatus,
+} from '../lib/payment-status'
 // @ts-ignore
 import { Parser } from 'json2csv'
 import { saveAs } from 'file-saver'
@@ -136,6 +141,7 @@ const FIELD_CONFIG = {
     fields: {
       price: { label: 'Price', default: true },
       amountPaid: { label: 'Amount Paid', default: true },
+      amountPayable: { label: 'Amount Payable', default: false },
       landBalance: { label: 'Land Balance', default: true },
     }
   },
@@ -170,8 +176,22 @@ const FIELD_CONFIG = {
     label: 'Status',
     color: 'bg-rose-100 text-rose-700',
     fields: {
+      paymentStatus: { label: 'Payment Status', default: true },
       defaulted: { label: 'Defaulted', default: true },
       terminated: { label: 'Terminated', default: true },
+    }
+  },
+  plan: {
+    label: 'Payment Plan',
+    color: 'bg-slate-100 text-slate-700',
+    fields: {
+      paymentPlanId: { label: 'Payment Plan ID', default: true },
+      uniqueAssetId: { label: 'Unique Asset ID', default: false },
+      monthsCovered: { label: 'Months Covered', default: false },
+      monthRemaining: { label: 'Months Remaining', default: false },
+      allocationStatus: { label: 'Allocation Status', default: false },
+      planCreatedAt: { label: 'Plan Created At', default: false },
+      planUpdatedAt: { label: 'Plan Last Updated', default: false },
     }
   },
 }
@@ -213,11 +233,11 @@ const FORMAT_OPTIONS: { value: ExportFormat; label: string; icon: React.ReactNod
 const PRESETS: Record<string, { label: string; fields: string[] }> = {
   basic: {
     label: 'Basic Info',
-    fields: ['id', 'name', 'email', 'phone', 'assetName', 'price', 'amountPaid', 'totalBalance']
+    fields: ['id', 'name', 'email', 'phone', 'assetName', 'price', 'amountPaid', 'totalBalance', 'paymentStatus']
   },
   financial: {
     label: 'Financial Report',
-    fields: ['id', 'name', 'assetName', 'price', 'amountPaid', 'landBalance', 'documentPrice', 'documentAmountPaid', 'documentBalance', 'totalAssetValue', 'totalPaid', 'totalBalance']
+    fields: ['id', 'paymentPlanId', 'name', 'assetName', 'price', 'amountPaid', 'amountPayable', 'landBalance', 'documentPrice', 'documentAmountPaid', 'documentBalance', 'totalAssetValue', 'totalPaid', 'totalBalance', 'paymentStatus']
   },
   complete: {
     label: 'All Fields',
@@ -430,8 +450,17 @@ export function SalesExport({ filters }: { filters: SalesFilters }) {
       month_subscription: record.month_subscription || '',
       startDate: formatDate(record.start_date),
       endDate: formatDate(record.next_date),
+      paymentStatus: derivePaymentStatus(record),
       defaulted: Number(record.default_amount) > 0 ? 'Yes' : 'No',
       terminated: record.is_suspended ? 'Yes' : 'No',
+      amountPayable: Number(record.amount_payable) || 0,
+      paymentPlanId: record.payment_plan_id || '',
+      uniqueAssetId: record.unique_asset_id || '',
+      monthsCovered: record.months_covered ?? '',
+      monthRemaining: record.month_remaining ?? '',
+      allocationStatus: record.allocation_status || '',
+      planCreatedAt: formatDate(record.payment_plan_created_at),
+      planUpdatedAt: formatDate(record.payment_plan_updated_at),
     }
 
     const orderedRecord: Record<string, any> = {}
@@ -442,37 +471,55 @@ export function SalesExport({ filters }: { filters: SalesFilters }) {
   }
 
   // --- Download Logic ---
-  const downloadFile = (data: any[], filename: string) => {
+  const PAYMENT_STATUS_SHEETS: PaymentStatus[] = ['Paid', 'Still Paying', 'Unpaid']
+
+  const buildWorksheet = (rows: any[]) => {
+    // Renumber the visible id per sheet so each category reads 1..n
+    const sheetRows = rows.map((row, i) => ('id' in row ? { ...row, id: i + 1 } : row))
+    const worksheet = XLSX.utils.json_to_sheet(sheetRows, { header: columnOrder })
+    worksheet['!cols'] = columnOrder.map(field => ({
+      wch: Math.max(ALL_FIELDS[field]?.label.length || field.length, 12)
+    }))
+    return worksheet
+  }
+
+  const downloadFile = (entries: { status: PaymentStatus; row: any }[], filename: string) => {
     const timestamp = new Date().toISOString().split('T')[0]
-    const baseFilename = `${filename}_${timestamp}`
+    const rangeSuffix = [
+      filters.startDate ? `from-${filters.startDate}` : null,
+      filters.endDate ? `to-${filters.endDate}` : null,
+    ].filter(Boolean).join('_')
+    const baseFilename = [filename, rangeSuffix, timestamp].filter(Boolean).join('_')
+    const allRows = entries.map(e => e.row)
 
     switch (format) {
       case 'csv': {
         const parser = new Parser({ fields: columnOrder })
-        const csv = parser.parse(data)
+        const csv = parser.parse(allRows)
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
         saveAs(blob, `${baseFilename}.csv`)
         break
       }
       case 'xlsx': {
-        const worksheet = XLSX.utils.json_to_sheet(data, { header: columnOrder })
         const workbook = XLSX.utils.book_new()
-        XLSX.utils.book_append_sheet(workbook, worksheet, 'Sales Report')
-        const colWidths = columnOrder.map(field => ({
-          wch: Math.max(ALL_FIELDS[field]?.label.length || field.length, 12)
-        }))
-        worksheet['!cols'] = colWidths
+        XLSX.utils.book_append_sheet(workbook, buildWorksheet(allRows), 'All Sales')
+        PAYMENT_STATUS_SHEETS.forEach(status => {
+          const rows = entries.filter(e => e.status === status).map(e => e.row)
+          if (rows.length > 0) {
+            XLSX.utils.book_append_sheet(workbook, buildWorksheet(rows), status)
+          }
+        })
         XLSX.writeFile(workbook, `${baseFilename}.xlsx`)
         break
       }
       case 'json': {
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8;' })
+        const blob = new Blob([JSON.stringify(allRows, null, 2)], { type: 'application/json;charset=utf-8;' })
         saveAs(blob, `${baseFilename}.json`)
         break
       }
       case 'tsv': {
         const parser = new Parser({ fields: columnOrder, delimiter: '\t' })
-        const tsv = parser.parse(data)
+        const tsv = parser.parse(allRows)
         const blob = new Blob([tsv], { type: 'text/tab-separated-values;charset=utf-8;' })
         saveAs(blob, `${baseFilename}.tsv`)
         break
@@ -489,8 +536,22 @@ export function SalesExport({ filters }: { filters: SalesFilters }) {
         toast.error('No data available for download')
         return
       }
-      const processedData = data.map((record: any, index: number) => processRecord(record, index))
-      downloadFile(processedData, 'salesReport')
+      // Deterministic order: category, then start date, then plan id — so the
+      // same dataset always produces the same row order across downloads.
+      const sorted = [...data].sort((a: any, b: any) => {
+        const statusDiff =
+          PAYMENT_STATUS_ORDER[derivePaymentStatus(a)] - PAYMENT_STATUS_ORDER[derivePaymentStatus(b)]
+        if (statusDiff !== 0) return statusDiff
+        const dateDiff =
+          new Date(a.start_date || 0).getTime() - new Date(b.start_date || 0).getTime()
+        if (dateDiff !== 0) return dateDiff
+        return String(a.payment_plan_id || '').localeCompare(String(b.payment_plan_id || ''))
+      })
+      const entries = sorted.map((record: any, index: number) => ({
+        status: derivePaymentStatus(record),
+        row: processRecord(record, index),
+      }))
+      downloadFile(entries, 'salesReport')
       toast.success('Download Successful')
       setOpen(false)
     },

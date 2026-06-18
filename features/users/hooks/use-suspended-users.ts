@@ -98,6 +98,7 @@ export const useUnsuspendUser = () => {
     mutationFn: (id: string) => execute(UNSUSPEND_USER_MUTATION, { id }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: userKeys.list({ list: 'suspended' }) });
+      queryClient.invalidateQueries({ queryKey: userKeys.list({ list: 'suspended-payment-plans' }) });
       toast.success('User unsuspended');
     },
     onError: (error: unknown) => {

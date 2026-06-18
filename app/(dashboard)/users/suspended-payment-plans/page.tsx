@@ -9,15 +9,26 @@ import { Pagination } from "@/components/shared/Pagination";
 import { FilterSelect } from "@/components/shared/FilterSelect";
 import {
   SuspendedPaymentPlansTable,
+  TerminationPaymentPlansSummary,
   useSuspendedPaymentPlans,
+  useSuspendedPaymentPlansSummary,
   useExportSuspendedPaymentPlans,
+  SUSPENDED_PAYMENT_PLANS_PAGE_SIZE,
 } from "@/features/users";
+import type { TerminationPaymentPlansMetrics } from "@/features/users/utils/compute-termination-payment-plans-metrics";
 import { Loader2, Download, Search } from "lucide-react";
 import { PageContentLoader, SuspensePageFallback } from "@/components/shared/page-content-loader";
 
-const PAGE_SIZE = 25;
+const EMPTY_METRICS: TerminationPaymentPlansMetrics = {
+  totalPlans: 0,
+  totalUnits: 0,
+  totalAmountPaid: 0,
+  totalOutstanding: 0,
+  flexPlans: 0,
+  fullOwnershipPlans: 0,
+};
 
-function SuspendedPaymentPlansContent() {
+function TerminationPaymentPlansContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const page = Number(searchParams.get("page")) || 1;
@@ -27,11 +38,27 @@ function SuspendedPaymentPlansContent() {
 
   const { data, isLoading, error } = useSuspendedPaymentPlans({
     page,
-    limit: PAGE_SIZE,
+    limit: SUSPENDED_PAYMENT_PLANS_PAGE_SIZE,
     searchQuery,
     assetType,
   });
+  const count = data?.count ?? 0;
+
+  const { data: summary, isLoading: metricsLoading } = useSuspendedPaymentPlansSummary({
+    searchQuery,
+    assetType,
+  });
+
   const exportMutation = useExportSuspendedPaymentPlans();
+
+  const metrics: TerminationPaymentPlansMetrics = {
+    totalPlans: summary?.totalPlans ?? EMPTY_METRICS.totalPlans,
+    totalUnits: summary?.totalUnits ?? EMPTY_METRICS.totalUnits,
+    totalAmountPaid: summary?.totalAmountPaid ?? EMPTY_METRICS.totalAmountPaid,
+    totalOutstanding: summary?.totalOutstanding ?? EMPTY_METRICS.totalOutstanding,
+    flexPlans: summary?.flexPlans ?? EMPTY_METRICS.flexPlans,
+    fullOwnershipPlans: summary?.fullOwnershipPlans ?? EMPTY_METRICS.fullOwnershipPlans,
+  };
 
   const handleSearch = () => {
     const params = new URLSearchParams(searchParams.toString());
@@ -49,25 +76,24 @@ function SuspendedPaymentPlansContent() {
   };
 
   if (isLoading) {
-    return <PageContentLoader label="Loading suspended payment plans…" />;
+    return <PageContentLoader label="Loading termination payment plans…" />;
   }
 
   if (error) {
     return (
       <div className="p-4 rounded-md bg-red-50 text-red-500 border border-red-200">
-        <h3 className="font-bold">Error loading suspended payment plans</h3>
+        <h3 className="font-bold">Error loading termination payment plans</h3>
         <p>{(error as Error).message || "An unexpected error occurred."}</p>
       </div>
     );
   }
 
   const rows = data?.data ?? [];
-  const count = data?.count ?? 0;
 
   return (
     <div className="mx-auto mt-4 w-full min-w-0 max-w-[1600px] space-y-4 px-3 pb-20 sm:px-4">
       <div className="flex min-w-0 flex-col gap-4">
-        <h2 className="text-xl font-bold tracking-tight sm:text-2xl">Suspended Payment Plans</h2>
+        <h2 className="text-xl font-bold tracking-tight sm:text-2xl">Termination Payment Plans</h2>
         <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
           <div className="flex min-w-0 w-full flex-col gap-2 sm:w-auto sm:max-w-md sm:flex-row sm:items-center">
             <div className="relative w-full min-w-0 flex-1">
@@ -86,55 +112,57 @@ function SuspendedPaymentPlansContent() {
           </div>
           <div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
             <FilterSelect
-            data={[
-              { label: "All users", value: "all" },
-              { label: "Flex", value: "flex" },
-              { label: "Full ownership", value: "full-ownership" },
-            ]}
-            queryKey="assettype"
-            placeholder="Asset type"
-          />
-          <Button
-            variant="outline"
-            className="w-full shrink-0 sm:w-auto"
-            onClick={handleExport}
-            disabled={exportMutation.isPending}
-          >
-            {exportMutation.isPending ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Exporting...
-              </>
-            ) : (
-              <>
-                <Download className="mr-2 h-4 w-4" />
-                Export CSV
-              </>
-            )}
-          </Button>
+              data={[
+                { label: "All users", value: "all" },
+                { label: "Flex", value: "flex" },
+                { label: "Full ownership", value: "full-ownership" },
+              ]}
+              queryKey="assettype"
+              placeholder="Asset type"
+            />
+            <Button
+              variant="outline"
+              className="w-full shrink-0 sm:w-auto"
+              onClick={handleExport}
+              disabled={exportMutation.isPending}
+            >
+              {exportMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Exporting...
+                </>
+              ) : (
+                <>
+                  <Download className="mr-2 h-4 w-4" />
+                  Export CSV
+                </>
+              )}
+            </Button>
           </div>
         </div>
       </div>
 
+      <TerminationPaymentPlansSummary metrics={metrics} isLoading={metricsLoading} />
+
       <Card className="min-w-0 overflow-hidden">
         <CardHeader className="px-4">
-          <CardTitle>Users with suspended payment plans</CardTitle>
+          <CardTitle>Users with termination payment plans</CardTitle>
         </CardHeader>
         <CardContent className="min-w-0 space-y-4 px-4">
           <div className="min-w-0 overflow-x-auto">
             <SuspendedPaymentPlansTable plans={rows} />
           </div>
-          <Pagination count={count} currentIdx={page} limit={PAGE_SIZE} />
+          <Pagination count={count} currentIdx={page} limit={SUSPENDED_PAYMENT_PLANS_PAGE_SIZE} />
         </CardContent>
       </Card>
     </div>
   );
 }
 
-export default function SuspendedPaymentPlansPage() {
+export default function TerminationPaymentPlansPage() {
   return (
     <Suspense fallback={<SuspensePageFallback />}>
-      <SuspendedPaymentPlansContent />
+      <TerminationPaymentPlansContent />
     </Suspense>
   );
 }

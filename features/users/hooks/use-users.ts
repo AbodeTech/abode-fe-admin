@@ -46,6 +46,13 @@ const GET_USER_DETAILS_QUERY = graphql(`
         firstName
         email
       }
+      associate_manager {
+        id
+        firstName
+        lastName
+        userName
+        email
+      }
       kyc {
         tin
       }

@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { useUIStore } from "@/store/ui-store";
 
 import {
+  Activity,
   ArrowDownToLine,
   BarChart3,
   Building2,
@@ -56,7 +57,7 @@ const navGroups = [
       { name: "All Users", link: "/users", icon: <Users /> },
       { name: "Default Users", link: "/users/defaults", icon: <ShieldCheck /> },
       { name: "Suspended Users", link: "/users/suspended", icon: <ShieldCheck /> },
-      { name: "Suspended Payment Plans", link: "/users/suspended-payment-plans", icon: <ScrollText /> },
+      { name: "Termination Payment Plans", link: "/users/suspended-payment-plans", icon: <ScrollText /> },
       { name: "Completed Asset Payments", link: "/users/completed-asset-payments", icon: <CheckCircle /> },
     ]
   },
@@ -68,6 +69,7 @@ const navGroups = [
       { name: "Associates Upgrade", link: "/associate-upgrade", icon: <UserPlus /> },
       { name: "Upgrade Coupons", link: "/associate-upgrade/coupons", icon: <Gift /> },
       { name: "Top associates", link: "/associates", icon: <TrendingUp /> },
+      { name: "Associate Performance", link: "/associates/performance", icon: <Activity />, requiresSuperAdmin: true },
       { name: "Manager Performance", link: "/associates/managers", icon: <ShieldCheck />, requiresAdminOrManager: true },
     ]
   },
@@ -161,7 +163,11 @@ const Sidebar = () => {
         const flags = item as {
           restrictedToRoles?: string[];
           requiresAdminOrManager?: boolean;
+          requiresSuperAdmin?: boolean;
         };
+        if (flags.requiresSuperAdmin) {
+          return isSuperAdmin;
+        }
         if (flags.requiresAdminOrManager) {
           return isSuperAdmin || isManager;
         }

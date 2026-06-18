@@ -8,6 +8,8 @@ export { MilestonesSection } from "./components/MilestonesSection";
 export { AssociateProsTable } from "./components/AssociateProsTable";
 export { ManagerAssignmentCard } from "./components/ManagerAssignmentCard";
 export { NoManagersEmptyState } from "./components/NoManagersEmptyState";
+export { TeamSalesSection } from "./components/TeamSalesSection";
+export { SystemAssociatesTable } from "./components/SystemAssociatesTable";
 
 // Hooks — read
 export {
@@ -29,6 +31,14 @@ export {
 export { useIsCurrentUserManager } from "./hooks/use-is-current-user-manager";
 export { useOnboardingAttempts } from "./hooks/use-onboarding-attempts";
 export type { OnboardingAttemptData } from "./hooks/use-onboarding-attempts";
+export {
+  useSystemAssociatesDashboard,
+  DEFAULT_SYSTEM_ASSOCIATES_LIMIT,
+} from "./hooks/use-system-associates-dashboard";
+export {
+  useAllManagersDashboard,
+  DEFAULT_ALL_MANAGERS_LIMIT,
+} from "./hooks/use-all-managers-dashboard";
 
 // Hooks — mutations
 export { useAddManager } from "./hooks/use-add-manager";
