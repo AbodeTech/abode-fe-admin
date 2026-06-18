@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ReassignProDialog } from "./dialogs/ReassignProDialog";
 
 interface AssignedManager {
-  id: string;
+  _id: string;
   firstName?: string | null;
   lastName?: string | null;
   userName?: string | null;
@@ -90,7 +90,7 @@ export function ManagerAssignmentCard({ user }: Props) {
           name: proFullName,
           email: user.email ?? "",
         }}
-        currentManagerId={currentManager?.id ?? null}
+        currentManagerId={currentManager?._id ?? null}
       />
     </>
   );
