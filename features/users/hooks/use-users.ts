@@ -47,7 +47,7 @@ const GET_USER_DETAILS_QUERY = graphql(`
         email
       }
       associate_manager {
-        id
+        _id
         firstName
         lastName
         userName
