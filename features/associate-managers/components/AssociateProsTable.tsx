@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { CheckCircle2, MoreHorizontal, Search, X } from "lucide-react";
+import { CheckCircle2, Download, Loader2, MoreHorizontal, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -29,22 +29,22 @@ import { ReassignProDialog } from "./dialogs/ReassignProDialog";
 import { BulkReassignDialog } from "./dialogs/BulkReassignDialog";
 import { OnboardingDialog } from "./dialogs/OnboardingDialog";
 import type { ManagerDashboardProRow } from "@/lib/gql/graphql";
-import type { AssociatePro, ProStatus } from "../mock-data";
+import { PRO_GROUP_OPTIONS, PRO_SORT_OPTIONS } from "../lib/roster-filter-options";
 
 const PAGE_SIZE = 25;
+
+import type { AssociatePro, ProStatus } from "../mock-data";
 
 interface Props {
   pros: ManagerDashboardProRow[];
   /** The Admin id of the manager whose roster is being viewed. */
   sourceManagerId: string | null;
+  /** Filtered roster count from the server (`associateProsGroupTotal`). */
+  groupTotal?: number;
+  isLoading?: boolean;
+  onExport?: () => void;
+  isExporting?: boolean;
 }
-
-const STATUS_OPTIONS = [
-  { label: "All statuses", value: "all" },
-  { label: "Active", value: "active" },
-  { label: "Inactive", value: "inactive" },
-  { label: "Abandoned", value: "abandoned" },
-];
 
 const formatCurrency = (n: number) =>
   `₦${n.toLocaleString("en-NG", { maximumFractionDigits: 0 })}`;
@@ -144,10 +144,16 @@ const toLegacyPro = (p: ManagerDashboardProRow): AssociatePro => ({
     : "Never",
 });
 
-export function AssociateProsTable({ pros, sourceManagerId }: Props) {
+export function AssociateProsTable({
+  pros,
+  sourceManagerId,
+  groupTotal,
+  isLoading = false,
+  onExport,
+  isExporting = false,
+}: Props) {
   const searchParams = useSearchParams();
   const page = Number(searchParams.get("page")) || 1;
-  const statusParam = searchParams.get("status");
   const searchParam = searchParams.get("search") || "";
 
   const [search, setSearch] = useState(searchParam);
@@ -160,10 +166,6 @@ export function AssociateProsTable({ pros, sourceManagerId }: Props) {
 
   const filtered = useMemo(() => {
     let rows = pros;
-
-    if (statusParam && statusParam !== "all") {
-      rows = rows.filter((p) => p.status === statusParam);
-    }
 
     const term = search.trim().toLowerCase();
     if (term) {
@@ -178,7 +180,7 @@ export function AssociateProsTable({ pros, sourceManagerId }: Props) {
     }
 
     return rows;
-  }, [pros, statusParam, search]);
+  }, [pros, search]);
 
   const start = (page - 1) * PAGE_SIZE;
   const paginated = filtered.slice(start, start + PAGE_SIZE);
@@ -230,14 +232,40 @@ export function AssociateProsTable({ pros, sourceManagerId }: Props) {
             />
           </div>
           <FilterSelect
-            data={STATUS_OPTIONS}
-            queryKey="status"
-            placeholder="Status"
+            data={[...PRO_GROUP_OPTIONS]}
+            queryKey="pro_group"
+            placeholder="Roster group"
           />
+          <FilterSelect
+            data={[...PRO_SORT_OPTIONS]}
+            queryKey="pro_sort"
+            placeholder="Sort by"
+          />
+          {onExport && (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 bg-white"
+              onClick={onExport}
+              disabled={isExporting}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              {isExporting ? "Exporting…" : "Export CSV"}
+            </Button>
+          )}
         </div>
       </div>
 
-      <div className="bg-white border border-[#E5EAEF] rounded-lg overflow-hidden">
+      <div className="relative bg-white border border-[#E5EAEF] rounded-lg overflow-hidden">
+        {isLoading && (
+          <div
+            className="absolute inset-0 z-10 flex items-center justify-center bg-white/70"
+            aria-live="polite"
+            aria-busy="true"
+          >
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          </div>
+        )}
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -366,7 +394,7 @@ export function AssociateProsTable({ pros, sourceManagerId }: Props) {
         {filtered.length > 0 && (
           <div className="px-4 py-3 border-t border-[#E5EAEF]">
             <Pagination
-              count={filtered.length}
+              count={groupTotal ?? filtered.length}
               currentIdx={page}
               limit={PAGE_SIZE}
             />

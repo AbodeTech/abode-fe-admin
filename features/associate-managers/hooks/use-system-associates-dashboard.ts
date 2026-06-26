@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { execute } from "@/lib/graphql-client";
 import { graphql } from "@/lib/gql";
 import type { ManagerDashboardFilterInput } from "@/lib/gql/graphql";
@@ -23,6 +23,7 @@ const GET_SYSTEM_ASSOCIATES_DASHBOARD_QUERY = graphql(`
         upgradesInPeriod
         onboardedInPeriod
         totalAssigned
+        onboardingQueueCount
       }
       salesAndRevenue {
         sellingPros
@@ -64,6 +65,7 @@ const GET_SYSTEM_ASSOCIATES_DASHBOARD_QUERY = graphql(`
         lastLogin
         onboardedAt
       }
+      associateProsGroupTotal
     }
   }
 `);
@@ -73,6 +75,7 @@ interface UseSystemAssociatesDashboardParams {
   page?: number;
   limit?: number;
   enabled?: boolean;
+  keepPreviousData?: boolean;
 }
 
 export const DEFAULT_SYSTEM_ASSOCIATES_LIMIT = 25;
@@ -88,6 +91,7 @@ export const useSystemAssociatesDashboard = (
     page,
     limit = DEFAULT_SYSTEM_ASSOCIATES_LIMIT,
     enabled = true,
+    keepPreviousData: keepPrevious = false,
   } = params;
 
   return useQuery({
@@ -100,5 +104,6 @@ export const useSystemAssociatesDashboard = (
       }),
     enabled,
     select: (data) => data.getSystemAssociatesDashboard,
+    placeholderData: keepPrevious ? keepPreviousData : undefined,
   });
 };

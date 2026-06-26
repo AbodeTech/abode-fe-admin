@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Lock, Loader2 } from "lucide-react";
 import {
@@ -12,27 +12,9 @@ import {
   useSystemAssociatesDashboard,
   DEFAULT_SYSTEM_ASSOCIATES_LIMIT,
 } from "@/features/associate-managers";
+import { buildManagerDashboardFilter, buildManagerDashboardPeriodFilter } from "@/features/associate-managers/lib/dashboard-filter";
 import { DateFilter } from "@/components/shared/DateFilter";
 import { useAuthStore } from "@/store/auth-store";
-import type { ManagerDashboardFilterInput } from "@/lib/gql/graphql";
-import { PeriodType } from "@/lib/gql/graphql";
-
-const buildDashboardFilter = (
-  period: string | null,
-  startDate: string | null,
-  endDate: string | null
-): ManagerDashboardFilterInput | null => {
-  if (startDate && endDate) {
-    return { periodType: PeriodType.Custom, startDate, endDate };
-  }
-  const pt =
-    period === "week"
-      ? PeriodType.Week
-      : period === "year"
-        ? PeriodType.Year
-        : PeriodType.Month;
-  return { periodType: pt };
-};
 
 function NotAuthorized() {
   return (
@@ -61,27 +43,49 @@ function AssociatePerformanceContent() {
   const period = searchParams.get("period");
   const startDate = searchParams.get("start_date");
   const endDate = searchParams.get("end_date");
+  const proGroup = searchParams.get("pro_group");
+  const proSort = searchParams.get("pro_sort");
 
-  const filter = buildDashboardFilter(period, startDate, endDate);
+  const filter = buildManagerDashboardFilter({
+    period,
+    startDate,
+    endDate,
+    proGroup,
+    proSort,
+  });
+  const periodFilter = buildManagerDashboardPeriodFilter({
+    period,
+    startDate,
+    endDate,
+  });
 
-  // Page-local pagination — uses internal state instead of URL `?page=` so it
-  // doesn't collide with any other tables on the page in the future.
   const [page, setPage] = useState(1);
 
-  const dashboardQuery = useSystemAssociatesDashboard({
+  useEffect(() => {
+    setPage(1);
+  }, [period, startDate, endDate, proGroup, proSort]);
+
+  const kpiQuery = useSystemAssociatesDashboard({
+    filter: periodFilter,
+    enabled: isSuperAdmin,
+  });
+  const tableQuery = useSystemAssociatesDashboard({
     filter,
     page,
     limit: DEFAULT_SYSTEM_ASSOCIATES_LIMIT,
     enabled: isSuperAdmin,
+    keepPreviousData: true,
   });
 
   if (!isSuperAdmin) return <NotAuthorized />;
 
-  const dashboard = dashboardQuery.data;
-  const isLoading = dashboardQuery.isLoading;
-  const error = dashboardQuery.error;
+  const dashboard = kpiQuery.data;
+  const tableData = tableQuery.data;
+  const isPageLoading = kpiQuery.isLoading && !kpiQuery.data;
+  const tableLoading = tableQuery.isFetching;
+  const error = kpiQuery.error || tableQuery.error;
 
-  if (isLoading) {
+  if (isPageLoading) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-200px)]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -132,11 +136,14 @@ function AssociatePerformanceContent() {
       <MilestonesSection data={dashboard.milestones} roster="associate" />
 
       <SystemAssociatesTable
-        rows={dashboard.associatePros}
-        totalCount={dashboard.recruitment.totalAssigned}
+        rows={tableData?.associatePros ?? dashboard.associatePros}
+        totalCount={
+          tableData?.associateProsGroupTotal ?? dashboard.associateProsGroupTotal
+        }
         page={page}
         limit={DEFAULT_SYSTEM_ASSOCIATES_LIMIT}
         onPageChange={setPage}
+        isLoading={tableLoading}
       />
     </div>
   );

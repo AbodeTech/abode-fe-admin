@@ -1,4 +1,4 @@
-import { CheckCircle2, TrendingUp, UserPlus, Users } from "lucide-react";
+import { CheckCircle2, TrendingUp, UserPlus, Users, ClipboardList } from "lucide-react";
 import { StatCard } from "./StatCard";
 import type { ManagerDashboardRecruitment } from "@/lib/gql/graphql";
 
@@ -14,7 +14,7 @@ export function RecruitmentSection({ data, roster = "associate-pro" }: Props) {
   return (
     <section className="space-y-3">
       <h2 className="text-base font-semibold text-gray-900">Recruitment</h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard
           icon={UserPlus}
           iconColor="text-cyan-600"
@@ -44,6 +44,16 @@ export function RecruitmentSection({ data, roster = "associate-pro" }: Props) {
             label="Onboarded This Period"
             value={data.onboardedInPeriod.toLocaleString()}
             hint="Pros whose first call landed in Picked this period"
+          />
+        )}
+        {!isAssociate && (
+          <StatCard
+            icon={ClipboardList}
+            iconColor="text-orange-600"
+            iconBg="bg-orange-50"
+            label="Onboarding Queue"
+            value={data.onboardingQueueCount.toLocaleString()}
+            hint="Pros recruited but not yet successfully onboarded"
           />
         )}
         <StatCard

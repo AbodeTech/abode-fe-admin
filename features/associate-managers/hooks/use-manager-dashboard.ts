@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { execute } from "@/lib/graphql-client";
 import { graphql } from "@/lib/gql";
 import type { ManagerDashboardFilterInput } from "@/lib/gql/graphql";
@@ -30,6 +30,7 @@ const ADMIN_GET_MANAGER_DASHBOARD_QUERY = graphql(`
         upgradesInPeriod
         onboardedInPeriod
         totalAssigned
+        onboardingQueueCount
       }
       salesAndRevenue {
         sellingPros
@@ -71,6 +72,7 @@ const ADMIN_GET_MANAGER_DASHBOARD_QUERY = graphql(`
         lastLogin
         onboardedAt
       }
+      associateProsGroupTotal
     }
   }
 `);
@@ -79,7 +81,7 @@ const ADMIN_GET_MANAGER_DASHBOARD_QUERY = graphql(`
 export const useAdminManagerDashboard = (
   managerId: string | null | undefined,
   filter?: ManagerDashboardFilterInput | null,
-  options?: { enabled?: boolean }
+  options?: { enabled?: boolean; keepPreviousData?: boolean }
 ) => {
   return useQuery({
     queryKey: managerKeys.adminDashboard(managerId ?? "", filter),
@@ -90,6 +92,7 @@ export const useAdminManagerDashboard = (
       }),
     select: (data) => data.adminGetManagerDashboard,
     enabled: !!managerId && options?.enabled !== false,
+    placeholderData: options?.keepPreviousData ? keepPreviousData : undefined,
   });
 };
 
@@ -116,6 +119,7 @@ const MANAGER_DASHBOARD_QUERY = graphql(`
         upgradesInPeriod
         onboardedInPeriod
         totalAssigned
+        onboardingQueueCount
       }
       salesAndRevenue {
         sellingPros
@@ -157,6 +161,7 @@ const MANAGER_DASHBOARD_QUERY = graphql(`
         lastLogin
         onboardedAt
       }
+      associateProsGroupTotal
     }
   }
 `);
@@ -164,7 +169,7 @@ const MANAGER_DASHBOARD_QUERY = graphql(`
 /** Manager-self view (auth derives the managerId from the logged-in admin). */
 export const useManagerDashboard = (
   filter?: ManagerDashboardFilterInput | null,
-  options?: { enabled?: boolean }
+  options?: { enabled?: boolean; keepPreviousData?: boolean }
 ) => {
   return useQuery({
     queryKey: managerKeys.selfDashboard(filter),
@@ -172,5 +177,6 @@ export const useManagerDashboard = (
       execute(MANAGER_DASHBOARD_QUERY, { filter: filter ?? null }),
     select: (data) => data.managerDashboard,
     enabled: options?.enabled !== false,
+    placeholderData: options?.keepPreviousData ? keepPreviousData : undefined,
   });
 };

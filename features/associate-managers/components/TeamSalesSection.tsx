@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, Loader2, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, Loader2, Search } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 // Cross-feature import: reusing the canonical sales table avoids duplicating
@@ -14,6 +15,7 @@ import {
   useManagerTeamSales,
   DEFAULT_TEAM_SALES_LIMIT,
 } from "../hooks/use-team-sales";
+import { useExportManagerSalesRecord } from "../hooks/use-export-manager-sales";
 
 interface Props {
   viewAs: "super-admin" | "manager";
@@ -58,6 +60,22 @@ export function TeamSalesSection({
   );
   const count = query.data?.count ?? 0;
 
+  const { mutateAsync: exportSales, isPending: isExportingSales } =
+    useExportManagerSalesRecord();
+
+  const handleExportSales = async () => {
+    try {
+      await exportSales({
+        managerId: viewAs === "manager" ? null : activeManagerId,
+        filters,
+        filenamePrefix: "team-sales",
+      });
+      toast.success("Team sales exported successfully.");
+    } catch (err) {
+      toast.error((err as Error).message || "Failed to export team sales.");
+    }
+  };
+
   return (
     <section className="space-y-3">
       <div className="flex items-end justify-between gap-3 flex-wrap">
@@ -68,17 +86,29 @@ export function TeamSalesSection({
             {count > 0 ? ` · ${count.toLocaleString()} total` : ""}
           </p>
         </div>
-        <div className="relative w-full sm:w-72">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by buyer, asset, or referrer"
-            className="pl-8 h-10 bg-white"
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
-          />
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by buyer, asset, or referrer"
+              className="pl-8 h-10 bg-white"
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+            />
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-10 bg-white"
+            onClick={handleExportSales}
+            disabled={isExportingSales}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            {isExportingSales ? "Exporting…" : "Export CSV"}
+          </Button>
         </div>
       </div>
 

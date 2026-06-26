@@ -39,6 +39,13 @@ export {
   useAllManagersDashboard,
   DEFAULT_ALL_MANAGERS_LIMIT,
 } from "./hooks/use-all-managers-dashboard";
+export { useExportManagerDashboardPros } from "./hooks/use-export-manager-pros";
+export { useExportManagerSalesRecord } from "./hooks/use-export-manager-sales";
+export { buildManagerDashboardFilter } from "./lib/dashboard-filter";
+export {
+  PRO_GROUP_OPTIONS,
+  PRO_SORT_OPTIONS,
+} from "./lib/roster-filter-options";
 
 // Hooks — mutations
 export { useAddManager } from "./hooks/use-add-manager";
