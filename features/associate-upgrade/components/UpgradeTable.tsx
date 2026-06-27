@@ -26,7 +26,6 @@ import {
   TrendingUp,
   Calendar,
   Phone,
-  Mail,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuthStore } from "@/store/auth-store";
@@ -112,10 +111,6 @@ export function UpgradeTable({ data, onApprove, onDecline }: UpgradeTableProps) 
               }
               subtitle={upgrade.user?.email}
             >
-              <AdminMobileField label="First name" value={upgrade.user?.firstName || "N/A"} />
-              <AdminMobileField label="Last name" value={upgrade.user?.lastName || "N/A"} />
-              <AdminMobileField label="Email" value={upgrade.user?.email || "N/A"} />
-              <AdminMobileField label="User phone" value={upgrade.user?.phoneNumber || "—"} />
               <AdminMobileField
                 label="Referral"
                 value={
@@ -133,6 +128,7 @@ export function UpgradeTable({ data, onApprove, onDecline }: UpgradeTableProps) 
                   </span>
                 }
               />
+              <AdminMobileField label="User phone" value={upgrade.user?.phoneNumber || "—"} />
               <AdminMobileField label="Referral phone" value={upgrade.associate?.phoneNumber || "—"} />
               <AdminMobileField label="Upgrade type" value={upgrade.user_upgrade_type || "N/A"} />
               <AdminMobileField label="Transaction type" value={upgrade.transaction_type || "N/A"} />
@@ -190,31 +186,19 @@ export function UpgradeTable({ data, onApprove, onDecline }: UpgradeTableProps) 
                 <TableHead className="py-4 font-semibold">
                   <div className="flex items-center gap-2">
                     <User className="h-4 w-4" />
-                    First Name
-                  </div>
-                </TableHead>
-                <TableHead className="py-4 font-semibold">
-                  <div className="flex items-center gap-2">
-                    <User className="h-4 w-4" />
-                    Last Name
-                  </div>
-                </TableHead>
-                <TableHead className="py-4 font-semibold">
-                  <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4" />
-                    Email
-                  </div>
-                </TableHead>
-                <TableHead className="py-4 font-semibold">
-                  <div className="flex items-center gap-2">
-                    <Phone className="h-4 w-4" />
-                    User phone
+                    User
                   </div>
                 </TableHead>
                 <TableHead className="py-4 font-semibold">
                   <div className="flex items-center gap-2">
                     <User className="h-4 w-4" />
                     Referral
+                  </div>
+                </TableHead>
+                <TableHead className="py-4 font-semibold">
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-4 w-4" />
+                    User phone
                   </div>
                 </TableHead>
                 <TableHead className="py-4 font-semibold">
@@ -271,27 +255,16 @@ export function UpgradeTable({ data, onApprove, onDecline }: UpgradeTableProps) 
                     key={upgrade._id || idx}
                     className={`border-gray-200 text-sm font-medium text-gray-900 transition-colors hover:bg-gray-100 ${idx % 2 === 0 ? "bg-gray-50/50" : "bg-white"}`}
                   >
-                    <TableCell className="max-w-[160px] py-4 whitespace-normal wrap-break-word">
-                      <Link
-                        href={`/users/${upgrade.user?._id ?? ""}`}
-                        className="font-medium text-black transition-colors hover:text-gray-700 hover:underline"
-                      >
-                        {upgrade.user?.firstName || "N/A"}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="max-w-[160px] py-4 whitespace-normal wrap-break-word">
-                      <Link
-                        href={`/users/${upgrade.user?._id ?? ""}`}
-                        className="font-medium text-black transition-colors hover:text-gray-700 hover:underline"
-                      >
-                        {upgrade.user?.lastName || "N/A"}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="max-w-[220px] whitespace-normal wrap-break-word py-4 text-gray-700">
-                      {upgrade.user?.email || "N/A"}
-                    </TableCell>
-                    <TableCell className="max-w-[140px] whitespace-normal wrap-break-word py-4 text-gray-700">
-                      {upgrade.user?.phoneNumber || "—"}
+                    <TableCell className="max-w-[220px] py-4 text-gray-700">
+                      <div className="flex min-w-0 flex-col gap-1">
+                        <Link
+                          href={`/users/${upgrade.user?._id ?? ""}`}
+                          className="font-medium text-black transition-colors hover:text-gray-700 hover:underline"
+                        >
+                          {upgrade.user?.firstName} {upgrade.user?.lastName || "N/A"}
+                        </Link>
+                        <span className="wrap-break-word text-xs text-gray-500">{upgrade.user?.email || "N/A"}</span>
+                      </div>
                     </TableCell>
                     <TableCell className="max-w-[220px] py-4 text-gray-700">
                       <div className="flex min-w-0 flex-col gap-1">
@@ -303,6 +276,9 @@ export function UpgradeTable({ data, onApprove, onDecline }: UpgradeTableProps) 
                         </Link>
                         <span className="wrap-break-word text-xs text-gray-500">{upgrade.associate?.email || "N/A"}</span>
                       </div>
+                    </TableCell>
+                    <TableCell className="max-w-[140px] whitespace-normal wrap-break-word py-4 text-gray-700">
+                      {upgrade.user?.phoneNumber || "—"}
                     </TableCell>
                     <TableCell className="max-w-[140px] whitespace-normal wrap-break-word py-4 text-gray-700">
                       {upgrade.associate?.phoneNumber || "—"}
