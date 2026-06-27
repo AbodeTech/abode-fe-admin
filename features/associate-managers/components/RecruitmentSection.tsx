@@ -1,15 +1,17 @@
 import { CheckCircle2, TrendingUp, UserPlus, Users, ClipboardList } from "lucide-react";
 import { StatCard } from "./StatCard";
-import type { ManagerDashboardRecruitment } from "@/lib/gql/graphql";
+import { ProRosterGroup, type ManagerDashboardRecruitment } from "@/lib/gql/graphql";
 
 interface Props {
   data: ManagerDashboardRecruitment;
   /** Which tier of users the roster represents. Switches labels and hides
    * irrelevant cards (e.g. associates aren't onboarded). */
   roster?: "associate-pro" | "associate";
+  /** When provided, the cards become drill-down triggers. */
+  onOpenGroup?: (group: ProRosterGroup) => void;
 }
 
-export function RecruitmentSection({ data, roster = "associate-pro" }: Props) {
+export function RecruitmentSection({ data, roster = "associate-pro", onOpenGroup }: Props) {
   const isAssociate = roster === "associate";
   return (
     <section className="space-y-3">
@@ -25,6 +27,7 @@ export function RecruitmentSection({ data, roster = "associate-pro" }: Props) {
               ? "People associates brought in this period (all tiers)"
               : "People your pros brought in this period (all tiers)"
           }
+          onClick={onOpenGroup ? () => onOpenGroup(ProRosterGroup.RecruitedInPeriod) : undefined}
         />
         <StatCard
           icon={TrendingUp}
@@ -33,6 +36,7 @@ export function RecruitmentSection({ data, roster = "associate-pro" }: Props) {
           label="Recruits Promoted to Associate Pro"
           value={data.upgradesInPeriod.toLocaleString()}
           hint="Recruits who upgraded to Associate Pro this period"
+          onClick={onOpenGroup ? () => onOpenGroup(ProRosterGroup.UpgradedInPeriod) : undefined}
         />
         {/* Associates aren't onboarded (onboarding is the associate-pro flow),
             so the metric is always 0 for that roster — hide rather than mislead. */}
@@ -44,6 +48,7 @@ export function RecruitmentSection({ data, roster = "associate-pro" }: Props) {
             label="Onboarded This Period"
             value={data.onboardedInPeriod.toLocaleString()}
             hint="Pros whose first call landed in Picked this period"
+            onClick={onOpenGroup ? () => onOpenGroup(ProRosterGroup.OnboardedInPeriod) : undefined}
           />
         )}
         {!isAssociate && (
@@ -54,6 +59,7 @@ export function RecruitmentSection({ data, roster = "associate-pro" }: Props) {
             label="Onboarding Queue"
             value={data.onboardingQueueCount.toLocaleString()}
             hint="Pros recruited but not yet successfully onboarded"
+            onClick={onOpenGroup ? () => onOpenGroup(ProRosterGroup.RecruitedNotOnboarded) : undefined}
           />
         )}
         <StatCard

@@ -1,8 +1,9 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Lock, Loader2 } from "lucide-react";
+import { ProRosterGroup } from "@/lib/gql/graphql";
 import {
   RecruitmentSection,
   SalesRevenueSection,
@@ -36,7 +37,18 @@ function NotAuthorized() {
 
 function AssociatePerformanceContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const { user } = useAuthStore();
+  const tableRef = useRef<HTMLDivElement>(null);
+
+  const openGroup = (group: ProRosterGroup) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("pro_group", group);
+    router.push(`?${params.toString()}`, { scroll: false });
+    requestAnimationFrame(() => {
+      tableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
 
   const isSuperAdmin = user?.role === "admin";
 
@@ -130,21 +142,23 @@ function AssociatePerformanceContent() {
         <DateFilter />
       </div>
 
-      <RecruitmentSection data={dashboard.recruitment} roster="associate" />
-      <SalesRevenueSection data={dashboard.salesAndRevenue} roster="associate" />
-      <ActivitySection data={dashboard.activity} roster="associate" />
-      <MilestonesSection data={dashboard.milestones} roster="associate" />
+      <RecruitmentSection data={dashboard.recruitment} roster="associate" onOpenGroup={openGroup} />
+      <SalesRevenueSection data={dashboard.salesAndRevenue} roster="associate" onOpenGroup={openGroup} />
+      <ActivitySection data={dashboard.activity} roster="associate" onOpenGroup={openGroup} />
+      <MilestonesSection data={dashboard.milestones} roster="associate" onOpenGroup={openGroup} />
 
-      <SystemAssociatesTable
-        rows={tableData?.associatePros ?? dashboard.associatePros}
-        totalCount={
-          tableData?.associateProsGroupTotal ?? dashboard.associateProsGroupTotal
-        }
-        page={page}
-        limit={DEFAULT_SYSTEM_ASSOCIATES_LIMIT}
-        onPageChange={setPage}
-        isLoading={tableLoading}
-      />
+      <div ref={tableRef}>
+        <SystemAssociatesTable
+          rows={tableData?.associatePros ?? dashboard.associatePros}
+          totalCount={
+            tableData?.associateProsGroupTotal ?? dashboard.associateProsGroupTotal
+          }
+          page={page}
+          limit={DEFAULT_SYSTEM_ASSOCIATES_LIMIT}
+          onPageChange={setPage}
+          isLoading={tableLoading}
+        />
+      </div>
     </div>
   );
 }

@@ -218,9 +218,24 @@ export function AssociateProsTable({
   return (
     <section className="space-y-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <h2 className="text-base font-semibold text-gray-900">
-          Associate Pros
-        </h2>
+        <div>
+          <h2 className="text-base font-semibold text-gray-900">
+            Associate Pros
+          </h2>
+          {(() => {
+            const proGroup = searchParams.get("pro_group");
+            if (!proGroup || proGroup === "all") return null;
+            const label =
+              PRO_GROUP_OPTIONS.find((o) => o.value === proGroup)?.label ??
+              proGroup;
+            return (
+              <p className="text-xs text-gray-500 mt-0.5">
+                Showing {(groupTotal ?? filtered.length).toLocaleString()} ·{" "}
+                <span className="font-medium">{label}</span>
+              </p>
+            );
+          })()}
+        </div>
         <div className="flex items-center gap-3 flex-wrap">
           <div className="relative w-full sm:w-72">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

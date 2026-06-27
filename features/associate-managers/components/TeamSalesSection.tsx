@@ -72,7 +72,12 @@ export function TeamSalesSection({
       });
       toast.success("Team sales exported successfully.");
     } catch (err) {
-      toast.error((err as Error).message || "Failed to export team sales.");
+      const message = (err as Error).message || "";
+      if (/Export limit exceeded|EXPORT_LIMIT_EXCEEDED/i.test(message)) {
+        toast.error("Too many rows to export — narrow your date range or search.");
+      } else {
+        toast.error(message || "Failed to export team sales.");
+      }
     }
   };
 

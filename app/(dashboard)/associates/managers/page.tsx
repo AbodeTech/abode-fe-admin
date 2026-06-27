@@ -1,9 +1,10 @@
 "use client";
 
-import { Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { Suspense, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Lock, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { ProRosterGroup } from "@/lib/gql/graphql";
 import {
   PerformanceHeader,
   ManagerSnapshot,
@@ -46,7 +47,22 @@ function NotAuthorized() {
 
 function AssociateManagersContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const { user } = useAuthStore();
+  const prosTableRef = useRef<HTMLDivElement>(null);
+
+  /** Drill-down handler: set the group filter and smooth-scroll to the Pros
+   * table so the user sees the cohort they just clicked. */
+  const openGroup = (group: ProRosterGroup) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("pro_group", group);
+    params.set("page", "1");
+    router.push(`?${params.toString()}`, { scroll: false });
+    // Defer scroll one frame so the URL update + re-render lands first.
+    requestAnimationFrame(() => {
+      prosTableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
 
   // Real role gating: Super Admins (admin.role === "admin") get the Super
   // Admin view. Any other admin who is also an Associate Manager (regardless
@@ -215,16 +231,29 @@ function AssociateManagersContent() {
     );
   }
 
+  const activeManagerSlug = (() => {
+    const m = activeManager?.manager;
+    if (!m) return "my-roster";
+    const full = `${m.firstName ?? ""} ${m.lastName ?? ""}`.trim() || m.userName || "manager";
+    return full.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  })();
+
   const handleExportPros = async () => {
     try {
       await exportPros({
         managerId: viewAs === "manager" ? null : activeManagerId,
         filter,
-        filenamePrefix: "manager-pros",
+        filenamePrefix: `manager-pros-${activeManagerSlug}`,
       });
       toast.success("Roster exported successfully.");
     } catch (err) {
-      toast.error((err as Error).message || "Failed to export roster.");
+      const message = (err as Error).message || "";
+      // BE caps export at 5,000 rows; surface that clearly when it fires.
+      if (/Export limit exceeded|EXPORT_LIMIT_EXCEEDED/i.test(message)) {
+        toast.error("Too many rows to export — narrow your date range or apply a group filter.");
+      } else {
+        toast.error(message || "Failed to export roster.");
+      }
     }
   };
 
@@ -244,21 +273,23 @@ function AssociateManagersContent() {
         dashboard={dashboard}
       />
 
-      <RecruitmentSection data={dashboard.recruitment} />
-      <SalesRevenueSection data={dashboard.salesAndRevenue} />
-      <ActivitySection data={dashboard.activity} />
-      <MilestonesSection data={dashboard.milestones} />
+      <RecruitmentSection data={dashboard.recruitment} onOpenGroup={openGroup} />
+      <SalesRevenueSection data={dashboard.salesAndRevenue} onOpenGroup={openGroup} />
+      <ActivitySection data={dashboard.activity} onOpenGroup={openGroup} />
+      <MilestonesSection data={dashboard.milestones} onOpenGroup={openGroup} />
 
-      <AssociateProsTable
-        pros={tableData?.associatePros ?? dashboard.associatePros}
-        sourceManagerId={activeManagerId}
-        groupTotal={
-          tableData?.associateProsGroupTotal ?? dashboard.associateProsGroupTotal
-        }
-        isLoading={tableLoading}
-        onExport={isAllManagers ? undefined : handleExportPros}
-        isExporting={isExportingPros}
-      />
+      <div ref={prosTableRef}>
+        <AssociateProsTable
+          pros={tableData?.associatePros ?? dashboard.associatePros}
+          sourceManagerId={activeManagerId}
+          groupTotal={
+            tableData?.associateProsGroupTotal ?? dashboard.associateProsGroupTotal
+          }
+          isLoading={tableLoading}
+          onExport={isAllManagers ? undefined : handleExportPros}
+          isExporting={isExportingPros}
+        />
+      </div>
 
       {/* Team sales is scoped to a single manager's roster — skip it when the
           super admin is looking at the combined "all managers" view. */}

@@ -1,4 +1,5 @@
 import React from "react";
+import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface StatCardProps {
@@ -9,6 +10,8 @@ interface StatCardProps {
   value: string | number;
   hint?: string;
   className?: string;
+  /** Makes the card clickable. Shows a chevron in the top-right and hover styles. */
+  onClick?: () => void;
 }
 
 export function StatCard({
@@ -19,11 +22,29 @@ export function StatCard({
   value,
   hint,
   className,
+  onClick,
 }: StatCardProps) {
+  const clickable = Boolean(onClick);
   return (
     <div
+      role={clickable ? "button" : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={
+        clickable
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onClick?.();
+              }
+            }
+          : undefined
+      }
       className={cn(
-        "bg-white rounded-xl p-6 border border-gray-200 hover:shadow-md transition-shadow",
+        "bg-white rounded-xl p-6 border border-gray-200 transition-shadow",
+        clickable
+          ? "cursor-pointer hover:shadow-md hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#00695C]/30"
+          : "hover:shadow-md",
         className
       )}
     >
@@ -31,6 +52,9 @@ export function StatCard({
         <div className={cn("p-3 rounded-lg", iconBg)}>
           <Icon className={cn("w-6 h-6", iconColor)} />
         </div>
+        {clickable && (
+          <ArrowRight className="h-4 w-4 text-gray-400" aria-hidden="true" />
+        )}
       </div>
       <p className="text-sm text-gray-600 mb-1">{label}</p>
       <p className="text-2xl font-bold text-gray-900">{value}</p>

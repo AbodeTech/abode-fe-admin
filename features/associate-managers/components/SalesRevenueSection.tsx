@@ -1,12 +1,14 @@
 import { Briefcase, CircleDollarSign, BarChart3 } from "lucide-react";
 import { StatCard } from "./StatCard";
-import type { ManagerDashboardSalesRevenue } from "@/lib/gql/graphql";
+import { ProRosterGroup, type ManagerDashboardSalesRevenue } from "@/lib/gql/graphql";
 
 interface Props {
   data: ManagerDashboardSalesRevenue;
   /** Which tier of users the roster represents. Switches labels between
    * "Selling Pros" (manager dashboard) and "Selling Associates" (system view). */
   roster?: "associate-pro" | "associate";
+  /** When provided, the Selling Pros card becomes a drill-down trigger. */
+  onOpenGroup?: (group: ProRosterGroup) => void;
 }
 
 const formatCurrency = (n: number) =>
@@ -19,7 +21,7 @@ const formatCurrencyShort = (n: number) => {
   return formatCurrency(n);
 };
 
-export function SalesRevenueSection({ data, roster = "associate-pro" }: Props) {
+export function SalesRevenueSection({ data, roster = "associate-pro", onOpenGroup }: Props) {
   const {
     sellingPros,
     sellingProsTarget,
@@ -49,6 +51,7 @@ export function SalesRevenueSection({ data, roster = "associate-pro" }: Props) {
               ? "Associates who closed a new sale this period"
               : "Pros who closed a new sale this period"
           }
+          onClick={onOpenGroup ? () => onOpenGroup(ProRosterGroup.SellingInPeriod) : undefined}
         />
         <StatCard
           icon={CircleDollarSign}

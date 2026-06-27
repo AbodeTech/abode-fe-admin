@@ -1,13 +1,15 @@
 import { Sparkles, Award } from "lucide-react";
 import { StatCard } from "./StatCard";
-import type { ManagerDashboardMilestones } from "@/lib/gql/graphql";
+import { ProRosterGroup, type ManagerDashboardMilestones } from "@/lib/gql/graphql";
 
 interface Props {
   data: ManagerDashboardMilestones;
   roster?: "associate-pro" | "associate";
+  /** When provided, the milestone cards become drill-down triggers. */
+  onOpenGroup?: (group: ProRosterGroup) => void;
 }
 
-export function MilestonesSection({ data, roster = "associate-pro" }: Props) {
+export function MilestonesSection({ data, roster = "associate-pro", onOpenGroup }: Props) {
   const isAssociate = roster === "associate";
   return (
     <section className="space-y-3">
@@ -19,6 +21,7 @@ export function MilestonesSection({ data, roster = "associate-pro" }: Props) {
           label={isAssociate ? "New Associate First Sales" : "New Associate Pro First Sales"}
           value={data.earlySellers}
           hint="First sale within 3 months of upgrade (this period)"
+          onClick={onOpenGroup ? () => onOpenGroup(ProRosterGroup.SellingInPeriod) : undefined}
         />
         <StatCard
           icon={Award}
@@ -26,6 +29,7 @@ export function MilestonesSection({ data, roster = "associate-pro" }: Props) {
           label="First-Time Sellers"
           value={data.lateFirstSellers}
           hint="First sale 3+ months after upgrade (this period)"
+          onClick={onOpenGroup ? () => onOpenGroup(ProRosterGroup.SellingInPeriod) : undefined}
         />
       </div>
     </section>

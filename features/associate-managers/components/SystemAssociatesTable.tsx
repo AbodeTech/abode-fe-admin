@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { CheckCircle2, ChevronLeft, ChevronRight, Loader2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -96,6 +97,12 @@ export function SystemAssociatesTable({
   isLoading = false,
 }: Props) {
   const [search, setSearch] = useState("");
+  const searchParams = useSearchParams();
+  const proGroup = searchParams.get("pro_group");
+  const activeGroupLabel =
+    proGroup && proGroup !== "all"
+      ? (PRO_GROUP_OPTIONS.find((o) => o.value === proGroup)?.label ?? proGroup)
+      : null;
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -119,8 +126,17 @@ export function SystemAssociatesTable({
         <div>
           <h2 className="text-base font-semibold text-gray-900">Associates</h2>
           <p className="text-xs text-gray-500">
-            All associate-tier users
-            {count > 0 ? ` · ${count.toLocaleString()} total` : ""}
+            {activeGroupLabel ? (
+              <>
+                Showing {count.toLocaleString()} ·{" "}
+                <span className="font-medium">{activeGroupLabel}</span>
+              </>
+            ) : (
+              <>
+                All associate-tier users
+                {count > 0 ? ` · ${count.toLocaleString()} total` : ""}
+              </>
+            )}
           </p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
