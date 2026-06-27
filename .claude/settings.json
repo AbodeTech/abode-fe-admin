@@ -8,7 +8,9 @@
       "Bash(awk 'NR>=2139 && NR<=2480' src/repository/transactionRepository.ts)",
       "Bash(grep -n 'filters\\\\|asset_type\\\\|balance\\\\|amount_paid\\\\|is_defaulted\\\\|is_suspended\\\\|completed\\\\|nextDate\\\\|startDate\\\\|endDate\\\\|next_date\\\\|$match\\\\|query\\\\.\\\\|status\\\\|sortBy\\\\|paid\\\\|payable')",
       "Bash(curl -s -X POST 'https://e0swwow440owgo0c4s8gs04g.abodeflex.com.ng/graphql' -H 'Content-Type: application/json' --data '{\"query\":\"{ __type\\(name:\\\\\"SalesRecord\\\\\"\\){ name } }\"}')",
-      "Bash(curl -s -X POST 'https://e0swwow440owgo0c4s8gs04g.abodeflex.com.ng/graphql' -H 'Content-Type: application/json' --data '{\"query\":\"{ __type\\(name:\\\\\"SuspendedPaymentPlansSummary\\\\\"\\){ name } }\"}')"
+      "Bash(curl -s -X POST 'https://e0swwow440owgo0c4s8gs04g.abodeflex.com.ng/graphql' -H 'Content-Type: application/json' --data '{\"query\":\"{ __type\\(name:\\\\\"SuspendedPaymentPlansSummary\\\\\"\\){ name } }\"}')",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" -X POST 'http://localhost:7766/graphql' -H 'Content-Type: application/json' --data '{\"query\":\"{__typename}\"}')",
+      "Bash(git restore *)"
     ]
   }
 }

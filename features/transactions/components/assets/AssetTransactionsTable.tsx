@@ -107,16 +107,17 @@ export function AssetTransactionsTable({ data, isLoading, onApprove, onDecline }
                   </TableHead>
                   <TableHead className="py-4 font-semibold">
                     <div className="flex items-center gap-2">
-                      <User className="h-4 w-4" />
-                      Property Owner
-                    </div>
-                  </TableHead>
-                  <TableHead className="py-4 font-semibold">
-                    <div className="flex items-center gap-2">
                       <UserCheck className="h-4 w-4" />
                       Referrer
                     </div>
                   </TableHead>
+                  <TableHead className="py-4 font-semibold">
+                    <div className="flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      Property Owner
+                    </div>
+                  </TableHead>
+                 
                   <TableHead className="py-4 font-semibold">
                     <div className="flex items-center gap-2">
                       <Building className="h-4 w-4" />
@@ -171,12 +172,13 @@ export function AssetTransactionsTable({ data, isLoading, onApprove, onDecline }
                         {transaction.user?.lastName} {transaction.user?.firstName}
                       </Link>
                     </TableCell>
-                    <TableCell className="py-4 text-gray-700 w-30 truncate">
-                      {transaction.property_owner || "—"}
-                    </TableCell>
                     <TableCell className="py-4 text-gray-700 w-25 truncate">
                       {transaction.referral ?? "No Referrer"}
                     </TableCell>
+                    <TableCell className="py-4 text-gray-700 max-w-30 truncate">
+                      {transaction.property_owner || "—"}
+                    </TableCell>
+                   
                     <TableCell className="py-4 text-gray-700 w-[200px] max-w-[200px] break-words whitespace-normal overflow-hidden">
                       {transaction.asset_type || ""} - {updatedString(`${transaction.description ?? ""}(${transaction.plot_size ?? ""}sqm)`)}
                     </TableCell>
