@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { execute } from "@/lib/graphql-client";
 import { graphql } from "@/lib/gql";
 import type { ManagerDashboardFilterInput } from "@/lib/gql/graphql";
@@ -31,6 +31,7 @@ const GET_ALL_MANAGERS_DASHBOARD_QUERY = graphql(`
         upgradesInPeriod
         onboardedInPeriod
         totalAssigned
+        onboardingQueueCount
       }
       salesAndRevenue {
         sellingPros
@@ -72,6 +73,7 @@ const GET_ALL_MANAGERS_DASHBOARD_QUERY = graphql(`
         lastLogin
         onboardedAt
       }
+      associateProsGroupTotal
     }
   }
 `);
@@ -81,6 +83,7 @@ interface UseAllManagersDashboardParams {
   page?: number;
   limit?: number;
   enabled?: boolean;
+  keepPreviousData?: boolean;
 }
 
 export const DEFAULT_ALL_MANAGERS_LIMIT = 25;
@@ -95,6 +98,7 @@ export const useAllManagersDashboard = (
     page,
     limit = DEFAULT_ALL_MANAGERS_LIMIT,
     enabled = true,
+    keepPreviousData: keepPrevious = false,
   } = params;
 
   return useQuery({
@@ -107,5 +111,6 @@ export const useAllManagersDashboard = (
       }),
     enabled,
     select: (data) => data.getAllManagersDashboard,
+    placeholderData: keepPrevious ? keepPreviousData : undefined,
   });
 };

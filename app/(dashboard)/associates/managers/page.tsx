@@ -1,8 +1,10 @@
 "use client";
 
-import { Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { Suspense, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Lock, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { ProRosterGroup } from "@/lib/gql/graphql";
 import {
   PerformanceHeader,
   ManagerSnapshot,
@@ -18,28 +20,10 @@ import {
   useAllManagersDashboard,
   useManagerDashboard,
   useIsCurrentUserManager,
+  useExportManagerDashboardPros,
 } from "@/features/associate-managers";
+import { buildManagerDashboardFilter, buildManagerDashboardPeriodFilter } from "@/features/associate-managers/lib/dashboard-filter";
 import { useAuthStore } from "@/store/auth-store";
-import type { ManagerDashboardFilterInput } from "@/lib/gql/graphql";
-import { PeriodType } from "@/lib/gql/graphql";
-
-/** Translate the URL filter state into a backend `ManagerDashboardFilterInput`. */
-const buildDashboardFilter = (
-  period: string | null,
-  startDate: string | null,
-  endDate: string | null
-): ManagerDashboardFilterInput | null => {
-  if (startDate && endDate) {
-    return { periodType: PeriodType.Custom, startDate, endDate };
-  }
-  const pt =
-    period === "week"
-      ? PeriodType.Week
-      : period === "year"
-        ? PeriodType.Year
-        : PeriodType.Month;
-  return { periodType: pt };
-};
 
 /** Friendly empty state for users who shouldn't be here. */
 function NotAuthorized() {
@@ -63,7 +47,22 @@ function NotAuthorized() {
 
 function AssociateManagersContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const { user } = useAuthStore();
+  const prosTableRef = useRef<HTMLDivElement>(null);
+
+  /** Drill-down handler: set the group filter and smooth-scroll to the Pros
+   * table so the user sees the cohort they just clicked. */
+  const openGroup = (group: ProRosterGroup) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("pro_group", group);
+    params.set("page", "1");
+    router.push(`?${params.toString()}`, { scroll: false });
+    // Defer scroll one frame so the URL update + re-render lands first.
+    requestAnimationFrame(() => {
+      prosTableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
 
   // Real role gating: Super Admins (admin.role === "admin") get the Super
   // Admin view. Any other admin who is also an Associate Manager (regardless
@@ -83,8 +82,24 @@ function AssociateManagersContent() {
   const period = searchParams.get("period");
   const startDate = searchParams.get("start_date");
   const endDate = searchParams.get("end_date");
+  const proGroup = searchParams.get("pro_group");
+  const proSort = searchParams.get("pro_sort");
 
-  const filter = buildDashboardFilter(period, startDate, endDate);
+  const filter = buildManagerDashboardFilter({
+    period,
+    startDate,
+    endDate,
+    proGroup,
+    proSort,
+  });
+  const periodFilter = buildManagerDashboardPeriodFilter({
+    period,
+    startDate,
+    endDate,
+  });
+
+  const { mutateAsync: exportPros, isPending: isExportingPros } =
+    useExportManagerDashboardPros();
 
   // Super Admin: list managers for the dropdown. Limit 200 covers most orgs;
   // bump to a server-side search if rosters grow beyond that.
@@ -104,20 +119,39 @@ function AssociateManagersContent() {
 
   // Dashboard data — three super-admin endpoints + one self endpoint.
   // All gated on `isAuthorized` so unauthorized users skip the round-trip.
-  const adminDashboardQuery = useAdminManagerDashboard(
+  // KPI sections use period/date only; roster group/sort refetch the table query.
+  const adminKpiQuery = useAdminManagerDashboard(
     activeManagerId,
-    filter,
+    periodFilter,
     {
       enabled:
         isAuthorized && viewAs === "super-admin" && !isAllManagers,
     }
   );
-  const allManagersDashboardQuery = useAllManagersDashboard({
+  const adminTableQuery = useAdminManagerDashboard(
+    activeManagerId,
     filter,
+    {
+      enabled:
+        isAuthorized && viewAs === "super-admin" && !isAllManagers,
+      keepPreviousData: true,
+    }
+  );
+  const allManagersKpiQuery = useAllManagersDashboard({
+    filter: periodFilter,
     enabled: isAuthorized && viewAs === "super-admin" && isAllManagers,
   });
-  const selfDashboardQuery = useManagerDashboard(filter, {
+  const allManagersTableQuery = useAllManagersDashboard({
+    filter,
+    enabled: isAuthorized && viewAs === "super-admin" && isAllManagers,
+    keepPreviousData: true,
+  });
+  const selfKpiQuery = useManagerDashboard(periodFilter, {
     enabled: isAuthorized && viewAs === "manager",
+  });
+  const selfTableQuery = useManagerDashboard(filter, {
+    enabled: isAuthorized && viewAs === "manager",
+    keepPreviousData: true,
   });
 
   // Wait for the manager-check to resolve before deciding — otherwise a
@@ -136,18 +170,28 @@ function AssociateManagersContent() {
     return <NotAuthorized />;
   }
 
-  const dashboardQuery =
+  const kpiQuery =
     viewAs === "super-admin"
       ? isAllManagers
-        ? allManagersDashboardQuery
-        : adminDashboardQuery
-      : selfDashboardQuery;
-  const dashboard = dashboardQuery.data;
+        ? allManagersKpiQuery
+        : adminKpiQuery
+      : selfKpiQuery;
+  const tableQuery =
+    viewAs === "super-admin"
+      ? isAllManagers
+        ? allManagersTableQuery
+        : adminTableQuery
+      : selfTableQuery;
 
-  const isLoading = managersQuery.isLoading || dashboardQuery.isLoading;
-  const error = managersQuery.error || dashboardQuery.error;
+  const dashboard = kpiQuery.data;
+  const tableData = tableQuery.data;
 
-  if (isLoading) {
+  const isPageLoading =
+    managersQuery.isLoading || (kpiQuery.isLoading && !kpiQuery.data);
+  const tableLoading = tableQuery.isFetching;
+  const error = managersQuery.error || kpiQuery.error || tableQuery.error;
+
+  if (isPageLoading) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-200px)]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -187,6 +231,32 @@ function AssociateManagersContent() {
     );
   }
 
+  const activeManagerSlug = (() => {
+    const m = activeManager?.manager;
+    if (!m) return "my-roster";
+    const full = `${m.firstName ?? ""} ${m.lastName ?? ""}`.trim() || m.userName || "manager";
+    return full.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  })();
+
+  const handleExportPros = async () => {
+    try {
+      await exportPros({
+        managerId: viewAs === "manager" ? null : activeManagerId,
+        filter,
+        filenamePrefix: `manager-pros-${activeManagerSlug}`,
+      });
+      toast.success("Roster exported successfully.");
+    } catch (err) {
+      const message = (err as Error).message || "";
+      // BE caps export at 5,000 rows; surface that clearly when it fires.
+      if (/Export limit exceeded|EXPORT_LIMIT_EXCEEDED/i.test(message)) {
+        toast.error("Too many rows to export — narrow your date range or apply a group filter.");
+      } else {
+        toast.error(message || "Failed to export roster.");
+      }
+    }
+  };
+
   return (
     <div className="space-y-6">
       <PerformanceHeader
@@ -203,15 +273,23 @@ function AssociateManagersContent() {
         dashboard={dashboard}
       />
 
-      <RecruitmentSection data={dashboard.recruitment} />
-      <SalesRevenueSection data={dashboard.salesAndRevenue} />
-      <ActivitySection data={dashboard.activity} />
-      <MilestonesSection data={dashboard.milestones} />
+      <RecruitmentSection data={dashboard.recruitment} onOpenGroup={openGroup} />
+      <SalesRevenueSection data={dashboard.salesAndRevenue} onOpenGroup={openGroup} />
+      <ActivitySection data={dashboard.activity} onOpenGroup={openGroup} />
+      <MilestonesSection data={dashboard.milestones} onOpenGroup={openGroup} />
 
-      <AssociateProsTable
-        pros={dashboard.associatePros}
-        sourceManagerId={activeManagerId}
-      />
+      <div ref={prosTableRef}>
+        <AssociateProsTable
+          pros={tableData?.associatePros ?? dashboard.associatePros}
+          sourceManagerId={activeManagerId}
+          groupTotal={
+            tableData?.associateProsGroupTotal ?? dashboard.associateProsGroupTotal
+          }
+          isLoading={tableLoading}
+          onExport={isAllManagers ? undefined : handleExportPros}
+          isExporting={isExportingPros}
+        />
+      </div>
 
       {/* Team sales is scoped to a single manager's roster — skip it when the
           super admin is looking at the combined "all managers" view. */}

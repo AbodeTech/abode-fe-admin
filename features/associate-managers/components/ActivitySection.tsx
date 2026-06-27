@@ -1,14 +1,16 @@
 import { CheckCircle2, Clock, AlertOctagon } from "lucide-react";
 import { StatCard } from "./StatCard";
-import type { ManagerDashboardActivity } from "@/lib/gql/graphql";
+import { ProRosterGroup, type ManagerDashboardActivity } from "@/lib/gql/graphql";
 
 interface Props {
   data: ManagerDashboardActivity;
   /** Switches the noun used in labels between "Associate Pros" and "Associates". */
   roster?: "associate-pro" | "associate";
+  /** When provided, the activity cards become drill-down triggers. */
+  onOpenGroup?: (group: ProRosterGroup) => void;
 }
 
-export function ActivitySection({ data, roster = "associate-pro" }: Props) {
+export function ActivitySection({ data, roster = "associate-pro", onOpenGroup }: Props) {
   const {
     activeCount,
     activePct,
@@ -79,6 +81,7 @@ export function ActivitySection({ data, roster = "associate-pro" }: Props) {
           label={`Active ${noun}`}
           value={activeCount}
           hint={`${recentLoginCount.toLocaleString()} logged in · ${recentSaleCount.toLocaleString()} sold · ${recentRecruitCount.toLocaleString()} recruited (last 90 days)`}
+          onClick={onOpenGroup ? () => onOpenGroup(ProRosterGroup.Active) : undefined}
         />
         <StatCard
           icon={Clock}
@@ -87,6 +90,7 @@ export function ActivitySection({ data, roster = "associate-pro" }: Props) {
           label={`Inactive ${noun}`}
           value={inactiveCount}
           hint="No activity in last 90 days"
+          onClick={onOpenGroup ? () => onOpenGroup(ProRosterGroup.Inactive) : undefined}
         />
         <StatCard
           icon={AlertOctagon}
@@ -95,6 +99,7 @@ export function ActivitySection({ data, roster = "associate-pro" }: Props) {
           label={`Abandoned ${noun}`}
           value={abandonedCount}
           hint="No login in last 6 months"
+          onClick={onOpenGroup ? () => onOpenGroup(ProRosterGroup.Abandoned) : undefined}
         />
       </div>
     </section>

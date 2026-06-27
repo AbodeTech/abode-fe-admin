@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CheckCircle2, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { CheckCircle2, ChevronLeft, ChevronRight, Loader2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,8 +14,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { FilterSelect } from "@/components/shared/FilterSelect";
 import { cn } from "@/lib/utils";
 import type { ManagerDashboardProRow } from "@/lib/gql/graphql";
+import { PRO_GROUP_OPTIONS, PRO_SORT_OPTIONS } from "../lib/roster-filter-options";
 
 interface Props {
   rows: ManagerDashboardProRow[];
@@ -24,6 +27,7 @@ interface Props {
   page: number;
   limit: number;
   onPageChange: (page: number) => void;
+  isLoading?: boolean;
 }
 
 const formatCurrency = (n: number) =>
@@ -90,8 +94,15 @@ export function SystemAssociatesTable({
   page,
   limit,
   onPageChange,
+  isLoading = false,
 }: Props) {
   const [search, setSearch] = useState("");
+  const searchParams = useSearchParams();
+  const proGroup = searchParams.get("pro_group");
+  const activeGroupLabel =
+    proGroup && proGroup !== "all"
+      ? (PRO_GROUP_OPTIONS.find((o) => o.value === proGroup)?.label ?? proGroup)
+      : null;
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -115,22 +126,52 @@ export function SystemAssociatesTable({
         <div>
           <h2 className="text-base font-semibold text-gray-900">Associates</h2>
           <p className="text-xs text-gray-500">
-            All associate-tier users
-            {count > 0 ? ` · ${count.toLocaleString()} total` : ""}
+            {activeGroupLabel ? (
+              <>
+                Showing {count.toLocaleString()} ·{" "}
+                <span className="font-medium">{activeGroupLabel}</span>
+              </>
+            ) : (
+              <>
+                All associate-tier users
+                {count > 0 ? ` · ${count.toLocaleString()} total` : ""}
+              </>
+            )}
           </p>
         </div>
-        <div className="relative w-full sm:w-72">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search this page by name, email or phone"
-            className="pl-8 h-10 bg-white"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search this page by name, email or phone"
+              className="pl-8 h-10 bg-white"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <FilterSelect
+            data={[...PRO_GROUP_OPTIONS]}
+            queryKey="pro_group"
+            placeholder="Roster group"
+          />
+          <FilterSelect
+            data={[...PRO_SORT_OPTIONS]}
+            queryKey="pro_sort"
+            placeholder="Sort by"
           />
         </div>
       </div>
 
-      <div className="bg-white border border-[#E5EAEF] rounded-lg overflow-hidden">
+      <div className="relative bg-white border border-[#E5EAEF] rounded-lg overflow-hidden">
+        {isLoading && (
+          <div
+            className="absolute inset-0 z-10 flex items-center justify-center bg-white/70"
+            aria-live="polite"
+            aria-busy="true"
+          >
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          </div>
+        )}
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -206,7 +247,7 @@ export function SystemAssociatesTable({
                 size="icon"
                 className="h-8 w-8"
                 onClick={() => onPageChange(page - 1)}
-                disabled={page <= 1}
+                disabled={page <= 1 || isLoading}
                 aria-label="Previous page"
               >
                 <ChevronLeft className="h-4 w-4" />
@@ -216,7 +257,7 @@ export function SystemAssociatesTable({
                 size="icon"
                 className="h-8 w-8"
                 onClick={() => onPageChange(page + 1)}
-                disabled={page >= totalPages}
+                disabled={page >= totalPages || isLoading}
                 aria-label="Next page"
               >
                 <ChevronRight className="h-4 w-4" />
