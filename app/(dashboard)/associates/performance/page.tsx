@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Lock, Loader2 } from "lucide-react";
 import { ProRosterGroup } from "@/lib/gql/graphql";
@@ -12,6 +12,7 @@ import {
   SystemAssociatesTable,
   useSystemAssociatesDashboard,
   DEFAULT_SYSTEM_ASSOCIATES_LIMIT,
+  ProGroupDrawer,
 } from "@/features/associate-managers";
 import { buildManagerDashboardFilter, buildManagerDashboardPeriodFilter } from "@/features/associate-managers/lib/dashboard-filter";
 import { DateFilter } from "@/components/shared/DateFilter";
@@ -39,15 +40,12 @@ function AssociatePerformanceContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { user } = useAuthStore();
-  const tableRef = useRef<HTMLDivElement>(null);
 
   const openGroup = (group: ProRosterGroup) => {
     const params = new URLSearchParams(searchParams.toString());
-    params.set("pro_group", group);
+    params.set("open_group", group);
+    params.set("group_page", "1");
     router.push(`?${params.toString()}`, { scroll: false });
-    requestAnimationFrame(() => {
-      tableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
   };
 
   const isSuperAdmin = user?.role === "admin";
@@ -147,8 +145,15 @@ function AssociatePerformanceContent() {
       <ActivitySection data={dashboard.activity} roster="associate" onOpenGroup={openGroup} />
       <MilestonesSection data={dashboard.milestones} roster="associate" onOpenGroup={openGroup} />
 
-      <div ref={tableRef}>
-        <SystemAssociatesTable
+      <ProGroupDrawer
+        viewMode="system-associates"
+        managerId={null}
+        periodFilter={periodFilter}
+        roster="associate"
+        exportFilenamePrefix="system-associates"
+      />
+
+      <SystemAssociatesTable
           rows={tableData?.associatePros ?? dashboard.associatePros}
           totalCount={
             tableData?.associateProsGroupTotal ?? dashboard.associateProsGroupTotal
@@ -157,8 +162,7 @@ function AssociatePerformanceContent() {
           limit={DEFAULT_SYSTEM_ASSOCIATES_LIMIT}
           onPageChange={setPage}
           isLoading={tableLoading}
-        />
-      </div>
+      />
     </div>
   );
 }

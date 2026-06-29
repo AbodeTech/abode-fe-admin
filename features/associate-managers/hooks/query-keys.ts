@@ -84,4 +84,21 @@ export const managerKeys = {
       page ?? null,
       limit ?? null,
     ] as const,
+
+  prosGroup: (
+    viewMode: string,
+    managerId: string | null,
+    filter?: ManagerDashboardFilterInput | null,
+    page?: number | null,
+    limit?: number | null,
+  ) =>
+    [
+      ...managerKeys.dashboards(),
+      "pros-group",
+      viewMode,
+      managerId,
+      filter,
+      page ?? null,
+      limit ?? null,
+    ] as const,
 };

@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useRef } from "react";
+import { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Lock, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -21,6 +21,7 @@ import {
   useManagerDashboard,
   useIsCurrentUserManager,
   useExportManagerDashboardPros,
+  ProGroupDrawer,
 } from "@/features/associate-managers";
 import { buildManagerDashboardFilter, buildManagerDashboardPeriodFilter } from "@/features/associate-managers/lib/dashboard-filter";
 import { useAuthStore } from "@/store/auth-store";
@@ -49,19 +50,13 @@ function AssociateManagersContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { user } = useAuthStore();
-  const prosTableRef = useRef<HTMLDivElement>(null);
 
-  /** Drill-down handler: set the group filter and smooth-scroll to the Pros
-   * table so the user sees the cohort they just clicked. */
+  /** Opens the side drawer for a KPI cohort (does not change the main table filter). */
   const openGroup = (group: ProRosterGroup) => {
     const params = new URLSearchParams(searchParams.toString());
-    params.set("pro_group", group);
-    params.set("page", "1");
+    params.set("open_group", group);
+    params.set("group_page", "1");
     router.push(`?${params.toString()}`, { scroll: false });
-    // Defer scroll one frame so the URL update + re-render lands first.
-    requestAnimationFrame(() => {
-      prosTableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
   };
 
   // Real role gating: Super Admins (admin.role === "admin") get the Super
@@ -278,18 +273,30 @@ function AssociateManagersContent() {
       <ActivitySection data={dashboard.activity} onOpenGroup={openGroup} />
       <MilestonesSection data={dashboard.milestones} onOpenGroup={openGroup} />
 
-      <div ref={prosTableRef}>
-        <AssociateProsTable
-          pros={tableData?.associatePros ?? dashboard.associatePros}
-          sourceManagerId={activeManagerId}
-          groupTotal={
-            tableData?.associateProsGroupTotal ?? dashboard.associateProsGroupTotal
-          }
-          isLoading={tableLoading}
-          onExport={isAllManagers ? undefined : handleExportPros}
-          isExporting={isExportingPros}
-        />
-      </div>
+      <ProGroupDrawer
+        viewMode={
+          viewAs === "manager"
+            ? "self"
+            : isAllManagers
+              ? "all-managers"
+              : "admin"
+        }
+        managerId={activeManagerId}
+        periodFilter={periodFilter}
+        exportFilenamePrefix={`manager-pros-${activeManagerSlug}`}
+        exportManagerId={viewAs === "manager" ? null : activeManagerId}
+      />
+
+      <AssociateProsTable
+        pros={tableData?.associatePros ?? dashboard.associatePros}
+        sourceManagerId={activeManagerId}
+        groupTotal={
+          tableData?.associateProsGroupTotal ?? dashboard.associateProsGroupTotal
+        }
+        isLoading={tableLoading}
+        onExport={isAllManagers ? undefined : handleExportPros}
+        isExporting={isExportingPros}
+      />
 
       {/* Team sales is scoped to a single manager's roster — skip it when the
           super admin is looking at the combined "all managers" view. */}
