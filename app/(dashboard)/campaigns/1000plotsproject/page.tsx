@@ -3,7 +3,14 @@
 import { Badge } from "@/components/ui/badge";
 import { PageContentLoader } from "@/components/shared/page-content-loader";
 import { useRaffleCampaign } from "@/features/campaigns/hooks/use-campaigns";
-import { RaffleMetricsSection, RaffleAssetTable, RaffleUsersTable, RaffleTicketsSection, RaffleTransactionTable } from "@/features/campaigns/components/RaffleComponents";
+import {
+  RaffleMetricsSection,
+  RaffleAssetMap,
+  RaffleTicketMetricsCards,
+  RaffleRecentTickets,
+  RaffleTicketsSection,
+  RaffleTransactionTable,
+} from "@/features/campaigns/components/RaffleComponents";
 
 export default function Campaign1000PlotsPage() {
   const { data, isLoading, error } = useRaffleCampaign();
@@ -40,15 +47,25 @@ export default function Campaign1000PlotsPage() {
           <RaffleMetricsSection
             salesData={data?.salesMetrics}
             financialData={data?.financialMetrics}
+            promoData={data?.promoDetails}
           />
 
-          <RaffleAssetTable data={data?.assetBreakdown} />
-
-          <RaffleUsersTable data={data?.usersWithTickets} />
-
-          <RaffleTicketsSection />
+          <RaffleAssetMap data={data?.assetBreakdown} />
 
           <RaffleTransactionTable />
+
+          <section className="space-y-4">
+            <div>
+              <h2 className="text-xl font-bold tracking-tight text-foreground">Raffle &amp; Referral System</h2>
+              <p className="text-sm text-muted-foreground">Ticket distribution and referral program metrics.</p>
+            </div>
+
+            <RaffleTicketMetricsCards data={data?.ticketMetrics} />
+
+            <RaffleTicketsSection />
+
+            <RaffleRecentTickets data={data?.usersWithTickets} />
+          </section>
         </>
       )}
     </div>

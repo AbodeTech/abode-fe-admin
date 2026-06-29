@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { execute } from '@/lib/graphql-client';
 import { graphql } from '@/lib/gql';
+import type { TicketTypeFilter } from '@/lib/gql/graphql';
 
 
 const GET_RAFFLE_CAMPAIGN = graphql(`
@@ -11,6 +12,12 @@ const GET_RAFFLE_CAMPAIGN = graphql(`
       }
       financialMetrics {
         ...RaffleFinancialMetrics
+      }
+      promoDetails {
+        ...RafflePromoDetails
+      }
+      ticketMetrics {
+        ...RaffleTicketMetrics
       }
       assetBreakdown {
         ...RaffleAssetBreakdown
@@ -179,7 +186,7 @@ const GET_RAFFLE_TICKETS = graphql(`
 export const useRaffleTickets = (ticketType: "USER" | "REFERRAL" | "ALL") =>
   useQuery({
     queryKey: ['campaigns', 'raffle', 'tickets', ticketType],
-    queryFn: () => execute(GET_RAFFLE_TICKETS, { ticketType: ticketType as any }), // Assuming TicketTypeFilter maps to these strings in generated types
+    queryFn: () => execute(GET_RAFFLE_TICKETS, { ticketType: ticketType as TicketTypeFilter }),
     select: (data) => data.getRaffleTickets,
     enabled: false, // For manual fetching
   });
