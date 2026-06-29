@@ -17,6 +17,7 @@ import {
 import {
   UpgradeFilters,
   UpgradeTable,
+  UpgradeExportButton,
   ConfirmDialog,
   UpgradeRowFragment,
 } from "@/features/associate-upgrade";
@@ -165,6 +166,7 @@ function AssociateUpgradeContent() {
           </p>
         </div>
         <div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end">
+          <UpgradeExportButton adminStatus={statusParam} search={searchParam} />
           <CreateUpgradeTransactionDialog />
           <Button asChild className="w-full shrink-0 sm:w-auto">
             <Link href="/associate-upgrade/coupons">Coupon Management</Link>

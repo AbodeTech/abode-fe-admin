@@ -109,7 +109,6 @@ export function UpgradeTable({ data, onApprove, onDecline }: UpgradeTableProps) 
                   {upgrade.user?.firstName} {upgrade.user?.lastName}
                 </Link>
               }
-              subtitle={upgrade.user?.email}
             >
               <AdminMobileField
                 label="Referral"
@@ -122,9 +121,6 @@ export function UpgradeTable({ data, onApprove, onDecline }: UpgradeTableProps) 
                     >
                       {upgrade.associate?.firstName} {upgrade.associate?.lastName || "N/A"}
                     </Link>
-                    <span className="mt-1 block text-xs font-normal text-muted-foreground">
-                      {upgrade.associate?.email || "N/A"}
-                    </span>
                   </span>
                 }
               />
@@ -263,7 +259,6 @@ export function UpgradeTable({ data, onApprove, onDecline }: UpgradeTableProps) 
                         >
                           {upgrade.user?.firstName} {upgrade.user?.lastName || "N/A"}
                         </Link>
-                        <span className="wrap-break-word text-xs text-gray-500">{upgrade.user?.email || "N/A"}</span>
                       </div>
                     </TableCell>
                     <TableCell className="max-w-[220px] py-4 text-gray-700">
@@ -274,7 +269,6 @@ export function UpgradeTable({ data, onApprove, onDecline }: UpgradeTableProps) 
                         >
                           {upgrade.associate?.firstName} {upgrade.associate?.lastName || "N/A"}
                         </Link>
-                        <span className="wrap-break-word text-xs text-gray-500">{upgrade.associate?.email || "N/A"}</span>
                       </div>
                     </TableCell>
                     <TableCell className="max-w-[140px] whitespace-normal wrap-break-word py-4 text-gray-700">
