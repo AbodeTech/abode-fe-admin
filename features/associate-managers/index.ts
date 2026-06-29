@@ -10,6 +10,7 @@ export { ManagerAssignmentCard } from "./components/ManagerAssignmentCard";
 export { NoManagersEmptyState } from "./components/NoManagersEmptyState";
 export { TeamSalesSection } from "./components/TeamSalesSection";
 export { SystemAssociatesTable } from "./components/SystemAssociatesTable";
+export { ProGroupDrawer } from "./components/ProGroupDrawer";
 
 // Hooks — read
 export {
