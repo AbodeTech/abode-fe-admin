@@ -15,6 +15,7 @@ import {
   AssociateProsTable,
   NoManagersEmptyState,
   TeamSalesSection,
+  RatingTrendPanel,
   useAssociateManagers,
   useAdminManagerDashboard,
   useAllManagersDashboard,
@@ -267,6 +268,17 @@ function AssociateManagersContent() {
         manager={activeManager}
         dashboard={dashboard}
       />
+
+      {/* Rating trend — only meaningful when a specific manager is in focus.
+          Hidden in the combined "all managers" view (no single manager to
+          series-plot). Manager viewing themselves passes null → the BE service
+          resolves to the caller's own admin id. */}
+      {!isAllManagers && (
+        <RatingTrendPanel
+          managerId={viewAs === "manager" ? null : activeManagerId}
+          enabled={viewAs === "manager" || Boolean(activeManagerId)}
+        />
+      )}
 
       <RecruitmentSection data={dashboard.recruitment} onOpenGroup={openGroup} />
       <SalesRevenueSection data={dashboard.salesAndRevenue} onOpenGroup={openGroup} />

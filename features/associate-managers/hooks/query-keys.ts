@@ -70,6 +70,10 @@ export const managerKeys = {
       limit ?? null,
     ] as const,
 
+  // Rating trend series per manager.
+  ratingSeries: (managerIdOrSelf: string, monthsBack: number) =>
+    [...managerKeys.all, "rating-series", managerIdOrSelf, monthsBack] as const,
+
   // Combined dashboard across every manager's roster (super-admin only).
   // Targets are summed across all managers for the period.
   allManagersDashboard: (
