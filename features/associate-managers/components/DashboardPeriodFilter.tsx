@@ -21,18 +21,34 @@ import { cn } from "@/lib/utils";
 
 type PresetPeriod = "week" | "month" | "year";
 type QuickRange = "all" | "7days" | "14days" | "28days";
-type FilterValue = PresetPeriod | QuickRange | "custom";
+type FilterValue = PresetPeriod | QuickRange | "last_month" | "custom";
 
 const LABELS: Record<FilterValue, string> = {
   all: "All time",
   week: "This week",
   month: "This month",
+  last_month: "Last month",
   year: "This year",
   "7days": "Last 7 days",
   "14days": "Last 14 days",
   "28days": "Last 28 days",
   custom: "Custom range",
 };
+
+const MONTH_NAMES = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
 
 const QUICK_DAYS: Record<Extract<FilterValue, "7days" | "14days" | "28days">, number> = {
   "7days": 7,
@@ -43,7 +59,19 @@ const QUICK_DAYS: Record<Extract<FilterValue, "7days" | "14days" | "28days">, nu
 interface Active {
   value: FilterValue;
   customRange?: { from: Date; to: Date };
+  /** Populated when the URL specifies an explicit month/year. Drives the
+   * trigger label (e.g. "February 2026") for specific-month selections. */
+  monthYear?: { month: number; year: number };
 }
+
+/** Returns {month, year} for the calendar month before "now". */
+const computeLastMonth = (now = new Date()) => {
+  const currentMonth = now.getMonth() + 1; // 1-indexed
+  const currentYear = now.getFullYear();
+  return currentMonth === 1
+    ? { month: 12, year: currentYear - 1 }
+    : { month: currentMonth - 1, year: currentYear };
+};
 
 const parseDate = (raw: string | null) => {
   if (!raw) return null;
@@ -58,6 +86,8 @@ const deriveActive = (searchParams: URLSearchParams): Active => {
   const period = searchParams.get("period");
   const from = parseDate(searchParams.get("start_date"));
   const to = parseDate(searchParams.get("end_date"));
+  const monthRaw = searchParams.get("month");
+  const yearRaw = searchParams.get("year");
 
   if (from && to) {
     const today = new Date();
@@ -68,6 +98,20 @@ const deriveActive = (searchParams: URLSearchParams): Active => {
     if (days === 14) return { value: "14days", customRange: { from, to } };
     if (days === 28) return { value: "28days", customRange: { from, to } };
     return { value: "custom", customRange: { from, to } };
+  }
+
+  if (monthRaw && yearRaw) {
+    const month = Number(monthRaw);
+    const year = Number(yearRaw);
+    if (month >= 1 && month <= 12 && year > 1970) {
+      const last = computeLastMonth();
+      // Snap to "Last month" when the URL matches — friendlier label + keeps
+      // the select highlighted correctly. Otherwise treat as an absolute pick.
+      if (month === last.month && year === last.year) {
+        return { value: "last_month", monthYear: { month, year } };
+      }
+      return { value: "month", monthYear: { month, year } };
+    }
   }
 
   if (period === "week" || period === "year") return { value: period };
@@ -112,6 +156,8 @@ export function DashboardPeriodFilter() {
     params.delete("period");
     params.delete("start_date");
     params.delete("end_date");
+    params.delete("month");
+    params.delete("year");
   };
 
   const handleSelect = (raw: string) => {
@@ -125,6 +171,16 @@ export function DashboardPeriodFilter() {
     }
     if (value === "week" || value === "month" || value === "year") {
       params.set("period", value);
+      write(params);
+      return;
+    }
+    if (value === "last_month") {
+      // Freeze the specific month/year in the URL — that way a shared link
+      // still points at February 2026 even if opened on Apr 5, and the BE gets
+      // both the correct data window AND the correct target lookup key.
+      const last = computeLastMonth();
+      params.set("month", String(last.month));
+      params.set("year", String(last.year));
       write(params);
       return;
     }
@@ -158,7 +214,12 @@ export function DashboardPeriodFilter() {
   const triggerLabel =
     active.value === "custom" && active.customRange
       ? rangeLabel(active.customRange.from, active.customRange.to)
-      : LABELS[active.value];
+      : active.value === "month" && active.monthYear
+        ? // Explicit month picked (e.g. via ?month=2&year=2026 URL) but not
+          // matching "last month" — show absolute label so the header reads
+          // truthfully.
+          `${MONTH_NAMES[active.monthYear.month - 1]} ${active.monthYear.year}`
+        : LABELS[active.value];
 
   return (
     <div className="inline-flex items-center gap-2">
@@ -177,6 +238,7 @@ export function DashboardPeriodFilter() {
             <SelectItem value="all">All time</SelectItem>
             <SelectItem value="week">This week</SelectItem>
             <SelectItem value="month">This month</SelectItem>
+            <SelectItem value="last_month">Last month</SelectItem>
             <SelectItem value="year">This year</SelectItem>
           </SelectGroup>
           <SelectSeparator />

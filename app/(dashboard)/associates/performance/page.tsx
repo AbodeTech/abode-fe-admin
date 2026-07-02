@@ -53,6 +53,8 @@ function AssociatePerformanceContent() {
   const period = searchParams.get("period");
   const startDate = searchParams.get("start_date");
   const endDate = searchParams.get("end_date");
+  const month = searchParams.get("month");
+  const year = searchParams.get("year");
   const proGroup = searchParams.get("pro_group");
   const proSort = searchParams.get("pro_sort");
 
@@ -60,6 +62,8 @@ function AssociatePerformanceContent() {
     period,
     startDate,
     endDate,
+    month,
+    year,
     proGroup,
     proSort,
   });
@@ -67,13 +71,15 @@ function AssociatePerformanceContent() {
     period,
     startDate,
     endDate,
+    month,
+    year,
   });
 
   const [page, setPage] = useState(1);
 
   useEffect(() => {
     setPage(1);
-  }, [period, startDate, endDate, proGroup, proSort]);
+  }, [period, startDate, endDate, month, year, proGroup, proSort]);
 
   const kpiQuery = useSystemAssociatesDashboard({
     filter: periodFilter,
