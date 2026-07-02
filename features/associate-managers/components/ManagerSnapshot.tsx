@@ -283,10 +283,14 @@ export function ManagerSnapshot({ viewAs, manager, dashboard }: Props) {
     target.sellingTarget > 0
       ? (target.sellingSoFar / target.sellingTarget) * 100
       : undefined;
+  // Rating scale is fixed at 1-5, so the ceiling for the performance score is
+  // always 5.00. `performanceScoreTarget` from the manager's monthly config is
+  // stale (came from the pre-rating scoring era where scores were 0-100), so
+  // ignore it for the denominator here — the tile always renders X.XX / 5.00
+  // and the progress bar is computed against 5.
+  const RATING_MAX = 5;
   const scorePct =
-    target.performanceScoreTarget > 0
-      ? (target.performanceScoreSoFar / target.performanceScoreTarget) * 100
-      : undefined;
+    score.actual > 0 ? (score.actual / RATING_MAX) * 100 : undefined;
 
   const managerAdminId = manager?.manager?._id ?? null;
 
@@ -378,11 +382,9 @@ export function ManagerSnapshot({ viewAs, manager, dashboard }: Props) {
             iconBg="bg-amber-50"
             label="Performance Score"
             actualDisplay={score.actual.toFixed(2)}
-            targetDisplay={
-              score.target > 0 ? score.target.toFixed(2) : undefined
-            }
+            targetDisplay="5.00"
             percent={scorePct}
-            tooltip="Average of realtor ratings for this period (1–5)."
+            tooltip="Average of realtor ratings for this period, out of 5."
             // Rating enum is 1-5, so an average of exactly 0 reliably means
             // "no ratings this period" rather than "everyone rated zero".
             noData={score.actual === 0}

@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import type { TypedDocumentNode } from "@graphql-typed-document-node/core";
+import { parse } from "graphql";
 import { execute } from "@/lib/graphql-client";
-import { graphql } from "@/lib/gql";
 import { managerKeys } from "./query-keys";
 
 /** Server-shaped rating series point. Missing months arrive server-filled
@@ -22,10 +22,12 @@ interface GetManagerRatingSeriesVars {
   monthsBack: number;
 }
 
-// Cast required because codegen runs against the deployed BE schema which does
-// not yet include `getManagerRatingSeries`. Drop the cast + re-run codegen once
-// the BE change ships. See `use-team-sales.ts` for the same pattern.
-const GET_MANAGER_RATING_SERIES_QUERY = graphql(`
+// NOTE: this file is excluded from codegen (see codegen.ts) until the BE
+// deploys. The codegen `graphql()` helper returns `{}` at runtime for
+// unknown operations, which crashes execute() with "Invalid AST Node: {}."
+// Parse manually with `graphql`'s `parse` — same pattern as
+// features/associates/hooks/use-top-associates.ts.
+const GET_MANAGER_RATING_SERIES_QUERY = parse(`
   query GetManagerRatingSeries($managerId: ID, $monthsBack: Int) {
     getManagerRatingSeries(managerId: $managerId, monthsBack: $monthsBack) {
       month
