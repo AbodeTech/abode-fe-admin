@@ -10,8 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DateFilter } from "@/components/shared/DateFilter";
-import { PeriodSelector } from "./PeriodSelector";
+import { DashboardPeriodFilter } from "./DashboardPeriodFilter";
 import { ManageManagersMenu } from "./ManageManagersMenu";
 import { ChangeManagerDialog } from "./dialogs/ChangeManagerDialog";
 import { useUnassignedProsCount } from "../hooks/use-unassigned-pros";
@@ -103,8 +102,7 @@ export function PerformanceHeader({
             </Select>
           )}
 
-          <PeriodSelector />
-          <DateFilter />
+          <DashboardPeriodFilter />
 
           {viewAs === "super-admin" && (
             <>
