@@ -15,7 +15,7 @@ import {
   ProGroupDrawer,
 } from "@/features/associate-managers";
 import { buildManagerDashboardFilter, buildManagerDashboardPeriodFilter } from "@/features/associate-managers/lib/dashboard-filter";
-import { DateFilter } from "@/components/shared/DateFilter";
+import { DashboardPeriodFilter } from "@/features/associate-managers/components/DashboardPeriodFilter";
 import { useAuthStore } from "@/store/auth-store";
 
 function NotAuthorized() {
@@ -143,7 +143,7 @@ function AssociatePerformanceContent() {
               : ""}
           </p>
         </div>
-        <DateFilter />
+        <DashboardPeriodFilter />
       </div>
 
       <RecruitmentSection data={dashboard.recruitment} roster="associate" onOpenGroup={openGroup} />

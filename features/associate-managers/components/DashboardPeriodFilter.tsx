@@ -20,11 +20,15 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 type PresetPeriod = "week" | "month" | "year";
-type QuickRange = "all" | "7days" | "14days" | "28days";
+type QuickRange = "7days" | "14days" | "28days";
 type FilterValue = PresetPeriod | QuickRange | "last_month" | "custom";
 
+// No "All time" option: the manager dashboard endpoints always compute against
+// a period (WEEK / MONTH / YEAR / CUSTOM). Absence of a URL filter defaults to
+// MONTH on the BE, so surfacing "All time" as a menu item was misleading — it
+// showed current-month data with an "All time" label. Users who want a wide
+// window pick "This year" or Custom range.
 const LABELS: Record<FilterValue, string> = {
-  all: "All time",
   week: "This week",
   month: "This month",
   last_month: "Last month",
@@ -165,10 +169,6 @@ export function DashboardPeriodFilter() {
     const params = new URLSearchParams(searchParams.toString());
     clearAll(params);
 
-    if (value === "all") {
-      write(params);
-      return;
-    }
     if (value === "week" || value === "month" || value === "year") {
       params.set("period", value);
       write(params);
@@ -235,7 +235,6 @@ export function DashboardPeriodFilter() {
         <SelectContent>
           <SelectGroup>
             <SelectLabel>Period</SelectLabel>
-            <SelectItem value="all">All time</SelectItem>
             <SelectItem value="week">This week</SelectItem>
             <SelectItem value="month">This month</SelectItem>
             <SelectItem value="last_month">Last month</SelectItem>
