@@ -112,6 +112,10 @@ interface KpiTileProps {
   targetDisplay?: string;
   percent?: number;
   tooltip?: string;
+  /** When true, replace the value + bar with an empty-state message.
+   * Used for "No ratings yet" so 0.00 doesn't read as an actual score. */
+  noData?: boolean;
+  noDataLabel?: string;
 }
 
 function KpiTile({
@@ -123,6 +127,8 @@ function KpiTile({
   targetDisplay,
   percent,
   tooltip,
+  noData = false,
+  noDataLabel = "No data yet",
 }: KpiTileProps) {
   const hasTarget = targetDisplay !== undefined && percent !== undefined;
   const tone = hasTarget ? toneFor(percent) : null;
@@ -151,6 +157,13 @@ function KpiTile({
 
       <p className="text-sm text-gray-600 mb-2">{label}</p>
 
+      {noData ? (
+        <>
+          <p className="text-2xl font-semibold text-gray-300 mb-3">—</p>
+          <p className="text-xs text-gray-500">{noDataLabel}</p>
+        </>
+      ) : (
+        <>
       <div className="flex items-baseline gap-1.5 mb-3">
         <span className="text-2xl font-bold text-gray-900">
           {actualDisplay}
@@ -185,6 +198,8 @@ function KpiTile({
         </>
       ) : (
         <p className="text-xs text-gray-400 italic">No benchmark set</p>
+      )}
+        </>
       )}
     </div>
   );
@@ -268,10 +283,14 @@ export function ManagerSnapshot({ viewAs, manager, dashboard }: Props) {
     target.sellingTarget > 0
       ? (target.sellingSoFar / target.sellingTarget) * 100
       : undefined;
+  // Rating scale is fixed at 1-5, so the ceiling for the performance score is
+  // always 5.00. `performanceScoreTarget` from the manager's monthly config is
+  // stale (came from the pre-rating scoring era where scores were 0-100), so
+  // ignore it for the denominator here — the tile always renders X.XX / 5.00
+  // and the progress bar is computed against 5.
+  const RATING_MAX = 5;
   const scorePct =
-    target.performanceScoreTarget > 0
-      ? (target.performanceScoreSoFar / target.performanceScoreTarget) * 100
-      : undefined;
+    score.actual > 0 ? (score.actual / RATING_MAX) * 100 : undefined;
 
   const managerAdminId = manager?.manager?._id ?? null;
 
@@ -363,11 +382,13 @@ export function ManagerSnapshot({ viewAs, manager, dashboard }: Props) {
             iconBg="bg-amber-50"
             label="Performance Score"
             actualDisplay={score.actual.toFixed(2)}
-            targetDisplay={
-              score.target > 0 ? score.target.toFixed(2) : undefined
-            }
+            targetDisplay="5.00"
             percent={scorePct}
-            tooltip="Today, derived from target progress. Will switch to review-based when reviews ship."
+            tooltip="Average of realtor ratings for this period, out of 5."
+            // Rating enum is 1-5, so an average of exactly 0 reliably means
+            // "no ratings this period" rather than "everyone rated zero".
+            noData={score.actual === 0}
+            noDataLabel="No ratings yet this period"
           />
         </div>
       </div>

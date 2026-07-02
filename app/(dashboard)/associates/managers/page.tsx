@@ -15,6 +15,7 @@ import {
   AssociateProsTable,
   NoManagersEmptyState,
   TeamSalesSection,
+  RatingTrendPanel,
   useAssociateManagers,
   useAdminManagerDashboard,
   useAllManagersDashboard,
@@ -77,6 +78,8 @@ function AssociateManagersContent() {
   const period = searchParams.get("period");
   const startDate = searchParams.get("start_date");
   const endDate = searchParams.get("end_date");
+  const month = searchParams.get("month");
+  const year = searchParams.get("year");
   const proGroup = searchParams.get("pro_group");
   const proSort = searchParams.get("pro_sort");
 
@@ -84,6 +87,8 @@ function AssociateManagersContent() {
     period,
     startDate,
     endDate,
+    month,
+    year,
     proGroup,
     proSort,
   });
@@ -91,6 +96,8 @@ function AssociateManagersContent() {
     period,
     startDate,
     endDate,
+    month,
+    year,
   });
 
   const { mutateAsync: exportPros, isPending: isExportingPros } =
@@ -267,6 +274,17 @@ function AssociateManagersContent() {
         manager={activeManager}
         dashboard={dashboard}
       />
+
+      {/* Rating trend — only meaningful when a specific manager is in focus.
+          Hidden in the combined "all managers" view (no single manager to
+          series-plot). Manager viewing themselves passes null → the BE service
+          resolves to the caller's own admin id. */}
+      {!isAllManagers && (
+        <RatingTrendPanel
+          managerId={viewAs === "manager" ? null : activeManagerId}
+          enabled={viewAs === "manager" || Boolean(activeManagerId)}
+        />
+      )}
 
       <RecruitmentSection data={dashboard.recruitment} onOpenGroup={openGroup} />
       <SalesRevenueSection data={dashboard.salesAndRevenue} onOpenGroup={openGroup} />

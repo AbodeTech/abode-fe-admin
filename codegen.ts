@@ -19,6 +19,7 @@ const config: CodegenConfig = {
     "!features/assets/hooks/use-plots.ts",
     "!features/allocation/hooks/use-allocate-land.ts",
     "!features/associates/hooks/use-top-associates.ts",
+    "!features/associate-managers/hooks/use-manager-rating-series.ts",
   ],
   generates: {
     "lib/gql/": {

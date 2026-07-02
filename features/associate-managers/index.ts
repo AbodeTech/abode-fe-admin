@@ -9,6 +9,7 @@ export { AssociateProsTable } from "./components/AssociateProsTable";
 export { ManagerAssignmentCard } from "./components/ManagerAssignmentCard";
 export { NoManagersEmptyState } from "./components/NoManagersEmptyState";
 export { TeamSalesSection } from "./components/TeamSalesSection";
+export { RatingTrendPanel } from "./components/RatingTrendPanel";
 export { SystemAssociatesTable } from "./components/SystemAssociatesTable";
 export { ProGroupDrawer } from "./components/ProGroupDrawer";
 
