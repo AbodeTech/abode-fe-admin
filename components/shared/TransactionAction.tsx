@@ -45,7 +45,7 @@ export function TransactionAction({
 }: TransactionActionProps) {
   const normalizedStatus = (status || "").toLowerCase();
 
-  if (normalizedStatus === "pending" || normalizedStatus === "auto-failed") {
+  if (normalizedStatus === "pending") {
     return (
       <div className="flex gap-3">
         <ApproveButton
