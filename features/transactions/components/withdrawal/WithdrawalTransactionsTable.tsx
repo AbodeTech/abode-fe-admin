@@ -58,7 +58,6 @@ interface WithdrawalTransactionsTableProps {
   isLoading?: boolean;
   onApprove: (id: string) => Promise<unknown>;
   onDecline: (id: string, message: string) => Promise<unknown>;
-  filterQuery?: string;
 }
 
 const DECLINE_REASONS = [
@@ -69,28 +68,15 @@ const DECLINE_REASONS = [
   "Compliance Issue",
 ];
 
-export function WithdrawalTransactionsTable({ data, isLoading, onApprove, onDecline, filterQuery = "" }: WithdrawalTransactionsTableProps) {
+export function WithdrawalTransactionsTable({ data, isLoading, onApprove, onDecline }: WithdrawalTransactionsTableProps) {
   const { user } = useAuthStore();
   const canManageWithdrawal = (user?.permissions ?? []).includes("withdrawals") || user?.role === "admin";
   const transactionsRaw = data || [];
   const transactions = transactionsRaw.map((t) => getFragmentData(WithdrawalTransactionsFragment, t));
 
-  const validTransactions = transactions
-    .filter((t): t is WithdrawalTransactionsTable_DataFragment => t !== null && t !== undefined)
-    .filter((tx) => {
-      if (!filterQuery) return true;
-      const q = filterQuery.toLowerCase();
-      const first = tx.user?.firstName?.toLowerCase() ?? "";
-      const last = tx.user?.lastName?.toLowerCase() ?? "";
-      const fullName = `${first} ${last}`.trim();
-      const accountName = tx.bank_details?.name?.toLowerCase() ?? "";
-      return (
-        first.includes(q) ||
-        last.includes(q) ||
-        fullName.includes(q) ||
-        accountName.includes(q)
-      );
-    });
+  const validTransactions = transactions.filter(
+    (t): t is WithdrawalTransactionsTable_DataFragment => t !== null && t !== undefined
+  );
 
   if (isLoading) {
     return <div className="p-8 text-center text-gray-500">Loading transactions...</div>;

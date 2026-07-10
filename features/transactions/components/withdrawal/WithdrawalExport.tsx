@@ -9,8 +9,6 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useWithdrawalExport } from "../../hooks/use-withdrawal-export";
 
-const normalize = (value?: string | null) => (value ?? "").toLowerCase();
-
 export function WithdrawalExport() {
   const searchParams = useSearchParams();
   const rawStatus = searchParams.get("transactionstatus");
@@ -20,7 +18,7 @@ export function WithdrawalExport() {
 
   const handleExport = async () => {
     try {
-      const response = await exportWithdrawals({ status });
+      const response = await exportWithdrawals({ status, search: search || null });
       const rows = response.getWithdrawalTransaction?.data ?? [];
 
       if (!rows.length) {
@@ -28,22 +26,8 @@ export function WithdrawalExport() {
         return;
       }
 
-      const query = normalize(search);
       const csvRows = rows
         .filter((row): row is NonNullable<typeof row> => row !== null)
-        .filter((row) => {
-          if (!query) return true;
-          const firstName = normalize(row.user?.firstName);
-          const lastName = normalize(row.user?.lastName);
-          const fullName = `${firstName} ${lastName}`.trim();
-          const accountName = normalize(row.bank_details?.name);
-          return (
-            firstName.includes(query) ||
-            lastName.includes(query) ||
-            fullName.includes(query) ||
-            accountName.includes(query)
-          );
-        })
         .map((row) => ({
           payer: `${row.user?.lastName ?? ""} ${row.user?.firstName ?? ""}`.trim() || "N/A",
           tin: row.tin || "N/A",
@@ -59,7 +43,7 @@ export function WithdrawalExport() {
         }));
 
       if (!csvRows.length) {
-        toast.info("No withdrawal transactions match current filters");
+        toast.info("No withdrawal transactions to export");
         return;
       }
 

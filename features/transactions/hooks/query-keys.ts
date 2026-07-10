@@ -8,7 +8,7 @@ export const transactionKeys = {
 
   // Withdrawal transactions
   withdrawal: () => [...transactionKeys.all, 'withdrawal'] as const,
-  withdrawalList: (filters?: { page?: number; limit?: number; status?: string | null }) =>
+  withdrawalList: (filters?: { page?: number; limit?: number; status?: string | null; search?: string | null }) =>
     [...transactionKeys.withdrawal(), 'list', filters] as const,
 
   // Document transactions

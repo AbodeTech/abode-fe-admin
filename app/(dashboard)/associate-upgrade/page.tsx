@@ -47,38 +47,14 @@ function AssociateUpgradeContent() {
   const { mutateAsync: approveUpgrade, isPending: approving } = useApproveUpgrade();
   const { mutateAsync: declineUpgrade, isPending: declining } = useDeclineUpgrade();
 
-  const upgradeRequests = useMemo(() => {
-    const rows = (data?.upgradeRequests ?? []).filter(
-      (item): item is NonNullable<typeof item> => item !== null
-    );
-
-    if (!searchParam) return rows;
-
-    const query = searchParam.toLowerCase();
-    return rows.filter((item) => {
-      const row = getFragmentData(UpgradeRowFragment, item);
-      const userFirst = row.user?.firstName?.toLowerCase() ?? "";
-      const userLast = row.user?.lastName?.toLowerCase() ?? "";
-      const userEmail = row.user?.email?.toLowerCase() ?? "";
-      const userFull = `${userFirst} ${userLast}`.trim();
-
-      const associateFirst = row.associate?.firstName?.toLowerCase() ?? "";
-      const associateLast = row.associate?.lastName?.toLowerCase() ?? "";
-      const associateEmail = row.associate?.email?.toLowerCase() ?? "";
-      const associateFull = `${associateFirst} ${associateLast}`.trim();
-
-      return (
-        userFirst.includes(query) ||
-        userLast.includes(query) ||
-        userEmail.includes(query) ||
-        userFull.includes(query) ||
-        associateFirst.includes(query) ||
-        associateLast.includes(query) ||
-        associateEmail.includes(query) ||
-        associateFull.includes(query)
-      );
-    });
-  }, [data?.upgradeRequests, searchParam]);
+  // Search is handled server-side via the `search` query arg; just drop nulls.
+  const upgradeRequests = useMemo(
+    () =>
+      (data?.upgradeRequests ?? []).filter(
+        (item): item is NonNullable<typeof item> => item !== null
+      ),
+    [data?.upgradeRequests]
+  );
 
   const updateParams = useCallback(
     (next: Record<string, string | number | null | undefined>, options?: { replace?: boolean }) => {
@@ -192,8 +168,8 @@ function AssociateUpgradeContent() {
           />
 
           <Pagination
-            count={searchParam ? upgradeRequests.length : (data?.pagination.totalCount ?? 0)}
-            currentIdx={searchParam ? 1 : (data?.pagination.currentPage ?? page)}
+            count={data?.pagination.totalCount ?? 0}
+            currentIdx={data?.pagination.currentPage ?? page}
             limit={data?.pagination.limit ?? DEFAULT_UPGRADE_LIMIT}
           />
         </>

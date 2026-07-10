@@ -5,8 +5,8 @@ import { upgradeKeys } from './query-keys';
 import { AdminStatus } from '@/lib/gql/graphql';
 
 const GET_UPGRADE_REQUESTS = graphql(`
-  query GetAllUpgradeRequests($page: Int!, $limit: Int!, $adminStatus: AdminStatus) {
-    getAllUpgradeRequests(page: $page, limit: $limit, adminStatus: $adminStatus) {
+  query GetAllUpgradeRequests($page: Int!, $limit: Int!, $adminStatus: AdminStatus, $search: String) {
+    getAllUpgradeRequests(page: $page, limit: $limit, adminStatus: $adminStatus, search: $search) {
       upgradeRequests {
         ...UpgradeRowFragment
       }
@@ -35,11 +35,12 @@ export const useUpgradeRequests = (filters: UpgradeRequestsFilters) => {
     limit = DEFAULT_UPGRADE_LIMIT,
     adminStatus,
   } = filters;
+  const search = filters.search ?? null;
   const keyFilters: Record<string, unknown> = {
     page,
     limit,
     adminStatus: adminStatus ?? null,
-    search: filters.search ?? null,
+    search,
   };
 
   return useQuery({
@@ -49,6 +50,7 @@ export const useUpgradeRequests = (filters: UpgradeRequestsFilters) => {
         page,
         limit,
         adminStatus: (adminStatus || undefined) as AdminStatus | undefined,
+        search,
       }),
     select: (data) => data.getAllUpgradeRequests,
   });

@@ -24,8 +24,9 @@ function WithdrawalTransactionsContent() {
   const limit = 10;
 
   const status = searchParams.get("transactionstatus") || null;
+  const searchQuery = searchParams.get("search") || "";
 
-  const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "");
+  const [searchTerm, setSearchTerm] = useState(searchQuery);
 
 
   // Debounce search update to URL
@@ -48,7 +49,7 @@ function WithdrawalTransactionsContent() {
     return () => clearTimeout(timer);
   }, [searchTerm, router, searchParams]);
 
-  const { data, isLoading, error } = useWithdrawalTransactions({ page, limit, status });
+  const { data, isLoading, error } = useWithdrawalTransactions({ page, limit, status, search: searchQuery || null });
   const { mutateAsync: approveTransaction } = useApproveWithdrawalTransaction();
   const { mutateAsync: declineTransaction } = useDeclineWithdrawalTransaction();
 
@@ -112,7 +113,6 @@ function WithdrawalTransactionsContent() {
           isLoading={isLoading}
           onApprove={handleApprove}
           onDecline={handleDecline}
-          filterQuery={searchTerm}
         />
 
         {!isLoading && totalCount > 0 && (
