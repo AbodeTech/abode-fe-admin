@@ -3,8 +3,8 @@ import { executeRaw } from "@/lib/graphql-client";
 import { transactionKeys } from "./query-keys";
 
 const EXPORT_WITHDRAWAL_TRANSACTIONS_QUERY = `
-  query ExportWithdrawalTransactions($page: Int!, $limit: Int!, $status: String) {
-    getWithdrawalTransaction(page: $page, limit: $limit, status: $status) {
+  query ExportWithdrawalTransactions($page: Int!, $limit: Int!, $status: String, $search: String) {
+    getWithdrawalTransaction(page: $page, limit: $limit, status: $status, search: $search) {
       count
       data {
         _id
@@ -30,6 +30,7 @@ const EXPORT_WITHDRAWAL_TRANSACTIONS_QUERY = `
 
 interface WithdrawalExportParams {
   status?: string | null;
+  search?: string | null;
   limit?: number;
 }
 
@@ -60,10 +61,11 @@ interface WithdrawalExportResponse {
 export const useWithdrawalExport = () =>
   useMutation({
     mutationKey: transactionKeys.withdrawalList({ page: 1, limit: 1_000_000 }),
-    mutationFn: ({ status, limit = 1_000_000 }: WithdrawalExportParams) =>
+    mutationFn: ({ status, search, limit = 1_000_000 }: WithdrawalExportParams) =>
       executeRaw<WithdrawalExportResponse>(EXPORT_WITHDRAWAL_TRANSACTIONS_QUERY, {
         page: 1,
         limit,
         status: status ?? null,
+        search: search ?? null,
       }),
   });

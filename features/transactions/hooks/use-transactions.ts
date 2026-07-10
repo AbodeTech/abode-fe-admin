@@ -18,8 +18,8 @@ const GET_TOPUP_TRANSACTION_QUERY = graphql(`
 `);
 
 const GET_WITHDRAWAL_TRANSACTION_QUERY = graphql(`
-  query GetWithdrawalTransaction($page: Int!, $limit: Int!, $status: String) {
-    getWithdrawalTransaction(page: $page, limit: $limit, status: $status) {
+  query GetWithdrawalTransaction($page: Int!, $limit: Int!, $status: String, $search: String) {
+    getWithdrawalTransaction(page: $page, limit: $limit, status: $status, search: $search) {
       count
       data {
         ...WithdrawalTransactionsTable_data
@@ -111,15 +111,16 @@ interface UseWithdrawalTransactionsParams {
   page?: number;
   limit?: number;
   status?: string | null;
+  search?: string | null;
 }
 
 export const useWithdrawalTransactions = (params?: UseWithdrawalTransactionsParams) => {
-  const { page = 1, limit = 10, status = null } = params ?? {};
+  const { page = 1, limit = 10, status = null, search = null } = params ?? {};
 
   return useQuery({
-    queryKey: transactionKeys.withdrawalList({ page, limit, status }),
+    queryKey: transactionKeys.withdrawalList({ page, limit, status, search }),
     queryFn: () =>
-      execute(GET_WITHDRAWAL_TRANSACTION_QUERY, { page, limit, status }),
+      execute(GET_WITHDRAWAL_TRANSACTION_QUERY, { page, limit, status, search }),
     select: (data) => data.getWithdrawalTransaction,
   });
 };
