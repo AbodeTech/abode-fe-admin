@@ -19,6 +19,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { executeRaw } from "@/lib/graphql-client";
 
 const RESET_AUTH_TOKEN_KEY = "adminResetAuthToken";
 const RESET_EMAIL_KEY = "adminResetEmail";
@@ -26,34 +27,10 @@ const RESET_EMAIL_KEY = "adminResetEmail";
 async function gqlRequest<T = any>(
   query: string,
   variables: Record<string, unknown>,
-  operationName: string,
-  authToken?: string
+  _operationName: string,
+  _authToken?: string
 ): Promise<T> {
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
-  if (!API_BASE_URL) {
-    throw new Error("NEXT_PUBLIC_API_BASE_URL is not defined");
-  }
-
-  const response = await fetch(API_BASE_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
-    },
-    body: JSON.stringify({ query, variables, operationName }),
-    cache: "no-store",
-  });
-
-  if (!response.ok) {
-    throw new Error("Network error");
-  }
-
-  const { data, errors } = await response.json();
-  if (errors?.length) {
-    throw new Error(errors[0]?.message || "Request failed");
-  }
-  return data as T;
+  return executeRaw<T>(query, variables);
 }
 
 const VERIFY_MUTATION = `

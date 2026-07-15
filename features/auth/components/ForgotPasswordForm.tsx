@@ -19,16 +19,12 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { executeRaw } from "@/lib/graphql-client";
 
 const RESET_AUTH_TOKEN_KEY = "adminResetAuthToken";
 const RESET_EMAIL_KEY = "adminResetEmail";
 
 async function sendAdminEmailVerification(email: string): Promise<{ authToken: string }> {
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
-  if (!API_BASE_URL) {
-    throw new Error("NEXT_PUBLIC_API_BASE_URL is not defined");
-  }
-
   const query = `
     mutation SendAdminEmailVerification($emailInput: EmailInput!) {
       sendAdminEmailVerification(emailInput: $emailInput) {
@@ -41,28 +37,11 @@ async function sendAdminEmailVerification(email: string): Promise<{ authToken: s
     }
   `;
 
-  const response = await fetch(API_BASE_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify({
-      query,
-      variables: { emailInput: { email } },
-      operationName: "SendAdminEmailVerification",
-    }),
-    cache: "no-store",
-  });
-
-  if (!response.ok) {
-    throw new Error("Network error while sending verification email");
-  }
-
-  const { data, errors } = await response.json();
-  if (errors?.length) {
-    throw new Error(errors[0]?.message || "Failed to send verification email");
-  }
+  const data = await executeRaw<{
+    sendAdminEmailVerification?: {
+      data?: { authToken?: string };
+    };
+  }>(query, { emailInput: { email } });
 
   const authToken = data?.sendAdminEmailVerification?.data?.authToken;
   if (!authToken) {

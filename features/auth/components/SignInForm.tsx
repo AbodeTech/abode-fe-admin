@@ -21,6 +21,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { executeRaw } from "@/lib/graphql-client";
 
 type SigninAdminResponse = {
   authToken: string;
@@ -29,11 +30,6 @@ type SigninAdminResponse = {
 };
 
 async function signinAdminClient(email: string, password: string): Promise<SigninAdminResponse> {
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
-  if (!API_BASE_URL) {
-    throw new Error("NEXT_PUBLIC_API_BASE_URL is not defined");
-  }
-
   const query = `
     mutation SigninAdmin($signinAdminInput: adminSigninInput!) {
       signinAdmin(signinAdminInput: $signinAdminInput) {
@@ -44,30 +40,9 @@ async function signinAdminClient(email: string, password: string): Promise<Signi
     }
   `;
 
-  const response = await fetch(API_BASE_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify({
-      query,
-      variables: {
-        signinAdminInput: { email, password },
-      },
-      operationName: "SigninAdmin",
-    }),
-    cache: "no-store",
+  const data = await executeRaw<{ signinAdmin?: SigninAdminResponse }>(query, {
+    signinAdminInput: { email, password },
   });
-
-  if (!response.ok) {
-    throw new Error("Network error during login");
-  }
-
-  const { data, errors } = await response.json();
-  if (errors?.length) {
-    throw new Error(errors[0]?.message || "Invalid credentials");
-  }
 
   if (!data?.signinAdmin?.authToken) {
     throw new Error("Login failed");

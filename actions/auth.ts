@@ -2,6 +2,8 @@
 "use server";
 
 import { cookies } from "next/headers";
+import { executeRaw } from "@/lib/graphql-client";
+import { isMockApiEnabled } from "@/lib/mocks/config";
 
 export async function loginAction(prevState: any, formData: FormData) {
   const email = formData.get("email") as string;
@@ -12,13 +14,9 @@ export async function loginAction(prevState: any, formData: FormData) {
   }
 
   try {
-    const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
-    if (!API_BASE_URL) {
+    if (!isMockApiEnabled() && !process.env.NEXT_PUBLIC_API_BASE_URL) {
       throw new Error("API_BASE_URL is not defined");
     }
-
-
-    console.log(API_BASE_URL, "API_BASE_URL");
 
     const query = `
        mutation SigninAdmin($signinAdminInput: adminSigninInput!) {
@@ -30,34 +28,18 @@ export async function loginAction(prevState: any, formData: FormData) {
       }
     `;
 
-    const variables = {
+    const data = await executeRaw<{
+      signinAdmin?: {
+        authToken?: string;
+        role?: string;
+        permissions?: string[];
+      };
+    }>(query, {
       signinAdminInput: {
         email,
         password,
       },
-    };
-
-    const response = await fetch(API_BASE_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-      },
-      body: JSON.stringify({ query, variables }),
-      cache: "no-store",
     });
-
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => null);
-      throw new Error(errorData?.message || "Network error during login");
-    }
-
-    const { data, errors } = await response.json();
-
-    if (errors && errors.length > 0) {
-      throw new Error(errors[0].message || "GraphQL Error");
-    }
 
     if (!data?.signinAdmin?.authToken) {
       throw new Error("Login failed: No token returned");
