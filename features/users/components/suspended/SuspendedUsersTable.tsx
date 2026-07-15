@@ -57,10 +57,21 @@ export const SuspendedUsersRowFragment = graphql(`
     gender
     country
     Networth
+    hasAsset
   }
 `);
 
 type SuspendedUserRow = FragmentType<typeof SuspendedUsersRowFragment>;
+
+// `hasAsset` comes back as a string; normalize the common boolean-ish
+// values to Yes/No and fall back to the raw value (or a dash when empty).
+export function formatHasAsset(value?: string | null): string {
+  if (value === null || value === undefined || value === "") return "—";
+  const normalized = value.trim().toLowerCase();
+  if (["true", "yes", "1"].includes(normalized)) return "Yes";
+  if (["false", "no", "0"].includes(normalized)) return "No";
+  return value;
+}
 
 interface SuspendedUsersTableProps {
   users: (SuspendedUserRow | null)[] | null | undefined;
@@ -125,6 +136,7 @@ export function SuspendedUsersTable({ users }: SuspendedUsersTableProps) {
             />
             <AdminMobileField label="Referrer" value={user.referrer || "No Referer"} />
             <AdminMobileField label="Products" value={user.subscriptions ?? 0} />
+            <AdminMobileField label="Has asset" value={formatHasAsset(user.hasAsset)} />
             <AdminMobileField
               label="Networth"
               value={
@@ -161,6 +173,7 @@ export function SuspendedUsersTable({ users }: SuspendedUsersTableProps) {
                 <TableHead>Date Joined</TableHead>
                 <TableHead>Referrer</TableHead>
                 <TableHead>Product Purchased</TableHead>
+                <TableHead>Has Asset</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -182,6 +195,7 @@ export function SuspendedUsersTable({ users }: SuspendedUsersTableProps) {
                   </TableCell>
                   <TableCell className="!py-3.5">{user.referrer || "No Referer"}</TableCell>
                   <TableCell className="!py-3.5">{user.subscriptions ?? 0}</TableCell>
+                  <TableCell className="!py-3.5">{formatHasAsset(user.hasAsset)}</TableCell>
                   <TableCell className="!py-3.5">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>

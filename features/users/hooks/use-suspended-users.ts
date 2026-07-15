@@ -4,7 +4,7 @@ import { graphql, useFragment as getFragmentData } from '@/lib/gql';
 import { userKeys } from './query-keys';
 import { exportToCsv } from '../utils/export-csv';
 import { toast } from 'sonner';
-import { SuspendedUsersRowFragment } from '../components/suspended/SuspendedUsersTable';
+import { SuspendedUsersRowFragment, formatHasAsset } from '../components/suspended/SuspendedUsersTable';
 import { getErrorMessage } from '../utils/error-message';
 
 
@@ -85,6 +85,7 @@ export const useExportSuspendedUsers = () => {
         { header: 'Referrer', accessor: (r) => r.referrer },
         { header: 'Subscriptions', accessor: (r) => r.subscriptions ?? 0 },
         { header: 'Networth', accessor: (r) => r.Networth ?? 0 },
+        { header: 'Has Asset', accessor: (r) => formatHasAsset(r.hasAsset) },
         { header: 'Joined', accessor: (r) => r.createdAt },
       ], `suspended-users-report-${new Date().toISOString().split('T')[0]}.csv`);
     },
