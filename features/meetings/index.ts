@@ -19,6 +19,28 @@ export {
   updateMeetingSchema,
   type CreateMeetingFormValues,
   type UpdateMeetingFormValues,
+  type MeetingFormValues,
 } from "./schemas/meeting.schema";
 
-export { DEMO_MEETING_SLUG, USE_MOCK_MEETINGS } from "./hooks/mock-meetings";
+export type {
+  Meeting,
+  MeetingDetail,
+  MeetingStats,
+  MeetingStatsByReferralStatus,
+  MeetingVerification,
+  VerificationsPage,
+  MeetingListFilter,
+} from "./types";
+
+export {
+  MEETING_AUDIENCE_MAP,
+  AUDIENCE_OPTIONS,
+  AUDIENCE_LABELS,
+  getAudienceLabel,
+  isAudienceType,
+  toAudienceType,
+  isEligibleForAudience,
+  getEligibleReferralStatuses,
+  type AudienceType,
+  type ReferralStatus,
+} from "./lib/meet-validation";

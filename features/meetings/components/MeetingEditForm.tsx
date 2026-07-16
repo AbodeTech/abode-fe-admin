@@ -22,14 +22,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AUDIENCE_OPTIONS } from "../lib/meet-validation";
+import { AUDIENCE_OPTIONS, toAudienceType } from "../lib/meet-validation";
 import { toDatetimeLocalValue } from "../lib/meet-time";
 import {
   createMeetingSchema,
-  type CreateMeetingFormValues,
+  type MeetingFormValues,
 } from "../schemas/meeting.schema";
 import { useUpdateMeeting } from "../hooks/use-meeting-mutations";
-import type { Meeting } from "../hooks/mock-meetings";
+import type { Meeting } from "../types";
 
 interface MeetingEditFormProps {
   meeting: Meeting;
@@ -39,30 +39,47 @@ export function MeetingEditForm({ meeting }: MeetingEditFormProps) {
   const router = useRouter();
   const updateMutation = useUpdateMeeting();
 
-  const form = useForm<CreateMeetingFormValues>({
-    resolver: zodResolver(createMeetingSchema) as Resolver<CreateMeetingFormValues>,
+  const form = useForm<MeetingFormValues>({
+    resolver: zodResolver(createMeetingSchema) as Resolver<MeetingFormValues>,
+    mode: "onChange",
     defaultValues: {
       name: meeting.name,
       google_meet_url: meeting.google_meet_url,
       starts_at: toDatetimeLocalValue(meeting.starts_at),
-      audience_type: meeting.audience_type,
+      audience_type: toAudienceType(meeting.audience_type),
       verification_lead_minutes: meeting.verification_lead_minutes,
     },
   });
+
+  const canSave = form.formState.isValid && !updateMutation.isPending;
 
   useEffect(() => {
     form.reset({
       name: meeting.name,
       google_meet_url: meeting.google_meet_url,
       starts_at: toDatetimeLocalValue(meeting.starts_at),
-      audience_type: meeting.audience_type,
+      audience_type: toAudienceType(meeting.audience_type),
       verification_lead_minutes: meeting.verification_lead_minutes,
     });
+    void form.trigger();
   }, [meeting, form]);
 
-  async function onSubmit(values: CreateMeetingFormValues) {
+  async function onSubmit(values: MeetingFormValues) {
+    if (
+      values.verification_lead_minutes === undefined ||
+      Number.isNaN(values.verification_lead_minutes)
+    ) {
+      return;
+    }
+
     try {
-      await updateMutation.mutateAsync({ meetingId: meeting._id, input: values });
+      await updateMutation.mutateAsync({
+        meetingId: meeting._id,
+        input: {
+          ...values,
+          verification_lead_minutes: values.verification_lead_minutes,
+        },
+      });
       toast.success("Meeting updated");
       router.push(`/meetings/${meeting._id}`);
     } catch (err) {
@@ -133,11 +150,20 @@ export function MeetingEditForm({ meeting }: MeetingEditFormProps) {
                   <SelectContent>
                     {AUDIENCE_OPTIONS.map((opt) => (
                       <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
+                        <span className="flex flex-col items-start gap-0.5">
+                          <span>{opt.label}</span>
+                          <span className="text-xs font-normal text-gray-500">
+                            {opt.description}
+                          </span>
+                        </span>
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-gray-500">
+                  Eligible referral statuses:{" "}
+                  {AUDIENCE_OPTIONS.find((o) => o.value === field.value)?.description}
+                </p>
                 <FormMessage />
               </FormItem>
             )}
@@ -150,7 +176,24 @@ export function MeetingEditForm({ meeting }: MeetingEditFormProps) {
               <FormItem>
                 <FormLabel>Verification opens (minutes before start)</FormLabel>
                 <FormControl>
-                  <Input type="number" min={5} max={120} {...field} />
+                  <Input
+                    type="number"
+                    min={5}
+                    max={120}
+                    inputMode="numeric"
+                    value={
+                      field.value === undefined || Number.isNaN(field.value)
+                        ? ""
+                        : field.value
+                    }
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      field.onChange(raw === "" ? undefined : Number(raw));
+                    }}
+                    onBlur={field.onBlur}
+                    name={field.name}
+                    ref={field.ref}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -158,7 +201,7 @@ export function MeetingEditForm({ meeting }: MeetingEditFormProps) {
           />
 
           <div className="flex gap-3">
-            <Button type="submit" disabled={updateMutation.isPending}>
+            <Button type="submit" disabled={!canSave}>
               {updateMutation.isPending ? "Saving…" : "Save changes"}
             </Button>
             <Button

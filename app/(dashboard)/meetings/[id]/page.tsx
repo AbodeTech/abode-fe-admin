@@ -45,9 +45,7 @@ export default function MeetingDetailPage() {
     <div className="mx-auto w-full min-w-0 max-w-[1600px] space-y-8 px-3 pb-20 sm:px-4">
       <MeetingDetailHeader
         meeting={meeting}
-        verifiedCount={stats?.total_verified}
-        attendanceRate={stats?.attendance_rate}
-        audienceTotal={stats?.audience_total}
+        verifiedCount={stats?.total_verifications}
       />
 
       <div className="flex items-center justify-between">

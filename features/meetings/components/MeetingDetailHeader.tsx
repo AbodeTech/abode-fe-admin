@@ -6,9 +6,14 @@ import { ArrowLeft, Copy, Check, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { formatLagosTime } from "../lib/meet-time";
-import { AUDIENCE_LABELS } from "../lib/meet-validation";
+import {
+  getAudienceLabel,
+  getEligibleReferralStatuses,
+  isAudienceType,
+  resolveMeetingShareUrl,
+} from "../lib/meet-validation";
 import { useToggleMeetingActive } from "../hooks/use-meeting-mutations";
-import type { Meeting } from "../hooks/mock-meetings";
+import type { Meeting } from "../types";
 
 interface MeetingDetailHeaderProps {
   meeting: Meeting;
@@ -25,6 +30,8 @@ export function MeetingDetailHeader({
 }: MeetingDetailHeaderProps) {
   const [copied, setCopied] = useState(false);
   const toggleMutation = useToggleMeetingActive();
+
+  const shareUrl = resolveMeetingShareUrl(meeting);
 
   async function copyLink(url: string) {
     await navigator.clipboard.writeText(url);
@@ -63,7 +70,13 @@ export function MeetingDetailHeader({
               Starts {formatLagosTime(meeting.starts_at)}
             </p>
             <p className="mt-1 text-sm text-gray-500">
-              Audience: {AUDIENCE_LABELS[meeting.audience_type]}
+              Audience: {getAudienceLabel(meeting.audience_type)}
+            </p>
+            <p className="mt-0.5 text-xs text-gray-400">
+              Eligible:{" "}
+              {isAudienceType(meeting.audience_type)
+                ? getEligibleReferralStatuses(meeting.audience_type).join(", ")
+                : "—"}
             </p>
             {verifiedCount !== undefined && (
               <p className="mt-2 text-sm text-gray-600">
@@ -115,17 +128,17 @@ export function MeetingDetailHeader({
             </p>
             <div className="mt-1 flex items-center gap-2">
               <p className="flex-1 break-all rounded-lg bg-gray-50 px-3 py-2.5 text-sm font-medium text-gray-900">
-                {meeting.share_url}
+                {shareUrl}
               </p>
-              <Button type="button" size="sm" variant="outline" onClick={() => copyLink(meeting.share_url)}>
+              <Button type="button" size="sm" variant="outline" onClick={() => copyLink(shareUrl)}>
                 {copied ? <Check size={14} className="text-green-600" /> : <Copy size={14} />}
                 {copied ? "Copied" : "Copy"}
               </Button>
               <a
-                href={meeting.share_url}
+                href={shareUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-2 text-xs text-gray-600 hover:bg-gray-50"
+                className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-gray-200 px-3 py-2 text-xs text-gray-600 hover:bg-gray-50"
               >
                 <ExternalLink size={14} />
                 Open

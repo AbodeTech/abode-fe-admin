@@ -6,8 +6,8 @@ import { Copy, Check, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { formatLagosTime } from "../lib/meet-time";
-import { AUDIENCE_LABELS } from "../lib/meet-validation";
-import type { Meeting } from "../hooks/mock-meetings";
+import { getAudienceLabel, resolveMeetingShareUrl } from "../lib/meet-validation";
+import type { Meeting } from "../types";
 
 interface MeetingsTableProps {
   meetings: Meeting[];
@@ -75,7 +75,9 @@ export function MeetingsTable({ meetings, loading }: MeetingsTableProps) {
               </tr>
             </thead>
             <tbody>
-              {meetings.map((session) => (
+              {meetings.map((session) => {
+                const shareUrl = resolveMeetingShareUrl(session);
+                return (
                 <tr
                   key={session._id}
                   onClick={() => router.push(`/meetings/${session._id}`)}
@@ -85,7 +87,7 @@ export function MeetingsTable({ meetings, loading }: MeetingsTableProps) {
                     {session.name}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">
-                    {AUDIENCE_LABELS[session.audience_type]}
+                    {getAudienceLabel(session.audience_type)}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">
                     {formatLagosTime(session.starts_at, true)}
@@ -110,7 +112,7 @@ export function MeetingsTable({ meetings, loading }: MeetingsTableProps) {
                         type="button"
                         size="sm"
                         variant="outline"
-                        onClick={(e) => copyLink(session._id, session.share_url, e)}
+                        onClick={(e) => copyLink(session._id, shareUrl, e)}
                       >
                         {copiedId === session._id ? (
                           <Check size={12} className="text-green-600" />
@@ -120,11 +122,11 @@ export function MeetingsTable({ meetings, loading }: MeetingsTableProps) {
                         Copy
                       </Button>
                       <a
-                        href={session.share_url}
+                        href={shareUrl}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
-                        className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
+                        className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
                       >
                         <ExternalLink size={12} />
                         Open
@@ -132,7 +134,8 @@ export function MeetingsTable({ meetings, loading }: MeetingsTableProps) {
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

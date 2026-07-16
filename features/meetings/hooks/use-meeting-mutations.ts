@@ -1,18 +1,32 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { meetingKeys } from "./query-keys";
-import { USE_MOCK_MEETINGS, mockMeetingsApi } from "./mock-meetings";
+import {
+  createMeeting,
+  toggleMeetingActive,
+  updateMeeting,
+} from "./meeting-api";
+import { parseLagosDatetimeLocal } from "../lib/meet-time";
 import type { CreateMeetingFormValues } from "../schemas/meeting.schema";
+
+function toApiStartsAt(value: string): string {
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value.trim())) {
+    return parseLagosDatetimeLocal(value).toISOString();
+  }
+  return new Date(value).toISOString();
+}
 
 export function useCreateMeeting() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (input: CreateMeetingFormValues) => {
-      if (USE_MOCK_MEETINGS) {
-        return mockMeetingsApi.createMeeting(input);
-      }
-      // TODO(real): execute(CREATE_MEETING, { input })
-      throw new Error("Real meetings API not yet available.");
+      return createMeeting({
+        name: input.name,
+        google_meet_url: input.google_meet_url,
+        audience_type: input.audience_type,
+        starts_at: toApiStartsAt(input.starts_at),
+        verification_lead_minutes: input.verification_lead_minutes ?? 30,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: meetingKeys.lists() });
@@ -31,13 +45,13 @@ export function useUpdateMeeting() {
       meetingId: string;
       input: Partial<CreateMeetingFormValues>;
     }) => {
-      if (USE_MOCK_MEETINGS) {
-        const meeting = await mockMeetingsApi.updateMeeting(meetingId, input);
-        if (!meeting) throw new Error("Meeting not found.");
-        return meeting;
-      }
-      // TODO(real): execute(UPDATE_MEETING, { input: { meeting_id: meetingId, ...input } })
-      throw new Error("Real meetings API not yet available.");
+      return updateMeeting(meetingId, {
+        name: input.name,
+        google_meet_url: input.google_meet_url,
+        audience_type: input.audience_type,
+        starts_at: input.starts_at ? toApiStartsAt(input.starts_at) : undefined,
+        verification_lead_minutes: input.verification_lead_minutes,
+      });
     },
     onSuccess: (_, { meetingId }) => {
       queryClient.invalidateQueries({ queryKey: meetingKeys.lists() });
@@ -57,13 +71,7 @@ export function useToggleMeetingActive() {
       meetingId: string;
       is_active: boolean;
     }) => {
-      if (USE_MOCK_MEETINGS) {
-        const meeting = await mockMeetingsApi.toggleActive(meetingId, is_active);
-        if (!meeting) throw new Error("Meeting not found.");
-        return meeting;
-      }
-      // TODO(real): execute(TOGGLE_MEETING_ACTIVE, { meetingId, is_active })
-      throw new Error("Real meetings API not yet available.");
+      return toggleMeetingActive(meetingId, is_active);
     },
     onSuccess: (_, { meetingId }) => {
       queryClient.invalidateQueries({ queryKey: meetingKeys.lists() });
