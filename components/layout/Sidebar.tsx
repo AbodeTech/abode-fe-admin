@@ -45,6 +45,7 @@ const navGroups = [
       { name: "Sales", link: "/sales", icon: <ShoppingCart /> },
       { name: "Agency", link: "/agency", icon: <Building2 /> },
       { name: "Allocation", link: "/allocation", icon: <Building2 /> },
+      { name: "Purchase Confirmations", link: "/purchase-confirmations", icon: <CheckCircle /> },
       { name: "Marketplace", link: "/marketplace", icon: <Store /> },
       { name: "Requests", link: "/requests", icon: <ClipboardList /> },
     ]
@@ -90,7 +91,7 @@ const navGroups = [
     isCollapsible: true,
     icon: <Gift />,
     items: [
-      { name: "1000 Plots Project", link: "/campaigns/1000plotsproject", icon: <LandPlot /> },
+      { name: "3000 Plots Project", link: "/campaigns/1000plotsproject", icon: <LandPlot /> },
       { name: "2000 Associate Pro", link: "/campaigns/2000associateprocampaign", icon: <TrendingUp /> },
       { name: "Hamper Campaign", link: "/campaigns/hampercampaign", icon: <Gift /> },
     ]

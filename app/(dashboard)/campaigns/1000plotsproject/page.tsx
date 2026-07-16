@@ -1,7 +1,13 @@
 "use client";
 
+import { Suspense } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
-import { PageContentLoader } from "@/components/shared/page-content-loader";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  PageContentLoader,
+  SuspensePageFallback,
+} from "@/components/shared/page-content-loader";
 import { useRaffleCampaign } from "@/features/campaigns/hooks/use-campaigns";
 import {
   RaffleMetricsSection,
@@ -11,11 +17,28 @@ import {
   RaffleTicketsSection,
   RaffleTransactionTable,
 } from "@/features/campaigns/components/RaffleComponents";
+import { PrizeFulfillmentTab } from "@/features/campaigns/components/PrizeFulfillmentTab";
 
-export default function Campaign1000PlotsPage() {
+function Campaign3000PlotsContent() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const tab = searchParams.get("tab") || "overview";
+
+  const setTab = (value: string) => {
+    const params = new URLSearchParams(searchParams);
+    if (value === "overview") {
+      params.delete("tab");
+    } else {
+      params.set("tab", value);
+    }
+    params.delete("page");
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+  };
+
   const { data, isLoading, error } = useRaffleCampaign();
 
-  if (error) {
+  if (error && tab === "overview") {
     return (
       <div className="mx-auto w-full min-w-0 max-w-[1600px] px-3 sm:px-4">
         <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-500">
@@ -30,7 +53,7 @@ export default function Campaign1000PlotsPage() {
     <div className="mx-auto mt-4 w-full min-w-0 max-w-[1600px] space-y-6 px-3 pb-16 sm:px-4 sm:pb-20">
       <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-2xl font-bold tracking-tight">1000 Plots Project</h1>
+          <h1 className="text-2xl font-bold tracking-tight">3000 Plots Project</h1>
           <p className="text-muted-foreground">
             Land sales campaign performance and ticket distribution.
           </p>
@@ -40,34 +63,59 @@ export default function Campaign1000PlotsPage() {
         </Badge>
       </div>
 
-      {isLoading ? (
-        <PageContentLoader label="Loading campaign data…" />
-      ) : (
-        <>
-          <RaffleMetricsSection
-            salesData={data?.salesMetrics}
-            financialData={data?.financialMetrics}
-            promoData={data?.promoDetails}
-          />
+      <Tabs value={tab} onValueChange={setTab} className="min-w-0">
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="fulfillment">Prize fulfillment</TabsTrigger>
+        </TabsList>
 
-          <RaffleAssetMap data={data?.assetBreakdown} />
+        <TabsContent value="overview" className="mt-4 space-y-6">
+          {isLoading ? (
+            <PageContentLoader label="Loading campaign data…" />
+          ) : (
+            <>
+              <RaffleMetricsSection
+                salesData={data?.salesMetrics}
+                financialData={data?.financialMetrics}
+                promoData={data?.promoDetails}
+              />
 
-          <RaffleTransactionTable />
+              <RaffleAssetMap data={data?.assetBreakdown} />
 
-          <section className="space-y-4">
-            <div>
-              <h2 className="text-xl font-bold tracking-tight text-foreground">Raffle &amp; Referral System</h2>
-              <p className="text-sm text-muted-foreground">Ticket distribution and referral program metrics.</p>
-            </div>
+              <RaffleTransactionTable />
 
-            <RaffleTicketMetricsCards data={data?.ticketMetrics} />
+              <section className="space-y-4">
+                <div>
+                  <h2 className="text-xl font-bold tracking-tight text-foreground">
+                    Raffle &amp; Referral System
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    Ticket distribution and referral program metrics.
+                  </p>
+                </div>
 
-            <RaffleTicketsSection />
+                <RaffleTicketMetricsCards data={data?.ticketMetrics} />
 
-            <RaffleRecentTickets data={data?.usersWithTickets} />
-          </section>
-        </>
-      )}
+                <RaffleTicketsSection />
+
+                <RaffleRecentTickets data={data?.usersWithTickets} />
+              </section>
+            </>
+          )}
+        </TabsContent>
+
+        <TabsContent value="fulfillment" className="mt-4">
+          <PrizeFulfillmentTab />
+        </TabsContent>
+      </Tabs>
     </div>
+  );
+}
+
+export default function Campaign1000PlotsPage() {
+  return (
+    <Suspense fallback={<SuspensePageFallback />}>
+      <Campaign3000PlotsContent />
+    </Suspense>
   );
 }
