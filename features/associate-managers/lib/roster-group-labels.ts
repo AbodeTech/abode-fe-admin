@@ -45,6 +45,21 @@ export const GROUP_LABELS: Record<
     associateTitle: "Abandoned Associates",
     description: "No login in the last 6 months.",
   },
+  [ProRosterGroup.ActiveRecruiter]: {
+    title: "Active Recruiters",
+    associateTitle: "Active Recruiters",
+    description: "Roster pros who brought in at least one qualifying recruit this period.",
+  },
+  [ProRosterGroup.ActivePromoter]: {
+    title: "Active Promoters",
+    associateTitle: "Active Promoters",
+    description: "Roster pros who caused at least one approved promotion this period.",
+  },
+  [ProRosterGroup.ActiveRevenueGenerator]: {
+    title: "Active Revenue Generators",
+    associateTitle: "Active Revenue Generators",
+    description: "Roster pros with any revenue attributed to them this period (initial or recurring).",
+  },
 };
 
 export function getGroupLabel(

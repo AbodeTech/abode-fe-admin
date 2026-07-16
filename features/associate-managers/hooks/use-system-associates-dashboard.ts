@@ -22,8 +22,18 @@ const GET_SYSTEM_ASSOCIATES_DASHBOARD_QUERY = graphql(`
         newSignupsInPeriod
         upgradesInPeriod
         onboardedInPeriod
+        onboardedFreshInPeriod
+        onboardedCarryoverInPeriod
         totalAssigned
         onboardingQueueCount
+        newSignupsBySource { managed unassigned users associate }
+        upgradesBySource { managed unassigned users associate }
+        topNewSignupsContributors { proId firstName lastName email count }
+        topUpgradesContributors { proId firstName lastName email count }
+        othersNewSignupsCount
+        othersUpgradesCount
+        activeRecruitingProsCount
+        activePromotingProsCount
       }
       salesAndRevenue {
         sellingPros
@@ -32,6 +42,11 @@ const GET_SYSTEM_ASSOCIATES_DASHBOARD_QUERY = graphql(`
         initialSalesRevenue
         recurringRevenue
         revenuePerSellingPro
+        salesCountBySource { managed unassigned users associate }
+        revenueBySource { managed unassigned users associate }
+        topSellingContributors { proId firstName lastName email amount }
+        othersSellingRevenue
+        activeRevenueGeneratingProsCount
       }
       activity {
         activeCount
