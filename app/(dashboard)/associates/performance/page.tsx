@@ -146,8 +146,18 @@ function AssociatePerformanceContent() {
         <DashboardPeriodFilter />
       </div>
 
-      <RecruitmentSection data={dashboard.recruitment} roster="associate" onOpenGroup={openGroup} />
-      <SalesRevenueSection data={dashboard.salesAndRevenue} roster="associate" onOpenGroup={openGroup} />
+      <RecruitmentSection
+        data={dashboard.recruitment}
+        roster="associate"
+        onOpenGroup={openGroup}
+        attributionMode="system"
+      />
+      <SalesRevenueSection
+        data={dashboard.salesAndRevenue}
+        roster="associate"
+        onOpenGroup={openGroup}
+        attributionMode="system"
+      />
       <ActivitySection data={dashboard.activity} roster="associate" onOpenGroup={openGroup} />
       <MilestonesSection data={dashboard.milestones} roster="associate" onOpenGroup={openGroup} />
 

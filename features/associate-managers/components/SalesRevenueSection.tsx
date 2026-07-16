@@ -1,6 +1,13 @@
 import { Briefcase, CircleDollarSign, BarChart3 } from "lucide-react";
 import { StatCard } from "./StatCard";
 import { ProRosterGroup, type ManagerDashboardSalesRevenue } from "@/lib/gql/graphql";
+import {
+  contributorBreakdown,
+  formatCurrencyShort,
+  isPerProAttribution,
+  sourceBreakdown,
+  type AttributionMode,
+} from "../lib/attribution";
 
 interface Props {
   data: ManagerDashboardSalesRevenue;
@@ -9,19 +16,19 @@ interface Props {
   roster?: "associate-pro" | "associate";
   /** When provided, the Selling Pros card becomes a drill-down trigger. */
   onOpenGroup?: (group: ProRosterGroup) => void;
+  /** Which attribution set to render. See RecruitmentSection for the rules. */
+  attributionMode?: AttributionMode;
 }
 
 const formatCurrency = (n: number) =>
   `₦${n.toLocaleString("en-NG", { maximumFractionDigits: 0 })}`;
 
-const formatCurrencyShort = (n: number) => {
-  if (n >= 1_000_000_000) return `₦${(n / 1_000_000_000).toFixed(1)}B`;
-  if (n >= 1_000_000) return `₦${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `₦${(n / 1_000).toFixed(1)}K`;
-  return formatCurrency(n);
-};
-
-export function SalesRevenueSection({ data, roster = "associate-pro", onOpenGroup }: Props) {
+export function SalesRevenueSection({
+  data,
+  roster = "associate-pro",
+  onOpenGroup,
+  attributionMode = "single",
+}: Props) {
   const {
     sellingPros,
     sellingProsTarget,
@@ -31,11 +38,29 @@ export function SalesRevenueSection({ data, roster = "associate-pro", onOpenGrou
     revenuePerSellingPro,
   } = data;
   const isAssociate = roster === "associate";
+  const perPro = isPerProAttribution(attributionMode);
 
   const sellingDisplay =
     sellingProsTarget > 0
       ? `${sellingPros} / ${sellingProsTarget}`
       : sellingPros.toLocaleString();
+
+  // Selling Pros card — only breakdown in combined/system view (source split).
+  // The BE doesn't ship a per-pro sales-count contributor list — attribution
+  // for one manager's team lives on the revenue card via topSellingContributors,
+  // and duplicating it here would just re-render the same list against a
+  // different total. Leave the Selling Pros card as a clean count.
+  const sellingBreakdown = perPro
+    ? undefined
+    : sourceBreakdown(data.salesCountBySource);
+
+  // Total Revenue card — carries the attribution story on the manager view.
+  const revenueBreakdown = perPro
+    ? contributorBreakdown(data.topSellingContributors, data.othersSellingRevenue, {
+        getValue: (c) => c.amount ?? 0,
+        formatValue: formatCurrencyShort,
+      })
+    : sourceBreakdown(data.revenueBySource, { formatValue: formatCurrencyShort });
 
   return (
     <section className="space-y-3">
@@ -52,6 +77,7 @@ export function SalesRevenueSection({ data, roster = "associate-pro", onOpenGrou
               : "Pros who closed a new sale this period"
           }
           onClick={onOpenGroup ? () => onOpenGroup(ProRosterGroup.SellingInPeriod) : undefined}
+          breakdown={sellingBreakdown}
         />
         <StatCard
           icon={CircleDollarSign}
@@ -59,6 +85,7 @@ export function SalesRevenueSection({ data, roster = "associate-pro", onOpenGrou
           label="Total Revenue from Associate Sales"
           value={formatCurrencyShort(totalRevenue)}
           hint={`${formatCurrencyShort(initialSalesRevenue)} initial · ${formatCurrencyShort(recurringRevenue)} recurring`}
+          breakdown={revenueBreakdown}
         />
         <StatCard
           icon={BarChart3}
