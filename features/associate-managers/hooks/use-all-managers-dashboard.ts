@@ -59,6 +59,7 @@ const GET_ALL_MANAGERS_DASHBOARD_QUERY = graphql(`
       performanceScore {
         target
         actual
+        ratingCount
       }
       associatePros {
         id

@@ -16,7 +16,7 @@ export function RecruitmentSection({ data, roster = "associate-pro", onOpenGroup
   return (
     <section className="space-y-3">
       <h2 className="text-base font-semibold text-gray-900">Recruitment</h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <StatCard
           icon={UserPlus}
           iconColor="text-cyan-600"

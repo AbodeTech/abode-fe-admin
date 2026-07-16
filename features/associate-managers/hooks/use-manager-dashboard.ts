@@ -58,6 +58,7 @@ const ADMIN_GET_MANAGER_DASHBOARD_QUERY = graphql(`
       performanceScore {
         target
         actual
+        ratingCount
       }
       associatePros {
         id
@@ -147,6 +148,7 @@ const MANAGER_DASHBOARD_QUERY = graphql(`
       performanceScore {
         target
         actual
+        ratingCount
       }
       associatePros {
         id
