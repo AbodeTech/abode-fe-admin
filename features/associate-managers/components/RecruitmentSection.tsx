@@ -1,4 +1,5 @@
-import { CheckCircle2, TrendingUp, UserPlus, Users, ClipboardList } from "lucide-react";
+import { CheckCircle2, TrendingUp, UserPlus, Users, ClipboardList, Activity } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { StatCard } from "./StatCard";
 import { ProRosterGroup, type ManagerDashboardRecruitment } from "@/lib/gql/graphql";
 import {
@@ -64,7 +65,9 @@ export function RecruitmentSection({
               ? "Associates & Pros brought in by associates this period"
               : "Associates & Pros brought in by your team this period"
           }
-          onClick={onOpenGroup ? () => onOpenGroup(ProRosterGroup.RecruitedInPeriod) : undefined}
+          // No drawer: the recruiter-side count includes people who ended up on
+          // other managers' rosters, but the drawer only lists this manager's
+          // roster — would surface a misleading subset. Bar shows attribution.
           breakdown={newSignupsSegments}
         />
         <StatCard
@@ -74,9 +77,16 @@ export function RecruitmentSection({
           label="Recruits Promoted to Associate Pro"
           value={data.upgradesInPeriod.toLocaleString()}
           hint="Recruits who upgraded to Associate Pro this period"
-          onClick={onOpenGroup ? () => onOpenGroup(ProRosterGroup.UpgradedInPeriod) : undefined}
+          // No drawer — see New Recruits note.
           breakdown={upgradesSegments}
         />
+        {perPro && !isAssociate && (
+          <ContributingProsCard
+            recruiting={data.activeRecruitingProsCount}
+            promoting={data.activePromotingProsCount}
+            totalAssigned={data.totalAssigned}
+          />
+        )}
         {/* Associates aren't onboarded (onboarding is the associate-pro flow),
             so the metric is always 0 for that roster — hide rather than mislead. */}
         {!isAssociate && (
@@ -88,6 +98,20 @@ export function RecruitmentSection({
             value={data.onboardedInPeriod.toLocaleString()}
             hint="Pros whose first call landed in Picked this period"
             onClick={onOpenGroup ? () => onOpenGroup(ProRosterGroup.OnboardedInPeriod) : undefined}
+            breakdown={[
+              {
+                label: "fresh",
+                value: data.onboardedFreshInPeriod,
+                color: "bg-emerald-500",
+                display: data.onboardedFreshInPeriod.toLocaleString(),
+              },
+              {
+                label: "carryover",
+                value: data.onboardedCarryoverInPeriod,
+                color: "bg-gray-300",
+                display: data.onboardedCarryoverInPeriod.toLocaleString(),
+              },
+            ]}
           />
         )}
         {!isAssociate && (
@@ -110,5 +134,46 @@ export function RecruitmentSection({
         />
       </div>
     </section>
+  );
+}
+
+interface ContributingProsCardProps {
+  recruiting: number;
+  promoting: number;
+  totalAssigned: number;
+}
+
+function ContributingProsCard({
+  recruiting,
+  promoting,
+  totalAssigned,
+}: ContributingProsCardProps) {
+  return (
+    <div className={cn(
+      "bg-white rounded-xl p-6 border border-gray-200 hover:shadow-md transition-shadow"
+    )}>
+      <div className="flex items-start justify-between mb-4">
+        <div className="p-3 rounded-lg bg-indigo-50">
+          <Activity className="w-6 h-6 text-indigo-600" />
+        </div>
+      </div>
+      <p className="text-sm text-gray-600 mb-3">Contributing Pros</p>
+      <div className="space-y-3">
+        <div>
+          <p className="text-2xl font-bold text-gray-900 tabular-nums">
+            {recruiting.toLocaleString()}
+            <span className="text-base font-normal text-gray-500"> / {totalAssigned.toLocaleString()}</span>
+          </p>
+          <p className="text-xs text-gray-500 mt-0.5">recruited someone this period</p>
+        </div>
+        <div>
+          <p className="text-lg font-semibold text-gray-900 tabular-nums">
+            {promoting.toLocaleString()}
+            <span className="text-sm font-normal text-gray-500"> / {totalAssigned.toLocaleString()}</span>
+          </p>
+          <p className="text-xs text-gray-500 mt-0.5">drove a promotion this period</p>
+        </div>
+      </div>
+    </div>
   );
 }

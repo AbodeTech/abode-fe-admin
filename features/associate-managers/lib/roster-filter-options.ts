@@ -6,6 +6,11 @@ export const PRO_GROUP_OPTIONS = [
   { label: "Onboarded this period", value: "onboarded_in_period" },
   { label: "Selling this period", value: "selling_in_period" },
   { label: "Not yet onboarded", value: "recruited_not_onboarded" },
+  // Active-contributor groups — single-manager views only (empty on
+  // combined/system). Match the "Contributing Pros" card counters.
+  { label: "Active recruiters", value: "active_recruiter" },
+  { label: "Active promoters", value: "active_promoter" },
+  { label: "Active revenue generators", value: "active_revenue_generator" },
   { label: "Active", value: "active" },
   { label: "Inactive", value: "inactive" },
   { label: "Abandoned", value: "abandoned" },

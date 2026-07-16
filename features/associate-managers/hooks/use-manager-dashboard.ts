@@ -29,6 +29,8 @@ const ADMIN_GET_MANAGER_DASHBOARD_QUERY = graphql(`
         newSignupsInPeriod
         upgradesInPeriod
         onboardedInPeriod
+        onboardedFreshInPeriod
+        onboardedCarryoverInPeriod
         totalAssigned
         onboardingQueueCount
         newSignupsBySource { managed unassigned users associate }
@@ -37,6 +39,8 @@ const ADMIN_GET_MANAGER_DASHBOARD_QUERY = graphql(`
         topUpgradesContributors { proId firstName lastName email count }
         othersNewSignupsCount
         othersUpgradesCount
+        activeRecruitingProsCount
+        activePromotingProsCount
       }
       salesAndRevenue {
         sellingPros
@@ -49,6 +53,7 @@ const ADMIN_GET_MANAGER_DASHBOARD_QUERY = graphql(`
         revenueBySource { managed unassigned users associate }
         topSellingContributors { proId firstName lastName email amount }
         othersSellingRevenue
+        activeRevenueGeneratingProsCount
       }
       activity {
         activeCount
@@ -129,6 +134,8 @@ const MANAGER_DASHBOARD_QUERY = graphql(`
         newSignupsInPeriod
         upgradesInPeriod
         onboardedInPeriod
+        onboardedFreshInPeriod
+        onboardedCarryoverInPeriod
         totalAssigned
         onboardingQueueCount
         newSignupsBySource { managed unassigned users associate }
@@ -137,6 +144,8 @@ const MANAGER_DASHBOARD_QUERY = graphql(`
         topUpgradesContributors { proId firstName lastName email count }
         othersNewSignupsCount
         othersUpgradesCount
+        activeRecruitingProsCount
+        activePromotingProsCount
       }
       salesAndRevenue {
         sellingPros
@@ -149,6 +158,7 @@ const MANAGER_DASHBOARD_QUERY = graphql(`
         revenueBySource { managed unassigned users associate }
         topSellingContributors { proId firstName lastName email amount }
         othersSellingRevenue
+        activeRevenueGeneratingProsCount
       }
       activity {
         activeCount
