@@ -4496,6 +4496,8 @@ export enum ProRosterGroup {
 export enum ProRosterSort {
   DateRecruitedDesc = 'date_recruited_desc',
   LastLoginDesc = 'last_login_desc',
+  LastRecruitDesc = 'last_recruit_desc',
+  LastSaleDesc = 'last_sale_desc',
   OnboardedAtDesc = 'onboarded_at_desc',
   RevenueDesc = 'revenue_desc',
   TotalSalesDesc = 'total_sales_desc'
