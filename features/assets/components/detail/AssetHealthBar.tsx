@@ -1,29 +1,9 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { graphql, FragmentType, useFragment } from "@/lib/gql";
 
-export const AssetHealthBarFragment = graphql(`
-  fragment AssetHealthBar_statistics on AssetAnalyticsStatistics {
-    totalInventory
-    totalRealised
-    remainingValue
-    totalSqmSold
-    totalSqmRemaining
-    efficiencyRate
-    totalActiveCustomers
-    defaulting {
-      totalDefaultingCustomers
-      totalDefaultedAssetValue
-      totalDefaultedOutstandingValue
-    }
-    terminated {
-      totalTerminatedCustomers
-      totalTerminatedAssetValue
-      totalTerminatedBalance
-    }
-  }
-`);
+import { SampleDataChip } from "../analytics/SampleDataChip";
+import type { AssetHealthStats } from "../analytics/sample-data";
 
 function formatNaira(value: number | null | undefined): string {
   if (value == null || value === 0) return "₦0";
@@ -47,10 +27,9 @@ interface MetricProps {
   value: string | number;
   subValue?: string;
   subValueVariant?: "positive" | "warning" | "danger" | "neutral";
-  trend?: "up" | "down" | "neutral";
 }
 
-function Metric({ label, value, subValue, subValueVariant = "neutral", trend }: MetricProps) {
+function Metric({ label, value, subValue, subValueVariant = "neutral" }: MetricProps) {
   const subValueStyles = {
     positive: "text-emerald-600 bg-emerald-500/10",
     warning: "text-amber-600 bg-amber-500/10",
@@ -59,114 +38,106 @@ function Metric({ label, value, subValue, subValueVariant = "neutral", trend }: 
   };
 
   return (
-    <div className="flex flex-col gap-1 px-6 first:pl-0 border-r last:border-0 border-border/50 min-w-[160px]">
-      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+    <div className="flex min-w-0 flex-col gap-1">
+      <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
         {label}
-      </p>
-      <div className="flex items-baseline gap-2">
-        <span className="text-xl font-bold tracking-tight leading-none">{value}</span>
+      </span>
+      <div className="flex min-w-0 flex-wrap items-baseline gap-2">
+        <span className="text-lg font-bold tracking-tight tabular-nums wrap-break-word sm:text-xl">
+          {value}
+        </span>
         {subValue && (
-          <span className={cn("text-xs font-medium px-1.5 py-0.5 rounded", subValueStyles[subValueVariant])}>
+          <span className={cn("rounded px-1.5 py-0.5 text-xs font-medium", subValueStyles[subValueVariant])}>
             {subValue}
           </span>
         )}
       </div>
-      {trend && (
-        <div className={cn(
-          "h-1 w-8 mt-2 rounded-full",
-          trend === "up" ? "bg-emerald-500" : trend === "down" ? "bg-rose-500" : "bg-slate-300"
-        )} />
-      )}
     </div>
   );
 }
 
 interface Props {
-  data: FragmentType<typeof AssetHealthBarFragment> | null | undefined;
+  /** ⛔ ticket 17 — no per-asset analytics endpoint; this is `SAMPLE_ASSET_HEALTH`. */
+  data: AssetHealthStats;
 }
 
 export function AssetHealthBar({ data }: Props) {
-  const stats = useFragment(AssetHealthBarFragment, data);
+  const { defaulting, terminated } = data;
 
-  const totalCustomers = (stats?.totalActiveCustomers ?? 0) +
-    (stats?.defaulting?.totalDefaultingCustomers ?? 0) +
-    (stats?.terminated?.totalTerminatedCustomers ?? 0);
+  const totalCustomers = data.activeCustomers + defaulting.customers + terminated.customers;
+  const pct = (n: number) => (totalCustomers > 0 ? (n / totalCustomers) * 100 : 0);
 
-  const activeCustomers = stats?.totalActiveCustomers ?? 0;
-  const defaultedCustomers = stats?.defaulting?.totalDefaultingCustomers ?? 0;
-  const terminatedCustomers = stats?.terminated?.totalTerminatedCustomers ?? 0;
+  const activePct = pct(data.activeCustomers);
+  const defaultedPct = pct(defaulting.customers);
+  const terminatedPct = pct(terminated.customers);
 
-  const activePct = totalCustomers > 0 ? (activeCustomers / totalCustomers) * 100 : 0;
-  const defaultedPct = totalCustomers > 0 ? (defaultedCustomers / totalCustomers) * 100 : 0;
-  const terminatedPct = totalCustomers > 0 ? (terminatedCustomers / totalCustomers) * 100 : 0;
-
-  const soldPct = stats?.totalInventory && stats.totalRealised
-    ? `${((stats.totalRealised / stats.totalInventory) * 100).toFixed(1)}% sold`
-    : undefined;
+  const soldPct =
+    data.startingInventory > 0
+      ? `${((data.totalRealised / data.startingInventory) * 100).toFixed(1)}% sold`
+      : undefined;
 
   return (
-    <div className="mb-8 rounded-2xl border overflow-hidden">
-      {/* Portfolio overview row */}
-      <div className="bg-slate-50 px-6 py-5">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-4">Portfolio Overview</p>
-        <div className="flex flex-wrap gap-y-5">
-          <Metric label="Starting Inventory" value={formatNaira(stats?.totalInventory)} />
-          <Metric label="Total Realized" value={formatNaira(stats?.totalRealised)} subValue={soldPct} subValueVariant="positive" trend="up" />
-          <Metric label="Remaining Value" value={formatNaira(stats?.remainingValue)} />
-          <Metric label="Total SQM Sold" value={formatSqm(stats?.totalSqmSold)} subValueVariant="positive" />
-          <Metric label="Total SQM Remaining" value={formatSqm(stats?.totalSqmRemaining)} />
+    <div className="w-full overflow-hidden rounded-xl border">
+      {/* Asset overview */}
+      <div className="bg-muted/30 px-4 py-4 sm:px-6 sm:py-5">
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            Asset Overview
+          </p>
+          <SampleDataChip />
+        </div>
+        <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-6">
+          <Metric label="Starting Inventory" value={formatNaira(data.startingInventory)} />
           <Metric
-            label="Portfolio Health"
-            value={stats?.efficiencyRate != null ? `${stats.efficiencyRate.toFixed(1)}%` : "—"}
-            subValue="Efficiency"
+            label="Total Realized"
+            value={formatNaira(data.totalRealised)}
+            subValue={soldPct}
+            subValueVariant="positive"
+          />
+          <Metric label="Remaining Value" value={formatNaira(data.remainingValue)} />
+          <Metric label="Total SQM Sold" value={formatSqm(data.sqmSold)} />
+          <Metric label="SQM Remaining" value={formatSqm(data.sqmRemaining)} />
+          <Metric
+            label="Collection Efficiency"
+            value={`${data.efficiencyRate.toFixed(1)}%`}
+            subValue="Collected"
             subValueVariant="neutral"
-            trend="neutral"
           />
         </div>
       </div>
 
-      {/* Defaults + Terminations row */}
-      <div className="border-t grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-border/50">
-        {/* Defaults */}
-        <div className="bg-rose-500/5 px-6 py-5">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-rose-500 mb-4">
+      {/* Defaults + terminations */}
+      <div className="grid grid-cols-1 border-t md:grid-cols-2">
+        <div className="border-b border-rose-200/50 bg-rose-500/5 px-4 py-4 sm:px-6 sm:py-5 md:border-b-0 md:border-r">
+          <p className="mb-4 text-[10px] font-bold uppercase tracking-widest text-rose-600">
             Defaults
-            <span className="ml-2 text-rose-400 font-medium normal-case tracking-normal">
-              ({defaultedCustomers} customers)
+            <span className="ml-2 font-medium normal-case tracking-normal text-rose-500/80">
+              ({defaulting.customers} customers)
             </span>
           </p>
-          <div className="flex flex-wrap gap-y-4">
-            <Metric
-              label="Defaulted Asset Value"
-              value={formatNaira(stats?.defaulting?.totalDefaultedAssetValue)}
-              subValueVariant="danger"
-            />
+          <div className="grid grid-cols-2 gap-x-4 gap-y-6">
+            <Metric label="Defaulted Asset Value" value={formatNaira(defaulting.assetValue)} />
             <Metric
               label="Outstanding Balance"
-              value={formatNaira(stats?.defaulting?.totalDefaultedOutstandingValue)}
+              value={formatNaira(defaulting.outstanding)}
               subValue="Unrecovered"
               subValueVariant="danger"
             />
           </div>
         </div>
 
-        {/* Terminations */}
-        <div className="bg-amber-500/5 px-6 py-5">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-amber-600 mb-4">
+        <div className="bg-amber-500/5 px-4 py-4 sm:px-6 sm:py-5">
+          <p className="mb-4 text-[10px] font-bold uppercase tracking-widest text-amber-600">
             Terminations
-            <span className="ml-2 text-amber-500 font-medium normal-case tracking-normal">
-              ({terminatedCustomers} customers)
+            <span className="ml-2 font-medium normal-case tracking-normal text-amber-500/80">
+              ({terminated.customers} customers)
             </span>
           </p>
-          <div className="flex flex-wrap gap-y-4">
-            <Metric
-              label="Terminated Asset Value"
-              value={formatNaira(stats?.terminated?.totalTerminatedAssetValue)}
-              subValueVariant="warning"
-            />
+          <div className="grid grid-cols-2 gap-x-4 gap-y-6">
+            <Metric label="Terminated Asset Value" value={formatNaira(terminated.assetValue)} />
             <Metric
               label="Outstanding Balance"
-              value={formatNaira(stats?.terminated?.totalTerminatedBalance)}
+              value={formatNaira(terminated.outstanding)}
               subValue="Unrecovered"
               subValueVariant="warning"
             />
@@ -174,40 +145,42 @@ export function AssetHealthBar({ data }: Props) {
         </div>
       </div>
 
-      {/* Customer health bar */}
-      <div className="border-t bg-white px-6 py-5">
-        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground mb-3">Customer Health</p>
+      {/* Customer health */}
+      <div className="border-t px-4 py-4 sm:px-6 sm:py-5">
+        <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          Customer Health
+        </p>
         <div className="flex flex-col gap-2">
-          <div className="flex justify-between items-center text-xs font-bold">
-            <span className="text-emerald-600">Active: {activeCustomers}</span>
-            <span className="text-rose-600">Defaulted: {defaultedCustomers}</span>
-            <span className="text-amber-600">Terminated: {terminatedCustomers}</span>
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs font-bold">
+            <span className="text-emerald-600">Active: {data.activeCustomers}</span>
+            <span className="text-rose-600">Defaulted: {defaulting.customers}</span>
+            <span className="text-amber-600">Terminated: {terminated.customers}</span>
           </div>
           <div
-            className="h-2 w-full bg-muted rounded-full overflow-hidden flex"
+            className="flex h-2 w-full overflow-hidden rounded-full bg-muted"
             role="progressbar"
-            aria-valuenow={activePct}
+            aria-valuenow={Math.round(activePct)}
             aria-valuemin={0}
             aria-valuemax={100}
             aria-label="Customer health breakdown"
           >
-            <div className="h-full bg-emerald-500 transition-all" style={{ width: `${activePct}%` }} />
-            <div className="h-full bg-rose-500 transition-all" style={{ width: `${defaultedPct}%` }} />
-            <div className="h-full bg-amber-400 transition-all" style={{ width: `${terminatedPct}%` }} />
+            <div className="h-full bg-emerald-500" style={{ width: `${activePct}%` }} />
+            <div className="h-full bg-rose-500" style={{ width: `${defaultedPct}%` }} />
+            <div className="h-full bg-amber-400" style={{ width: `${terminatedPct}%` }} />
           </div>
-          <div className="flex items-center gap-4 mt-1">
-            <div className="flex items-center gap-1.5">
-              <div className="size-2 rounded-full bg-emerald-500" />
-              <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Active ({activePct.toFixed(0)}%)</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="size-2 rounded-full bg-rose-500" />
-              <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Defaulted ({defaultedPct.toFixed(0)}%)</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="size-2 rounded-full bg-amber-400" />
-              <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Terminated ({terminatedPct.toFixed(0)}%)</span>
-            </div>
+          <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1.5">
+            {[
+              { dot: "bg-emerald-500", label: "Active", value: activePct },
+              { dot: "bg-rose-500", label: "Defaulted", value: defaultedPct },
+              { dot: "bg-amber-400", label: "Terminated", value: terminatedPct },
+            ].map((legend) => (
+              <div key={legend.label} className="flex items-center gap-1.5">
+                <div className={cn("size-2 rounded-full", legend.dot)} />
+                <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                  {legend.label} ({legend.value.toFixed(0)}%)
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       </div>

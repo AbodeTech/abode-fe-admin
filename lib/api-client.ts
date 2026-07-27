@@ -1,8 +1,13 @@
-import axios from 'axios';
+import axios, { type InternalAxiosRequestConfig } from 'axios';
 import { z, ZodError } from 'zod';
 
 import { useAuthStore } from '@/store/auth-store';
-import { getAccessToken, clearAuthCookies } from '@/lib/utils/cookies';
+import {
+  clearAuthCookies,
+  getAccessToken,
+  getRefreshToken,
+  setSessionCookies,
+} from '@/lib/utils/cookies';
 import { dispatchMockRequest, isMockApiEnabled, MockHttpError } from '@/lib/mocks';
 
 /* ============================================================
@@ -33,25 +38,132 @@ export const apiClient = axios.create({
 });
 
 apiClient.interceptors.request.use((config) => {
-  const token = getAccessToken() || useAuthStore.getState().user?.authToken;
+  // An explicit per-request token (RequestConfig.token) wins. The password
+  // recovery flow runs logged-out and carries its own scoped bearer token.
+  if (config.headers.Authorization) return config;
+
+  const token = getAccessToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
 
-// The REST BE returns a real 401 for expired/missing/invalid tokens, so the
-// GraphQL-era error sniffing (extensions.code === 'UNAUTHENTICATED', message
-// contains "unauthorized") is gone — a status check is sufficient.
+/* -------------------- refresh, single-flight -------------------- */
+
+const REFRESH_PATH = '/auth/refresh';
+const ADMIN_LOGIN_PATH = '/auth/admin/login';
+
+type RetryableConfig = InternalAxiosRequestConfig & {
+  /** Set once a request has already been retried with a refreshed token. */
+  _retried?: boolean;
+  /** Set when the caller supplied its own token — refreshing it is meaningless. */
+  _noRefresh?: boolean;
+};
+
+/**
+ * Bare client for the refresh call itself. It must NOT carry the interceptors
+ * below, or a failing refresh would recurse into refreshing.
+ */
+const refreshClient = axios.create({
+  baseURL: API_ENDPOINT,
+  headers: { 'Content-Type': 'application/json' },
+});
+
+/** Only the fields the interceptor needs; the BE also returns `admin`. */
+const RefreshResultSchema = z.object({
+  accessToken: z.string(),
+  refreshToken: z.string(),
+});
+
+let refreshPromise: Promise<string> | null = null;
+
+function endSession(): void {
+  clearAuthCookies();
+  useAuthStore.getState().logout();
+  if (typeof window !== 'undefined' && window.location.pathname !== '/signin') {
+    window.location.href = '/signin';
+  }
+}
+
+/**
+ * Trade the refresh token for a fresh pair, returning the new access token.
+ *
+ * The BE rotates refresh tokens — redeeming one burns it and issues a
+ * replacement. So concurrent 401s MUST share a single in-flight call. Without
+ * this lock, a page that fires five queries would send five refreshes with the
+ * same token: the first succeeds, the other four hit "Invalid or expired
+ * session", and the admin is logged out anyway.
+ */
+function refreshSession(): Promise<string> {
+  if (refreshPromise) return refreshPromise;
+
+  refreshPromise = (async () => {
+    const refreshToken = getRefreshToken();
+    if (!refreshToken) throw new Error('No refresh token stored');
+
+    const res = await refreshClient.post(REFRESH_PATH, { refreshToken });
+    const tokens = unwrap(RefreshResultSchema, res.data).data;
+
+    setSessionCookies(tokens);
+    return tokens.accessToken;
+  })();
+
+  // Clear the slot regardless of outcome so a later 401 can try again.
+  void refreshPromise.catch(() => undefined).finally(() => {
+    refreshPromise = null;
+  });
+
+  return refreshPromise;
+}
+
+/**
+ * The REST BE returns a real 401 for expired/missing/invalid tokens, so the
+ * GraphQL-era error sniffing (extensions.code === 'UNAUTHENTICATED', message
+ * contains "unauthorized") is gone — a status check is sufficient.
+ *
+ * Note: 403 is deliberately NOT handled here. The BE's PasswordChangeGuard
+ * 403s every admin route while `must_change_password` is set; that is a
+ * routing concern (see features/auth), not a dead session.
+ */
 apiClient.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error?.response?.status === 401 && typeof window !== 'undefined') {
-      clearAuthCookies();
-      useAuthStore.getState().logout();
-      window.location.href = '/signin';
+  async (error: unknown) => {
+    if (!axios.isAxiosError(error) || typeof window === 'undefined') {
+      return Promise.reject(error);
     }
-    return Promise.reject(error);
+
+    const original = error.config as RetryableConfig | undefined;
+    if (error.response?.status !== 401 || !original) {
+      return Promise.reject(error);
+    }
+
+    const path = original.url ?? '';
+
+    // These 401s are not a dead session, so ending one would be wrong:
+    //  - login: bad credentials. Bouncing would wipe the form and its message.
+    //  - _noRefresh: a logged-out flow carrying its own scoped token (password
+    //    recovery). There is no session to end, and the form needs to say the
+    //    reset code expired rather than silently redirect to /signin.
+    if (path.includes(ADMIN_LOGIN_PATH) || original._noRefresh) {
+      return Promise.reject(error);
+    }
+
+    // Refresh itself failed, or we already retried once. Nothing left to try.
+    if (path.includes(REFRESH_PATH) || original._retried) {
+      endSession();
+      return Promise.reject(error);
+    }
+
+    try {
+      const accessToken = await refreshSession();
+      original._retried = true;
+      original.headers.Authorization = `Bearer ${accessToken}`;
+      return await apiClient.request(original);
+    } catch {
+      endSession();
+      return Promise.reject(error);
+    }
   }
 );
 
@@ -64,7 +176,12 @@ apiClient.interceptors.response.use(
 export class ApiClientError extends Error {
   readonly name = 'ApiClientError';
   readonly statusCode: number | null;
-  /** Machine-readable BE code (e.g. "INSUFFICIENT_FUNDS"), when present. */
+  /**
+   * The BE's error discriminator. In practice this is the Nest exception name
+   * ("UnauthorizedException", "Bad Request") from the envelope's `error` field
+   * — coarse, so branch on `statusCode` rather than on this. `SCHEMA_MISMATCH`
+   * is set locally when a response fails its Zod schema.
+   */
   readonly code: string | null;
   readonly method: string | null;
   readonly path: string | null;
@@ -145,12 +262,21 @@ function toApiClientError(err: unknown, method: string, path: string): ApiClient
 
   if (axios.isAxiosError(err)) {
     const body = err.response?.data as
-      | { statusCode?: number; code?: string; message?: unknown; details?: unknown }
+      | {
+          statusCode?: number;
+          code?: string;
+          error?: string;
+          message?: unknown;
+          details?: unknown;
+        }
       | undefined;
     return new ApiClientError({
       messages: normalizeMessages(body?.message, err.message || 'Network error'),
       statusCode: err.response?.status ?? null,
-      code: body?.code ?? null,
+      // The deployed BE's error envelope names this field `error`, carrying the
+      // Nest exception name ("UnauthorizedException", "Bad Request"). `code` is
+      // read first in case a machine-readable code is added later.
+      code: body?.code ?? body?.error ?? null,
       method,
       path,
       details: body?.details ?? null,
@@ -211,6 +337,12 @@ type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 type RequestConfig = {
   /** Query-string params — never hand-build query strings in hooks. */
   params?: Record<string, unknown>;
+  /**
+   * Bearer token for this request only, overriding the session cookie. For
+   * logged-out flows that carry a scoped token (password recovery). Requests
+   * using it are excluded from the refresh-and-retry path.
+   */
+  token?: string;
 };
 
 async function request<T extends z.ZodTypeAny>(
@@ -229,12 +361,17 @@ async function request<T extends z.ZodTypeAny>(
       });
       return schema.parse(payload);
     }
+    const token = opts?.config?.token;
     const res = await apiClient.request({
       method,
       url: path,
       data: opts?.body,
       params: opts?.config?.params,
-    });
+      ...(token && {
+        headers: { Authorization: `Bearer ${token}` },
+        _noRefresh: true,
+      }),
+    } as InternalAxiosRequestConfig);
     return unwrap(schema, res.data).data;
   } catch (err) {
     throw toApiClientError(err, method, path);

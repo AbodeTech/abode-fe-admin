@@ -1,61 +1,137 @@
 "use client";
+
+import { Suspense, useState } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { Plus } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { Pagination } from "@/components/shared/Pagination";
+import { PageContentLoader } from "@/components/shared/page-content-loader";
 import {
-  useAssets,
-  useAssetInventory,
-  AssetPageHeader,
-  InventoryHealthBar,
   AssetCategoryHealth,
-  AssetFlexTable,
-  AssetFullOwnershipTable,
+  AssetFilters,
+  AssetsTable,
+  DeleteAssetDialog,
+  DEFAULT_ASSET_LIMIT,
+  InventoryHealthBar,
+  SAMPLE_CATEGORIES,
+  SAMPLE_PORTFOLIO,
+  useAssetList,
+  type Asset,
+  type OfferType,
+  type Visibility,
 } from "@/features/assets";
-import { Loader2 } from "lucide-react";
 
-export default function AssetsPage() {
-  const { data: assetsData, isLoading: assetsLoading, error: assetsError } = useAssets();
-  const { data: inventoryData, isLoading: inventoryLoading } = useAssetInventory();
+function EmptyState({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="rounded-md border border-dashed p-8 text-center">
+      <p className="font-medium">{title}</p>
+      <p className="mt-1 text-sm text-muted-foreground">{body}</p>
+    </div>
+  );
+}
 
-  const isLoading = assetsLoading || inventoryLoading;
+function AssetsPageContent() {
+  const searchParams = useSearchParams();
 
-  if (isLoading) {
+  const page = Number(searchParams.get("page")) || 1;
+  const search = searchParams.get("search") ?? undefined;
+  const visibility = (searchParams.get("visibility") as Visibility) ?? undefined;
+  const offerType = (searchParams.get("offer_type") as OfferType) ?? undefined;
+  const sold = searchParams.get("sold") === "true";
+  const includeDeleted = searchParams.get("include_deleted") === "true";
+
+  const [deleting, setDeleting] = useState<Asset | null>(null);
+
+  const { data, isLoading, error } = useAssetList({
+    page,
+    limit: DEFAULT_ASSET_LIMIT,
+    search,
+    visibility,
+    offer_type: offerType,
+    sold,
+    include_deleted: includeDeleted,
+  });
+
+  const rows = data?.items ?? [];
+  const total = data?.meta.total ?? 0;
+  const hasFilters = Boolean(search || visibility || offerType || sold || includeDeleted);
+
+  if (error) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center py-16">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (assetsError) {
-    return (
-      <div className="p-4 rounded-md bg-red-50 text-red-500 border border-red-200">
+      <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-500">
         <h3 className="font-bold">Error loading assets</h3>
-        <p>{assetsError.message || "An unexpected error occurred."}</p>
+        <p>{error.message}</p>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto w-full min-w-0 max-w-[1600px] space-y-4 sm:space-y-6">
-      <AssetPageHeader />
+    <div className="space-y-4">
+      <AssetFilters />
 
-      <InventoryHealthBar data={inventoryData} />
+      <AssetsTable
+        rows={rows}
+        isLoading={isLoading}
+        onDelete={setDeleting}
+        emptyState={
+          hasFilters ? (
+            <EmptyState
+              title="No assets match these filters"
+              body="Clear or widen the filters to see the rest of the catalogue."
+            />
+          ) : (
+            <EmptyState
+              title="No assets yet"
+              body="Create one to start selling flex or full-ownership plots."
+            />
+          )
+        }
+      />
 
-      <AssetCategoryHealth data={inventoryData} />
+      <Pagination count={total} currentIdx={page} limit={DEFAULT_ASSET_LIMIT} />
 
-      <div className="space-y-8 sm:space-y-10 md:space-y-12">
-        <section className="min-w-0">
-          <div className="mb-3 flex min-w-0 flex-col gap-1 sm:mb-4 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="text-lg font-bold tracking-tight sm:text-xl">Flex Assets Inventory</h2>
-          </div>
-          <AssetFlexTable data={assetsData?.data?.filter((asset): asset is NonNullable<typeof asset> => asset !== null) || []} />
-        </section>
+      <DeleteAssetDialog
+        asset={deleting}
+        onOpenChange={(next) => (next ? undefined : setDeleting(null))}
+      />
+    </div>
+  );
+}
 
-        <section className="min-w-0">
-          <div className="mb-3 flex min-w-0 flex-col gap-1 sm:mb-4 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="text-lg font-bold tracking-tight sm:text-xl">Full Ownership Inventory</h2>
-          </div>
-          <AssetFullOwnershipTable data={assetsData?.data?.filter((asset): asset is NonNullable<typeof asset> => asset !== null) || []} />
-        </section>
+export default function AssetsPage() {
+  return (
+    <div className="mx-auto mt-4 w-full min-w-0 max-w-[1600px] space-y-6 px-3 pb-16 sm:px-4 sm:pb-20">
+      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold tracking-tight">Assets</h1>
+          <p className="text-muted-foreground">
+            Every property in the catalogue. An asset can sell flex, full ownership, or both — the
+            offers column shows which.
+          </p>
+        </div>
+        <div className="w-full shrink-0 sm:w-auto">
+          <Button className="w-full sm:w-auto" asChild>
+            <Link href="/assets/create">
+              <Plus className="mr-2 h-4 w-4" />
+              New asset
+            </Link>
+          </Button>
+        </div>
       </div>
+
+      {/*
+        ⛔ ticket 17 — no asset analytics endpoint exists. These panels run on
+        `sample-data.ts` and each carries a "Sample data" chip so the figures
+        aren't mistaken for real ones.
+      */}
+      <InventoryHealthBar data={SAMPLE_PORTFOLIO} />
+      <AssetCategoryHealth data={SAMPLE_CATEGORIES} />
+
+      <Suspense fallback={<PageContentLoader label="Loading assets…" />}>
+        <AssetsPageContent />
+      </Suspense>
     </div>
   );
 }

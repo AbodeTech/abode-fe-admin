@@ -1,0 +1,1400 @@
+# Backend Requests — abode-be-v2
+
+Gaps found while migrating `abode-admin-fe` from GraphQL to REST. Each entry
+says what the frontend needs, what already exists to build it from, and what
+breaks until it lands.
+
+Target: `abode-be-v2`, branch `staging`, base path `/api/v1`.
+
+---
+
+## Verified against the deployment — 2026-07-27
+
+Checked against the live Swagger spec at
+`https://abode-be-v2-production.up.railway.app/api/docs-json`
+(87 paths, 103 operations, 49 schemas).
+
+**Every path the migrated frontend calls exists and matches**, except the four
+provisional admin-recovery paths in ticket 1. Asset filter params, the six
+nested offer/size/plan routes, the commission override family, the upgrade
+queue and `/auth/refresh` all line up exactly.
+
+Still open, confirmed present-tense against the deployment:
+
+| Ticket | Confirmation |
+|---|---|
+| 1 | No `/auth/admin/forgot-password`, `/verify-otp` or `/reset-password`. Only the user-collection flow exists |
+| 14 | `GET /admin/referrals/upgrades` takes `status`, `payment_method`, `to_tier`, `page`, `limit` — **no `search`** |
+| 16 | `GET /admin/assets` takes `visibility`, `offer_type`, `search`, `sold`, `include_deleted`, `page`, `limit` — **no sort** |
+| 17 | Nothing under `Admin — Assets` for analytics, subscribers or statements |
+| 18 | Size, plan and offer *updates* exist; **no `POST …/offers`** to add one |
+| 19 | `PATCH`/`DELETE` on `…/plans/{tenor}`; **no `POST …/plans`** |
+| 11 | Commission config is `GET`/`POST` only — no history route |
+
+**Ticket 2 may be resolved.** `GET /admin/users` is documented as "List all
+users with filters" taking `search`, `referral_status`, `is_suspended`, `page`,
+`limit`, alongside `PATCH /admin/users/{id}`, `/suspend` and `/unsuspend`.
+Whether the handlers return real data needs an authenticated call — the spec
+can't answer it.
+
+### The spec documents no response bodies
+
+**0 of 103 operations declare a 200/201 response schema** (39% declare a
+request body). Paths, query params and request DTOs are trustworthy; response
+shapes are not documented anywhere.
+
+This matters for the migration: every Zod response schema in this repo was
+written by reading the NestJS source, and nothing in the deployment can confirm
+them. A schema that drifts from the real payload is the silent-mapper failure —
+it passes `tsc`, passes Zod, and renders an empty list. **Response shapes must
+be confirmed against a live authenticated call before each feature is
+considered done.** Adding `@ApiOkResponse` types would remove the whole class
+of problem, and is worth a ticket of its own if the migration continues at
+this pace.
+
+### Error envelope confirmed
+
+```json
+{ "success": false, "statusCode": 400, "error": "Bad Request",
+  "message": ["email must be an email", "password should not be empty"],
+  "timestamp": "…", "path": "/api/v1/auth/admin/login" }
+```
+
+`message` is a **string or a string array** — class-validator failures arrive
+as an array. The discriminator field is named `error`, not `code`;
+`lib/api-client.ts` now reads `code ?? error`.
+
+---
+
+## 1. Admin password recovery is missing (regression)
+
+**Priority: high — this is a feature the current system has and v2 drops.**
+
+### What exists today
+
+The live GraphQL API has a complete admin recovery flow. `abode-admin-fe` uses
+it on `/forgot-password` and `/reset-password`:
+
+| Step | GraphQL mutation | Returns |
+|------|------------------|---------|
+| 1 | `sendAdminEmailVerification(emailInput)` | `{ message, authToken }` |
+| 2 | `verifyAdminEmail(tokenInput)` | `{ message, authToken }` |
+| 3 | `updateAdminPassword(passwordInput)` | `Boolean` |
+
+### What abode-be-v2 has
+
+Nothing equivalent. `AuthService.forgotPassword` calls `findUserByEmail`, and
+`resetPassword` verifies a `'user'`-audience token and resolves the account
+with `findUserById`. Admins are a separate collection with `'admin'`-audience
+tokens, so neither endpoint can serve them. `findAdminByEmail` appears exactly
+once in the service — inside `loginAdmin`.
+
+`POST /auth/admin/change-password` does **not** cover this case: it requires
+the current password, which is the thing a locked-out admin doesn't have.
+
+### Consequence today
+
+An admin who forgets their password cannot recover it. There is also no
+admin-facing reset endpoint (`AdminController` has create / list / change-role
+/ delete only), so another admin cannot reset it for them. The only route back
+is deleting the account and recreating it — which needs `manage_admins`, i.e.
+a full `admin`, and loses the original record.
+
+### What we need
+
+Three endpoints mirroring the existing **user** flow one-for-one. The frontend
+is already written against exactly this contract
+(`features/auth/hooks/use-password-recovery.ts`).
+
+```
+POST /auth/admin/forgot-password
+  body:    { email: string }
+  returns: { resetToken: string, message: string }
+  notes:   enumeration-safe — 200 with a token even for an unknown address,
+           same as the user endpoint
+
+POST /auth/admin/verify-otp
+  header:  Authorization: Bearer <resetToken>
+  body:    { otp: string }            // 6 digits, as VerifyOtpDto
+  returns: { resetGrantToken: string, message: string }
+
+POST /auth/admin/reset-password
+  header:  Authorization: Bearer <resetGrantToken>
+  body:    { newPassword: string }    // min 8, as ResetPasswordDto
+  returns: { message: string }
+```
+
+### Why this should be small
+
+Every piece already exists and is working for users — `issueOtp`,
+`OtpThrottleService`, `signResetPasswordToken` / `signResetGrantToken`, the
+`otp-token` schema, and the `password-reset` email template. The admin variant
+is largely swapping the repository lookup (`findUserByEmail` →
+`findAdminByEmail`, `findUserById` → `findAdminById`) and pointing the password
+write at the admin repository.
+
+Two things to confirm while implementing:
+
+- **Token audience.** The scoped-token helpers hardcode `aud: 'user'`
+  (`signScopedUser`). The admin variants need `'admin'`, or a shared audience
+  parameter.
+- **Session revocation.** `changeAdminPassword` calls `sessions.revokeAll` and
+  bumps `session_epoch`. A reset should do the same, or a stolen session
+  survives the password change.
+
+### Until it ships
+
+The frontend calls these paths and they resolve in mock mode only. Against a
+real backend they 404 and surface as an `ApiClientError` in the form. See
+`lib/mocks/routes/auth.ts`.
+
+---
+
+## 2. `POST /admin/users*` handlers are stubs
+
+**Priority: high — blocks migrating the `users` feature.**
+
+Five routes in `AdminController` are guarded and validate their DTOs but never
+touch the database:
+
+```ts
+@Get('users')            → { message: 'Endpoint connected to UserService', dto }
+@Get('users/:id')        → { message: 'Endpoint connected to UserService', id }
+@Patch('users/:id')      → { message: 'Endpoint connected to UserService', id, dto }
+@Patch('users/:id/suspend')   → { message: 'Endpoint connected to UserService', id }
+@Patch('users/:id/unsuspend') → { message: 'Endpoint connected to UserService', id }
+```
+
+These are the only stubs in the codebase. Note that user *referral* operations
+under the same `/admin` prefix (`referral-admin.controller.ts`) **are**
+implemented — it is user CRUD specifically that is unwired.
+
+The admin frontend's largest feature is `users`. It cannot be migrated against
+a real backend until `AdminController` is wired to `UserService`, because the
+placeholder response fails Zod validation at the boundary
+(`code: 'SCHEMA_MISMATCH'`).
+
+### Also blocks: commission override referrer picker
+
+`GET /admin/users` is the only way to find a referrer by name or email, so the
+user and asset+user override dialogs cannot identify who an override is for.
+
+`AdminListUsersDto` already declares everything the picker needs — `search`,
+`referral_status`, `page`, `limit`. The handler just doesn't use them. What the
+picker needs back, per row: `_id`, `firstName`, `lastName`, `email`,
+`referral_status`.
+
+**Frontend interim, to be removed when this ships:** `UserPicker` accepts a
+pasted 24-character ObjectId so an admin arriving from a user's page can still
+create an override. That is a stopgap, not a design — it allows an override to
+be created against an id nobody has verified exists.
+
+---
+
+## 3. Confirm: is the GraphQL reset flow's token check enforced?
+
+**Priority: low — a question, not a request. Worth answering before the
+endpoints above are designed.**
+
+In the current frontend, `ResetPasswordForm` obtains a reset token in step 1,
+stores it, then passes it to steps 2 and 3 — through a wrapper that **discards
+it**:
+
+```ts
+async function gqlRequest<T>(query, variables, _operationName, _authToken?) {
+  return executeRaw<T>(query, variables);   // _authToken never used
+}
+```
+
+The admin is signed out during a reset, so the cookie interceptor has nothing
+to attach either. That means `verifyAdminEmail` and `updateAdminPassword` are
+being called with no token at all.
+
+Either the GraphQL backend doesn't require one — in which case
+`updateAdminPassword` may be callable against any account and should be checked
+— or that flow is already failing in production.
+
+Whichever it is, the REST replacement above binds each step to a scoped token,
+so the issue doesn't carry across.
+
+---
+
+## 4. Optional: httpOnly refresh cookie
+
+**Priority: low — a hardening follow-up, not a blocker.**
+
+`abode-admin-fe` is fully client-side, so it stores both tokens in
+JavaScript-readable cookies (`lib/utils/cookies.ts`). The refresh token is
+valid for 30 days, so an XSS yields 30 days of access rather than the 15
+minutes an access token alone would give.
+
+Moving refresh behind an `httpOnly` cookie needs a Next.js route handler to
+proxy `POST /auth/refresh` server-side. No backend change is required — noted
+here so the trade-off is recorded rather than forgotten.
+
+---
+
+## 5. Money is decimal naira everywhere; integers only at the Paystack boundary
+
+**Priority: high — blocks the admin FE's money handling, and every module that
+touches an amount. Settle before more financial code is written.**
+
+### The decision
+
+Amounts are **decimal naira** (`2500.50` = ₦2,500.50). This matches v1, and it
+is what `abode-admin-fe` will assume when rendering and submitting every price,
+fee, balance, commission and discount.
+
+Integers are used in exactly **one** place: the Paystack request/response
+boundary, where the conversion already exists and stays as-is.
+
+### Why this needs a ticket: the codebase currently disagrees with itself
+
+Three different conventions are live at once.
+
+**(a) Asset prices are hard-enforced as integer kobo.**
+
+```ts
+// src/modules/asset/schemas/flex-size.schema.ts
+const kobo = {
+  validator: Number.isInteger,
+  message: '{PATH} must be an integer (kobo, not naira)',
+};
+```
+
+Applied to seven fields:
+
+| File | Fields |
+|---|---|
+| `asset/schemas/flex-size.schema.ts` | `initial_payment`, `monthly_installment`, `land_price` |
+| `asset/schemas/full-ownership-size.schema.ts` | `initial_payment`, `monthly_installment`, `land_price`, `document_fee` |
+
+**(b) The payment module treats amounts as naira.**
+`payment.service.ts:30` does `Math.round(amount * 100)` before calling
+Paystack. You only multiply by 100 if you started in naira.
+
+**(c) Everything else is undeclared.** `Transaction.amount` and
+`Wallet.balance` are bare `Number` props with no validator and no comment.
+`CommissionConfig.associate_pro_fee` defaults to `20_000` — sensible as
+₦20,000, nonsense as ₦200.
+
+### Scenarios
+
+**S1 — Admin creates a Flex plan priced at ₦2,500.50/month.**
+Expected: `monthly_installment: 2500.5` saves successfully.
+Actual today: **rejected** — `Number.isInteger(2500.5)` is false, so the
+validator throws `monthly_installment must be an integer (kobo, not naira)`.
+Half-naira pricing is currently impossible.
+
+**S2 — Existing asset data.**
+A ₦2,000,000 plot is stored today as `200000000`. After this change it must
+read `2000000`. Existing documents need a one-off migration dividing the seven
+fields above by 100. Anything created after the change is written in naira, so
+running the migration twice must be safe (guard on a flag or a max-value
+heuristic, and confirm which before running against production).
+
+**S3 — Paystack outbound. Buyer pays ₦19,999.50.**
+Stored: `19999.5`. Sent to Paystack: `Math.round(19999.5 * 100)` = `1999950`
+kobo. ✅ Unchanged — this line stays exactly as it is.
+
+**S4 — Paystack inbound.**
+Paystack returns `amount: 1999950`. `payment.service.ts:53` divides by 100 →
+`19999.5`. ✅ Unchanged.
+
+**S5 — The float trap that must be handled.**
+Commission of 10.5% on a ₦19,999 payment, in plain JavaScript:
+
+```js
+19999 * 0.105
+// => 2099.8949999999995      ← not 2099.895
+```
+
+Persisted raw, that becomes the amount on a Transaction row and eventually
+renders in the admin UI as `₦2,099.8949999999995`. **Every amount must be
+rounded to 2 decimal places at the moment it is written.**
+
+**S6 — Accumulation drift on wallet balance.**
+A wallet credited ₦0.10 one hundred times:
+
+```js
+let b = 0; for (let i = 0; i < 100; i++) b += 0.1;
+b            // => 10.000000000000002
+b === 10     // => false
+```
+
+A withdrawal check of `balance >= amount`, or a "wallet is empty" check of
+`balance === 0`, will eventually behave wrongly. Balance must be rounded to 2dp
+after every mutation, and comparisons must use a tolerance rather than `===`.
+
+### What we need
+
+1. **Remove the `kobo` validator** from the seven fields listed above.
+2. **Migrate existing asset documents** — divide those seven fields by 100.
+3. **Declare the convention once**, in a shared place, and apply a
+   `round2` helper at every write to a money field:
+   `Math.round(value * 100) / 100`.
+4. **Apply that rounding to**: `Transaction.amount`, `Wallet.balance`, all
+   commission amounts (`gross_commission`, `wht_deducted`, `net_commission`),
+   and any coupon discount amounts.
+5. **Never compare money with `===` or `>=` without rounding first.** Use a
+   tolerance of half a kobo (`0.005`) for equality checks.
+6. **Leave `payment.service.ts` untouched** — the ×100 / ÷100 boundary is
+   already correct.
+
+### Known trade-off, accepted
+
+Floating point is not exact, so this convention trades a small amount of
+precision safety for consistency with v1 and simpler handling in the FE. The
+rounding rules above are what keep it safe in practice; they are not optional
+extras. See also ticket 6's rounding rule, which becomes more important under
+this convention.
+
+---
+
+## 6. Upline and topline commission are configured but never paid
+
+**Priority: high — admins can configure a payout that silently never happens.**
+
+### What's wrong
+
+`CommissionConfig.fullOwnershipCommission` carries three rate tables:
+
+```ts
+direct!:  Map<string, number>   // { default: 0.1, founder: 0.18, 'associate-pro': 0.15, premium: 0.17 }
+upline!:  Map<string, number>   // { founder: 0.03, 'associate-pro': 0.02, premium: 0.02 }
+topline!: Map<string, number>   // { founder: 0.01, 'associate-pro': 0.01 }
+```
+
+`Transaction.commissionType` accepts `'direct' | 'upline' | 'topline' |
+'agency' | 'wht'`, and the idempotency index
+`{wallet, source_transaction, commissionType}` already allows three separate
+legs against one source payment.
+
+But `CommissionService.creditCommission` only ever writes **one** leg:
+
+```ts
+const commissionType = isAgency ? 'agency' : 'direct';
+```
+
+`upline` and `topline` are never read and never paid. An admin can set them,
+save them, see them persisted — and no money will ever move.
+
+### Scenarios
+
+**S1 — The main case. Full-ownership purchase, three-level chain.**
+
+Setup: Buyer B is referred by R (tier `associate-pro`). R is referred by U
+(tier `founder`). U is referred by T (tier `founder`). Config as above,
+`wht_rate: 0.05`. B makes a payment of ₦1,000,000.
+
+Expected:
+
+| Leg | Recipient | Rate | Gross | WHT | Net |
+|---|---|---|---|---|---|
+| direct | R | 0.15 | ₦150,000 | ₦7,500 | ₦142,500 |
+| upline | U | 0.03 | ₦30,000 | ₦1,500 | ₦28,500 |
+| topline | T | 0.01 | ₦10,000 | ₦500 | ₦9,500 |
+| wht | management | — | — | — | ₦9,500 total |
+
+Actual today: only the **direct** leg is written. U and T receive nothing, and
+nothing is logged to say they were skipped.
+
+**S2 — Short chain.** B → R, and R has no referrer.
+Expected: direct leg only. No upline, no topline, **no error**. The purchase
+completes normally.
+
+**S3 — Two-level chain.** B → R → U, U has no referrer.
+Expected: direct + upline. No topline. No error.
+
+**S4 — Flex purchase.** `flexCommission` has **only** a `direct` table.
+Expected: direct leg only, regardless of how long the chain is. Upline and
+topline are full-ownership concepts.
+
+**S5 — Agency purchase.** Buyer came through an agency.
+Expected: unchanged — the agency leg short-circuits the whole chain (C-B5). No
+upline or topline.
+
+**S6 — Self-referral / cycle in the data.** R's `referred_by` points back to B,
+or a chain loops. Expected: traversal stops, no infinite loop, no duplicate
+payment to the same wallet at the same `commissionType`.
+
+**S7 — Retry safety.** The same source payment is processed twice.
+Expected: exactly three commission rows still, not six. The existing
+idempotency index covers this because `commissionType` differs per leg — worth
+an explicit test.
+
+### The part that needs a design decision first
+
+This is not just a loop over three rates. Per **C-2**, rates are frozen onto
+the `PaymentPlan` at creation and never re-read. The snapshot today holds
+exactly one referrer and one rate:
+
+```ts
+referrer_id, agency_id, commission_rate, commission_tier_at_creation,
+commission_config_version, wht_rate, commission_override_source
+```
+
+To pay three legs from a frozen snapshot, the snapshot has to carry all three
+referrers and all three rates — otherwise `creditCommission` would have to walk
+the referral chain live on every payment, which is exactly the behaviour C-2
+exists to prevent (a referrer's tier changing mid-plan must not alter an
+already-struck deal).
+
+So this ticket implies **new PaymentPlan fields**:
+
+```
+upline_id?,  upline_rate?,  upline_tier_at_creation?,  upline_override_source?
+topline_id?, topline_rate?, topline_tier_at_creation?, topline_override_source?
+```
+
+resolved once inside `resolveCommissionForPlan`, alongside the direct rate.
+
+Note each leg carries **its own `override_source`**, not one shared value. See
+"Resolution is per leg" below for why.
+
+### Resolution is per leg, not per plan
+
+This is a change to how `resolveCommissionForPlan` works, and it depends on
+ticket 8 (per-leg override shape).
+
+Today the chain runs once and produces a single rate. Once three legs exist,
+**each leg resolves independently** — walking `asset+user → user → asset →
+default` and taking the first level that defines *that leg*.
+
+**Worked example.** Buyer B → R (direct) → U (upline) → T (topline), full
+ownership. Overrides in place:
+
+- Asset+user override on (Aviation City, R): `direct: 0.12` only
+- User override on U: `upline: 0.04` only
+- No override defines `topline`
+
+Expected resolution:
+
+| Leg | Recipient | Rate | Source |
+|---|---|---|---|
+| direct | R | 0.12 | `asset_user` |
+| upline | U | 0.04 | `user` |
+| topline | T | 0.01 | `default` |
+
+Three different override sources on one plan. A single shared
+`commission_override_source` field cannot express this, which is why each leg
+needs its own.
+
+### Open questions
+
+1. **Whose tier keys the upline rate?** The `upline` table is keyed by tier
+   (`founder: 0.03`). Is that the **upline's own** tier, or the direct
+   referrer's? The two give different payouts and the code gives no clue.
+   *(This only affects the `default` and `asset` levels — user and asset+user
+   overrides are per-person, so tier doesn't enter into them.)*
+2. **Is the chain `referred_by`?** `resolveReferrerId` uses
+   `buyer.referred_by`. Confirm upline = `referrer.referred_by` and topline =
+   `upline.referred_by`, and that there is no separate chain structure.
+3. **Is WHT withheld per leg?** Assumed yes — each leg gets its own
+   `wht` Transaction — but confirm, since it changes the management wallet's
+   row count.
+4. **Does an `asset` override's `direct` map still win over a `user`
+   override's `direct`?** No — the chain order is unchanged
+   (`asset_user → user → asset → default`), so a user override beats an asset
+   override. Confirming because it is the one ordering that reads
+   counter-intuitively: the more *specific subject* wins over the more
+   specific *object*.
+
+---
+
+## 7. The commission email is sent before the money is real
+
+**Priority: high — users are told about money that can then vanish.**
+
+### What's wrong
+
+`CommissionService.creditCommission` fires the "you earned a commission" email
+from inside the caller's Mongo transaction, before it has committed:
+
+```ts
+// commission.service.ts, inside creditCommission
+if (recipientUserId) {
+  this.notifyCommission(recipientUserId, net).catch(() => undefined);
+}
+return tx.transaction;
+```
+
+The `.catch()` correctly stops a mail failure from breaking the financial
+write. But it does not stop the reverse: the email leaving for a transaction
+that then rolls back.
+
+Every caller uses the established pattern:
+
+```ts
+await session.withTransaction(async (txn) => { ... });
+```
+
+Nothing inside that callback is durable until `withTransaction` resolves.
+Anything that leaves the system — an email, an SMS, a webhook — must happen
+after it returns, because it cannot be rolled back.
+
+### Scenarios
+
+**S1 — The failure case.**
+1. Buyer's wallet is debited ₦1,000,000 ✏️
+2. PaymentPlan is updated ✏️
+3. Referrer is credited ₦142,500 ✏️
+4. **Email sent: "You earned ₦142,500"** 📧 ← leaves the system here
+5. A later write in the same transaction fails, or the commit fails
+6. Steps 1–3 roll back. Buyer's money returns. Referrer's credit disappears.
+
+Result: the referrer has an email saying they earned ₦142,500, and a wallet
+balance that never changed. There is no correction and no second email.
+
+**S2 — Write conflict retry.** MongoDB retries a `withTransaction` callback on
+a transient error. The callback runs twice, so **two identical emails** are
+sent for one payment. The financial write is protected by the idempotency
+index; the email is not.
+
+**S3 — The correct behaviour.** Same steps 1–3, commit succeeds, **then** the
+email is sent. If the mail provider is down, the money is still correct and the
+email can be retried independently.
+
+### What we need
+
+Move the notification out of `creditCommission` and fire it after the
+transaction commits. Two workable shapes:
+
+- **Return the intent.** `creditCommission` returns the transaction plus the
+  notification it *would* send; the caller enqueues it after
+  `withTransaction` resolves.
+- **Enqueue to an outbox.** Write a notification row inside the transaction (so
+  it rolls back with everything else) and have a worker send it after commit.
+  Heavier, but it survives a process crash between commit and send.
+
+Either is fine. The requirement is only that nothing leaves the system before
+the commit.
+
+### Related inconsistency
+
+`fireForUpgrade` — the associate-pro upgrade commission path — sends **no
+notification at all**. A referrer earning upgrade commission is never told.
+Whether that is deliberate or an oversight is worth confirming while this area
+is open.
+
+---
+
+## 8. User and asset+user overrides need a rate per leg, not one flat rate
+
+**Priority: high — pairs with ticket 6. Landing 6 without this makes the
+existing overrides ambiguous.**
+
+### What's wrong
+
+`UserCommissionOverride` and `AssetUserCommissionOverride` each carry a single
+flat rate:
+
+```ts
+@Prop({ type: Number, required: true, min: 0, max: 1 }) rate!: number;
+```
+
+Today that reads as "John gets 15%" and is unambiguous only because just one
+commission leg is ever paid. The moment ticket 6 lands and upline/topline
+actually disburse, the same field has three possible meanings and no way to
+choose between them:
+
+- Does John's 15% replace his **direct** rate?
+- Whatever leg he **happens to occupy** on a given plan — direct on one sale,
+  upline on another?
+- **All three** legs at 15% each?
+
+`AssetCommissionOverride` already solves this — it splits `direct` / `upline` /
+`topline`. The two newer collections do not.
+
+### What we need
+
+Replace the flat `rate` on **both** collections with three optional numbers:
+
+```ts
+direct?:  number   // 0–1
+upline?:  number   // 0–1
+topline?: number   // 0–1
+```
+
+At least one is required. **An absent leg is not an override** — it falls
+through to the next level of the chain for that leg only.
+
+That single shape expresses every case:
+
+| Admin intent | Fields set |
+|---|---|
+| Override everything | `direct`, `upline`, `topline` |
+| Override direct only | `direct` |
+| Override upline only | `upline` |
+| Override topline only | `topline` |
+
+No `'all'` sentinel value — "all" is just setting all three. One code path, no
+special case.
+
+Unique indexes are unchanged: `(user_id, offer_type)` and
+`(asset_id, user_id, offer_type)`. One row per subject per offer type, now
+carrying up to three rates.
+
+### Scenarios
+
+**S1 — Direct only, the common case.**
+Admin sets a user override on John: `direct: 0.15`, nothing else.
+John refers a buyer directly on a full-ownership plan.
+Expected: John's direct leg pays 15% (`override_source: 'user'`). If John is
+*also* someone's upline on a different plan, that upline leg falls through to
+the default table — his override does not touch it.
+
+**S2 — Upline only.**
+Admin sets a user override on Uche: `upline: 0.04`, nothing else.
+Uche sits one level above the direct referrer on a plan.
+Expected: Uche's upline leg pays 4% (`override_source: 'user'`). When Uche
+refers someone **directly**, that leg falls through to the default table — 4%
+does not apply to his direct sales.
+
+**S3 — Mixed sources on one plan.** See the worked example in ticket 6. Three
+legs, three different `override_source` values, on a single plan.
+
+**S4 — Partial asset+user override beats a full user override, per leg.**
+User override on John: `direct: 0.15, upline: 0.03`.
+Asset+user override on (Aviation City, John): `direct: 0.12` only.
+John sells Aviation City, directly.
+Expected: direct = **0.12** (`asset_user`), upline = **0.03** (`user`).
+The asset+user row wins only for the leg it actually defines. It must **not**
+mask John's user-level upline rate just because it is a more specific row.
+
+**S5 — Flex purchase.** `flexCommission` has only a `direct` table.
+Expected: a user override's `upline`/`topline` values are simply never
+consulted on a flex plan. Not an error — no upline leg exists to pay.
+
+**S6 — Empty override rejected.** Admin submits a user override with no legs
+set. Expected: `400 INVALID_RATE` (or similar) — a row that overrides nothing
+should not be creatable.
+
+**S7 — Existing rows.** Any `UserCommissionOverride` /
+`AssetUserCommissionOverride` documents already written carry `rate`. Migrate
+them to `direct: <rate>`, since a single leg is what they meant when created.
+This is a small, verifiable migration — unlike ticket 5's, the old and new
+fields have different names, so it is idempotent by construction.
+
+### DTO changes
+
+`CreateUserOverrideDto` and `CreateAssetUserOverrideDto` lose `rate` and gain
+`direct?` / `upline?` / `topline?`, each `@Min(0) @Max(1)`, with a
+class-level check that at least one is present.
+
+---
+
+## 9. Commission admin screens need populated names and a resolve preview
+
+**Priority: high — 9a blocks the plan audit screen entirely; the overrides list
+is degraded without it.**
+
+### 9a. Neither `listOverrides` nor `getPlanAudit` populates anything
+
+```ts
+const [asset, user, assetUser] = await Promise.all([
+  this.assetOverrideModel.find(scope).exec(),
+  this.userOverrideModel.find(scope).exec(),
+  this.assetUserOverrideModel.find(scope).exec(),
+]);
+return { asset, user, asset_user: assetUser };
+```
+
+No `.populate()`. So `GET /admin/commission/overrides` hands back `user_id`,
+`asset_id` and `granted_by` as bare ObjectIds.
+
+**Scenario.** Admin opens the overrides screen expecting:
+
+> Aviation City · John Okafor · full-ownership · direct 12% · set by Ada Okafor · expires 30 Sep
+
+What the frontend can actually render:
+
+> `665f1c0a...` · `665f1c0a...` · full-ownership · direct 12% · `665f1c0a...`
+
+Resolving the names client-side means one lookup per row per field — an N+1
+over three collections, on a screen whose whole job is scanning a list.
+
+**Needed:** populate `user_id` (name + email), `asset_id` (asset name), and
+`granted_by` (admin name) on the list response.
+
+Two smaller notes on the same endpoint:
+
+- It returns **three arrays** (`{asset, user, asset_user}`), so the client
+  normalises them into one table with a type column. Workable — flagging only
+  so the shape isn't mistaken for an oversight.
+- There is **no pagination**. Fine at current volume; will need `page`/`limit`
+  once override counts grow.
+
+#### The same problem stops the plan audit screen being built at all
+
+`getPlanAudit` reads the plan's snapshot and returns it verbatim.
+`findPlanById` is a plain `findById` with no `.populate()`, so **every identity
+field comes back as an ObjectId**:
+
+```ts
+return {
+  buyer: plan.user,        // ObjectId
+  asset: plan.asset,       // ObjectId
+  referrer_id: …,          // ObjectId
+  agency_id: …,            // ObjectId
+  commission_rate, commission_tier_at_creation, commission_config_version,
+  wht_rate, commission_override_source, commission_payable
+};
+```
+
+**Scenario.** A referrer disputes a payout. An admin opens the audit for that
+plan and sees:
+
+```
+Buyer               665fcccc00000000000000c1
+Asset               665faaaa00000000000000a1
+Earns commission    665fcccc00000000000000c2
+Rate applied        2.00%
+Where it came from  Default rate
+Tier at creation    default
+Config version      v3
+```
+
+Every figure is correct. Nothing on the page says who or what any of it is
+about. This screen exists to answer *"why did this referrer earn exactly
+₦19,000?"* to a person, and three ObjectIds do not answer it.
+
+**It cannot be resolved client-side.** Three of the four identity fields are
+users, and `GET /admin/users` is the stub in ticket 2 — so the names are not
+fetchable by any route. Only the asset name is reachable. There is no honest
+frontend version of this screen until the backend populates.
+
+**Needed:** populate `user` (name + email), `asset` (name), `referrer_id`
+(name + email) and `agency_id` (agency name) on
+`GET /admin/commission/audit/:paymentPlanId`.
+
+**Frontend status:** the plan audit screen is **not built** and is on hold
+pending this. It was not shipped showing raw IDs.
+
+### 9b. There is no way to ask "what would this actually pay?"
+
+Resolution order is `asset+user → user → asset → default`, per leg after
+ticket 8. An admin creating a user override at 15% has no way to see that an
+asset+user override at 12% already beats it on one asset.
+
+**Scenario.** Admin sets a user override on John at `direct: 0.15` and expects
+John to earn 15% everywhere. He does not — on Aviation City he earns 12%,
+because an asset+user row set three months ago still wins. Nothing on screen
+says so. The admin concludes the override didn't save.
+
+The frontend **must not** reimplement the chain to show this. That would put
+the resolution rules in two places, and they would drift — which is the failure
+this module's design exists to prevent.
+
+**Needed:** expose the existing resolver read-only.
+
+```
+GET /admin/commission/resolve?user_id=&asset_id=&offer_type=
+
+→ {
+    direct:  { rate, override_source, tier },
+    upline:  { rate, override_source, tier } | null,
+    topline: { rate, override_source, tier } | null,
+    config_version,
+    wht_rate
+  }
+```
+
+`resolveCommissionForPlan` already computes exactly this. The ask is a thin
+admin-guarded wrapper that runs it **without** writing anything — a dry run, so
+the admin UI can show the resolved chain before saving and after.
+
+This is the highest-value small item in the commission area: it turns an
+override screen that guesses into one that reports the truth, and it costs the
+backend almost nothing because the logic is already written and tested.
+
+---
+
+## 10. No way to edit a plan's commission snapshot
+
+**Priority: medium — the intended operational escape hatch does not exist.**
+
+### Context
+
+Commission rates are frozen onto the `PaymentPlan` at creation and never
+re-read (C-2). That is correct and deliberate: a referrer's tier changing
+mid-plan must not alter an already-struck deal.
+
+The accepted consequence is that changing an override affects **new plans
+only**. The agreed answer to "what if a rate on an existing plan is wrong?" is
+that an admin edits that plan directly.
+
+### The problem
+
+That capability does not exist.
+
+- `acquisition.controller.ts` exposes four routes. The only admin mutation is
+  `PATCH /acquisitions/:id/suspend`.
+- Grepping the entire backend, **nothing writes `commission_rate` or
+  `referrer_id`** outside the schema definitions themselves.
+
+There is currently no path — admin API or otherwise — to correct a plan's
+commission snapshot.
+
+### Scenarios
+
+**S1 — Wrong referrer attributed.** A plan is created with `referrer_id` set to
+the wrong person, or null when it should have been set. Every payment on that
+plan pays the wrong party, or nobody, for the plan's entire life. Expected: an
+admin can correct `referrer_id`. Actual: no route.
+
+**S2 — Rate set from a stale override.** An override was due to be revoked and
+wasn't; a plan snapshotted 20% instead of 12%. Expected: an admin can correct
+`commission_rate`. Actual: no route.
+
+**S3 — Correction must not be silent.** Editing a frozen financial record is
+exactly the kind of action that needs an audit trail. Expected: the edit writes
+an `AdminLog` entry capturing who changed it, from what to what, and why —
+`reason` should be required, not optional.
+
+**S4 — Already-paid commission is not retro-corrected.** Editing the snapshot
+changes what **future** payments on that plan pay. Commission already credited
+stays credited. Expected: that's the behaviour, and the endpoint's docs say so
+plainly, so nobody assumes it reconciles history.
+
+### What we need
+
+An admin-guarded endpoint — something like
+`PATCH /admin/commission/plans/:paymentPlanId/snapshot` — accepting the
+commission snapshot fields (`referrer_id`, `agency_id`, `commission_rate`,
+plus the upline/topline fields from ticket 6), with:
+
+- `manage_commission` permission
+- a **required** `reason`
+- an `AdminLog` entry recording the before/after values
+- explicit documentation that it affects future payments only
+
+Placing it under `/admin/commission` rather than `/acquisitions` keeps
+commission concerns in the module that owns them.
+
+---
+
+## 11. Commission config history records nothing about the change
+
+**Priority: medium — the history screen exists but can only show dates.**
+
+### What v1 had
+
+The GraphQL config screen showed a change log: who edited the config, which
+fields they changed, and a free-text description they were required to enter.
+The frontend still expects that shape — `changedBy`, `changedByEmail`,
+`changedFields`, `changeDescription`, plus pagination.
+
+### What v2 has
+
+`CommissionAdminService.getConfig` returns the active config plus the last 20
+config documents:
+
+```ts
+return { active, history };   // history = findConfigVersions(20)
+```
+
+Those are raw `CommissionConfig` rows. From them the UI can derive a version
+number and a publish date, and `last_modified_by` is present as a bare
+ObjectId. Everything else is absent:
+
+- **No admin name or email** — `last_modified_by` is not populated
+- **No changed-field list** — nothing records which fields moved
+- **No reason** — and see below, it cannot even be submitted
+- **No pagination** — the count is hard-coded to 20
+
+### The publish path can't accept a reason either
+
+`CreateCommissionConfigDto` declares seven fields and no `changeDescription`.
+Because the BE runs `forbidNonWhitelisted`, sending one is a hard 400 rather
+than a silent ignore — so the frontend cannot capture a reason even to store
+elsewhere.
+
+### Scenarios
+
+**S1 — "Why did commission drop last month?"** An admin opens history, sees
+`v3 · 14 July` and `v2 · 1 June`, and cannot tell what changed or why without
+diffing two documents by eye.
+
+**S2 — "Who approved this?"** `last_modified_by` is an ObjectId. The screen
+shows `665fbbbb…` where a name belongs.
+
+**S3 — Audit request.** A payment plan snapshots
+`commission_config_version: 3`. Someone asks what version 3 said and who
+authorised it. The version is recoverable; the authorisation is not.
+
+### What we need
+
+1. **Accept `changeDescription`** (or `reason`) on `POST /admin/commission/config`,
+   stored on the new version. Required rather than optional would match v1.
+2. **Populate `last_modified_by`** on the history rows — name and email.
+3. **Optionally, a changed-field list.** The service already holds both the
+   current and next config when it publishes, so the diff is computable
+   server-side at no extra cost.
+4. **Pagination** on history — `page`/`limit` instead of a fixed 20.
+
+Items 1 and 2 are the ones that matter. Without them the history screen can
+show *when* something changed and nothing else.
+
+**Frontend interim:** the reason field is not rendered at all rather than
+submitted and rejected, and history diffs two config documents client-side to
+show what moved. Client-side diffing is honest work — we hold both versions —
+but it cannot recover intent.
+
+---
+
+## 12. `include_inactive=false` returns inactive overrides
+
+**Priority: low — one line, but it silently inverts a filter.**
+
+`OverrideQueryDto` coerces the query string with `@Type`:
+
+```ts
+// src/modules/commission/dto/commission.dto.ts:121-124
+@IsOptional()
+@Type(() => Boolean)
+@IsBoolean()
+include_inactive?: boolean;
+```
+
+`@Type(() => Boolean)` calls `Boolean(value)` on the raw query string, and
+every non-empty string is truthy:
+
+```js
+Boolean('false')  // true
+Boolean('0')      // true
+```
+
+So `GET /admin/commission/overrides?include_inactive=false` is read as **true**
+and returns revoked and expired overrides.
+
+### Scenario
+
+Admin loads the overrides screen with the "Active only" filter and sees an
+override that was revoked last month sitting among the live ones. Nothing
+errors; the filter simply did the opposite of what it says.
+
+### The fix
+
+The asset module already does this correctly, two files away:
+
+```ts
+// src/modules/asset/dto/asset-filter.dto.ts
+@Transform(({ value }) => value === 'true' || value === true)
+@IsBoolean()
+sold?: boolean;
+```
+
+Swapping `@Type(() => Boolean)` for that `@Transform` fixes it. This is the
+only occurrence of the pattern in the codebase — every other boolean query
+param already uses `@Transform`.
+
+**Frontend interim:** the client sends `include_inactive` only when it is true,
+and omits it entirely otherwise, which sidesteps the coercion. That workaround
+should be removed once this is fixed, so the parameter means what it says.
+
+---
+
+## 13. Admin list endpoints return bare ObjectIds — now blocking the upgrade queue
+
+**Priority: highest of the outstanding items — this one blocks an approval
+screen, where an admin authorises money against a person they cannot see.**
+
+### It is a pattern, not three coincidences
+
+Three admin endpoints now return references without populating them:
+
+| Endpoint | Unpopulated | Consequence | Ticket |
+|---|---|---|---|
+| `listOverrides` | `user_id`, `asset_id`, `granted_by` | List shows ids | 9a |
+| `getPlanAudit` | `buyer`, `asset`, `referrer_id`, `agency_id` | Audit screen unbuildable | 9a |
+| `findUpgradesPaginated` | `user`, `referrer` | **Approval queue unbuildable** | this |
+
+Fixing one and leaving the others is the likely outcome if these are read as
+separate requests, so they are named together here. The underlying convention
+worth adopting: **admin list endpoints populate the references they return**,
+because an admin screen exists to be read by a person.
+
+### The upgrade queue case
+
+```ts
+// referral.repository.ts:183-186
+this.upgradeModel.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).exec()
+```
+
+No `.populate()`, so `user` and `referrer` come back as ObjectIds.
+
+**Scenario.** An admin opens the upgrade queue to work through pending
+requests and sees:
+
+```
+Requested by   665fcccc00000000000000c1
+Referrer       665fcccc00000000000000c2
+associate → associate-pro     ₦20,000     transfer     pending
+                                            [ Approve ]  [ Decline ]
+```
+
+Approving that changes someone's tier, completes a ₦20,000 transaction and
+fires a commission payout to a second person. The admin is signing off money
+for two people they cannot identify.
+
+This is worse than the two commission cases. There the missing names make a
+screen unhelpful; here they make an **approval** unsafe.
+
+### It cannot be resolved client-side
+
+Both fields are users, and `GET /admin/users` is the stub in ticket 2. There is
+no route by which the frontend can turn those ids into names. This has to be
+fixed server-side.
+
+### What we need
+
+Populate on `GET /admin/referrals/upgrades`:
+
+- `user` → `_id`, `firstName`, `lastName`, `email`, `phoneNumber`, `userName`
+- `referrer` → `_id`, `firstName`, `lastName`, `email`
+
+`phoneNumber` matters here specifically: a transfer upgrade often needs the
+admin to call the person about a mismatched payment reference.
+
+Same treatment for the two endpoints in ticket 9a.
+
+**Frontend status:** the upgrade queue is **not built** and is on hold pending
+this. Unlike the commission screens, this gap blocks the whole feature — there
+is no list, so there is nothing to approve or decline from.
+
+---
+
+## 14. The upgrade queue cannot be searched
+
+**Priority: medium — pairs with ticket 13.**
+
+`UpgradeQueryDto` supports `status`, `payment_method`, `to_tier`, `page` and
+`limit`. There is no `search`.
+
+**Scenario.** A user emails support: *"I paid for my Associate Pro upgrade
+three days ago and nothing has happened."* The admin opens the queue to find
+their request. With 200 pending rows and no search, the only options are
+paging through by hand or filtering to `pending` and scanning.
+
+Searching client-side is not possible for the same reason as ticket 13 — the
+names are not in the payload. Even after populate lands, filtering a single
+page of 20 would only search that page, not the queue.
+
+**Needed:** a `search` parameter on `UpgradeQueryDto` matching against the
+requesting user's name, email and username — the same regex-over-several-fields
+approach `AssetFilterDto` already uses.
+
+---
+
+## 15. Manual upgrade cannot record a fee or pay commission
+
+**Priority: high — an existing capability with no v2 equivalent.**
+
+### What v1 does
+
+`manualUpgradeToAssociatePro` lets an admin record an upgrade that was paid for
+off-platform:
+
+```
+email                  who to upgrade
+amount                 what they paid
+payCommission          whether the referrer earns on it
+commissionableAmount   what commission is calculated on
+paymentUrl             uploaded receipt
+```
+
+### What v2 does
+
+`manualUpgrade` is a different operation — a force-tier-change with an audit
+reason:
+
+```ts
+const upgrade = await this.referralRepo.createUpgrade({
+  user: target._id,
+  referrer: target.referred_by ?? null,
+  from_tier: target.referral_status,
+  to_tier: dto.to_tier,
+  fee_amount: 0,              // ← hardcoded
+  payment_method: 'admin-manual',
+  status: 'approved',
+  reviewed_by: …, reviewed_at: …,
+});
+```
+
+No fee, no Transaction, no commission. Useful in its own right, but it does not
+cover "this person paid us ₦20,000 by bank transfer, upgrade them and pay their
+referrer."
+
+### What we need
+
+Extend `ManualUpgradeDto` with:
+
+- `fee_amount` — optional, decimal naira. Absent means today's behaviour: a
+  free tier change.
+- `pay_commission` — optional boolean, default false.
+
+`reason` stays required at 20 characters.
+
+**Deliberately not included: no receipt upload.** When an admin records the
+payment, the admin is the evidence, and `reason` is the audit trail. Adding a
+file upload duplicates what the admin log should capture and puts a Cloudinary
+dependency on a money path. (User-initiated transfer upgrades still carry
+`file_url` — that is unchanged and still required there.)
+
+### The part that must not be missed
+
+**A fee without a Transaction row is money that exists nowhere.**
+
+If `fee_amount > 0`, the upgrade must also write a `Transaction`, the way an
+approved transfer upgrade does. Two reasons:
+
+1. The money has to be in the ledger. An upgrade record with `fee_amount:
+   20000` and no transaction means ₦20,000 was received and the books don't
+   show it.
+2. `fireForUpgrade` requires a `sourceTransactionId` — it is what the
+   commission idempotency index keys on. Without it, commission cannot be
+   fired safely.
+
+So the sequence should mirror `approveUpgrade`: create the transaction, create
+the upgrade referencing it, set the tier, then fire commission — all in one
+session.
+
+### Open question for the backend team
+
+v1 had `amount` **and** a separate `commissionableAmount`, so commission could
+be calculated on a different base than the fee actually paid — e.g. a
+discounted upgrade where the referrer still earns on the full price.
+
+Was that deliberate, or accidental? If there is no business rule behind it, one
+amount is simpler and commission comes off `fee_amount`. We have specified the
+simpler version above; say if the split is needed and we will add it.
+
+---
+
+## 16. The assets list cannot be sorted
+
+**Priority: low — a growing-catalogue problem, not a blocker.**
+
+`findAllPaginated` hard-codes the order and takes no sort parameter:
+
+```ts
+// asset.repository.ts:73
+this.assetModel.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).exec()
+```
+
+**Scenario.** The catalogue reaches 200 assets. An admin wants the ones closest
+to selling out, to decide what to restock — or simply to find "Palm Grove" by
+scanning alphabetically. Neither is possible; the only order is newest-first,
+and `available_units` is a virtual so it cannot even be sorted server-side
+without an aggregation.
+
+**Needed:** `sort` and `order` parameters on `AssetFilterDto`, covering at
+least `name`, `createdAt` and `sold_units`. Sorting on `available_units` needs
+an aggregation stage, so it is worth saying explicitly whether that is in
+scope.
+
+**Frontend status:** column headers are not clickable. The list ships
+newest-first.
+
+---
+
+## 17. Four asset capabilities the frontend has and the backend doesn't
+
+**Priority: mixed — the dangling `Plot` reference is the concerning one.**
+
+### 17a. There is no `Block` or `Plot` collection
+
+The v1 admin manages blocks and plots within an asset — `BlocksManager`,
+`useAssetBlocks`, `useCreateBlock`, `useBlockPlots`, `useCreatePlots`,
+`useAvailablePlotsForAsset`. None of it has a backend in v2.
+
+**And the backend already references the missing model.**
+`acquisition/schemas/payment-plan.schema.ts` declares:
+
+```ts
+plotId: { type: MongooseSchema.Types.ObjectId, ref: 'Plot' },
+block_label: { type: String },
+plot_number: { type: Number },
+```
+
+`ref: 'Plot'` points at a model that was never registered. A `.populate('plotId')`
+on that field would throw at runtime — this is not just a missing feature, it
+is a reference into nothing.
+
+`MarketplaceListing` similarly carries `block` and `plot` as loose strings.
+
+**Question for the backend team before anything is built:** is plot-level
+allocation a v2 concept at all? If it is, it needs a model and an admin
+surface. If it isn't, the dangling `ref: 'Plot'` and the loose block/plot
+strings should come out, because they currently imply a system that doesn't
+exist.
+
+### 17b. No asset analytics endpoint
+
+`AssetAnalyticsSection`, `InventoryHealthBar` and `AssetCategoryHealth` render
+portfolio and per-category statistics — total value, capacity, collection
+efficiency, occupancy, defaulting customers and amounts. There is no endpoint
+producing any of it.
+
+**Frontend interim:** those panels run on a local `sample-data.ts` fixture and
+each carries a visible **"Sample data"** chip, so fabricated figures cannot be
+mistaken for real ones in a screenshot.
+
+### 17c. No asset subscribers endpoint
+
+`SubscribedCustomers` lists who has bought into an asset. No controller in the
+codebase exposes subscribers.
+
+### 17d. No asset statements endpoint
+
+`SendAssetStatementsModal` sends statements to an asset's customers. What
+exists on the backend is an `AdminLog` action name (`'send-asset-statements'`)
+and an empty scheduler stub:
+
+```ts
+@Cron('0 9 1 * *', { timeZone: 'Africa/Lagos', name: 'monthly-statements' })
+async sendMonthlyStatements() {
+  this.logger.log('[CRON] sendMonthlyStatements');   // ← that's the whole body
+}
+```
+
+So the intent is recorded in two places and implemented in neither.
+
+---
+
+## 18. An asset can never gain a second offer
+
+**Priority: high — it undercuts the main point of the v2 asset model.**
+
+### What's missing
+
+The offer endpoints are:
+
+```
+PATCH  /admin/assets/:assetId/offers/:offerType          update an existing offer
+POST   /admin/assets/:assetId/offers/:offerType/sizes    add a size to an existing offer
+```
+
+There is **no `POST /admin/assets/:assetId/offers`**. Offers can only be
+created as part of `CreateAssetDto`, in the same request as the asset.
+
+### Why it matters
+
+The headline change in v2 is that an asset is a place and what it sells is an
+offer — so one asset can sell flex *and* full-ownership. `AssetOffer` is
+uniquely indexed on `(asset_id, offer_type)` precisely to allow that.
+
+But an asset created with one offer is locked to that offer permanently.
+
+**Scenario.** Aviation City launches with flex instalment plans. It sells well,
+and buyers start asking to purchase outright. Adding a full-ownership offer is
+the obvious move — and there is no way to do it.
+
+**And the workaround doesn't exist either.** Deleting and recreating is
+impossible once any unit has sold, and the asset name is uniquely indexed on
+non-deleted rows:
+
+```ts
+AssetSchema.index({ name: 1 }, { unique: true, collation: …,
+  partialFilterExpression: { deleted_at: null } });
+```
+
+So an admin cannot even create a parallel "Aviation City" alongside the
+original without soft-deleting the first, which hides it and strands everyone
+already paying into it.
+
+### What we need
+
+```
+POST /admin/assets/:assetId/offers
+  body:    { offer_type, is_active?, allocation_qualification_pct, payment_type?, sizes[] }
+  returns: the created offer
+  errors:  409 when an offer of that type already exists on the asset
+```
+
+Body shape is `OfferInputDto`, which already exists — it is what `CreateAssetDto`
+nests. The same validators apply: `payment_type` required for full-ownership,
+sizes validated for offer type, at least one size with at least one plan.
+
+**Frontend status:** the asset detail page shows no "Add offer" action, because
+there is nothing to call. The create form is currently the only place both
+offers can ever be defined, so it says so.
+
+---
+
+## 19. Plans can't be added, and a tenor can't be changed
+
+**Priority: medium — a workaround exists, but it can lose data.**
+
+### What's missing
+
+The plan endpoints address a plan by its **tenor**:
+
+```
+PATCH   …/sizes/:sizeId/plans/:tenor
+DELETE  …/sizes/:sizeId/plans/:tenor
+```
+
+There is no `POST …/plans`. And `UpdatePlanDto` explicitly excludes the tenor:
+
+```ts
+export class UpdatePlanDto extends PartialType(OmitType(PlanInputDto, ['tenor_months'] as const)) {}
+```
+
+So a plan's money can be edited in place, but **adding a plan** or **changing a
+tenor** has only one route: `PATCH …/sizes/:sizeId` with a complete
+replacement `plans[]`.
+
+### Why the workaround is risky
+
+Full-replacement makes every plan edit a read-modify-write over the size's
+entire plan list.
+
+**Scenario.** Two admins open the same 300sqm size. One adds a 48-month plan.
+The other, seconds later, corrects the deposit on the 12-month plan. The second
+save sends the plans array *as it was when they loaded the page* — without the
+48-month plan. It is silently gone, no error, no conflict.
+
+That is a lost update, and it gets more likely the more plans a size has.
+
+### What we need
+
+Either of:
+
+1. **`POST …/sizes/:sizeId/plans`** to add one plan, leaving the others alone —
+   the smaller change, and it removes the common case for full replacement.
+2. **Allow `tenor_months` in `UpdatePlanDto`**, rejecting a change that would
+   collide with an existing tenor on that size.
+
+(1) alone covers most of it. Both together remove the need for full-replace
+entirely.
+
+**Frontend status:** "Add plan" and any tenor change go through the size's
+full-replace endpoint. Because a tenor change is delete-and-recreate
+underneath, the UI warns that changing a tenor replaces the plan — otherwise
+the plan's history restarting later looks inexplicable.
+
+---
+
+## Not backend items — considered and dismissed
+
+Recorded so they aren't mistaken for gaps someone missed.
+
+These came out of the same review and are **frontend work**. Listed here only
+so the backend team can see they were considered and dismissed.
+
+- **Field renames.** `admin_status`→`status`, `transaction_type`→
+  `payment_method`, `user_upgrade_type`→`from_tier`/`to_tier`,
+  `associate`→`referrer`, and `file_Url`→`file_url` (the frontend spells it
+  with a capital U). Ours to fix.
+- **The payment receipt already exists.** `file_url`, `bank_name` and
+  `reference_no` are on `ReferralUpgrade` and `findUpgradesPaginated` applies no
+  projection, so they are already returned. The approval screen must display
+  the receipt — that is a frontend requirement, not a backend one.
+- **Change tier, reassign referrer, downline tree, force-upgrade.** All
+  implemented and all currently unused by the frontend. They are
+  user-management operations and belong on a user detail page rather than an
+  approval queue, so they are deferred — not missing.
+
+---

@@ -1,8 +1,20 @@
+import type { OfferType, Visibility } from '../schemas/asset.schema';
+
+/** Mirrors `AssetFilterDto`. */
+export type AssetListFilters = {
+  search?: string;
+  visibility?: Visibility;
+  offer_type?: OfferType;
+  sold?: boolean;
+  include_deleted?: boolean;
+  page?: number;
+  limit?: number;
+};
+
 export const assetKeys = {
   all: ['assets'] as const,
   lists: () => [...assetKeys.all, 'list'] as const,
-  list: (params?: { page?: number; limit?: number }) =>
-    [...assetKeys.lists(), params] as const,
+  list: (params?: AssetListFilters) => [...assetKeys.lists(), params ?? {}] as const,
   details: () => [...assetKeys.all, 'detail'] as const,
   detail: (id: string) => [...assetKeys.details(), id] as const,
   inventory: () => [...assetKeys.all, 'inventory'] as const,

@@ -21,10 +21,11 @@ import {
   LogOut,
   Percent,
   ScrollText,
-  Settings,
   ShieldCheck,
   ShoppingCart,
+  SlidersHorizontal,
   Store,
+  Tags,
   TrendingUp,
   Upload,
   UserPlus,
@@ -82,7 +83,18 @@ const navGroups = [
       { name: "Topup", link: "/transactions/topup", icon: <Upload /> },
       { name: "Asset", link: "/transactions/assets", icon: <BarChart3 /> },
       { name: "Document", link: "/transactions/document", icon: <FileText /> },
-      { name: "Commission", link: "/transactions/commission", icon: <Percent /> },
+      // "Payouts" rather than "Commission": this lists commission payout
+      // transactions, and the Commission section below owns rates and overrides.
+      { name: "Commission Payouts", link: "/transactions/commission", icon: <Percent /> },
+    ]
+  },
+  {
+    title: "Commission",
+    isCollapsible: true,
+    icon: <SlidersHorizontal />,
+    items: [
+      { name: "Rates", link: "/commission/rates", icon: <Percent /> },
+      { name: "Overrides", link: "/commission/overrides", icon: <Tags /> },
     ]
   },
   {
@@ -102,14 +114,6 @@ const navGroups = [
     items: [
       { name: "Admin Logs", link: "/security/adminlogs", icon: <ScrollText /> },
       { name: "Roles and Permissions", link: "/security/roles", icon: <ShieldCheck /> },
-    ]
-  },
-  {
-    title: "Settings",
-    isCollapsible: true,
-    icon: <Settings />,
-    items: [
-      { name: "Commission Config", link: "/settings/commission-config", icon: <Percent /> },
     ]
   }
 ];

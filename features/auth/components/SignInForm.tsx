@@ -1,17 +1,17 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { signInSchema, type SignInValues } from "@/lib/schemas/auth";
-import { useAuthStore } from "@/store/auth-store";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { useState } from "react";
-import { Loader2 } from "lucide-react";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
+
+import { signInSchema, type SignInValues } from "../schemas/auth.schema";
+import { useAdminLogin } from "../hooks/use-admin-login";
+
 import { Button } from "@/components/ui/button";
-import Cookies from "js-cookie";
 import {
   Form,
   FormControl,
@@ -21,40 +21,10 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { executeRaw } from "@/lib/graphql-client";
-
-type SigninAdminResponse = {
-  authToken: string;
-  role?: string;
-  permissions?: string[];
-};
-
-async function signinAdminClient(email: string, password: string): Promise<SigninAdminResponse> {
-  const query = `
-    mutation SigninAdmin($signinAdminInput: adminSigninInput!) {
-      signinAdmin(signinAdminInput: $signinAdminInput) {
-        authToken
-        role
-        permissions
-      }
-    }
-  `;
-
-  const data = await executeRaw<{ signinAdmin?: SigninAdminResponse }>(query, {
-    signinAdminInput: { email, password },
-  });
-
-  if (!data?.signinAdmin?.authToken) {
-    throw new Error("Login failed");
-  }
-
-  return data.signinAdmin;
-}
 
 export function SignInForm() {
   const router = useRouter();
-  const { login } = useAuthStore();
-  const [isLoading, setIsLoading] = useState(false);
+  const login = useAdminLogin();
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -66,60 +36,19 @@ export function SignInForm() {
     },
   });
 
-  async function onSubmit(data: SignInValues) {
-    setIsLoading(true);
+  function onSubmit(values: SignInValues) {
     setError(null);
-    try {
-      const result = await signinAdminClient(data.email, data.password);
-      const role = result.role || "admin";
-      const permissions = result.permissions || [];
 
-      Cookies.set("adminAccessToken", result.authToken, {
-        expires: 1,
-        sameSite: "lax",
-        secure: window.location.protocol === "https:",
-      });
-      Cookies.set("accessToken", result.authToken, {
-        expires: 1,
-        sameSite: "lax",
-        secure: window.location.protocol === "https:",
-      });
-      Cookies.set(
-        "user",
-        JSON.stringify({
-          email: data.email,
-          role,
-          permissions,
-        }),
-        {
-          expires: 1,
-          sameSite: "lax",
-          secure: window.location.protocol === "https:",
-        }
-      );
-      Cookies.set("adminRole", role, {
-        expires: 1,
-        sameSite: "lax",
-        secure: window.location.protocol === "https:",
-      });
-
-      login({
-        id: "admin",
-        email: data.email,
-        firstName: "Admin",
-        lastName: "User",
-        role,
-        permissions,
-        authToken: result.authToken,
-      });
-
-      router.push("/");
-    } catch (err: any) {
-      console.error(err);
-      setError(err?.message || "An unexpected error occurred.");
-    } finally {
-      setIsLoading(false);
-    }
+    login.mutate(values, {
+      onSuccess: (result) => {
+        // While must_change_password is set the BE 403s every other admin
+        // route, so the dashboard would render nothing but failures.
+        router.push(result.admin.must_change_password ? "/change-password" : "/");
+      },
+      onError: (err) => {
+        setError(err.message || "An unexpected error occurred.");
+      },
+    });
   }
 
   return (
@@ -141,6 +70,7 @@ export function SignInForm() {
                 <FormControl>
                   <Input
                     placeholder="Ex. you@example.com"
+                    autoComplete="email"
                     {...field}
                     className="h-auto py-[1.1rem] bg-input border-none rounded-md text-sm pl-4"
                   />
@@ -161,6 +91,7 @@ export function SignInForm() {
                     <Input
                       type={showPassword ? "text" : "password"}
                       placeholder="Type Here"
+                      autoComplete="current-password"
                       {...field}
                       className="h-auto py-[1.1rem] bg-input border-none rounded-md text-sm pl-4 pr-10"
                     />
@@ -185,9 +116,9 @@ export function SignInForm() {
           <Button
             type="submit"
             className="w-full mt-4 min-h-15.25 bg-linear-to-r from-(--auth-btn-start) to-(--auth-btn-end) hover:opacity-90 text-white rounded-md font-semibold text-sm"
-            disabled={isLoading}
+            disabled={login.isPending}
           >
-            {isLoading ? (
+            {login.isPending ? (
               <>
                 Loading <Loader2 className="ml-2 h-6 w-6 animate-spin text-white" />
               </>
@@ -199,7 +130,7 @@ export function SignInForm() {
       </Form>
 
       <p className="text-center font-medium text-[0.9375rem] text-primary mt-8">
-        <Link href="/forgot-password">Can’t login?</Link>
+        <Link href="/forgot-password">Can&apos;t login?</Link>
       </p>
     </div>
   );

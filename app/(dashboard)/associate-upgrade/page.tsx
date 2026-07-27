@@ -1,188 +1,109 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { PageContentLoader, SuspensePageFallback } from "@/components/shared/page-content-loader";
-import { toast } from "sonner";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Info } from "lucide-react";
 
-import {
-  DEFAULT_UPGRADE_LIMIT,
-  useUpgradeRequests,
-  useApproveUpgrade,
-  useDeclineUpgrade,
-  CreateUpgradeTransactionDialog,
-} from "@/features/associate-upgrade";
-import {
-  UpgradeFilters,
-  UpgradeTable,
-  UpgradeExportButton,
-  ConfirmDialog,
-  UpgradeRowFragment,
-} from "@/features/associate-upgrade";
-import { FragmentType, useFragment as getFragmentData } from "@/lib/gql";
 import { Pagination } from "@/components/shared/Pagination";
+import { PageContentLoader } from "@/components/shared/page-content-loader";
+import {
+  ApproveUpgradeDialog,
+  DeclineUpgradeDialog,
+  DEFAULT_UPGRADE_LIMIT,
+  UpgradeFilters,
+  UpgradesTable,
+  useUpgrades,
+  type Upgrade,
+  type UpgradePaymentMethod,
+  type UpgradeStatus,
+  type UserTier,
+} from "@/features/upgrades";
 
-function AssociateUpgradeContent() {
+function EmptyState({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="rounded-md border border-dashed p-8 text-center">
+      <p className="font-medium">{title}</p>
+      <p className="mt-1 text-sm text-muted-foreground">{body}</p>
+    </div>
+  );
+}
+
+function UpgradesPageContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
 
   const page = Number(searchParams.get("page")) || 1;
-  const statusParam = searchParams.get("adminStatus") ?? searchParams.get("status");
-  const searchParam = searchParams.get("search") || "";
+  const status = (searchParams.get("status") as UpgradeStatus) ?? undefined;
+  const paymentMethod = (searchParams.get("payment_method") as UpgradePaymentMethod) ?? undefined;
+  const toTier = (searchParams.get("to_tier") as UserTier) ?? undefined;
 
-  const [search, setSearch] = useState(searchParam);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [confirmMode, setConfirmMode] = useState<"approve" | "decline">("approve");
-  const [activeRow, setActiveRow] = useState<FragmentType<typeof UpgradeRowFragment> | null>(null);
+  const [approving, setApproving] = useState<Upgrade | null>(null);
+  const [declining, setDeclining] = useState<Upgrade | null>(null);
 
-  const { data, isLoading, error } = useUpgradeRequests({
+  const { data, isLoading, error } = useUpgrades({
     page,
     limit: DEFAULT_UPGRADE_LIMIT,
-    adminStatus: statusParam,
-    search: searchParam || null,
+    status,
+    payment_method: paymentMethod,
+    to_tier: toTier,
   });
 
-  const { mutateAsync: approveUpgrade, isPending: approving } = useApproveUpgrade();
-  const { mutateAsync: declineUpgrade, isPending: declining } = useDeclineUpgrade();
-
-  // Search is handled server-side via the `search` query arg; just drop nulls.
-  const upgradeRequests = useMemo(
-    () =>
-      (data?.upgradeRequests ?? []).filter(
-        (item): item is NonNullable<typeof item> => item !== null
-      ),
-    [data?.upgradeRequests]
-  );
-
-  const updateParams = useCallback(
-    (next: Record<string, string | number | null | undefined>, options?: { replace?: boolean }) => {
-      const params = new URLSearchParams(searchParams.toString());
-      Object.entries(next).forEach(([key, value]) => {
-        if (value === null || value === undefined || value === "") {
-          params.delete(key);
-        } else {
-          params.set(key, String(value));
-        }
-      });
-      const query = params.toString();
-      const url = query ? `?${query}` : "";
-      const nav = { scroll: false as const };
-      if (options?.replace) {
-        router.replace(url, nav);
-      } else {
-        router.push(url, nav);
-      }
-    },
-    [router, searchParams]
-  );
-
-  // debounce search syncing to URL
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (search !== searchParam) {
-        updateParams({ search: search || null, page: 1 }, { replace: true });
-      }
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [search, searchParam, updateParams]);
-
-  const handleStatusChange = (value: string | null) => {
-    updateParams({ adminStatus: value, page: 1 });
-  };
-
-  const openConfirm = (mode: "approve" | "decline", row: FragmentType<typeof UpgradeRowFragment>) => {
-    setConfirmMode(mode);
-    setActiveRow(row);
-    setConfirmOpen(true);
-  };
-
-  const handleConfirm = async () => {
-    if (!activeRow) return;
-    const upgrade = getFragmentData(UpgradeRowFragment, activeRow);
-    const id = upgrade.user?._id;
-    const upgradeType = upgrade.user_upgrade_type;
-
-    try {
-      if (confirmMode === "approve") {
-        if (!id) throw new Error("Invalid user ID for upgrade request");
-        await approveUpgrade({ id, upgradeType });
-        toast.success("Upgrade approved");
-      } else {
-        if (!id) throw new Error("Invalid user ID for upgrade request");
-        await declineUpgrade(id);
-        toast.success("Upgrade declined");
-      }
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Action failed");
-    } finally {
-      setConfirmOpen(false);
-    }
-  };
+  const rows = data?.items ?? [];
+  const total = data?.meta.total ?? 0;
+  const hasFilters = Boolean(status || paymentMethod || toTier);
 
   if (error) {
     return (
-      <div className="mx-auto w-full min-w-0 max-w-[1600px] px-3 sm:px-4">
-        <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-500">
-          <h3 className="font-bold">Error loading upgrade requests</h3>
-          <p>{(error as Error).message || "An unexpected error occurred."}</p>
-        </div>
+      <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-500">
+        <h3 className="font-bold">Error loading upgrade requests</h3>
+        <p>{error.message}</p>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto mt-4 w-full min-w-0 max-w-[1600px] space-y-4 px-3 pb-16 sm:space-y-6 sm:px-4 sm:pb-20">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Associate Upgrade Requests</h1>
-          <p className="text-sm text-muted-foreground sm:text-base">
-            Review and manage associate/associate-pro upgrade submissions.
-          </p>
-        </div>
-        <div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end">
-          <UpgradeExportButton adminStatus={statusParam} search={searchParam} />
-          <CreateUpgradeTransactionDialog />
-          <Button asChild className="w-full shrink-0 sm:w-auto">
-            <Link href="/associate-upgrade/coupons">Coupon Management</Link>
-          </Button>
-        </div>
-      </div>
+    <div className="space-y-4">
+      <UpgradeFilters />
 
-      <UpgradeFilters
-        search={search}
-        status={statusParam}
-        onSearchChange={setSearch}
-        onStatusChange={handleStatusChange}
+      {/*
+        ⛔ ticket 13 — applicant and referrer names aren't populated yet, so
+        they render as em-dashes. Said out loud so the blanks read as a known
+        gap rather than as missing data.
+      */}
+      <p className="flex items-start gap-2 text-sm text-muted-foreground">
+        <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+        Applicant and referrer names aren&apos;t available from the API yet — they show as
+        &ldquo;—&rdquo;. Hover one to copy its ID. Everything else on the row is live.
+      </p>
+
+      <UpgradesTable
+        rows={rows}
+        isLoading={isLoading}
+        onApprove={setApproving}
+        onDecline={setDeclining}
+        emptyState={
+          hasFilters ? (
+            <EmptyState
+              title="No upgrades match these filters"
+              body="Clear or widen the filters to see the rest of the queue."
+            />
+          ) : (
+            <EmptyState
+              title="Nothing in the queue"
+              body="Upgrade requests appear here as members submit them."
+            />
+          )
+        }
       />
 
-      {isLoading ? (
-        <PageContentLoader label="Loading upgrade requests…" />
-      ) : (
-        <>
-          <UpgradeTable
-            data={upgradeRequests}
-            onApprove={(row) => openConfirm("approve", row)}
-            onDecline={(row) => openConfirm("decline", row)}
-          />
+      <Pagination count={total} currentIdx={page} limit={DEFAULT_UPGRADE_LIMIT} />
 
-          <Pagination
-            count={data?.pagination.totalCount ?? 0}
-            currentIdx={data?.pagination.currentPage ?? page}
-            limit={data?.pagination.limit ?? DEFAULT_UPGRADE_LIMIT}
-          />
-        </>
-      )}
-
-      <ConfirmDialog
-        open={confirmOpen}
-        onOpenChange={setConfirmOpen}
-        title={confirmMode === "approve" ? "Approve upgrade" : "Decline upgrade"}
-        description="This action will update the user's upgrade request status."
-        actionLabel={confirmMode === "approve" ? "Approve" : "Decline"}
-        loading={confirmMode === "approve" ? approving : declining}
-        onConfirm={handleConfirm}
+      <ApproveUpgradeDialog
+        upgrade={approving}
+        onOpenChange={(next) => (next ? undefined : setApproving(null))}
+      />
+      <DeclineUpgradeDialog
+        upgrade={declining}
+        onOpenChange={(next) => (next ? undefined : setDeclining(null))}
       />
     </div>
   );
@@ -190,8 +111,18 @@ function AssociateUpgradeContent() {
 
 export default function AssociateUpgradePage() {
   return (
-    <Suspense fallback={<SuspensePageFallback />}>
-      <AssociateUpgradeContent />
-    </Suspense>
+    <div className="mx-auto mt-4 w-full min-w-0 max-w-[1600px] space-y-6 px-3 pb-16 sm:px-4 sm:pb-20">
+      <div className="min-w-0">
+        <h1 className="text-2xl font-bold tracking-tight">Associate upgrades</h1>
+        <p className="text-muted-foreground">
+          Review upgrade requests. Approving moves the applicant to the new tier, completes their
+          payment, and pays referral commission.
+        </p>
+      </div>
+
+      <Suspense fallback={<PageContentLoader label="Loading upgrade requests…" />}>
+        <UpgradesPageContent />
+      </Suspense>
+    </div>
   );
 }

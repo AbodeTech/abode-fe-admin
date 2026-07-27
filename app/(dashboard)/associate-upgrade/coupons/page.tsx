@@ -1,10 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useCoupons, useUpdateCouponStatus, useDeleteCoupon, useUpdateCoupon } from "@/features/associate-upgrade/hooks/use-coupons";
-import { CouponsTable } from "@/features/associate-upgrade/components/coupons/CouponsTable";
-import { CouponFilters } from "@/features/associate-upgrade/components/coupons/CouponFilters";
-import { CreateCouponDialog } from "@/features/associate-upgrade/components/coupons/CreateCouponDialog";
+import {
+  CouponFilters,
+  CouponsTable,
+  CreateCouponDialog,
+  useCoupons,
+  useDeleteCoupon,
+  useUpdateCoupon,
+  useUpdateCouponStatus,
+} from "@/features/coupons";
 import { toast } from "sonner";
 
 export default function CouponsPage() {

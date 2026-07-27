@@ -2,29 +2,9 @@
 
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { graphql, FragmentType, useFragment } from "@/lib/gql";
 
-export const AssetCategoryHealthFragment = graphql(`
-  fragment AssetCategoryHealth_statistics on AssetInventoryStatistics {
-    categories {
-      category
-      activeAssetCount
-      totalSqm
-      grossRevenue
-      collectionEfficiency
-      occupancyRate
-      totalValueSold
-      totalSqmSold
-      totalMoneyReceived
-      totalBalance
-      defaulting {
-        defaultedAssetValue
-        defaultersPaid
-        defaultersOwing
-      }
-    }
-  }
-`);
+import { SampleDataChip } from "./analytics/SampleDataChip";
+import type { CategoryStats } from "./analytics/sample-data";
 
 function formatNaira(value: number | null | undefined): string {
   if (value == null || value === 0) return "₦0";
@@ -167,50 +147,43 @@ function CategoryCard({
 }
 
 interface Props {
-  data: FragmentType<typeof AssetCategoryHealthFragment> | null | undefined;
+  /** ⛔ ticket 17 — no analytics endpoint exists; this is `SAMPLE_CATEGORIES`. */
+  data: CategoryStats[];
 }
 
+const ACCENTS = ["oklch(var(--primary))", "rgb(59 130 246)"];
+
 export function AssetCategoryHealth({ data }: Props) {
-  const stats = useFragment(AssetCategoryHealthFragment, data);
-  const categories = stats?.categories ?? [];
-
-  const flex = categories.find((c) => c?.category === "flex");
-  const fullOwnership = categories.find((c) => c?.category === "full-ownership");
-
   return (
-    <div className="mb-8 flex min-w-0 flex-col gap-6 lg:mb-12 lg:flex-row lg:items-stretch">
-      <CategoryCard
-        title="Flex Assets"
-        count={flex?.activeAssetCount ?? 0}
-        sqm={formatSqm(flex?.totalSqm)}
-        revenue={formatNaira(flex?.grossRevenue)}
-        efficiency={flex?.collectionEfficiency ?? 0}
-        occupancy={flex?.occupancyRate ?? 0}
-        accentColor="oklch(var(--primary))"
-        valueSold={formatNaira(flex?.totalValueSold)}
-        sqmSold={formatSqm(flex?.totalSqmSold)}
-        moneyReceived={formatNaira(flex?.totalMoneyReceived)}
-        totalBalance={formatNaira(flex?.totalBalance)}
-        defaultedAssetValue={formatNaira(flex?.defaulting?.defaultedAssetValue)}
-        defaultersPaid={formatNaira(flex?.defaulting?.defaultersPaid)}
-        defaultersOwing={formatNaira(flex?.defaulting?.defaultersOwing)}
-      />
-      <CategoryCard
-        title="Full Ownership"
-        count={fullOwnership?.activeAssetCount ?? 0}
-        sqm={formatSqm(fullOwnership?.totalSqm)}
-        revenue={formatNaira(fullOwnership?.grossRevenue)}
-        efficiency={fullOwnership?.collectionEfficiency ?? 0}
-        occupancy={fullOwnership?.occupancyRate ?? 0}
-        accentColor="rgb(59 130 246)"
-        valueSold={formatNaira(fullOwnership?.totalValueSold)}
-        sqmSold={formatSqm(fullOwnership?.totalSqmSold)}
-        moneyReceived={formatNaira(fullOwnership?.totalMoneyReceived)}
-        totalBalance={formatNaira(fullOwnership?.totalBalance)}
-        defaultedAssetValue={formatNaira(fullOwnership?.defaulting?.defaultedAssetValue)}
-        defaultersPaid={formatNaira(fullOwnership?.defaulting?.defaultersPaid)}
-        defaultersOwing={formatNaira(fullOwnership?.defaulting?.defaultersOwing)}
-      />
+    <div className="mb-8 min-w-0 space-y-3 lg:mb-12">
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          Category health
+        </p>
+        <SampleDataChip />
+      </div>
+
+      <div className="flex min-w-0 flex-col gap-6 lg:flex-row lg:items-stretch">
+        {data.map((category, index) => (
+          <CategoryCard
+            key={category.title}
+            title={category.title}
+            count={category.count}
+            sqm={formatSqm(category.sqm)}
+            revenue={formatNaira(category.revenue)}
+            efficiency={category.efficiency}
+            occupancy={category.occupancy}
+            accentColor={ACCENTS[index % ACCENTS.length]}
+            valueSold={formatNaira(category.valueSold)}
+            sqmSold={formatSqm(category.sqmSold)}
+            moneyReceived={formatNaira(category.moneyReceived)}
+            totalBalance={formatNaira(category.totalBalance)}
+            defaultedAssetValue={formatNaira(category.defaulting.defaultedAssetValue)}
+            defaultersPaid={formatNaira(category.defaulting.defaultersPaid)}
+            defaultersOwing={formatNaira(category.defaulting.defaultersOwing)}
+          />
+        ))}
+      </div>
     </div>
   );
 }
