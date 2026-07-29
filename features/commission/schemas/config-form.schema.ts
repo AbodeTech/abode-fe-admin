@@ -56,6 +56,12 @@ export const configFormSchema = z.object({
   upgrade_commission_pct: percentField,
   associate_pro_fee: amountField,
   high_commission_alert_threshold: amountField,
+  /**
+   * Required since 2026-07-28 — the BE records it on the version
+   * (`@IsNotEmpty`), and the history screen displays it. The BE only demands
+   * non-empty; no stricter rule is invented here.
+   */
+  reason: z.string().trim().min(1, 'Say why this change is being published'),
 });
 
 export type ConfigFormValues = z.infer<typeof configFormSchema>;
@@ -114,6 +120,9 @@ export function configToForm(config: CommissionConfig): ConfigFormValues {
     upgrade_commission_pct: toPercentInput(config.upgrade_commission_pct),
     associate_pro_fee: config.associate_pro_fee,
     high_commission_alert_threshold: config.high_commission_alert_threshold,
+    // Always seeded empty — a new version needs its own justification, not
+    // the previous one's.
+    reason: '',
   };
 }
 
@@ -136,6 +145,7 @@ export type PublishConfigPayload = {
   upgrade_commission_pct: number;
   associate_pro_fee: number;
   high_commission_alert_threshold: number;
+  reason: string;
 };
 
 export function formToPayload(values: ConfigFormValues): PublishConfigPayload {
@@ -155,5 +165,6 @@ export function formToPayload(values: ConfigFormValues): PublishConfigPayload {
     // Money passes through untouched — decimal naira, no ×100 anywhere.
     associate_pro_fee: values.associate_pro_fee,
     high_commission_alert_threshold: values.high_commission_alert_threshold,
+    reason: values.reason.trim(),
   };
 }

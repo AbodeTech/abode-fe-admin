@@ -13,18 +13,17 @@ import {
 } from '../schemas/auth.schema';
 
 /* ============================================================
- * Admin password recovery — PROVISIONAL.
+ * Admin password recovery.
  *
- * abode-be-v2 has NO admin recovery endpoints. `forgotPassword` looks up
- * `findUserByEmail` and `resetPassword` verifies a 'user'-audience token, so
- * neither works for an admin: admins live in a separate collection and carry
- * an 'admin'-audience token.
+ * Backed for real since 2026-07-28 (ticket 1 resolved) — the BE shipped
+ * `/auth/admin/forgot-password`, `/auth/admin/verify-otp` and
+ * `/auth/admin/reset-password`, with admin-audience scoped tokens
+ * (`purpose: reset-password` → `purpose: reset-grant`). Response shapes below
+ * verified against both the NestJS source and live calls to the deployment.
  *
- * The paths below mirror the BE's existing user flow one-for-one, so the
- * server-side work is mostly swapping the repository lookup. Until they ship,
- * these resolve in mock mode only and 404 against a real backend.
- *
- * Contract and rationale: docs/BACKEND-REQUESTS.md
+ * The forgot step is enumeration-safe: an unregistered address still returns
+ * 200 with a (useless) resetToken, so success must never be presented as
+ * proof the account exists.
  * ============================================================ */
 
 /**

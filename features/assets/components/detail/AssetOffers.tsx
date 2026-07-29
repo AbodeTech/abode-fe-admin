@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { Info, Loader2, MoreVertical, Pencil, Plus } from "lucide-react";
+import { Loader2, MoreVertical, Pencil, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,7 @@ import {
 import { formatNaira } from "@/lib/utils/format";
 import { cn } from "@/lib/utils";
 
-import { OFFER_TYPE_LABELS } from "../../schemas/asset.schema";
+import { OFFER_TYPES, OFFER_TYPE_LABELS } from "../../schemas/asset.schema";
 import { sortedPlans, type Offer, type Plan, type Size } from "../../schemas/asset-detail.schema";
 import {
   DropdownMenu,
@@ -331,8 +331,13 @@ function OfferCard({ assetId, offer }: { assetId: string; offer: Offer }) {
 export function AssetOffers() {
   const params = useParams<{ id: string }>();
   const { data: asset } = useAssetDetail(params.id);
+  const openOfferEdit = useAssetFormStore((state) => state.openOfferEdit);
 
   if (!asset) return null;
+
+  const missingOfferTypes = OFFER_TYPES.filter(
+    (offerType) => !asset.offers.some((offer) => offer.offer_type === offerType)
+  );
 
   return (
     <div className="space-y-4">
@@ -349,22 +354,18 @@ export function AssetOffers() {
         ))
       )}
 
-      {/*
-        ⛔ ticket 18 — there is no POST …/offers, so an asset can never gain an
-        offer it wasn't created with. Said out loud rather than shown as a
-        disabled "Add offer" button, because the constraint belongs at create
-        time and an admin needs to know that now, not when they try.
-      */}
-      {asset.offers.length < 2 ? (
-        <p className="flex items-start gap-2 rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-          <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-          This asset sells{" "}
-          {asset.offers.map((offer) => OFFER_TYPE_LABELS[offer.offer_type]).join(" and ") ||
-            "nothing"}{" "}
-          only. A second offer type can&apos;t be added later — the API has no endpoint for it, so
-          both have to be set when the asset is created.
-        </p>
-      ) : null}
+      {/* Ticket 18 resolved 2026-07-28 — the missing offer type can now be added. */}
+      {missingOfferTypes.map((offerType) => (
+        <button
+          key={offerType}
+          type="button"
+          onClick={() => openOfferEdit({ kind: "add-offer", offerType })}
+          className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed p-4 text-sm text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+        >
+          <Plus className="h-4 w-4" aria-hidden />
+          Add {OFFER_TYPE_LABELS[offerType].toLowerCase()} — this asset doesn&apos;t sell it yet
+        </button>
+      ))}
 
       <OfferEditDialogs asset={asset} />
     </div>

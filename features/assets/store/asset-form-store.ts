@@ -32,6 +32,8 @@ export type UploadEntry = {
  * A missing `sizeId` or `tenor` means "add"; present means "edit".
  */
 export type OfferEditTarget =
+  /** The one target whose offer doesn't exist yet — `offerType` is the type being added. */
+  | { kind: 'add-offer'; offerType: string }
   | { kind: 'offer'; offerType: string }
   | { kind: 'size'; offerType: string; sizeId?: string }
   | { kind: 'plan'; offerType: string; sizeId: string; tenor?: number }

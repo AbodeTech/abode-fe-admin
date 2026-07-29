@@ -149,12 +149,9 @@ export const emptyAssetOverrideForm = (): AssetOverrideFormValues => ({
  * These name a person, so tier no longer decides — each leg is a single
  * number rather than a tier table.
  *
- * ⛔ ticket 8 — the backend stores one flat `rate` on both collections, with
- * no way to say which leg it overrides. `upline` and `topline` are modelled
- * here so the UI is right, but `subjectFormToPayload` sends only `direct`
- * while the backend cannot represent the rest. It does **not** quietly fold
- * three values into one — the dialog disables those inputs so nothing an
- * admin typed is ever dropped.
+ * Per-leg (`direct` / `upline` / `topline`) since 2026-07-28, when ticket 8
+ * resolved. The form modelled all three legs from the start, so resolving the
+ * ticket meant enabling the inputs and changing the payload — not a redesign.
  * ============================================================ */
 
 export const subjectOverrideFormSchema = z
@@ -169,26 +166,33 @@ export const subjectOverrideFormSchema = z
     reason: z.string().max(500, 'Keep the reason under 500 characters').optional(),
     expires_at: z.string().optional(),
   })
-  .refine((values) => values.direct !== undefined, {
-    message: 'Enter a direct rate',
-    path: ['direct'],
-  });
+  // At least one leg — an override with no rates would beat lower levels of
+  // the chain with nothing. Any single leg is legitimate on its own: a
+  // full-ownership upline-only override leaves direct falling through.
+  .refine(
+    (values) =>
+      values.direct !== undefined || values.upline !== undefined || values.topline !== undefined,
+    { message: 'Enter a rate for at least one leg', path: ['direct'] }
+  );
 
 export type SubjectOverrideFormValues = z.input<typeof subjectOverrideFormSchema>;
 export type SubjectOverrideFormOutput = z.output<typeof subjectOverrideFormSchema>;
 
 /**
- * `CreateUserOverrideDto` / `CreateAssetUserOverrideDto`.
+ * `CreateUserOverrideDto` / `CreateAssetUserOverrideDto` — per-leg since
+ * 2026-07-28 (ticket 8 resolved; the DTOs extend `TierRatesDto`).
  *
- * `rate` is the current single-leg field. Once ticket 8 lands it becomes
- * `direct` / `upline` / `topline`, and this type changes with it — the form
- * above already models the target.
+ * The old single `rate` field is **gone from the DTO**, so sending it is a
+ * hard 400 under `forbidNonWhitelisted`. The BE ships a migration script that
+ * rewrites stored `rate` values into `direct`, so reads see per-leg too.
  */
 export type SubjectOverridePayload = {
   user_id: string;
   asset_id?: string;
   offer_type: z.infer<typeof OfferTypeSchema>;
-  rate: number;
+  direct?: number;
+  upline?: number;
+  topline?: number;
   reason?: string;
   expires_at?: string;
 };
@@ -201,8 +205,9 @@ export function subjectFormToPayload(
     user_id: values.user_id,
     ...(options.includeAsset && values.asset_id ? { asset_id: values.asset_id } : {}),
     offer_type: values.offer_type,
-    // Guaranteed present by the refine above.
-    rate: toFraction(values.direct as number),
+    ...(values.direct !== undefined && { direct: toFraction(values.direct) }),
+    ...(values.upline !== undefined && { upline: toFraction(values.upline) }),
+    ...(values.topline !== undefined && { topline: toFraction(values.topline) }),
     ...(values.reason?.trim() && { reason: values.reason.trim() }),
     ...(values.expires_at && { expires_at: new Date(values.expires_at).toISOString() }),
   };

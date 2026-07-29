@@ -45,7 +45,8 @@
       "Bash(echo \"TSC exit: $?\")",
       "Bash(echo \"ESLINT exit: $?\")",
       "Bash(NEXT_PUBLIC_USE_MOCKS=true npx next build)",
-      "Bash(echo \"=== BUILD exit: $? ===\")"
+      "Bash(echo \"=== BUILD exit: $? ===\")",
+      "Bash(curl -s -m 20 -X POST -H 'Content-Type: application/json' -d '{\"email\":\"probe@example.com\"}' https://abode-be-v2-production.up.railway.app/api/v1/auth/admin/forgot-password)"
     ]
   }
 }

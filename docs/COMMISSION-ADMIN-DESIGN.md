@@ -535,18 +535,16 @@ endpoint alongside the upsert. Not requested.
 
 ### Status
 
-Steps 1–7 are **done** — schemas, rates read/publish, the overrides list, all
-three override dialogs, and revoke.
+**All eleven steps are done.** Steps 1–7 shipped first; 8–11 were held on
+backend gaps and unblocked on 2026-07-28 when the commission-fixes merge
+resolved tickets 6, 8, 9a, 9b, 11 and 12 in one drop:
 
-Steps 8 and 9 are **on hold**, both blocked on backend gaps rather than on
-frontend work:
-
-| Step | Blocked on | Why it isn't built |
-|---|---|---|
-| 8 — Plan audit | ticket 9a | Every identity field on the audit response is a bare ObjectId, and three of the four are users, so `GET /admin/users` (ticket 2) can't resolve them either. A screen whose job is explaining a payout to a person cannot do that with three ObjectIds. |
-| 9 — Version history | ticket 11 | The backend records no change metadata — no changer name, no changed-field list, no reason, and the publish DTO won't accept one. History could show version and date and nothing else. |
-
-Steps 10 and 11 remain blocked on tickets 9b and 8 as before.
+| Step | Landed as |
+|---|---|
+| 8 — Plan audit | `/commission/audit` (lookup) + `/commission/audit/[planId]` (`PlanAuditView`). The response is now shaped **and** populated — note its refs use `id`, not `_id`, unlike the overrides list |
+| 9 — Version history | `ConfigHistory` on the rates page — reason, changed-field chips, publisher, client-side diff per D-8. Publish now **requires** a reason |
+| 10 — Preview | `PreviewPanel` on the overrides page rather than inside the dialogs: the endpoint requires user + asset + offer type, and only the asset+user dialog has all three. A standalone panel serves every case |
+| 11 — Per-leg inputs | Enabled in `SubjectOverrideDialog`; payload sends `direct`/`upline`/`topline`. The old flat `rate` **no longer parses** server-side |
 
 **Not built rather than built-and-degraded.** Both were held deliberately: the
 backend is mid-rebuild, so these are scheduling items for that team, not

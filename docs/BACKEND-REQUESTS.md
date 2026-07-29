@@ -8,34 +8,71 @@ Target: `abode-be-v2`, branch `staging`, base path `/api/v1`.
 
 ---
 
-## Verified against the deployment — 2026-07-27
+## Verified against the deployment — 2026-07-28 (first check 2026-07-27)
 
 Checked against the live Swagger spec at
 `https://abode-be-v2-production.up.railway.app/api/docs-json`
-(87 paths, 103 operations, 49 schemas).
+(now 93 paths, 109 operations, 49 schemas — up from 87/103 the day before).
 
-**Every path the migrated frontend calls exists and matches**, except the four
-provisional admin-recovery paths in ticket 1. Asset filter params, the six
-nested offer/size/plan routes, the commission override family, the upgrade
-queue and `/auth/refresh` all line up exactly.
+**Every path the migrated frontend calls exists and matches.** Asset filter
+params, the nested offer/size/plan routes, the commission override family, the
+upgrade queue and `/auth/refresh` all line up exactly.
 
-Still open, confirmed present-tense against the deployment:
+### Resolved between 2026-07-27 and 2026-07-28
+
+Six endpoints landed, each answering a ticket below:
+
+| Ticket | What shipped | Smoke-checked live |
+|---|---|---|
+| **1** | `POST /auth/admin/forgot-password` → `{resetToken}`, `/verify-otp` (bearer: reset token), `/reset-password` (bearer: reset-grant token) | ✅ **Fully verified against source + live.** forgot-password returns `{resetToken, message}`, the JWT carries `purpose: "reset-password", aud: "admin"`, and staging's `auth.service.ts` confirms `adminVerifyResetOtp` returns `{resetGrantToken, message}` and reset revokes all sessions — every field name the FE's Zod schemas expect. Live: all three endpoints respond (401 for bad tokens, not 404); enumeration-safe (unknown emails still 200). Only OTP **email delivery** remains unverified — needs one real inbox |
+| **9b** | `GET /admin/commission/preview?user_id&asset_id&offer_type` — the dry-run resolve | 401 without token (exists; shape unverified) |
+| **18** | `POST /admin/assets/:assetId/offers` — an asset can now gain its second offer | 401 without token |
+| **19** (add-plan half) | `POST …/sizes/:sizeId/plans`, 409 on duplicate tenor — adding a plan no longer requires full-replacing `plans[]` | 401 without token |
+
+Schema changes: `AddPlanDto` added; `AdminUpdateUserDto` **removed** —
+`PATCH /admin/users/{id}` now takes `UpdateProfileDto` (the user-facing
+profile DTO). Whoever migrates the users feature should check whether
+admin-only fields were lost in that swap.
+
+### A second wave, invisible to the spec (found reading staging source, 2026-07-29)
+
+The commission-fixes merge resolved five more tickets without adding paths, so
+the spec diff missed them: **6** (multi-leg resolution + payout), **8**
+(per-leg override rates), **9a** (populate), **11** (config history metadata),
+**12** (`include_inactive` filter). Each heading below carries the detail.
+
+Two of those were **breaking** for the FE, fixed same-day: publish now
+*requires* `reason`, and the override DTOs dropped the flat `rate` field.
+
+### Still open, confirmed present-tense against the 2026-07-28 spec
 
 | Ticket | Confirmation |
 |---|---|
-| 1 | No `/auth/admin/forgot-password`, `/verify-otp` or `/reset-password`. Only the user-collection flow exists |
 | 14 | `GET /admin/referrals/upgrades` takes `status`, `payment_method`, `to_tier`, `page`, `limit` — **no `search`** |
-| 16 | `GET /admin/assets` takes `visibility`, `offer_type`, `search`, `sold`, `include_deleted`, `page`, `limit` — **no sort** |
+| 16 | `GET /admin/assets` — **no sort** param |
 | 17 | Nothing under `Admin — Assets` for analytics, subscribers or statements |
-| 18 | Size, plan and offer *updates* exist; **no `POST …/offers`** to add one |
-| 19 | `PATCH`/`DELETE` on `…/plans/{tenor}`; **no `POST …/plans`** |
-| 11 | Commission config is `GET`/`POST` only — no history route |
+| 19 (edit-tenor half) | Changing an existing plan's tenor still means full-replacing `plans[]` |
 
 **Ticket 2 may be resolved.** `GET /admin/users` is documented as "List all
 users with filters" taking `search`, `referral_status`, `is_suspended`, `page`,
 `limit`, alongside `PATCH /admin/users/{id}`, `/suspend` and `/unsuspend`.
 Whether the handlers return real data needs an authenticated call — the spec
 can't answer it.
+
+### Frontend work the new endpoints unlock
+
+- **Recovery**: nothing to build — the hooks were written against this exact
+  contract and the provisional marker is now removed. Remaining check is OTP
+  email delivery, which needs a real admin inbox.
+- **Add offer** (ticket 18): the offers tab was designed around this absence
+  ("an asset can never gain a second offer"). An "Add offer" action can now
+  exist for whichever of flex/full-ownership the asset lacks.
+- **Add plan** (ticket 19): `useUpdateSize`'s full-replace path is still how
+  edits work, but *adding* should move to the new endpoint — it can 409 on a
+  duplicate tenor instead of silently overwriting, and it can't drop plans.
+- **Commission preview** (9b): the "what would this actually pay?" panel from
+  the commission design doc is now buildable — held step 8/9 work partially
+  unblocks (9a populate and 11 history are still missing).
 
 ### The spec documents no response bodies
 
@@ -66,7 +103,12 @@ as an array. The discriminator field is named `error`, not `code`;
 
 ---
 
-## 1. Admin password recovery is missing (regression)
+## 1. Admin password recovery is missing (regression) — ✅ RESOLVED 2026-07-28
+
+> Shipped as specified: three admin-scoped endpoints, `reset-password` →
+> `reset-grant` token chain, enumeration-safe, sessions revoked on reset.
+> Verified against staging source and the live deployment (see the table
+> above). The original request is kept below for the record.
 
 **Priority: high — this is a feature the current system has and v2 drops.**
 
@@ -351,7 +393,13 @@ this convention.
 
 ---
 
-## 6. Upline and topline commission are configured but never paid
+## 6. Upline and topline commission are configured but never paid — ✅ RESOLVED 2026-07-28
+
+> `resolveCommissionForPlan` now walks the referral chain (with cycle
+> protection) and writes a recipient per leg; the payout loop pays every
+> recipient on each instalment. Verified in staging source.
+
+> The original request is kept below for the record.
 
 **Priority: high — admins can configure a payout that silently never happens.**
 
@@ -579,7 +627,14 @@ is open.
 
 ---
 
-## 8. User and asset+user overrides need a rate per leg, not one flat rate
+## 8. User and asset+user overrides need a rate per leg, not one flat rate — ✅ RESOLVED 2026-07-28
+
+> Both DTOs now extend `TierRatesDto` (`direct`/`upline`/`topline`, each
+> optional), and a migration script rewrites stored `rate` into `direct`.
+> **The old `rate` field is gone from the DTO — sending it is a 400.** The
+> FE payload switched the same day.
+
+> The original request is kept below for the record.
 
 **Priority: high — pairs with ticket 6. Landing 6 without this makes the
 existing overrides ambiguous.**
@@ -684,7 +739,14 @@ class-level check that at least one is present.
 
 ---
 
-## 9. Commission admin screens need populated names and a resolve preview
+## 9. Commission admin screens need populated names and a resolve preview — ✅ RESOLVED 2026-07-28
+
+> 9a: `listOverrides` populates asset (`name`) and user (`firstName lastName
+> email referral_status`) refs; the audit shapes its refs via
+> `commission.shape.ts` — note those use `id`, not `_id`. 9b:
+> `GET /admin/commission/preview` resolves the chain server-side.
+
+> The original request is kept below for the record.
 
 **Priority: high — 9a blocks the plan audit screen entirely; the overrides list
 is degraded without it.**
@@ -874,7 +936,14 @@ commission concerns in the module that owns them.
 
 ---
 
-## 11. Commission config history records nothing about the change
+## 11. Commission config history records nothing about the change — ✅ RESOLVED 2026-07-28
+
+> Publish now requires a `reason` (`@IsNotEmpty` — **a breaking change for
+> any caller that omits it**), records `changed_fields`, and
+> `GET /admin/commission/config` returns `{active, history}` with
+> `last_modified_by` populated.
+
+> The original request is kept below for the record.
 
 **Priority: medium — the history screen exists but can only show dates.**
 
@@ -943,7 +1012,12 @@ but it cannot recover intent.
 
 ---
 
-## 12. `include_inactive=false` returns inactive overrides
+## 12. `include_inactive=false` returns inactive overrides — ✅ RESOLVED 2026-07-28
+
+> `listOverrides` now applies `activeFilter()` unless `include_inactive` is
+> set. Verified in staging source.
+
+> The original request is kept below for the record.
 
 **Priority: low — one line, but it silently inverts a filter.**
 
@@ -1263,7 +1337,13 @@ So the intent is recorded in two places and implemented in neither.
 
 ---
 
-## 18. An asset can never gain a second offer
+## 18. An asset can never gain a second offer — ✅ RESOLVED 2026-07-28
+
+> `POST /admin/assets/:assetId/offers` — transactional, refuses
+> `OFFER_ALREADY_EXISTS` on a duplicate type. The offers tab now has an
+> Add offer action for the missing type.
+
+> The original request is kept below for the record.
 
 **Priority: high — it undercuts the main point of the v2 asset model.**
 
@@ -1323,7 +1403,13 @@ offers can ever be defined, so it says so.
 
 ---
 
-## 19. Plans can't be added, and a tenor can't be changed
+## 19. Plans can't be added, and a tenor can't be changed — ✅ ADD HALF RESOLVED 2026-07-28
+
+> `POST …/sizes/:sizeId/plans` adds one plan atomically, 409
+> `TENOR_ALREADY_EXISTS` on a duplicate. **Changing a tenor still requires
+> full-replacing `plans[]`** — that half stays open.
+
+> The original request is kept below for the record.
 
 **Priority: medium — a workaround exists, but it can lose data.**
 

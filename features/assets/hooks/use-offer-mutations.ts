@@ -68,12 +68,32 @@ export type UpdateOfferPayload = {
 };
 
 /**
- * The only offer-level write. Note there is no create and no delete —
- * switching `is_active` off is how an offer is taken out of use (ticket 18).
+ * Since 2026-07-28 an offer can be **added** (ticket 18 resolved) but still
+ * not deleted — switching `is_active` off is how one is taken out of use.
  */
 export const useUpdateOffer = (assetId: string, offerType: OfferType) =>
   useTreeMutation(assetId, (payload: UpdateOfferPayload) =>
     apiPatch(`/admin/assets/${assetId}/offers/${offerType}`, payload, WriteResultSchema)
+  );
+
+export type AddOfferPayload = {
+  offer_type: OfferType;
+  is_active?: boolean;
+  allocation_qualification_pct: number;
+  payment_type?: 'all-inclusive' | 'partially-inclusive';
+  /** `OfferInputDto` requires at least one size, arriving with its plans. */
+  sizes: AddSizePayload[];
+};
+
+/**
+ * POST /admin/assets/:assetId/offers — transactional like create: one bad
+ * plan rejects the whole offer. Refused with `OFFER_ALREADY_EXISTS` when the
+ * asset already sells this type, which the UI prevents by only offering the
+ * missing type.
+ */
+export const useAddOffer = (assetId: string) =>
+  useTreeMutation(assetId, (payload: AddOfferPayload) =>
+    apiPost(`/admin/assets/${assetId}/offers`, payload, WriteResultSchema)
   );
 
 /* -------------------- size -------------------- */
@@ -125,6 +145,34 @@ export const useDeleteSize = (assetId: string, offerType: OfferType) =>
   );
 
 /* -------------------- plan -------------------- */
+
+export type AddPlanPayload = {
+  tenor_months: number;
+  land_price: number;
+  initial_payment: number;
+  monthly_installment: number;
+  is_promo?: boolean;
+  is_active?: boolean;
+};
+
+/**
+ * POST …/sizes/:sizeId/plans — one plan, atomically (ticket 19's add half).
+ *
+ * Refused with `TENOR_ALREADY_EXISTS` on a duplicate tenor. This replaces
+ * adding through `useUpdateSize`'s full-replace `plans[]`, which could
+ * silently drop a plan another admin added in the meantime. Editing an
+ * existing plan's tenor is still full-replace — the open half of ticket 19.
+ */
+export const useAddPlan = (assetId: string, offerType: OfferType) =>
+  useTreeMutation(
+    assetId,
+    ({ sizeId, ...payload }: AddPlanPayload & { sizeId: string }) =>
+      apiPost(
+        `/admin/assets/${assetId}/offers/${offerType}/sizes/${sizeId}/plans`,
+        payload,
+        WriteResultSchema
+      )
+  );
 
 /** Everything except the tenor, which is the plan's identity. */
 export type UpdatePlanPayload = {

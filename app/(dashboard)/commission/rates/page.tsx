@@ -1,7 +1,12 @@
 "use client";
 
 import { PageContentLoader } from "@/components/shared/page-content-loader";
-import { EditRatesDialog, RatesCard, useCommissionConfig } from "@/features/commission";
+import {
+  ConfigHistory,
+  EditRatesDialog,
+  RatesCard,
+  useCommissionConfig,
+} from "@/features/commission";
 
 export default function CommissionRatesPage() {
   const { data, isLoading, error } = useCommissionConfig();
@@ -43,6 +48,7 @@ export default function CommissionRatesPage() {
       </div>
 
       <RatesCard config={data.active} />
+      <ConfigHistory history={data.history} />
     </div>
   );
 }

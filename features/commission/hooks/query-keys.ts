@@ -11,10 +11,10 @@ export type OverrideListFilters = {
   include_inactive?: boolean;
 };
 
-export type ResolveParams = {
-  user_id?: string;
-  asset_id?: string;
-  offer_type?: OfferType;
+export type PreviewParams = {
+  userId: string;
+  assetId: string;
+  offerType: OfferType | '';
 };
 
 export const commissionKeys = {
@@ -27,8 +27,8 @@ export const commissionKeys = {
   overrideList: (filters?: OverrideListFilters) =>
     [...commissionKeys.overrides(), filters ?? {}] as const,
 
-  /** ⛔ ticket 9b — the resolve endpoint does not exist yet. */
-  resolve: (params: ResolveParams) => [...commissionKeys.all, 'resolve', params] as const,
+  /** The dry-run resolve (ticket 9b, live 2026-07-28). */
+  preview: (params: PreviewParams) => [...commissionKeys.all, 'preview', params] as const,
 
   audits: () => [...commissionKeys.all, 'audit'] as const,
   audit: (paymentPlanId: string) => [...commissionKeys.audits(), paymentPlanId] as const,

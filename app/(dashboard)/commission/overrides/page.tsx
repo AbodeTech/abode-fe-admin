@@ -18,6 +18,7 @@ import {
   AssetOverrideDialog,
   OverrideFilters,
   OverridesTable,
+  PreviewPanel,
   OVERRIDE_TYPES,
   RevokeOverrideDialog,
   SubjectOverrideDialog,
@@ -141,6 +142,8 @@ function OverridesPageContent() {
         </div>
       ) : (
         <div className="space-y-4">
+          <PreviewPanel />
+
           <OverrideFilters />
 
           {userId ? (

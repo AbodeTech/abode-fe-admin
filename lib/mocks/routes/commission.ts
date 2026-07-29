@@ -27,9 +27,22 @@ type MockConfig = {
   upgrade_commission_pct: number;
   associate_pro_fee: number;
   high_commission_alert_threshold: number;
-  last_modified_by: string | null;
+  reason: string | null;
+  changed_fields: string[];
+  last_modified_by:
+    | string
+    | { _id: string; firstName?: string; lastName?: string; email?: string }
+    | null;
   createdAt: string;
   updatedAt: string;
+};
+
+/** Populated shape `findConfigVersions` returns for `last_modified_by`. */
+const ADMIN_REF = {
+  _id: ADMIN_ID,
+  firstName: 'Tolu',
+  lastName: 'Adeyemi',
+  email: 'tolu@abodeflex.com',
 };
 
 const activeConfig: MockConfig = {
@@ -49,7 +62,9 @@ const activeConfig: MockConfig = {
   upgrade_commission_pct: 0.5,
   associate_pro_fee: 20_000,
   high_commission_alert_threshold: 50_000,
-  last_modified_by: ADMIN_ID,
+  reason: 'Raised founder flex rate; alert threshold up to ₦50k',
+  changed_fields: ['flexCommission', 'high_commission_alert_threshold'],
+  last_modified_by: ADMIN_REF,
   createdAt: '2026-06-01T09:12:00.000Z',
   updatedAt: '2026-07-14T11:04:00.000Z',
 };
@@ -63,6 +78,10 @@ const olderConfigs: MockConfig[] = [
       direct: { founder: 0.1, 'associate-pro': 0.08, premium: 0.05, default: 0.05 },
     },
     high_commission_alert_threshold: 40_000,
+    reason: 'Quarterly review — flex founder up 2 points',
+    changed_fields: ['flexCommission', 'wht_rate', 'associate_pro_fee'],
+    // A bare ObjectId — versions published before populate landed.
+    last_modified_by: ADMIN_ID,
     createdAt: '2026-04-02T10:00:00.000Z',
     updatedAt: '2026-06-01T09:12:00.000Z',
   },
@@ -76,6 +95,8 @@ const olderConfigs: MockConfig[] = [
     wht_rate: 0.075,
     associate_pro_fee: 15_000,
     high_commission_alert_threshold: 40_000,
+    reason: null,
+    changed_fields: [],
     last_modified_by: null,
     createdAt: '2026-01-15T08:30:00.000Z',
     updatedAt: '2026-04-02T10:00:00.000Z',
@@ -94,10 +115,44 @@ const USER_UCHE = '665fcccc00000000000000c2';
 
 const inDays = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString();
 
+/** What the BE's `.populate()` resolves each ref to. */
+const USER_REFS: Record<string, object> = {
+  [USER_JOHN]: {
+    _id: USER_JOHN,
+    firstName: 'John',
+    lastName: 'Okafor',
+    email: 'john.okafor@example.com',
+    referral_status: 'associate-pro',
+  },
+  [USER_UCHE]: {
+    _id: USER_UCHE,
+    firstName: 'Uche',
+    lastName: 'Eze',
+    email: 'uche.eze@example.com',
+    referral_status: 'premium',
+  },
+};
+
+const ASSET_REFS: Record<string, object> = {
+  [ASSET_AVIATION]: { _id: ASSET_AVIATION, name: 'Aviation City' },
+  [ASSET_HARMONY]: { _id: ASSET_HARMONY, name: 'Harmony Gardens' },
+};
+
+/** A ref outside the map stays a bare id — the union schema's other arm. */
+const populate = (row: Record<string, unknown>) => ({
+  ...row,
+  ...(typeof row.user_id === 'string' && USER_REFS[row.user_id]
+    ? { user_id: USER_REFS[row.user_id] }
+    : {}),
+  ...(typeof row.asset_id === 'string' && ASSET_REFS[row.asset_id]
+    ? { asset_id: ASSET_REFS[row.asset_id] }
+    : {}),
+});
+
 /**
- * Bare ObjectIds, and user/asset-user overrides carrying a flat `rate` —
- * exactly what the backend serves today (⛔ tickets 9a and 8). The UI falls
- * back to showing ids, and reads a lone `rate` as the direct leg.
+ * Fixtures store bare ObjectIds; the GET route populates them at response
+ * time, exactly as the BE has since 2026-07-28 (ticket 9a) — user refs with
+ * `firstName lastName email referral_status`, asset refs with `name`.
  */
 type MockAssetOverride = {
   _id: string;
@@ -144,7 +199,8 @@ const userOverrides: MockSubjectOverride[] = [
     _id: '665f0000000000000000e101',
     offer_type: 'full-ownership',
     user_id: USER_JOHN,
-    rate: 0.15,
+    direct: 0.15,
+    upline: 0.04,
     reason: 'Negotiated rate — top performer 2025',
     granted_by: ADMIN_ID,
     expires_at: null,
@@ -155,7 +211,7 @@ const userOverrides: MockSubjectOverride[] = [
     _id: '665f0000000000000000e102',
     offer_type: 'flex',
     user_id: USER_UCHE,
-    rate: 0.11,
+    direct: 0.11,
     reason: 'Retention offer',
     granted_by: ADMIN_ID,
     expires_at: inDays(-12), // already expired
@@ -170,7 +226,7 @@ const assetUserOverrides: MockSubjectOverride[] = [
     offer_type: 'full-ownership',
     asset_id: ASSET_AVIATION,
     user_id: USER_JOHN,
-    rate: 0.12,
+    direct: 0.12,
     reason: 'Lower rate on Aviation City — bulk allocation deal',
     granted_by: ADMIN_ID,
     expires_at: null,
@@ -182,7 +238,7 @@ const assetUserOverrides: MockSubjectOverride[] = [
     offer_type: 'flex',
     asset_id: ASSET_HARMONY,
     user_id: USER_UCHE,
-    rate: 0.09,
+    direct: 0.09,
     reason: 'Superseded by the blanket referrer rate',
     granted_by: ADMIN_ID,
     expires_at: null,
@@ -201,7 +257,10 @@ type MockSubjectOverride = {
   offer_type: string;
   user_id: string;
   asset_id?: string;
-  rate: number;
+  /** Per-leg since 2026-07-28 (ticket 8) — the old flat `rate` is migrated into `direct`. */
+  direct: number | null;
+  upline?: number | null;
+  topline?: number | null;
   reason: string | null;
   granted_by: string;
   expires_at: string | null;
@@ -229,7 +288,9 @@ function upsertSubjectOverride(
     offer_type: dto.offer_type ?? 'full-ownership',
     user_id: dto.user_id ?? '',
     ...(keyFields.includes('asset_id') ? { asset_id: dto.asset_id ?? '' } : {}),
-    rate: dto.rate ?? 0,
+    direct: dto.direct ?? null,
+    upline: dto.upline ?? null,
+    topline: dto.topline ?? null,
     reason: dto.reason ?? null,
     granted_by: ADMIN_ID,
     expires_at: dto.expires_at ?? null,
@@ -290,11 +351,33 @@ export const commissionRoutes: MockRoutes = {
     const current = versions[0];
     const now = new Date().toISOString();
 
+    // Required since 2026-07-28 — `CreateCommissionConfigDto.reason` is
+    // `@IsNotEmpty`, so the mock refuses like the BE would.
+    if (typeof dto.reason !== 'string' || !dto.reason.trim()) {
+      throw new MockHttpError(400, 'reason should not be empty', 'VALIDATION_FAILED');
+    }
+
+    const changed_fields = (
+      [
+        'wht_rate',
+        'marketplace_platform_fee_pct',
+        'high_commission_alert_threshold',
+        'associate_pro_fee',
+        'upgrade_commission_pct',
+      ] as const
+    ).filter((key) => dto[key] !== undefined && dto[key] !== current[key]);
+
     const next: MockConfig = {
       ...current,
       ...dto,
       _id: `665fdddd${String(current.version + 1).padStart(16, '0')}`,
       version: current.version + 1,
+      reason: dto.reason.trim(),
+      changed_fields: [
+        ...changed_fields,
+        ...(dto.flexCommission !== undefined ? ['flexCommission'] : []),
+        ...(dto.fullOwnershipCommission !== undefined ? ['fullOwnershipCommission'] : []),
+      ],
       last_modified_by: ADMIN_ID,
       createdAt: now,
       updatedAt: now,
@@ -305,9 +388,9 @@ export const commissionRoutes: MockRoutes = {
   },
 
   'GET /admin/commission/overrides': ({ query }) => ({
-    asset: filterRows(assetOverrides, query, ['asset_id']),
-    user: filterRows(userOverrides, query, ['user_id']),
-    asset_user: filterRows(assetUserOverrides, query, ['asset_id', 'user_id']),
+    asset: filterRows(assetOverrides, query, ['asset_id']).map(populate),
+    user: filterRows(userOverrides, query, ['user_id']).map(populate),
+    asset_user: filterRows(assetUserOverrides, query, ['asset_id', 'user_id']).map(populate),
   }),
 
   /**
@@ -383,5 +466,127 @@ export const commissionRoutes: MockRoutes = {
 
     row.revoked_at = new Date().toISOString();
     return { revoked: true, id, type };
+  },
+
+  /**
+   * The dry-run (ticket 9b) — resolves the same chain a purchase would,
+   * against this file's override fixtures, so what the preview says always
+   * matches what the overrides table shows.
+   */
+  'GET /admin/commission/preview': ({ query }) => {
+    const userId = String(query.user_id ?? '');
+    const assetId = String(query.asset_id ?? '');
+    const offerType = String(query.offer_type ?? '');
+    if (!userId || !assetId || !offerType) {
+      throw new MockHttpError(400, 'user_id, asset_id and offer_type are required', 'VALIDATION_FAILED');
+    }
+
+    const config = versions[0];
+    const userRef = USER_REFS[userId] as { referral_status?: string } | undefined;
+    const referrerTier = userRef?.referral_status ?? 'default';
+    const legs = offerType === 'flex' ? ['direct'] : ['direct', 'upline', 'topline'];
+
+    const active = (row: OverrideRow) => isActive(row) && row.offer_type === offerType;
+    const assetUser = assetUserOverrides.find(
+      (row) => active(row) && row.user_id === userId && row.asset_id === assetId
+    );
+    const userOverride = userOverrides.find((row) => active(row) && row.user_id === userId);
+    const assetOverride = assetOverrides.find((row) => active(row) && row.asset_id === assetId);
+
+    const rates = legs.map((leg) => {
+      const au = assetUser?.[leg as 'direct'];
+      if (au != null) return { commission_tier: leg, applies: true, rate: au, override_source: 'asset_user' };
+
+      const uo = userOverride?.[leg as 'direct'];
+      if (uo != null) return { commission_tier: leg, applies: true, rate: uo, override_source: 'user' };
+
+      const table = assetOverride?.[leg as 'direct'] as Record<string, number> | undefined;
+      const ao = table?.[referrerTier] ?? table?.default;
+      if (ao != null) return { commission_tier: leg, applies: true, rate: ao, override_source: 'asset' };
+
+      const defaults =
+        offerType === 'flex'
+          ? leg === 'direct'
+            ? config.flexCommission.direct
+            : undefined
+          : config.fullOwnershipCommission[leg as 'direct' | 'upline' | 'topline'];
+      const rate = defaults?.[referrerTier] ?? defaults?.default;
+      if (rate != null) return { commission_tier: leg, applies: true, rate, override_source: 'default' };
+
+      return { commission_tier: leg, applies: false, rate: null, override_source: null };
+    });
+
+    return {
+      referrer_tier: referrerTier,
+      config_version: config.version,
+      wht_rate: config.wht_rate,
+      rates,
+    };
+  },
+
+  /**
+   * Step 8's data — one payable plan and one that pays nobody, so both states
+   * of the audit screen are reachable in mock mode. Any other id is an honest
+   * 404, with the known ids named so the lookup page is usable.
+   */
+  'GET /admin/commission/audit/:paymentPlanId': ({ params }) => {
+    const PLAN_PAYABLE = '665fp000000000000000p001';
+    const PLAN_UNPAYABLE = '665fp000000000000000p002';
+
+    if (params.paymentPlanId === PLAN_PAYABLE) {
+      return {
+        payment_plan_id: PLAN_PAYABLE,
+        buyer: { id: '665fcccc00000000000000c9', firstName: 'Amaka', lastName: 'Obi', email: 'amaka.obi@example.com', referral_status: 'default' },
+        asset: { id: ASSET_AVIATION, name: 'Aviation City' },
+        commission_config_version: 2,
+        wht_rate: 0.05,
+        commission_recipients: [
+          {
+            commission_type: 'direct',
+            rate: 0.12,
+            tier_at_creation: 'associate-pro',
+            override_source: 'asset_user',
+            user: { id: USER_JOHN, firstName: 'John', lastName: 'Okafor', email: 'john.okafor@example.com', referral_status: 'associate-pro' },
+            agency_id: null,
+          },
+          {
+            commission_type: 'upline',
+            rate: 0.02,
+            tier_at_creation: 'premium',
+            override_source: 'default',
+            user: { id: USER_UCHE, firstName: 'Uche', lastName: 'Eze', email: 'uche.eze@example.com', referral_status: 'premium' },
+            agency_id: null,
+          },
+          {
+            commission_type: 'topline',
+            rate: 0.01,
+            tier_at_creation: 'founder',
+            override_source: 'default',
+            // An unresolvable ref — populate found nothing, shaped to bare id.
+            user: { id: '665fcccc00000000000000c7' },
+            agency_id: null,
+          },
+        ],
+        commission_payable: true,
+      };
+    }
+
+    if (params.paymentPlanId === PLAN_UNPAYABLE) {
+      return {
+        payment_plan_id: PLAN_UNPAYABLE,
+        buyer: { id: '665fcccc00000000000000c8', firstName: 'Bola', lastName: 'Adewale', email: 'bola.adewale@example.com', referral_status: 'default' },
+        asset: { id: ASSET_HARMONY, name: 'Harmony Gardens' },
+        commission_config_version: 3,
+        wht_rate: 0.05,
+        commission_recipients: [],
+        commission_payable: false,
+      };
+    }
+
+    throw new MockHttpError(
+      404,
+      `No payment plan with this ID. Mock data has ${PLAN_PAYABLE} (payable) and ${PLAN_UNPAYABLE} (pays nobody).`,
+      'PAYMENT_PLAN_NOT_FOUND'
+    );
   },
 };

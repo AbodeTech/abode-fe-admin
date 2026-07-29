@@ -16,10 +16,10 @@ import {
  * Three collections, resolved most-specific-first:
  *   asset+user → user → asset → default
  *
- * Two shapes are written to tolerate backend tickets that haven't landed, so
- * the UI works today AND after they ship, with no rewrite:
- *   - refs accept a bare ObjectId string OR a populated object  (⛔ ticket 9a)
- *   - user/asset-user overrides accept flat `rate` OR per-leg   (⛔ ticket 8)
+ * Tickets 9a (populate) and 8 (per-leg rates) landed 2026-07-28. The unions
+ * written to tolerate their absence stay: refs accept a bare ObjectId string
+ * OR a populated object, and subject overrides accept legacy flat `rate` OR
+ * per-leg — documents written before the backend's migration still parse.
  * ============================================================ */
 
 export const OVERRIDE_TYPES = ['asset', 'user', 'asset-user'] as const;
@@ -35,10 +35,10 @@ export const OVERRIDE_TYPE_LABELS: Record<OverrideType, string> = {
 /* -------------------- references -------------------- */
 
 /**
- * ⛔ ticket 9a — `listOverrides` has no `.populate()`, so today these arrive as
- * bare ObjectId strings. The union accepts both, so names simply start
- * appearing once the backend populates. Read through the helpers below rather
- * than branching on the union at every call site.
+ * Populated by `listOverrides` since 2026-07-28 (ticket 9a) — assets with
+ * `name`, users with `firstName lastName email referral_status`. A deleted
+ * target still arrives as a bare ObjectId string, so the union stays. Read
+ * through the helpers below rather than branching on it at every call site.
  */
 export const AssetRefSchema = z.union([
   z.string(),
@@ -59,6 +59,8 @@ export const UserRefSchema = z.union([
     firstName: z.string().nullable().optional(),
     lastName: z.string().nullable().optional(),
     email: z.string().nullable().optional(),
+    /** Sent by the list populate since 2026-07-28 (`ticket 9a`). */
+    referral_status: z.string().nullable().optional(),
   }),
 ]);
 export type UserRef = z.infer<typeof UserRefSchema>;
@@ -86,7 +88,7 @@ export function refId(ref: AnyRef | null | undefined): string | null {
  * Every field on these refs is optional, so `'asset_name' in ref` cannot narrow
  * the union — and call sites always know which kind of ref they hold anyway.
  *
- * Both return null while the backend still sends bare IDs (⛔ ticket 9a); the
+ * Both return null for a bare-id ref (an unpopulated or deleted target); the
  * caller falls back to the id.
  */
 export function assetRefName(ref: AssetRef | null | undefined): string | null {
@@ -130,16 +132,18 @@ export type AssetOverride = z.infer<typeof AssetOverrideSchema>;
  * Applies to one referrer across any asset. Rates are **flat numbers** — the
  * override already names the person, so tier doesn't enter into it.
  *
- * ⛔ ticket 8 — the BE currently stores a single `rate`. Both shapes are
- * accepted; `normaliseOverride` reads a lone `rate` as `direct`, which is what
- * it meant when it was written. That is a widening read, not a lossy write.
+ * Per-leg (`direct`/`upline`/`topline`) since 2026-07-28 (ticket 8). The
+ * legacy flat `rate` is still accepted on reads — `normaliseOverride` treats a
+ * lone `rate` as `direct`, which is what it meant when it was written.
  */
 export const UserOverrideSchema = OverrideBaseSchema.extend({
   user_id: UserRefSchema,
-  rate: z.number().optional(),
-  direct: z.number().optional(),
-  upline: z.number().optional(),
-  topline: z.number().optional(),
+  rate: z.number().nullable().optional(),
+  // The BE upsert writes `?? null`, so an unset leg arrives as an explicit
+  // null on documents saved since per-leg landed — absent only on older ones.
+  direct: z.number().nullable().optional(),
+  upline: z.number().nullable().optional(),
+  topline: z.number().nullable().optional(),
 });
 export type UserOverride = z.infer<typeof UserOverrideSchema>;
 
@@ -147,10 +151,12 @@ export type UserOverride = z.infer<typeof UserOverrideSchema>;
 export const AssetUserOverrideSchema = OverrideBaseSchema.extend({
   asset_id: AssetRefSchema,
   user_id: UserRefSchema,
-  rate: z.number().optional(),
-  direct: z.number().optional(),
-  upline: z.number().optional(),
-  topline: z.number().optional(),
+  rate: z.number().nullable().optional(),
+  // The BE upsert writes `?? null`, so an unset leg arrives as an explicit
+  // null on documents saved since per-leg landed — absent only on older ones.
+  direct: z.number().nullable().optional(),
+  upline: z.number().nullable().optional(),
+  topline: z.number().nullable().optional(),
 });
 export type AssetUserOverride = z.infer<typeof AssetUserOverrideSchema>;
 
@@ -188,7 +194,7 @@ export type NormalisedOverride = {
   createdAt: string | null;
 };
 
-const flat = (value: number | undefined): OverrideRate | undefined =>
+const flat = (value: number | null | undefined): OverrideRate | undefined =>
   typeof value === 'number' ? { kind: 'flat', rate: value } : undefined;
 
 const tiered = (rates: TierRates | undefined): OverrideRate | undefined =>
@@ -241,7 +247,7 @@ export function normaliseOverrides(response: OverrideListResponse): NormalisedOv
     asset: null,
     user: o.user_id,
     rates: prune({
-      // ⛔ ticket 8 — a lone legacy `rate` meant the direct leg.
+      // A lone legacy `rate` meant the direct leg (pre-ticket-8 documents).
       direct: flat(o.direct ?? o.rate),
       upline: flat(o.upline),
       topline: flat(o.topline),

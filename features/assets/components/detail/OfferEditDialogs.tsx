@@ -54,9 +54,11 @@ import {
   type PlanFormValues,
 } from "../../schemas/create-asset.schema";
 import {
+  useAddOffer,
+  useAddPlan,
+  useAddSize,
   useDeletePlan,
   useDeleteSize,
-  useAddSize,
   useUpdateOffer,
   useUpdatePlan,
   useUpdateSize,
@@ -235,6 +237,207 @@ function EditOfferDialog({ asset, offerType }: { asset: AssetDetail; offerType: 
               </>
             ) : (
               "Save"
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/* ==================== add offer (ticket 18, resolved 2026-07-28) ==================== */
+
+const addOfferSchema = z.object({
+  allocation_qualification_pct: z
+    .number({ message: "Enter a percentage" })
+    .int("Whole percentages only")
+    .min(1, "At least 1%")
+    .max(100, "At most 100%"),
+  payment_type: z.enum(PAYMENT_TYPES).optional(),
+  size_sqm: z.number({ message: "Enter a size" }).int("Whole square metres").positive("Must be above zero"),
+  units_available: z.number({ message: "Enter a unit count" }).int("Whole units").min(0, "Cannot be negative"),
+  document_fee: z.number().int("Whole naira only").min(0, "Cannot be negative").optional(),
+});
+
+type AddOfferValues = z.infer<typeof addOfferSchema>;
+
+/**
+ * Adds the offer type the asset lacks, with its first size.
+ *
+ * `OfferInputDto` requires at least one size, and a size arrives with plans —
+ * so, like SizeDialog, this seeds a minimal valid plan and sends the admin to
+ * price it immediately after. One dialog for settings + first size keeps the
+ * common case (one size to start) to a single step.
+ */
+function AddOfferDialog({ asset, offerType }: { asset: AssetDetail; offerType: OfferType }) {
+  const close = useAssetFormStore((state) => state.closeOfferEdit);
+  const addOffer = useAddOffer(asset._id);
+  const isFlex = offerType === "flex";
+
+  const form = useForm<AddOfferValues>({
+    resolver: zodResolver(addOfferSchema),
+    defaultValues: {
+      allocation_qualification_pct: 30,
+      payment_type: undefined,
+      size_sqm: undefined as unknown as number,
+      units_available: undefined as unknown as number,
+      document_fee: undefined,
+    },
+  });
+
+  const submit = form.handleSubmit((values) => {
+    if (!isFlex && !values.payment_type) {
+      form.setError("payment_type", { message: "Choose how documents are paid for" });
+      return;
+    }
+
+    addOffer.mutate(
+      {
+        offer_type: offerType,
+        is_active: true,
+        allocation_qualification_pct: values.allocation_qualification_pct,
+        ...(isFlex ? {} : { payment_type: values.payment_type }),
+        sizes: [
+          {
+            size_sqm: values.size_sqm,
+            units_available: values.units_available,
+            ...(isFlex ? {} : { document_fee: values.document_fee ?? 0 }),
+            plans: [
+              {
+                tenor_months: isFlex ? 12 : 0,
+                land_price: 1,
+                initial_payment: 1,
+                monthly_installment: 0,
+                is_active: true,
+              },
+            ],
+          },
+        ],
+      },
+      {
+        onSuccess: () => {
+          toast.success(`${OFFER_TYPE_LABELS[offerType]} added — set its plan pricing next`);
+          close();
+        },
+        onError: (error) => toast.error(error.message || "Couldn't add the offer"),
+      }
+    );
+  });
+
+  return (
+    <Dialog open onOpenChange={(open) => (open ? undefined : close())}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Add {OFFER_TYPE_LABELS[offerType].toLowerCase()}</DialogTitle>
+          <DialogDescription>
+            Starts with one size and a placeholder plan — price the plan right after.
+          </DialogDescription>
+        </DialogHeader>
+
+        <Form {...form}>
+          <div className="space-y-4">
+            <FormField
+              control={form.control}
+              name="allocation_qualification_pct"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-xs">Allocation qualification</FormLabel>
+                  <FormControl>
+                    <NumberInput field={field} suffix="%" min={1} />
+                  </FormControl>
+                  <FormDescription className="text-xs">
+                    How much of the price must be paid before a plot is allocated.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {!isFlex ? (
+              <FormField
+                control={form.control}
+                name="payment_type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs">Payment type</FormLabel>
+                    <Select value={field.value ?? ""} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Choose" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {PAYMENT_TYPES.map((type) => (
+                          <SelectItem key={type} value={type}>
+                            {PAYMENT_TYPE_LABELS[type]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            ) : null}
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="size_sqm"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs">First size</FormLabel>
+                    <FormControl>
+                      <NumberInput field={field} suffix="sqm" min={1} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="units_available"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs">Units available</FormLabel>
+                    <FormControl>
+                      <NumberInput field={field} min={0} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {!isFlex ? (
+              <FormField
+                control={form.control}
+                name="document_fee"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs">Document fee</FormLabel>
+                    <FormControl>
+                      <NumberInput field={field} prefix="₦" min={0} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            ) : null}
+          </div>
+        </Form>
+
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={close} disabled={addOffer.isPending}>
+            Cancel
+          </Button>
+          <Button type="button" onClick={submit} disabled={addOffer.isPending}>
+            {addOffer.isPending ? (
+              <>
+                Adding <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+              </>
+            ) : (
+              "Add offer"
             )}
           </Button>
         </DialogFooter>
@@ -471,6 +674,7 @@ function PlanDialog({
   tenor?: number;
 }) {
   const close = useAssetFormStore((state) => state.closeOfferEdit);
+  const addPlan = useAddPlan(asset._id, offerType);
   const updatePlan = useUpdatePlan(asset._id, offerType);
   const updateSize = useUpdateSize(asset._id, offerType);
 
@@ -535,9 +739,29 @@ function PlanDialog({
       return;
     }
 
-    // ⛔ ticket 19 — adding a plan or changing a tenor has no endpoint of its
-    // own, so the size's whole plans[] is replaced. That is a read-modify-write:
-    // it sends the list as it was when this page loaded.
+    // A brand-new plan goes through its own endpoint (ticket 19's add half,
+    // resolved 2026-07-28): atomic, and a concurrent duplicate tenor is a
+    // server-side conflict instead of a silent overwrite.
+    if (!isEdit) {
+      addPlan.mutate(
+        {
+          sizeId,
+          tenor_months: values.tenor_months,
+          land_price: values.land_price,
+          initial_payment: values.initial_payment,
+          monthly_installment: values.monthly_installment,
+          is_active: true,
+          ...(isFlex ? {} : { is_promo: values.is_promo ?? false }),
+        },
+        { onSuccess: done("Plan added"), onError: fail }
+      );
+      return;
+    }
+
+    // ⛔ ticket 19 (open half) — changing a tenor still has no endpoint, so
+    // the size's whole plans[] is replaced. That is a read-modify-write: it
+    // sends the list as it was when this page loaded, and can drop a plan
+    // another admin added in the meantime.
     const next: Plan[] = [
       ...(size.plans ?? []).filter((candidate) => candidate.tenor_months !== tenor),
       {
@@ -552,11 +776,11 @@ function PlanDialog({
 
     updateSize.mutate(
       { sizeId, plans: next },
-      { onSuccess: done(isEdit ? "Plan replaced" : "Plan added"), onError: fail }
+      { onSuccess: done("Plan replaced"), onError: fail }
     );
   });
 
-  const saving = updatePlan.isPending || updateSize.isPending;
+  const saving = updatePlan.isPending || updateSize.isPending || addPlan.isPending;
 
   return (
     <Dialog open onOpenChange={(open) => (open ? undefined : close())}>
@@ -819,9 +1043,10 @@ export function OfferEditDialogs({ asset }: { asset: AssetDetail }) {
   const close = useAssetFormStore((state) => state.closeOfferEdit);
 
   // A target pointing at something that has since been deleted would render an
-  // empty dialog, so clear it if the tree no longer contains it.
+  // empty dialog, so clear it if the tree no longer contains it. `add-offer`
+  // is the one target whose offer is *supposed* to be missing.
   useEffect(() => {
-    if (!target) return;
+    if (!target || target.kind === "add-offer") return;
     const offer = asset.offers.find((candidate) => candidate.offer_type === target.offerType);
     if (!offer) close();
   }, [target, asset, close]);
@@ -831,6 +1056,8 @@ export function OfferEditDialogs({ asset }: { asset: AssetDetail }) {
   const offerType = target.offerType as OfferType;
 
   switch (target.kind) {
+    case "add-offer":
+      return <AddOfferDialog asset={asset} offerType={offerType} />;
     case "offer":
       return <EditOfferDialog asset={asset} offerType={offerType} />;
     case "size":

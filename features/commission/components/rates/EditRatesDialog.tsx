@@ -19,6 +19,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -26,6 +27,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
 
 import type { CommissionConfig } from "../../schemas/commission.schema";
 import {
@@ -220,6 +222,30 @@ export function EditRatesDialog({ config }: { config: CommissionConfig }) {
               <AmountField control={control} name="associate_pro_fee" label="Associate Pro upgrade fee" disabled={disabled} />
               <AmountField control={control} name="high_commission_alert_threshold" label="High commission alert" disabled={disabled} />
             </Section>
+
+            <Separator />
+
+            <FormField
+              control={control}
+              name="reason"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-xs">Reason for this change</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      rows={2}
+                      disabled={disabled}
+                      placeholder="e.g. Q3 founder rate review — direct up 1%"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormDescription className="text-xs">
+                    Recorded on version {config.version + 1} and shown in the history.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <DialogFooter>
               <Button

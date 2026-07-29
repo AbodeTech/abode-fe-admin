@@ -218,6 +218,25 @@ const outrightPlan = (landPrice: number): MockPlan => ({
 /** Built lazily per asset and then mutated by the write routes. */
 const trees: Record<string, MockOffer[]> = {};
 
+/** Recompute a summary row's counts after any tree write. */
+function syncCounts(assetId: string, offerType: string): void {
+  const offer = trees[assetId]?.find((candidate) => candidate.offer_type === offerType);
+  const summary = assets
+    .find((candidate) => candidate._id === assetId)
+    ?.offers.find((candidate) => candidate.offer_type === offerType);
+  if (!offer || !summary) return;
+  summary.size_count = offer.sizes.length;
+  summary.plan_count = offer.sizes.reduce((total, size) => total + size.plans.length, 0);
+}
+
+function requireSize(assetId: string, offerType: string, sizeId: string): MockSize {
+  const offer = trees[assetId]?.find((candidate) => candidate.offer_type === offerType);
+  if (!offer) throw new MockHttpError(404, 'Offer not found', 'OFFER_NOT_FOUND');
+  const size = offer.sizes.find((candidate) => candidate._id === sizeId);
+  if (!size) throw new MockHttpError(404, 'Size not found', 'SIZE_NOT_FOUND');
+  return size;
+}
+
 function offerTree(row: MockAsset): MockOffer[] {
   if (trees[row._id]) return trees[row._id];
 
@@ -397,7 +416,65 @@ export const assetRoutes: MockRoutes = {
     return { ...row, offers: offerTree(row) };
   },
 
-  /** The only offer-level write — no create, no delete (⛔ ticket 18). */
+  /**
+   * Offer create landed 2026-07-28 (ticket 18); there is still no delete —
+   * `is_active: false` is how an offer is taken out of use.
+   */
+  'POST /admin/assets/:assetId/offers': ({ params, body: raw }) => {
+    const row = assets.find((candidate) => candidate._id === params.assetId && !candidate.deleted_at);
+    if (!row) throw new MockHttpError(404, 'Asset not found', 'ASSET_NOT_FOUND');
+
+    const tree = offerTree(row);
+    const dto = body<{
+      offer_type: 'flex' | 'full-ownership';
+      is_active?: boolean;
+      allocation_qualification_pct?: number;
+      payment_type?: string;
+      sizes?: {
+        size_sqm: number;
+        units_available: number;
+        document_fee?: number;
+        plans?: MockPlan[];
+      }[];
+    }>(raw);
+
+    if (tree.some((candidate) => candidate.offer_type === dto.offer_type)) {
+      throw new MockHttpError(409, 'This asset already sells that offer type', 'OFFER_ALREADY_EXISTS');
+    }
+    if (!dto.sizes?.length) {
+      throw new MockHttpError(400, 'An offer needs at least one size', 'VALIDATION_FAILED');
+    }
+
+    const offerId = `${row._id}-offer-${tree.length}`;
+    const offer: MockOffer = {
+      _id: offerId,
+      asset_id: row._id,
+      offer_type: dto.offer_type,
+      is_active: dto.is_active ?? true,
+      allocation_qualification_pct: dto.allocation_qualification_pct ?? 0,
+      ...(dto.payment_type ? { payment_type: dto.payment_type } : {}),
+      sizes: dto.sizes.map((size, sizeIndex) => ({
+        _id: `${offerId}-size-${sizeIndex}`,
+        offer_id: offerId,
+        size_sqm: size.size_sqm,
+        units_available: size.units_available,
+        ...(size.document_fee !== undefined ? { document_fee: size.document_fee } : {}),
+        is_active: true,
+        plans: (size.plans ?? []).map((plan) => ({ ...plan, is_active: plan.is_active ?? true })),
+      })),
+    };
+
+    tree.push(offer);
+    row.offers.push({
+      offer_type: dto.offer_type,
+      is_active: offer.is_active,
+      size_count: offer.sizes.length,
+      plan_count: offer.sizes.reduce((total, size) => total + size.plans.length, 0),
+    });
+
+    return offer;
+  },
+
   'PATCH /admin/assets/:assetId/offers/:offerType': ({ params, body: raw }) => {
     const tree = trees[params.assetId];
     const offer = tree?.find((candidate) => candidate.offer_type === params.offerType);
@@ -422,6 +499,118 @@ export const assetRoutes: MockRoutes = {
     if (summary) summary.is_active = offer.is_active;
 
     return offer;
+  },
+
+  'POST /admin/assets/:assetId/offers/:offerType/sizes': ({ params, body: raw }) => {
+    const offer = trees[params.assetId]?.find(
+      (candidate) => candidate.offer_type === params.offerType
+    );
+    if (!offer) throw new MockHttpError(404, 'Offer not found', 'OFFER_NOT_FOUND');
+
+    const dto = body<{
+      size_sqm: number;
+      units_available: number;
+      document_fee?: number;
+      plans?: MockPlan[];
+    }>(raw);
+
+    if (offer.sizes.some((candidate) => candidate.size_sqm === dto.size_sqm)) {
+      throw new MockHttpError(409, 'This offer already has that size', 'SIZE_ALREADY_EXISTS');
+    }
+
+    const size: MockSize = {
+      _id: `${offer._id}-size-${offer.sizes.length}-${Date.now() % 10_000}`,
+      offer_id: offer._id,
+      size_sqm: dto.size_sqm,
+      units_available: dto.units_available,
+      ...(dto.document_fee !== undefined ? { document_fee: dto.document_fee } : {}),
+      is_active: true,
+      plans: (dto.plans ?? []).map((plan) => ({ ...plan, is_active: plan.is_active ?? true })),
+    };
+
+    offer.sizes.push(size);
+    syncCounts(params.assetId, params.offerType);
+    return size;
+  },
+
+  'PATCH /admin/assets/:assetId/offers/:offerType/sizes/:sizeId': ({ params, body: raw }) => {
+    const size = requireSize(params.assetId, params.offerType, params.sizeId);
+    const dto = body<{
+      size_sqm?: number;
+      units_available?: number;
+      document_fee?: number;
+      is_active?: boolean;
+      plans?: MockPlan[];
+    }>(raw);
+
+    if (dto.size_sqm !== undefined) size.size_sqm = dto.size_sqm;
+    if (dto.units_available !== undefined) size.units_available = dto.units_available;
+    if (dto.document_fee !== undefined) size.document_fee = dto.document_fee;
+    if (dto.is_active !== undefined) size.is_active = dto.is_active;
+    // A full replacement, exactly like the BE — this is the tenor-edit path.
+    if (dto.plans !== undefined) {
+      size.plans = dto.plans.map((plan) => ({ ...plan, is_active: plan.is_active ?? true }));
+    }
+
+    syncCounts(params.assetId, params.offerType);
+    return size;
+  },
+
+  'DELETE /admin/assets/:assetId/offers/:offerType/sizes/:sizeId': ({ params }) => {
+    const offer = trees[params.assetId]?.find(
+      (candidate) => candidate.offer_type === params.offerType
+    );
+    if (!offer) throw new MockHttpError(404, 'Offer not found', 'OFFER_NOT_FOUND');
+    requireSize(params.assetId, params.offerType, params.sizeId);
+
+    offer.sizes = offer.sizes.filter((candidate) => candidate._id !== params.sizeId);
+    syncCounts(params.assetId, params.offerType);
+    return { message: 'Size deleted' };
+  },
+
+  /** Ticket 19's add half (2026-07-28) — one plan, refused on a duplicate tenor. */
+  'POST /admin/assets/:assetId/offers/:offerType/sizes/:sizeId/plans': ({ params, body: raw }) => {
+    const size = requireSize(params.assetId, params.offerType, params.sizeId);
+    const dto = body<MockPlan>(raw);
+
+    if (size.plans.some((candidate) => candidate.tenor_months === dto.tenor_months)) {
+      throw new MockHttpError(409, 'This size already has a plan at that tenor', 'TENOR_ALREADY_EXISTS');
+    }
+
+    size.plans.push({ ...dto, is_active: dto.is_active ?? true });
+    size.plans.sort((a, b) => a.tenor_months - b.tenor_months);
+    syncCounts(params.assetId, params.offerType);
+    return size;
+  },
+
+  'PATCH /admin/assets/:assetId/offers/:offerType/sizes/:sizeId/plans/:tenor': ({ params, body: raw }) => {
+    const size = requireSize(params.assetId, params.offerType, params.sizeId);
+    const plan = size.plans.find((candidate) => candidate.tenor_months === Number(params.tenor));
+    if (!plan) throw new MockHttpError(404, 'Plan not found', 'PLAN_NOT_FOUND');
+
+    const dto = body<Partial<MockPlan>>(raw);
+    if (dto.land_price !== undefined) plan.land_price = dto.land_price;
+    if (dto.initial_payment !== undefined) plan.initial_payment = dto.initial_payment;
+    if (dto.monthly_installment !== undefined) plan.monthly_installment = dto.monthly_installment;
+    if (dto.is_promo !== undefined) plan.is_promo = dto.is_promo;
+    if (dto.is_active !== undefined) plan.is_active = dto.is_active;
+
+    return plan;
+  },
+
+  'DELETE /admin/assets/:assetId/offers/:offerType/sizes/:sizeId/plans/:tenor': ({ params }) => {
+    const size = requireSize(params.assetId, params.offerType, params.sizeId);
+    const tenor = Number(params.tenor);
+    if (!size.plans.some((candidate) => candidate.tenor_months === tenor)) {
+      throw new MockHttpError(404, 'Plan not found', 'PLAN_NOT_FOUND');
+    }
+    if (size.plans.length <= 1) {
+      throw new MockHttpError(409, "Can't delete a size's only plan", 'LAST_PLAN');
+    }
+
+    size.plans = size.plans.filter((candidate) => candidate.tenor_months !== tenor);
+    syncCounts(params.assetId, params.offerType);
+    return { message: 'Plan deleted' };
   },
 
   /** Soft delete — sets `deleted_at`, keeps the row. */

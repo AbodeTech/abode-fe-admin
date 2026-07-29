@@ -1,7 +1,11 @@
 // Components
 export { RatesCard } from './components/rates/RatesCard';
 export { EditRatesDialog } from './components/rates/EditRatesDialog';
+export { ConfigHistory } from './components/rates/ConfigHistory';
 export { OverridesTable } from './components/overrides/OverridesTable';
+export { PreviewPanel } from './components/overrides/PreviewPanel';
+export { PlanAuditView } from './components/audit/PlanAuditView';
+export { usePlanAudit } from './hooks/use-plan-audit';
 export { OverrideFilters } from './components/overrides/OverrideFilters';
 export { AssetOverrideDialog } from './components/overrides/AssetOverrideDialog';
 export { SubjectOverrideDialog } from './components/overrides/SubjectOverrideDialog';
@@ -18,7 +22,8 @@ export {
 } from './hooks/use-upsert-override';
 export { useRevokeOverride } from './hooks/use-revoke-override';
 export { commissionKeys } from './hooks/query-keys';
-export type { OverrideListFilters, ResolveParams } from './hooks/query-keys';
+export type { OverrideListFilters, PreviewParams } from './hooks/query-keys';
+export { useCommissionPreview } from './hooks/use-commission-preview';
 
 // Schemas — other features may need the shared vocabulary (offer types, tiers).
 export {

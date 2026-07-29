@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useForm, type Control } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Info, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -58,14 +58,6 @@ import { UserPicker } from "../shared/UserPicker";
 type SubjectType = "user" | "asset-user";
 type FormControl = Control<SubjectOverrideFormValues>;
 
-/**
- * ⛔ ticket 8 — the backend stores one flat `rate` per override with no way to
- * say which leg it applies to. Upline and topline are rendered so the shape of
- * the feature is visible, but disabled: enabling them would mean either
- * dropping the value silently or guessing which leg the single `rate` means.
- */
-const PER_LEG_AVAILABLE = false;
-
 const LEGS = [
   {
     key: "direct" as const,
@@ -97,7 +89,6 @@ function LegField({
   hint: string;
   disabled: boolean;
 }) {
-  const blocked = leg !== "direct" && !PER_LEG_AVAILABLE;
 
   return (
     <FormField
@@ -113,8 +104,8 @@ function LegField({
                 step="0.01"
                 min={0}
                 max={100}
-                placeholder={blocked ? "Not yet available" : "—"}
-                disabled={disabled || blocked}
+                placeholder="—"
+                disabled={disabled}
                 className="pr-7"
                 value={field.value ?? ""}
                 onChange={(e) =>
@@ -307,14 +298,12 @@ export function SubjectOverrideDialog({
                 ))}
               </div>
 
-              {!PER_LEG_AVAILABLE ? (
-                <p className="flex items-start gap-2 rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
-                  <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-                  Upline and topline are disabled because the backend currently stores a single rate
-                  per override, with no way to record which leg it applies to. They unlock once
-                  multi-level commission ships — nothing you enter here is dropped in the meantime.
-                </p>
-              ) : null}
+              {/*
+                All three legs are live since 2026-07-28: resolution walks the
+                referral chain at plan creation (ticket 6) and each leg's rate
+                is stored per override (ticket 8). Flex only ever resolves the
+                direct leg, but storing the others is harmless.
+              */}
             </section>
 
             <Separator />

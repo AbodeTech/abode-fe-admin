@@ -214,8 +214,8 @@ and detail components were deleted once the rebuild landed — see §9.
 
 | Gap | Effect | Ticket |
 |---|---|---|
-| **An asset can never gain a second offer** | No `POST …/offers`. A flex-only asset is flex-only forever — undercutting the point of the model change | 18 |
-| No add-plan endpoint; tenor is immutable | Adding a plan or re-tenoring means full-replacing the size's `plans[]`, which can lose a concurrent edit | 19 |
+| ~~An asset can never gain a second offer~~ | ✅ Resolved 2026-07-28 — `POST …/offers` exists and the offers tab has an Add offer action for the missing type | 18 |
+| No add-plan endpoint ~~; tenor is immutable~~ | ✅ Add half resolved 2026-07-28 — `POST …/plans` adds atomically, 409 on duplicate tenor. **Re-tenoring still full-replaces `plans[]`** | 19 |
 | No `Block` / `Plot` collection | `BlocksManager` has no backend, and `payment-plan.schema.ts` has `plotId: { ref: 'Plot' }` pointing at a model that was never built | 17 |
 | No asset analytics endpoint | §4 panels are sample data | 17 |
 | No subscribers endpoint | Customers tab states the position instead — deliberately not mocked | 17c |
