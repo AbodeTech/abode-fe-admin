@@ -427,7 +427,7 @@ export function SalesExport({ filters }: { filters: SalesFilters }) {
 
     const fullRecord: Record<string, any> = {
       id: index + 1,
-      name: `${record.user_firstName} ${record.user_lastName}` || 'No Name',
+      name: `${record.user_lastName} ${record.user_firstName}` || 'No Name',
       email: record.email || 'No Email',
       phone: record.user_phone || 'No Phone',
       referrer_name: record.referrer_name || 'No Referrer',

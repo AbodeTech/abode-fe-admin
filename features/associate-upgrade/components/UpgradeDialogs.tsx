@@ -60,7 +60,7 @@ export function UpgradeSummary({ row }: { row?: FragmentType<typeof UpgradeRowFr
   return (
     <div className="rounded-md border p-3 bg-muted/40 text-sm space-y-1">
       <p className="font-medium">
-        {upgrade.user?.firstName} {upgrade.user?.lastName}
+        {upgrade.user?.lastName} {upgrade.user?.firstName}
       </p>
       <p className="text-muted-foreground">{upgrade.user?.email}</p>
       <p>Upgrade: {upgrade.user_upgrade_type}</p>

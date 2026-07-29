@@ -131,7 +131,7 @@ function AllocationContent() {
       const parsed = exportRows.map((row) => {
         const client = getFragmentData(AllocationTableRowFragment, row);
         return {
-          clientName: `${client.firstName ?? ""} ${client.lastName ?? ""}`.trim(),
+          clientName: `${client.lastName ?? ""} ${client.firstName ?? ""}`.trim(),
           referrer: client.referral || "not added yet",
           assetName: client.assetType ? `${client.assetName} (${client.assetType})` : client.assetName,
           landSize: client.assetSize,

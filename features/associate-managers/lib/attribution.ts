@@ -89,7 +89,7 @@ export interface ContributorShape {
 }
 
 const contributorName = (c: ContributorShape) => {
-  const full = `${c.firstName ?? ""} ${c.lastName ?? ""}`.trim();
+  const full = `${c.lastName ?? ""} ${c.firstName ?? ""}`.trim();
   if (full) return full;
   if (c.email) return c.email.split("@")[0];
   return "Unnamed pro";

@@ -25,7 +25,7 @@ interface Props {
 }
 
 const managerDisplayName = (m: AssignedManager) => {
-  const full = `${m.firstName ?? ""} ${m.lastName ?? ""}`.trim();
+  const full = `${m.lastName ?? ""} ${m.firstName ?? ""}`.trim();
   return full || m.userName || m.email || "Associate Manager";
 };
 
@@ -40,7 +40,7 @@ export function ManagerAssignmentCard({ user }: Props) {
   if (user.referral_status !== "associate-pro") return null;
 
   const currentManager = user.associate_manager ?? null;
-  const proFullName = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || "Associate Pro";
+  const proFullName = `${user.lastName ?? ""} ${user.firstName ?? ""}`.trim() || "Associate Pro";
 
   return (
     <>

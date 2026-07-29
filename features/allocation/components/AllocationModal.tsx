@@ -266,7 +266,7 @@ export function AllocationModal({
               {/* Client summary */}
               <div className="rounded-md border p-3 bg-muted/40">
                 <p className="text-sm font-medium">
-                  {allocationClient.firstName} {allocationClient.lastName}
+                  {allocationClient.lastName} {allocationClient.firstName}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {allocationClient.email}

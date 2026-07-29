@@ -257,10 +257,10 @@ function NoActiveTargetBanner({
 }
 
 const initialsOf = (m?: AssociateManagerListItem["manager"] | null) =>
-  ((m?.firstName?.[0] ?? "") + (m?.lastName?.[0] ?? "")).toUpperCase() || "?";
+  ((m?.lastName?.[0] ?? "") + (m?.firstName?.[0] ?? "")).toUpperCase() || "?";
 
 const fullName = (m?: AssociateManagerListItem["manager"] | null) =>
-  `${m?.firstName ?? ""} ${m?.lastName ?? ""}`.trim() ||
+  `${m?.lastName ?? ""} ${m?.firstName ?? ""}`.trim() ||
   m?.userName ||
   m?.email ||
   "Manager";

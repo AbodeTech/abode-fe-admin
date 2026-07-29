@@ -200,7 +200,7 @@ export function AddManagerDialog({ open, onOpenChange }: Props) {
                       />
                       <div className="flex-1">
                         <p className="text-sm font-medium text-gray-900">
-                          {`${pro.firstName ?? ""} ${pro.lastName ?? ""}`.trim() ||
+                          {`${pro.lastName ?? ""} ${pro.firstName ?? ""}`.trim() ||
                             pro.email}
                         </p>
                         <p className="text-xs text-gray-500">{pro.email}</p>

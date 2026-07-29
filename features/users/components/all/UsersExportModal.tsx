@@ -161,8 +161,8 @@ export function UsersExportModal() {
           phoneNumber: row.phoneNumber ? `'${row.phoneNumber}` : "",
           address: row.address || "",
           country: row.country || "",
-          referrer: row.referral?.firstName && row.referral?.lastName
-            ? `${row.referral.firstName} ${row.referral.lastName}`
+          referrer: row.referral?.lastName && row.referral?.firstName
+            ? `${row.referral.lastName} ${row.referral.firstName}`
             : "",
           referrerEmail: row.referral?.email || "",
           last_login: formatDate(row.last_login),

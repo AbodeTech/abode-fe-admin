@@ -86,7 +86,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 const fullName = (p: ManagerDashboardProRow) =>
-  `${p.firstName ?? ""} ${p.lastName ?? ""}`.trim() || p.email || "Associate";
+  `${p.lastName ?? ""} ${p.firstName ?? ""}`.trim() || p.email || "Associate";
 
 export function SystemAssociatesTable({
   rows,

@@ -58,7 +58,7 @@ export const useExportDefaultUsers = () => {
       if (!validRows.length) return;
 
       exportToCsv(validRows, [
-        { header: 'Name', accessor: (r) => `${r.firstName} ${r.lastName}`.trim() },
+        { header: 'Name', accessor: (r) => `${r.lastName} ${r.firstName}`.trim() },
         { header: 'Email', accessor: (r) => r.email },
         { header: 'Phone Number', accessor: (r) => r.phoneNumber },
         { header: 'Referrer', accessor: (r) => r.referrer },

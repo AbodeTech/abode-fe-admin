@@ -106,7 +106,7 @@ export function UpgradeTable({ data, onApprove, onDecline }: UpgradeTableProps) 
                   className="text-primary hover:underline"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  {upgrade.user?.firstName} {upgrade.user?.lastName}
+                  {upgrade.user?.lastName} {upgrade.user?.firstName}
                 </Link>
               }
             >
@@ -119,7 +119,7 @@ export function UpgradeTable({ data, onApprove, onDecline }: UpgradeTableProps) 
                       className="font-medium text-foreground hover:underline"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      {upgrade.associate?.firstName} {upgrade.associate?.lastName || "N/A"}
+                      {upgrade.associate?.lastName} {upgrade.associate?.firstName || "N/A"}
                     </Link>
                   </span>
                 }
@@ -257,7 +257,7 @@ export function UpgradeTable({ data, onApprove, onDecline }: UpgradeTableProps) 
                           href={`/users/${upgrade.user?._id ?? ""}`}
                           className="font-medium text-black transition-colors hover:text-gray-700 hover:underline"
                         >
-                          {upgrade.user?.firstName} {upgrade.user?.lastName || "N/A"}
+                          {upgrade.user?.lastName} {upgrade.user?.firstName || "N/A"}
                         </Link>
                       </div>
                     </TableCell>
@@ -267,7 +267,7 @@ export function UpgradeTable({ data, onApprove, onDecline }: UpgradeTableProps) 
                           href={`/users/${upgrade.associate?._id ?? ""}`}
                           className="font-medium text-black transition-colors hover:text-gray-700 hover:underline"
                         >
-                          {upgrade.associate?.firstName} {upgrade.associate?.lastName || "N/A"}
+                          {upgrade.associate?.lastName} {upgrade.associate?.firstName || "N/A"}
                         </Link>
                       </div>
                     </TableCell>
