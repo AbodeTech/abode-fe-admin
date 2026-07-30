@@ -1,28 +1,9 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { graphql, FragmentType, useFragment } from "@/lib/gql";
 
-export const InventoryHealthBarFragment = graphql(`
-  fragment InventoryHealthBar_statistics on AssetInventoryStatistics {
-    portfolio {
-      totalPortfolioValue
-      totalCapacitySqm
-      activeCustomers
-      overallEfficiency
-      totalValueSold
-      totalSqmSold
-      totalMoneyReceived
-      totalBalanceOwed
-      defaulting {
-        defaultingCustomers
-        defaultedAssetValue
-        amountPaidByDefaulters
-        amountStillOwing
-      }
-    }
-  }
-`);
+import { SampleDataChip } from "./analytics/SampleDataChip";
+import type { PortfolioStats } from "./analytics/sample-data";
 
 function formatNaira(value: number | null | undefined): string {
   if (value == null || value === 0) return "₦0";
@@ -75,21 +56,24 @@ function Metric({ label, value, subValue, subValueVariant = "positive", classNam
 }
 
 interface Props {
-  data: FragmentType<typeof InventoryHealthBarFragment> | null | undefined;
+  /** ⛔ ticket 17 — no analytics endpoint exists; this is `SAMPLE_PORTFOLIO`. */
+  data: PortfolioStats;
 }
 
 export function InventoryHealthBar({ data }: Props) {
-  const stats = useFragment(InventoryHealthBarFragment, data);
-  const p = stats?.portfolio;
-  const d = p?.defaulting;
+  const p = data;
+  const d = data.defaulting;
 
   return (
     <div className="mb-6 w-full overflow-hidden rounded-xl border sm:mb-8">
       {/* Portfolio overview */}
       <div className="bg-muted/30 px-4 py-4 sm:px-6 sm:py-5">
-        <p className="mb-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-          Portfolio Overview
-        </p>
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            Portfolio Overview
+          </p>
+          <SampleDataChip />
+        </div>
         <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-4">
           <Metric label="Total Portfolio Value" value={formatNaira(p?.totalPortfolioValue)} />
           <Metric label="Total Capacity" value={formatSqm(p?.totalCapacitySqm)} />

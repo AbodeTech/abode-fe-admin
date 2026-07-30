@@ -40,7 +40,7 @@ import {
   useAssetIdByName,
   useAvailablePlotsForAsset,
   type Plot,
-} from "@/features/assets";
+} from "../hooks/use-plots";
 import { useAllocateLand } from "../hooks/use-allocate-land";
 import { useDeallocateLand } from "../hooks/use-deallocate-land";
 import { useReassignLand } from "../hooks/use-reassign-land";

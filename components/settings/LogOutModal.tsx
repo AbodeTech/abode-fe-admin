@@ -1,5 +1,7 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+
 import {
   Dialog,
   DialogContent,
@@ -10,10 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
-import { logoutAction } from "@/actions/auth";
-import { useAuthStore } from "@/store/auth-store";
-import { useRouter } from "next/navigation";
-import { clearAuthCookies } from "@/lib/utils/cookies";
+import { useLogout } from "@/features/auth";
 
 interface LogOutModalProps {
   isOpen: boolean;
@@ -22,21 +21,18 @@ interface LogOutModalProps {
 
 const LogOutModal = ({ isOpen, onClose }: LogOutModalProps) => {
   const router = useRouter();
-  const { logout } = useAuthStore();
+  const logout = useLogout();
 
-  const handleLogout = async () => {
-    // 1. Clear client-side cookies (access token, user, etc.)
-    clearAuthCookies();
-
-    // 2. Server-side logout (clears HTTP-only cookies like refreshToken)
-    await logoutAction();
-
-    // 3. Clear Zustand store
-    logout();
-
-    // 4. Close modal and redirect
-    onClose();
-    router.push("/signin");
+  const handleLogout = () => {
+    // The hook revokes the session server-side (best effort), then clears the
+    // cookies, store and query cache in onSettled — so a network failure still
+    // signs the admin out locally.
+    logout.mutate(undefined, {
+      onSettled: () => {
+        onClose();
+        router.push("/signin");
+      },
+    });
   };
 
   return (
@@ -49,8 +45,12 @@ const LogOutModal = ({ isOpen, onClose }: LogOutModalProps) => {
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button variant="destructive" onClick={handleLogout}>Logout</Button>
+          <Button variant="outline" onClick={onClose} disabled={logout.isPending}>
+            Cancel
+          </Button>
+          <Button variant="destructive" onClick={handleLogout} disabled={logout.isPending}>
+            {logout.isPending ? "Logging out…" : "Logout"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

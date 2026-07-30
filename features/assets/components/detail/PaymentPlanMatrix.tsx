@@ -1,5 +1,8 @@
 "use client";
 
+import { Fragment, useState } from "react";
+import { ChevronDown, ChevronRight, PieChart } from "lucide-react";
+
 import {
   Table,
   TableBody,
@@ -8,34 +11,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ChevronDown, ChevronRight, PieChart } from "lucide-react";
-import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { graphql, FragmentType, useFragment } from "@/lib/gql";
 
-export const PaymentPlanMatrixFragment = graphql(`
-  fragment PaymentPlanMatrix_statistics on AssetAnalyticsStatistics {
-    sizePlanBreakdown {
-      size
-      plans {
-        name
-        startValue
-        soldValue
-        totalSqmSold
-        totalSqmRemaining
-        totalPlans
-        totalDefaultingUsers
-        totalDefaultedValue
-        totalDefaultedBalance
-        totalBalance
-        totalTerminatedPlans
-        totalTerminatedValue
-        totalTerminatedBalance
-        efficiency
-      }
-    }
-  }
-`);
+import { SampleDataChip } from "../analytics/SampleDataChip";
+import type { PlanPerformance, SizePlanBreakdown } from "../analytics/sample-data";
 
 function formatNaira(amount: number | null | undefined): string {
   if (amount == null || amount === 0) return "—";
@@ -52,210 +31,401 @@ function formatSqm(sqm: number | null | undefined): string {
   return `${sqm.toLocaleString()} SQM`;
 }
 
+/** Size rows are the sum of their plans — the backend sends no group totals. */
+function totalsFor(plans: PlanPerformance[]) {
+  const sum = (pick: (plan: PlanPerformance) => number) =>
+    plans.reduce((total, plan) => total + pick(plan), 0);
+
+  return {
+    startValue: sum((p) => p.startValue),
+    soldValue: sum((p) => p.soldValue),
+    sqmSold: sum((p) => p.sqmSold),
+    sqmRemaining: sum((p) => p.sqmRemaining),
+    transactions: sum((p) => p.transactions),
+    defaultedCount: sum((p) => p.defaultingUsers),
+    defaultedValue: sum((p) => p.defaultedValue),
+    defaultedBalance: sum((p) => p.defaultedBalance),
+    terminatedCount: sum((p) => p.terminatedPlans),
+    terminatedValue: sum((p) => p.terminatedValue),
+    terminatedBalance: sum((p) => p.terminatedBalance),
+  };
+}
+
+function efficiencyColour(efficiency: number): string {
+  if (efficiency > 90) return "bg-emerald-500";
+  if (efficiency > 75) return "bg-amber-500";
+  return "bg-rose-500";
+}
+
+function EfficiencyBar({ plan }: { plan: PlanPerformance }) {
+  return (
+    <div className="flex items-center justify-end gap-2">
+      <span className="text-xs font-bold tabular-nums">{plan.efficiency.toFixed(0)}%</span>
+      <div
+        className="h-1.5 w-16 overflow-hidden rounded-full bg-muted"
+        role="progressbar"
+        aria-valuenow={Math.round(plan.efficiency)}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={`${plan.name} collection efficiency`}
+      >
+        <div
+          className={cn("h-full rounded-full", efficiencyColour(plan.efficiency))}
+          style={{ width: `${plan.efficiency}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 interface Props {
-  data: FragmentType<typeof PaymentPlanMatrixFragment> | null | undefined;
+  /** ⛔ ticket 17 — no per-asset analytics endpoint; this is `SAMPLE_SIZE_PLANS`. */
+  data: SizePlanBreakdown[];
 }
 
 export function PaymentPlanMatrix({ data }: Props) {
-  const stats = useFragment(PaymentPlanMatrixFragment, data);
-  const groups = stats?.sizePlanBreakdown ?? [];
+  const [collapsed, setCollapsed] = useState<string[]>([]);
 
-  const [expandedSizes, setExpandedSizes] = useState<string[]>(
-    groups.map((g) => g?.size ?? "").filter(Boolean)
-  );
+  // Collapsed-by-exception, so a size added to the data later starts open
+  // rather than silently hidden.
+  const isOpen = (size: string) => !collapsed.includes(size);
 
-  const toggleSize = (size: string) => {
-    setExpandedSizes((prev) =>
+  const toggleSize = (size: string) =>
+    setCollapsed((prev) =>
       prev.includes(size) ? prev.filter((s) => s !== size) : [...prev, size]
     );
-  };
 
   return (
-    <div className="mb-12">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-          <PieChart className="h-5 w-5 text-primary" />
-          <h3 className="text-xl font-bold tracking-tight">Payment Plan Performance Matrix</h3>
-        </div>
-        <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-primary/5 border border-primary/10 rounded-full">
-          <div className="h-1.5 w-1.5 bg-primary animate-pulse rounded-full" />
-          <span className="text-[10px] font-bold uppercase tracking-widest text-primary">Live Analysis Active</span>
-        </div>
+    <div>
+      <div className="mb-4 flex flex-wrap items-center gap-2 sm:mb-6">
+        <PieChart className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
+        <h3 className="text-lg font-bold tracking-tight sm:text-xl">
+          Payment plan performance
+        </h3>
+        <SampleDataChip />
       </div>
 
-      <div className="rounded-2xl border border-border/50 bg-background overflow-x-auto shadow-sm">
-        <Table>
-          <TableHeader className="bg-muted/30">
-            {/* Group header row */}
-            <TableRow className="border-b-0 hover:bg-transparent">
-              <TableHead colSpan={2} className="py-2" />
-              <TableHead colSpan={5} className="py-2" />
-              <TableHead
-                colSpan={3}
-                className="py-2 text-center text-[10px] font-bold uppercase tracking-wider text-rose-600 border-l"
-              >
-                Defaults
-              </TableHead>
-              <TableHead
-                colSpan={3}
-                className="py-2 text-center text-[10px] font-bold uppercase tracking-wider text-amber-600 border-l"
-              >
-                Terminations
-              </TableHead>
-              <TableHead colSpan={1} className="py-2 border-l" />
-            </TableRow>
-            {/* Column header row */}
-            <TableRow className="hover:bg-transparent">
-              <TableHead className="w-8" />
-              <TableHead className="text-[10px] font-bold uppercase tracking-wider h-10 whitespace-nowrap">Plan / Size</TableHead>
-              <TableHead className="text-[10px] font-bold uppercase tracking-wider h-10 whitespace-nowrap">Start Value</TableHead>
-              <TableHead className="text-[10px] font-bold uppercase tracking-wider h-10 whitespace-nowrap">Sold Value</TableHead>
-              <TableHead className="text-[10px] font-bold uppercase tracking-wider h-10 whitespace-nowrap">SQM Sold</TableHead>
-              <TableHead className="text-[10px] font-bold uppercase tracking-wider h-10 whitespace-nowrap">SQM Remaining</TableHead>
-              <TableHead className="text-[10px] font-bold uppercase tracking-wider h-10 whitespace-nowrap">Transactions</TableHead>
-              {/* Defaults */}
-              <TableHead className="text-[10px] font-bold uppercase tracking-wider h-10 whitespace-nowrap border-l">Count</TableHead>
-              <TableHead className="text-[10px] font-bold uppercase tracking-wider h-10 whitespace-nowrap">Value</TableHead>
-              <TableHead className="text-[10px] font-bold uppercase tracking-wider h-10 whitespace-nowrap">Balance</TableHead>
-              {/* Terminations */}
-              <TableHead className="text-[10px] font-bold uppercase tracking-wider h-10 whitespace-nowrap border-l">Count</TableHead>
-              <TableHead className="text-[10px] font-bold uppercase tracking-wider h-10 whitespace-nowrap">Value</TableHead>
-              <TableHead className="text-[10px] font-bold uppercase tracking-wider h-10 whitespace-nowrap">Balance</TableHead>
-              {/* Efficiency */}
-              <TableHead className="text-[10px] font-bold uppercase tracking-wider h-10 text-right whitespace-nowrap border-l">Efficiency</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {groups.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={14} className="h-32 text-center text-muted-foreground italic">
-                  No data available for this asset.
-                </TableCell>
-              </TableRow>
-            ) : (
-              groups.map((group) => {
-                if (!group) return null;
-                const isOpen = expandedSizes.includes(group.size ?? "");
-                const plans = group.plans ?? [];
+      {data.length === 0 ? (
+        <div className="rounded-xl border p-8 text-center text-sm text-muted-foreground">
+          No plan performance for this asset.
+        </div>
+      ) : (
+        <>
+          {/* ── desktop ─────────────────────────────────────────────── */}
+          <div className="hidden overflow-x-auto rounded-xl border md:block">
+            <Table>
+              <TableHeader className="bg-muted/30">
+                <TableRow className="border-b-0 hover:bg-transparent">
+                  <TableHead colSpan={7} className="py-2" />
+                  <TableHead
+                    colSpan={3}
+                    className="border-l py-2 text-center text-[10px] font-bold uppercase tracking-wider text-rose-600"
+                  >
+                    Defaults
+                  </TableHead>
+                  <TableHead
+                    colSpan={3}
+                    className="border-l py-2 text-center text-[10px] font-bold uppercase tracking-wider text-amber-600"
+                  >
+                    Terminations
+                  </TableHead>
+                  <TableHead className="border-l py-2" />
+                </TableRow>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="w-8" />
+                  <TableHead className="h-10 whitespace-nowrap text-[10px] font-bold uppercase tracking-wider">
+                    Plan / Size
+                  </TableHead>
+                  <TableHead className="h-10 whitespace-nowrap text-[10px] font-bold uppercase tracking-wider">
+                    Start Value
+                  </TableHead>
+                  <TableHead className="h-10 whitespace-nowrap text-[10px] font-bold uppercase tracking-wider">
+                    Sold Value
+                  </TableHead>
+                  <TableHead className="h-10 whitespace-nowrap text-[10px] font-bold uppercase tracking-wider">
+                    SQM Sold
+                  </TableHead>
+                  <TableHead className="h-10 whitespace-nowrap text-[10px] font-bold uppercase tracking-wider">
+                    SQM Remaining
+                  </TableHead>
+                  <TableHead className="h-10 whitespace-nowrap text-[10px] font-bold uppercase tracking-wider">
+                    Transactions
+                  </TableHead>
+                  <TableHead className="h-10 whitespace-nowrap border-l text-[10px] font-bold uppercase tracking-wider">
+                    Count
+                  </TableHead>
+                  <TableHead className="h-10 whitespace-nowrap text-[10px] font-bold uppercase tracking-wider">
+                    Value
+                  </TableHead>
+                  <TableHead className="h-10 whitespace-nowrap text-[10px] font-bold uppercase tracking-wider">
+                    Balance
+                  </TableHead>
+                  <TableHead className="h-10 whitespace-nowrap border-l text-[10px] font-bold uppercase tracking-wider">
+                    Count
+                  </TableHead>
+                  <TableHead className="h-10 whitespace-nowrap text-[10px] font-bold uppercase tracking-wider">
+                    Value
+                  </TableHead>
+                  <TableHead className="h-10 whitespace-nowrap text-[10px] font-bold uppercase tracking-wider">
+                    Balance
+                  </TableHead>
+                  <TableHead className="h-10 whitespace-nowrap border-l text-right text-[10px] font-bold uppercase tracking-wider">
+                    Efficiency
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {data.map((group) => {
+                  const open = isOpen(group.size);
+                  const totals = totalsFor(group.plans);
 
-                const g = {
-                  startValue: plans.reduce((s, p) => s + (p?.startValue ?? 0), 0),
-                  soldValue: plans.reduce((s, p) => s + (p?.soldValue ?? 0), 0),
-                  sqmSold: plans.reduce((s, p) => s + (p?.totalSqmSold ?? 0), 0),
-                  sqmRemaining: plans.reduce((s, p) => s + (p?.totalSqmRemaining ?? 0), 0),
-                  totalPlans: plans.reduce((s, p) => s + (p?.totalPlans ?? 0), 0),
-                  defaultedCount: plans.reduce((s, p) => s + (p?.totalDefaultingUsers ?? 0), 0),
-                  defaultedValue: plans.reduce((s, p) => s + (p?.totalDefaultedValue ?? 0), 0),
-                  defaultedBalance: plans.reduce((s, p) => s + (p?.totalDefaultedBalance ?? 0), 0),
-                  terminatedCount: plans.reduce((s, p) => s + (p?.totalTerminatedPlans ?? 0), 0),
-                  terminatedValue: plans.reduce((s, p) => s + (p?.totalTerminatedValue ?? 0), 0),
-                  terminatedBalance: plans.reduce((s, p) => s + (p?.totalTerminatedBalance ?? 0), 0),
-                };
+                  return (
+                    <Fragment key={group.size}>
+                      <TableRow
+                        className="cursor-pointer bg-muted/20 hover:bg-muted/40"
+                        onClick={() => toggleSize(group.size)}
+                      >
+                        <TableCell>
+                          {open ? (
+                            <ChevronDown className="h-4 w-4" aria-hidden />
+                          ) : (
+                            <ChevronRight className="h-4 w-4" aria-hidden />
+                          )}
+                          <span className="sr-only">
+                            {open ? "Collapse" : "Expand"} {group.size} SQM
+                          </span>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-xs font-black uppercase tracking-widest">
+                          {group.size} SQM
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-xs font-bold tabular-nums">
+                          {formatNaira(totals.startValue)}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-xs font-bold tabular-nums">
+                          {formatNaira(totals.soldValue)}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-xs font-bold tabular-nums">
+                          {formatSqm(totals.sqmSold)}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-xs font-bold tabular-nums">
+                          {formatSqm(totals.sqmRemaining)}
+                        </TableCell>
+                        <TableCell className="text-xs font-bold tabular-nums">
+                          {totals.transactions}
+                        </TableCell>
+                        <TableCell className="border-l">
+                          <span
+                            className={cn(
+                              "text-xs font-bold tabular-nums",
+                              totals.defaultedCount > 0 ? "text-rose-600" : "text-muted-foreground"
+                            )}
+                          >
+                            {totals.defaultedCount || "—"}
+                          </span>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-xs font-bold tabular-nums text-rose-600">
+                          {formatNaira(totals.defaultedValue)}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-xs font-bold tabular-nums text-rose-500">
+                          {formatNaira(totals.defaultedBalance)}
+                        </TableCell>
+                        <TableCell className="border-l">
+                          <span
+                            className={cn(
+                              "text-xs font-bold tabular-nums",
+                              totals.terminatedCount > 0
+                                ? "text-amber-600"
+                                : "text-muted-foreground"
+                            )}
+                          >
+                            {totals.terminatedCount || "—"}
+                          </span>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-xs font-bold tabular-nums text-amber-600">
+                          {formatNaira(totals.terminatedValue)}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-xs font-bold tabular-nums text-amber-500">
+                          {formatNaira(totals.terminatedBalance)}
+                        </TableCell>
+                        <TableCell className="border-l" />
+                      </TableRow>
 
-                return (
-                  <>
-                    {/* Size group row */}
-                    <TableRow
-                      key={group.size}
-                      className="bg-slate-50/50 hover:bg-slate-50 cursor-pointer"
-                      onClick={() => toggleSize(group.size ?? "")}
-                    >
-                      <TableCell>
-                        {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                      </TableCell>
-                      <TableCell className="font-black text-xs uppercase tracking-widest text-slate-900 whitespace-nowrap">
-                        {group.size} SQM
-                      </TableCell>
-                      <TableCell className="text-xs font-bold whitespace-nowrap">{formatNaira(g.startValue)}</TableCell>
-                      <TableCell className="text-xs font-bold whitespace-nowrap">{formatNaira(g.soldValue)}</TableCell>
-                      <TableCell className="text-xs font-bold whitespace-nowrap">{formatSqm(g.sqmSold)}</TableCell>
-                      <TableCell className="text-xs font-bold whitespace-nowrap">{formatSqm(g.sqmRemaining)}</TableCell>
-                      <TableCell className="text-xs font-bold tabular-nums">{g.totalPlans}</TableCell>
-                      {/* Defaults */}
-                      <TableCell className="border-l">
-                        <span className={cn("text-xs font-bold", g.defaultedCount > 0 ? "text-rose-600" : "text-muted-foreground")}>
-                          {g.defaultedCount || "—"}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-xs font-bold text-rose-600 whitespace-nowrap">{formatNaira(g.defaultedValue)}</TableCell>
-                      <TableCell className="text-xs font-bold text-rose-500 whitespace-nowrap">{formatNaira(g.defaultedBalance)}</TableCell>
-                      {/* Terminations */}
-                      <TableCell className="border-l">
-                        <span className={cn("text-xs font-bold", g.terminatedCount > 0 ? "text-amber-600" : "text-muted-foreground")}>
-                          {g.terminatedCount || "—"}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-xs font-bold text-amber-600 whitespace-nowrap">{formatNaira(g.terminatedValue)}</TableCell>
-                      <TableCell className="text-xs font-bold text-amber-500 whitespace-nowrap">{formatNaira(g.terminatedBalance)}</TableCell>
-                      <TableCell className="border-l" />
-                    </TableRow>
-
-                    {/* Plan rows */}
-                    {isOpen && plans.map((plan, i) => {
-                      if (!plan) return null;
-                      const efficiency = plan.efficiency ?? 0;
-                      return (
-                        <TableRow key={`${group.size}-${i}`} className="hover:bg-muted/20 border-l-2 border-l-primary/10">
-                          <TableCell />
-                          <TableCell className="py-4">
-                            <div className="flex flex-col">
-                              <span className="text-sm font-bold whitespace-nowrap">{plan.name}</span>
-                              <span className="text-[10px] font-medium text-muted-foreground uppercase opacity-70">Payment Scheme</span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-sm font-medium tabular-nums whitespace-nowrap">{formatNaira(plan.startValue)}</TableCell>
-                          <TableCell className="text-sm font-medium tabular-nums whitespace-nowrap">{formatNaira(plan.soldValue)}</TableCell>
-                          <TableCell className="text-sm font-medium tabular-nums whitespace-nowrap">{formatSqm(plan.totalSqmSold)}</TableCell>
-                          <TableCell className="text-sm font-medium tabular-nums whitespace-nowrap">{formatSqm(plan.totalSqmRemaining)}</TableCell>
-                          <TableCell className="text-sm font-bold tabular-nums">{plan.totalPlans ?? 0}</TableCell>
-                          {/* Defaults */}
-                          <TableCell className="border-l">
-                            <span className={cn("text-sm font-bold", (plan.totalDefaultingUsers ?? 0) > 0 ? "text-rose-600" : "text-muted-foreground")}>
-                              {plan.totalDefaultingUsers || "—"}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-sm font-medium tabular-nums text-rose-600 whitespace-nowrap">{formatNaira(plan.totalDefaultedValue)}</TableCell>
-                          <TableCell className="text-sm font-medium tabular-nums text-rose-500 whitespace-nowrap">{formatNaira(plan.totalDefaultedBalance)}</TableCell>
-                          {/* Terminations */}
-                          <TableCell className="border-l">
-                            <span className={cn("text-sm font-bold", (plan.totalTerminatedPlans ?? 0) > 0 ? "text-amber-600" : "text-muted-foreground")}>
-                              {plan.totalTerminatedPlans || "—"}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-sm font-medium tabular-nums text-amber-600 whitespace-nowrap">{formatNaira(plan.totalTerminatedValue)}</TableCell>
-                          <TableCell className="text-sm font-medium tabular-nums text-amber-500 whitespace-nowrap">{formatNaira(plan.totalTerminatedBalance)}</TableCell>
-                          {/* Efficiency */}
-                          <TableCell className="text-right border-l">
-                            <div className="flex items-center justify-end gap-2">
-                              <span className="text-xs font-bold">{efficiency.toFixed(0)}%</span>
-                              <div
-                                className="h-1.5 w-16 bg-muted rounded-full overflow-hidden"
-                                role="progressbar"
-                                aria-valuenow={efficiency}
-                                aria-valuemin={0}
-                                aria-valuemax={100}
-                                aria-label={`${plan.name} Collection Efficiency`}
-                              >
-                                <div
-                                  className={cn(
-                                    "h-full rounded-full transition-all duration-1000",
-                                    efficiency > 90 ? "bg-emerald-500" : efficiency > 75 ? "bg-amber-500" : "bg-rose-500"
-                                  )}
-                                  style={{ width: `${efficiency}%` }}
-                                />
+                      {open &&
+                        group.plans.map((plan) => (
+                          <TableRow key={`${group.size}-${plan.name}`} className="hover:bg-muted/20">
+                            <TableCell />
+                            <TableCell className="py-4">
+                              <div className="flex flex-col">
+                                <span className="whitespace-nowrap text-sm font-bold">
+                                  {plan.name}
+                                </span>
+                                <span className="text-[10px] font-medium uppercase text-muted-foreground">
+                                  Payment scheme
+                                </span>
                               </div>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
-      </div>
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap text-sm tabular-nums">
+                              {formatNaira(plan.startValue)}
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap text-sm tabular-nums">
+                              {formatNaira(plan.soldValue)}
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap text-sm tabular-nums">
+                              {formatSqm(plan.sqmSold)}
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap text-sm tabular-nums">
+                              {formatSqm(plan.sqmRemaining)}
+                            </TableCell>
+                            <TableCell className="text-sm font-bold tabular-nums">
+                              {plan.transactions}
+                            </TableCell>
+                            <TableCell className="border-l">
+                              <span
+                                className={cn(
+                                  "text-sm font-bold tabular-nums",
+                                  plan.defaultingUsers > 0
+                                    ? "text-rose-600"
+                                    : "text-muted-foreground"
+                                )}
+                              >
+                                {plan.defaultingUsers || "—"}
+                              </span>
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap text-sm tabular-nums text-rose-600">
+                              {formatNaira(plan.defaultedValue)}
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap text-sm tabular-nums text-rose-500">
+                              {formatNaira(plan.defaultedBalance)}
+                            </TableCell>
+                            <TableCell className="border-l">
+                              <span
+                                className={cn(
+                                  "text-sm font-bold tabular-nums",
+                                  plan.terminatedPlans > 0
+                                    ? "text-amber-600"
+                                    : "text-muted-foreground"
+                                )}
+                              >
+                                {plan.terminatedPlans || "—"}
+                              </span>
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap text-sm tabular-nums text-amber-600">
+                              {formatNaira(plan.terminatedValue)}
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap text-sm tabular-nums text-amber-500">
+                              {formatNaira(plan.terminatedBalance)}
+                            </TableCell>
+                            <TableCell className="border-l text-right">
+                              <EfficiencyBar plan={plan} />
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                    </Fragment>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* ── mobile ──────────────────────────────────────────────── */}
+          <div className="space-y-3 md:hidden">
+            {data.map((group) => {
+              const open = isOpen(group.size);
+              const totals = totalsFor(group.plans);
+
+              return (
+                <div key={group.size} className="overflow-hidden rounded-xl border">
+                  <button
+                    type="button"
+                    onClick={() => toggleSize(group.size)}
+                    aria-expanded={open}
+                    className="flex w-full items-center gap-2 bg-muted/20 px-4 py-3 text-left"
+                  >
+                    {open ? (
+                      <ChevronDown className="h-4 w-4 shrink-0" aria-hidden />
+                    ) : (
+                      <ChevronRight className="h-4 w-4 shrink-0" aria-hidden />
+                    )}
+                    <span className="text-xs font-black uppercase tracking-widest">
+                      {group.size} SQM
+                    </span>
+                    <span className="ml-auto text-xs font-bold tabular-nums text-muted-foreground">
+                      {formatNaira(totals.soldValue)}
+                    </span>
+                  </button>
+
+                  <dl className="grid grid-cols-2 gap-x-4 gap-y-3 border-t px-4 py-3">
+                    <Stat label="Start value" value={formatNaira(totals.startValue)} />
+                    <Stat label="Sold value" value={formatNaira(totals.soldValue)} />
+                    <Stat label="SQM sold" value={formatSqm(totals.sqmSold)} />
+                    <Stat label="SQM remaining" value={formatSqm(totals.sqmRemaining)} />
+                    <Stat label="Transactions" value={String(totals.transactions)} />
+                    <Stat
+                      label="Defaulted"
+                      value={`${totals.defaultedCount} · ${formatNaira(totals.defaultedBalance)}`}
+                      tone={totals.defaultedCount > 0 ? "danger" : undefined}
+                    />
+                  </dl>
+
+                  {open &&
+                    group.plans.map((plan) => (
+                      <div key={plan.name} className="border-t bg-muted/10 px-4 py-3">
+                        <div className="mb-2 flex items-center justify-between gap-3">
+                          <span className="text-sm font-bold">{plan.name}</span>
+                          <EfficiencyBar plan={plan} />
+                        </div>
+                        <dl className="grid grid-cols-2 gap-x-4 gap-y-2">
+                          <Stat label="Start value" value={formatNaira(plan.startValue)} />
+                          <Stat label="Sold value" value={formatNaira(plan.soldValue)} />
+                          <Stat label="SQM sold" value={formatSqm(plan.sqmSold)} />
+                          <Stat label="SQM remaining" value={formatSqm(plan.sqmRemaining)} />
+                          <Stat label="Transactions" value={String(plan.transactions)} />
+                          <Stat
+                            label="Defaults"
+                            value={`${plan.defaultingUsers || 0} · ${formatNaira(plan.defaultedBalance)}`}
+                            tone={plan.defaultingUsers > 0 ? "danger" : undefined}
+                          />
+                          <Stat
+                            label="Terminations"
+                            value={`${plan.terminatedPlans || 0} · ${formatNaira(plan.terminatedBalance)}`}
+                            tone={plan.terminatedPlans > 0 ? "warning" : undefined}
+                          />
+                        </dl>
+                      </div>
+                    ))}
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone?: "danger" | "warning";
+}) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </dt>
+      <dd
+        className={cn(
+          "text-sm font-medium tabular-nums wrap-break-word",
+          tone === "danger" && "text-rose-600",
+          tone === "warning" && "text-amber-600"
+        )}
+      >
+        {value}
+      </dd>
     </div>
   );
 }
