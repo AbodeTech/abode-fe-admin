@@ -71,9 +71,9 @@ export function PendingApprovalsTable({
           <AdminMobileCard
             key={listing._id}
             title={
-              listing.buyer ? `${listing.buyer.firstName} ${listing.buyer.lastName}` : "N/A"
+              listing.buyer ? `${listing.buyer.lastName} ${listing.buyer.firstName}` : "N/A"
             }
-            subtitle={listing.seller ? `Seller: ${listing.seller.firstName} ${listing.seller.lastName}` : undefined}
+            subtitle={listing.seller ? `Seller: ${listing.seller.lastName} ${listing.seller.firstName}` : undefined}
           >
             <AdminMobileField label="Asset" value={listing.asset?.asset_name || "N/A"} />
             <AdminMobileField label="Price" value={formatCurrency(listing.listing_price)} />
@@ -148,16 +148,16 @@ export function PendingApprovalsTable({
               className="border-b border-[#E5EAEF] bg-white transition-colors hover:bg-gray-50"
             >
               <TableCell className="max-w-36 px-3 py-4 text-sm font-medium text-[#333333] sm:px-4 sm:py-5">
-                <span className="line-clamp-2 wrap-break-word" title={listing.buyer ? `${listing.buyer.firstName} ${listing.buyer.lastName}` : undefined}>
+                <span className="line-clamp-2 wrap-break-word" title={listing.buyer ? `${listing.buyer.lastName} ${listing.buyer.firstName}` : undefined}>
                   {listing.buyer
-                    ? `${listing.buyer.firstName} ${listing.buyer.lastName}`
+                    ? `${listing.buyer.lastName} ${listing.buyer.firstName}`
                     : "N/A"}
                 </span>
               </TableCell>
               <TableCell className="max-w-36 px-3 py-4 text-sm text-[#667085] sm:px-4 sm:py-5">
-                <span className="line-clamp-2 wrap-break-word" title={listing.seller ? `${listing.seller.firstName} ${listing.seller.lastName}` : undefined}>
+                <span className="line-clamp-2 wrap-break-word" title={listing.seller ? `${listing.seller.lastName} ${listing.seller.firstName}` : undefined}>
                   {listing.seller
-                    ? `${listing.seller.firstName} ${listing.seller.lastName}`
+                    ? `${listing.seller.lastName} ${listing.seller.firstName}`
                     : "N/A"}
                 </span>
               </TableCell>

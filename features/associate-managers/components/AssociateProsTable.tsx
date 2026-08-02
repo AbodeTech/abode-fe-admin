@@ -121,7 +121,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 const fullName = (p: ManagerDashboardProRow) =>
-  `${p.firstName ?? ""} ${p.lastName ?? ""}`.trim() || p.email || "Pro";
+  `${p.lastName ?? ""} ${p.firstName ?? ""}`.trim() || p.email || "Pro";
 
 /** Adapter: live ManagerDashboardProRow → legacy AssociatePro shape that the
  * Reassign/Bulk dialogs still consume. Removed once those dialogs are refactored. */

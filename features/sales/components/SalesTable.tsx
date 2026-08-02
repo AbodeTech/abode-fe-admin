@@ -80,7 +80,7 @@ export function SalesTable({ records }: SalesTableProps) {
             return (
               <AdminMobileCard
                 key={idx}
-                title={`${sale.user_firstName} ${sale.user_lastName}`}
+                title={`${sale.user_lastName} ${sale.user_firstName}`}
                 subtitle={sale.email}
               >
                 <AdminMobileField
@@ -173,7 +173,7 @@ export function SalesTable({ records }: SalesTableProps) {
                   return (
                     <TableRow key={idx}>
                       <TableCell className="font-medium">
-                        {sale.user_firstName} {sale.user_lastName}
+                        {sale.user_lastName} {sale.user_firstName}
                       </TableCell>
                       <TableCell>{sale.email}</TableCell>
                       <TableCell>{sale.user_phone || "—"}</TableCell>

@@ -561,7 +561,7 @@ export function RaffleTicketsSection() {
       const csvContent = [
         headers.join(","),
         ...ticketData.map((row) => {
-          const name = row?.user_id?.firstName ? `${row.user_id.firstName} ${row.user_id.lastName || ''}` : "-";
+          const name = row?.user_id?.lastName ? `${row.user_id.lastName} ${row.user_id.firstName || ''}` : "-";
           const email = row?.user_id?.email || "-";
           const phone = row?.user_id?.phoneNumber || "-";
           return [

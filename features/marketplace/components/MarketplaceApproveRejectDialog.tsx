@@ -80,13 +80,13 @@ export function MarketplaceApproveDialog({ listing, isOpen, onClose }: ApproveDi
             <div className="flex justify-between">
               <span className="text-gray-500">Buyer:</span>
               <span className="font-medium">
-                {listing.buyer?.firstName} {listing.buyer?.lastName}
+                {listing.buyer?.lastName} {listing.buyer?.firstName}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Seller:</span>
               <span className="font-medium">
-                {listing.seller?.firstName} {listing.seller?.lastName}
+                {listing.seller?.lastName} {listing.seller?.firstName}
               </span>
             </div>
             <div className="flex justify-between">

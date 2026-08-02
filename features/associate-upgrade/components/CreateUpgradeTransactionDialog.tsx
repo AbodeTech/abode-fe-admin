@@ -126,7 +126,7 @@ export function CreateUpgradeTransactionDialog() {
             {selectedUser ? (
               <div className="flex flex-col gap-3 rounded-md border bg-gray-50 p-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
-                  <p className="font-medium text-sm">{selectedUser.firstName} {selectedUser.lastName}</p>
+                  <p className="font-medium text-sm">{selectedUser.lastName} {selectedUser.firstName}</p>
                   <p className="text-xs text-gray-500">{selectedUser.email}</p>
                 </div>
                 <button
@@ -160,7 +160,7 @@ export function CreateUpgradeTransactionDialog() {
                         className="w-full text-left p-3 hover:bg-gray-100 border-b last:border-0"
                         onClick={() => setSelectedUser(user)}
                       >
-                        <p className="font-medium text-sm">{user.firstName} {user.lastName}</p>
+                        <p className="font-medium text-sm">{user.lastName} {user.firstName}</p>
                         <p className="text-xs text-gray-500">{user.email}</p>
                       </button>
                     ))}

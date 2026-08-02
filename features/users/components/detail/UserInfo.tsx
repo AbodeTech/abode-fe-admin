@@ -31,7 +31,7 @@ export function UserInfo({ user }: UserInfoProps) {
     { label: "Status", value: user.referral_status },
     { label: "Email", value: user.email },
     { label: "Date of Birth", value: user.date_of_birth ? formatDateWord(user.date_of_birth) : "N/A" },
-    { label: "Referrer", value: user.referral ? `${user.referral.firstName} ${user.referral.lastName}` : "No Referrer" },
+    { label: "Referrer", value: user.referral ? `${user.referral.lastName} ${user.referral.firstName}` : "No Referrer" },
     { label: "TIN", value: user.kyc?.tin || "Nil" },
   ];
 

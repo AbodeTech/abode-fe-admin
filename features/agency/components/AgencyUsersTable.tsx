@@ -39,7 +39,7 @@ export function AgencyUsersTable({ users }: AgencyUsersTableProps) {
           rows.map((user) => (
             <AdminMobileCard
               key={user._id}
-              title={[user.firstName, user.lastName].filter(Boolean).join(" ") || "-"}
+              title={[user.lastName, user.firstName].filter(Boolean).join(" ") || "-"}
               subtitle={user.email || undefined}
             >
               <AdminMobileField label="Phone" value={user.phoneNumber || "-"} />
@@ -70,7 +70,7 @@ export function AgencyUsersTable({ users }: AgencyUsersTableProps) {
               <TableRow key={user._id} className="hover:bg-muted/30">
                 <TableCell className="max-w-48 font-medium">
                   <span className="wrap-break-word">
-                    {[user.firstName, user.lastName].filter(Boolean).join(" ") || "-"}
+                    {[user.lastName, user.firstName].filter(Boolean).join(" ") || "-"}
                   </span>
                 </TableCell>
                 <TableCell className="max-w-48 wrap-break-word text-sm">{user.email || "-"}</TableCell>

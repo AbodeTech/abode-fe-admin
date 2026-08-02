@@ -27,7 +27,7 @@ interface Props {
 }
 
 const fullName = (m?: AssociateManagerListItem["manager"] | null) =>
-  `${m?.firstName ?? ""} ${m?.lastName ?? ""}`.trim() ||
+  `${m?.lastName ?? ""} ${m?.firstName ?? ""}`.trim() ||
   m?.userName ||
   m?.email ||
   "Manager";

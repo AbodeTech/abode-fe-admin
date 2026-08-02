@@ -193,8 +193,8 @@ export function RequestDetailModal({ request }: RequestDetailModalProps) {
                     <div>
                       <p className="text-muted-foreground">Full Name</p>
                       <p className="font-medium">
-                        {request.user?.firstName || request.user?.lastName
-                          ? `${request.user.firstName ?? ""} ${request.user.lastName ?? ""}`.trim()
+                        {request.user?.lastName || request.user?.firstName
+                          ? `${request.user.lastName ?? ""} ${request.user.firstName ?? ""}`.trim()
                           : "—"}
                       </p>
                     </div>

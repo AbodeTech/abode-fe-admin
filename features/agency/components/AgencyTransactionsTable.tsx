@@ -75,7 +75,7 @@ export function AgencyTransactionsTable({ transactions }: AgencyTransactionsTabl
                   label="Client"
                   value={
                     <span>
-                      {[transaction.referral_user?.firstName, transaction.referral_user?.lastName].filter(Boolean).join(" ") || "-"}
+                      {[transaction.referral_user?.lastName, transaction.referral_user?.firstName].filter(Boolean).join(" ") || "-"}
                       <span className="mt-1 block text-xs text-muted-foreground">{transaction.referral_user?.email || "-"}</span>
                     </span>
                   }
@@ -139,7 +139,7 @@ export function AgencyTransactionsTable({ transactions }: AgencyTransactionsTabl
                   </TableCell>
                   <TableCell className="max-w-44">
                     <div className="font-medium wrap-break-word">
-                      {[transaction.referral_user?.firstName, transaction.referral_user?.lastName]
+                      {[transaction.referral_user?.lastName, transaction.referral_user?.firstName]
                         .filter(Boolean)
                         .join(" ") || "-"}
                     </div>

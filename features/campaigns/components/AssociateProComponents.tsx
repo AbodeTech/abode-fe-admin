@@ -441,9 +441,9 @@ export function AssociateProUpgradesTable({ data }: AssociateProUpgradesTablePro
           <>
             <AdminMobileStack className="px-0.5">
               {pros.map((pro) => {
-                const fullName = [pro.firstName, pro.lastName].filter(Boolean).join(" ") || "—";
+                const fullName = [pro.lastName, pro.firstName].filter(Boolean).join(" ") || "—";
                 const referrerName = pro.referral
-                  ? [pro.referral.firstName, pro.referral.lastName].filter(Boolean).join(" ") || pro.referral.email || "—"
+                  ? [pro.referral.lastName, pro.referral.firstName].filter(Boolean).join(" ") || pro.referral.email || "—"
                   : "—";
                 return (
                   <AdminMobileCard key={pro._id ?? pro.email ?? fullName} title={fullName}>
@@ -467,9 +467,9 @@ export function AssociateProUpgradesTable({ data }: AssociateProUpgradesTablePro
                   </TableHeader>
                   <TableBody>
                     {pros.map((pro) => {
-                      const fullName = [pro.firstName, pro.lastName].filter(Boolean).join(" ") || "-";
+                      const fullName = [pro.lastName, pro.firstName].filter(Boolean).join(" ") || "-";
                       const referrerName = pro.referral
-                        ? [pro.referral.firstName, pro.referral.lastName].filter(Boolean).join(" ") || pro.referral.email || "-"
+                        ? [pro.referral.lastName, pro.referral.firstName].filter(Boolean).join(" ") || pro.referral.email || "-"
                         : "-";
                       return (
                         <TableRow key={pro._id ?? pro.email ?? fullName} className="border-border">
@@ -862,11 +862,11 @@ export function AssociateProRecruitmentTable({
             onClick={() =>
               downloadCsv(
                 users.map((u) => ({
-                  Name: `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim() || "-",
+                  Name: `${u.lastName ?? ""} ${u.firstName ?? ""}`.trim() || "-",
                   Email: u.email ?? "-",
                   "Joined Date": formatDate(u.createdAt),
                   "Referrer Name": u.referral
-                    ? `${u.referral.firstName} ${u.referral.lastName}`.trim()
+                    ? `${u.referral.lastName} ${u.referral.firstName}`.trim()
                     : "-",
                   "Referrer Email": u.referral?.email ?? "-",
                 })),
@@ -911,8 +911,8 @@ export function AssociateProRecruitmentTable({
           <>
             <AdminMobileStack className="px-0.5">
               {users.map((user, idx) => {
-                const fullName = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || "—";
-                const refName = user.referral ? `${user.referral.firstName} ${user.referral.lastName}`.trim() : "—";
+                const fullName = `${user.lastName ?? ""} ${user.firstName ?? ""}`.trim() || "—";
+                const refName = user.referral ? `${user.referral.lastName} ${user.referral.firstName}`.trim() : "—";
                 return (
                   <AdminMobileCard key={user._id ?? idx} title={fullName} subtitle={user.email ?? undefined}>
                     <AdminMobileField label="Joined" value={formatDate(user.createdAt)} />
@@ -938,12 +938,12 @@ export function AssociateProRecruitmentTable({
                     {users.map((user, idx) => (
                       <TableRow key={user._id ?? idx} className="border-border">
                         <TableCell className="font-medium text-foreground">
-                          {`${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || "-"}
+                          {`${user.lastName ?? ""} ${user.firstName ?? ""}`.trim() || "-"}
                         </TableCell>
                         <TableCell className="text-muted-foreground">{user.email ?? "-"}</TableCell>
                         <TableCell className="text-muted-foreground">{formatDate(user.createdAt)}</TableCell>
                         <TableCell className="text-muted-foreground">
-                          {user.referral ? `${user.referral.firstName} ${user.referral.lastName}`.trim() : "-"}
+                          {user.referral ? `${user.referral.lastName} ${user.referral.firstName}`.trim() : "-"}
                         </TableCell>
                         <TableCell className="text-muted-foreground">{user.referral?.email ?? "-"}</TableCell>
                       </TableRow>
@@ -1021,9 +1021,9 @@ export function AssociateProExportPanel({ pros, tickets }: AssociateProExportPan
             onClick={() =>
               downloadCsv(
                 proRows.map((row) => {
-                  const fullName = [row.firstName, row.lastName].filter(Boolean).join(" ") || "-";
+                  const fullName = [row.lastName, row.firstName].filter(Boolean).join(" ") || "-";
                   const referrerName = row.referral
-                    ? [row.referral.firstName, row.referral.lastName].filter(Boolean).join(" ") || row.referral.email || "-"
+                    ? [row.referral.lastName, row.referral.firstName].filter(Boolean).join(" ") || row.referral.email || "-"
                     : "-";
                   return {
                     "Full Name": fullName,

@@ -171,7 +171,7 @@ export function CommissionTransactionsTable({ data, isLoading }: CommissionTrans
       ...c,
       whtAmount: parsed.vatAmount,
       balance: parsed.balance,
-      clientName: parsed.clientName || `${c.user?.firstName || ""} ${c.user?.lastName || ""}`,
+      clientName: parsed.clientName || `${c.user?.lastName || ""} ${c.user?.firstName || ""}`,
       parsedAssetType: parsed.assetType || c.asset_type || "N/A",
       amount: Number(c.amount ?? 0),
       time_of_transaction: c.time_of_transaction || new Date().toISOString()
@@ -238,7 +238,7 @@ export function CommissionTransactionsTable({ data, isLoading }: CommissionTrans
               <AdminMobileField label="Asset type" value={commission.parsedAssetType} />
               <AdminMobileField
                 label="Associate"
-                value={`${commission.user?.firstName} ${commission.user?.lastName}`}
+                value={`${commission.user?.lastName} ${commission.user?.firstName}`}
               />
               <AdminMobileField label="Referrer" value={commission.user?.referrer || "N/A"} />
               <AdminMobileField label="Associate status" value={commission.user?.referral_status ?? "N/A"} />
@@ -359,7 +359,7 @@ export function CommissionTransactionsTable({ data, isLoading }: CommissionTrans
                   </Badge>
                 </TableCell>
                 <TableCell className="max-w-[160px] whitespace-normal wrap-break-word py-5 px-4 text-sm font-medium text-[#333333] sm:max-w-none">
-                  {commission.user?.firstName} {commission.user?.lastName}
+                  {commission.user?.lastName} {commission.user?.firstName}
                 </TableCell>
                 <TableCell className="max-w-[140px] whitespace-normal wrap-break-word py-5 px-4 text-sm text-[#667085] sm:max-w-none">
                   {commission.user?.referrer || "N/A"}

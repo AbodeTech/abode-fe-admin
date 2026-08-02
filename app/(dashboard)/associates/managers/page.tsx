@@ -236,7 +236,7 @@ function AssociateManagersContent() {
   const activeManagerSlug = (() => {
     const m = activeManager?.manager;
     if (!m) return "my-roster";
-    const full = `${m.firstName ?? ""} ${m.lastName ?? ""}`.trim() || m.userName || "manager";
+    const full = `${m.lastName ?? ""} ${m.firstName ?? ""}`.trim() || m.userName || "manager";
     return full.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
   })();
 

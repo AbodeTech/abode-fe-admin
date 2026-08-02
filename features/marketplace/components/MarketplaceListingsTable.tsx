@@ -92,7 +92,7 @@ export function MarketplaceListingsTable({
           <AdminMobileCard
             key={listing._id}
             title={
-              listing.seller ? `${listing.seller.firstName} ${listing.seller.lastName}` : "N/A"
+              listing.seller ? `${listing.seller.lastName} ${listing.seller.firstName}` : "N/A"
             }
             subtitle={listing.asset?.asset_name || "N/A"}
           >
@@ -160,9 +160,9 @@ export function MarketplaceListingsTable({
               className="border-b border-[#E5EAEF] bg-white transition-colors hover:bg-gray-50"
             >
               <TableCell className="max-w-[10rem] px-3 py-4 text-sm font-medium text-[#333333] sm:px-4 sm:py-5">
-                <span className="line-clamp-2 wrap-break-word" title={listing.seller ? `${listing.seller.firstName} ${listing.seller.lastName}` : undefined}>
+                <span className="line-clamp-2 wrap-break-word" title={listing.seller ? `${listing.seller.lastName} ${listing.seller.firstName}` : undefined}>
                   {listing.seller
-                    ? `${listing.seller.firstName} ${listing.seller.lastName}`
+                    ? `${listing.seller.lastName} ${listing.seller.firstName}`
                     : "N/A"}
                 </span>
               </TableCell>

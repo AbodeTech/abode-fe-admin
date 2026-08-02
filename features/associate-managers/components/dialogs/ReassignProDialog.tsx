@@ -37,7 +37,7 @@ const fullName = (m?: {
   userName?: string | null;
   email?: string | null;
 } | null) =>
-  `${m?.firstName ?? ""} ${m?.lastName ?? ""}`.trim() ||
+  `${m?.lastName ?? ""} ${m?.firstName ?? ""}`.trim() ||
   m?.userName ||
   m?.email ||
   "Manager";

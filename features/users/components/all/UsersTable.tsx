@@ -87,7 +87,7 @@ function UsersTableRow({ row }: { row: FragmentType<typeof UsersTableFragment> }
       onClick={() => router.push(`/users/${user._id}`)}
     >
       <TableCell className="px-3 py-4 text-sm font-medium text-[#333333]">
-        {user.firstName} {user.lastName}
+        {user.lastName} {user.firstName}
       </TableCell>
       <TableCell className="max-w-[200px] whitespace-normal wrap-break-word px-3 py-4 text-sm text-[#667085]">
         {user.email}
@@ -138,7 +138,7 @@ function UsersMobileCard({ row }: { row: FragmentType<typeof UsersTableFragment>
       title={
         <span className="flex items-center gap-2">
           <UserIcon className="h-4 w-4 shrink-0" />
-          {user.firstName} {user.lastName}
+          {user.lastName} {user.firstName}
         </span>
       }
       subtitle={

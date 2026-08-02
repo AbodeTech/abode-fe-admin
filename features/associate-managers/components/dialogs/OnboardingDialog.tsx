@@ -125,7 +125,7 @@ const yesNoLabel = (v?: string | null) =>
 
 const managerName = (m: OnboardingAttemptData["manager"]) => {
   if (!m) return "—";
-  const full = `${m.firstName ?? ""} ${m.lastName ?? ""}`.trim();
+  const full = `${m.lastName ?? ""} ${m.firstName ?? ""}`.trim();
   return full || m.userName || m.email || "—";
 };
 

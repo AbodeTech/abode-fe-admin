@@ -52,7 +52,7 @@ export function DefaultUsersTable({ users }: DefaultUsersTableProps) {
             key={user._id}
             title={
               <Link href={`/users/${user._id}`} className="text-primary hover:underline">
-                {user.firstName} {user.lastName}
+                {user.lastName} {user.firstName}
               </Link>
             }
             subtitle={user.email}
@@ -98,7 +98,7 @@ export function DefaultUsersTable({ users }: DefaultUsersTableProps) {
                 >
                   <TableCell className="!py-3.5">
                     <Link href={`/users/${user._id}`} className="hover:underline">
-                      {user.firstName} {user.lastName}
+                      {user.lastName} {user.firstName}
                     </Link>
                   </TableCell>
                   <TableCell className="!py-3.5 max-w-[220px] whitespace-normal wrap-break-word">{user.email}</TableCell>
