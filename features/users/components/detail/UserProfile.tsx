@@ -35,13 +35,13 @@ export function UserProfile({ user }: UserProfileProps) {
         <Avatar className="h-16 w-16 shrink-0 sm:h-[76px] sm:w-[76px]">
           <AvatarImage src={avatar || undefined} />
           <AvatarFallback>
-            {user.firstName?.charAt(0).toUpperCase()}
             {user.lastName?.charAt(0).toUpperCase()}
+            {user.firstName?.charAt(0).toUpperCase()}
           </AvatarFallback>
         </Avatar>
         <div className="min-w-0 lg:mb-3">
           <h3 className="truncate text-base font-semibold text-[#101828] sm:text-lg lg:font-medium lg:text-2xl">
-            {user.firstName} {user.lastName}
+            {user.lastName} {user.firstName}
           </h3>
           <p className="mt-1 break-all text-xs text-[#8A8B9F] sm:text-sm">{user.email}</p>
         </div>

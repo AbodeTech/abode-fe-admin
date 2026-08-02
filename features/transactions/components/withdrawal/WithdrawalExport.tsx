@@ -29,7 +29,7 @@ export function WithdrawalExport() {
       const csvRows = rows
         .filter((row): row is NonNullable<typeof row> => row !== null)
         .map((row) => ({
-          payer: `${row.user?.firstName ?? ""} ${row.user?.lastName ?? ""}`.trim() || "N/A",
+          payer: `${row.user?.lastName ?? ""} ${row.user?.firstName ?? ""}`.trim() || "N/A",
           tin: row.tin || "N/A",
           bankName: row.bank_details?.bankName || "N/A",
           accountNumber: row.bank_details?.accountNumber
