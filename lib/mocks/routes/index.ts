@@ -3,6 +3,8 @@ import { assetRoutes } from './assets';
 import { authRoutes } from './auth';
 import { commissionRoutes } from './commission';
 import { upgradeRoutes } from './upgrades';
+import { withdrawalRoutes } from './withdrawals';
+import { assetTransactionRoutes } from './asset-transactions';
 
 /* ============================================================
  * Route registration. Importing this module (via lib/mocks/index.ts)
@@ -23,6 +25,11 @@ import { upgradeRoutes } from './upgrades';
  * assets      — /admin/assets/*. Currently only the list route, added for the
  *               commission override pickers; the assets feature extends it
  *               rather than re-registering when it migrates.
+ * withdrawals — /admin/withdrawals/*.
+ * asset-transactions — GET /admin/transactions (serves purchase rows; other
+ *               types return empty pages until their screens migrate) and
+ *               /admin/acquisitions/flex/*. The wallet family
+ *               (/admin/wallets/*) is unclaimed.
  * upgrades    — /admin/referrals/upgrades/*. Note the other admin referral
  *               routes (/admin/users/:id/manual-upgrade, referral-status,
  *               referrer, downlines) are unclaimed — they belong to whichever
@@ -39,5 +46,7 @@ export function ensureRoutesRegistered(): void {
   registerRoutes(commissionRoutes);
   registerRoutes(assetRoutes);
   registerRoutes(upgradeRoutes);
+  registerRoutes(withdrawalRoutes);
+  registerRoutes(assetTransactionRoutes);
   // ...added per feature as it migrates
 }

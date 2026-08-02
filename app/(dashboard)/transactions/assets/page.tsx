@@ -1,180 +1,105 @@
 "use client";
 
-import { useSearchParams, useRouter } from "next/navigation";
-import { Suspense } from "react";
-import {
-  useAssetTransactions,
-  AssetTransactionsTable,
-  AssetTransactionDataPoints,
-  useApproveAssetTransaction,
-  useDeclineAssetTransaction,
-} from "@/features/transactions";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
+
 import { Pagination } from "@/components/shared/Pagination";
-import { FilterSelect } from "@/components/shared/FilterSelect";
-import { DateFilter } from "@/components/shared/DateFilter";
-import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
-import { useState, useEffect } from "react";
-import { SuspensePageFallback } from "@/components/shared/page-content-loader";
+import { PageContentLoader } from "@/components/shared/page-content-loader";
+import {
+  DEFAULT_PURCHASE_LIMIT,
+  PURCHASE_STATUSES,
+  PurchaseFilters,
+  PurchaseStatCards,
+  PurchasesTable,
+  ReviewPurchaseDialog,
+  usePurchases,
+  type Purchase,
+  type PurchaseStatus,
+} from "@/features/asset-transactions";
+
+function parseEnum<T extends string>(value: string | null, allowed: readonly T[]): T | undefined {
+  return value && (allowed as readonly string[]).includes(value) ? (value as T) : undefined;
+}
+
+function EmptyState({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="rounded-md border border-dashed p-8 text-center">
+      <p className="font-medium">{title}</p>
+      <p className="mt-1 text-sm text-muted-foreground">{body}</p>
+    </div>
+  );
+}
 
 function AssetTransactionsContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const page = Number(searchParams.get("page")) || 1;
-  const limit = 10;
+  const status = parseEnum<PurchaseStatus>(searchParams.get("status"), PURCHASE_STATUSES);
+  // Honoured from the URL for deep links (e.g. from a user detail page),
+  // even though this page has no picker for it yet.
+  const user = searchParams.get("user") ?? undefined;
 
-  // Read filters directly from URL
-  const salesType = searchParams.get("salestype");
-  const status = searchParams.get("transactionstatus");
-  const transactionType = searchParams.get("transactiontype");
-  const assetType = searchParams.get("assettype");
-  const startDate = searchParams.get("start_date");
-  const endDate = searchParams.get("end_date");
-  const search = searchParams.get("search") || "";
+  const [reviewing, setReviewing] = useState<Purchase | null>(null);
 
-  const [searchTerm, setSearchTerm] = useState(search);
+  const { data, isLoading, error } = usePurchases({ page, status, user });
 
-  // Debounce search update to URL
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const params = new URLSearchParams(searchParams.toString());
-
-      if (searchTerm !== search) {
-        if (searchTerm) {
-          params.set("search", searchTerm);
-        } else {
-          params.delete("search");
-        }
-        params.set("page", "1");
-        router.push(`?${params.toString()}`, { scroll: false });
-      }
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [searchTerm, router, searchParams, search]);
-
-  const { data, isLoading, error } = useAssetTransactions({
-    page,
-    limit,
-    search: searchTerm,
-    salesType: salesType === "all" ? null : salesType,
-    status: status === "all" ? null : status,
-    transactionType: transactionType === "all" ? null : transactionType,
-    assetType: assetType === "all" ? null : assetType,
-    startDate,
-    endDate,
-  });
-
-  const { mutateAsync: approveTransaction } = useApproveAssetTransaction();
-  const { mutateAsync: declineTransaction } = useDeclineAssetTransaction();
-
-  const totalCount = data?.count || 0;
-
-  const handleApprove = async (id: string) => {
-    await approveTransaction(id);
-  };
-
-  const handleDecline = async (id: string, message: string) => {
-    await declineTransaction({ transactionId: id, message });
-  };
+  const rows = data?.items ?? [];
+  const total = data?.meta.total ?? 0;
+  const filtered = Boolean(status || user);
 
   return (
-    <div className="mx-auto mt-4 w-full min-w-0 max-w-[1600px] space-y-4 px-3 pb-16 sm:px-4 sm:pb-20">
-      {/* Search Bar */}
-      <div className="relative min-w-0 max-w-2xl bg-white">
-        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Search for asset by name, location..."
-          className="h-11 bg-white pl-8"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
+    <>
+      <div className="min-w-0">
+        <h1 className="text-2xl font-bold tracking-tight">Asset transactions</h1>
+        <p className="text-muted-foreground">
+          Every purchase across the catalogue — new deals and installments, all offer types in one
+          list. Transfer-paid rows wait here for review.
+        </p>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
-        <FilterSelect
-          queryKey="salestype"
-          placeholder="All Sales Type"
-          data={[
-            { label: "All Sales Type", value: "all" },
-            { label: "Asset Purchase", value: "ap" },
-            { label: "Reccurring Asset Purchase", value: "rap" },
-          ]}
-        />
+      {error ? (
+        <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-500">
+          <h3 className="font-bold">Error loading asset transactions</h3>
+          <p>{error.message}</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <PurchaseStatCards />
 
-        <FilterSelect
-          queryKey="transactionstatus"
-          placeholder="All Transactions Status"
-          data={[
-            { label: "All Transactions Status", value: "all" },
-            { label: "Approved", value: "completed" },
-            { label: "Rejected", value: "failed" },
-            { label: "Pending", value: "pending" },
-          ]}
-        />
+          <PurchaseFilters />
 
-        <FilterSelect
-          queryKey="transactiontype"
-          placeholder="All Transactions Type"
-          data={[
-            { label: "All Transactions Type", value: "all" },
-            { label: "Transfer", value: "transfer" },
-            { label: "Wallet", value: "wallet" },
-            { label: "Paystack", value: "paystack" },
-          ]}
-        />
+          <PurchasesTable
+            rows={rows}
+            isLoading={isLoading}
+            onReview={setReviewing}
+            emptyState={
+              filtered ? (
+                <EmptyState
+                  title="No transactions match these filters"
+                  body="Clear or widen the filters to see the rest."
+                />
+              ) : (
+                <EmptyState title="No asset transactions yet" body="Purchases appear here as they happen." />
+              )
+            }
+          />
 
-        <FilterSelect
-          queryKey="assettype"
-          placeholder="All Asset Type"
-          data={[
-            { label: "All Asset Type", value: "all" },
-            { label: "Flex", value: "flex" },
-            { label: "Full-Ownership", value: "full-ownership" },
-          ]}
-        />
-
-        <DateFilter />
-      </div>
-
-      {/* Title */}
-      <h3 className="font-sans font-semibold text-[#333333] text-xl uppercase">
-        Asset Transactions
-      </h3>
-
-      {error && (
-        <div className="p-3 rounded-md border border-red-200 bg-red-50 text-sm text-red-600">
-          {(error as Error).message ?? "Unable to load asset transactions"}
+          {!isLoading && total > 0 ? (
+            <Pagination count={total} currentIdx={page} limit={DEFAULT_PURCHASE_LIMIT} />
+          ) : null}
         </div>
       )}
 
-      {/* Statistics Cards */}
-      <AssetTransactionDataPoints />
-
-      {/* Transaction Table */}
-      <div className="min-w-0 overflow-hidden rounded-md border border-[#E5EAEF] bg-white pb-10">
-        <AssetTransactionsTable
-          data={data?.data}
-          isLoading={isLoading}
-          onApprove={handleApprove}
-          onDecline={handleDecline}
-        />
-
-        {!isLoading && totalCount > 0 && (
-          <div className="mt-6 px-4">
-            <Pagination count={totalCount} currentIdx={page} limit={limit} />
-          </div>
-        )}
-      </div>
-    </div>
+      <ReviewPurchaseDialog row={reviewing} onClose={() => setReviewing(null)} />
+    </>
   );
 }
 
 export default function AssetTransactionsPage() {
   return (
-    <Suspense fallback={<SuspensePageFallback />}>
-      <AssetTransactionsContent />
-    </Suspense>
+    <div className="mx-auto mt-4 w-full min-w-0 max-w-[1600px] space-y-6 px-3 pb-16 sm:px-4 sm:pb-20">
+      <Suspense fallback={<PageContentLoader label="Loading asset transactions…" />}>
+        <AssetTransactionsContent />
+      </Suspense>
+    </div>
   );
 }

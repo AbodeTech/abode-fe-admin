@@ -1,134 +1,120 @@
 "use client";
 
-import { useSearchParams, useRouter } from "next/navigation";
-import { Suspense } from "react";
-import {
-  useWithdrawalTransactions,
-  WithdrawalTransactionsTable,
-  useApproveWithdrawalTransaction,
-  useDeclineWithdrawalTransaction,
-  WithdrawalExport,
-} from "@/features/transactions";
-import { TransactionDataPoints } from "@/components/shared/TransactionDataPoints";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
+
 import { Pagination } from "@/components/shared/Pagination";
-import { FilterSelect } from "@/components/shared/FilterSelect";
-import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
-import { useState, useEffect } from "react";
-import { SuspensePageFallback } from "@/components/shared/page-content-loader";
+import { PageContentLoader } from "@/components/shared/page-content-loader";
+import {
+  ADMIN_STATUSES,
+  DEFAULT_WITHDRAWAL_LIMIT,
+  PAYMENT_PROVIDERS,
+  ReviewWithdrawalDialogs,
+  useWithdrawals,
+  WithdrawalFilters,
+  WithdrawalStatCards,
+  WithdrawalsTable,
+  type AdminStatus,
+  type PaymentProvider,
+  type ReviewAction,
+  type Withdrawal,
+} from "@/features/withdrawals";
 
-function WithdrawalTransactionsContent() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const page = Number(searchParams.get("page")) || 1;
-  const limit = 10;
+function parseEnum<T extends string>(value: string | null, allowed: readonly T[]): T | undefined {
+  return value && (allowed as readonly string[]).includes(value) ? (value as T) : undefined;
+}
 
-  const status = searchParams.get("transactionstatus") || null;
-  const searchQuery = searchParams.get("search") || "";
-
-  const [searchTerm, setSearchTerm] = useState(searchQuery);
-
-
-  // Debounce search update to URL
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const params = new URLSearchParams(searchParams.toString());
-      const currentSearch = searchParams.get("search") || "";
-
-      if (searchTerm !== currentSearch) {
-        if (searchTerm) {
-          params.set("search", searchTerm);
-        } else {
-          params.delete("search");
-        }
-        params.set("page", "1");
-        router.push(`?${params.toString()}`, { scroll: false });
-      }
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [searchTerm, router, searchParams]);
-
-  const { data, isLoading, error } = useWithdrawalTransactions({ page, limit, status, search: searchQuery || null });
-  const { mutateAsync: approveTransaction } = useApproveWithdrawalTransaction();
-  const { mutateAsync: declineTransaction } = useDeclineWithdrawalTransaction();
-
-  const totalCount = data?.count || 0;
-
-  const handleApprove = async (id: string) => {
-    await approveTransaction(id);
-  };
-
-  const handleDecline = async (id: string, message: string) => {
-    await declineTransaction({ transactionId: id, message });
-  };
-
+function EmptyState({ title, body }: { title: string; body: string }) {
   return (
-    <div className="mx-auto mt-4 w-full min-w-0 max-w-[1600px] space-y-4 px-3 pb-16 sm:px-4 sm:pb-20">
-      {/* Search Bar */}
-      <div className="relative min-w-0 max-w-2xl bg-white">
-        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Search for user by firstname, lastname or email"
-          className="h-11 bg-white pl-8"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-      </div>
-
-      {/* Filter */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-2">
-        <WithdrawalExport />
-        <FilterSelect
-          data={[
-            { label: 'All Transactions Status', value: 'all' },
-            { label: 'Approved', value: 'completed' },
-            { label: 'Rejected', value: 'failed' },
-            { label: 'Pending', value: 'pending' },
-            { label: 'Auto-Approved', value: 'auto-approved' },
-            { label: 'Auto-Failed', value: 'auto-failed' },
-          ]}
-          queryKey={'transactionstatus'}
-        />
-      </div>
-
-      {/* Title */}
-      <h3 className="font-sans font-semibold text-[#333333] text-xl uppercase">
-        Withdrawal Transactions
-      </h3>
-
-      {error && (
-        <div className="p-3 rounded-md border border-red-200 bg-red-50 text-sm text-red-600">
-          {(error as Error).message ?? "Unable to load withdrawal transactions"}
-        </div>
-      )}
-
-      {/* Statistics Cards */}
-      <TransactionDataPoints type="debit" />
-
-      {/* Transaction Table */}
-      <div className="min-w-0 overflow-hidden rounded-md border border-[#E5EAEF] bg-white pb-4 mt-6 sm:mt-10">
-        <WithdrawalTransactionsTable
-          data={data?.data}
-          isLoading={isLoading}
-          onApprove={handleApprove}
-          onDecline={handleDecline}
-        />
-
-        {!isLoading && totalCount > 0 && (
-          <div className="mt-2 px-4">
-            <Pagination count={totalCount} currentIdx={page} limit={limit} />
-          </div>
-        )}
-      </div>
+    <div className="rounded-md border border-dashed p-8 text-center">
+      <p className="font-medium">{title}</p>
+      <p className="mt-1 text-sm text-muted-foreground">{body}</p>
     </div>
   );
 }
 
-export default function WithdrawalTransactionsPage() {
+function WithdrawalsPageContent() {
+  const searchParams = useSearchParams();
+  const page = Number(searchParams.get("page")) || 1;
+  const adminStatus = parseEnum<AdminStatus>(searchParams.get("admin_status"), ADMIN_STATUSES);
+  const provider = parseEnum<PaymentProvider>(
+    searchParams.get("payment_provider"),
+    PAYMENT_PROVIDERS
+  );
+
+  const [action, setAction] = useState<ReviewAction | null>(null);
+
+  const { data, isLoading, error } = useWithdrawals({
+    page,
+    admin_status: adminStatus,
+    payment_provider: provider,
+  });
+
+  const rows = data?.items ?? [];
+  const total = data?.meta.total ?? 0;
+  const filtered = Boolean(adminStatus || provider);
+
+  const open = (kind: ReviewAction["kind"]) => (row: Withdrawal) => setAction({ kind, row });
+
   return (
-    <Suspense fallback={<SuspensePageFallback />}>
-      <WithdrawalTransactionsContent />
-    </Suspense>
+    <>
+      <div className="min-w-0">
+        <h1 className="text-2xl font-bold tracking-tight">Withdrawals</h1>
+        <p className="text-muted-foreground">
+          Requests holding real money. Approving initiates the bank transfer; declining returns
+          the held funds to the user&apos;s wallet.
+        </p>
+      </div>
+
+      {error ? (
+        <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-500">
+          <h3 className="font-bold">Error loading withdrawals</h3>
+          <p>{error.message}</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <WithdrawalStatCards />
+
+          <WithdrawalFilters />
+
+          <WithdrawalsTable
+            rows={rows}
+            isLoading={isLoading}
+            onApprove={open("approve")}
+            onDecline={open("decline")}
+            onRetry={open("retry")}
+            emptyState={
+              filtered ? (
+                <EmptyState
+                  title="No withdrawals match these filters"
+                  body="Clear or widen the filters to see the rest of the queue."
+                />
+              ) : (
+                <EmptyState
+                  title="The queue is empty"
+                  body="No withdrawal requests right now."
+                />
+              )
+            }
+          />
+
+          {!isLoading && total > 0 ? (
+            <Pagination count={total} currentIdx={page} limit={DEFAULT_WITHDRAWAL_LIMIT} />
+          ) : null}
+        </div>
+      )}
+
+      <ReviewWithdrawalDialogs action={action} onClose={() => setAction(null)} />
+    </>
+  );
+}
+
+export default function WithdrawalsPage() {
+  return (
+    <div className="mx-auto mt-4 w-full min-w-0 max-w-[1600px] space-y-6 px-3 pb-16 sm:px-4 sm:pb-20">
+      <Suspense fallback={<PageContentLoader label="Loading withdrawals…" />}>
+        <WithdrawalsPageContent />
+      </Suspense>
+    </div>
   );
 }

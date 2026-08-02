@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { execute } from '@/lib/graphql-client';
 import { graphql } from '@/lib/gql';
 import { transactionKeys } from './query-keys';
-import type { ProcessCommissionInput, DeclineTransactionInput, ProcessReceiptInput } from '@/lib/gql/graphql';
+import type { ProcessCommissionInput, DeclineTransactionInput } from '@/lib/gql/graphql';
 
 // --- Mutation Queries ---
 
@@ -15,12 +15,6 @@ const APPROVE_TRANSACTION_MUTATION = graphql(`
 const DECLINE_TRANSACTION_MUTATION = graphql(`
   mutation DeclineTransaction($declineTransactionInput: DeclineTransactionInput!) {
     declineTransaction(declineTransactionInput: $declineTransactionInput)
-  }
-`);
-
-const APPROVE_PAYSTACK_TRANSACTION_MUTATION = graphql(`
-  mutation ApprovePaystackTransaction($approvePaystackTransactionId: ID!) {
-    approvePaystackTransaction(id: $approvePaystackTransactionId)
   }
 `);
 
@@ -82,30 +76,6 @@ export const useDeclineTopupTransaction = () => {
 
 // --- Withdrawal Transaction Mutations ---
 
-export const useApproveWithdrawalTransaction = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (id: string) =>
-      execute(APPROVE_PAYSTACK_TRANSACTION_MUTATION, { approvePaystackTransactionId: id }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: transactionKeys.withdrawal() });
-    },
-  });
-};
-
-export const useDeclineWithdrawalTransaction = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ transactionId, message }: DeclineTransactionInput) =>
-      execute(DECLINE_TRANSACTION_MUTATION, { declineTransactionInput: { transactionId, message } }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: transactionKeys.withdrawal() });
-    },
-  });
-};
-
 // --- Document Transaction Mutations ---
 
 export const useApproveDocumentTransaction = () => {
@@ -157,26 +127,3 @@ export const useSendReceipt = () => {
 
 // --- Asset Transaction Mutations ---
 
-export const useApproveAssetTransaction = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (id: string) =>
-      execute(APPROVE_ASSET_TRANSACTION_MUTATION, { approveAssetTransactionId: id }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: transactionKeys.asset() });
-    },
-  });
-};
-
-export const useDeclineAssetTransaction = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ transactionId, message }: DeclineTransactionInput) =>
-      execute(DECLINE_ASSET_TRANSACTION_MUTATION, { declineTransactionInput: { transactionId, message } }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: transactionKeys.asset() });
-    },
-  });
-};

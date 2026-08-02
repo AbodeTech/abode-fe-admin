@@ -1083,11 +1083,53 @@ Three admin endpoints now return references without populating them:
 | `listOverrides` | `user_id`, `asset_id`, `granted_by` | List shows ids | 9a |
 | `getPlanAudit` | `buyer`, `asset`, `referrer_id`, `agency_id` | Audit screen unbuildable | 9a |
 | `findUpgradesPaginated` | `user`, `referrer` | **Approval queue unbuildable** | this |
+| `getAdminWithdrawalsQueue` *(added 2026-07-29)* | `user`, `bank_details_id`, `reviewed_by` | **Withdrawal review blind** — see below | this |
 
 Fixing one and leaving the others is the likely outcome if these are read as
 separate requests, so they are named together here. The underlying convention
 worth adopting: **admin list endpoints populate the references they return**,
 because an admin screen exists to be read by a person.
+
+*Update 2026-07-28: `listOverrides` and `getPlanAudit` now populate — the
+convention is landing. The upgrade queue and the new withdrawals queue are the
+two still outstanding.*
+
+### The withdrawals queue case (added 2026-07-29)
+
+`findTransactionsPaginated` has no `.populate()`, so the withdrawal review
+screen holds three ObjectIds where its three most important facts belong.
+
+**Scenario.** An admin opens the withdrawal queue to release real money:
+
+```
+Requested by   —  (665fcccc00000000000000c1)
+Amount         ₦1,200,000
+Destination    —  (665fbbbb000000000000ba02)
+                                 [ Approve and transfer ]
+```
+
+Approving initiates a bank transfer of ₦1.2m **to an account the screen
+cannot name, for a person it cannot name**. The frontend ships the screen
+with the em-dash + copyable-id pattern and the approve dialog states the
+destination is unavailable — but "approve a seven-figure transfer to an
+account you can't see" is not a workflow to leave in place long.
+
+Needed on each queue row: `user` populated with
+`firstName lastName email`, and `bank_details_id` populated with
+`bank_name account_number account_name`. `reviewed_by` with
+`firstName lastName` closes the audit trail.
+
+Also missing on this queue, same family as ticket 14: **no `search` param**
+(the old GraphQL screen searched by name — irrelevant until populate lands,
+since rows carry no names to search), and no stats endpoint for the summary
+cards the old screen showed. Both fine to sequence after populate.
+
+The stats the old screen's cards carried, for when that endpoint is built
+(v1's `adminTransactionDataPoint(type: "debit")`): counts of `pending`,
+`approved`, `rejected`, `auto_approved` and `auto_failed` withdrawals, the
+**₦ value of pending** (what an admin clearing the queue plans around), and
+the total users' wallet balance. Until then the FE shows these as labelled
+sample data.
 
 ### The upgrade queue case
 
@@ -1482,5 +1524,67 @@ so the backend team can see they were considered and dismissed.
   implemented and all currently unused by the frontend. They are
   user-management operations and belong on a user detail page rather than an
   approval queue, so they are deferred — not missing.
+
+---
+
+## 20. Full-ownership purchases don't exist — an offer type that can't be bought
+
+**Priority: high — this is a missing revenue path, not a missing admin screen.**
+
+### What exists
+
+The acquisition module has a complete **flex** family: Paystack initiate,
+transfer submit, recurring variants, and the admin review pair
+(`POST /admin/acquisitions/flex/:txId/approve|decline`). Purchases are
+distinguished by `purchase_details.transaction_kind`
+(`initial_flex_purchase`, `recurring_flex_payment`).
+
+### What doesn't
+
+There is no full-ownership equivalent anywhere — no initiate, no submit, no
+kinds, no review endpoints. Searched `src/modules/acquisition` and
+`src/modules/payment` on staging and the `flex` feature branch; the only
+full-ownership traces are v1 carry-over fields on the PaymentPlan schema
+(`fullownerhsip_landprice`, typo included).
+
+### Scenario
+
+An admin uses the new `POST /admin/assets/:assetId/offers` (ticket 18) to add
+a full-ownership offer to Aviation City, sets its sizes, document fees and
+plans, and publishes. A customer opens the app to buy one of those plots.
+**There is no endpoint their purchase can go through.** The offer is a shop
+window with no till: everything about it is configurable and nothing about it
+is sellable.
+
+### What we need
+
+The full-ownership purchase family, mirroring flex's shape: initiate/submit
+(with document-fee handling per the offer's `payment_type`), kinds on
+`transaction_kind`, and an admin review pair (suggested:
+`/admin/acquisitions/full-ownership/:txId/approve|decline`). The admin
+transactions page is already built to absorb it — kinds are an open
+vocabulary and the review action routes per family.
+
+---
+
+## 21. `GET /admin/transactions` — the filters an admin actually reaches for
+
+**Priority: medium — the list works; working a queue with it is clumsy.**
+
+The endpoint takes `type`, `status`, `user`, `page`, `limit`. The old asset
+transactions screen also had, and the rebuilt page now renders **disabled**:
+
+| Filter | Old behaviour | What's needed |
+|---|---|---|
+| Search | Asset name / buyer name | Blocked on populate (ticket 13) — there are no names in the rows to search |
+| Date range | `start_date` / `end_date` | Two query params |
+| Sales type | Initial vs recurring | A `transaction_kind` param |
+| Payment method | transfer / wallet / paystack | A `payment_method` param — **this is the one that matters**: "show me transfer payments waiting for review" is the page's main workflow, currently served by scanning `status=pending` |
+
+Also in ticket 13's table already: no populate on `user` / `source_asset`.
+And no stats endpoint — v1's `adminTransactionDataPoint` summed approved /
+pending / declined values and split new vs recurring and flex vs
+full-ownership; the rebuilt page shows those cards as labelled sample data
+until an equivalent exists.
 
 ---
