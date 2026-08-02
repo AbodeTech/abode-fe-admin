@@ -106,7 +106,7 @@ export function DocumentTransactionsTable({ data, isLoading }: DocumentTransacti
             key={transaction._id}
             title={
               <Link href={`/users/${transaction.user?._id ?? ""}`} className="text-primary hover:underline">
-                {transaction.user?.firstName} {transaction.user?.lastName}
+                {transaction.user?.lastName} {transaction.user?.firstName}
               </Link>
             }
           >
@@ -222,7 +222,7 @@ export function DocumentTransactionsTable({ data, isLoading }: DocumentTransacti
                       href={`/users/${transaction.user?._id ?? ""}`}
                       className="text-black hover:text-gray-700 font-medium hover:underline transition-colors truncate block"
                     >
-                      {transaction.user?.firstName} {transaction.user?.lastName}
+                      {transaction.user?.lastName} {transaction.user?.firstName}
                     </Link>
                   </TableCell>
                   <TableCell className="py-4 text-gray-700 w-[100px] truncate">
