@@ -151,12 +151,17 @@ export interface UseDashboardProsGroupParams {
 
 function defaultSortForGroup(group: ProRosterGroup): ProRosterSort | undefined {
   switch (group) {
+    // Executive lens: rank each drawer by MOST RECENT activity in the axis
+    // that defines the group. Cold rosters sink to the bottom, live ones rise.
+    // For recruited/upgraded lists this means "who's actively recruiting right
+    // now" over "who joined my roster most recently" — the latter is available
+    // via the manual sort control.
     case ProRosterGroup.RecruitedInPeriod:
     case ProRosterGroup.UpgradedInPeriod:
     case ProRosterGroup.RecruitedNotOnboarded:
-      return ProRosterSortEnum.DateRecruitedDesc;
+      return ProRosterSortEnum.LastRecruitDesc;
     case ProRosterGroup.SellingInPeriod:
-      return ProRosterSortEnum.TotalSalesDesc;
+      return ProRosterSortEnum.LastSaleDesc;
     default:
       return undefined;
   }
