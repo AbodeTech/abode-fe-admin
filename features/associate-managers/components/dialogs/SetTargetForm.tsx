@@ -65,6 +65,9 @@ export function SetTargetForm({
   const [selling, setSelling] = useState<string>(
     existing ? String(existing.selling_associate_pro_target) : ""
   );
+  const [revenue, setRevenue] = useState<string>(
+    existing ? String(existing.revenue_target) : ""
+  );
   const [score, setScore] = useState<string>(
     existing ? String(existing.performance_score_target) : ""
   );
@@ -76,10 +79,14 @@ export function SetTargetForm({
     setMonthValue(initialMonthValue);
     setRecruited(existing ? String(existing.associate_pro_recruited_target) : "");
     setSelling(existing ? String(existing.selling_associate_pro_target) : "");
+    setRevenue(existing ? String(existing.revenue_target) : "");
     setScore(existing ? String(existing.performance_score_target) : "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [existing?._id]);
 
+  // Revenue is optional on the BE (Float, default 0). Leave it blank if the
+  // admin doesn't want to gate on revenue this period — score's revenue
+  // component will read as "no target set" instead of being counted against.
   const canSave =
     !!managerId && recruited !== "" && selling !== "" && score !== "" && !isPending;
 
@@ -103,6 +110,7 @@ export function SetTargetForm({
         year,
         associate_pro_recruited_target: Number(recruited),
         selling_associate_pro_target: Number(selling),
+        revenue_target: revenue === "" ? 0 : Number(revenue),
         performance_score_target: Number(score),
       });
       toast.success(existing ? "Target updated" : "Target saved");
@@ -144,7 +152,7 @@ export function SetTargetForm({
         )}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <Label htmlFor="recruited">Ass. Pros Recruited</Label>
           <Input
@@ -170,7 +178,23 @@ export function SetTargetForm({
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="score">Performance Score</Label>
+          <Label htmlFor="revenue">
+            Revenue Target (₦)
+            <span className="text-xs text-gray-400 ml-1">optional</span>
+          </Label>
+          <Input
+            id="revenue"
+            type="number"
+            min={0}
+            step="1"
+            value={revenue}
+            onChange={(e) => setRevenue(e.target.value)}
+            placeholder="e.g. 5000000"
+            className="bg-white"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="score">Peer Rating Target</Label>
           <Input
             id="score"
             type="number"
@@ -178,7 +202,7 @@ export function SetTargetForm({
             step="1"
             value={score}
             onChange={(e) => setScore(e.target.value)}
-            placeholder="e.g. 8"
+            placeholder="e.g. 4"
             className="bg-white"
           />
         </div>

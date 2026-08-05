@@ -12,6 +12,7 @@ const LIST_MANAGER_TARGETS_QUERY = graphql(`
       year
       associate_pro_recruited_target
       selling_associate_pro_target
+      revenue_target
       performance_score_target
       createdAt
       updatedAt
@@ -42,6 +43,7 @@ const GET_MANAGER_TARGET_QUERY = graphql(`
       year
       associate_pro_recruited_target
       selling_associate_pro_target
+      revenue_target
       performance_score_target
       createdAt
       updatedAt

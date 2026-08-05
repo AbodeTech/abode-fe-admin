@@ -13,6 +13,7 @@ const ASSIGN_ASSOCIATE_MANAGER_TARGET_MUTATION = graphql(`
       year
       associate_pro_recruited_target
       selling_associate_pro_target
+      revenue_target
       performance_score_target
       createdAt
       updatedAt
