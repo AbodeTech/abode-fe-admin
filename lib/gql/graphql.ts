@@ -1925,6 +1925,14 @@ export type CreateMarketplaceListingInput = {
   unique_asset_id: Scalars['String']['input'];
 };
 
+export type CreateMeetingInput = {
+  audience_type: MeetingAudienceType;
+  google_meet_url: Scalars['String']['input'];
+  name: Scalars['String']['input'];
+  starts_at: Scalars['Date']['input'];
+  verification_lead_minutes?: InputMaybe<Scalars['Int']['input']>;
+};
+
 export type CreateRoleInput = {
   description?: InputMaybe<Scalars['String']['input']>;
   name: Scalars['String']['input'];
@@ -2690,6 +2698,7 @@ export type InitializeFullOwnershipPaystackInput = {
   number_of_units?: InputMaybe<Scalars['Int']['input']>;
   size?: InputMaybe<Scalars['Int']['input']>;
   source_of_funds?: InputMaybe<Scalars['String']['input']>;
+  user_signature?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type InitializePaystackInput = {
@@ -2704,6 +2713,7 @@ export type InitializePaystackInput = {
   number_of_units?: InputMaybe<Scalars['Int']['input']>;
   size?: InputMaybe<Scalars['Int']['input']>;
   source_of_funds?: InputMaybe<Scalars['String']['input']>;
+  user_signature?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type InitializePaystackResponse = {
@@ -2845,6 +2855,7 @@ export type ManagerDashboardMilestones = {
 export type ManagerDashboardPerformanceScore = {
   __typename?: 'ManagerDashboardPerformanceScore';
   actual: Scalars['Float']['output'];
+  ratingCount: Scalars['Int']['output'];
   target: Scalars['Int']['output'];
 };
 
@@ -2912,6 +2923,29 @@ export type ManagerDashboardTarget = {
   recruitedTarget: Scalars['Int']['output'];
   sellingSoFar: Scalars['Int']['output'];
   sellingTarget: Scalars['Int']['output'];
+};
+
+export type ManagerRatingManagerInfo = {
+  __typename?: 'ManagerRatingManagerInfo';
+  email: Scalars['String']['output'];
+  firstName?: Maybe<Scalars['String']['output']>;
+  lastName?: Maybe<Scalars['String']['output']>;
+};
+
+export type ManagerRatingPromptResponse = {
+  __typename?: 'ManagerRatingPromptResponse';
+  manager?: Maybe<ManagerRatingManagerInfo>;
+  month?: Maybe<Scalars['Int']['output']>;
+  shouldPrompt: Scalars['Boolean']['output'];
+  year?: Maybe<Scalars['Int']['output']>;
+};
+
+export type ManagerRatingSeriesPoint = {
+  __typename?: 'ManagerRatingSeriesPoint';
+  average: Scalars['Float']['output'];
+  count: Scalars['Int']['output'];
+  month: Scalars['Int']['output'];
+  year: Scalars['Int']['output'];
 };
 
 export type ManualUpgradeData = {
@@ -3065,6 +3099,96 @@ export type MarketplaceUser = {
   profile_pic?: Maybe<Scalars['String']['output']>;
 };
 
+export type Meeting = {
+  __typename?: 'Meeting';
+  _id: Scalars['ID']['output'];
+  audience_type: MeetingAudienceType;
+  created_at: Scalars['Date']['output'];
+  google_meet_url: Scalars['String']['output'];
+  is_active: Scalars['Boolean']['output'];
+  name: Scalars['String']['output'];
+  share_url: Scalars['String']['output'];
+  slug: Scalars['String']['output'];
+  starts_at: Scalars['Date']['output'];
+  updated_at?: Maybe<Scalars['Date']['output']>;
+  verification_count: Scalars['Int']['output'];
+  verification_lead_minutes: Scalars['Int']['output'];
+};
+
+export enum MeetingAudienceType {
+  AllAssociates = 'all_associates',
+  AssociateOnly = 'associate_only',
+  AssociateProPlus = 'associate_pro_plus'
+}
+
+export type MeetingDetail = {
+  __typename?: 'MeetingDetail';
+  _id: Scalars['ID']['output'];
+  audience_type: MeetingAudienceType;
+  created_at: Scalars['Date']['output'];
+  google_meet_url: Scalars['String']['output'];
+  is_active: Scalars['Boolean']['output'];
+  name: Scalars['String']['output'];
+  share_url: Scalars['String']['output'];
+  slug: Scalars['String']['output'];
+  starts_at: Scalars['Date']['output'];
+  stats: MeetingStats;
+  updated_at?: Maybe<Scalars['Date']['output']>;
+  verification_count: Scalars['Int']['output'];
+  verification_lead_minutes: Scalars['Int']['output'];
+};
+
+export type MeetingListFilterInput = {
+  audience_type?: InputMaybe<MeetingAudienceType>;
+  is_active?: InputMaybe<Scalars['Boolean']['input']>;
+  searchQuery?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type MeetingListResponse = {
+  __typename?: 'MeetingListResponse';
+  count: Scalars['Int']['output'];
+  limit: Scalars['Int']['output'];
+  page: Scalars['Int']['output'];
+  results: Array<Meeting>;
+};
+
+export type MeetingStats = {
+  __typename?: 'MeetingStats';
+  by_referral_status: Array<MeetingStatsByReferralStatus>;
+  total_verifications: Scalars['Int']['output'];
+};
+
+export type MeetingStatsByReferralStatus = {
+  __typename?: 'MeetingStatsByReferralStatus';
+  count: Scalars['Int']['output'];
+  referral_status?: Maybe<Scalars['String']['output']>;
+};
+
+export type MeetingVerification = {
+  __typename?: 'MeetingVerification';
+  _id: Scalars['ID']['output'];
+  createdAt: Scalars['Date']['output'];
+  email: Scalars['String']['output'];
+  first_name?: Maybe<Scalars['String']['output']>;
+  last_name?: Maybe<Scalars['String']['output']>;
+  meeting: Scalars['ID']['output'];
+  phone?: Maybe<Scalars['String']['output']>;
+  referral_status?: Maybe<Scalars['String']['output']>;
+  region?: Maybe<Scalars['String']['output']>;
+  source: Scalars['String']['output'];
+  updatedAt?: Maybe<Scalars['Date']['output']>;
+  user?: Maybe<Scalars['ID']['output']>;
+  verified_at: Scalars['Date']['output'];
+};
+
+export type MeetingVerificationListResponse = {
+  __typename?: 'MeetingVerificationListResponse';
+  count: Scalars['Int']['output'];
+  limit: Scalars['Int']['output'];
+  page: Scalars['Int']['output'];
+  results: Array<MeetingVerification>;
+};
+
 export type ModifyReferralInput = {
   referral_status?: InputMaybe<Scalars['String']['input']>;
   userId?: InputMaybe<Scalars['String']['input']>;
@@ -3124,6 +3248,7 @@ export type Mutation = {
   createFullOwnershipAsset: AdminAsset;
   createLocationChangeRequest: LocationChangeResponse;
   createMarketplaceListing: MarketplaceListingResponse;
+  createMeeting: Meeting;
   createPlots: Array<Scalars['Int']['output']>;
   createRole: Role;
   createSubAdmin: Scalars['String']['output'];
@@ -3199,6 +3324,7 @@ export type Mutation = {
   signinAdmin: Admin;
   signinUser: AuthResponse;
   signupUser: AuthResponse;
+  submitManagerRating: SubmitManagerRatingResponse;
   suspendAgency: SuspendAgencyResponse;
   suspendMarketplaceListing: AdminMarketplaceActionResponse;
   suspendPaymentPlan: Scalars['String']['output'];
@@ -3206,6 +3332,7 @@ export type Mutation = {
   systemApproveAssetUpdateRequest: SystemApproveAssetUpdateRequestResponse;
   systemApproveDocumentChangeRequest: SystemApproveDocumentChangeRequestResponse;
   systemApproveLocationChangeRequest: SystemApproveLocationChangeRequestResponse;
+  toggleMeetingActive: Meeting;
   topUpWallet: Scalars['String']['output'];
   topUpWalletTransfer: Scalars['String']['output'];
   topWalletUp: TopUpResponse;
@@ -3221,6 +3348,7 @@ export type Mutation = {
   updateCouponStatus: CouponResponse;
   updateKycInfo: User;
   updateMarketplaceListing: MarketplaceListingResponse;
+  updateMeeting: Meeting;
   updateNextofKinInfo: User;
   updatePassword: Scalars['String']['output'];
   updatePaymentPlan: Scalars['String']['output'];
@@ -3235,6 +3363,7 @@ export type Mutation = {
   upsertAssetCommissionOverride: AssetCommissionOverride;
   verifyAdminEmail: EmailVerifcation;
   verifyEmail: EmailVerifcation;
+  verifyMeetingEmail: VerifyMeetingEmailResponse;
   verifyPaystack: Scalars['String']['output'];
   withdrawWallet: Scalars['String']['output'];
   withdrawWalletOTP: Scalars['String']['output'];
@@ -3458,6 +3587,11 @@ export type MutationCreateLocationChangeRequestArgs = {
 
 export type MutationCreateMarketplaceListingArgs = {
   input: CreateMarketplaceListingInput;
+};
+
+
+export type MutationCreateMeetingArgs = {
+  input: CreateMeetingInput;
 };
 
 
@@ -3842,6 +3976,11 @@ export type MutationSignupUserArgs = {
 };
 
 
+export type MutationSubmitManagerRatingArgs = {
+  input: SubmitManagerRatingInput;
+};
+
+
 export type MutationSuspendAgencyArgs = {
   id: Scalars['ID']['input'];
 };
@@ -3875,6 +4014,12 @@ export type MutationSystemApproveDocumentChangeRequestArgs = {
 
 export type MutationSystemApproveLocationChangeRequestArgs = {
   requestId: Scalars['ID']['input'];
+};
+
+
+export type MutationToggleMeetingActiveArgs = {
+  id: Scalars['ID']['input'];
+  isActive: Scalars['Boolean']['input'];
 };
 
 
@@ -3953,6 +4098,12 @@ export type MutationUpdateMarketplaceListingArgs = {
 };
 
 
+export type MutationUpdateMeetingArgs = {
+  id: Scalars['ID']['input'];
+  input: UpdateMeetingInput;
+};
+
+
 export type MutationUpdateNextofKinInfoArgs = {
   nextofKinInput?: InputMaybe<NextofKinInput>;
 };
@@ -4021,6 +4172,11 @@ export type MutationVerifyAdminEmailArgs = {
 
 export type MutationVerifyEmailArgs = {
   tokenInput?: InputMaybe<TokenInput>;
+};
+
+
+export type MutationVerifyMeetingEmailArgs = {
+  input: VerifyMeetingEmailInput;
 };
 
 
@@ -4352,6 +4508,15 @@ export type PromoDetailsHamper = {
   totalPromoDays?: Maybe<Scalars['Int']['output']>;
 };
 
+export type PublicMeeting = {
+  __typename?: 'PublicMeeting';
+  is_active: Scalars['Boolean']['output'];
+  name: Scalars['String']['output'];
+  slug: Scalars['String']['output'];
+  starts_at: Scalars['Date']['output'];
+  verification_opens_at: Scalars['Date']['output'];
+};
+
 export type Purchase = {
   __typename?: 'Purchase';
   _id: Scalars['ID']['output'];
@@ -4450,8 +4615,14 @@ export type Query = {
   getListOfBankDetails?: Maybe<Scalars['JSON']['output']>;
   getListOfPendingTransactions?: Maybe<TransactionAdminResponse>;
   getListOfSuccessfulTransactions?: Maybe<TransactionAdminResponse>;
+  getManagerRatingPrompt: ManagerRatingPromptResponse;
+  getManagerRatingSeries: Array<ManagerRatingSeriesPoint>;
   getManagerSalesRecord?: Maybe<SalesRecordResponse>;
   getMarketplaceDashboard: AdminMarketplaceDashboard;
+  getMeetingById: MeetingDetail;
+  getMeetingBySlug: PublicMeeting;
+  getMeetingVerifications: MeetingVerificationListResponse;
+  getMeetings: MeetingListResponse;
   getMyAgencyDashboard: MyAgencyDashboardResponse;
   getMyRequests?: Maybe<Scalars['JSON']['output']>;
   getOnboardingAttempts: Array<OnboardingAttempt>;
@@ -4479,6 +4650,7 @@ export type Query = {
   getTrendingAssets?: Maybe<AssetResponse>;
   getUnassignedAssociatePros: UnassignedAssociateProsResponse;
   getUnassignedAssociateProsCount: Scalars['Int']['output'];
+  getUpcomingMeetings: Array<PublicMeeting>;
   getUserAnalytics: UserAnalyticsResponse;
   getUserAssetFinancialOverview?: Maybe<AssetFinancialOverview>;
   getUserBankDetails?: Maybe<BankDetailResponse>;
@@ -4682,6 +4854,7 @@ export type QueryGetAllUpgradeRequestsArgs = {
   adminStatus?: InputMaybe<AdminStatus>;
   limit?: InputMaybe<Scalars['Int']['input']>;
   page?: InputMaybe<Scalars['Int']['input']>;
+  search?: InputMaybe<Scalars['String']['input']>;
   transactionType?: InputMaybe<TransactionType>;
 };
 
@@ -4871,10 +5044,40 @@ export type QueryGetListOfSuccessfulTransactionsArgs = {
 };
 
 
+export type QueryGetManagerRatingSeriesArgs = {
+  managerId?: InputMaybe<Scalars['ID']['input']>;
+  monthsBack?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
 export type QueryGetManagerSalesRecordArgs = {
   filters?: InputMaybe<SalesRecordFilters>;
   limit: Scalars['Int']['input'];
   page: Scalars['Int']['input'];
+};
+
+
+export type QueryGetMeetingByIdArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
+export type QueryGetMeetingBySlugArgs = {
+  slug: Scalars['String']['input'];
+};
+
+
+export type QueryGetMeetingVerificationsArgs = {
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  meetingId: Scalars['ID']['input'];
+  page?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
+export type QueryGetMeetingsArgs = {
+  filter?: InputMaybe<MeetingListFilterInput>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -4983,6 +5186,8 @@ export type QueryGetSystemUsersOverviewArgs = {
 
 
 export type QueryGetTopAssociatesArgs = {
+  assetName?: InputMaybe<Scalars['String']['input']>;
+  assetType?: InputMaybe<Scalars['String']['input']>;
   endDate?: InputMaybe<Scalars['String']['input']>;
   limit: Scalars['Int']['input'];
   page: Scalars['Int']['input'];
@@ -5053,6 +5258,7 @@ export type QueryGetUsersWithZeroBalanceArgs = {
 export type QueryGetWithdrawalTransactionArgs = {
   limit: Scalars['Int']['input'];
   page: Scalars['Int']['input'];
+  search?: InputMaybe<Scalars['String']['input']>;
   status?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -5753,6 +5959,19 @@ export type SubAdminInput = {
   role?: InputMaybe<Scalars['String']['input']>;
 };
 
+export type SubmitManagerRatingInput = {
+  comment?: InputMaybe<Scalars['String']['input']>;
+  month: Scalars['Int']['input'];
+  rating: Scalars['Int']['input'];
+  year: Scalars['Int']['input'];
+};
+
+export type SubmitManagerRatingResponse = {
+  __typename?: 'SubmitManagerRatingResponse';
+  message?: Maybe<Scalars['String']['output']>;
+  success: Scalars['Boolean']['output'];
+};
+
 export type SubscribedAssetDetails = {
   __typename?: 'SubscribedAssetDetails';
   assetDetails?: Maybe<AssetDetailsInput>;
@@ -6172,6 +6391,14 @@ export type UpdateMarketplaceListingInput = {
   reason_for_selling?: InputMaybe<Scalars['String']['input']>;
 };
 
+export type UpdateMeetingInput = {
+  audience_type?: InputMaybe<MeetingAudienceType>;
+  google_meet_url?: InputMaybe<Scalars['String']['input']>;
+  name?: InputMaybe<Scalars['String']['input']>;
+  starts_at?: InputMaybe<Scalars['Date']['input']>;
+  verification_lead_minutes?: InputMaybe<Scalars['Int']['input']>;
+};
+
 export type UpdateRequestInput = {
   adminMessage?: InputMaybe<Scalars['String']['input']>;
   declineReason?: InputMaybe<Scalars['String']['input']>;
@@ -6292,6 +6519,7 @@ export type UserAdmin = {
   facial_recognitation_verification_status?: Maybe<Scalars['Boolean']['output']>;
   firstName: Scalars['String']['output'];
   gender?: Maybe<Scalars['String']['output']>;
+  hasAsset?: Maybe<Scalars['String']['output']>;
   howYouHearAboutUs?: Maybe<Scalars['String']['output']>;
   is_suspended?: Maybe<Scalars['Boolean']['output']>;
   kyc_verification_status?: Maybe<Scalars['Boolean']['output']>;
@@ -6582,6 +6810,18 @@ export type UserWithTicket = {
   email?: Maybe<Scalars['String']['output']>;
   name?: Maybe<Scalars['String']['output']>;
   ticketId?: Maybe<Scalars['String']['output']>;
+};
+
+export type VerifyMeetingEmailInput = {
+  email: Scalars['String']['input'];
+  slug: Scalars['String']['input'];
+};
+
+export type VerifyMeetingEmailResponse = {
+  __typename?: 'VerifyMeetingEmailResponse';
+  google_meet_url?: Maybe<Scalars['String']['output']>;
+  status: Scalars['String']['output'];
+  verification_opens_at?: Maybe<Scalars['Date']['output']>;
 };
 
 export type ViewAssetDetails = {
