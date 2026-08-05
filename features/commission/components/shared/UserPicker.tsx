@@ -67,7 +67,8 @@ export function UserPicker({ value, onChange, disabled, fallbackLabel }: UserPic
             value={search}
             onValueChange={setSearch}
           />
-          <CommandList>
+          {/* Tablet through 1024px: horizontal scroll so long names aren't clipped. */}
+          <CommandList className="overflow-x-hidden md:max-[1024px]:overflow-x-auto">
             {isFetching ? (
               <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -100,6 +101,7 @@ export function UserPicker({ value, onChange, disabled, fallbackLabel }: UserPic
                 <CommandItem
                   key={option.id}
                   value={option.id}
+                  className="md:max-[1024px]:w-max"
                   onSelect={() => {
                     onChange(option.id);
                     setOpen(false);
@@ -111,9 +113,11 @@ export function UserPicker({ value, onChange, disabled, fallbackLabel }: UserPic
                       option.id === value ? "opacity-100" : "opacity-0"
                     )}
                   />
-                  <span className="min-w-0 truncate">{option.label}</span>
+                  <span className="min-w-0 truncate md:max-[1024px]:min-w-max">
+                    {option.label}
+                  </span>
                   {option.hint ? (
-                    <span className="ml-2 shrink-0 truncate text-xs text-muted-foreground">
+                    <span className="ml-2 shrink-0 truncate text-xs text-muted-foreground md:max-[1024px]:min-w-max">
                       {option.hint}
                     </span>
                   ) : null}
