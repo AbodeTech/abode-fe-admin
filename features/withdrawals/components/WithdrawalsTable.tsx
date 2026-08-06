@@ -29,6 +29,9 @@ import { formatNaira } from "@/lib/utils/format";
 
 import {
   PAYMENT_PROVIDER_LABELS,
+  personEmail,
+  personId,
+  personName,
   withdrawalActions,
   type Withdrawal,
 } from "../schemas/withdrawal.schema";
@@ -39,6 +42,17 @@ function formatDate(value: string | null | undefined): string {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
   return parsed.toLocaleDateString("en-NG", { year: "numeric", month: "short", day: "numeric" });
+}
+
+/** Who is requesting — name when populated, em-dash + id otherwise. */
+function Requester({ row }: { row: Withdrawal }) {
+  const email = personEmail(row.user);
+  return (
+    <div className="min-w-0 space-y-0.5">
+      <UnresolvedRef name={personName(row.user)} id={personId(row.user)} kind="requester" />
+      {email ? <p className="truncate text-xs text-muted-foreground">{email}</p> : null}
+    </div>
+  );
 }
 
 /**
@@ -159,11 +173,7 @@ export function WithdrawalsTable({
             {rows.map((row) => (
               <TableRow key={row._id}>
                 <TableCell>
-                  {/*
-                    ⛔ ticket 13 — a bare ObjectId. The queue's central column
-                    is an em-dash until the backend populates the user.
-                  */}
-                  <UnresolvedRef name={null} id={row.user} kind="requester" />
+                  <Requester row={row} />
                 </TableCell>
                 <TableCell>
                   <Amount row={row} />
@@ -208,10 +218,7 @@ export function WithdrawalsTable({
               }
               subtitle={formatDate(row.createdAt)}
             >
-              <AdminMobileField
-                label="Requested by"
-                value={<UnresolvedRef name={null} id={row.user} kind="requester" />}
-              />
+              <AdminMobileField label="Requested by" value={<Requester row={row} />} />
               <AdminMobileField
                 label="Provider"
                 value={

@@ -13,9 +13,8 @@ export const DEFAULT_WITHDRAWAL_LIMIT = 20;
 /**
  * GET /admin/withdrawals — the review queue, newest first.
  *
- * No search and no populate (⛔ tickets 13/14): the queue can be narrowed by
- * `admin_status` and `payment_provider` only, and rows carry the user and
- * bank as bare ObjectIds.
+ * No search (ticket 14-family). Refs may be bare ObjectIds or populated
+ * objects (ticket 13); the schema accepts both.
  */
 export const useWithdrawals = (filters?: WithdrawalListFilters) => {
   const { page = 1, limit = DEFAULT_WITHDRAWAL_LIMIT, ...rest } = filters ?? {};

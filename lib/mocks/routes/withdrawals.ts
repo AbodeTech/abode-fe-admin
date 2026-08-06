@@ -7,7 +7,8 @@ import { body, paged } from './util';
  * Rows are wallet Transaction documents with type 'withdrawal'. Fixtures
  * cover every admin_status, both providers, and a rail_attempts history —
  * the states the queue exists to render. Refs are bare ObjectIds, exactly
- * as the BE serves them today (⛔ ticket 13: no populate here).
+ * as bare ObjectIds so the em-dash path stays exercisable in mock mode
+ * (ticket 13: live API may populate).
  *
  * One special fixture: approving WD_RAIL_REFUSER always has the rail refuse
  * the transfer, so the "200 but no money moved" path — the one worth

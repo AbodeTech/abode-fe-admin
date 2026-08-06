@@ -1,9 +1,8 @@
 /* Withdrawals — the admin review queue, on REST against /admin/withdrawals.
  *
- * Replaces the GraphQL withdrawal-transactions screen. Known gaps, all
- * recorded in docs/BACKEND-REQUESTS.md: no populate on the queue (user and
- * bank are bare ObjectIds — ticket 13), no search (14-family), and no stats
- * endpoint for the old summary cards.
+ * Replaces the GraphQL withdrawal-transactions screen. Known gaps recorded in
+ * docs/BACKEND-REQUESTS.md: no search (14-family), and no stats endpoint for
+ * the old summary cards. Refs accept bare ids or populated objects (ticket 13).
  */
 
 export { WithdrawalsTable } from './components/WithdrawalsTable';
