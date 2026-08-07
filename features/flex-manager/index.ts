@@ -15,4 +15,3 @@ export {
   useFlexManagerTargets,
   useFlexManagerTarget,
 } from "./hooks/use-flex-manager-targets";
-export type * from "./types";

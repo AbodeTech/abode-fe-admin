@@ -1,11 +1,9 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { executeRaw } from "@/lib/graphql-client";
-import type {
-  FlexManagerAssignmentRecord,
-  FlexManagerTargetRecord,
-} from "../types";
+import { execute } from "@/lib/graphql-client";
+import { graphql } from "@/lib/gql";
+import type { AssignFlexManagerTargetInput } from "@/lib/gql/graphql";
 import { flexManagerKeys } from "./use-flex-manager-dashboard";
 
 /**
@@ -13,7 +11,7 @@ import { flexManagerKeys } from "./use-flex-manager-dashboard";
  * See guidelines/Flex_Manager_Dashboard.md for the contract.
  */
 
-const ASSIGN_FLEX_MANAGER = `
+const ASSIGN_FLEX_MANAGER_MUTATION = graphql(`
   mutation AssignFlexManager($managerId: ID!) {
     assignFlexManager(managerId: $managerId) {
       _id
@@ -25,9 +23,9 @@ const ASSIGN_FLEX_MANAGER = `
       updatedAt
     }
   }
-`;
+`);
 
-const UNASSIGN_FLEX_MANAGER = `
+const UNASSIGN_FLEX_MANAGER_MUTATION = graphql(`
   mutation UnassignFlexManager {
     unassignFlexManager {
       _id
@@ -39,9 +37,9 @@ const UNASSIGN_FLEX_MANAGER = `
       updatedAt
     }
   }
-`;
+`);
 
-const ASSIGN_FLEX_MANAGER_TARGET = `
+const ASSIGN_FLEX_MANAGER_TARGET_MUTATION = graphql(`
   mutation AssignFlexManagerTarget($input: AssignFlexManagerTargetInput!) {
     assignFlexManagerTarget(input: $input) {
       _id
@@ -55,7 +53,7 @@ const ASSIGN_FLEX_MANAGER_TARGET = `
       updatedAt
     }
   }
-`;
+`);
 
 const invalidateDashboards = (qc: ReturnType<typeof useQueryClient>) => {
   qc.invalidateQueries({ queryKey: flexManagerKeys.dashboards() });
@@ -65,12 +63,8 @@ const invalidateDashboards = (qc: ReturnType<typeof useQueryClient>) => {
 export const useAssignFlexManager = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (managerId: string) => {
-      const data = await executeRaw<{
-        assignFlexManager: FlexManagerAssignmentRecord;
-      }>(ASSIGN_FLEX_MANAGER, { managerId });
-      return data.assignFlexManager;
-    },
+    mutationFn: (managerId: string) =>
+      execute(ASSIGN_FLEX_MANAGER_MUTATION, { managerId }),
     onSuccess: () => invalidateDashboards(qc),
   });
 };
@@ -78,38 +72,24 @@ export const useAssignFlexManager = () => {
 export const useUnassignFlexManager = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async () => {
-      const data = await executeRaw<{
-        unassignFlexManager: FlexManagerAssignmentRecord;
-      }>(UNASSIGN_FLEX_MANAGER);
-      return data.unassignFlexManager;
-    },
+    mutationFn: () => execute(UNASSIGN_FLEX_MANAGER_MUTATION, {}),
     onSuccess: () => invalidateDashboards(qc),
   });
 };
 
-export interface AssignFlexManagerTargetInput {
-  managerId: string;
-  month: number;
-  year: number;
-  new_customers_target?: number;
-  new_sales_value_target?: number;
-  recurring_target?: number;
-}
+export type { AssignFlexManagerTargetInput };
 
 export const useAssignFlexManagerTarget = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: AssignFlexManagerTargetInput) => {
-      const data = await executeRaw<{
-        assignFlexManagerTarget: FlexManagerTargetRecord;
-      }>(ASSIGN_FLEX_MANAGER_TARGET, { input });
-      return data.assignFlexManagerTarget;
-    },
-    onSuccess: (target) => {
+    mutationFn: (input: AssignFlexManagerTargetInput) =>
+      execute(ASSIGN_FLEX_MANAGER_TARGET_MUTATION, { input }),
+    onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: flexManagerKeys.dashboards() });
       qc.invalidateQueries({
-        queryKey: flexManagerKeys.targets(target.manager),
+        queryKey: flexManagerKeys.targets(
+          data.assignFlexManagerTarget.manager
+        ),
       });
     },
   });

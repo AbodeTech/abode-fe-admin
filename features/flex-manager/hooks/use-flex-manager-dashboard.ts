@@ -1,23 +1,15 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { executeRaw } from "@/lib/graphql-client";
-import type {
-  FlexManagerDashboard,
-  FlexManagerHolder,
-} from "../types";
+import { execute } from "@/lib/graphql-client";
+import { graphql } from "@/lib/gql";
 
 /**
- * FLEX Manager dashboard hooks — wired to live BE
- * (guidelines/Flex_Manager_Dashboard.md).
- *
- * Uses executeRaw + hand-typed responses until codegen can pick up the
- * schema (BE server was down at wiring time). Once codegen runs, swap
- * these string queries for `graphql()` templates and drop the local
- * types in favour of @/lib/gql/graphql.
+ * FLEX Manager dashboard reads — typed via codegen.
+ * BE contract: guidelines/Flex_Manager_Dashboard.md.
  */
 
-const GET_FLEX_MANAGER_DASHBOARD = `
+const GET_FLEX_MANAGER_DASHBOARD_QUERY = graphql(`
   query GetFlexManagerDashboard($month: Int, $year: Int) {
     getFlexManagerDashboard(month: $month, year: $year) {
       period {
@@ -50,9 +42,9 @@ const GET_FLEX_MANAGER_DASHBOARD = `
       }
     }
   }
-`;
+`);
 
-const GET_FLEX_MANAGER = `
+const GET_FLEX_MANAGER_QUERY = graphql(`
   query GetFlexManager {
     getFlexManager {
       manager {
@@ -64,7 +56,7 @@ const GET_FLEX_MANAGER = `
       assignedFrom
     }
   }
-`;
+`);
 
 export const flexManagerKeys = {
   dashboards: () => ["flex-manager", "dashboard"] as const,
@@ -88,15 +80,12 @@ export const useFlexManagerDashboard = ({
 }: UseFlexManagerDashboardParams = {}) => {
   return useQuery({
     queryKey: flexManagerKeys.dashboard(month, year),
-    queryFn: async () => {
-      const data = await executeRaw<{
-        getFlexManagerDashboard: FlexManagerDashboard;
-      }>(GET_FLEX_MANAGER_DASHBOARD, {
+    queryFn: () =>
+      execute(GET_FLEX_MANAGER_DASHBOARD_QUERY, {
         month: month ?? null,
         year: year ?? null,
-      });
-      return data.getFlexManagerDashboard;
-    },
+      }),
+    select: (data) => data.getFlexManagerDashboard,
     enabled,
   });
 };
@@ -106,11 +95,7 @@ export const useFlexManagerDashboard = ({
 export const useCurrentFlexManager = () => {
   return useQuery({
     queryKey: flexManagerKeys.current(),
-    queryFn: async () => {
-      const data = await executeRaw<{
-        getFlexManager: FlexManagerHolder | null;
-      }>(GET_FLEX_MANAGER);
-      return data.getFlexManager;
-    },
+    queryFn: () => execute(GET_FLEX_MANAGER_QUERY),
+    select: (data) => data.getFlexManager ?? null,
   });
 };

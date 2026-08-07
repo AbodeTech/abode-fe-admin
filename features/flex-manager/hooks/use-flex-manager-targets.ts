@@ -1,11 +1,11 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { executeRaw } from "@/lib/graphql-client";
-import type { FlexManagerTargetRecord } from "../types";
+import { execute } from "@/lib/graphql-client";
+import { graphql } from "@/lib/gql";
 import { flexManagerKeys } from "./use-flex-manager-dashboard";
 
-const LIST_FLEX_MANAGER_TARGETS = `
+const LIST_FLEX_MANAGER_TARGETS_QUERY = graphql(`
   query ListFlexManagerTargets($managerId: ID!) {
     listFlexManagerTargets(managerId: $managerId) {
       _id
@@ -19,9 +19,9 @@ const LIST_FLEX_MANAGER_TARGETS = `
       updatedAt
     }
   }
-`;
+`);
 
-const GET_FLEX_MANAGER_TARGET = `
+const GET_FLEX_MANAGER_TARGET_QUERY = graphql(`
   query GetFlexManagerTarget($managerId: ID!, $month: Int, $year: Int) {
     getFlexManagerTarget(managerId: $managerId, month: $month, year: $year) {
       _id
@@ -35,17 +35,16 @@ const GET_FLEX_MANAGER_TARGET = `
       updatedAt
     }
   }
-`;
+`);
 
 export const useFlexManagerTargets = (managerId: string | null | undefined) => {
   return useQuery({
     queryKey: flexManagerKeys.targets(managerId ?? ""),
-    queryFn: async () => {
-      const data = await executeRaw<{
-        listFlexManagerTargets: FlexManagerTargetRecord[];
-      }>(LIST_FLEX_MANAGER_TARGETS, { managerId });
-      return data.listFlexManagerTargets;
-    },
+    queryFn: () =>
+      execute(LIST_FLEX_MANAGER_TARGETS_QUERY, {
+        managerId: managerId as string,
+      }),
+    select: (data) => data.listFlexManagerTargets,
     enabled: !!managerId,
   });
 };
@@ -61,16 +60,13 @@ export const useFlexManagerTarget = (
       month ?? null,
       year ?? null,
     ] as const,
-    queryFn: async () => {
-      const data = await executeRaw<{
-        getFlexManagerTarget: FlexManagerTargetRecord | null;
-      }>(GET_FLEX_MANAGER_TARGET, {
-        managerId,
+    queryFn: () =>
+      execute(GET_FLEX_MANAGER_TARGET_QUERY, {
+        managerId: managerId as string,
         month: month ?? null,
         year: year ?? null,
-      });
-      return data.getFlexManagerTarget;
-    },
+      }),
+    select: (data) => data.getFlexManagerTarget ?? null,
     enabled: !!managerId,
   });
 };

@@ -1109,6 +1109,15 @@ export type Assets = {
   topography?: Maybe<Scalars['String']['output']>;
 };
 
+export type AssignFlexManagerTargetInput = {
+  managerId: Scalars['ID']['input'];
+  month: Scalars['Int']['input'];
+  new_customers_target?: InputMaybe<Scalars['Int']['input']>;
+  new_sales_value_target?: InputMaybe<Scalars['Float']['input']>;
+  recurring_target?: InputMaybe<Scalars['Float']['input']>;
+  year: Scalars['Int']['input'];
+};
+
 export type AssignManagerTargetInput = {
   associate_pro_recruited_target?: InputMaybe<Scalars['Int']['input']>;
   managerId: Scalars['ID']['input'];
@@ -2440,6 +2449,74 @@ export type FlexDirectRatesOptional = {
   premium?: Maybe<Scalars['Float']['output']>;
 };
 
+export type FlexManager = {
+  __typename?: 'FlexManager';
+  assignedFrom: Scalars['Date']['output'];
+  manager: Admin;
+};
+
+export type FlexManagerAssignmentType = {
+  __typename?: 'FlexManagerAssignmentType';
+  _id: Scalars['ID']['output'];
+  assigned_from: Scalars['Date']['output'];
+  assigned_to?: Maybe<Scalars['Date']['output']>;
+  createdAt?: Maybe<Scalars['Date']['output']>;
+  created_by: Scalars['ID']['output'];
+  manager: Scalars['ID']['output'];
+  updatedAt?: Maybe<Scalars['Date']['output']>;
+};
+
+export type FlexManagerDashboardResponse = {
+  __typename?: 'FlexManagerDashboardResponse';
+  /** null when the role is unassigned */
+  manager?: Maybe<Admin>;
+  performanceScore: FlexManagerPerformanceScore;
+  period: FlexManagerPeriod;
+  target: FlexManagerTargets;
+};
+
+export type FlexManagerPerformanceScore = {
+  __typename?: 'FlexManagerPerformanceScore';
+  newCustomersComponent: Scalars['Float']['output'];
+  newSalesComponent: Scalars['Float']['output'];
+  recurringComponent: Scalars['Float']['output'];
+  score: Scalars['Float']['output'];
+};
+
+export type FlexManagerPeriod = {
+  __typename?: 'FlexManagerPeriod';
+  end: Scalars['Date']['output'];
+  month?: Maybe<Scalars['Int']['output']>;
+  periodType: Scalars['String']['output'];
+  start: Scalars['Date']['output'];
+  year?: Maybe<Scalars['Int']['output']>;
+};
+
+export type FlexManagerTargetType = {
+  __typename?: 'FlexManagerTargetType';
+  _id: Scalars['ID']['output'];
+  createdAt?: Maybe<Scalars['Date']['output']>;
+  manager: Scalars['ID']['output'];
+  month: Scalars['Int']['output'];
+  new_customers_target: Scalars['Int']['output'];
+  new_sales_value_target: Scalars['Float']['output'];
+  recurring_target: Scalars['Float']['output'];
+  updatedAt?: Maybe<Scalars['Date']['output']>;
+  year: Scalars['Int']['output'];
+};
+
+export type FlexManagerTargets = {
+  __typename?: 'FlexManagerTargets';
+  newCustomersSoFar: Scalars['Int']['output'];
+  newCustomersTarget: Scalars['Int']['output'];
+  newSalesValueSoFar: Scalars['Float']['output'];
+  newSalesValueTarget: Scalars['Float']['output'];
+  /** Naira the live flex book is scheduled to pay this month */
+  recurringExpected: Scalars['Float']['output'];
+  recurringSoFar: Scalars['Float']['output'];
+  recurringTarget: Scalars['Float']['output'];
+};
+
 export type FlexPaymentPlan = {
   __typename?: 'FlexPaymentPlan';
   description?: Maybe<Scalars['String']['output']>;
@@ -3276,6 +3353,8 @@ export type Mutation = {
   approveUserKyc: Scalars['String']['output'];
   askAssistant: AskAssistantResponse;
   assignAssociateManagerTarget: AssociateManagerTargetType;
+  assignFlexManager: FlexManagerAssignmentType;
+  assignFlexManagerTarget: FlexManagerTargetType;
   bulkAssignAssociateProsToManager: AssociateManagerType;
   buyAssetWithPaystack: BuyAssetPaystackResponse;
   buyAssetWithTransfer?: Maybe<Scalars['String']['output']>;
@@ -3286,6 +3365,7 @@ export type Mutation = {
   buyMarketplaceListingWithReceipt: MarketplaceListingResponse;
   cancelMarketplaceListing: MarketplaceListingResponse;
   clearUserTin: ClearTinResponse;
+  confirmPurchaseDetails: PurchaseConfirmationView;
   createAgency: CreateAgencyResponse;
   createAssetUpdateRequest: AssetUpdateRequestResponse;
   createBlock: Block;
@@ -3316,6 +3396,7 @@ export type Mutation = {
   deleteUserFlexAsset: Scalars['String']['output'];
   deleteUserFullOwnershipAsset: Scalars['String']['output'];
   disableAsset: Scalars['String']['output'];
+  disputePurchaseDetails: PurchaseConfirmationView;
   documentPaymentPaystack: DocumentFullownershipResponse;
   documentPaymentTransfer: Scalars['String']['output'];
   documentPaymentWallet: Scalars['String']['output'];
@@ -3359,6 +3440,8 @@ export type Mutation = {
   removeReferralByAdmin: Scalars['String']['output'];
   removeUserAssetByAdmin: Scalars['String']['output'];
   resendEmailVerification: Scalars['String']['output'];
+  resendPurchaseConfirmationEmail: Scalars['String']['output'];
+  resolvePurchaseDispute: ResolvePurchaseDisputeResponse;
   saveAsset: Scalars['String']['output'];
   sendAdminEmailVerification: EmailVerificationResponse;
   sendAllocationEmail: SendAllocationEmailResponse;
@@ -3385,6 +3468,7 @@ export type Mutation = {
   topUpWalletTransfer: Scalars['String']['output'];
   topWalletUp: TopUpResponse;
   unSuspendPaymentPlan: Scalars['String']['output'];
+  unassignFlexManager: FlexManagerAssignmentType;
   unsuspendAgency: SuspendAgencyResponse;
   unsuspendMarketplaceListing: AdminMarketplaceActionResponse;
   unsuspendUser: Scalars['String']['output'];
@@ -3541,6 +3625,16 @@ export type MutationAssignAssociateManagerTargetArgs = {
 };
 
 
+export type MutationAssignFlexManagerArgs = {
+  managerId: Scalars['ID']['input'];
+};
+
+
+export type MutationAssignFlexManagerTargetArgs = {
+  input: AssignFlexManagerTargetInput;
+};
+
+
 export type MutationBulkAssignAssociateProsToManagerArgs = {
   input: BulkAssignAssociateProsInput;
 };
@@ -3588,6 +3682,11 @@ export type MutationCancelMarketplaceListingArgs = {
 
 export type MutationClearUserTinArgs = {
   clearUserTinInput: ClearUserTinInput;
+};
+
+
+export type MutationConfirmPurchaseDetailsArgs = {
+  uniqueAssetId: Scalars['String']['input'];
 };
 
 
@@ -3736,6 +3835,12 @@ export type MutationDeleteUserFullOwnershipAssetArgs = {
 
 export type MutationDisableAssetArgs = {
   id: Scalars['ID']['input'];
+};
+
+
+export type MutationDisputePurchaseDetailsArgs = {
+  note?: InputMaybe<Scalars['String']['input']>;
+  uniqueAssetId: Scalars['String']['input'];
 };
 
 
@@ -3955,6 +4060,18 @@ export type MutationRemoveReferralByAdminArgs = {
 
 export type MutationRemoveUserAssetByAdminArgs = {
   removeAssetInput: RemoveAssetInput;
+};
+
+
+export type MutationResendPurchaseConfirmationEmailArgs = {
+  planId: Scalars['ID']['input'];
+};
+
+
+export type MutationResolvePurchaseDisputeArgs = {
+  note: Scalars['String']['input'];
+  planId: Scalars['ID']['input'];
+  requestReconfirm?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
 
@@ -4620,6 +4737,83 @@ export type Purchase = {
   user_id: Scalars['ID']['output'];
 };
 
+export type PurchaseConfirmationAdminRow = {
+  __typename?: 'PurchaseConfirmationAdminRow';
+  asset?: Maybe<Scalars['String']['output']>;
+  buyer?: Maybe<PurchaseConfirmationBuyer>;
+  confirmedAt?: Maybe<Scalars['Date']['output']>;
+  createdAt?: Maybe<Scalars['Date']['output']>;
+  disputes: Array<PurchaseDisputeEntry>;
+  emailSentAt?: Maybe<Scalars['Date']['output']>;
+  escalatedAt?: Maybe<Scalars['Date']['output']>;
+  id: Scalars['ID']['output'];
+  openDisputeNote?: Maybe<Scalars['String']['output']>;
+  planId: Scalars['ID']['output'];
+  referrer?: Maybe<Scalars['String']['output']>;
+  remindersSent: Array<Scalars['Date']['output']>;
+  snapshot: PurchaseSnapshot;
+  status: Scalars['String']['output'];
+  uniqueAssetId: Scalars['String']['output'];
+};
+
+export type PurchaseConfirmationBuyer = {
+  __typename?: 'PurchaseConfirmationBuyer';
+  email?: Maybe<Scalars['String']['output']>;
+  firstName?: Maybe<Scalars['String']['output']>;
+  id?: Maybe<Scalars['ID']['output']>;
+  lastName?: Maybe<Scalars['String']['output']>;
+  phoneNumber?: Maybe<Scalars['String']['output']>;
+};
+
+export type PurchaseConfirmationCounts = {
+  __typename?: 'PurchaseConfirmationCounts';
+  confirmed: Scalars['Int']['output'];
+  disputed: Scalars['Int']['output'];
+  waiting: Scalars['Int']['output'];
+};
+
+export type PurchaseConfirmationFilterInput = {
+  product?: InputMaybe<Scalars['String']['input']>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  status?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type PurchaseConfirmationListResponse = {
+  __typename?: 'PurchaseConfirmationListResponse';
+  count: Scalars['Int']['output'];
+  data: Array<PurchaseConfirmationAdminRow>;
+};
+
+export type PurchaseConfirmationView = {
+  __typename?: 'PurchaseConfirmationView';
+  confirmedAt?: Maybe<Scalars['Date']['output']>;
+  disputes: Array<PurchaseDisputeEntry>;
+  emailSentAt?: Maybe<Scalars['Date']['output']>;
+  snapshot: PurchaseSnapshot;
+  status: Scalars['String']['output'];
+  uniqueAssetId: Scalars['String']['output'];
+};
+
+export type PurchaseDisputeEntry = {
+  __typename?: 'PurchaseDisputeEntry';
+  disputed_at?: Maybe<Scalars['Date']['output']>;
+  note?: Maybe<Scalars['String']['output']>;
+  resolution_note?: Maybe<Scalars['String']['output']>;
+  resolved_at?: Maybe<Scalars['Date']['output']>;
+};
+
+export type PurchaseSnapshot = {
+  __typename?: 'PurchaseSnapshot';
+  development_levy?: Maybe<Scalars['Float']['output']>;
+  land_amount?: Maybe<Scalars['Float']['output']>;
+  name_on_document?: Maybe<Scalars['String']['output']>;
+  plan_label?: Maybe<Scalars['String']['output']>;
+  product?: Maybe<Scalars['String']['output']>;
+  size?: Maybe<Scalars['Float']['output']>;
+  total?: Maybe<Scalars['Float']['output']>;
+  units?: Maybe<Scalars['Int']['output']>;
+};
+
 export type QualifiedUser = {
   __typename?: 'QualifiedUser';
   assetName?: Maybe<Scalars['String']['output']>;
@@ -4702,6 +4896,9 @@ export type Query = {
   getCoupon: CouponResponse;
   getCustomerAsset?: Maybe<Array<Maybe<UserAsset>>>;
   getDocumentTransaction?: Maybe<TransactionAdminResponse>;
+  getFlexManager?: Maybe<FlexManager>;
+  getFlexManagerDashboard: FlexManagerDashboardResponse;
+  getFlexManagerTarget?: Maybe<FlexManagerTargetType>;
   getHamperLeaderboard: Array<HamperLeaderboardEntry>;
   getLastActiveAssetPayment: LastActiveAssetPaymentResponse;
   getListOfAllTransactions?: Maybe<TransactionAdminResponse>;
@@ -4757,8 +4954,10 @@ export type Query = {
   getUsersWithZeroBalance: ZeroBalanceResponse;
   getWithdrawalTransaction?: Maybe<TransactionAdminResponse>;
   listAssociateManagerTargets: Array<AssociateManagerTargetType>;
+  listFlexManagerTargets: Array<FlexManagerTargetType>;
   managerDashboard: ManagerDashboardResponse;
   myRaffleStanding: MyRaffleStanding;
+  purchaseConfirmationCounts: PurchaseConfirmationCounts;
   raffleLeaderboard: RaffleLeaderboard;
   removeUserBankDetails: Scalars['String']['output'];
   searchAcademyUsers: Array<AcademyUserSearchResult>;
@@ -4783,6 +4982,8 @@ export type Query = {
   viewMyMarketplaceListings: Array<MarketplaceListing>;
   viewMyTransferHistory: Array<MarketplaceTransferHistory>;
   viewPendingMarketplaceApprovals: AdminMarketplaceListingsResponse;
+  viewPurchaseConfirmation: PurchaseConfirmationView;
+  viewPurchaseConfirmations: PurchaseConfirmationListResponse;
   viewSavedAssets?: Maybe<AssetResponse>;
   viewSubscribedAssets?: Maybe<SubscribedAssetResponse>;
   viewSubscribedCustomersOnAsset: SubscribedCustomerDetailsResponse;
@@ -5115,6 +5316,19 @@ export type QueryGetDocumentTransactionArgs = {
 };
 
 
+export type QueryGetFlexManagerDashboardArgs = {
+  month?: InputMaybe<Scalars['Int']['input']>;
+  year?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
+export type QueryGetFlexManagerTargetArgs = {
+  managerId: Scalars['ID']['input'];
+  month?: InputMaybe<Scalars['Int']['input']>;
+  year?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
 export type QueryGetHamperLeaderboardArgs = {
   endDate?: InputMaybe<Scalars['String']['input']>;
   startDate?: InputMaybe<Scalars['String']['input']>;
@@ -5363,6 +5577,11 @@ export type QueryListAssociateManagerTargetsArgs = {
 };
 
 
+export type QueryListFlexManagerTargetsArgs = {
+  managerId: Scalars['ID']['input'];
+};
+
+
 export type QueryManagerDashboardArgs = {
   filter?: InputMaybe<ManagerDashboardFilterInput>;
 };
@@ -5444,6 +5663,18 @@ export type QueryViewMyMarketplaceListingsArgs = {
 
 
 export type QueryViewPendingMarketplaceApprovalsArgs = {
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
+export type QueryViewPurchaseConfirmationArgs = {
+  uniqueAssetId: Scalars['String']['input'];
+};
+
+
+export type QueryViewPurchaseConfirmationsArgs = {
+  filter?: InputMaybe<PurchaseConfirmationFilterInput>;
   limit?: InputMaybe<Scalars['Int']['input']>;
   page?: InputMaybe<Scalars['Int']['input']>;
 };
@@ -5757,6 +5988,13 @@ export type RequestStatistics = {
   totalFeesCollected?: Maybe<Scalars['Float']['output']>;
   totalRequests?: Maybe<Scalars['Int']['output']>;
   unpaidRequests?: Maybe<Scalars['Int']['output']>;
+};
+
+export type ResolvePurchaseDisputeResponse = {
+  __typename?: 'ResolvePurchaseDisputeResponse';
+  planId: Scalars['ID']['output'];
+  resent: Scalars['Boolean']['output'];
+  status: Scalars['String']['output'];
 };
 
 export type ResponseMessage = {
@@ -7868,6 +8106,84 @@ export type InviteAdminMutationVariables = Exact<{
 
 export type InviteAdminMutation = { __typename?: 'Mutation', createSubAdmin: string };
 
+export type GetFlexManagerDashboardQueryVariables = Exact<{
+  month?: InputMaybe<Scalars['Int']['input']>;
+  year?: InputMaybe<Scalars['Int']['input']>;
+}>;
+
+
+export type GetFlexManagerDashboardQuery = { __typename?: 'Query', getFlexManagerDashboard: { __typename?: 'FlexManagerDashboardResponse', period: { __typename?: 'FlexManagerPeriod', periodType: string, month?: number | null, year?: number | null, start: any, end: any }, manager?: { __typename?: 'Admin', _id: string, userName: string, email: string, role: string } | null, target: { __typename?: 'FlexManagerTargets', newCustomersTarget: number, newCustomersSoFar: number, newSalesValueTarget: number, newSalesValueSoFar: number, recurringTarget: number, recurringSoFar: number, recurringExpected: number }, performanceScore: { __typename?: 'FlexManagerPerformanceScore', score: number, newCustomersComponent: number, newSalesComponent: number, recurringComponent: number } } };
+
+export type GetFlexManagerQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GetFlexManagerQuery = { __typename?: 'Query', getFlexManager?: { __typename?: 'FlexManager', assignedFrom: any, manager: { __typename?: 'Admin', _id: string, userName: string, email: string, role: string } } | null };
+
+export type AssignFlexManagerMutationVariables = Exact<{
+  managerId: Scalars['ID']['input'];
+}>;
+
+
+export type AssignFlexManagerMutation = { __typename?: 'Mutation', assignFlexManager: { __typename?: 'FlexManagerAssignmentType', _id: string, manager: string, assigned_from: any, assigned_to?: any | null, created_by: string, createdAt?: any | null, updatedAt?: any | null } };
+
+export type UnassignFlexManagerMutationVariables = Exact<{ [key: string]: never; }>;
+
+
+export type UnassignFlexManagerMutation = { __typename?: 'Mutation', unassignFlexManager: { __typename?: 'FlexManagerAssignmentType', _id: string, manager: string, assigned_from: any, assigned_to?: any | null, created_by: string, createdAt?: any | null, updatedAt?: any | null } };
+
+export type AssignFlexManagerTargetMutationVariables = Exact<{
+  input: AssignFlexManagerTargetInput;
+}>;
+
+
+export type AssignFlexManagerTargetMutation = { __typename?: 'Mutation', assignFlexManagerTarget: { __typename?: 'FlexManagerTargetType', _id: string, manager: string, month: number, year: number, new_customers_target: number, new_sales_value_target: number, recurring_target: number, createdAt?: any | null, updatedAt?: any | null } };
+
+export type ListFlexManagerTargetsQueryVariables = Exact<{
+  managerId: Scalars['ID']['input'];
+}>;
+
+
+export type ListFlexManagerTargetsQuery = { __typename?: 'Query', listFlexManagerTargets: Array<{ __typename?: 'FlexManagerTargetType', _id: string, manager: string, month: number, year: number, new_customers_target: number, new_sales_value_target: number, recurring_target: number, createdAt?: any | null, updatedAt?: any | null }> };
+
+export type GetFlexManagerTargetQueryVariables = Exact<{
+  managerId: Scalars['ID']['input'];
+  month?: InputMaybe<Scalars['Int']['input']>;
+  year?: InputMaybe<Scalars['Int']['input']>;
+}>;
+
+
+export type GetFlexManagerTargetQuery = { __typename?: 'Query', getFlexManagerTarget?: { __typename?: 'FlexManagerTargetType', _id: string, manager: string, month: number, year: number, new_customers_target: number, new_sales_value_target: number, recurring_target: number, createdAt?: any | null, updatedAt?: any | null } | null };
+
+export type ResolvePurchaseDisputeMutationVariables = Exact<{
+  planId: Scalars['ID']['input'];
+  note: Scalars['String']['input'];
+  requestReconfirm?: InputMaybe<Scalars['Boolean']['input']>;
+}>;
+
+
+export type ResolvePurchaseDisputeMutation = { __typename?: 'Mutation', resolvePurchaseDispute: { __typename?: 'ResolvePurchaseDisputeResponse', planId: string, status: string, resent: boolean } };
+
+export type ResendPurchaseConfirmationEmailMutationVariables = Exact<{
+  planId: Scalars['ID']['input'];
+}>;
+
+
+export type ResendPurchaseConfirmationEmailMutation = { __typename?: 'Mutation', resendPurchaseConfirmationEmail: string };
+
+export type ViewPurchaseConfirmationsQueryVariables = Exact<{
+  filter?: InputMaybe<PurchaseConfirmationFilterInput>;
+  page?: InputMaybe<Scalars['Int']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+}>;
+
+
+export type ViewPurchaseConfirmationsQuery = { __typename?: 'Query', viewPurchaseConfirmations: { __typename?: 'PurchaseConfirmationListResponse', count: number, data: Array<{ __typename?: 'PurchaseConfirmationAdminRow', planId: string, uniqueAssetId: string, status: string, referrer?: string | null, asset?: string | null, emailSentAt?: any | null, confirmedAt?: any | null, remindersSent: Array<any>, openDisputeNote?: string | null, createdAt?: any | null, buyer?: { __typename?: 'PurchaseConfirmationBuyer', firstName?: string | null, lastName?: string | null, email?: string | null } | null, snapshot: { __typename?: 'PurchaseSnapshot', name_on_document?: string | null, size?: number | null, units?: number | null, plan_label?: string | null, total?: number | null, product?: string | null }, disputes: Array<{ __typename?: 'PurchaseDisputeEntry', note?: string | null, disputed_at?: any | null, resolved_at?: any | null }> }> } };
+
+export type PurchaseConfirmationCountsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type PurchaseConfirmationCountsQuery = { __typename?: 'Query', purchaseConfirmationCounts: { __typename?: 'PurchaseConfirmationCounts', disputed: number, waiting: number, confirmed: number } };
+
 export type UpdateRequestStatusMutationVariables = Exact<{
   updateRequestInput: UpdateRequestInput;
 }>;
@@ -8491,6 +8807,17 @@ export const GetHamperTransactionsDocument = {"kind":"Document","definitions":[{
 export const GetHamperLeaderboardDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetHamperLeaderboard"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"startDate"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"endDate"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getHamperLeaderboard"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"startDate"},"value":{"kind":"Variable","name":{"kind":"Name","value":"startDate"}}},{"kind":"Argument","name":{"kind":"Name","value":"endDate"},"value":{"kind":"Variable","name":{"kind":"Name","value":"endDate"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"hamperCount"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"numberOfReferredUsers"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}},{"kind":"Field","name":{"kind":"Name","value":"referrerId"}},{"kind":"Field","name":{"kind":"Name","value":"totalAmountPaid"}},{"kind":"Field","name":{"kind":"Name","value":"totalAssetValue"}},{"kind":"Field","name":{"kind":"Name","value":"totalBalance"}},{"kind":"Field","name":{"kind":"Name","value":"totalLandPrice"}},{"kind":"Field","name":{"kind":"Name","value":"totalSqmSold"}}]}}]}}]} as unknown as DocumentNode<GetHamperLeaderboardQuery, GetHamperLeaderboardQueryVariables>;
 export const GetAdminDashboardDetailsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetAdminDashboardDetails"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"startDate"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"endDate"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAdminDashboardDetails"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"startDate"},"value":{"kind":"Variable","name":{"kind":"Name","value":"startDate"}}},{"kind":"Argument","name":{"kind":"Name","value":"endDate"},"value":{"kind":"Variable","name":{"kind":"Name","value":"endDate"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"DashboardQuickOverview_data"}},{"kind":"Field","name":{"kind":"Name","value":"top_associates"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"TopAssociates_data"}}]}},{"kind":"Field","name":{"kind":"Name","value":"top_selling_prop"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"TopSellingProducts_data"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"DashboardQuickOverview_data"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"AdminDashboard"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"users"}},{"kind":"Field","name":{"kind":"Name","value":"monthly_recurring_revenue"}},{"kind":"Field","name":{"kind":"Name","value":"associate_users"}},{"kind":"Field","name":{"kind":"Name","value":"associate_pro_users"}},{"kind":"Field","name":{"kind":"Name","value":"total_asset"}},{"kind":"Field","name":{"kind":"Name","value":"default_users"}},{"kind":"Field","name":{"kind":"Name","value":"suspended_users"}},{"kind":"Field","name":{"kind":"Name","value":"suspended_payment_plans"}},{"kind":"Field","name":{"kind":"Name","value":"total_payable"}},{"kind":"Field","name":{"kind":"Name","value":"sales"}},{"kind":"Field","name":{"kind":"Name","value":"inflow"}},{"kind":"Field","name":{"kind":"Name","value":"outflow"}},{"kind":"Field","name":{"kind":"Name","value":"total_wallet_balance"}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"TopAssociates_data"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"UserReferralAdmin"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"amount_brought"}},{"kind":"Field","name":{"kind":"Name","value":"no_of_referral"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"TopSellingProducts_data"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"AssetDashBoard"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"asset_name"}},{"kind":"Field","name":{"kind":"Name","value":"asset_pictures"}},{"kind":"Field","name":{"kind":"Name","value":"asset_location"}},{"kind":"Field","name":{"kind":"Name","value":"units_subscribed"}},{"kind":"Field","name":{"kind":"Name","value":"amount_broughtin"}}]}}]} as unknown as DocumentNode<GetAdminDashboardDetailsQuery, GetAdminDashboardDetailsQueryVariables>;
 export const InviteAdminDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"InviteAdmin"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"SubAdminInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createSubAdmin"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"subAdminInput"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}]}]}}]} as unknown as DocumentNode<InviteAdminMutation, InviteAdminMutationVariables>;
+export const GetFlexManagerDashboardDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetFlexManagerDashboard"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"month"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"year"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getFlexManagerDashboard"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"month"},"value":{"kind":"Variable","name":{"kind":"Name","value":"month"}}},{"kind":"Argument","name":{"kind":"Name","value":"year"},"value":{"kind":"Variable","name":{"kind":"Name","value":"year"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"period"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"periodType"}},{"kind":"Field","name":{"kind":"Name","value":"month"}},{"kind":"Field","name":{"kind":"Name","value":"year"}},{"kind":"Field","name":{"kind":"Name","value":"start"}},{"kind":"Field","name":{"kind":"Name","value":"end"}}]}},{"kind":"Field","name":{"kind":"Name","value":"manager"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"role"}}]}},{"kind":"Field","name":{"kind":"Name","value":"target"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"newCustomersTarget"}},{"kind":"Field","name":{"kind":"Name","value":"newCustomersSoFar"}},{"kind":"Field","name":{"kind":"Name","value":"newSalesValueTarget"}},{"kind":"Field","name":{"kind":"Name","value":"newSalesValueSoFar"}},{"kind":"Field","name":{"kind":"Name","value":"recurringTarget"}},{"kind":"Field","name":{"kind":"Name","value":"recurringSoFar"}},{"kind":"Field","name":{"kind":"Name","value":"recurringExpected"}}]}},{"kind":"Field","name":{"kind":"Name","value":"performanceScore"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"score"}},{"kind":"Field","name":{"kind":"Name","value":"newCustomersComponent"}},{"kind":"Field","name":{"kind":"Name","value":"newSalesComponent"}},{"kind":"Field","name":{"kind":"Name","value":"recurringComponent"}}]}}]}}]}}]} as unknown as DocumentNode<GetFlexManagerDashboardQuery, GetFlexManagerDashboardQueryVariables>;
+export const GetFlexManagerDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetFlexManager"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getFlexManager"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"manager"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"role"}}]}},{"kind":"Field","name":{"kind":"Name","value":"assignedFrom"}}]}}]}}]} as unknown as DocumentNode<GetFlexManagerQuery, GetFlexManagerQueryVariables>;
+export const AssignFlexManagerDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"AssignFlexManager"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"assignFlexManager"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"managerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"manager"}},{"kind":"Field","name":{"kind":"Name","value":"assigned_from"}},{"kind":"Field","name":{"kind":"Name","value":"assigned_to"}},{"kind":"Field","name":{"kind":"Name","value":"created_by"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<AssignFlexManagerMutation, AssignFlexManagerMutationVariables>;
+export const UnassignFlexManagerDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"UnassignFlexManager"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"unassignFlexManager"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"manager"}},{"kind":"Field","name":{"kind":"Name","value":"assigned_from"}},{"kind":"Field","name":{"kind":"Name","value":"assigned_to"}},{"kind":"Field","name":{"kind":"Name","value":"created_by"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<UnassignFlexManagerMutation, UnassignFlexManagerMutationVariables>;
+export const AssignFlexManagerTargetDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"AssignFlexManagerTarget"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"AssignFlexManagerTargetInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"assignFlexManagerTarget"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"manager"}},{"kind":"Field","name":{"kind":"Name","value":"month"}},{"kind":"Field","name":{"kind":"Name","value":"year"}},{"kind":"Field","name":{"kind":"Name","value":"new_customers_target"}},{"kind":"Field","name":{"kind":"Name","value":"new_sales_value_target"}},{"kind":"Field","name":{"kind":"Name","value":"recurring_target"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<AssignFlexManagerTargetMutation, AssignFlexManagerTargetMutationVariables>;
+export const ListFlexManagerTargetsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ListFlexManagerTargets"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"listFlexManagerTargets"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"managerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"manager"}},{"kind":"Field","name":{"kind":"Name","value":"month"}},{"kind":"Field","name":{"kind":"Name","value":"year"}},{"kind":"Field","name":{"kind":"Name","value":"new_customers_target"}},{"kind":"Field","name":{"kind":"Name","value":"new_sales_value_target"}},{"kind":"Field","name":{"kind":"Name","value":"recurring_target"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<ListFlexManagerTargetsQuery, ListFlexManagerTargetsQueryVariables>;
+export const GetFlexManagerTargetDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetFlexManagerTarget"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"month"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"year"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getFlexManagerTarget"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"managerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}}},{"kind":"Argument","name":{"kind":"Name","value":"month"},"value":{"kind":"Variable","name":{"kind":"Name","value":"month"}}},{"kind":"Argument","name":{"kind":"Name","value":"year"},"value":{"kind":"Variable","name":{"kind":"Name","value":"year"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"manager"}},{"kind":"Field","name":{"kind":"Name","value":"month"}},{"kind":"Field","name":{"kind":"Name","value":"year"}},{"kind":"Field","name":{"kind":"Name","value":"new_customers_target"}},{"kind":"Field","name":{"kind":"Name","value":"new_sales_value_target"}},{"kind":"Field","name":{"kind":"Name","value":"recurring_target"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<GetFlexManagerTargetQuery, GetFlexManagerTargetQueryVariables>;
+export const ResolvePurchaseDisputeDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"ResolvePurchaseDispute"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"planId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"note"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"requestReconfirm"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Boolean"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"resolvePurchaseDispute"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"planId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"planId"}}},{"kind":"Argument","name":{"kind":"Name","value":"note"},"value":{"kind":"Variable","name":{"kind":"Name","value":"note"}}},{"kind":"Argument","name":{"kind":"Name","value":"requestReconfirm"},"value":{"kind":"Variable","name":{"kind":"Name","value":"requestReconfirm"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"planId"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"resent"}}]}}]}}]} as unknown as DocumentNode<ResolvePurchaseDisputeMutation, ResolvePurchaseDisputeMutationVariables>;
+export const ResendPurchaseConfirmationEmailDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"ResendPurchaseConfirmationEmail"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"planId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"resendPurchaseConfirmationEmail"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"planId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"planId"}}}]}]}}]} as unknown as DocumentNode<ResendPurchaseConfirmationEmailMutation, ResendPurchaseConfirmationEmailMutationVariables>;
+export const ViewPurchaseConfirmationsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ViewPurchaseConfirmations"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filter"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"PurchaseConfirmationFilterInput"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"viewPurchaseConfirmations"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filter"}}},{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"count"}},{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"planId"}},{"kind":"Field","name":{"kind":"Name","value":"uniqueAssetId"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"buyer"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}},{"kind":"Field","name":{"kind":"Name","value":"referrer"}},{"kind":"Field","name":{"kind":"Name","value":"asset"}},{"kind":"Field","name":{"kind":"Name","value":"snapshot"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name_on_document"}},{"kind":"Field","name":{"kind":"Name","value":"size"}},{"kind":"Field","name":{"kind":"Name","value":"units"}},{"kind":"Field","name":{"kind":"Name","value":"plan_label"}},{"kind":"Field","name":{"kind":"Name","value":"total"}},{"kind":"Field","name":{"kind":"Name","value":"product"}}]}},{"kind":"Field","name":{"kind":"Name","value":"emailSentAt"}},{"kind":"Field","name":{"kind":"Name","value":"confirmedAt"}},{"kind":"Field","name":{"kind":"Name","value":"remindersSent"}},{"kind":"Field","name":{"kind":"Name","value":"openDisputeNote"}},{"kind":"Field","name":{"kind":"Name","value":"disputes"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"note"}},{"kind":"Field","name":{"kind":"Name","value":"disputed_at"}},{"kind":"Field","name":{"kind":"Name","value":"resolved_at"}}]}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}}]}}]}}]} as unknown as DocumentNode<ViewPurchaseConfirmationsQuery, ViewPurchaseConfirmationsQueryVariables>;
+export const PurchaseConfirmationCountsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"PurchaseConfirmationCounts"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"purchaseConfirmationCounts"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"disputed"}},{"kind":"Field","name":{"kind":"Name","value":"waiting"}},{"kind":"Field","name":{"kind":"Name","value":"confirmed"}}]}}]}}]} as unknown as DocumentNode<PurchaseConfirmationCountsQuery, PurchaseConfirmationCountsQueryVariables>;
 export const UpdateRequestStatusDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"UpdateRequestStatus"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"updateRequestInput"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"UpdateRequestInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"updateRequestStatus"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"updateRequestInput"},"value":{"kind":"Variable","name":{"kind":"Name","value":"updateRequestInput"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"success"}},{"kind":"Field","name":{"kind":"Name","value":"message"}}]}}]}}]} as unknown as DocumentNode<UpdateRequestStatusMutation, UpdateRequestStatusMutationVariables>;
 export const SystemApproveLocationChangeRequestDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"SystemApproveLocationChangeRequest"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"requestId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"systemApproveLocationChangeRequest"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"requestId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"requestId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"success"}},{"kind":"Field","name":{"kind":"Name","value":"message"}}]}}]}}]} as unknown as DocumentNode<SystemApproveLocationChangeRequestMutation, SystemApproveLocationChangeRequestMutationVariables>;
 export const SystemApproveDocumentChangeRequestDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"SystemApproveDocumentChangeRequest"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"requestId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"systemApproveDocumentChangeRequest"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"requestId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"requestId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"success"}},{"kind":"Field","name":{"kind":"Name","value":"message"}}]}}]}}]} as unknown as DocumentNode<SystemApproveDocumentChangeRequestMutation, SystemApproveDocumentChangeRequestMutationVariables>;

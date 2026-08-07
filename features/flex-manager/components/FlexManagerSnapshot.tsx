@@ -12,19 +12,22 @@ import {
 import { Button } from "@/components/ui/button";
 import { KpiTile } from "@/components/shared/KpiTile";
 import type {
-  FlexManagerAdminUser,
+  Admin,
   FlexManagerPeriod,
-  FlexManagerTarget,
+  FlexManagerTargets,
   FlexManagerPerformanceScore,
-} from "../types";
+} from "@/lib/gql/graphql";
+
+/** Local narrowing: the dashboard only reads a handful of Admin fields. */
+type FlexManagerAdmin = Pick<Admin, "_id" | "userName" | "email" | "role">;
 
 interface Props {
-  manager: FlexManagerAdminUser;
+  manager: FlexManagerAdmin;
   /** ISO date the current holder took over — driven by `getFlexManager`, so
    * the dashboard hero can show "since Jun 2026" without a second lookup. */
   assignedFrom?: string;
   period: FlexManagerPeriod;
-  target: FlexManagerTarget;
+  target: FlexManagerTargets;
   score: FlexManagerPerformanceScore;
   /** Super-admin only — surfaces reassignment + target-setting affordances. */
   onManageTargets?: () => void;
@@ -52,7 +55,7 @@ const daysRemaining = (end: string) => {
   return Math.max(0, Math.ceil(d / (1000 * 60 * 60 * 24)));
 };
 
-const hasActiveTarget = (t: FlexManagerTarget) =>
+const hasActiveTarget = (t: FlexManagerTargets) =>
   t.newCustomersTarget > 0 ||
   t.newSalesValueTarget > 0 ||
   t.recurringTarget > 0;
@@ -71,7 +74,7 @@ const formatNairaShort = (n: number): string => {
 // a best-effort surname/first-name split, then take the first letters.
 // Falls back to the first two letters of userName, and finally to the
 // email initial. Drop this once BE exposes firstName/lastName on Admin.
-const initialsOf = (m: FlexManagerAdminUser) => {
+const initialsOf = (m: FlexManagerAdmin) => {
   const source = m.userName || m.email || "";
   const parts = source.trim().split(/\s+/).filter(Boolean);
   if (parts.length >= 2) {
@@ -80,7 +83,7 @@ const initialsOf = (m: FlexManagerAdminUser) => {
   return source.slice(0, 2).toUpperCase() || "?";
 };
 
-const displayName = (m: FlexManagerAdminUser) => m.userName || m.email;
+const displayName = (m: FlexManagerAdmin) => m.userName || m.email;
 
 const formatSince = (iso: string) => {
   const d = new Date(iso);
