@@ -12,14 +12,17 @@ import {
 import { Button } from "@/components/ui/button";
 import { KpiTile } from "@/components/shared/KpiTile";
 import type {
-  FlexManagerAdmin,
+  FlexManagerAdminUser,
   FlexManagerPeriod,
   FlexManagerTarget,
   FlexManagerPerformanceScore,
 } from "../types";
 
 interface Props {
-  manager: FlexManagerAdmin;
+  manager: FlexManagerAdminUser;
+  /** ISO date the current holder took over — driven by `getFlexManager`, so
+   * the dashboard hero can show "since Jun 2026" without a second lookup. */
+  assignedFrom?: string;
   period: FlexManagerPeriod;
   target: FlexManagerTarget;
   score: FlexManagerPerformanceScore;
@@ -64,12 +67,20 @@ const formatNairaShort = (n: number): string => {
   return `₦${Math.round(n)}`;
 };
 
-const initialsOf = (m: FlexManagerAdmin) =>
-  ((m.lastName?.[0] ?? "") + (m.firstName?.[0] ?? "")).toUpperCase() ||
-  m.email[0].toUpperCase();
+// BE ships only `userName` on the base Admin type. Split on whitespace as
+// a best-effort surname/first-name split, then take the first letters.
+// Falls back to the first two letters of userName, and finally to the
+// email initial. Drop this once BE exposes firstName/lastName on Admin.
+const initialsOf = (m: FlexManagerAdminUser) => {
+  const source = m.userName || m.email || "";
+  const parts = source.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+  return source.slice(0, 2).toUpperCase() || "?";
+};
 
-const fullName = (m: FlexManagerAdmin) =>
-  `${m.lastName ?? ""} ${m.firstName ?? ""}`.trim() || m.email;
+const displayName = (m: FlexManagerAdminUser) => m.userName || m.email;
 
 const formatSince = (iso: string) => {
   const d = new Date(iso);
@@ -78,6 +89,7 @@ const formatSince = (iso: string) => {
 
 export function FlexManagerSnapshot({
   manager,
+  assignedFrom,
   period,
   target,
   score,
@@ -148,12 +160,13 @@ export function FlexManagerSnapshot({
         <div className="flex-1 min-w-0">
           <div className="flex items-baseline gap-2 flex-wrap">
             <p className="text-sm font-medium text-gray-900">
-              {fullName(manager)}
+              {displayName(manager)}
             </p>
             <span className="text-xs text-gray-500">FLEX Manager</span>
           </div>
           <p className="text-xs text-gray-500 truncate">
-            {manager.email} · assigned since {formatSince(manager.assignedFrom)}
+            {manager.email}
+            {assignedFrom && ` · assigned since ${formatSince(assignedFrom)}`}
           </p>
         </div>
         {onReassign && (

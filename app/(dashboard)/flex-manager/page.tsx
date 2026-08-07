@@ -3,6 +3,7 @@
 import { Loader2 } from "lucide-react";
 import {
   useFlexManagerDashboard,
+  useCurrentFlexManager,
   FlexManagerSnapshot,
   UnassignedFlexManagerCard,
 } from "@/features/flex-manager";
@@ -19,6 +20,8 @@ import {
  */
 export default function FlexManagerPage() {
   const { data, isLoading, isError, error } = useFlexManagerDashboard();
+  // Assigned-from date lives on the singleton query, not the dashboard payload
+  const { data: holder } = useCurrentFlexManager();
 
   if (isLoading) {
     return (
@@ -55,6 +58,7 @@ export default function FlexManagerPage() {
       {data.manager ? (
         <FlexManagerSnapshot
           manager={data.manager}
+          assignedFrom={holder?.assignedFrom}
           period={data.period}
           target={data.target}
           score={data.performanceScore}

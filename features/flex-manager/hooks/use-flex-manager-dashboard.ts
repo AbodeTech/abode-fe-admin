@@ -1,58 +1,78 @@
+"use client";
+
 import { useQuery } from "@tanstack/react-query";
-import type { FlexManagerDashboard } from "../types";
+import { executeRaw } from "@/lib/graphql-client";
+import type {
+  FlexManagerDashboard,
+  FlexManagerHolder,
+} from "../types";
 
 /**
- * FLEX Manager dashboard — TEMPORARY MOCK.
+ * FLEX Manager dashboard hooks — wired to live BE
+ * (guidelines/Flex_Manager_Dashboard.md).
  *
- * Returns typed fixture data shaped to the BE ticket
- * (guidelines/Flex_Manager_Dashboard.md). Once BE ships:
- *   - Replace the queryFn body with `execute(graphql(\`…\`), variables)`
- *   - Switch consumers over to codegen types in @/lib/gql/graphql
- *   - No component changes needed.
+ * Uses executeRaw + hand-typed responses until codegen can pick up the
+ * schema (BE server was down at wiring time). Once codegen runs, swap
+ * these string queries for `graphql()` templates and drop the local
+ * types in favour of @/lib/gql/graphql.
  */
 
-const MOCK_ASSIGNED: FlexManagerDashboard = {
-  period: {
-    periodType: "MONTH",
-    month: 9,
-    year: 2026,
-    start: "2026-09-01",
-    end: "2026-09-30",
-  },
-  manager: {
-    _id: "chidi",
-    firstName: "Chidi",
-    lastName: "Okonkwo",
-    email: "chidi.okonkwo@abode.ng",
-    assignedFrom: "2026-06-01",
-  },
-  target: {
-    newCustomersTarget: 40,
-    newCustomersSoFar: 27,
+const GET_FLEX_MANAGER_DASHBOARD = `
+  query GetFlexManagerDashboard($month: Int, $year: Int) {
+    getFlexManagerDashboard(month: $month, year: $year) {
+      period {
+        periodType
+        month
+        year
+        start
+        end
+      }
+      manager {
+        _id
+        userName
+        email
+        role
+      }
+      target {
+        newCustomersTarget
+        newCustomersSoFar
+        newSalesValueTarget
+        newSalesValueSoFar
+        recurringTarget
+        recurringSoFar
+        recurringExpected
+      }
+      performanceScore {
+        score
+        newCustomersComponent
+        newSalesComponent
+        recurringComponent
+      }
+    }
+  }
+`;
 
-    newSalesValueTarget: 50_000_000,
-    newSalesValueSoFar: 38_500_000,
-
-    recurringTarget: 20_000_000,
-    recurringSoFar: 17_450_000,
-    recurringExpected: 22_100_000,
-  },
-  performanceScore: {
-    score: 74.4,
-    newCustomersComponent: 33.75, // (27/40) * 50
-    newSalesComponent: 23.1,      // (38.5M/50M) * 30
-    recurringComponent: 17.45,    // (17.45M/20M) * 20
-  },
-};
-
-/** Swap to `null` in-place to demo the unassigned empty state. */
-const MOCK: FlexManagerDashboard = MOCK_ASSIGNED;
+const GET_FLEX_MANAGER = `
+  query GetFlexManager {
+    getFlexManager {
+      manager {
+        _id
+        userName
+        email
+        role
+      }
+      assignedFrom
+    }
+  }
+`;
 
 export const flexManagerKeys = {
   dashboards: () => ["flex-manager", "dashboard"] as const,
   dashboard: (month?: number, year?: number) =>
     [...flexManagerKeys.dashboards(), month ?? null, year ?? null] as const,
   current: () => ["flex-manager", "current"] as const,
+  targets: (managerId: string) =>
+    ["flex-manager", "targets", managerId] as const,
 };
 
 export interface UseFlexManagerDashboardParams {
@@ -68,12 +88,29 @@ export const useFlexManagerDashboard = ({
 }: UseFlexManagerDashboardParams = {}) => {
   return useQuery({
     queryKey: flexManagerKeys.dashboard(month, year),
-    queryFn: async (): Promise<FlexManagerDashboard> => {
-      // Replace with `execute(GET_FLEX_MANAGER_DASHBOARD_QUERY, { month, year })`
-      // once BE ships.
-      await new Promise((r) => setTimeout(r, 120));
-      return MOCK;
+    queryFn: async () => {
+      const data = await executeRaw<{
+        getFlexManagerDashboard: FlexManagerDashboard;
+      }>(GET_FLEX_MANAGER_DASHBOARD, {
+        month: month ?? null,
+        year: year ?? null,
+      });
+      return data.getFlexManagerDashboard;
     },
     enabled,
+  });
+};
+
+/** Current holder — returned separately from the dashboard so the
+ * "Assign / Reassign" panels can render without pulling the KPIs. */
+export const useCurrentFlexManager = () => {
+  return useQuery({
+    queryKey: flexManagerKeys.current(),
+    queryFn: async () => {
+      const data = await executeRaw<{
+        getFlexManager: FlexManagerHolder | null;
+      }>(GET_FLEX_MANAGER);
+      return data.getFlexManager;
+    },
   });
 };

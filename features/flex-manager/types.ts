@@ -19,11 +19,21 @@ export interface FlexManagerPeriod {
   end: string;
 }
 
-export interface FlexManagerAdmin {
+/** Matches the BE `Admin` type surfaced on FlexManagerDashboardResponse.
+ * Note: unlike the associate-managers path (ManagerAdminInfo), the base
+ * Admin type doesn't ship firstName/lastName — display falls back to
+ * userName then email. When BE extends Admin (or we switch this to
+ * ManagerAdminInfo), drop the fallback chain. */
+export interface FlexManagerAdminUser {
   _id: string;
-  firstName: string | null;
-  lastName: string | null;
+  userName: string;
   email: string;
+  role: string;
+}
+
+/** The `getFlexManager` singleton — current holder + when they took over. */
+export interface FlexManagerHolder {
+  manager: FlexManagerAdminUser;
   assignedFrom: string;
 }
 
@@ -53,7 +63,31 @@ export interface FlexManagerDashboard {
   period: FlexManagerPeriod;
   /** Null when the role is currently unassigned — FE renders an empty
    * state / assign CTA rather than the KPIs. */
-  manager: FlexManagerAdmin | null;
+  manager: FlexManagerAdminUser | null;
   target: FlexManagerTarget;
   performanceScore: FlexManagerPerformanceScore;
+}
+
+/** Persisted target record — matches BE FlexManagerTargetType. */
+export interface FlexManagerTargetRecord {
+  _id: string;
+  manager: string; // Admin id
+  month: number;
+  year: number;
+  new_customers_target: number;
+  new_sales_value_target: number;
+  recurring_target: number;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+}
+
+/** Assignment audit row — matches BE FlexManagerAssignmentType. */
+export interface FlexManagerAssignmentRecord {
+  _id: string;
+  manager: string;
+  assigned_from: string;
+  assigned_to: string | null;
+  created_by: string;
+  createdAt?: string | null;
+  updatedAt?: string | null;
 }
