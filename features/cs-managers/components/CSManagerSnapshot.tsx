@@ -10,7 +10,7 @@ import {
   Target,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { CSKpiTile } from "./CSKpiTile";
+import { KpiTile } from "@/components/shared/KpiTile";
 import type {
   CSManagerAdmin,
   CSManagerPeriod,
@@ -153,7 +153,7 @@ export function CSManagerSnapshot({
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <CSKpiTile
+        <KpiTile
           icon={Home}
           iconColor="text-[#00695C]"
           iconBg="bg-[#E0F2F1]"
@@ -178,7 +178,7 @@ export function CSManagerSnapshot({
           }
         />
 
-        <CSKpiTile
+        <KpiTile
           icon={Phone}
           iconColor="text-blue-600"
           iconBg="bg-blue-50"
@@ -193,7 +193,7 @@ export function CSManagerSnapshot({
           tooltip="Onboarding calls logged this period. Every new purchase needs an onboarding call to gather intel on why the customer chose the land."
         />
 
-        <CSKpiTile
+        <KpiTile
           icon={FileText}
           iconColor="text-amber-700"
           iconBg="bg-amber-50"
@@ -208,7 +208,7 @@ export function CSManagerSnapshot({
           tooltip="Deeds sent to eligible customers this period. Full-ownership: eligible after payment plan + doc plan. Flex: eligible after completing land payment."
         />
 
-        <CSKpiTile
+        <KpiTile
           icon={Gauge}
           iconColor="text-purple-600"
           iconBg="bg-purple-50"

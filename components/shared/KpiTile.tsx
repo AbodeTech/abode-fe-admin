@@ -9,12 +9,19 @@ import {
 import { cn } from "@/lib/utils";
 
 /**
- * KPI tile for the CS Manager dashboard.
+ * Shared KPI tile — target vs actual with a tone-coloured progress bar
+ * and status pill. Used across the manager performance dashboards
+ * (Associate Pro Manager, CS Manager, FLEX Manager).
  *
- * Same visual grammar as ManagerSnapshot's KpiTile but lifted into this
- * feature module so CSM UX can evolve without dragging the APM code along.
- * When both dashboards settle, worth extracting a shared components/kpi/Tile
- * — for now, deliberate duplication.
+ * Semantics
+ * - `noData` swaps in an empty-state message so 0-values don't read
+ *   as real signal ("No ratings yet" beats "0.00").
+ * - `footer` slot renders below the standard content — used for
+ *   secondary signals like "N paid customers awaiting a plot" or a
+ *   collections gap.
+ * - Untargeted state (no `targetDisplay`) shows "No benchmark set"
+ *   instead of a bar — 0-weight in a computed score should read as
+ *   "not tracked here" not "failed".
  */
 
 export type KpiTone = "exceeded" | "on-track" | "approaching" | "behind";
@@ -56,7 +63,7 @@ const TONE_STYLES: Record<
   },
 };
 
-interface Props {
+interface KpiTileProps {
   icon: React.ElementType;
   iconColor: string;
   iconBg: string;
@@ -68,12 +75,12 @@ interface Props {
   /** When true, replace the value + bar with an empty-state message. */
   noData?: boolean;
   noDataLabel?: string;
-  /** Extra content rendered below the standard tile footer — used for the
-   * obligation strip on the Allocation tile. */
+  /** Extra content rendered below the standard tile footer — used for
+   * secondary signals (obligation alerts, collection gaps, etc). */
   footer?: React.ReactNode;
 }
 
-export function CSKpiTile({
+export function KpiTile({
   icon: Icon,
   iconColor,
   iconBg,
@@ -85,7 +92,7 @@ export function CSKpiTile({
   noData = false,
   noDataLabel = "No data yet",
   footer,
-}: Props) {
+}: KpiTileProps) {
   const hasTarget = targetDisplay !== undefined && percent !== undefined;
   const tone = hasTarget ? toneFor(percent) : null;
   const s = tone ? TONE_STYLES[tone] : null;
