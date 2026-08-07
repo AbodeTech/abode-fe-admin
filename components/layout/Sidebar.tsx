@@ -29,6 +29,7 @@ import {
   Upload,
   UserPlus,
   Users,
+  Headphones,
 } from "lucide-react";
 
 import LogOutModal from "@/components/settings/LogOutModal";
@@ -71,6 +72,14 @@ const navGroups = [
       { name: "Top associates", link: "/associates", icon: <TrendingUp /> },
       { name: "Associate Performance", link: "/associates/performance", icon: <Activity />, requiresSuperAdmin: true },
       { name: "Manager Performance", link: "/associates/managers", icon: <ShieldCheck />, requiresAdminOrManager: true },
+    ]
+  },
+  {
+    title: "Customer Success",
+    isCollapsible: true,
+    icon: <Headphones />,
+    items: [
+      { name: "CS Manager Performance", link: "/customer-managers", icon: <ShieldCheck /> },
     ]
   },
   {
