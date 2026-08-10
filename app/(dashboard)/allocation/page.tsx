@@ -62,9 +62,10 @@ function AllocationContent() {
   const { data: assets } = useAllocationAssets();
   const { mutateAsync: exportAlloc, isPending: isExporting } = useAllocationExport();
 
-  useEffect(() => {
-    if (!modalOpen) setModalClient(null);
-  }, [modalOpen]);
+  const handleModalOpenChange = (open: boolean) => {
+    setModalOpen(open);
+    if (!open) setModalClient(null);
+  };
 
   const updateParams = useCallback(
     (next: Record<string, string | number | null | undefined>, options?: { replace?: boolean }) => {
@@ -230,7 +231,7 @@ function AllocationContent() {
         open={modalOpen}
         mode={modalMode}
         client={modalClient}
-        onOpenChange={setModalOpen}
+        onOpenChange={handleModalOpenChange}
       />
     </div>
   );
