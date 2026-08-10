@@ -650,6 +650,16 @@ export type AllocationEntry = {
   size: Scalars['Int']['output'];
 };
 
+export type AskAssistantInput = {
+  history?: InputMaybe<Array<AssistantMessageInput>>;
+  question: Scalars['String']['input'];
+};
+
+export type AskAssistantResponse = {
+  __typename?: 'AskAssistantResponse';
+  answer: Scalars['String']['output'];
+};
+
 export type Asset = {
   __typename?: 'Asset';
   _id?: Maybe<Scalars['ID']['output']>;
@@ -1106,6 +1116,11 @@ export type AssignManagerTargetInput = {
   performance_score_target?: InputMaybe<Scalars['Int']['input']>;
   selling_associate_pro_target?: InputMaybe<Scalars['Int']['input']>;
   year?: InputMaybe<Scalars['Int']['input']>;
+};
+
+export type AssistantMessageInput = {
+  content: Scalars['String']['input'];
+  role: Scalars['String']['input'];
 };
 
 export type Associate = {
@@ -2313,6 +2328,7 @@ export type FilteredUserAdminResponse = {
 };
 
 export type FiltersInput = {
+  allocationStatus?: InputMaybe<Scalars['String']['input']>;
   assetName?: InputMaybe<Scalars['String']['input']>;
   assetType?: InputMaybe<Scalars['String']['input']>;
   percentage?: InputMaybe<Scalars['Float']['input']>;
@@ -2785,6 +2801,7 @@ export type LogAdmin = {
   adminId?: Maybe<Scalars['String']['output']>;
   description?: Maybe<Scalars['String']['output']>;
   metadata?: Maybe<Scalars['JSON']['output']>;
+  newState?: Maybe<Scalars['JSON']['output']>;
   oldState?: Maybe<Scalars['JSON']['output']>;
   timestamp?: Maybe<Scalars['Date']['output']>;
 };
@@ -3242,6 +3259,7 @@ export type Mutation = {
   approveUpgradeToAssociatePro: Scalars['String']['output'];
   approveUserBvn: Scalars['String']['output'];
   approveUserKyc: Scalars['String']['output'];
+  askAssistant: AskAssistantResponse;
   assignAssociateManagerTarget: AssociateManagerTargetType;
   bulkAssignAssociateProsToManager: AssociateManagerType;
   buyAssetWithPaystack: BuyAssetPaystackResponse;
@@ -3495,6 +3513,11 @@ export type MutationApproveUserBvnArgs = {
 
 export type MutationApproveUserKycArgs = {
   id: Scalars['ID']['input'];
+};
+
+
+export type MutationAskAssistantArgs = {
+  askAssistantInput: AskAssistantInput;
 };
 
 
@@ -4232,6 +4255,21 @@ export type MyAgencyDashboardResponse = {
   success: Scalars['Boolean']['output'];
 };
 
+export type MyRaffleStanding = {
+  __typename?: 'MyRaffleStanding';
+  campaignKey: Scalars['String']['output'];
+  checkpoints: Array<RaffleCheckpoint>;
+  endDate: Scalars['Date']['output'];
+  gapToAbove?: Maybe<RaffleGap>;
+  nextCheckpoint?: Maybe<RaffleNextCheckpoint>;
+  rank?: Maybe<Scalars['Int']['output']>;
+  sqmPerTicket: Scalars['Int']['output'];
+  ticketCount: Scalars['Int']['output'];
+  title: Scalars['String']['output'];
+  totalParticipants: Scalars['Int']['output'];
+  totalSqm: Scalars['Int']['output'];
+};
+
 export type NextofKin = {
   __typename?: 'NextofKin';
   _id: Scalars['ID']['output'];
@@ -4705,6 +4743,8 @@ export type Query = {
   getWithdrawalTransaction?: Maybe<TransactionAdminResponse>;
   listAssociateManagerTargets: Array<AssociateManagerTargetType>;
   managerDashboard: ManagerDashboardResponse;
+  myRaffleStanding: MyRaffleStanding;
+  raffleLeaderboard: RaffleLeaderboard;
   removeUserBankDetails: Scalars['String']['output'];
   searchAcademyUsers: Array<AcademyUserSearchResult>;
   sendOtpVerfication?: Maybe<Scalars['String']['output']>;
@@ -5441,6 +5481,45 @@ export type RaffleAsset = {
   title?: Maybe<Scalars['String']['output']>;
 };
 
+export type RaffleCheckpoint = {
+  __typename?: 'RaffleCheckpoint';
+  key: Scalars['String']['output'];
+  label: Scalars['String']['output'];
+  prize: Scalars['String']['output'];
+  reached: Scalars['Boolean']['output'];
+  reachedAt?: Maybe<Scalars['Date']['output']>;
+  sqm: Scalars['Int']['output'];
+};
+
+export type RaffleGap = {
+  __typename?: 'RaffleGap';
+  name: Scalars['String']['output'];
+  tickets: Scalars['Int']['output'];
+};
+
+export type RaffleLeaderboard = {
+  __typename?: 'RaffleLeaderboard';
+  rows: Array<RaffleLeaderboardRow>;
+  totalParticipants: Scalars['Int']['output'];
+};
+
+export type RaffleLeaderboardRow = {
+  __typename?: 'RaffleLeaderboardRow';
+  isViewer: Scalars['Boolean']['output'];
+  name: Scalars['String']['output'];
+  rank: Scalars['Int']['output'];
+  tickets: Scalars['Int']['output'];
+  totalSqm: Scalars['Int']['output'];
+};
+
+export type RaffleNextCheckpoint = {
+  __typename?: 'RaffleNextCheckpoint';
+  key: Scalars['String']['output'];
+  label: Scalars['String']['output'];
+  prize: Scalars['String']['output'];
+  sqmRemaining: Scalars['Int']['output'];
+};
+
 export type RaffleTicket = {
   __typename?: 'RaffleTicket';
   asset_id: RaffleAsset;
@@ -5975,6 +6054,7 @@ export type SingleLog = {
   adminId?: Maybe<Scalars['String']['output']>;
   description?: Maybe<Scalars['String']['output']>;
   metadata?: Maybe<Scalars['JSON']['output']>;
+  newState?: Maybe<Scalars['JSON']['output']>;
   oldState?: Maybe<Scalars['JSON']['output']>;
   timestamp?: Maybe<Scalars['Date']['output']>;
 };
@@ -7241,7 +7321,6 @@ export type ViewAssetOptionDataByNameQuery = { __typename?: 'Query', viewAssetOp
 
 export type GetAvailablePlotsForAssetQueryVariables = Exact<{
   assetId: Scalars['ID']['input'];
-  size?: InputMaybe<Scalars['Int']['input']>;
 }>;
 
 
@@ -8342,7 +8421,7 @@ export const FeatureAssetStatisticsDocument = {"kind":"Document","definitions":[
 export const GetAssetAnalyticsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetAssetAnalytics"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"assetId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filter"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"startDate"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Date"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"endDate"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Date"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAssetAnalytics"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"assetId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"assetId"}}},{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filter"}}},{"kind":"Argument","name":{"kind":"Name","value":"startDate"},"value":{"kind":"Variable","name":{"kind":"Name","value":"startDate"}}},{"kind":"Argument","name":{"kind":"Name","value":"endDate"},"value":{"kind":"Variable","name":{"kind":"Name","value":"endDate"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"statistics"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"AssetHealthBar_statistics"}},{"kind":"FragmentSpread","name":{"kind":"Name","value":"PaymentPlanMatrix_statistics"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"AssetHealthBar_statistics"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"AssetAnalyticsStatistics"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"totalInventory"}},{"kind":"Field","name":{"kind":"Name","value":"totalRealised"}},{"kind":"Field","name":{"kind":"Name","value":"remainingValue"}},{"kind":"Field","name":{"kind":"Name","value":"totalSqmSold"}},{"kind":"Field","name":{"kind":"Name","value":"totalSqmRemaining"}},{"kind":"Field","name":{"kind":"Name","value":"efficiencyRate"}},{"kind":"Field","name":{"kind":"Name","value":"totalActiveCustomers"}},{"kind":"Field","name":{"kind":"Name","value":"defaulting"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"totalDefaultingCustomers"}},{"kind":"Field","name":{"kind":"Name","value":"totalDefaultedAssetValue"}},{"kind":"Field","name":{"kind":"Name","value":"totalDefaultedOutstandingValue"}}]}},{"kind":"Field","name":{"kind":"Name","value":"terminated"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"totalTerminatedCustomers"}},{"kind":"Field","name":{"kind":"Name","value":"totalTerminatedAssetValue"}},{"kind":"Field","name":{"kind":"Name","value":"totalTerminatedBalance"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"PaymentPlanMatrix_statistics"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"AssetAnalyticsStatistics"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"sizePlanBreakdown"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"size"}},{"kind":"Field","name":{"kind":"Name","value":"plans"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"startValue"}},{"kind":"Field","name":{"kind":"Name","value":"soldValue"}},{"kind":"Field","name":{"kind":"Name","value":"totalSqmSold"}},{"kind":"Field","name":{"kind":"Name","value":"totalSqmRemaining"}},{"kind":"Field","name":{"kind":"Name","value":"totalPlans"}},{"kind":"Field","name":{"kind":"Name","value":"totalDefaultingUsers"}},{"kind":"Field","name":{"kind":"Name","value":"totalDefaultedValue"}},{"kind":"Field","name":{"kind":"Name","value":"totalDefaultedBalance"}},{"kind":"Field","name":{"kind":"Name","value":"totalBalance"}},{"kind":"Field","name":{"kind":"Name","value":"totalTerminatedPlans"}},{"kind":"Field","name":{"kind":"Name","value":"totalTerminatedValue"}},{"kind":"Field","name":{"kind":"Name","value":"totalTerminatedBalance"}},{"kind":"Field","name":{"kind":"Name","value":"efficiency"}}]}}]}}]}}]} as unknown as DocumentNode<GetAssetAnalyticsQuery, GetAssetAnalyticsQueryVariables>;
 export const ViewAssetByNameDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ViewAssetByName"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"assetName"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"assetType"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"viewAssetByName"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"assetName"},"value":{"kind":"Variable","name":{"kind":"Name","value":"assetName"}}},{"kind":"Argument","name":{"kind":"Name","value":"assetType"},"value":{"kind":"Variable","name":{"kind":"Name","value":"assetType"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"available_unit"}},{"kind":"Field","name":{"kind":"Name","value":"unit_sold"}},{"kind":"Field","name":{"kind":"Name","value":"expected_return"}},{"kind":"Field","name":{"kind":"Name","value":"total_value"}},{"kind":"Field","name":{"kind":"Name","value":"sizes"}}]}}]}}]} as unknown as DocumentNode<ViewAssetByNameQuery, ViewAssetByNameQueryVariables>;
 export const ViewAssetOptionDataByNameDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ViewAssetOptionDataByName"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"assetName"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"assetType"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"viewAssetOptionDataByName"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"assetName"},"value":{"kind":"Variable","name":{"kind":"Name","value":"assetName"}}},{"kind":"Argument","name":{"kind":"Name","value":"assetType"},"value":{"kind":"Variable","name":{"kind":"Name","value":"assetType"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"sizes"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"size"}},{"kind":"Field","name":{"kind":"Name","value":"available_unit"}},{"kind":"Field","name":{"kind":"Name","value":"value"}},{"kind":"Field","name":{"kind":"Name","value":"unit_sold"}},{"kind":"Field","name":{"kind":"Name","value":"expected_return"}}]}}]}}]}}]} as unknown as DocumentNode<ViewAssetOptionDataByNameQuery, ViewAssetOptionDataByNameQueryVariables>;
-export const GetAvailablePlotsForAssetDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetAvailablePlotsForAsset"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"assetId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"size"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAvailablePlotsForAsset"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"assetId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"assetId"}}},{"kind":"Argument","name":{"kind":"Name","value":"size"},"value":{"kind":"Variable","name":{"kind":"Name","value":"size"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"block"}},{"kind":"Field","name":{"kind":"Name","value":"block_label"}},{"kind":"Field","name":{"kind":"Name","value":"plot_number"}},{"kind":"Field","name":{"kind":"Name","value":"size"}},{"kind":"Field","name":{"kind":"Name","value":"status"}}]}}]}}]} as unknown as DocumentNode<GetAvailablePlotsForAssetQuery, GetAvailablePlotsForAssetQueryVariables>;
+export const GetAvailablePlotsForAssetDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetAvailablePlotsForAsset"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"assetId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAvailablePlotsForAsset"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"assetId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"assetId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"block"}},{"kind":"Field","name":{"kind":"Name","value":"block_label"}},{"kind":"Field","name":{"kind":"Name","value":"plot_number"}},{"kind":"Field","name":{"kind":"Name","value":"size"}},{"kind":"Field","name":{"kind":"Name","value":"status"}}]}}]}}]} as unknown as DocumentNode<GetAvailablePlotsForAssetQuery, GetAvailablePlotsForAssetQueryVariables>;
 export const GetAssetBlocksDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetAssetBlocks"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"assetId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAssetBlocks"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"assetId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"assetId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"asset"}},{"kind":"Field","name":{"kind":"Name","value":"label"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}}]}}]} as unknown as DocumentNode<GetAssetBlocksQuery, GetAssetBlocksQueryVariables>;
 export const CreateBlockDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateBlock"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"assetId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"label"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"description"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createBlock"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"assetId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"assetId"}}},{"kind":"Argument","name":{"kind":"Name","value":"label"},"value":{"kind":"Variable","name":{"kind":"Name","value":"label"}}},{"kind":"Argument","name":{"kind":"Name","value":"description"},"value":{"kind":"Variable","name":{"kind":"Name","value":"description"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"asset"}},{"kind":"Field","name":{"kind":"Name","value":"label"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}}]}}]} as unknown as DocumentNode<CreateBlockMutation, CreateBlockMutationVariables>;
 export const DeleteBlockDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"DeleteBlock"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"blockId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deleteBlock"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"blockId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"blockId"}}}]}]}}]} as unknown as DocumentNode<DeleteBlockMutation, DeleteBlockMutationVariables>;

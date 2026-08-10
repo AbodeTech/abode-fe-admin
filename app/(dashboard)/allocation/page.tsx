@@ -38,6 +38,7 @@ function AllocationContent() {
   const assetNameParam = searchParams.get("assetname");
   const percentageParam = searchParams.get("percentage");
   const searchParam = searchParams.get("search") || "";
+  const statusParam = searchParams.get("status");
   const startDateParam = searchParams.get("startDate");
   const endDateParam = searchParams.get("endDate");
 
@@ -52,6 +53,7 @@ function AllocationContent() {
     assetName: assetNameParam,
     percentage: parsePercentage(percentageParam),
     search: searchParam || null,
+    allocationStatus: statusParam,
     startDate: startDateParam,
     endDate: endDateParam,
   };
@@ -102,6 +104,10 @@ function AllocationContent() {
     updateParams({ percentage: value === "all" ? null : value, page: 1 });
   };
 
+  const handleStatusChange = (value: string) => {
+    updateParams({ status: value === "all" ? null : value, page: 1 });
+  };
+
   const handleSend = (client: FragmentType<typeof AllocationTableRowFragment>) => {
     setModalMode("send");
     setModalClient(client);
@@ -120,6 +126,7 @@ function AllocationContent() {
         assetName: assetNameParam,
         percentage: parsePercentage(percentageParam),
         search: searchParam || null,
+        allocationStatus: statusParam,
         startDate: startDateParam,
         endDate: endDateParam,
       });
@@ -199,9 +206,11 @@ function AllocationContent() {
         search={searchTerm}
         percentage={percentageParam || "all"}
         assetName={assetNameParam}
+        allocationStatus={statusParam || "all"}
         onSearchChange={setSearchTerm}
         onPercentageChange={handlePercentageChange}
         onAssetNameChange={handleAssetChange}
+        onAllocationStatusChange={handleStatusChange}
       />
 
       <AllocationTable

@@ -30,9 +30,11 @@ interface AllocationFiltersProps {
   search: string;
   percentage: string;
   assetName: string | null;
+  allocationStatus: string;
   onSearchChange: (value: string) => void;
   onPercentageChange: (value: string) => void;
   onAssetNameChange: (value: string | null) => void;
+  onAllocationStatusChange: (value: string) => void;
 }
 
 const percentageFilters = [
@@ -43,14 +45,24 @@ const percentageFilters = [
   { label: "76% - 100%", value: "76-100" },
 ];
 
+// Must match the BE whitelist in eligibleClientsForLand.
+const allocationStatusFilters = [
+  { label: "All statuses", value: "all" },
+  { label: "Pending", value: "pending" },
+  { label: "Allocated", value: "allocated" },
+  { label: "Email sent", value: "email_sent" },
+];
+
 export function AllocationFilters({
   assets,
   search,
   percentage,
   assetName,
+  allocationStatus,
   onSearchChange,
   onPercentageChange,
   onAssetNameChange,
+  onAllocationStatusChange,
 }: AllocationFiltersProps) {
   const safeAssets = (assets ?? []).filter(
     (item): item is NonNullable<typeof item> => item !== null
@@ -61,7 +73,7 @@ export function AllocationFilters({
     .filter((asset) => (asset.asset_option?.length ?? 0) > 0);
 
   return (
-    <section className="mt-2 grid min-w-0 grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-5">
+    <section className="mt-2 grid min-w-0 grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-6">
       <div className="min-w-0 space-y-2">
         <Label className="text-sm text-muted-foreground">Filter by asset</Label>
         <Select
@@ -94,6 +106,25 @@ export function AllocationFilters({
           </SelectTrigger>
           <SelectContent>
             {percentageFilters.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="min-w-0 space-y-2">
+        <Label className="text-sm text-muted-foreground">Allocation status</Label>
+        <Select
+          value={allocationStatus}
+          onValueChange={(value) => onAllocationStatusChange(value)}
+        >
+          <SelectTrigger className="h-10 w-full min-w-0 sm:h-9">
+            <SelectValue placeholder="Select status" />
+          </SelectTrigger>
+          <SelectContent>
+            {allocationStatusFilters.map((option) => (
               <SelectItem key={option.value} value={option.value}>
                 {option.label}
               </SelectItem>

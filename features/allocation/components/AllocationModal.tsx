@@ -34,6 +34,7 @@ import {
   Trash2,
   Mail,
   Shuffle,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -41,6 +42,7 @@ import {
   useAvailablePlotsForAsset,
   type Plot,
 } from "@/features/assets";
+import { suggestPlotCombination } from "../lib/suggest-plots";
 import { useAllocateLand } from "../hooks/use-allocate-land";
 import { useDeallocateLand } from "../hooks/use-deallocate-land";
 import { useReassignLand } from "../hooks/use-reassign-land";
@@ -77,7 +79,6 @@ export function AllocationModal({
   const { data: availablePlots = [], isLoading: isLoadingPlots } =
     useAvailablePlotsForAsset({
       assetId: assetId ?? "",
-      size: assetSize || undefined,
     });
 
   const [selectedPlotIds, setSelectedPlotIds] = useState<Set<string>>(new Set());
@@ -135,6 +136,20 @@ export function AllocationModal({
     }
     return Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b));
   }, [availablePlots]);
+
+  const handleSuggest = () => {
+    const suggestion = suggestPlotCombination(availablePlots, requiredSqm);
+    if (!suggestion) {
+      toast.error(
+        `No combination of available plots adds up to ${requiredSqm.toLocaleString()} sqm.`
+      );
+      return;
+    }
+    setSelectedPlotIds(new Set(suggestion.map((p) => p._id)));
+    setSelectedPlotsMeta(
+      Object.fromEntries(suggestion.map((p) => [p._id, p]))
+    );
+  };
 
   const handleAllocate = () => {
     if (!isMatch || !paymentPlanId) return;
@@ -322,6 +337,19 @@ export function AllocationModal({
                 </div>
               ) : (
                 <div className="space-y-3">
+                  {requiredSqm > 0 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      onClick={handleSuggest}
+                      disabled={anyMutationPending}
+                    >
+                      <Sparkles className="h-4 w-4 mr-1.5" />
+                      Suggest plots for {requiredSqm.toLocaleString()} sqm
+                    </Button>
+                  )}
                   {plotsByBlock.map(([blockLabel, plots]) => (
                     <BlockPlotPicker
                       key={blockLabel}
