@@ -6,6 +6,7 @@ export { CSManagersListTable } from "./components/CSManagersListTable";
 export { UnassignedCustomersTable } from "./components/UnassignedCustomersTable";
 export { AddCSManagerDialog } from "./components/AddCSManagerDialog";
 export { AssignCustomersDialog } from "./components/AssignCustomersDialog";
+export { ManageCSTargetsDialog } from "./components/dialogs/ManageCSTargetsDialog";
 export {
   useCSManagerDashboard,
   csManagerKeys,
@@ -20,6 +21,13 @@ export {
   useAddCSManager,
   useRemoveCSManager,
   useAssignCustomersToCSM,
+  useAssignCSManagerTarget,
   type AssignCustomersToCSMInput,
+  type AssignCsManagerTargetInput,
 } from "./hooks/use-cs-manager-mutations";
+export {
+  useCSManagerTargets,
+  useCSManagerTarget,
+  csManagerTargetKeys,
+} from "./hooks/use-cs-manager-targets";
 export type { AdminOption } from "./types";

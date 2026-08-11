@@ -1,6 +1,6 @@
 "use client";
 
-import { use } from "react";
+import { use, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, Loader2 } from "lucide-react";
 import {
@@ -9,6 +9,7 @@ import {
   BacklogsSection,
   PortfolioHealthStrip,
   CustomersTable,
+  ManageCSTargetsDialog,
 } from "@/features/cs-managers";
 
 interface Props {
@@ -17,6 +18,7 @@ interface Props {
 
 export default function CustomerManagerDetailPage({ params }: Props) {
   const { id } = use(params);
+  const [targetsDialogOpen, setTargetsDialogOpen] = useState(false);
   const { data, isLoading, isError, error } = useCSManagerDashboard({
     managerId: id,
   });
@@ -87,6 +89,7 @@ export default function CustomerManagerDetailPage({ params }: Props) {
         score={data.performanceScore}
         obligation={data.obligation}
         totalAssigned={data.portfolio.totalAssigned}
+        onManageTargets={() => setTargetsDialogOpen(true)}
       />
 
       <BacklogsSection backlogs={data.backlogs} />
@@ -96,6 +99,13 @@ export default function CustomerManagerDetailPage({ params }: Props) {
       <CustomersTable
         plans={data.plans}
         totalAssigned={data.portfolio.totalAssigned}
+      />
+
+      <ManageCSTargetsDialog
+        open={targetsDialogOpen}
+        onOpenChange={setTargetsDialogOpen}
+        managerId={data.manager._id}
+        managerName={data.manager.userName || data.manager.email}
       />
     </div>
   );

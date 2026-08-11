@@ -3,9 +3,13 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { execute } from "@/lib/graphql-client";
 import { graphql } from "@/lib/gql";
-import type { AssignCustomersToCsmInput } from "@/lib/gql/graphql";
+import type {
+  AssignCustomersToCsmInput,
+  AssignCsManagerTargetInput,
+} from "@/lib/gql/graphql";
 import { csManagerKeys } from "./use-cs-manager-dashboard";
 import { csManagersListKeys } from "./use-cs-managers-list";
+import { csManagerTargetKeys } from "./use-cs-manager-targets";
 
 /**
  * Super-admin mutations for CS Manager role + customer assignment.
@@ -83,5 +87,42 @@ export const useAssignCustomersToCSM = () => {
     mutationFn: (input: AssignCustomersToCsmInput) =>
       execute(ASSIGN_CUSTOMERS_TO_CSM_MUTATION, { input }),
     onSuccess: () => invalidateAll(qc),
+  });
+};
+
+const ASSIGN_CS_MANAGER_TARGET_MUTATION = graphql(`
+  mutation AssignCSManagerTarget($input: AssignCSManagerTargetInput!) {
+    assignCSManagerTarget(input: $input) {
+      _id
+      manager
+      month
+      year
+      customers_allocated_target
+      customers_onboarded_target
+      deeds_delivered_target
+      performance_score_target
+      createdAt
+      updatedAt
+    }
+  }
+`);
+
+export type { AssignCsManagerTargetInput };
+
+export const useAssignCSManagerTarget = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: AssignCsManagerTargetInput) =>
+      execute(ASSIGN_CS_MANAGER_TARGET_MUTATION, { input }),
+    onSuccess: (data) => {
+      // Refresh both the target list and the dashboard so KPI benchmarks
+      // pick up the new numbers immediately.
+      qc.invalidateQueries({
+        queryKey: csManagerTargetKeys.all(
+          data.assignCSManagerTarget.manager
+        ),
+      });
+      qc.invalidateQueries({ queryKey: csManagerKeys.dashboards() });
+    },
   });
 };
