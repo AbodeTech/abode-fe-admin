@@ -123,6 +123,41 @@ export interface CSManagerAdmin {
   email: string;
 }
 
+/** Row on the /customer-managers list — aggregate at-a-glance view of
+ * every CS manager's workload + current-period score. */
+export interface CSManagerSummary {
+  _id: string;                        // csm assignment id (not the admin id)
+  manager: CSManagerAdmin;
+  assignedCustomersCount: number;
+  assignedPlansCount: number;
+  currentPeriodScore: number | null;  // 0-100, null if no score yet this period
+  activeSince: string;                // ISO date the promotion took effect
+}
+
+/** Row on the "Unassigned Customers" queue — customers with at least one
+ * plan whose CSM slot is empty. */
+export interface UnassignedCustomer {
+  _id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string | null;
+  firstPurchaseAt: string;
+  daysUnassigned: number;
+  planCount: number;                  // how many of their plans lack a CSM
+}
+
+/** Admin picker option — used by AddCSManagerDialog to promote an
+ * existing admin, and by AssignCustomersDialog to pick a target CSM. */
+export interface AdminOption {
+  _id: string;
+  firstName: string | null;
+  lastName: string | null;
+  email: string;
+  role: string;
+  isCSManager: boolean;
+}
+
 export interface CSManagerDashboard {
   period: CSManagerPeriod;
   manager: CSManagerAdmin;
