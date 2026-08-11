@@ -5,7 +5,6 @@ import {
   Phone,
   FileText,
   Gauge,
-  Star,
   AlertCircle,
   Target,
 } from "lucide-react";
@@ -116,10 +115,6 @@ export function CSManagerSnapshot({
     scoreLine("DoA", 30, score.deedsComponent, target.deedsDeliveredTarget > 0),
   ].join(" · ");
 
-  const RATING_MAX = 5;
-  const peerRatingPct =
-    score.actual > 0 ? (score.actual / RATING_MAX) * 100 : undefined;
-
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-5">
       <div className="flex items-center gap-3">
@@ -229,43 +224,6 @@ export function CSManagerSnapshot({
           percent={score.score}
           tooltip={scoreTooltip}
         />
-      </div>
-
-      <div className="flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50/60 px-4 py-3">
-        <div className="p-2 rounded-lg bg-amber-50 shrink-0">
-          <Star className="h-4 w-4 text-amber-600" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-baseline gap-2">
-            <p className="text-sm font-medium text-gray-900">Peer Rating</p>
-            <span className="text-xs text-gray-400">
-              subjective · from customer ratings this period
-            </span>
-          </div>
-          {score.ratingCount === 0 ? (
-            <p className="text-xs text-gray-500 mt-0.5">
-              No ratings yet this period
-            </p>
-          ) : (
-            <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-base font-semibold text-gray-900 tabular-nums">
-                {score.actual.toFixed(2)}
-                <span className="text-xs font-normal text-gray-400">
-                  {" "}/ 5.00
-                </span>
-              </span>
-              <span className="text-xs text-gray-500">
-                {score.ratingCount} rating
-                {score.ratingCount === 1 ? "" : "s"}
-              </span>
-              {peerRatingPct !== undefined && (
-                <span className="text-xs text-gray-400 tabular-nums">
-                  · {Math.round(peerRatingPct)}%
-                </span>
-              )}
-            </div>
-          )}
-        </div>
       </div>
     </div>
   );

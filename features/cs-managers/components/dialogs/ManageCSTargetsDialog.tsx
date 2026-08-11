@@ -238,7 +238,7 @@ function ActiveTargetCard({
           Edit
         </Button>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
         <TargetCell
           label="Customers Allocated"
           value={target.customers_allocated_target}
@@ -250,10 +250,6 @@ function ActiveTargetCard({
         <TargetCell
           label="Deeds Delivered"
           value={target.deeds_delivered_target}
-        />
-        <TargetCell
-          label="Peer Rating"
-          value={target.performance_score_target}
         />
       </div>
     </div>

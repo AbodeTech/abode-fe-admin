@@ -68,9 +68,6 @@ export function SetCSManagerTargetForm({
   const [deeds, setDeeds] = useState<string>(
     existing ? String(existing.deeds_delivered_target) : ""
   );
-  const [peerRating, setPeerRating] = useState<string>(
-    existing ? String(existing.performance_score_target) : ""
-  );
 
   const { mutateAsync, isPending } = useAssignCSManagerTarget();
 
@@ -80,7 +77,6 @@ export function SetCSManagerTargetForm({
     setAllocated(existing ? String(existing.customers_allocated_target) : "");
     setOnboarded(existing ? String(existing.customers_onboarded_target) : "");
     setDeeds(existing ? String(existing.deeds_delivered_target) : "");
-    setPeerRating(existing ? String(existing.performance_score_target) : "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [existing?._id]);
 
@@ -119,7 +115,9 @@ export function SetCSManagerTargetForm({
         customers_allocated_target: asNumber(allocated),
         customers_onboarded_target: asNumber(onboarded),
         deeds_delivered_target: asNumber(deeds),
-        performance_score_target: asNumber(peerRating),
+        // Peer rating deferred — omit so BE keeps whatever's there
+        // (defaults to 0 on new records). Restore this input when the
+        // rating loop lands.
       });
       toast.success(existing ? "Target updated" : "Target saved");
       onSaved();
@@ -160,7 +158,7 @@ export function SetCSManagerTargetForm({
         )}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="space-y-1.5">
           <Label htmlFor="allocated">
             Customers Allocated
@@ -203,22 +201,6 @@ export function SetCSManagerTargetForm({
             value={deeds}
             onChange={(e) => setDeeds(e.target.value)}
             placeholder="e.g. 15"
-            className="bg-white"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="peer-rating">
-            Peer Rating Target
-            <span className="text-xs text-gray-400 ml-1">optional</span>
-          </Label>
-          <Input
-            id="peer-rating"
-            type="number"
-            min={0}
-            step="1"
-            value={peerRating}
-            onChange={(e) => setPeerRating(e.target.value)}
-            placeholder="e.g. 4"
             className="bg-white"
           />
         </div>
