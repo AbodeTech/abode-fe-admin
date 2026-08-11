@@ -19,7 +19,6 @@ const LIST_CS_MANAGER_TARGETS_QUERY = graphql(`
       customers_allocated_target
       customers_onboarded_target
       deeds_delivered_target
-      performance_score_target
       createdAt
       updatedAt
     }
@@ -36,7 +35,6 @@ const GET_CS_MANAGER_TARGET_QUERY = graphql(`
       customers_allocated_target
       customers_onboarded_target
       deeds_delivered_target
-      performance_score_target
       createdAt
       updatedAt
     }

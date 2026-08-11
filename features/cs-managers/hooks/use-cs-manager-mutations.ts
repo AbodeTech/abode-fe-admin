@@ -100,7 +100,6 @@ const ASSIGN_CS_MANAGER_TARGET_MUTATION = graphql(`
       customers_allocated_target
       customers_onboarded_target
       deeds_delivered_target
-      performance_score_target
       createdAt
       updatedAt
     }

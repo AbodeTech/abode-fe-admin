@@ -55,8 +55,7 @@ const daysRemaining = (end: string) => {
 const hasActiveTarget = (t: CSManagerTargets) =>
   t.allocatedTarget > 0 ||
   t.onboardedTarget > 0 ||
-  t.deedsDeliveredTarget > 0 ||
-  t.performanceScoreTarget > 0;
+  t.deedsDeliveredTarget > 0;
 
 // BE ships only `userName` on the base Admin type. Split on whitespace as
 // a best-effort surname/first-name split, then take the first letters.

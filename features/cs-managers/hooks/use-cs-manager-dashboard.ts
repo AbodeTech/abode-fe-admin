@@ -44,17 +44,12 @@ const GET_CS_MANAGER_DASHBOARD_QUERY = graphql(`
         onboardedSoFar
         deedsDeliveredTarget
         deedsDeliveredSoFar
-        performanceScoreTarget
-        performanceScoreSoFar
       }
       performanceScore {
         score
         allocatedComponent
         onboardedComponent
         deedsComponent
-        target
-        actual
-        ratingCount
       }
       obligation {
         paidNotAllocatedThisPeriod
