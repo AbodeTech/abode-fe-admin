@@ -1,10 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Repeat } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import type {
-  CustomerRow,
+  PlanRow,
   OnboardingStatus,
   AllocationStatus,
   DoaStatus,
@@ -12,7 +13,7 @@ import type {
 } from "../types";
 
 interface Props {
-  customers: CustomerRow[];
+  plans: PlanRow[];
   totalAssigned: number;
 }
 
@@ -24,7 +25,7 @@ type FilterKey =
   | "defaulting_soon"
   | "completed_payment";
 
-const FILTERS: { key: FilterKey; label: string; count: (rows: CustomerRow[]) => number }[] = [
+const FILTERS: { key: FilterKey; label: string; count: (rows: PlanRow[]) => number }[] = [
   { key: "all", label: "All", count: (rows) => rows.length },
   {
     key: "due_allocation",
@@ -57,7 +58,7 @@ const FILTERS: { key: FilterKey; label: string; count: (rows: CustomerRow[]) => 
   },
 ];
 
-const applyFilter = (rows: CustomerRow[], f: FilterKey): CustomerRow[] => {
+const applyFilter = (rows: PlanRow[], f: FilterKey): PlanRow[] => {
   switch (f) {
     case "due_allocation":
       return rows.filter((r) => r.allocation === "awaiting");
@@ -88,34 +89,36 @@ const timeAgo = (iso: string) => {
   return `${weeks}w ago`;
 };
 
-const initialsOf = (r: CustomerRow) =>
-  ((r.lastName?.[0] ?? "") + (r.firstName?.[0] ?? "")).toUpperCase();
+const initialsOf = (r: PlanRow) =>
+  ((r.customer.lastName?.[0] ?? "") + (r.customer.firstName?.[0] ?? "")).toUpperCase();
 
-const fullName = (r: CustomerRow) =>
-  `${r.lastName ?? ""} ${r.firstName ?? ""}`.trim();
+const fullName = (r: PlanRow) =>
+  `${r.customer.lastName ?? ""} ${r.customer.firstName ?? ""}`.trim();
 
-export function CustomersTable({ customers, totalAssigned }: Props) {
+export function CustomersTable({ plans, totalAssigned }: Props) {
   const [filter, setFilter] = useState<FilterKey>("all");
   const [q, setQ] = useState("");
 
   const rows = useMemo(() => {
-    const filtered = applyFilter(customers, filter);
+    const filtered = applyFilter(plans, filter);
     if (!q) return filtered;
     const needle = q.toLowerCase();
     return filtered.filter(
       (r) =>
-        r.firstName.toLowerCase().includes(needle) ||
-        r.lastName.toLowerCase().includes(needle) ||
-        r.email.toLowerCase().includes(needle)
+        r.customer.firstName.toLowerCase().includes(needle) ||
+        r.customer.lastName.toLowerCase().includes(needle) ||
+        r.customer.email.toLowerCase().includes(needle) ||
+        r.asset.toLowerCase().includes(needle)
     );
-  }, [customers, filter, q]);
+  }, [plans, filter, q]);
 
   return (
     <section className="space-y-3">
       <div className="flex items-baseline justify-between gap-3 flex-wrap">
-        <h2 className="text-base font-semibold text-gray-900">Customers</h2>
+        <h2 className="text-base font-semibold text-gray-900">Purchases</h2>
         <span className="text-xs text-gray-500">
-          Roster · {totalAssigned} total
+          {plans.length} plan{plans.length === 1 ? "" : "s"} across {totalAssigned} customer
+          {totalAssigned === 1 ? "" : "s"}
         </span>
       </div>
 
@@ -123,7 +126,7 @@ export function CustomersTable({ customers, totalAssigned }: Props) {
         <div className="flex items-center justify-between gap-3 flex-wrap p-3 border-b border-gray-200">
           <div className="flex flex-wrap gap-1.5">
             {FILTERS.map((f) => {
-              const n = f.count(customers);
+              const n = f.count(plans);
               const active = filter === f.key;
               return (
                 <button
@@ -148,7 +151,7 @@ export function CustomersTable({ customers, totalAssigned }: Props) {
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search customer name or email…"
+            placeholder="Search customer name, email, or asset…"
             className="h-8 text-xs w-56"
           />
         </div>
@@ -158,7 +161,7 @@ export function CustomersTable({ customers, totalAssigned }: Props) {
             <thead>
               <tr className="text-left text-[11px] uppercase tracking-wide text-gray-500 bg-gray-50">
                 <th className="px-4 py-2.5 font-medium">Customer</th>
-                <th className="px-4 py-2.5 font-medium">Purchase</th>
+                <th className="px-4 py-2.5 font-medium">Plan</th>
                 <th className="px-4 py-2.5 font-medium">Payment</th>
                 <th className="px-4 py-2.5 font-medium">Onboarding</th>
                 <th className="px-4 py-2.5 font-medium">Allocation</th>
@@ -171,29 +174,43 @@ export function CustomersTable({ customers, totalAssigned }: Props) {
               {rows.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-4 py-8 text-center text-gray-500 text-sm">
-                    No customers match this filter.
+                    No plans match this filter.
                   </td>
                 </tr>
               ) : (
                 rows.map((r) => (
-                  <tr key={r.id} className="border-t border-gray-100 hover:bg-gray-50/60">
+                  <tr key={r.planId} className="border-t border-gray-100 hover:bg-gray-50/60">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
                         <div className="h-8 w-8 rounded-full bg-[#E0F2F1] text-[#00695C] flex items-center justify-center text-[11px] font-semibold">
                           {initialsOf(r)}
                         </div>
                         <div>
-                          <p className="font-medium text-gray-900 leading-tight">
-                            {fullName(r)}
-                          </p>
+                          <div className="flex items-center gap-1.5">
+                            <p className="font-medium text-gray-900 leading-tight">
+                              {fullName(r)}
+                            </p>
+                            {r.priorPlansCount > 0 && (
+                              <span
+                                className="inline-flex items-center gap-0.5 rounded-full bg-purple-50 text-purple-700 text-[10px] px-1.5 py-0.5"
+                                title={`Repeat buyer · ${r.priorPlansCount} prior plan${r.priorPlansCount === 1 ? "" : "s"}`}
+                              >
+                                <Repeat className="h-2.5 w-2.5" />
+                                +{r.priorPlansCount}
+                              </span>
+                            )}
+                          </div>
                           <p className="text-xs text-gray-500 leading-tight">
-                            {r.email}
+                            {r.customer.email}
                           </p>
                         </div>
                       </div>
                     </td>
                     <td className="px-4 py-3 text-gray-700">
-                      {r.estate} · {r.product === "flex" ? "Flex" : "Full-ownership"}
+                      <p className="leading-tight">{r.asset}</p>
+                      <p className="text-xs text-gray-500 leading-tight">
+                        {r.product === "flex" ? "Flex" : "Full-ownership"} · opened {formatShortDate(r.purchaseDate)}
+                      </p>
                     </td>
                     <td className="px-4 py-3">
                       <PaymentPill status={r.paymentStatus} label={r.paymentLabel} />
@@ -227,7 +244,7 @@ export function CustomersTable({ customers, totalAssigned }: Props) {
 
         <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 text-xs text-gray-500">
           <span>
-            Showing {rows.length} of {customers.length} customers
+            Showing {rows.length} of {plans.length} plans
           </span>
           {/* Pagination controls wire up once BE ships a real page/limit query */}
         </div>
@@ -235,6 +252,16 @@ export function CustomersTable({ customers, totalAssigned }: Props) {
     </section>
   );
 }
+
+const MONTHS_SHORT = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+const formatShortDate = (iso: string) => {
+  const d = new Date(iso);
+  return `${d.getDate()} ${MONTHS_SHORT[d.getMonth()]} ${d.getFullYear()}`;
+};
 
 /* Pill helpers — tiny local components so the table markup stays readable */
 

@@ -165,12 +165,12 @@ export function CSManagerSnapshot({
               : undefined
           }
           percent={allocatedPct}
-          tooltip="Customers allocated a plot this period vs. minimum target. Business rule: every customer who completed payment this month must also be allocated this month."
+          tooltip="Plans allocated a plot this period vs. minimum target. Business rule: every plan that completed its land payment this month must also be allocated this month."
           footer={
             obligation.paidNotAllocatedThisPeriod > 0 ? (
               <div className="mt-3 pt-3 border-t border-dashed border-gray-200 flex items-center gap-2 text-xs text-[#AD1F2A]">
                 <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                {obligation.paidNotAllocatedThisPeriod} paid customer
+                {obligation.paidNotAllocatedThisPeriod} paid plan
                 {obligation.paidNotAllocatedThisPeriod === 1 ? "" : "s"} still
                 awaiting a plot this month
               </div>

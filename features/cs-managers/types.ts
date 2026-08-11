@@ -82,20 +82,37 @@ export type AllocationStatus = "awaiting" | "allocated" | "not_applicable";
 
 export type DoaStatus = "not_sent" | "sent" | "not_applicable";
 
-export interface CustomerRow {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  estate: string;
+/**
+ * One row per PAYMENT PLAN (not per customer).
+ *
+ * A customer with two active plans surfaces as two rows — each plan
+ * carries its own onboarding call, allocation, and DoA state, which is
+ * how the CSM's workload is actually measured. Total Assigned still
+ * counts unique customers (see CSManagerPortfolio).
+ */
+export interface PlanRow {
+  /** Payment plan id — this is the row identity. */
+  planId: string;
+  /** Underlying customer — repeated across a customer's rows. */
+  customer: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  };
+  /** Number of OTHER plans this customer has (all-time). 0 = first-time
+   * buyer; >0 = repeat, worth flagging in the onboarding call. */
+  priorPlansCount: number;
+  asset: string;                // e.g. "Amara Estates"
   product: "flex" | "full-ownership";
+  purchaseDate: string;         // when the plan opened
   paymentStatus: CustomerPurchaseStatus;
-  paymentLabel: string; // e.g. "4 of 12" or "Completed" or "1 mo to default"
+  paymentLabel: string;         // e.g. "4 of 12" or "Completed" or "1 mo to default"
   onboarding: OnboardingStatus;
   allocation: AllocationStatus;
-  allocationLabel?: string; // e.g. plot code when allocated
+  allocationLabel?: string;     // plot code when allocated
   doa: DoaStatus;
-  doaLabel?: string; // e.g. "Sent 12 Sep"
+  doaLabel?: string;            // e.g. "Sent 12 Sep"
   lastActivityAt: string;
 }
 
@@ -114,5 +131,6 @@ export interface CSManagerDashboard {
   obligation: CSManagerObligation;
   backlogs: CSManagerBacklogs;
   portfolio: CSManagerPortfolio;
-  customers: CustomerRow[];
+  /** Plans (payment plans) belonging to this CSM's assigned customers. */
+  plans: PlanRow[];
 }

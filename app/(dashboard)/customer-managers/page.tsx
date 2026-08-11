@@ -68,7 +68,7 @@ export default function CustomerManagersPage() {
       <PortfolioHealthStrip portfolio={data.portfolio} />
 
       <CustomersTable
-        customers={data.customers}
+        plans={data.plans}
         totalAssigned={data.portfolio.totalAssigned}
       />
     </div>
