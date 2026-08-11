@@ -8,6 +8,8 @@ import {
   Info,
   Target,
   AlertCircle,
+  CircleDollarSign,
+  Gauge,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -101,7 +103,21 @@ const daysRemaining = (periodEnd: Date | string) => {
 const hasActiveTarget = (target: ManagerDashboardResponse["target"]) =>
   target.recruitedTarget > 0 ||
   target.sellingTarget > 0 ||
+  target.revenueTarget > 0 ||
   target.performanceScoreTarget > 0;
+
+// Naira formatter for revenue displays. Uses no fraction digits since targets
+// and running totals are set in whole naira.
+const formatNaira = (n: number) =>
+  `₦${n.toLocaleString("en-NG", { maximumFractionDigits: 0 })}`;
+
+// Compact naira for the tile value where space is tight (₦5.75M vs ₦5,750,000).
+const formatNairaShort = (n: number): string => {
+  if (n >= 1_000_000_000) return `₦${(n / 1_000_000_000).toFixed(1)}B`;
+  if (n >= 1_000_000) return `₦${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `₦${(n / 1_000).toFixed(1)}K`;
+  return `₦${Math.round(n)}`;
+};
 
 interface KpiTileProps {
   icon: React.ElementType;
@@ -283,14 +299,45 @@ export function ManagerSnapshot({ viewAs, manager, dashboard }: Props) {
     target.sellingTarget > 0
       ? (target.sellingSoFar / target.sellingTarget) * 100
       : undefined;
-  // Rating scale is fixed at 1-5, so the ceiling for the performance score is
+  const revenuePct =
+    target.revenueTarget > 0
+      ? (target.revenueSoFar / target.revenueTarget) * 100
+      : undefined;
+  // Computed performance score is a 0–100 objective figure — a weighted mix of
+  // selling (50) + revenue (30) + recruitment (20). Untargeted components
+  // contribute 0 and their weight is NOT redistributed (BE contract), so the
+  // tooltip below flags which components are "no target set" rather than "0%".
+  const computedScorePct = score.score; // already 0-100
+  // Rating scale is fixed at 1-5, so the ceiling for the peer rating is
   // always 5.00. `performanceScoreTarget` from the manager's monthly config is
   // stale (came from the pre-rating scoring era where scores were 0-100), so
-  // ignore it for the denominator here — the tile always renders X.XX / 5.00
-  // and the progress bar is computed against 5.
+  // ignore it for the denominator here — the peer-rating card always renders
+  // X.XX / 5.00 and the bar is computed against 5.
   const RATING_MAX = 5;
-  const scorePct =
+  const peerRatingPct =
     score.actual > 0 ? (score.actual / RATING_MAX) * 100 : undefined;
+
+  // Component breakdown for the Performance Score tooltip.
+  const componentLine = (
+    label: string,
+    weight: number,
+    componentScore: number,
+    hasTarget: boolean
+  ) =>
+    hasTarget
+      ? `${label}: ${componentScore.toFixed(1)}/${weight}`
+      : `${label}: no target set`;
+  const scoreTooltip = [
+    `Objective score out of 100. Selling 50 + Revenue 30 + Recruitment 20.`,
+    componentLine("Selling", 50, score.sellingComponent, target.sellingTarget > 0),
+    componentLine("Revenue", 30, score.revenueComponent, target.revenueTarget > 0),
+    componentLine(
+      "Recruitment",
+      20,
+      score.recruitmentComponent,
+      target.recruitedTarget > 0
+    ),
+  ].join(" · ");
 
   const managerAdminId = manager?.manager?._id ?? null;
 
@@ -344,8 +391,8 @@ export function ManagerSnapshot({ viewAs, manager, dashboard }: Props) {
           )}
         </div>
 
-        {/* KPI tiles — 3 (reward descoped per blueprint §8) */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* KPI tiles — 4 objective targets: Recruited, Selling, Revenue, Score */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <KpiTile
             icon={TrendingUp}
             iconColor="text-[#00695C]"
@@ -377,20 +424,43 @@ export function ManagerSnapshot({ viewAs, manager, dashboard }: Props) {
           />
 
           <KpiTile
-            icon={Star}
-            iconColor="text-amber-600"
-            iconBg="bg-amber-50"
+            icon={CircleDollarSign}
+            iconColor="text-emerald-600"
+            iconBg="bg-emerald-50"
+            label="Revenue"
+            actualDisplay={formatNairaShort(target.revenueSoFar)}
+            targetDisplay={
+              target.revenueTarget > 0 ? formatNairaShort(target.revenueTarget) : undefined
+            }
+            percent={revenuePct}
+            // Cash received in the period on plans opened in the period — not
+            // the same as salesAndRevenue.totalRevenue (that counts all cash
+            // regardless of when the plan opened). Keep the distinction clear.
+            tooltip={`Cash received this period on plans opened this period vs. active target. Currently ${formatNaira(target.revenueSoFar)}.`}
+            noData={target.revenueTarget === 0}
+            noDataLabel="No revenue target set"
+          />
+
+          <KpiTile
+            icon={Gauge}
+            iconColor="text-purple-600"
+            iconBg="bg-purple-50"
             label="Performance Score"
-            actualDisplay={score.actual.toFixed(2)}
-            targetDisplay="5.00"
-            percent={scorePct}
-            tooltip="Average of realtor ratings for this period, out of 5."
-            // Rating enum is 1-5, so an average of exactly 0 reliably means
-            // "no ratings this period" rather than "everyone rated zero".
-            noData={score.actual === 0}
-            noDataLabel="No ratings yet this period"
+            actualDisplay={score.score.toFixed(1)}
+            targetDisplay="100"
+            percent={computedScorePct}
+            tooltip={scoreTooltip}
           />
         </div>
+
+        {/* Peer rating — separate section, subjective + qualitatively different
+            from the computed score above. Kept small so it doesn't compete
+            visually with the four objective KPIs. */}
+        <PeerRatingRow
+          actual={score.actual}
+          ratingCount={score.ratingCount}
+          percent={peerRatingPct}
+        />
       </div>
 
       <ManageTargetsDialog
@@ -400,5 +470,52 @@ export function ManagerSnapshot({ viewAs, manager, dashboard }: Props) {
         managerName={fullName(manager?.manager)}
       />
     </>
+  );
+}
+
+interface PeerRatingRowProps {
+  actual: number;
+  ratingCount: number;
+  percent?: number;
+}
+
+// Peer rating is deliberately rendered as a compact row, not a full KPI tile,
+// so it reads as complementary insight rather than a fifth objective target.
+// A rating of exactly 0 with ratingCount 0 means "no ratings yet" — never
+// "everyone rated zero" (the enum is 1-5).
+function PeerRatingRow({ actual, ratingCount, percent }: PeerRatingRowProps) {
+  const noRatings = ratingCount === 0;
+  return (
+    <div className="flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50/60 px-4 py-3">
+      <div className="p-2 rounded-lg bg-amber-50 shrink-0">
+        <Star className="h-4 w-4 text-amber-600" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-baseline gap-2">
+          <p className="text-sm font-medium text-gray-900">Peer Rating</p>
+          <span className="text-xs text-gray-400">
+            subjective · from realtor ratings this period
+          </span>
+        </div>
+        {noRatings ? (
+          <p className="text-xs text-gray-500 mt-0.5">No ratings yet this period</p>
+        ) : (
+          <div className="flex items-baseline gap-2 mt-0.5">
+            <span className="text-base font-semibold text-gray-900 tabular-nums">
+              {actual.toFixed(2)}
+              <span className="text-xs font-normal text-gray-400"> / 5.00</span>
+            </span>
+            <span className="text-xs text-gray-500">
+              {ratingCount} rating{ratingCount === 1 ? "" : "s"}
+            </span>
+            {percent !== undefined && (
+              <span className="text-xs text-gray-400 tabular-nums">
+                · {Math.round(percent)}%
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

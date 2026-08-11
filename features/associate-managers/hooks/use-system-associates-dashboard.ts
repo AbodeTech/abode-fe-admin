@@ -64,8 +64,13 @@ const GET_SYSTEM_ASSOCIATES_DASHBOARD_QUERY = graphql(`
         lateFirstSellers
       }
       performanceScore {
+        score
+        sellingComponent
+        revenueComponent
+        recruitmentComponent
         target
         actual
+        ratingCount
       }
       associatePros {
         id

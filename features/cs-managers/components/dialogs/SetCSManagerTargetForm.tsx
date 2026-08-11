@@ -13,17 +13,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useAssignManagerTarget } from "../../hooks/use-assign-manager-target";
-import type { AssociateManagerTargetType } from "@/lib/gql/graphql";
+import { useAssignCSManagerTarget } from "../../hooks/use-cs-manager-mutations";
+import type { CsManagerTargetType } from "@/lib/gql/graphql";
 
 interface Props {
   managerId: string | null;
-  existing?: AssociateManagerTargetType | null;
+  existing?: CsManagerTargetType | null;
   onSaved: () => void;
   onCancel: () => void;
 }
 
-// Build the next 12 months starting from the current month.
+// Rolling 12-month picker starting from the current month.
 const buildMonthOptions = () => {
   const opts: { value: string; label: string; month: number; year: number }[] =
     [];
@@ -46,7 +46,7 @@ const buildMonthOptions = () => {
   return opts;
 };
 
-export function SetTargetForm({
+export function SetCSManagerTargetForm({
   managerId,
   existing,
   onSaved,
@@ -59,42 +59,39 @@ export function SetTargetForm({
     : monthOptions[0].value;
 
   const [monthValue, setMonthValue] = useState(initialMonthValue);
-  const [recruited, setRecruited] = useState<string>(
-    existing ? String(existing.associate_pro_recruited_target) : ""
+  const [allocated, setAllocated] = useState<string>(
+    existing ? String(existing.customers_allocated_target) : ""
   );
-  const [selling, setSelling] = useState<string>(
-    existing ? String(existing.selling_associate_pro_target) : ""
+  const [onboarded, setOnboarded] = useState<string>(
+    existing ? String(existing.customers_onboarded_target) : ""
   );
-  const [revenue, setRevenue] = useState<string>(
-    existing ? String(existing.revenue_target) : ""
-  );
-  const [score, setScore] = useState<string>(
-    existing ? String(existing.performance_score_target) : ""
+  const [deeds, setDeeds] = useState<string>(
+    existing ? String(existing.deeds_delivered_target) : ""
   );
 
-  const { mutateAsync, isPending } = useAssignManagerTarget();
+  const { mutateAsync, isPending } = useAssignCSManagerTarget();
 
   useEffect(() => {
-    // Re-sync when the existing target changes (e.g. switching between create/edit).
+    // Re-sync when the underlying target changes (create ↔ edit swap).
     setMonthValue(initialMonthValue);
-    setRecruited(existing ? String(existing.associate_pro_recruited_target) : "");
-    setSelling(existing ? String(existing.selling_associate_pro_target) : "");
-    setRevenue(existing ? String(existing.revenue_target) : "");
-    setScore(existing ? String(existing.performance_score_target) : "");
+    setAllocated(existing ? String(existing.customers_allocated_target) : "");
+    setOnboarded(existing ? String(existing.customers_onboarded_target) : "");
+    setDeeds(existing ? String(existing.deeds_delivered_target) : "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [existing?._id]);
 
-  // Revenue is optional on the BE (Float, default 0). Leave it blank if the
-  // admin doesn't want to gate on revenue this period — score's revenue
-  // component will read as "no target set" instead of being counted against.
-  const canSave =
-    !!managerId && recruited !== "" && selling !== "" && score !== "" && !isPending;
+  // BE inputs are all optional (Int, not Int!), so partial targets are
+  // fine — untargeted components read as "no target set" in the score
+  // instead of being counted against.
+  const canSave = !!managerId && !isPending;
 
   const handleSave = async () => {
     if (!managerId) return;
 
     const picked = monthOptions.find((o) => o.value === monthValue);
-    // When editing, the month/year are locked to the existing target's period.
+    // Editing an existing target locks its period to prevent accidental
+    // month swaps — always overwrite in place for whatever month it's
+    // already tied to.
     const month = existing ? existing.month : picked?.month;
     const year = existing ? existing.year : picked?.year;
 
@@ -103,15 +100,24 @@ export function SetTargetForm({
       return;
     }
 
+    // Blank input → omit the field so BE keeps whatever was there (or
+    // defaults to 0 for a new record). Number("") === 0, which would
+    // silently overwrite a good value with 0, so we explicitly drop
+    // empties instead.
+    const asNumber = (v: string): number | undefined =>
+      v.trim() === "" ? undefined : Number(v);
+
     try {
       await mutateAsync({
         managerId,
         month,
         year,
-        associate_pro_recruited_target: Number(recruited),
-        selling_associate_pro_target: Number(selling),
-        revenue_target: revenue === "" ? 0 : Number(revenue),
-        performance_score_target: Number(score),
+        customers_allocated_target: asNumber(allocated),
+        customers_onboarded_target: asNumber(onboarded),
+        deeds_delivered_target: asNumber(deeds),
+        // Peer rating deferred — omit so BE keeps whatever's there
+        // (defaults to 0 on new records). Restore this input when the
+        // rating loop lands.
       });
       toast.success(existing ? "Target updated" : "Target saved");
       onSaved();
@@ -152,57 +158,49 @@ export function SetTargetForm({
         )}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="space-y-1.5">
-          <Label htmlFor="recruited">Ass. Pros Recruited</Label>
-          <Input
-            id="recruited"
-            type="number"
-            min={0}
-            value={recruited}
-            onChange={(e) => setRecruited(e.target.value)}
-            placeholder="e.g. 15"
-            className="bg-white"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="selling">Selling Ass. Pros</Label>
-          <Input
-            id="selling"
-            type="number"
-            min={0}
-            value={selling}
-            onChange={(e) => setSelling(e.target.value)}
-            placeholder="e.g. 12"
-            className="bg-white"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="revenue">
-            Revenue Target (₦)
+          <Label htmlFor="allocated">
+            Customers Allocated
             <span className="text-xs text-gray-400 ml-1">optional</span>
           </Label>
           <Input
-            id="revenue"
+            id="allocated"
             type="number"
             min={0}
-            step="1"
-            value={revenue}
-            onChange={(e) => setRevenue(e.target.value)}
-            placeholder="e.g. 5000000"
+            value={allocated}
+            onChange={(e) => setAllocated(e.target.value)}
+            placeholder="e.g. 30"
             className="bg-white"
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="score">Peer Rating Target</Label>
+          <Label htmlFor="onboarded">
+            Customers Onboarded
+            <span className="text-xs text-gray-400 ml-1">optional</span>
+          </Label>
           <Input
-            id="score"
+            id="onboarded"
             type="number"
             min={0}
-            step="1"
-            value={score}
-            onChange={(e) => setScore(e.target.value)}
-            placeholder="e.g. 4"
+            value={onboarded}
+            onChange={(e) => setOnboarded(e.target.value)}
+            placeholder="e.g. 25"
+            className="bg-white"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="deeds">
+            Deeds Delivered
+            <span className="text-xs text-gray-400 ml-1">optional</span>
+          </Label>
+          <Input
+            id="deeds"
+            type="number"
+            min={0}
+            value={deeds}
+            onChange={(e) => setDeeds(e.target.value)}
+            placeholder="e.g. 15"
             className="bg-white"
           />
         </div>
