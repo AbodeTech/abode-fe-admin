@@ -71,7 +71,7 @@ function formatDate(value?: string) {
 
 function renderUser(req: ClientRequest) {
   const userId = req.user?._id;
-  const fullName = `${req.user?.firstName ?? ""} ${req.user?.lastName ?? ""}`.trim() || "Unknown user";
+  const fullName = `${req.user?.lastName ?? ""} ${req.user?.firstName ?? ""}`.trim() || "Unknown user";
   if (!userId) return <span className="font-medium">{fullName}</span>;
   return (
     <Link href={`/users/${userId}`} className="text-black hover:text-gray-700 font-medium hover:underline transition-colors">

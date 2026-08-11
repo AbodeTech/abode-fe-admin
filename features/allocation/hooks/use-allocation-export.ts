@@ -21,6 +21,7 @@ interface AllocationExportParams {
   assetType?: string | null;
   percentage?: number | null;
   search?: string | null;
+  allocationStatus?: string | null;
   startDate?: string | null;
   endDate?: string | null;
 }
@@ -34,6 +35,7 @@ export const useAllocationExport = () => {
         assetType: params.assetType || undefined,
         percentage: params.percentage ?? undefined,
         search: params.search || undefined,
+        allocationStatus: params.allocationStatus || undefined,
         // API supports date range for this endpoint; generated FiltersInput is currently stale.
         startDate: params.startDate || undefined,
         endDate: params.endDate || undefined,

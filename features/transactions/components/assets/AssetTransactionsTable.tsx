@@ -169,7 +169,7 @@ export function AssetTransactionsTable({ data, isLoading, onApprove, onDecline }
                         href={`/users/${transaction.user?._id}`}
                         className="text-black hover:text-gray-700 font-medium hover:underline transition-colors truncate block"
                       >
-                        {transaction.user?.firstName} {transaction.user?.lastName}
+                        {transaction.user?.lastName} {transaction.user?.firstName}
                       </Link>
                     </TableCell>
                     <TableCell className="py-4 text-gray-700 w-25 truncate">
@@ -244,7 +244,7 @@ function MobileTransactionCard({
           <CardTitle className="text-base font-semibold text-gray-900 flex items-center gap-2">
             <User className="h-4 w-4" />
             <Link href={`/users/${data.user?._id}`} className="hover:underline">
-              {data.user?.firstName} {data.user?.lastName}
+              {data.user?.lastName} {data.user?.firstName}
             </Link>
           </CardTitle>
           <TransactionStatus status={data.admin_status} />

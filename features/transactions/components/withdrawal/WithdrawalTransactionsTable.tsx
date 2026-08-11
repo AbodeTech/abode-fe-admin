@@ -104,7 +104,7 @@ export function WithdrawalTransactionsTable({ data, isLoading, onApprove, onDecl
             key={transaction._id}
             title={
               <Link href={`/users/${transaction.user?._id ?? ""}`} className="text-primary hover:underline">
-                {transaction.user?.firstName} {transaction.user?.lastName}
+                {transaction.user?.lastName} {transaction.user?.firstName}
               </Link>
             }
           >
@@ -195,7 +195,7 @@ export function WithdrawalTransactionsTable({ data, isLoading, onApprove, onDecl
                       href={`/users/${transaction.user?._id ?? ""}`}
                       className="text-black hover:text-gray-700 font-medium hover:underline transition-colors"
                     >
-                      {transaction.user?.firstName} {transaction.user?.lastName}
+                      {transaction.user?.lastName} {transaction.user?.firstName}
                     </Link>
                   </TableCell>
                   <TableCell className="py-4 text-gray-700">{transaction.tin || "N/A"}</TableCell>
