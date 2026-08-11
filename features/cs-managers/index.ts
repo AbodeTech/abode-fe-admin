@@ -22,4 +22,4 @@ export {
   useAssignCustomersToCSM,
   type AssignCustomersToCSMInput,
 } from "./hooks/use-cs-manager-mutations";
-export type * from "./types";
+export type { AdminOption } from "./types";

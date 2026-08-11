@@ -4,13 +4,15 @@ import { useMemo, useState } from "react";
 import { Repeat } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import type {
-  PlanRow,
+import {
   OnboardingStatus,
   AllocationStatus,
   DoaStatus,
-  CustomerPurchaseStatus,
-} from "../types";
+  PaymentStatus,
+  type PlanRow,
+} from "@/lib/gql/graphql";
+// Alias so the existing pill props keep reading naturally.
+type CustomerPurchaseStatus = PaymentStatus;
 
 interface Props {
   plans: PlanRow[];
@@ -302,7 +304,7 @@ function AllocationPill({
   label,
 }: {
   status: AllocationStatus;
-  label?: string;
+  label?: string | null;
 }) {
   switch (status) {
     case "allocated":
@@ -322,7 +324,7 @@ function AllocationPill({
   }
 }
 
-function DoaPill({ status, label }: { status: DoaStatus; label?: string }) {
+function DoaPill({ status, label }: { status: DoaStatus; label?: string | null }) {
   switch (status) {
     case "sent":
       return (

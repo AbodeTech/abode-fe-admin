@@ -12,17 +12,20 @@ import {
 import { Button } from "@/components/ui/button";
 import { KpiTile } from "@/components/shared/KpiTile";
 import type {
-  CSManagerAdmin,
-  CSManagerPeriod,
-  CSManagerTarget,
-  CSManagerPerformanceScore,
-  CSManagerObligation,
-} from "../types";
+  Admin,
+  CsManagerPeriod as CSManagerPeriod,
+  CsManagerTargets as CSManagerTargets,
+  CsManagerPerformanceScore as CSManagerPerformanceScore,
+  CsManagerObligation as CSManagerObligation,
+} from "@/lib/gql/graphql";
+
+/** Local narrowing: the snapshot only reads a handful of Admin fields. */
+type CSManagerAdmin = Pick<Admin, "_id" | "userName" | "email" | "role">;
 
 interface Props {
   manager: CSManagerAdmin;
   period: CSManagerPeriod;
-  target: CSManagerTarget;
+  target: CSManagerTargets;
   score: CSManagerPerformanceScore;
   obligation: CSManagerObligation;
   totalAssigned: number;
@@ -50,18 +53,26 @@ const daysRemaining = (end: string) => {
   return Math.max(0, Math.ceil(d / (1000 * 60 * 60 * 24)));
 };
 
-const hasActiveTarget = (t: CSManagerTarget) =>
+const hasActiveTarget = (t: CSManagerTargets) =>
   t.allocatedTarget > 0 ||
   t.onboardedTarget > 0 ||
   t.deedsDeliveredTarget > 0 ||
   t.performanceScoreTarget > 0;
 
-const initialsOf = (m: CSManagerAdmin) =>
-  ((m.lastName?.[0] ?? "") + (m.firstName?.[0] ?? "")).toUpperCase() ||
-  m.email[0].toUpperCase();
+// BE ships only `userName` on the base Admin type. Split on whitespace as
+// a best-effort surname/first-name split, then take the first letters.
+// Drop this once BE exposes firstName/lastName on Admin (or points the
+// dashboard's manager field at ManagerAdminInfo — same issue as FLEX).
+const initialsOf = (m: CSManagerAdmin) => {
+  const source = m.userName || m.email || "";
+  const parts = source.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+  return source.slice(0, 2).toUpperCase() || "?";
+};
 
-const fullName = (m: CSManagerAdmin) =>
-  `${m.lastName ?? ""} ${m.firstName ?? ""}`.trim() || m.email;
+const fullName = (m: CSManagerAdmin) => m.userName || m.email;
 
 export function CSManagerSnapshot({
   manager,

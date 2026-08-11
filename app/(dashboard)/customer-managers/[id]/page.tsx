@@ -41,6 +41,26 @@ export default function CustomerManagerDetailPage({ params }: Props) {
     );
   }
 
+  // BE returns manager: null when the role is unassigned or the admin id
+  // in the URL didn't resolve. Guard so we never blow up further down.
+  if (!data.manager) {
+    return (
+      <div className="space-y-4 py-2">
+        <Link
+          href="/customer-managers"
+          className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-[#00695C]"
+        >
+          <ChevronLeft className="h-3 w-3" />
+          All CS Managers
+        </Link>
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">
+          This admin is not currently a CS Manager. They may have been
+          removed, or the id in the URL doesn't match an active role.
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 py-2">
       <div>

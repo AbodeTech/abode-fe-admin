@@ -1,205 +1,163 @@
+"use client";
+
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import type {
-  AdminOption,
-  CSManagerSummary,
-  UnassignedCustomer,
-} from "../types";
+import { execute } from "@/lib/graphql-client";
+import { graphql } from "@/lib/gql";
+import type { AdminOption } from "../types";
 
 /**
- * List + queue reads for the CS Manager admin surface — TEMPORARY MOCK.
+ * List + queue reads for the CS Manager admin surface — wired to live BE
+ * (guidelines/CS_Manager_Dashboard.md).
  *
- * When BE ships:
- *   - list → getCSManagers query
- *   - unassigned → getUnassignedCustomers query
- *   - admin search → reuse existing admin picker if one exists,
- *     otherwise a new listAdmins query
- * Consumer components (list table, unassigned queue, promote dialog)
- * don't change.
+ * Admin picker queries getAllAdminWithRoles directly (inline fields, no
+ * fragment) so the result is straight data — no need to unwrap through
+ * useFragment. We normalize to AdminOption and cross-reference active
+ * CSMs to compute isCSManager.
  */
 
-const MOCK_CS_MANAGERS: CSManagerSummary[] = [
-  {
-    _id: "csm-1",
-    manager: {
-      _id: "adenike",
-      firstName: "Adenike",
-      lastName: "Balogun",
-      email: "adenike.balogun@abode.ng",
-    },
-    assignedCustomersCount: 47,
-    assignedPlansCount: 51,
-    currentPeriodScore: 70.6,
-    activeSince: "2026-06-01",
-  },
-  {
-    _id: "csm-2",
-    manager: {
-      _id: "kunle",
-      firstName: "Kunle",
-      lastName: "Omotayo",
-      email: "kunle.omotayo@abode.ng",
-    },
-    assignedCustomersCount: 32,
-    assignedPlansCount: 34,
-    currentPeriodScore: 85.4,
-    activeSince: "2026-04-15",
-  },
-  {
-    _id: "csm-3",
-    manager: {
-      _id: "yewande",
-      firstName: "Yewande",
-      lastName: "Adeoye",
-      email: "yewande.adeoye@abode.ng",
-    },
-    assignedCustomersCount: 28,
-    assignedPlansCount: 30,
-    currentPeriodScore: 48.2,
-    activeSince: "2026-08-10",
-  },
-];
+const LIST_ADMINS_FOR_CSM_PICKER_QUERY = graphql(`
+  query ListAdminsForCSMPicker {
+    getAllAdminWithRoles {
+      data {
+        adminId
+        adminName
+        adminEmail
+        role
+      }
+    }
+  }
+`);
 
-const MOCK_UNASSIGNED: UnassignedCustomer[] = [
-  {
-    _id: "u1",
-    firstName: "Bola",
-    lastName: "Ademiluyi",
-    email: "bola.ademiluyi@gmail.com",
-    phone: "+2348012345678",
-    firstPurchaseAt: "2026-09-22T09:00:00Z",
-    daysUnassigned: 2,
-    planCount: 1,
-  },
-  {
-    _id: "u2",
-    firstName: "Ifeoma",
-    lastName: "Chukwu",
-    email: "ifeoma.chukwu@yahoo.com",
-    phone: "+2348023456789",
-    firstPurchaseAt: "2026-09-19T14:00:00Z",
-    daysUnassigned: 5,
-    planCount: 1,
-  },
-  {
-    _id: "u3",
-    firstName: "Gbenga",
-    lastName: "Salami",
-    email: "gbenga.salami@outlook.com",
-    phone: null,
-    firstPurchaseAt: "2026-09-14T11:00:00Z",
-    daysUnassigned: 10,
-    planCount: 2,
-  },
-  {
-    _id: "u4",
-    firstName: "Halima",
-    lastName: "Yusuf",
-    email: "halima.yusuf@abode.ng",
-    phone: "+2348034567890",
-    firstPurchaseAt: "2026-09-05T08:00:00Z",
-    daysUnassigned: 19,
-    planCount: 1,
-  },
-];
+const LIST_CS_MANAGERS_QUERY = graphql(`
+  query ListCSManagers {
+    listCSManagers {
+      _id
+      manager {
+        _id
+        userName
+        email
+        role
+      }
+      assignedCustomersCount
+      assignedPlansCount
+      currentPeriodScore
+      activeSince
+    }
+  }
+`);
 
-const MOCK_ADMINS: AdminOption[] = [
-  {
-    _id: "adenike",
-    firstName: "Adenike",
-    lastName: "Balogun",
-    email: "adenike.balogun@abode.ng",
-    role: "manager",
-    isCSManager: true,
-  },
-  {
-    _id: "kunle",
-    firstName: "Kunle",
-    lastName: "Omotayo",
-    email: "kunle.omotayo@abode.ng",
-    role: "manager",
-    isCSManager: true,
-  },
-  {
-    _id: "yewande",
-    firstName: "Yewande",
-    lastName: "Adeoye",
-    email: "yewande.adeoye@abode.ng",
-    role: "manager",
-    isCSManager: true,
-  },
-  {
-    _id: "tayo",
-    firstName: "Tayo",
-    lastName: "Ogundipe",
-    email: "tayo.ogundipe@abode.ng",
-    role: "admin",
-    isCSManager: false,
-  },
-  {
-    _id: "nkem",
-    firstName: "Nkem",
-    lastName: "Okoli",
-    email: "nkem.okoli@abode.ng",
-    role: "admin",
-    isCSManager: false,
-  },
-  {
-    _id: "seyi",
-    firstName: "Seyi",
-    lastName: "Adeyemo",
-    email: "seyi.adeyemo@abode.ng",
-    role: "admin",
-    isCSManager: false,
-  },
-];
+const LIST_UNASSIGNED_CUSTOMERS_QUERY = graphql(`
+  query ListUnassignedCustomers($page: Int, $limit: Int) {
+    listUnassignedCustomers(page: $page, limit: $limit) {
+      count
+      results {
+        _id
+        firstName
+        lastName
+        email
+        phone
+        firstPurchaseAt
+        daysUnassigned
+        planCount
+      }
+    }
+  }
+`);
 
 export const csManagersListKeys = {
   managers: () => ["cs-managers", "list"] as const,
-  unassigned: () => ["cs-managers", "unassigned"] as const,
-  adminOptions: (q: string) =>
-    ["cs-managers", "admin-options", q] as const,
+  unassigned: (page?: number, limit?: number) =>
+    ["cs-managers", "unassigned", page ?? null, limit ?? null] as const,
+  adminOptions: (q: string, excludeCSManagers: boolean) =>
+    ["cs-managers", "admin-options", q, excludeCSManagers] as const,
 };
 
 export const useCSManagersList = () => {
   return useQuery({
     queryKey: csManagersListKeys.managers(),
-    queryFn: async () => {
-      await new Promise((r) => setTimeout(r, 80));
-      return MOCK_CS_MANAGERS;
-    },
+    queryFn: () => execute(LIST_CS_MANAGERS_QUERY, {}),
+    select: (data) => data.listCSManagers,
   });
 };
 
-export const useUnassignedCustomers = () => {
+export interface UseUnassignedCustomersParams {
+  page?: number;
+  limit?: number;
+}
+
+export const useUnassignedCustomers = (params?: UseUnassignedCustomersParams) => {
+  const page = params?.page;
+  const limit = params?.limit;
   return useQuery({
-    queryKey: csManagersListKeys.unassigned(),
-    queryFn: async () => {
-      await new Promise((r) => setTimeout(r, 80));
-      return MOCK_UNASSIGNED;
-    },
+    queryKey: csManagersListKeys.unassigned(page, limit),
+    queryFn: () =>
+      execute(LIST_UNASSIGNED_CUSTOMERS_QUERY, {
+        page: page ?? null,
+        limit: limit ?? null,
+      }),
+    select: (data) => data.listUnassignedCustomers,
   });
 };
 
-/** Admin picker — filters against name/email, excludes existing CSMs
- * when `excludeCSManagers` is set (used by the promotion dialog). */
+/** Best-effort split of "First Last" (or "Last First" via userName) into
+ * separate name fields. BE's AdminRoles row only gives us a single
+ * adminName string; we split on the first whitespace so consumers can
+ * render initials + full name consistently with the rest of the app. */
+const splitAdminName = (adminName: string) => {
+  const parts = adminName.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return { firstName: null, lastName: null };
+  if (parts.length === 1) return { firstName: parts[0], lastName: null };
+  const [firstName, ...rest] = parts;
+  return { firstName, lastName: rest.join(" ") };
+};
+
+/** Admin picker — normalizes the AdminRoles row shape into AdminOption
+ * and cross-references active CSMs to compute isCSManager. Optionally
+ * excludes existing CSMs (used by the promotion dialog). */
 export const useAdminOptions = (
   query: string,
   opts?: { excludeCSManagers?: boolean }
 ) => {
-  return useQuery({
-    queryKey: [
-      ...csManagersListKeys.adminOptions(query),
-      opts?.excludeCSManagers ?? false,
-    ] as const,
-    queryFn: async () => {
-      await new Promise((r) => setTimeout(r, 60));
-      const q = query.trim().toLowerCase();
-      return MOCK_ADMINS.filter((a) => {
-        if (opts?.excludeCSManagers && a.isCSManager) return false;
+  const excludeCSManagers = opts?.excludeCSManagers ?? false;
+  const { data: adminsData, isLoading: adminsLoading, error: adminsError } =
+    useQuery({
+      queryKey: ["cs-managers", "admin-picker-source"] as const,
+      queryFn: () => execute(LIST_ADMINS_FOR_CSM_PICKER_QUERY, {}),
+      select: (data) => data.getAllAdminWithRoles?.data ?? [],
+    });
+  const { data: csManagers = [], isLoading: csmLoading } = useCSManagersList();
+
+  const activeCSMIds = useMemo(
+    () => new Set(csManagers.map((c) => c.manager._id)),
+    [csManagers]
+  );
+
+  const options = useMemo<AdminOption[]>(() => {
+    const q = query.trim().toLowerCase();
+    return (adminsData ?? [])
+      .map<AdminOption>((row) => {
+        const { firstName, lastName } = splitAdminName(row.adminName);
+        return {
+          _id: row.adminId,
+          firstName,
+          lastName,
+          email: row.adminEmail,
+          role: row.role,
+          isCSManager: activeCSMIds.has(row.adminId),
+        };
+      })
+      .filter((a) => {
+        if (excludeCSManagers && a.isCSManager) return false;
         if (!q) return true;
         const name = `${a.firstName ?? ""} ${a.lastName ?? ""}`.toLowerCase();
         return name.includes(q) || a.email.toLowerCase().includes(q);
       });
-    },
-  });
+  }, [adminsData, activeCSMIds, query, excludeCSManagers]);
+
+  return {
+    data: options,
+    isLoading: adminsLoading || csmLoading,
+    error: adminsError,
+  };
 };

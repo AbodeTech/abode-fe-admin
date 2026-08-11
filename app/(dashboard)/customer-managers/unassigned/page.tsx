@@ -17,8 +17,8 @@ import {
 export default function UnassignedCustomersPage() {
   const [assignOpen, setAssignOpen] = useState(false);
   const [pendingIds, setPendingIds] = useState<string[]>([]);
-  const { data: customers = [], isLoading, isError, error } =
-    useUnassignedCustomers();
+  const { data, isLoading, isError, error } = useUnassignedCustomers();
+  const customers = data?.results ?? [];
 
   const openAssign = (ids: string[]) => {
     if (ids.length === 0) return;

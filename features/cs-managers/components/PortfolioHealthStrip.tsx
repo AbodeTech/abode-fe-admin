@@ -2,7 +2,7 @@
 
 import { CheckCircle2, Clock, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { CSManagerPortfolio } from "../types";
+import type { CsManagerPortfolio as CSManagerPortfolio } from "@/lib/gql/graphql";
 
 interface Props {
   portfolio: CSManagerPortfolio;

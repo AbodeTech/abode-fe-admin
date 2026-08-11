@@ -359,6 +359,14 @@ export type AdminWalletInput = {
   reason?: InputMaybe<Scalars['String']['input']>;
 };
 
+export type AgeSplitBacklog = {
+  __typename?: 'AgeSplitBacklog';
+  lastMonth: Scalars['Int']['output'];
+  older: Scalars['Int']['output'];
+  thisMonth: Scalars['Int']['output'];
+  total: Scalars['Int']['output'];
+};
+
 export type AgenciesResponse = {
   __typename?: 'AgenciesResponse';
   agencies: Array<AgencySummary>;
@@ -649,6 +657,12 @@ export type AllocationEntry = {
   plot_number: Scalars['Int']['output'];
   size: Scalars['Int']['output'];
 };
+
+export enum AllocationStatus {
+  Allocated = 'allocated',
+  Awaiting = 'awaiting',
+  NotApplicable = 'not_applicable'
+}
 
 export type AskAssistantInput = {
   history?: InputMaybe<Array<AssistantMessageInput>>;
@@ -1109,6 +1123,27 @@ export type Assets = {
   topography?: Maybe<Scalars['String']['output']>;
 };
 
+export type AssignCsManagerTargetInput = {
+  customers_allocated_target?: InputMaybe<Scalars['Int']['input']>;
+  customers_onboarded_target?: InputMaybe<Scalars['Int']['input']>;
+  deeds_delivered_target?: InputMaybe<Scalars['Int']['input']>;
+  managerId: Scalars['ID']['input'];
+  month: Scalars['Int']['input'];
+  performance_score_target?: InputMaybe<Scalars['Int']['input']>;
+  year: Scalars['Int']['input'];
+};
+
+export type AssignCustomersResult = {
+  __typename?: 'AssignCustomersResult';
+  assigned: Scalars['Int']['output'];
+  managerId: Scalars['ID']['output'];
+};
+
+export type AssignCustomersToCsmInput = {
+  customerIds: Array<Scalars['ID']['input']>;
+  managerId: Scalars['ID']['input'];
+};
+
 export type AssignManagerTargetInput = {
   associate_pro_recruited_target?: InputMaybe<Scalars['Int']['input']>;
   managerId: Scalars['ID']['input'];
@@ -1407,6 +1442,111 @@ export type BuyMarketplaceListingReceiptInput = {
   receipt_amount: Scalars['Float']['input'];
   receipt_image: Scalars['String']['input'];
   receipt_reference: Scalars['String']['input'];
+};
+
+export type CsManagerAssignmentType = {
+  __typename?: 'CSManagerAssignmentType';
+  _id: Scalars['ID']['output'];
+  assigned_from: Scalars['Date']['output'];
+  assigned_to?: Maybe<Scalars['Date']['output']>;
+  createdAt?: Maybe<Scalars['Date']['output']>;
+  created_by: Scalars['ID']['output'];
+  manager: Scalars['ID']['output'];
+  updatedAt?: Maybe<Scalars['Date']['output']>;
+};
+
+export type CsManagerBacklogs = {
+  __typename?: 'CSManagerBacklogs';
+  allocation: AgeSplitBacklog;
+  doa: AgeSplitBacklog;
+  onboarding: OnboardingBacklog;
+};
+
+export type CsManagerDashboardResponse = {
+  __typename?: 'CSManagerDashboardResponse';
+  backlogs: CsManagerBacklogs;
+  /** null when the role is unassigned or the manager admin was not found */
+  manager?: Maybe<Admin>;
+  obligation: CsManagerObligation;
+  performanceScore: CsManagerPerformanceScore;
+  period: CsManagerPeriod;
+  plans: Array<PlanRow>;
+  /** total plan rows before pagination — drives the FE's page count */
+  plansTotal: Scalars['Int']['output'];
+  portfolio: CsManagerPortfolio;
+  target: CsManagerTargets;
+};
+
+export type CsManagerObligation = {
+  __typename?: 'CSManagerObligation';
+  paidNotAllocatedThisPeriod: Scalars['Int']['output'];
+};
+
+export type CsManagerPerformanceScore = {
+  __typename?: 'CSManagerPerformanceScore';
+  /** unchanged — avg peer rating */
+  actual: Scalars['Float']['output'];
+  allocatedComponent: Scalars['Float']['output'];
+  deedsComponent: Scalars['Float']['output'];
+  onboardedComponent: Scalars['Float']['output'];
+  ratingCount: Scalars['Int']['output'];
+  score: Scalars['Float']['output'];
+  /** unchanged — peer rating target */
+  target: Scalars['Int']['output'];
+};
+
+export type CsManagerPeriod = {
+  __typename?: 'CSManagerPeriod';
+  end: Scalars['Date']['output'];
+  month?: Maybe<Scalars['Int']['output']>;
+  periodType: Scalars['String']['output'];
+  start: Scalars['Date']['output'];
+  year?: Maybe<Scalars['Int']['output']>;
+};
+
+export type CsManagerPortfolio = {
+  __typename?: 'CSManagerPortfolio';
+  closeToDefaulting: Scalars['Int']['output'];
+  completedPayment: Scalars['Int']['output'];
+  totalAssigned: Scalars['Int']['output'];
+  withinPaymentPeriod: Scalars['Int']['output'];
+};
+
+export type CsManagerSummary = {
+  __typename?: 'CSManagerSummary';
+  _id: Scalars['ID']['output'];
+  activeSince: Scalars['Date']['output'];
+  assignedCustomersCount: Scalars['Int']['output'];
+  assignedPlansCount: Scalars['Int']['output'];
+  /** null when the manager has no target set for the current period */
+  currentPeriodScore?: Maybe<Scalars['Float']['output']>;
+  manager: Admin;
+};
+
+export type CsManagerTargetType = {
+  __typename?: 'CSManagerTargetType';
+  _id: Scalars['ID']['output'];
+  createdAt?: Maybe<Scalars['Date']['output']>;
+  customers_allocated_target: Scalars['Int']['output'];
+  customers_onboarded_target: Scalars['Int']['output'];
+  deeds_delivered_target: Scalars['Int']['output'];
+  manager: Scalars['ID']['output'];
+  month: Scalars['Int']['output'];
+  performance_score_target: Scalars['Int']['output'];
+  updatedAt?: Maybe<Scalars['Date']['output']>;
+  year: Scalars['Int']['output'];
+};
+
+export type CsManagerTargets = {
+  __typename?: 'CSManagerTargets';
+  allocatedSoFar: Scalars['Int']['output'];
+  allocatedTarget: Scalars['Int']['output'];
+  deedsDeliveredSoFar: Scalars['Int']['output'];
+  deedsDeliveredTarget: Scalars['Int']['output'];
+  onboardedSoFar: Scalars['Int']['output'];
+  onboardedTarget: Scalars['Int']['output'];
+  performanceScoreSoFar: Scalars['Float']['output'];
+  performanceScoreTarget: Scalars['Int']['output'];
 };
 
 export type CampaignDashboard = {
@@ -1990,6 +2130,27 @@ export type CustomRequestResponse = {
   success: Scalars['Boolean']['output'];
 };
 
+export type CustomerOnboardingAttempt = {
+  __typename?: 'CustomerOnboardingAttempt';
+  _id: Scalars['ID']['output'];
+  called_at: Scalars['Date']['output'];
+  createdAt?: Maybe<Scalars['Date']['output']>;
+  csm: Scalars['ID']['output'];
+  customer: Scalars['ID']['output'];
+  land_choice_reason?: Maybe<Scalars['String']['output']>;
+  notes?: Maybe<Scalars['String']['output']>;
+  outcome: CustomerOnboardingOutcome;
+  payment_plan: Scalars['ID']['output'];
+  updatedAt?: Maybe<Scalars['Date']['output']>;
+};
+
+export enum CustomerOnboardingOutcome {
+  Done = 'done',
+  NoAnswer = 'no_answer',
+  Rescheduled = 'rescheduled',
+  Spoke = 'spoke'
+}
+
 export type DataPointInput = {
   type?: InputMaybe<Scalars['String']['input']>;
 };
@@ -2056,6 +2217,12 @@ export type DeleteUserFullOwnershipAssetInput = {
   unique_asset_id: Scalars['String']['input'];
   userId: Scalars['ID']['input'];
 };
+
+export enum DoaStatus {
+  NotApplicable = 'not_applicable',
+  NotSent = 'not_sent',
+  Sent = 'sent'
+}
 
 export type DocumentChangeRequestInput = {
   assetId: Scalars['String']['input'];
@@ -2439,6 +2606,11 @@ export type FlexDirectRatesOptional = {
   founder?: Maybe<Scalars['Float']['output']>;
   premium?: Maybe<Scalars['Float']['output']>;
 };
+
+export enum FlexOrFullownership {
+  Flex = 'flex',
+  FullOwnership = 'full_ownership'
+}
 
 export type FlexPaymentPlan = {
   __typename?: 'FlexPaymentPlan';
@@ -2831,6 +3003,13 @@ export type LogOnboardingAttemptInput = {
   supportOther?: InputMaybe<Scalars['String']['input']>;
 };
 
+export type LogOnboardingCallInput = {
+  landChoiceReason?: InputMaybe<Scalars['String']['input']>;
+  notes?: InputMaybe<Scalars['String']['input']>;
+  outcome: CustomerOnboardingOutcome;
+  paymentPlanId: Scalars['ID']['input'];
+};
+
 export type ManagerAdminInfo = {
   __typename?: 'ManagerAdminInfo';
   _id: Scalars['ID']['output'];
@@ -3024,6 +3203,13 @@ export type ManualUpgradeUserInfo = {
   id: Scalars['ID']['output'];
   lastName: Scalars['String']['output'];
   referral_status: Scalars['String']['output'];
+};
+
+export type MarkDeedDeliveredResponse = {
+  __typename?: 'MarkDeedDeliveredResponse';
+  deedDeliveredAt: Scalars['Date']['output'];
+  deedDeliveredBy: Scalars['ID']['output'];
+  paymentPlanId: Scalars['ID']['output'];
 };
 
 export type MarketplaceFilterInput = {
@@ -3256,6 +3442,7 @@ export type Mutation = {
   academyUserSignup: AcademySignupResponse;
   addAssociateManager: AssociateManagerType;
   addBankDetails: Scalars['String']['output'];
+  addCSManager: CsManagerAssignmentType;
   addReferralByAdmin: Scalars['String']['output'];
   addUserAssetByAdmin: Scalars['String']['output'];
   adminRecurringAssetPaymentTransfer: Scalars['String']['output'];
@@ -3276,6 +3463,8 @@ export type Mutation = {
   approveUserKyc: Scalars['String']['output'];
   askAssistant: AskAssistantResponse;
   assignAssociateManagerTarget: AssociateManagerTargetType;
+  assignCSManagerTarget: CsManagerTargetType;
+  assignCustomersToCSManager: AssignCustomersResult;
   bulkAssignAssociateProsToManager: AssociateManagerType;
   buyAssetWithPaystack: BuyAssetPaystackResponse;
   buyAssetWithTransfer?: Maybe<Scalars['String']['output']>;
@@ -3344,7 +3533,9 @@ export type Mutation = {
   initializeUpgradeToAssociatePro: UpgradePaystackResponse;
   joinCommunityEmail: Scalars['String']['output'];
   logOnboardingAttempt: OnboardingAttempt;
+  logOnboardingCall: CustomerOnboardingAttempt;
   manualUpgradeToAssociatePro: ManualUpgradeResponse;
+  markDeedDelivered: MarkDeedDeliveredResponse;
   modifyUserReferralStatus: Scalars['String']['output'];
   processCommission: Scalars['String']['output'];
   processReceipt: Scalars['String']['output'];
@@ -3358,6 +3549,7 @@ export type Mutation = {
   recurringFullOwnershipAssetPaymentWithPaystack: ReoccurringFullownershipResponse;
   rejectMarketplacePurchase: AdminMarketplaceActionResponse;
   removeAssociateManager: RemoveAssociateManagerResponse;
+  removeCSManager: CsManagerAssignmentType;
   removeReferralByAdmin: Scalars['String']['output'];
   removeUserAssetByAdmin: Scalars['String']['output'];
   resendEmailVerification: Scalars['String']['output'];
@@ -3441,6 +3633,11 @@ export type MutationAddAssociateManagerArgs = {
 
 export type MutationAddBankDetailsArgs = {
   bankInput?: InputMaybe<BankDetailInput>;
+};
+
+
+export type MutationAddCsManagerArgs = {
+  managerId: Scalars['ID']['input'];
 };
 
 
@@ -3542,6 +3739,16 @@ export type MutationAskAssistantArgs = {
 
 export type MutationAssignAssociateManagerTargetArgs = {
   input: AssignManagerTargetInput;
+};
+
+
+export type MutationAssignCsManagerTargetArgs = {
+  input: AssignCsManagerTargetInput;
+};
+
+
+export type MutationAssignCustomersToCsManagerArgs = {
+  input: AssignCustomersToCsmInput;
 };
 
 
@@ -3887,12 +4094,22 @@ export type MutationLogOnboardingAttemptArgs = {
 };
 
 
+export type MutationLogOnboardingCallArgs = {
+  input: LogOnboardingCallInput;
+};
+
+
 export type MutationManualUpgradeToAssociateProArgs = {
   amount: Scalars['Float']['input'];
   commissionableAmount?: InputMaybe<Scalars['Float']['input']>;
   email: Scalars['String']['input'];
   payCommission: Scalars['Boolean']['input'];
   paymentUrl: Scalars['String']['input'];
+};
+
+
+export type MutationMarkDeedDeliveredArgs = {
+  paymentPlanId: Scalars['ID']['input'];
 };
 
 
@@ -3960,6 +4177,11 @@ export type MutationRejectMarketplacePurchaseArgs = {
 
 export type MutationRemoveAssociateManagerArgs = {
   input: AddRemoveManagerInput;
+};
+
+
+export type MutationRemoveCsManagerArgs = {
+  managerId: Scalars['ID']['input'];
 };
 
 
@@ -4362,10 +4584,25 @@ export type OnboardingAttempt = {
   updatedAt?: Maybe<Scalars['Date']['output']>;
 };
 
+export type OnboardingBacklog = {
+  __typename?: 'OnboardingBacklog';
+  callPending: Scalars['Int']['output'];
+  confirmPending: Scalars['Int']['output'];
+  disputed: Scalars['Int']['output'];
+  total: Scalars['Int']['output'];
+};
+
 export enum OnboardingOutcome {
   NotAvailable = 'not_available',
   Picked = 'picked',
   Rescheduled = 'rescheduled'
+}
+
+export enum OnboardingStatus {
+  CallPending = 'call_pending',
+  Confirmed = 'confirmed',
+  Disputed = 'disputed',
+  NotApplicable = 'not_applicable'
 }
 
 export enum OnboardingSupport {
@@ -4463,6 +4700,12 @@ export type PaymentPlanInput = {
   userId?: InputMaybe<Scalars['String']['input']>;
 };
 
+export enum PaymentStatus {
+  CloseToDefault = 'close_to_default',
+  Completed = 'completed',
+  InPlan = 'in_plan'
+}
+
 export type PerformanceMetrics = {
   __typename?: 'PerformanceMetrics';
   assetValue: Scalars['Float']['output'];
@@ -4491,6 +4734,32 @@ export type PermissionResponse = {
   __typename?: 'PermissionResponse';
   data: Array<Permission>;
   success: Scalars['Boolean']['output'];
+};
+
+export type PlanRow = {
+  __typename?: 'PlanRow';
+  allocation: AllocationStatus;
+  allocationLabel?: Maybe<Scalars['String']['output']>;
+  asset: Scalars['String']['output'];
+  customer: PlanRowCustomer;
+  doa: DoaStatus;
+  doaLabel?: Maybe<Scalars['String']['output']>;
+  lastActivityAt: Scalars['Date']['output'];
+  onboarding: OnboardingStatus;
+  paymentLabel: Scalars['String']['output'];
+  paymentStatus: PaymentStatus;
+  planId: Scalars['ID']['output'];
+  priorPlansCount: Scalars['Int']['output'];
+  product: FlexOrFullownership;
+  purchaseDate: Scalars['Date']['output'];
+};
+
+export type PlanRowCustomer = {
+  __typename?: 'PlanRowCustomer';
+  email: Scalars['String']['output'];
+  firstName: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  lastName: Scalars['String']['output'];
 };
 
 export type Plot = {
@@ -4795,6 +5064,8 @@ export type Query = {
   getAvailableAssets?: Maybe<AssetResponse>;
   getAvailablePlotsForAsset: Array<Plot>;
   getBlockPlots: Array<Plot>;
+  getCSManagerDashboard: CsManagerDashboardResponse;
+  getCSManagerTarget?: Maybe<CsManagerTargetType>;
   getCampaignDashboard: CampaignDashboard;
   getCampaignHampers?: Maybe<CampaignHamperResponse>;
   getCampaignPaymentPlans?: Maybe<CampaignPaymentPlansResponse>;
@@ -4861,6 +5132,10 @@ export type Query = {
   getUsersWithZeroBalance: ZeroBalanceResponse;
   getWithdrawalTransaction?: Maybe<TransactionAdminResponse>;
   listAssociateManagerTargets: Array<AssociateManagerTargetType>;
+  listCSManagerTargets: Array<CsManagerTargetType>;
+  listCSManagers: Array<CsManagerSummary>;
+  listOnboardingAttempts: Array<CustomerOnboardingAttempt>;
+  listUnassignedCustomers: UnassignedCustomerListResponse;
   managerDashboard: ManagerDashboardResponse;
   myRaffleStanding: MyRaffleStanding;
   purchaseConfirmationCounts: PurchaseConfirmationCounts;
@@ -5156,6 +5431,22 @@ export type QueryGetBlockPlotsArgs = {
   blockId: Scalars['ID']['input'];
   size?: InputMaybe<Scalars['Int']['input']>;
   status?: InputMaybe<PlotStatus>;
+};
+
+
+export type QueryGetCsManagerDashboardArgs = {
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  managerId: Scalars['ID']['input'];
+  month?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
+  year?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
+export type QueryGetCsManagerTargetArgs = {
+  managerId: Scalars['ID']['input'];
+  month?: InputMaybe<Scalars['Int']['input']>;
+  year?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -5467,6 +5758,22 @@ export type QueryGetWithdrawalTransactionArgs = {
 
 export type QueryListAssociateManagerTargetsArgs = {
   managerId: Scalars['ID']['input'];
+};
+
+
+export type QueryListCsManagerTargetsArgs = {
+  managerId: Scalars['ID']['input'];
+};
+
+
+export type QueryListOnboardingAttemptsArgs = {
+  paymentPlanId: Scalars['ID']['input'];
+};
+
+
+export type QueryListUnassignedCustomersArgs = {
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -6589,6 +6896,24 @@ export type UnassignedAssociateProsResponse = {
   limit: Scalars['Int']['output'];
   page: Scalars['Int']['output'];
   results: Array<AssociateManagerProSummary>;
+};
+
+export type UnassignedCustomer = {
+  __typename?: 'UnassignedCustomer';
+  _id: Scalars['ID']['output'];
+  daysUnassigned: Scalars['Int']['output'];
+  email: Scalars['String']['output'];
+  firstName: Scalars['String']['output'];
+  firstPurchaseAt: Scalars['Date']['output'];
+  lastName: Scalars['String']['output'];
+  phone?: Maybe<Scalars['String']['output']>;
+  planCount: Scalars['Int']['output'];
+};
+
+export type UnassignedCustomerListResponse = {
+  __typename?: 'UnassignedCustomerListResponse';
+  count: Scalars['Int']['output'];
+  results: Array<UnassignedCustomer>;
 };
 
 export type UpcomingPayment = {
@@ -7964,6 +8289,56 @@ export type GetHamperLeaderboardQueryVariables = Exact<{
 
 export type GetHamperLeaderboardQuery = { __typename?: 'Query', getHamperLeaderboard: Array<{ __typename?: 'HamperLeaderboardEntry', email: string, hamperCount: number, name: string, numberOfReferredUsers: number, phoneNumber: string, referrerId: string, totalAmountPaid: number, totalAssetValue: number, totalBalance: number, totalLandPrice: number, totalSqmSold: number }> };
 
+export type GetCsManagerDashboardQueryVariables = Exact<{
+  managerId: Scalars['ID']['input'];
+  month?: InputMaybe<Scalars['Int']['input']>;
+  year?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+}>;
+
+
+export type GetCsManagerDashboardQuery = { __typename?: 'Query', getCSManagerDashboard: { __typename?: 'CSManagerDashboardResponse', plansTotal: number, period: { __typename?: 'CSManagerPeriod', periodType: string, month?: number | null, year?: number | null, start: any, end: any }, manager?: { __typename?: 'Admin', _id: string, userName: string, email: string, role: string } | null, target: { __typename?: 'CSManagerTargets', allocatedTarget: number, allocatedSoFar: number, onboardedTarget: number, onboardedSoFar: number, deedsDeliveredTarget: number, deedsDeliveredSoFar: number, performanceScoreTarget: number, performanceScoreSoFar: number }, performanceScore: { __typename?: 'CSManagerPerformanceScore', score: number, allocatedComponent: number, onboardedComponent: number, deedsComponent: number, target: number, actual: number, ratingCount: number }, obligation: { __typename?: 'CSManagerObligation', paidNotAllocatedThisPeriod: number }, backlogs: { __typename?: 'CSManagerBacklogs', allocation: { __typename?: 'AgeSplitBacklog', total: number, thisMonth: number, lastMonth: number, older: number }, onboarding: { __typename?: 'OnboardingBacklog', total: number, callPending: number, confirmPending: number, disputed: number }, doa: { __typename?: 'AgeSplitBacklog', total: number, thisMonth: number, lastMonth: number, older: number } }, portfolio: { __typename?: 'CSManagerPortfolio', totalAssigned: number, completedPayment: number, withinPaymentPeriod: number, closeToDefaulting: number }, plans: Array<{ __typename?: 'PlanRow', planId: string, priorPlansCount: number, asset: string, product: FlexOrFullownership, purchaseDate: any, paymentStatus: PaymentStatus, paymentLabel: string, onboarding: OnboardingStatus, allocation: AllocationStatus, allocationLabel?: string | null, doa: DoaStatus, doaLabel?: string | null, lastActivityAt: any, customer: { __typename?: 'PlanRowCustomer', id: string, firstName: string, lastName: string, email: string } }> } };
+
+export type AddCsManagerMutationVariables = Exact<{
+  managerId: Scalars['ID']['input'];
+}>;
+
+
+export type AddCsManagerMutation = { __typename?: 'Mutation', addCSManager: { __typename?: 'CSManagerAssignmentType', _id: string, manager: string, assigned_from: any, assigned_to?: any | null, created_by: string, createdAt?: any | null, updatedAt?: any | null } };
+
+export type RemoveCsManagerMutationVariables = Exact<{
+  managerId: Scalars['ID']['input'];
+}>;
+
+
+export type RemoveCsManagerMutation = { __typename?: 'Mutation', removeCSManager: { __typename?: 'CSManagerAssignmentType', _id: string, manager: string, assigned_from: any, assigned_to?: any | null, created_by: string, createdAt?: any | null, updatedAt?: any | null } };
+
+export type AssignCustomersToCsManagerMutationVariables = Exact<{
+  input: AssignCustomersToCsmInput;
+}>;
+
+
+export type AssignCustomersToCsManagerMutation = { __typename?: 'Mutation', assignCustomersToCSManager: { __typename?: 'AssignCustomersResult', assigned: number, managerId: string } };
+
+export type ListAdminsForCsmPickerQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type ListAdminsForCsmPickerQuery = { __typename?: 'Query', getAllAdminWithRoles: { __typename?: 'AdminRoleResponse', data: Array<{ __typename?: 'AdminRoles', adminId: string, adminName: string, adminEmail: string, role: string }> } };
+
+export type ListCsManagersQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type ListCsManagersQuery = { __typename?: 'Query', listCSManagers: Array<{ __typename?: 'CSManagerSummary', _id: string, assignedCustomersCount: number, assignedPlansCount: number, currentPeriodScore?: number | null, activeSince: any, manager: { __typename?: 'Admin', _id: string, userName: string, email: string, role: string } }> };
+
+export type ListUnassignedCustomersQueryVariables = Exact<{
+  page?: InputMaybe<Scalars['Int']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+}>;
+
+
+export type ListUnassignedCustomersQuery = { __typename?: 'Query', listUnassignedCustomers: { __typename?: 'UnassignedCustomerListResponse', count: number, results: Array<{ __typename?: 'UnassignedCustomer', _id: string, firstName: string, lastName: string, email: string, phone?: string | null, firstPurchaseAt: any, daysUnassigned: number, planCount: number }> } };
+
 export type DashboardQuickOverview_DataFragment = { __typename?: 'AdminDashboard', users?: number | null, monthly_recurring_revenue?: number | null, associate_users?: number | null, associate_pro_users?: number | null, total_asset?: number | null, default_users?: number | null, suspended_users?: number | null, suspended_payment_plans?: number | null, total_payable?: number | null, sales?: number | null, inflow?: number | null, outflow?: number | null, total_wallet_balance?: number | null } & { ' $fragmentName'?: 'DashboardQuickOverview_DataFragment' };
 
 export type TopAssociates_DataFragment = { __typename?: 'UserReferralAdmin', userName: string, email: string, firstName: string, lastName: string, amount_brought?: number | null, no_of_referral?: number | null, phoneNumber: string } & { ' $fragmentName'?: 'TopAssociates_DataFragment' };
@@ -8645,6 +9020,13 @@ export const GetCampaignPaymentPlansDocument = {"kind":"Document","definitions":
 export const GetRaffleTicketsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetRaffleTickets"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ticketType"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"TicketTypeFilter"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getRaffleTickets"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"ticketType"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ticketType"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"referral_ticket"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"ticket_id"}},{"kind":"Field","name":{"kind":"Name","value":"user_id"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"user_id"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}}]}},{"kind":"Field","name":{"kind":"Name","value":"asset_name"}},{"kind":"Field","name":{"kind":"Name","value":"ticket_id"}},{"kind":"Field","name":{"kind":"Name","value":"total_size"}},{"kind":"Field","name":{"kind":"Name","value":"units_purchased"}},{"kind":"Field","name":{"kind":"Name","value":"size_purchased"}},{"kind":"Field","name":{"kind":"Name","value":"created_date"}}]}}]}}]}}]} as unknown as DocumentNode<GetRaffleTicketsQuery, GetRaffleTicketsQueryVariables>;
 export const GetHamperTransactionsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetHamperTransactions"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getCampaignPaymentPlans"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"count"}},{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"assetName"}},{"kind":"Field","name":{"kind":"Name","value":"dateStarted"}},{"kind":"Field","name":{"kind":"Name","value":"documentAmountPaid"}},{"kind":"Field","name":{"kind":"Name","value":"documentPrice"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"landAmountPaid"}},{"kind":"Field","name":{"kind":"Name","value":"landPrice"}},{"kind":"Field","name":{"kind":"Name","value":"monthsOfSubscription"}},{"kind":"Field","name":{"kind":"Name","value":"nextDateOfPayment"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"size"}},{"kind":"Field","name":{"kind":"Name","value":"unit"}},{"kind":"Field","name":{"kind":"Name","value":"userId"}}]}}]}}]}}]} as unknown as DocumentNode<GetHamperTransactionsQuery, GetHamperTransactionsQueryVariables>;
 export const GetHamperLeaderboardDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetHamperLeaderboard"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"startDate"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"endDate"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getHamperLeaderboard"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"startDate"},"value":{"kind":"Variable","name":{"kind":"Name","value":"startDate"}}},{"kind":"Argument","name":{"kind":"Name","value":"endDate"},"value":{"kind":"Variable","name":{"kind":"Name","value":"endDate"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"hamperCount"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"numberOfReferredUsers"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}},{"kind":"Field","name":{"kind":"Name","value":"referrerId"}},{"kind":"Field","name":{"kind":"Name","value":"totalAmountPaid"}},{"kind":"Field","name":{"kind":"Name","value":"totalAssetValue"}},{"kind":"Field","name":{"kind":"Name","value":"totalBalance"}},{"kind":"Field","name":{"kind":"Name","value":"totalLandPrice"}},{"kind":"Field","name":{"kind":"Name","value":"totalSqmSold"}}]}}]}}]} as unknown as DocumentNode<GetHamperLeaderboardQuery, GetHamperLeaderboardQueryVariables>;
+export const GetCsManagerDashboardDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetCSManagerDashboard"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"month"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"year"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getCSManagerDashboard"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"managerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}}},{"kind":"Argument","name":{"kind":"Name","value":"month"},"value":{"kind":"Variable","name":{"kind":"Name","value":"month"}}},{"kind":"Argument","name":{"kind":"Name","value":"year"},"value":{"kind":"Variable","name":{"kind":"Name","value":"year"}}},{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"period"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"periodType"}},{"kind":"Field","name":{"kind":"Name","value":"month"}},{"kind":"Field","name":{"kind":"Name","value":"year"}},{"kind":"Field","name":{"kind":"Name","value":"start"}},{"kind":"Field","name":{"kind":"Name","value":"end"}}]}},{"kind":"Field","name":{"kind":"Name","value":"manager"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"role"}}]}},{"kind":"Field","name":{"kind":"Name","value":"target"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"allocatedTarget"}},{"kind":"Field","name":{"kind":"Name","value":"allocatedSoFar"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedTarget"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedSoFar"}},{"kind":"Field","name":{"kind":"Name","value":"deedsDeliveredTarget"}},{"kind":"Field","name":{"kind":"Name","value":"deedsDeliveredSoFar"}},{"kind":"Field","name":{"kind":"Name","value":"performanceScoreTarget"}},{"kind":"Field","name":{"kind":"Name","value":"performanceScoreSoFar"}}]}},{"kind":"Field","name":{"kind":"Name","value":"performanceScore"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"score"}},{"kind":"Field","name":{"kind":"Name","value":"allocatedComponent"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedComponent"}},{"kind":"Field","name":{"kind":"Name","value":"deedsComponent"}},{"kind":"Field","name":{"kind":"Name","value":"target"}},{"kind":"Field","name":{"kind":"Name","value":"actual"}},{"kind":"Field","name":{"kind":"Name","value":"ratingCount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"obligation"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"paidNotAllocatedThisPeriod"}}]}},{"kind":"Field","name":{"kind":"Name","value":"backlogs"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"allocation"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"total"}},{"kind":"Field","name":{"kind":"Name","value":"thisMonth"}},{"kind":"Field","name":{"kind":"Name","value":"lastMonth"}},{"kind":"Field","name":{"kind":"Name","value":"older"}}]}},{"kind":"Field","name":{"kind":"Name","value":"onboarding"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"total"}},{"kind":"Field","name":{"kind":"Name","value":"callPending"}},{"kind":"Field","name":{"kind":"Name","value":"confirmPending"}},{"kind":"Field","name":{"kind":"Name","value":"disputed"}}]}},{"kind":"Field","name":{"kind":"Name","value":"doa"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"total"}},{"kind":"Field","name":{"kind":"Name","value":"thisMonth"}},{"kind":"Field","name":{"kind":"Name","value":"lastMonth"}},{"kind":"Field","name":{"kind":"Name","value":"older"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"portfolio"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"totalAssigned"}},{"kind":"Field","name":{"kind":"Name","value":"completedPayment"}},{"kind":"Field","name":{"kind":"Name","value":"withinPaymentPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"closeToDefaulting"}}]}},{"kind":"Field","name":{"kind":"Name","value":"plans"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"planId"}},{"kind":"Field","name":{"kind":"Name","value":"customer"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}},{"kind":"Field","name":{"kind":"Name","value":"priorPlansCount"}},{"kind":"Field","name":{"kind":"Name","value":"asset"}},{"kind":"Field","name":{"kind":"Name","value":"product"}},{"kind":"Field","name":{"kind":"Name","value":"purchaseDate"}},{"kind":"Field","name":{"kind":"Name","value":"paymentStatus"}},{"kind":"Field","name":{"kind":"Name","value":"paymentLabel"}},{"kind":"Field","name":{"kind":"Name","value":"onboarding"}},{"kind":"Field","name":{"kind":"Name","value":"allocation"}},{"kind":"Field","name":{"kind":"Name","value":"allocationLabel"}},{"kind":"Field","name":{"kind":"Name","value":"doa"}},{"kind":"Field","name":{"kind":"Name","value":"doaLabel"}},{"kind":"Field","name":{"kind":"Name","value":"lastActivityAt"}}]}},{"kind":"Field","name":{"kind":"Name","value":"plansTotal"}}]}}]}}]} as unknown as DocumentNode<GetCsManagerDashboardQuery, GetCsManagerDashboardQueryVariables>;
+export const AddCsManagerDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"AddCSManager"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"addCSManager"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"managerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"manager"}},{"kind":"Field","name":{"kind":"Name","value":"assigned_from"}},{"kind":"Field","name":{"kind":"Name","value":"assigned_to"}},{"kind":"Field","name":{"kind":"Name","value":"created_by"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<AddCsManagerMutation, AddCsManagerMutationVariables>;
+export const RemoveCsManagerDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"RemoveCSManager"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"removeCSManager"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"managerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"manager"}},{"kind":"Field","name":{"kind":"Name","value":"assigned_from"}},{"kind":"Field","name":{"kind":"Name","value":"assigned_to"}},{"kind":"Field","name":{"kind":"Name","value":"created_by"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<RemoveCsManagerMutation, RemoveCsManagerMutationVariables>;
+export const AssignCustomersToCsManagerDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"AssignCustomersToCSManager"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"AssignCustomersToCSMInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"assignCustomersToCSManager"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"assigned"}},{"kind":"Field","name":{"kind":"Name","value":"managerId"}}]}}]}}]} as unknown as DocumentNode<AssignCustomersToCsManagerMutation, AssignCustomersToCsManagerMutationVariables>;
+export const ListAdminsForCsmPickerDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ListAdminsForCSMPicker"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAllAdminWithRoles"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"adminId"}},{"kind":"Field","name":{"kind":"Name","value":"adminName"}},{"kind":"Field","name":{"kind":"Name","value":"adminEmail"}},{"kind":"Field","name":{"kind":"Name","value":"role"}}]}}]}}]}}]} as unknown as DocumentNode<ListAdminsForCsmPickerQuery, ListAdminsForCsmPickerQueryVariables>;
+export const ListCsManagersDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ListCSManagers"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"listCSManagers"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"manager"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"role"}}]}},{"kind":"Field","name":{"kind":"Name","value":"assignedCustomersCount"}},{"kind":"Field","name":{"kind":"Name","value":"assignedPlansCount"}},{"kind":"Field","name":{"kind":"Name","value":"currentPeriodScore"}},{"kind":"Field","name":{"kind":"Name","value":"activeSince"}}]}}]}}]} as unknown as DocumentNode<ListCsManagersQuery, ListCsManagersQueryVariables>;
+export const ListUnassignedCustomersDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ListUnassignedCustomers"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"listUnassignedCustomers"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"count"}},{"kind":"Field","name":{"kind":"Name","value":"results"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phone"}},{"kind":"Field","name":{"kind":"Name","value":"firstPurchaseAt"}},{"kind":"Field","name":{"kind":"Name","value":"daysUnassigned"}},{"kind":"Field","name":{"kind":"Name","value":"planCount"}}]}}]}}]}}]} as unknown as DocumentNode<ListUnassignedCustomersQuery, ListUnassignedCustomersQueryVariables>;
 export const GetAdminDashboardDetailsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetAdminDashboardDetails"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"startDate"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"endDate"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAdminDashboardDetails"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"startDate"},"value":{"kind":"Variable","name":{"kind":"Name","value":"startDate"}}},{"kind":"Argument","name":{"kind":"Name","value":"endDate"},"value":{"kind":"Variable","name":{"kind":"Name","value":"endDate"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"DashboardQuickOverview_data"}},{"kind":"Field","name":{"kind":"Name","value":"top_associates"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"TopAssociates_data"}}]}},{"kind":"Field","name":{"kind":"Name","value":"top_selling_prop"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"TopSellingProducts_data"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"DashboardQuickOverview_data"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"AdminDashboard"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"users"}},{"kind":"Field","name":{"kind":"Name","value":"monthly_recurring_revenue"}},{"kind":"Field","name":{"kind":"Name","value":"associate_users"}},{"kind":"Field","name":{"kind":"Name","value":"associate_pro_users"}},{"kind":"Field","name":{"kind":"Name","value":"total_asset"}},{"kind":"Field","name":{"kind":"Name","value":"default_users"}},{"kind":"Field","name":{"kind":"Name","value":"suspended_users"}},{"kind":"Field","name":{"kind":"Name","value":"suspended_payment_plans"}},{"kind":"Field","name":{"kind":"Name","value":"total_payable"}},{"kind":"Field","name":{"kind":"Name","value":"sales"}},{"kind":"Field","name":{"kind":"Name","value":"inflow"}},{"kind":"Field","name":{"kind":"Name","value":"outflow"}},{"kind":"Field","name":{"kind":"Name","value":"total_wallet_balance"}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"TopAssociates_data"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"UserReferralAdmin"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"amount_brought"}},{"kind":"Field","name":{"kind":"Name","value":"no_of_referral"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"TopSellingProducts_data"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"AssetDashBoard"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"asset_name"}},{"kind":"Field","name":{"kind":"Name","value":"asset_pictures"}},{"kind":"Field","name":{"kind":"Name","value":"asset_location"}},{"kind":"Field","name":{"kind":"Name","value":"units_subscribed"}},{"kind":"Field","name":{"kind":"Name","value":"amount_broughtin"}}]}}]} as unknown as DocumentNode<GetAdminDashboardDetailsQuery, GetAdminDashboardDetailsQueryVariables>;
 export const InviteAdminDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"InviteAdmin"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"SubAdminInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createSubAdmin"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"subAdminInput"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}]}]}}]} as unknown as DocumentNode<InviteAdminMutation, InviteAdminMutationVariables>;
 export const ResolvePurchaseDisputeDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"ResolvePurchaseDispute"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"planId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"note"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"requestReconfirm"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Boolean"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"resolvePurchaseDispute"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"planId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"planId"}}},{"kind":"Argument","name":{"kind":"Name","value":"note"},"value":{"kind":"Variable","name":{"kind":"Name","value":"note"}}},{"kind":"Argument","name":{"kind":"Name","value":"requestReconfirm"},"value":{"kind":"Variable","name":{"kind":"Name","value":"requestReconfirm"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"planId"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"resent"}}]}}]}}]} as unknown as DocumentNode<ResolvePurchaseDisputeMutation, ResolvePurchaseDisputeMutationVariables>;

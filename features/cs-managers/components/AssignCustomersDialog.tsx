@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useCSManagersList } from "../hooks/use-cs-managers-list";
 import { useAssignCustomersToCSM } from "../hooks/use-cs-manager-mutations";
-import type { CSManagerSummary } from "../types";
+import type { CSManagerSummary } from "./CSManagersListTable";
 
 interface Props {
   open: boolean;
@@ -27,12 +27,17 @@ interface Props {
   onAssigned?: () => void;
 }
 
-const initialsOf = (m: CSManagerSummary["manager"]) =>
-  ((m.lastName?.[0] ?? "") + (m.firstName?.[0] ?? "")).toUpperCase() ||
-  m.email[0].toUpperCase();
+// Base Admin type only ships userName + email — same shim as the snapshot.
+const initialsOf = (m: CSManagerSummary["manager"]) => {
+  const source = m.userName || m.email || "";
+  const parts = source.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+  return source.slice(0, 2).toUpperCase() || "?";
+};
 
-const fullName = (m: CSManagerSummary["manager"]) =>
-  `${m.lastName ?? ""} ${m.firstName ?? ""}`.trim() || m.email;
+const fullName = (m: CSManagerSummary["manager"]) => m.userName || m.email;
 
 export function AssignCustomersDialog({
   open,

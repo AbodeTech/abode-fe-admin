@@ -9,7 +9,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import type { CSManagerSummary } from "../types";
+import type { ListCsManagersQuery } from "@/lib/gql/graphql";
+
+/** Row shape matches the operation's actual selection set, not the
+ * fuller schema-level CSManagerSummary (which requires all Admin
+ * fields). Keeps prop types honest about what the query returns. */
+export type CSManagerSummary = ListCsManagersQuery["listCSManagers"][number];
 
 interface Props {
   managers: CSManagerSummary[];
@@ -26,15 +31,22 @@ const formatDate = (iso: string) => {
   return `${MONTHS_SHORT[d.getMonth()]} ${d.getFullYear()}`;
 };
 
-const initialsOf = (m: CSManagerSummary["manager"]) =>
-  ((m.lastName?.[0] ?? "") + (m.firstName?.[0] ?? "")).toUpperCase() ||
-  m.email[0].toUpperCase();
+// Base Admin type gives us userName + email (no firstName/lastName), so
+// the row falls back to userName-derived initials + display. See
+// CSManagerSnapshot for the same shim.
+const initialsOf = (m: CSManagerSummary["manager"]) => {
+  const source = m.userName || m.email || "";
+  const parts = source.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+  return source.slice(0, 2).toUpperCase() || "?";
+};
 
-const fullName = (m: CSManagerSummary["manager"]) =>
-  `${m.lastName ?? ""} ${m.firstName ?? ""}`.trim() || m.email;
+const fullName = (m: CSManagerSummary["manager"]) => m.userName || m.email;
 
-const scoreClass = (score: number | null) => {
-  if (score === null) return "bg-gray-100 text-gray-500";
+const scoreClass = (score: number | null | undefined) => {
+  if (score == null) return "bg-gray-100 text-gray-500";
   if (score >= 85) return "bg-[#E0F2F1] text-[#00695C]";
   if (score >= 50) return "bg-amber-50 text-amber-700";
   return "bg-red-50 text-[#AD1F2A]";
@@ -96,7 +108,7 @@ export function CSManagersListTable({ managers, onRemove }: Props) {
                         scoreClass(m.currentPeriodScore)
                       )}
                     >
-                      {m.currentPeriodScore === null
+                      {m.currentPeriodScore == null
                         ? "No score yet"
                         : `${m.currentPeriodScore.toFixed(1)} / 100`}
                     </span>

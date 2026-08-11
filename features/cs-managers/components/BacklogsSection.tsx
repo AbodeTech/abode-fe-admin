@@ -2,7 +2,7 @@
 
 import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { CSManagerBacklogs } from "../types";
+import type { CsManagerBacklogs as CSManagerBacklogs } from "@/lib/gql/graphql";
 
 interface Props {
   backlogs: CSManagerBacklogs;

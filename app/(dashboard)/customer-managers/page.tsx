@@ -17,7 +17,9 @@ export default function CustomerManagersListPage() {
   const [addOpen, setAddOpen] = useState(false);
 
   const { data: managers = [], isLoading, isError, error } = useCSManagersList();
-  const { data: unassigned = [] } = useUnassignedCustomers();
+  // BE returns a paginated response — banner just wants the count.
+  const { data: unassignedResponse } = useUnassignedCustomers();
+  const unassignedCount = unassignedResponse?.count ?? 0;
   const { mutateAsync: removeCSM } = useRemoveCSManager();
 
   const handleRemove = async (managerId: string, displayName: string) => {
@@ -53,12 +55,12 @@ export default function CustomerManagersListPage() {
         </Button>
       </div>
 
-      {unassigned.length > 0 && (
+      {unassignedCount > 0 && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2 text-sm text-amber-800">
             <AlertCircle className="h-4 w-4 shrink-0" />
             <span>
-              <b className="font-semibold">{unassigned.length} customer{unassigned.length === 1 ? "" : "s"}</b>{" "}
+              <b className="font-semibold">{unassignedCount} customer{unassignedCount === 1 ? "" : "s"}</b>{" "}
               waiting to be assigned to a CS Manager.
             </span>
           </div>
@@ -88,11 +90,7 @@ export default function CustomerManagersListPage() {
         <CSManagersListTable
           managers={managers}
           onRemove={(m) =>
-            handleRemove(
-              m.manager._id,
-              `${m.manager.lastName ?? ""} ${m.manager.firstName ?? ""}`.trim() ||
-                m.manager.email
-            )
+            handleRemove(m.manager._id, m.manager.userName || m.manager.email)
           }
         />
       )}

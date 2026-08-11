@@ -5,7 +5,7 @@ import { AlertTriangle, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
-import type { UnassignedCustomer } from "../types";
+import type { UnassignedCustomer } from "@/lib/gql/graphql";
 
 interface Props {
   customers: UnassignedCustomer[];
