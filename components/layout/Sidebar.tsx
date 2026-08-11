@@ -30,7 +30,6 @@ import {
   UserPlus,
   Users,
   Headphones,
-  Zap,
 } from "lucide-react";
 
 import LogOutModal from "@/components/settings/LogOutModal";
@@ -82,14 +81,6 @@ const navGroups = [
     icon: <Headphones />,
     items: [
       { name: "CS Manager Performance", link: "/customer-managers", icon: <ShieldCheck /> },
-    ]
-  },
-  {
-    title: "Flex",
-    isCollapsible: true,
-    icon: <Zap />,
-    items: [
-      { name: "FLEX Manager Performance", link: "/flex-manager", icon: <ShieldCheck /> },
     ]
   },
   {
