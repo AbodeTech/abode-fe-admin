@@ -19,6 +19,7 @@ import {
   LandPlot,
   LayoutDashboard,
   LogOut,
+  NotebookPen,
   Percent,
   ScrollText,
   Settings,
@@ -47,6 +48,7 @@ const navGroups = [
       { name: "Agency", link: "/agency", icon: <Building2 /> },
       { name: "Allocation", link: "/allocation", icon: <Building2 /> },
       { name: "Purchase Confirmations", link: "/purchase-confirmations", icon: <CheckCircle /> },
+      { name: "Flex Leads", link: "/flex-leads", icon: <NotebookPen /> },
       { name: "Marketplace", link: "/marketplace", icon: <Store /> },
       { name: "Requests", link: "/requests", icon: <ClipboardList /> },
     ]
