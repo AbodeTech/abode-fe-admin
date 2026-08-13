@@ -1,19 +1,24 @@
 "use client";
 
 import { Suspense, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Info } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/shared/Pagination";
 import { PageContentLoader } from "@/components/shared/page-content-loader";
+import { useHasPermission } from "@/hooks/use-admin-permission";
 import {
   ApproveUpgradeDialog,
   DeclineUpgradeDialog,
   DEFAULT_UPGRADE_LIMIT,
+  ManualUpgradeDialog,
+  UpgradeExportButton,
   UpgradeFilters,
   UpgradesTable,
   useUpgrades,
   type Upgrade,
+  type UpgradeListFilters,
   type UpgradePaymentMethod,
   type UpgradeStatus,
   type UserTier,
@@ -32,24 +37,34 @@ function UpgradesPageContent() {
   const searchParams = useSearchParams();
 
   const page = Number(searchParams.get("page")) || 1;
+  const search = searchParams.get("search") ?? undefined;
   const status = (searchParams.get("status") as UpgradeStatus) ?? undefined;
   const paymentMethod = (searchParams.get("payment_method") as UpgradePaymentMethod) ?? undefined;
   const toTier = (searchParams.get("to_tier") as UserTier) ?? undefined;
 
+  // Both review actions are guarded by `modify_referral_status` on the BE, so
+  // without it the buttons could only ever produce a 403.
+  const canReview = useHasPermission("modify_referral_status");
+
   const [approving, setApproving] = useState<Upgrade | null>(null);
   const [declining, setDeclining] = useState<Upgrade | null>(null);
 
-  const { data, isLoading, error } = useUpgrades({
-    page,
-    limit: DEFAULT_UPGRADE_LIMIT,
+  const filters: UpgradeListFilters = {
+    search,
     status,
     payment_method: paymentMethod,
     to_tier: toTier,
+  };
+
+  const { data, isLoading, error } = useUpgrades({
+    ...filters,
+    page,
+    limit: DEFAULT_UPGRADE_LIMIT,
   });
 
   const rows = data?.items ?? [];
   const total = data?.meta.total ?? 0;
-  const hasFilters = Boolean(status || paymentMethod || toTier);
+  const hasFilters = Boolean(search || status || paymentMethod || toTier);
 
   if (error) {
     return (
@@ -62,29 +77,31 @@ function UpgradesPageContent() {
 
   return (
     <div className="space-y-4">
-      <UpgradeFilters />
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+        <UpgradeExportButton filters={filters} />
+        {canReview ? <ManualUpgradeDialog /> : null}
+        <Button asChild className="w-full shrink-0 sm:w-auto">
+          <Link href="/associate-upgrade/coupons">Coupon management</Link>
+        </Button>
+      </div>
 
-      {/*
-        ⛔ ticket 13 — applicant and referrer names aren't populated yet, so
-        they render as em-dashes. Said out loud so the blanks read as a known
-        gap rather than as missing data.
-      */}
-      <p className="flex items-start gap-2 text-sm text-muted-foreground">
-        <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-        Applicant and referrer names aren&apos;t available from the API yet — they show as
-        &ldquo;—&rdquo;. Hover one to copy its ID. Everything else on the row is live.
-      </p>
+      <UpgradeFilters />
 
       <UpgradesTable
         rows={rows}
         isLoading={isLoading}
+        canReview={canReview}
         onApprove={setApproving}
         onDecline={setDeclining}
         emptyState={
           hasFilters ? (
             <EmptyState
               title="No upgrades match these filters"
-              body="Clear or widen the filters to see the rest of the queue."
+              body={
+                search
+                  ? "Search matches the applicant's name, email or username — not the referrer's. Clear or widen the filters to see the rest of the queue."
+                  : "Clear or widen the filters to see the rest of the queue."
+              }
             />
           ) : (
             <EmptyState

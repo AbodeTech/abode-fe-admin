@@ -33,7 +33,7 @@ everything analytical or campaign-related.
 | `roles-permissions` | ✅ Complete — roles, permissions, admins, invite |
 | `admin-logs` | ✅ `GET /admin/audit-logs` |
 | `commission-config` | ✅ Complete — config + overrides + audit |
-| `associate-upgrade` | ✅ Complete — upgrades, approve/decline, manual upgrade |
+| `associate-upgrade` | ✅ Complete — queue (populated + searchable), approve/decline, manual upgrade with fee + commission |
 | `requests` | ✅ Complete — admin list + status change |
 | `agency` | ⚠️ Partial — list/detail/activate/suspend only; no create, no dashboard, no transactions |
 | `auth` | ✅ Admin login/me/change-password |
@@ -143,12 +143,12 @@ BE also exposes `GET /admin/commission/audit/:paymentPlanId` and
 
 | Operation | REST | Status |
 |---|---|---|
-| `GetAllUpgradeRequests` | `GET /admin/referrals/upgrades` | ✅ real |
-| `ApproveUpgradeToAssociate`, `ApproveUpgradeToAssociatePro` | `PATCH /admin/referrals/upgrades/:id/approve` | ⚠️ adapt — one endpoint, tier in body |
+| `GetAllUpgradeRequests` | `GET /admin/referrals/upgrades` | ✅ real — populated refs + `search` (tickets 13/14, 2026-08-13) |
+| `ApproveUpgradeToAssociate`, `ApproveUpgradeToAssociatePro` | `PATCH /admin/referrals/upgrades/:id/approve` | ✅ real — **no body**; the target tier is already on the upgrade row |
 | `DeclineUpgradeRequest` | `PATCH /admin/referrals/upgrades/:id/decline` | ✅ real |
-| `ManualUpgradeToAssociatePro` | `POST /admin/users/:id/manual-upgrade` | ✅ real |
-| `SearchUpgradeUsers` | `GET /admin/users?search=` | ⚠️ adapt |
-| `GetActiveCoupons`, `CreateCoupon`, `UpdateCoupon`, `UpdateCouponStatus`, `DeleteCoupon` | `/admin/coupons` (GET/POST); `/admin/coupons/:code` (GET/PATCH/DELETE); `/admin/coupons/:code/status` (PATCH); `/admin/coupons/:code/redemptions` (GET) | ✅ real — requires `manage_promotions` |
+| `ManualUpgradeToAssociatePro` | `POST /admin/users/:id/manual-upgrade` | ✅ real — `to_tier`, `fee_amount?`, `pay_commission?`, `reason` (min 20); no `paymentUrl` |
+| `SearchUpgradeUsers` | `GET /admin/users?search=` | ✅ real — handler wired 2026-08-13 (ticket 2) |
+| `GetActiveCoupons`, `CreateCoupon`, `UpdateCoupon`, `UpdateCouponStatus`, `DeleteCoupon` | `/promotions/coupons` (GET/POST/PATCH/DELETE) | ✅ real — `UpdateCouponStatus` folds into `PATCH /promotions/coupons/:id` |
 | `ExportUpgradeRequests` | — | 🚧 provisional (see Exports) |
 
 ## Requests — `features/requests` (6 ops)
@@ -238,6 +238,13 @@ Options to settle with BE: a per-resource `?format=csv` param, dedicated
 `/admin/*/export` endpoints, or keep generating CSVs client-side from a
 full-page fetch (what the mock does today).
 
+**Decision (2026-08-13): client-side, per feature, no BE ticket.** Exports page
+the existing list endpoint and build the CSV in the browser. This is honest work
+— we hold every row we write — and it needs no new contract. The cost is bounded
+by the page loop, so each export caps its page count and says in the UI when it
+stopped short rather than handing over a silently truncated file. Revisit only
+if an export needs data the list endpoint doesn't return.
+
 ### Statistics / dashboards
 
 A recurring pattern: nearly every feature has a `*Statistics` / `*Dashboard`
@@ -248,7 +255,7 @@ at once. Worth proposing as one design rather than ten tickets.
 ### Contract questions
 
 - `POST /admin/assets` — does one endpoint take both flex and full-ownership via an offer-type discriminator, or are separate paths wanted?
-- `PATCH /admin/referrals/upgrades/:id/approve` — is the target tier in the body, or should approve be tier-specific?
-- `GET /admin/users` — which filters does `AdminUserFilterDto` actually accept? The FE needs at minimum `search`, `is_suspended`, and a defaulting flag. Note `forbidNonWhitelisted` makes a wrong param a hard 400.
+- ~~`PATCH /admin/referrals/upgrades/:id/approve` — is the target tier in the body, or should approve be tier-specific?~~ **Answered 2026-08-13: neither.** The handler is `approve(@Param('id'), @CurrentUser())` — no body at all. `to_tier` is already on the upgrade row, set when the applicant submitted. One endpoint, empty body.
+- ~~`GET /admin/users` — which filters does `AdminUserFilterDto` actually accept?~~ **Answered 2026-08-13** against the deployed spec: exactly `search`, `referral_status`, `is_suspended`, `page`, `limit`. Anything else is a hard 400 under `forbidNonWhitelisted`. Handler is wired (ticket 2).
 - Are BE admin roles fixed (`admin|subadmin|moderator|viewer`), or can the FE create custom roles as `CreateRole` implies?
 - Should `/agencies` gain create + dashboard + transactions, or is agency management out of scope for v2?

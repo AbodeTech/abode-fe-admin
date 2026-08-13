@@ -13,8 +13,11 @@ export const DEFAULT_WITHDRAWAL_LIMIT = 20;
 /**
  * GET /admin/withdrawals — the review queue, newest first.
  *
- * No search (ticket 14-family). Refs may be bare ObjectIds or populated
- * objects (ticket 13); the schema accepts both.
+ * Filtering is all server-side: `search`, `admin_status`, `payment_provider`.
+ * `search` resolves through `userRepo.findIdsBySearch`, a regex over the
+ * requester's `firstName`, `lastName`, `email` and `userName` — confirmed
+ * against the deployed spec on 2026-08-13. It matches the **requester only**,
+ * never the destination account name.
  */
 export const useWithdrawals = (filters?: WithdrawalListFilters) => {
   const { page = 1, limit = DEFAULT_WITHDRAWAL_LIMIT, ...rest } = filters ?? {};
@@ -26,6 +29,7 @@ export const useWithdrawals = (filters?: WithdrawalListFilters) => {
         params: {
           page,
           limit,
+          search: rest.search || undefined,
           admin_status: rest.admin_status,
           payment_provider: rest.payment_provider,
         },

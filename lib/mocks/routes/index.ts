@@ -3,6 +3,7 @@ import { assetRoutes } from './assets';
 import { authRoutes } from './auth';
 import { commissionRoutes } from './commission';
 import { upgradeRoutes } from './upgrades';
+import { userRoutes } from './users';
 import { withdrawalRoutes } from './withdrawals';
 import { assetTransactionRoutes } from './asset-transactions';
 import { couponRoutes } from './coupons';
@@ -31,11 +32,16 @@ import { couponRoutes } from './coupons';
  *               types return empty pages until their screens migrate) and
  *               /admin/acquisitions/flex/*. The wallet family
  *               (/admin/wallets/*) is unclaimed.
- * upgrades    — /admin/referrals/upgrades/*. Note the other admin referral
- *               routes (/admin/users/:id/manual-upgrade, referral-status,
- *               referrer, downlines) are unclaimed — they belong to whichever
- *               feature builds that UI.
- * coupons     — /admin/coupons*.
+ * upgrades    — /admin/referrals/upgrades/* and POST
+ *               /admin/users/:id/manual-upgrade (claimed 2026-08-13 — the
+ *               upgrade queue is where that UI lives). The remaining admin
+ *               referral routes (referral-status, referrer, downlines) are
+ *               unclaimed; they belong on a user detail page.
+ * users       — GET /admin/users, added for the shared UserPicker. The users
+ *               feature extends this table when it migrates rather than
+ *               re-registering the path.
+ * people.ts   — not a domain: the shared person fixtures every route populates
+ *               refs from, so one id means one person across all of them.
  * ============================================================ */
 
 let registered = false;
@@ -48,6 +54,7 @@ export function ensureRoutesRegistered(): void {
   registerRoutes(commissionRoutes);
   registerRoutes(assetRoutes);
   registerRoutes(upgradeRoutes);
+  registerRoutes(userRoutes);
   registerRoutes(withdrawalRoutes);
   registerRoutes(assetTransactionRoutes);
   registerRoutes(couponRoutes);

@@ -6,15 +6,19 @@ import { useSearchParams } from "next/navigation";
 import { Pagination } from "@/components/shared/Pagination";
 import { PageContentLoader } from "@/components/shared/page-content-loader";
 import {
+  ASSET_TYPES,
   DEFAULT_PURCHASE_LIMIT,
   PURCHASE_STATUSES,
   PurchaseFilters,
   PurchaseStatCards,
   PurchasesTable,
   ReviewPurchaseDialog,
+  SALES_TYPES,
   usePurchases,
+  type AssetType,
   type Purchase,
   type PurchaseStatus,
+  type SalesType,
 } from "@/features/asset-transactions";
 
 function parseEnum<T extends string>(value: string | null, allowed: readonly T[]): T | undefined {
@@ -33,18 +37,36 @@ function EmptyState({ title, body }: { title: string; body: string }) {
 function AssetTransactionsContent() {
   const searchParams = useSearchParams();
   const page = Number(searchParams.get("page")) || 1;
+  const search = searchParams.get("search") ?? undefined;
   const status = parseEnum<PurchaseStatus>(searchParams.get("status"), PURCHASE_STATUSES);
+  const salesType = parseEnum<SalesType>(searchParams.get("sales_type"), SALES_TYPES);
+  const assetType = parseEnum<AssetType>(searchParams.get("asset_type"), ASSET_TYPES);
+  const paymentMethod = searchParams.get("payment_method") ?? undefined;
+  const startDate = searchParams.get("start_date") ?? undefined;
+  const endDate = searchParams.get("end_date") ?? undefined;
   // Honoured from the URL for deep links (e.g. from a user detail page),
   // even though this page has no picker for it yet.
   const user = searchParams.get("user") ?? undefined;
 
   const [reviewing, setReviewing] = useState<Purchase | null>(null);
 
-  const { data, isLoading, error } = usePurchases({ page, status, user });
+  const { data, isLoading, error } = usePurchases({
+    page,
+    search,
+    status,
+    sales_type: salesType,
+    asset_type: assetType,
+    payment_method: paymentMethod,
+    start_date: startDate,
+    end_date: endDate,
+    user,
+  });
 
   const rows = data?.items ?? [];
   const total = data?.meta.total ?? 0;
-  const filtered = Boolean(status || user);
+  const filtered = Boolean(
+    search || status || salesType || assetType || paymentMethod || startDate || endDate || user
+  );
 
   return (
     <>
@@ -75,7 +97,11 @@ function AssetTransactionsContent() {
               filtered ? (
                 <EmptyState
                   title="No transactions match these filters"
-                  body="Clear or widen the filters to see the rest."
+                  body={
+                    salesType && assetType
+                      ? "Sales type and asset type both narrow the same field, so some combinations have no rows by definition — full ownership has document fees, flex does not."
+                      : "Clear or widen the filters to see the rest."
+                  }
                 />
               ) : (
                 <EmptyState title="No asset transactions yet" body="Purchases appear here as they happen." />

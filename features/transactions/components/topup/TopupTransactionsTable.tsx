@@ -6,7 +6,7 @@ import { User, CreditCard, DollarSign, Calendar, CheckCircle, Eye, Upload } from
 import Link from "next/link";
 import { TransactionStatus } from "@/components/shared/TransactionStatus";
 import { TransactionAction } from "@/components/shared/TransactionAction";
-import { ViewTransactionEvidence } from "../shared/ViewTransactionEvidence";
+import { ViewTransactionEvidence } from "@/components/shared/ViewTransactionEvidence";
 import { format } from "date-fns";
 import { graphql } from "@/lib/gql";
 import { FragmentType, useFragment } from "@/lib/gql";

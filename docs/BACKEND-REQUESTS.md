@@ -8,6 +8,74 @@ Target: `abode-be-v2`, branch `staging`, base path `/api/v1`.
 
 ---
 
+## Confirmed against the live deployment — 2026-08-13
+
+The source read below was checked against the running API's spec at
+`https://abode-be-v2-production.up.railway.app/api/docs-json` (which tracks
+`staging`). **139 paths, 156 operations, 69 schemas** — up from 93/103/49 on
+2026-07-28.
+
+Every query param and request DTO this frontend depends on is live:
+
+| Checked | Deployed spec says |
+|---|---|
+| `GET /admin/referrals/upgrades` | `search, status, payment_method, to_tier, page, limit` — **ticket 14 live** |
+| `GET /admin/withdrawals` | `admin_status, payment_provider, search, page, limit` — **the withdrawal queue has `search` too** |
+| `GET /admin/users` | `search, referral_status, is_suspended, page, limit` — **ticket 2 live**, and this answers the open filter question: those five, nothing else |
+| `ManualUpgradeDto` | `to_tier`, `fee_amount`, `pay_commission`, `reason`; required `[to_tier, reason]` — **ticket 15 live**, exactly as specified |
+| `PATCH …/upgrades/:id/approve` | **no `requestBody`** — settles the tier-in-the-body question for good |
+
+**Ticket 13 (populate) cannot be confirmed this way** — see the response-body
+gap below. It only shows in the UI: names on the queue rows instead of
+em-dashes. That is the one item here resting on a source read rather than an
+observation.
+
+**The response-body gap has not moved, and has grown in absolute terms:
+0 of 156 operations declare a 2xx response schema** (it was 0 of 103). Every Zod
+response schema in this repo is still a source read. Paths, query params and
+request DTOs are trustworthy; response shapes are not documented anywhere.
+
+---
+
+## Re-checked against staging source — 2026-08-13
+
+Read while auditing the associate upgrade page. **Four tickets landed since the
+last check**, and the frontend was still built around two of them being open —
+it was telling admins that data was unavailable while the backend was returning
+it.
+
+| Ticket | What shipped | Where |
+|---|---|---|
+| **2** | `GET /admin/users` and `/users/:id` are wired — `listUsers(dto)` / `getUser(id)` call `AdminService`, no more `{ message, dto }` stub | `admin/admin.controller.ts:75-87` |
+| **13** | Populate landed on **both** remaining queues | see below |
+| **14** | `UpgradeQueryDto.search` — matches name / email / username via `findUserIdsBySearch` (regex over `firstName`, `lastName`, `email`, `userName`) | `referral/dto/admin-referral.dto.ts`, `referral.repository.ts:255` |
+| **15** | `ManualUpgradeDto` gained `fee_amount?` and `pay_commission?`, and `manualUpgrade` **writes the Transaction and fires commission** — not just the DTO fields | `referral.service.ts:351-418` |
+
+Ticket 13 in detail — `findUpgradesPaginated` and `findTransactionsPaginated`
+both take a `populate` flag and both callers pass `true`:
+
+| Endpoint | Populated with |
+|---|---|
+| `GET /admin/referrals/upgrades` | `user` → `firstName lastName email userName phoneNumber referral_status`; `referrer` → `firstName lastName email userName` |
+| `GET /admin/withdrawals` | `user` → `firstName lastName email`; `bank_details_id` → `bank_name account_number account_name`; `reviewed_by` → `firstName lastName` |
+
+Ticket 15 is implemented as specified, including the part the ticket warned must
+not be missed: when `fee_amount > 0` a `Transaction` is created inside the same
+session and its id is passed to `fireForUpgrade`, so commission has the
+`sourceTransactionId` its idempotency index needs. Two behaviours worth knowing
+before building against it — neither is a defect, both need surfacing in the UI:
+
+- Commission fires only when `pay_commission && fee > 0 && target.referred_by`.
+  Asking for commission on a free tier change, or for a user with no referrer,
+  silently pays nobody.
+- A fee on a user with no wallet throws `PAYSTACK_INIT_FAILED` with
+  `reason: 'User has no wallet'` — a confusing error code for that cause.
+
+**Still open after this check:** the two fields in ticket 22, plus 3, 4, 5, 7,
+10, 16, 17, 19 (edit-tenor half), 20 and 21.
+
+---
+
 ## Verified against the deployment — 2026-07-28 (first check 2026-07-27)
 
 Checked against the live Swagger spec at
@@ -48,7 +116,7 @@ Two of those were **breaking** for the FE, fixed same-day: publish now
 
 | Ticket | Confirmation |
 |---|---|
-| 14 | `GET /admin/referrals/upgrades` takes `status`, `payment_method`, `to_tier`, `page`, `limit` — **no `search`** |
+| 14 | `GET /admin/referrals/upgrades` takes `status`, `payment_method`, `to_tier`, `page`, `limit` — **no `search`** *(resolved 2026-08-13)* |
 | 16 | `GET /admin/assets` — **no sort** param |
 | 17 | Nothing under `Admin — Assets` for analytics, subscribers or statements |
 | 19 (edit-tenor half) | Changing an existing plan's tenor still means full-replacing `plans[]` |
@@ -192,7 +260,16 @@ real backend they 404 and surface as an `ApiClientError` in the form. See
 
 ---
 
-## 2. `POST /admin/users*` handlers are stubs
+## 2. `POST /admin/users*` handlers are stubs — ✅ RESOLVED 2026-08-13
+
+> `@Get('users')` → `adminService.listUsers(dto)` and `@Get('users/:id')` →
+> `adminService.getUser(id)`. The placeholder `{ message, dto }` responses are
+> gone. **Response shapes are still unconfirmed against a live authenticated
+> call**, so treat the Zod schemas as source-read, not verified.
+>
+> Frontend follow-up: `UserPicker`'s paste-an-ObjectId stopgap can stay as a
+> convenience but is no longer load-bearing, and the "search is unavailable"
+> copy in it is now wrong. The original request is kept below for the record.
 
 **Priority: high — blocks migrating the `users` feature.**
 
@@ -1069,7 +1146,19 @@ should be removed once this is fixed, so the parameter means what it says.
 
 ---
 
-## 13. Admin list endpoints return bare ObjectIds — now blocking the upgrade queue
+## 13. Admin list endpoints return bare ObjectIds — ✅ RESOLVED 2026-08-13
+
+> The convention landed everywhere. `findUpgradesPaginated` and
+> `findTransactionsPaginated` both take a `populate` flag, and
+> `getAdminUpgrades` / `getAdminWithdrawalsQueue` both pass `true`. Fields
+> match what this ticket asked for, including `phoneNumber` on the upgrade
+> queue's `user` — see the 2026-08-13 section for the exact projections.
+>
+> Two references are still unpopulated and are now **ticket 22**: the upgrade
+> queue's `referrer.phoneNumber` (never requested here — this ticket asked only
+> for the applicant's) and the upgrade queue's `reviewed_by`.
+>
+> The original request is kept below for the record.
 
 **Priority: highest of the outstanding items — this one blocks an approval
 screen, where an admin authorises money against a person they cannot see.**
@@ -1181,7 +1270,19 @@ is no list, so there is nothing to approve or decline from.
 
 ---
 
-## 14. The upgrade queue cannot be searched
+## 14. The upgrade queue cannot be searched — ✅ RESOLVED 2026-08-13
+
+> `UpgradeQueryDto.search` exists and `getAdminUpgrades` resolves it through
+> `findUserIdsBySearch` — a case-insensitive regex over `firstName`,
+> `lastName`, `email` and `userName`, filtering the queue by `user: { $in: ids }`.
+> Exactly the shape requested.
+>
+> One characteristic to know rather than fix: search matches the **applicant
+> only**, not the referrer. Searching a referrer's name returns nothing, which
+> reads as "no upgrades" rather than "wrong field". The frontend labels the
+> input for the applicant so the scope is visible.
+>
+> The original request is kept below for the record.
 
 **Priority: medium — pairs with ticket 13.**
 
@@ -1203,7 +1304,24 @@ approach `AssetFilterDto` already uses.
 
 ---
 
-## 15. Manual upgrade cannot record a fee or pay commission
+## 15. Manual upgrade cannot record a fee or pay commission — ✅ RESOLVED 2026-08-13
+
+> `ManualUpgradeDto` now carries `fee_amount?` (decimal naira, `@Min(0)`) and
+> `pay_commission?` (boolean), `reason` stays required at 20 characters, and no
+> receipt upload was added — as specified. The ledger requirement was honoured:
+> `fee > 0` writes a `Transaction` in the same session and passes its id to
+> `fireForUpgrade`.
+>
+> **The open question was answered by omission** — there is no separate
+> `commissionableAmount`; commission comes off `fee_amount`. That is the simpler
+> version this ticket specified, so the answer is taken as "one amount".
+>
+> Two rough edges, neither blocking, both now handled in the UI:
+> commission silently pays nobody when the target has no `referred_by`, and a
+> fee against a walletless user surfaces as `PAYSTACK_INIT_FAILED` —
+> a misleading code for "User has no wallet".
+>
+> The original request is kept below for the record.
 
 **Priority: high — an existing capability with no v2 equivalent.**
 
@@ -1524,10 +1642,36 @@ so the backend team can see they were considered and dismissed.
   implemented and all currently unused by the frontend. They are
   user-management operations and belong on a user detail page rather than an
   approval queue, so they are deferred — not missing.
+  *(Update 2026-08-13: force-upgrade is now built — it is the manual upgrade
+  dialog on the upgrade queue, since ticket 15 turned it into "record a paid
+  upgrade", which is queue work rather than user-detail work. Change tier,
+  reassign referrer and downline tree remain deferred to a user detail page.)*
 
 ---
 
-## 20. Full-ownership purchases don't exist — an offer type that can't be bought
+## 20. Full-ownership purchases don't exist — ✅ RESOLVED 2026-08-13
+
+> The whole family shipped, confirmed in the deployed spec:
+>
+> ```
+> POST /fo/purchase/paystack/initiate      POST /fo/purchase/recurring/paystack
+> POST /fo/purchase/transfer/submit        POST /fo/purchase/recurring/transfer
+> POST /fo/purchase/doc/paystack           POST /fo/purchase/doc/transfer
+> POST /admin/fo/purchase/transactions/:txId/approve
+> POST /admin/fo/purchase/transactions/:txId/decline
+> ```
+>
+> Note the admin review pair sits under `/admin/fo/purchase/transactions/:txId/`,
+> **not** the `/admin/acquisitions/full-ownership/:txId/` this ticket suggested —
+> and separate document-fee routes exist (`/doc/paystack`, `/doc/transfer`),
+> which this ticket folded into initiate.
+>
+> **Frontend status: not yet wired.** `features/asset-transactions` reviews flex
+> only, and `purchase.schema.ts` still says full-ownership rows "cannot exist
+> today". That comment is now wrong, and the review action needs to route per
+> family. Tracked as frontend work in ticket 24.
+>
+> The original request is kept below for the record.
 
 **Priority: high — this is a missing revenue path, not a missing admin screen.**
 
@@ -1569,6 +1713,11 @@ vocabulary and the review action routes per family.
 
 ## 21. `GET /admin/transactions` — the filters an admin actually reaches for
 
+> **Superseded by ticket 24c (2026-08-13)**, which restates this against the
+> confirmed live param list and adds the populate ask. The `user` / `source_asset`
+> populate line below is now ticket 24a. Kept for the stats detail at the end,
+> which 24 does not cover.
+
 **Priority: medium — the list works; working a queue with it is clumsy.**
 
 The endpoint takes `type`, `status`, `user`, `page`, `limit`. The old asset
@@ -1586,5 +1735,375 @@ And no stats endpoint — v1's `adminTransactionDataPoint` summed approved /
 pending / declined values and split new vs recurring and flex vs
 full-ownership; the rebuilt page shows those cards as labelled sample data
 until an equivalent exists.
+
+---
+
+## 22. Two fields the upgrade queue still can't show — ✅ RESOLVED 2026-08-13
+
+> Both shipped in `6f2b2d8`. `findUpgradesPaginated` now populates `referrer`
+> with `firstName lastName email userName phoneNumber` and adds
+> `.populate('reviewed_by', 'firstName lastName')`.
+>
+> **Frontend wired the same day:** the queue has a Referrer phone column, and the
+> reviewing admin's name sits under the status badge with the review date — a
+> sub-line rather than a column, because it exists only for reviewed rows and
+> answers "who set this status" rather than a fact about the upgrade.
+>
+> The original request is kept below for the record.
+
+**Priority: low — two words of projection each. Raised now because ticket 13
+resolved everything around them, so these are what's left of a column the
+current admin screen has and the rebuilt one can't.**
+
+Ticket 13 landed the populate convention on `GET /admin/referrals/upgrades`.
+Two references it didn't reach:
+
+### 22a. `referrer.phoneNumber`
+
+```ts
+// referral.repository.ts:245-246
+.populate('user', 'firstName lastName email userName phoneNumber referral_status')
+.populate('referrer', 'firstName lastName email userName')   // ← no phoneNumber
+```
+
+The applicant's phone is there; the referrer's is not. Ticket 13 only asked for
+the applicant's, so this is a gap in the request, not in the implementation.
+
+**Scenario.** A transfer upgrade arrives with a reference that matches no
+payment we received. Before declining — which emails the applicant a rejection —
+the admin calls the referrer, who usually collected the transfer on their
+recruit's behalf and can confirm which account it went from. On the current
+GraphQL admin screen that number is a column on the row. On the rebuilt screen
+the admin has the referrer's name and no way to reach them.
+
+**Needed:** add `phoneNumber` to the `referrer` projection. Same field, same
+populate call, one word.
+
+### 22b. `reviewed_by` isn't populated at all
+
+`reviewed_by` is set on every approve, decline and manual upgrade, and comes
+back as a bare ObjectId. It refs `Admin`, not `User`, so it needs its own
+`.populate('reviewed_by', 'firstName lastName')` — the same line
+`findTransactionsPaginated` already has for the withdrawals queue.
+
+**Scenario.** A declined upgrade is escalated: the applicant insists their
+transfer was genuine. The queue row shows the decline reason and the date, and
+`665fbbbb…` where the reviewing admin's name belongs. Answering "who declined
+this and can they explain the reason they wrote?" means a manual lookup in the
+admin collection.
+
+**Needed:** `.populate('reviewed_by', 'firstName lastName')` on
+`findUpgradesPaginated`, matching the withdrawals queue.
+
+### Frontend status
+
+Both degrade rather than block. `PersonRefSchema` accepts a string or a
+populated object on every reference, so each field starts rendering the moment
+it's populated with no frontend change:
+
+- **Referrer phone** — the column is not rendered. The applicant's phone column
+  is, since that data exists. Rendering an always-empty second phone column
+  would read as "this person has no number on file".
+- **`reviewed_by`** — not displayed. The em-dash + copyable-id pattern
+  (`UnresolvedRef`) is what it would use, and it is already wired for it.
+
+---
+
+## 23. Withdrawals list — one field short of production parity — ✅ RESOLVED 2026-08-13
+
+> Solved with a nested hop, and better than asked: `TX_POPULATE.withdrawalQueue`
+> keeps `kyc` in the user projection so it can populate `kyc` with
+> **`tin.value tin.state`** — the state included, which answers the question this
+> ticket raised about not presenting an unchecked TIN as a verified one.
+>
+> **Frontend wired the same day:** a TIN column after Requested by. An
+> `approved` TIN renders plainly; anything else renders muted with its state
+> ("Awaiting review", "Rejected"), and a missing one is an em-dash. The CSV
+> export carries TIN and TIN status as two columns for the same reason — a
+> reconciliation file showing the number alone would strip the caveat.
+>
+> The original request is kept below for the record.
+
+**Priority: low — a single field. Raised because it is the only thing standing
+between the v2 withdrawal queue and the columns the live admin has.**
+
+Comparing the v2 queue against the production screen it replaces, column for
+column. **Nine of ten need nothing from the backend** — populate (ticket 13) and
+`search` (confirmed live 2026-08-13) already closed the real gaps:
+
+| Production column | v2 backend status |
+|---|---|
+| Payer | ✅ `user` populated (`firstName lastName email`) |
+| **TIN** | ⛔ **the ask — see below** |
+| Bank / Account Number / Account Name | ✅ `bank_details_id` populated (`bank_name account_number account_name`) |
+| Amount | ✅ `amount`, plus `fee_amount` / `total_debited` v1 never had |
+| Date | ✅ `createdAt` |
+| Method (Auto/Manual) | ✅ `processing_type: 'auto' \| 'manual'` |
+| Status | ✅ `admin_status` + `status` — better than v1, which conflated them |
+| Action | ✅ approve / decline / retry |
+
+Everything else on that list is frontend work and is not a backend request.
+
+### The one ask: the requester's TIN on the queue row
+
+Production shows a TIN column. In v1 it was a plain field in two places —
+`transaction.tin` and `user.tin`.
+
+In v2 it exists, but it moved and changed shape: it is a **KYC artifact**,
+`Kyc.tin` (`user/schemas/kyc.schema.ts`), where `TinArtifact extends KycReview`:
+
+```ts
+{ value?: string, state: KycState, submitted_at?, reviewed_at?,
+  reviewed_by?, rejection_reason? }
+```
+
+So it is no longer a property of the user or the transaction — it is a
+separately-collected, separately-reviewed document on the `Kyc` collection,
+keyed by `user`.
+
+**Scenario.** An admin releasing a payout checks the TIN against the account
+holder for tax reporting. On the production screen it is a column. On the v2
+queue there is no route by which the frontend can obtain it for the rows in the
+list — `GET /admin/withdrawals` returns the transaction with `user` populated
+from the `User` collection, which doesn't carry TIN, and fetching KYC per row
+would be an N+1 over a 20-row page.
+
+**Needed:** extend the queue's `user` populate to carry the TIN value, e.g. a
+nested populate of the user's KYC selecting `tin.value` (and `tin.state`, so an
+unverified TIN can be shown as such rather than as a verified one).
+
+**Worth confirming while you're there:** is TIN meant to be visible to admins
+pre-verification? If a `state` other than `approved` should read as "not
+verified" on this screen, say so and the column will render it that way rather
+than presenting an unchecked number as fact.
+
+**Frontend status:** the column is not rendered. When the field lands it slots in
+after Payer, matching production's order.
+
+---
+
+## 24. Asset transactions list — ⚠️ PARTLY RESOLVED 2026-08-13
+
+> **24a (populate), 24b's referrer half, and 24d (filters) all shipped** in
+> `196e325`, and the implementation took the more generous option on every
+> judgement call:
+>
+> - `findTransactionsPaginated` now takes a **populate spec** rather than a
+>   boolean (`TX_POPULATE.adminTransactionList`), which is the per-caller field
+>   list this ticket asked for.
+> - `user` → `firstName lastName email referred_by`, with `referred_by` itself
+>   populated `firstName lastName` — the referrer column.
+> - `source_asset` → `name asset_location`.
+> - Search matches the asset **and** the payer, not one or the other, via a new
+>   `findAssetIdsBySearch` over `name`/`asset_location`. It uses `escapeRegex`,
+>   which the older `findUserIdsBySearch` still doesn't.
+> - All six filters, plus a `dp` sales-type bucket for document fees that
+>   production never had — without it those rows would match neither `ap` nor
+>   `rap` and vanish from every filtered view.
+>
+> **Frontend wired the same day:** buyer and referrer columns (both linked to
+> profiles), a Property column from `source_asset` with its location beneath,
+> and every filter live including the date range. The review dialog now names
+> the referrer being paid before the admin approves.
+>
+> **Still open: 24b's `property_owner` and 24e's decline floor** — both are
+> questions this ticket put to the backend team rather than requests, and both
+> are unanswered. The Property Owner column is not rendered.
+>
+> One consequence worth noting: full-ownership rows can now arrive in this list
+> (ticket 20), and their review lives at
+> `/admin/fo/purchase/transactions/:txId/*` — a family this feature doesn't call
+> yet. Such rows display correctly and carry no Review action.
+>
+> The original request is kept below for the record.
+
+### The original request — populate, the filters, and two dead fields
+
+**Priority: medium for the populate (four of production's ten columns are
+unbuildable without it); low for the filters.**
+
+`GET /admin/transactions` is the asset transactions list. This is a field-level
+read of the production screen — its GraphQL fragment, both its desktop and mobile
+renders, its filter set and its decline flow — not just its column headers.
+
+Production requests exactly these fields:
+
+```graphql
+_id  amount  description  admin_status  plot_size  asset_type
+referral  property_owner  transaction_type
+transfer_file { file }
+user { firstName lastName _id }
+time_of_transaction
+```
+
+Mapped to v2, field by field:
+
+| Production field | v2 | Status |
+|---|---|---|
+| `user.firstName/lastName/_id` | `user` ObjectId | ⛔ **not populated** — 24a |
+| `referral` (referrer's name) | — | ⛔ **no field** — 24b |
+| `property_owner` | — | ⛔ **no field, and no known equivalent** — 24b |
+| `description` | `description` | ⚠️ **exists but is now useless** — 24c |
+| asset name | `source_asset` ObjectId | ⛔ **not populated** — 24a, and now the *only* route to it |
+| `plot_size` | `purchase_details.size_sqm` | ✅ |
+| `asset_type` (flex / full-ownership) | derivable from `purchase_details.transaction_kind` | ✅ |
+| `transaction_type` (transfer/wallet/paystack) | `payment_method` | ✅ |
+| `transfer_file.file` | `purchase_details.transfer_receipt_url` | ✅ |
+| `time_of_transaction` | `createdAt` | ✅ |
+| `admin_status` | `admin_status` | ✅ |
+| `amount` | `amount` | ✅ |
+
+### 24a. The list doesn't populate anything
+
+```ts
+// wallet.service.ts:1180 — getAllTransactions
+const { data, total } = await this.walletRepo.findTransactionsPaginated(filter, page, limit);
+//                                                                     ↑ no populate flag
+```
+
+`findTransactionsPaginated` **already takes a `populate` flag** — the withdrawal
+queue passes `true` (ticket 13). This caller doesn't, so `user` and
+`source_asset` come back as bare ObjectIds.
+
+**Scenario.** An admin opens the asset transactions queue to approve a bank
+transfer and sees:
+
+```
+Payer            665fcccc00000000000000c1
+Property         665faaaa00000000000000a1
+₦1,500,000       transfer        pending      [ Approve ]
+```
+
+Approving creates a payment plan and pays referral commission. Two of the three
+facts needed to judge it are hex strings.
+
+**Needed on this endpoint:** `user` → `firstName lastName email`, and
+`source_asset` → **`name` and `asset_location`** (the location is what the
+search box needs — see 24d). Note the withdrawal queue's populate list
+(`bank_details_id`, `reviewed_by`) is wrong for this caller — asset rows want
+the asset, not a bank account — so the flag likely needs to become a
+per-caller field list rather than a boolean.
+
+### 24b. Two production columns have no v2 field at all
+
+| Production column | v1 source | v2 |
+|---|---|---|
+| **Referrer** | `transaction.referral` (a name string) | nothing. `user.referred_by` exists on the User, so it is derivable — but not on this row |
+| **Property Owner** | `transaction.property_owner` (a name string) | nothing, and no obvious equivalent |
+
+For **Referrer**, the cheapest shape is a nested populate of the buyer's
+`referred_by` (name only) on this endpoint. Commission on an asset purchase is
+paid to that person, so an admin approving the transfer is approving their payout
+too — it belongs on the row.
+
+For **Property Owner**, we need to know what it means before asking for
+anything. In v1 it was a free string on the transaction. Candidates in v2: the
+asset's agency, a `property_owner` on the Asset, or something that was only ever
+data-entry. **Question for the backend team: what is the v2 equivalent, or was
+this a v1-only concept?** If it has no home in v2 the column should be dropped
+rather than faked, and we will drop it.
+
+### 24c. `description` still exists but no longer describes anything
+
+This is the one that isn't visible from a schema diff, and it is why 24a's
+`source_asset` populate is load-bearing rather than cosmetic.
+
+Production builds its **Property Name** column out of `description`:
+
+```tsx
+{asset_type} - {description.replace("asset purchase", "AP")}({plot_size}sqm)
+```
+
+That works in v1 because `description` carries the property — something like
+`"Aviation City asset purchase"`. The string replace exists purely to shorten it.
+
+In v2 `description` is a fixed literal set at write time:
+
+```ts
+// acquisition/flex/flex-purchase.service.ts
+description: 'AP: flex initial purchase'
+description: 'AP: flex initial purchase (transfer)'
+description: 'RAP: flex recurring payment'
+description: 'RAP: flex recurring payment (transfer)'
+```
+
+Four constants, no property name in any of them. So the field survived the
+migration while the information in it did not — a frontend reading `description`
+gets the same string on every row and would render **"AP: flex initial purchase"
+where the property belongs**. That is worse than a blank column, because it looks
+like content.
+
+Two consequences:
+
+1. `source_asset` populate is the **only** route to the property name. Without
+   24a there is no honest Property Name column at all.
+2. Nothing needs adding to `description` — the AP/RAP prefix is genuinely useful
+   and already agrees with `purchase_details.transaction_kind`. Just don't expect
+   a property from it. Noting it here so nobody "fixes" the column by parsing
+   that string.
+
+### 24d. The filters
+
+Confirmed live: `GET /admin/transactions` takes `type`, `status`, `user`, `page`,
+`limit` — five params. Production's screen filters by seven, with these exact
+vocabularies:
+
+| Production filter | Its values | Needed on v2 |
+|---|---|---|
+| **Search** | placeholder: *"Search for asset by name, location…"* | `search` over the **asset's `name` and `asset_location`** — note this is the *asset*, not the payer. Unlike the upgrade and withdrawal queues, whose search is a user lookup, this one crosses into the Asset collection |
+| Payment method | `transfer` / `wallet` / `paystack` | `payment_method` — **the one that matters most**: "show me transfer payments waiting for review" is the page's whole workflow, currently done by scanning `status=pending` by eye |
+| Sales type | `ap` / `rap` | `transaction_kind` — already stored at `purchase_details.transaction_kind`, and the `description` constants already use the same AP/RAP vocabulary |
+| Asset type | `flex` / `full-ownership` | derivable from `transaction_kind`, so likely free once that lands |
+| Status | `completed` / `failed` / `pending` | ✅ `status` exists |
+| Date range | `start_date` / `end_date` | two params |
+
+**Worth flagging on search:** every other search we've asked for resolves user
+ids. This one is the first that needs to filter transactions by a *joined asset's*
+fields, so it can't reuse `findIdsBySearch`. If matching both the asset and the
+payer is cheap, do both — an admin who knows the buyer but not the property is
+just as common. If only one is affordable, the asset is what production had.
+
+This supersedes the filter table in ticket 21, which was written before the param
+list was confirmed.
+
+### 24e. The 20-character decline minimum breaks production's canned reasons
+
+`DeclineFlexTransferDto.reason` enforces `@MinLength(20)`. Production's decline
+dialog offers six preset reasons plus a free-text "Other", and **two of the
+presets are shorter than that**:
+
+| Preset | Length | Under v2's rule |
+|---|---|---|
+| `System Error` | 12 | ❌ rejected |
+| `Price Fluctuation` | 17 | ❌ rejected |
+| `Account Restrictions` | 20 | ✅ exactly at the limit |
+| `Invalid Asset Details` | 21 | ✅ |
+| `Wrong Payment Receipt` | 21 | ✅ |
+| `Payment Receipt uploaded twice` | 30 | ✅ |
+
+So a like-for-like port of that dialog would hand an admin a dropdown where two
+options fail on submit with `DECLINE_REASON_TOO_SHORT`.
+
+**Question for the backend team, not a request:** is the 20-character floor there
+to force a human explanation, or is it a default that a controlled vocabulary
+could bypass? Two workable answers, and we'd rather you pick:
+
+- **Keep the floor.** The frontend replaces the presets with longer canned
+  sentences (the applicant sees these, so longer is arguably better anyway) —
+  e.g. *"Payment declined: a system error prevented verification."* No backend
+  change; we'll do it.
+- **Accept a reason code.** The DTO takes an optional enum of decline reasons
+  alongside free text, and the minimum applies only to free text. More work,
+  but it makes declines reportable — "how many declines were duplicate receipts?"
+  becomes answerable, which the free-text field can never be.
+
+Same question applies to `DeclineWithdrawalDto` and the upgrade decline, which
+carry the same 20-character rule and the same preset-reason history.
+
+**Frontend status:** the rebuilt page renders the filters production has as
+**disabled** controls, so their absence is visible rather than silent. Payer and
+property render with the em-dash + copyable-id pattern. Decline is currently
+free-text at 20 chars, so nothing is broken today — the question above only
+matters when the presets come back.
 
 ---
