@@ -29,8 +29,8 @@ const GET_WITHDRAWAL_TRANSACTION_QUERY = graphql(`
 `);
 
 const GET_DOCUMENT_TRANSACTION_QUERY = graphql(`
-  query GetDocumentTransaction($page: Int!, $limit: Int!, $status: String, $startDate: Date, $endDate: Date, $search: String) {
-    getDocumentTransaction(page: $page, limit: $limit, status: $status, startDate: $startDate, endDate: $endDate, search: $search) {
+  query GetDocumentTransaction($page: Int!, $limit: Int!, $status: String, $assetType: String, $salesType: String, $startDate: Date, $endDate: Date, $search: String) {
+    getDocumentTransaction(page: $page, limit: $limit, status: $status, assetType: $assetType, salesType: $salesType, startDate: $startDate, endDate: $endDate, search: $search) {
       data {
         ...DocumentTransactionsTable_data
       }
@@ -129,18 +129,49 @@ interface UseDocumentTransactionsParams {
   page?: number;
   limit?: number;
   status?: string | null;
+  /** Asset type filter (e.g. "flex" | "full-ownership") — BE addition. */
+  assetType?: string | null;
+  /** Sales type filter — BE addition. */
+  salesType?: string | null;
   startDate?: string | null;
   endDate?: string | null;
   search?: string | null;
 }
 
 export const useDocumentTransactions = (params?: UseDocumentTransactionsParams) => {
-  const { page = 1, limit = 10, status = null, startDate = null, endDate = null, search = null } = params ?? {};
+  const {
+    page = 1,
+    limit = 10,
+    status = null,
+    assetType = null,
+    salesType = null,
+    startDate = null,
+    endDate = null,
+    search = null,
+  } = params ?? {};
 
   return useQuery({
-    queryKey: transactionKeys.documentList({ page, limit, status, startDate, endDate, search }),
+    queryKey: transactionKeys.documentList({
+      page,
+      limit,
+      status,
+      assetType,
+      salesType,
+      startDate,
+      endDate,
+      search,
+    }),
     queryFn: () =>
-      execute(GET_DOCUMENT_TRANSACTION_QUERY, { page, limit, status, startDate, endDate, search }),
+      execute(GET_DOCUMENT_TRANSACTION_QUERY, {
+        page,
+        limit,
+        status,
+        assetType,
+        salesType,
+        startDate,
+        endDate,
+        search,
+      }),
     select: (data) => data.getDocumentTransaction,
   });
 };
