@@ -53,7 +53,7 @@ import {
   useUpsertUserOverride,
 } from "../../hooks/use-upsert-override";
 import { AssetPicker } from "../shared/AssetPicker";
-import { UserPicker } from "../shared/UserPicker";
+import { UserPicker } from "@/components/shared/UserPicker";
 
 type SubjectType = "user" | "asset-user";
 type FormControl = Control<SubjectOverrideFormValues>;
@@ -243,6 +243,7 @@ export function SubjectOverrideDialog({
                         onChange={field.onChange}
                         disabled={disabled || isEdit}
                         fallbackLabel={override ? personRefName(override.user) : null}
+                        placeholder="Select a referrer"
                       />
                     </FormControl>
                     <FormMessage />

@@ -87,6 +87,21 @@ export type RailAttempt = z.infer<typeof RailAttemptSchema>;
  * Bare ObjectId or populated person. Accepting both keeps mocks / older
  * environments working while the live API returns names.
  */
+/**
+ * KYC states, verbatim from the BE's `KYC_STATES`. Only `approved` means the
+ * TIN has actually been checked by someone.
+ */
+export const KYC_STATES = ['not_started', 'pending', 'approved', 'rejected'] as const;
+export const KycStateSchema = z.enum(KYC_STATES);
+export type KycState = z.infer<typeof KycStateSchema>;
+
+export const KYC_STATE_LABELS: Record<KycState, string> = {
+  not_started: 'Not submitted',
+  pending: 'Awaiting review',
+  approved: 'Verified',
+  rejected: 'Rejected',
+};
+
 export const PersonRefSchema = z.union([
   z.string(),
   z.object({
@@ -96,6 +111,27 @@ export const PersonRefSchema = z.union([
     email: z.string().nullable().optional(),
     userName: z.string().nullable().optional(),
     phoneNumber: z.string().nullable().optional(),
+    /**
+     * Ticket 23 — the TIN lives on the Kyc document, reached through the user's
+     * `kyc` ref. `looseObject` because the BE selects `tin.value tin.state`
+     * today and the Kyc doc carries more artifacts (id_document, facial) that
+     * a wider projection could start including.
+     */
+    kyc: z
+      .union([
+        z.string(),
+        z.looseObject({
+          tin: z
+            .looseObject({
+              value: z.string().nullable().optional(),
+              state: KycStateSchema.nullable().optional(),
+            })
+            .nullable()
+            .optional(),
+        }),
+      ])
+      .nullable()
+      .optional(),
   }),
 ]);
 export type PersonRef = z.infer<typeof PersonRefSchema>;
@@ -105,16 +141,41 @@ export function personId(ref: PersonRef | null | undefined): string | null {
   return typeof ref === 'string' ? ref : ref._id;
 }
 
-/** Null while the backend returns ids — the UI shows an em-dash for that. */
+/**
+ * Null when the ref is a bare id — the UI shows an em-dash for that.
+ *
+ * Order is **lastName firstName**, the platform convention for every full-name
+ * display (see the standardisation on `fix/name-display-order`).
+ */
 export function personName(ref: PersonRef | null | undefined): string | null {
   if (!ref || typeof ref === 'string') return null;
-  const full = [ref.firstName, ref.lastName].filter(Boolean).join(' ').trim();
+  const full = [ref.lastName, ref.firstName].filter(Boolean).join(' ').trim();
   return full || ref.userName || ref.email || null;
 }
 
 export function personEmail(ref: PersonRef | null | undefined): string | null {
   if (!ref || typeof ref === 'string') return null;
   return ref.email ?? null;
+}
+
+/**
+ * The requester's TIN, and whether anyone has checked it (ticket 23).
+ *
+ * Returned together on purpose. The number alone would present an unverified —
+ * or outright rejected — TIN as fact on a screen where an admin is about to
+ * release money against it, so the caller always has the state to hand.
+ */
+export function personTin(
+  ref: PersonRef | null | undefined
+): { value: string | null; state: KycState | null } | null {
+  if (!ref || typeof ref === 'string') return null;
+  const kyc = ref.kyc;
+  if (!kyc || typeof kyc === 'string') return null;
+
+  const tin = kyc.tin;
+  if (!tin) return null;
+
+  return { value: tin.value ?? null, state: tin.state ?? null };
 }
 
 /**
@@ -139,6 +200,32 @@ export type BankDetailsRef = z.infer<typeof BankDetailsRefSchema>;
 export function bankDetailsId(ref: BankDetailsRef | null | undefined): string | null {
   if (!ref) return null;
   return typeof ref === 'string' ? ref : ref._id;
+}
+
+/* --- the three destination fields, one accessor each ---
+ *
+ * The queue renders them as separate columns, so each is read on its own rather
+ * than through the combined label helpers below (which the review dialogs use,
+ * where one line reads better than three).
+ *
+ * Each falls back across both spellings: the BE populates
+ * `bank_name account_number account_name`, while some BankDetails models use
+ * `bankName` / `accountNumber` / `name`. Returns null for a bare id.
+ */
+
+export function bankName(ref: BankDetailsRef | null | undefined): string | null {
+  if (!ref || typeof ref === 'string') return null;
+  return ref.bank_name ?? ref.bankName ?? null;
+}
+
+export function bankAccountNumber(ref: BankDetailsRef | null | undefined): string | null {
+  if (!ref || typeof ref === 'string') return null;
+  return ref.account_number ?? ref.accountNumber ?? null;
+}
+
+export function bankAccountName(ref: BankDetailsRef | null | undefined): string | null {
+  if (!ref || typeof ref === 'string') return null;
+  return ref.account_name ?? ref.name ?? null;
 }
 
 /** Primary label for the destination — account name, else bank + number. */

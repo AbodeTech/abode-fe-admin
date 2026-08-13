@@ -142,7 +142,8 @@ export const CommissionConfigSchema = z.object({
 export function modifiedByName(config: CommissionConfig): string | null {
   const ref = config.last_modified_by;
   if (!ref || typeof ref === 'string') return null;
-  const name = [ref.firstName, ref.lastName].filter(Boolean).join(' ');
+  // lastName firstName — the platform convention for full-name displays.
+  const name = [ref.lastName, ref.firstName].filter(Boolean).join(' ');
   return name || ref.email || null;
 }
 
@@ -188,7 +189,8 @@ export type ShapedAssetRef = z.infer<typeof ShapedAssetRefSchema>;
 
 export function shapedUserName(ref: ShapedUserRef | null | undefined): string | null {
   if (!ref) return null;
-  const name = [ref.firstName, ref.lastName].filter(Boolean).join(' ');
+  // lastName firstName — the platform convention for full-name displays.
+  const name = [ref.lastName, ref.firstName].filter(Boolean).join(' ');
   return name || ref.userName || ref.email || null;
 }
 

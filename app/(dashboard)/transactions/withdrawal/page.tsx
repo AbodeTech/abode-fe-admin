@@ -11,6 +11,7 @@ import {
   PAYMENT_PROVIDERS,
   ReviewWithdrawalDialogs,
   useWithdrawals,
+  WithdrawalExportButton,
   WithdrawalFilters,
   WithdrawalStatCards,
   WithdrawalsTable,
@@ -18,6 +19,7 @@ import {
   type PaymentProvider,
   type ReviewAction,
   type Withdrawal,
+  type WithdrawalListFilters,
 } from "@/features/withdrawals";
 
 function parseEnum<T extends string>(value: string | null, allowed: readonly T[]): T | undefined {
@@ -36,6 +38,7 @@ function EmptyState({ title, body }: { title: string; body: string }) {
 function WithdrawalsPageContent() {
   const searchParams = useSearchParams();
   const page = Number(searchParams.get("page")) || 1;
+  const search = searchParams.get("search") ?? undefined;
   const adminStatus = parseEnum<AdminStatus>(searchParams.get("admin_status"), ADMIN_STATUSES);
   const provider = parseEnum<PaymentProvider>(
     searchParams.get("payment_provider"),
@@ -44,15 +47,17 @@ function WithdrawalsPageContent() {
 
   const [action, setAction] = useState<ReviewAction | null>(null);
 
-  const { data, isLoading, error } = useWithdrawals({
-    page,
+  const filters: WithdrawalListFilters = {
+    search,
     admin_status: adminStatus,
     payment_provider: provider,
-  });
+  };
+
+  const { data, isLoading, error } = useWithdrawals({ ...filters, page });
 
   const rows = data?.items ?? [];
   const total = data?.meta.total ?? 0;
-  const filtered = Boolean(adminStatus || provider);
+  const filtered = Boolean(search || adminStatus || provider);
 
   const open = (kind: ReviewAction["kind"]) => (row: Withdrawal) => setAction({ kind, row });
 
@@ -73,6 +78,10 @@ function WithdrawalsPageContent() {
         </div>
       ) : (
         <div className="space-y-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+            <WithdrawalExportButton filters={filters} />
+          </div>
+
           <WithdrawalStatCards />
 
           <WithdrawalFilters />
@@ -87,7 +96,11 @@ function WithdrawalsPageContent() {
               filtered ? (
                 <EmptyState
                   title="No withdrawals match these filters"
-                  body="Clear or widen the filters to see the rest of the queue."
+                  body={
+                    search
+                      ? "Search matches the requester's name, email or username — not the destination account. Clear or widen the filters to see the rest of the queue."
+                      : "Clear or widen the filters to see the rest of the queue."
+                  }
                 />
               ) : (
                 <EmptyState

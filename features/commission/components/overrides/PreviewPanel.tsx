@@ -23,7 +23,7 @@ import {
 } from "../../schemas/commission.schema";
 import { useCommissionPreview } from "../../hooks/use-commission-preview";
 import { AssetPicker } from "../shared/AssetPicker";
-import { UserPicker } from "../shared/UserPicker";
+import { UserPicker } from "@/components/shared/UserPicker";
 
 /* ============================================================
  * The dry-run (ticket 9b) — "what would this referrer actually earn?"
@@ -72,7 +72,7 @@ export function PreviewPanel() {
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="min-w-0 space-y-1">
               <p className="text-xs text-muted-foreground">Referrer</p>
-              <UserPicker value={userId} onChange={setUserId} />
+              <UserPicker value={userId} onChange={setUserId} placeholder="Select a referrer" />
             </div>
             <div className="min-w-0 space-y-1">
               <p className="text-xs text-muted-foreground">Asset</p>

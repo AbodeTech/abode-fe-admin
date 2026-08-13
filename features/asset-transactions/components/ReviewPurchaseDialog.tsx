@@ -19,8 +19,14 @@ import { formatNaira } from "@/lib/utils/format";
 
 import {
   PURCHASE_DECLINE_REASON_MIN,
+  assetId,
+  assetName,
+  buyerId,
+  buyerName,
   kindLabel,
   purchaseDeclineReasonSchema,
+  referrerId,
+  referrerName,
   type Purchase,
 } from "../schemas/purchase.schema";
 import {
@@ -144,11 +150,34 @@ export function ReviewPurchaseDialog({
             ) : null}
             <Row
               label="Buyer"
-              value={<UnresolvedRef name={null} id={row.user} kind="buyer" />}
+              value={
+                <UnresolvedRef name={buyerName(row.user)} id={buyerId(row.user)} kind="buyer" />
+              }
             />
             <Row
               label="Asset"
-              value={<UnresolvedRef name={null} id={row.source_asset} kind="asset" />}
+              value={
+                <UnresolvedRef
+                  name={assetName(row.source_asset)}
+                  id={assetId(row.source_asset)}
+                  kind="asset"
+                />
+              }
+            />
+            {/* Who this approval pays commission to — worth stating before the click. */}
+            <Row
+              label="Referrer"
+              value={
+                referrerId(row.user) || referrerName(row.user) ? (
+                  <UnresolvedRef
+                    name={referrerName(row.user)}
+                    id={referrerId(row.user)}
+                    kind="referrer"
+                  />
+                ) : (
+                  "No referrer — no commission is paid"
+                )
+              }
             />
           </div>
 

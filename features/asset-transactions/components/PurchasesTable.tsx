@@ -21,8 +21,16 @@ import { formatNaira } from "@/lib/utils/format";
 
 import {
   PAYMENT_METHOD_LABELS,
+  assetId,
+  assetLocation,
+  assetName,
+  buyerEmail,
+  buyerId,
+  buyerName,
   isReviewablePurchase,
   kindLabel,
+  referrerId,
+  referrerName,
   type Purchase,
 } from "../schemas/purchase.schema";
 import { PurchaseStatusBadge, ReviewHint } from "./PurchaseStatusBadge";
@@ -32,6 +40,67 @@ function formatDate(value: string | null | undefined): string {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
   return parsed.toLocaleDateString("en-NG", { year: "numeric", month: "short", day: "numeric" });
+}
+
+function userHref(id: string | null): string | null {
+  return id ? `/users/${id}` : null;
+}
+
+/** The payer, linked through to their account. */
+function Buyer({ row }: { row: Purchase }) {
+  const id = buyerId(row.user);
+  const email = buyerEmail(row.user);
+
+  return (
+    <div className="min-w-0 space-y-0.5">
+      <UnresolvedRef name={buyerName(row.user)} id={id} href={userHref(id)} kind="buyer" />
+      {email ? <p className="truncate text-xs text-muted-foreground">{email}</p> : null}
+    </div>
+  );
+}
+
+/**
+ * The buyer's referrer (ticket 24b) — approving this purchase pays them
+ * commission, so who they are belongs on the row being approved.
+ *
+ * A buyer with no referrer says so rather than showing an em-dash: "nobody is
+ * owed commission here" is information, and it is different from "we can't tell
+ * you who".
+ */
+function Referrer({ row }: { row: Purchase }) {
+  const id = referrerId(row.user);
+  const name = referrerName(row.user);
+
+  if (!id && !name) {
+    return <span className="text-sm text-muted-foreground">No referrer</span>;
+  }
+
+  return <UnresolvedRef name={name} id={id} href={userHref(id)} kind="referrer" />;
+}
+
+/**
+ * The property, with its location beneath.
+ *
+ * Deliberately not built from `description` the way the screen this replaces
+ * was: in v2 that field is one of four fixed literals with no property in it
+ * (⛔ ticket 24c), so `source_asset` is the only honest source for this column.
+ */
+function Property({ row }: { row: Purchase }) {
+  const name = assetName(row.source_asset);
+  const location = assetLocation(row.source_asset);
+  const details = row.purchase_details;
+  const size = details?.size_sqm ? `${details.size_sqm.toLocaleString()} sqm` : null;
+
+  return (
+    <div className="min-w-0 space-y-0.5">
+      <UnresolvedRef name={name} id={assetId(row.source_asset)} kind="asset" />
+      {location || size ? (
+        <p className="truncate text-xs text-muted-foreground">
+          {[location, size].filter(Boolean).join(" · ")}
+        </p>
+      ) : null}
+    </div>
+  );
 }
 
 /** Amount, with the deal size beneath when the details carry it. */
@@ -74,12 +143,19 @@ export function PurchasesTable({ rows, isLoading, onReview, emptyState }: Props)
 
   return (
     <>
+      {/*
+        Column order follows the screen this replaces: payer, referrer, property,
+        kind, amount, method, date, status, action. Production's Property Owner
+        column is absent — v2 has no field for it and no known equivalent
+        (⛔ ticket 24b), and inventing one would be worse than leaving it out.
+      */}
       <AdminDesktopTableWrap>
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Buyer</TableHead>
-              <TableHead>Asset</TableHead>
+              <TableHead>Referrer</TableHead>
+              <TableHead>Property</TableHead>
               <TableHead>Kind</TableHead>
               <TableHead>Amount</TableHead>
               <TableHead>Method</TableHead>
@@ -91,12 +167,14 @@ export function PurchasesTable({ rows, isLoading, onReview, emptyState }: Props)
           <TableBody>
             {rows.map((row) => (
               <TableRow key={row._id}>
-                <TableCell>
-                  {/* ⛔ ticket 13 — bare ObjectIds until the endpoint populates. */}
-                  <UnresolvedRef name={null} id={row.user} kind="buyer" />
+                <TableCell className="max-w-[14rem]">
+                  <Buyer row={row} />
                 </TableCell>
-                <TableCell>
-                  <UnresolvedRef name={null} id={row.source_asset} kind="asset" />
+                <TableCell className="max-w-[12rem] text-sm">
+                  <Referrer row={row} />
+                </TableCell>
+                <TableCell className="max-w-[14rem]">
+                  <Property row={row} />
                 </TableCell>
                 <TableCell className="whitespace-nowrap text-sm">
                   {kindLabel(row.purchase_details?.transaction_kind)}
@@ -141,14 +219,9 @@ export function PurchasesTable({ rows, isLoading, onReview, emptyState }: Props)
             }
             subtitle={`${kindLabel(row.purchase_details?.transaction_kind)} · ${formatDate(row.createdAt)}`}
           >
-            <AdminMobileField
-              label="Buyer"
-              value={<UnresolvedRef name={null} id={row.user} kind="buyer" />}
-            />
-            <AdminMobileField
-              label="Asset"
-              value={<UnresolvedRef name={null} id={row.source_asset} kind="asset" />}
-            />
+            <AdminMobileField label="Buyer" value={<Buyer row={row} />} />
+            <AdminMobileField label="Referrer" value={<Referrer row={row} />} />
+            <AdminMobileField label="Property" value={<Property row={row} />} />
             <AdminMobileField label="Method" value={PAYMENT_METHOD_LABELS[row.payment_method]} />
             {isReviewablePurchase(row) ? (
               <div className="mt-2">

@@ -3,12 +3,17 @@ import { z } from 'zod';
 /* ============================================================
  * Associate upgrade queue — the admin approval surface.
  *
- * Mirrors abode-be-v2's `ReferralUpgrade` and `UpgradeQueryDto`.
+ * Mirrors abode-be-v2's `ReferralUpgrade`, `UpgradeQueryDto` and
+ * `ManualUpgradeDto`.
  *
- * ⛔ ticket 13 — `findUpgradesPaginated` applies no `.populate()`, so `user`
- * and `referrer` arrive as bare ObjectIds. The ref schemas accept a string OR a
- * populated object, so names appear with no rework once the backend populates.
- * Until then the UI renders an em-dash and keeps the id reachable.
+ * All three person refs are populated on the queue (tickets 13 and 22):
+ * `user` with `firstName lastName email userName phoneNumber referral_status`,
+ * `referrer` with the same minus `referral_status`, and `reviewed_by` with
+ * `firstName lastName`.
+ *
+ * The ref schemas still accept a bare id, which is not dead code: approve,
+ * decline and manual-upgrade all return the upgrade **unpopulated**, because
+ * they re-read it with a plain `findUpgradeById`.
  * ============================================================ */
 
 export const USER_TIERS = [
@@ -69,8 +74,8 @@ export const UPGRADE_PAYMENT_METHOD_LABELS: Record<UpgradePaymentMethod, string>
 /* -------------------- references -------------------- */
 
 /**
- * ⛔ ticket 13 — a bare ObjectId today, a populated person once the backend
- * populates. Accepting both means no rework when it lands.
+ * A populated person, or a bare ObjectId where the endpoint doesn't populate.
+ * Accepting both is what lets one call site render either state.
  */
 export const PersonRefSchema = z.union([
   z.string(),
@@ -90,10 +95,16 @@ export function personId(ref: PersonRef | null | undefined): string | null {
   return typeof ref === 'string' ? ref : ref._id;
 }
 
-/** Null while the backend returns ids — the UI shows an em-dash for that. */
+/**
+ * Null when the ref is a bare id — the UI shows an em-dash for that.
+ *
+ * Order is **lastName firstName**, the platform convention for every full-name
+ * display (see the standardisation on `fix/name-display-order`). Not
+ * firstName-first, even though most of this repo's older code reads that way.
+ */
 export function personName(ref: PersonRef | null | undefined): string | null {
   if (!ref || typeof ref === 'string') return null;
-  const full = [ref.firstName, ref.lastName].filter(Boolean).join(' ').trim();
+  const full = [ref.lastName, ref.firstName].filter(Boolean).join(' ').trim();
   return full || ref.userName || ref.email || null;
 }
 
@@ -166,3 +177,74 @@ export const declineUpgradeSchema = z.object({
 });
 
 export type DeclineUpgradeValues = z.infer<typeof declineUpgradeSchema>;
+
+/* -------------------- manual upgrade -------------------- */
+
+/**
+ * `POST /admin/users/:id/manual-upgrade` — record an upgrade paid off-platform,
+ * or change a tier for free.
+ *
+ * Mirrors `ManualUpgradeDto`. The BE runs `forbidNonWhitelisted`, so the payload
+ * must carry exactly these keys — `fee_amount` and `pay_commission` are omitted
+ * entirely rather than sent as null when unused.
+ *
+ * The backend's behaviour this form has to respect:
+ *
+ * - `fee_amount > 0` writes a Transaction and is what commission is calculated
+ *   on. There is no separate commissionable amount.
+ * - `pay_commission` does nothing unless `fee_amount > 0` **and** the user has a
+ *   referrer. Both are enforced here so the admin isn't told commission will pay
+ *   when it silently won't.
+ * - A fee against a user with no wallet fails with `PAYSTACK_INIT_FAILED` and
+ *   `reason: 'User has no wallet'` — surfaced verbatim, since the code alone
+ *   reads as a Paystack outage.
+ */
+export const MANUAL_UPGRADE_REASON_MIN = 20;
+export const MANUAL_UPGRADE_REASON_MAX = 500;
+
+export const manualUpgradeSchema = z
+  .object({
+    user_id: z.string().trim().min(1, 'Choose who to upgrade'),
+    to_tier: z.enum(UPGRADE_TARGET_TIERS, { message: 'Choose a tier' }),
+    /** Empty string = no fee recorded, i.e. a free tier change. */
+    fee_amount: z
+      .string()
+      .trim()
+      .refine((value) => value === '' || (Number.isFinite(Number(value)) && Number(value) >= 0), {
+        message: 'Enter an amount of 0 or more, or leave blank for a free change',
+      }),
+    pay_commission: z.boolean(),
+    reason: z
+      .string()
+      .trim()
+      .min(
+        MANUAL_UPGRADE_REASON_MIN,
+        `Give at least ${MANUAL_UPGRADE_REASON_MIN} characters — this is the audit trail`
+      )
+      .max(MANUAL_UPGRADE_REASON_MAX, `Keep it under ${MANUAL_UPGRADE_REASON_MAX} characters`),
+  })
+  .refine((values) => !values.pay_commission || Number(values.fee_amount) > 0, {
+    path: ['pay_commission'],
+    message: 'Commission is a percentage of the fee, so it needs a fee above zero',
+  });
+
+export type ManualUpgradeValues = z.infer<typeof manualUpgradeSchema>;
+
+/** The request body — exactly `ManualUpgradeDto`, with blanks dropped. */
+export type ManualUpgradePayload = {
+  to_tier: UserTier;
+  reason: string;
+  fee_amount?: number;
+  pay_commission?: boolean;
+};
+
+export function toManualUpgradePayload(values: ManualUpgradeValues): ManualUpgradePayload {
+  const fee = values.fee_amount === '' ? null : Number(values.fee_amount);
+
+  return {
+    to_tier: values.to_tier,
+    reason: values.reason,
+    ...(fee !== null && { fee_amount: fee }),
+    ...(fee !== null && fee > 0 && values.pay_commission && { pay_commission: true }),
+  };
+}
