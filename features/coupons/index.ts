@@ -1,16 +1,10 @@
 /**
- * Coupons — discount codes applied at checkout.
+ * Coupons — discount codes for associate-pro upgrades (and optionally other
+ * apply-sites). Wired to abode-be-v2 `/api/v1/admin/coupons*` (coupon-v2).
  *
- * **Still on GraphQL.** abode-be-v2's promotion module is unchanged from v1:
- * no apply-site scoping, no per-user cap, no discount cap, no redemption log,
- * and `incrementUsage` is an unconditional `$inc` — the check-then-write race
- * the v2 design exists to fix. This feature is rewritten when that backend
- * lands, not before.
+ * Requires admin permission `manage_promotions`.
  *
- * Coupons are a shared service, not part of associate upgrades — hence this
- * folder rather than the old `features/associate-upgrade`. The route is still
- * `/associate-upgrade/coupons`; moving it is a product call, best made when
- * the screens are rebuilt against the real API.
+ * Route remains `/associate-upgrade/coupons`.
  */
 
 // Components
@@ -27,3 +21,12 @@ export {
   useUpdateCouponStatus,
   useDeleteCoupon,
 } from './hooks/use-coupons';
+
+// Schemas
+export type {
+  Coupon,
+  CouponStatus,
+  CreateCouponInput,
+  UpdateCouponInput,
+  ManualCouponStatus,
+} from './schemas/coupon.schema';

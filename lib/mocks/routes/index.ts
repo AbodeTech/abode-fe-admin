@@ -5,6 +5,7 @@ import { commissionRoutes } from './commission';
 import { upgradeRoutes } from './upgrades';
 import { withdrawalRoutes } from './withdrawals';
 import { assetTransactionRoutes } from './asset-transactions';
+import { couponRoutes } from './coupons';
 
 /* ============================================================
  * Route registration. Importing this module (via lib/mocks/index.ts)
@@ -34,6 +35,7 @@ import { assetTransactionRoutes } from './asset-transactions';
  *               routes (/admin/users/:id/manual-upgrade, referral-status,
  *               referrer, downlines) are unclaimed — they belong to whichever
  *               feature builds that UI.
+ * coupons     — /admin/coupons*.
  * ============================================================ */
 
 let registered = false;
@@ -48,5 +50,6 @@ export function ensureRoutesRegistered(): void {
   registerRoutes(upgradeRoutes);
   registerRoutes(withdrawalRoutes);
   registerRoutes(assetTransactionRoutes);
+  registerRoutes(couponRoutes);
   // ...added per feature as it migrates
 }

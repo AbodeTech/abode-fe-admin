@@ -11,10 +11,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { COUPON_STATUSES, type CouponStatus } from "../schemas/coupon.schema";
 
 interface CouponFiltersProps {
-  status: string | null;
-  onStatusChange: (value: string | null) => void;
+  status: CouponStatus | null;
+  onStatusChange: (value: CouponStatus | null) => void;
   search: string;
   onSearchChange: (value: string) => void;
 }
@@ -32,16 +33,20 @@ export function CouponFilters({ status, onStatusChange, search, onSearchChange }
       <div className="w-full min-w-0 sm:w-64 sm:shrink-0">
         <Select
           value={status ?? "all"}
-          onValueChange={(value) => onStatusChange(value === "all" ? null : value)}
+          onValueChange={(value) =>
+            onStatusChange(value === "all" ? null : (value as CouponStatus))
+          }
         >
           <SelectTrigger className="w-full min-w-0">
             <SelectValue placeholder="All status" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="inactive">Inactive</SelectItem>
-            <SelectItem value="expired">Expired</SelectItem>
+            {COUPON_STATUSES.map((value) => (
+              <SelectItem key={value} value={value}>
+                {value.charAt(0).toUpperCase() + value.slice(1)}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>

@@ -148,7 +148,7 @@ BE also exposes `GET /admin/commission/audit/:paymentPlanId` and
 | `DeclineUpgradeRequest` | `PATCH /admin/referrals/upgrades/:id/decline` | ✅ real |
 | `ManualUpgradeToAssociatePro` | `POST /admin/users/:id/manual-upgrade` | ✅ real |
 | `SearchUpgradeUsers` | `GET /admin/users?search=` | ⚠️ adapt |
-| `GetActiveCoupons`, `CreateCoupon`, `UpdateCoupon`, `UpdateCouponStatus`, `DeleteCoupon` | `/promotions/coupons` (GET/POST/PATCH/DELETE) | ✅ real — `UpdateCouponStatus` folds into `PATCH /promotions/coupons/:id` |
+| `GetActiveCoupons`, `CreateCoupon`, `UpdateCoupon`, `UpdateCouponStatus`, `DeleteCoupon` | `/admin/coupons` (GET/POST); `/admin/coupons/:code` (GET/PATCH/DELETE); `/admin/coupons/:code/status` (PATCH); `/admin/coupons/:code/redemptions` (GET) | ✅ real — requires `manage_promotions` |
 | `ExportUpgradeRequests` | — | 🚧 provisional (see Exports) |
 
 ## Requests — `features/requests` (6 ops)
