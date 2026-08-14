@@ -1153,9 +1153,50 @@ export type AssignManagerTargetInput = {
   year?: InputMaybe<Scalars['Int']['input']>;
 };
 
+export enum AssistantAudience {
+  Associate = 'associate',
+  Customer = 'customer'
+}
+
 export type AssistantMessageInput = {
   content: Scalars['String']['input'];
   role: Scalars['String']['input'];
+};
+
+export type AssistantQueryCounts = {
+  __typename?: 'AssistantQueryCounts';
+  answered: Scalars['Int']['output'];
+  associate: Scalars['Int']['output'];
+  customer: Scalars['Int']['output'];
+  noAnswer: Scalars['Int']['output'];
+  total: Scalars['Int']['output'];
+};
+
+export type AssistantQueryFilters = {
+  /** filter to answered (true) or unanswered/no_answer (false) questions */
+  answered?: InputMaybe<Scalars['Boolean']['input']>;
+  audience?: InputMaybe<AssistantAudience>;
+  search?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type AssistantQueryListPayload = {
+  __typename?: 'AssistantQueryListPayload';
+  count: Scalars['Int']['output'];
+  data: Array<AssistantQuestion>;
+};
+
+export type AssistantQuestion = {
+  __typename?: 'AssistantQuestion';
+  answer?: Maybe<Scalars['String']['output']>;
+  /** false when the model replied with the [NO_ANSWER] sentinel — a handbook content gap */
+  answered: Scalars['Boolean']['output'];
+  audience: AssistantAudience;
+  createdAt: Scalars['Date']['output'];
+  email: Scalars['String']['output'];
+  firstName?: Maybe<Scalars['String']['output']>;
+  id: Scalars['ID']['output'];
+  lastName?: Maybe<Scalars['String']['output']>;
+  question: Scalars['String']['output'];
 };
 
 export type Associate = {
@@ -1324,6 +1365,13 @@ export type Block = {
   description?: Maybe<Scalars['String']['output']>;
   label: Scalars['String']['output'];
   updatedAt?: Maybe<Scalars['String']['output']>;
+};
+
+export type BookSiteInspectionInput = {
+  email: Scalars['String']['input'];
+  full_name: Scalars['String']['input'];
+  location: Scalars['String']['input'];
+  phone_number: Scalars['String']['input'];
 };
 
 export type BulkAssignAssociateProsInput = {
@@ -2562,6 +2610,12 @@ export type FlexAssetResponse = {
   success?: Maybe<Scalars['Boolean']['output']>;
 };
 
+export type FlexBrochureLeadInput = {
+  email: Scalars['String']['input'];
+  full_name: Scalars['String']['input'];
+  phone_number: Scalars['String']['input'];
+};
+
 export type FlexCommissionConfig = {
   __typename?: 'FlexCommissionConfig';
   direct: FlexDirectRates;
@@ -2598,6 +2652,54 @@ export type FlexDirectRatesOptional = {
   founder?: Maybe<Scalars['Float']['output']>;
   premium?: Maybe<Scalars['Float']['output']>;
 };
+
+export type FlexLead = {
+  __typename?: 'FlexLead';
+  adminNotes?: Maybe<Scalars['String']['output']>;
+  createdAt: Scalars['Date']['output'];
+  email: Scalars['String']['output'];
+  fullName: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  location?: Maybe<Scalars['String']['output']>;
+  phone: Scalars['String']['output'];
+  status: FlexLeadStatus;
+  type: FlexLeadType;
+  updatedAt?: Maybe<Scalars['Date']['output']>;
+};
+
+export type FlexLeadCounts = {
+  __typename?: 'FlexLeadCounts';
+  closed: Scalars['Int']['output'];
+  completed: Scalars['Int']['output'];
+  contacted: Scalars['Int']['output'];
+  new: Scalars['Int']['output'];
+  scheduled: Scalars['Int']['output'];
+};
+
+export type FlexLeadFilters = {
+  search?: InputMaybe<Scalars['String']['input']>;
+  status?: InputMaybe<FlexLeadStatus>;
+  type?: InputMaybe<FlexLeadType>;
+};
+
+export type FlexLeadListPayload = {
+  __typename?: 'FlexLeadListPayload';
+  count: Scalars['Int']['output'];
+  data: Array<FlexLead>;
+};
+
+export enum FlexLeadStatus {
+  Closed = 'closed',
+  Completed = 'completed',
+  Contacted = 'contacted',
+  New = 'new',
+  Scheduled = 'scheduled'
+}
+
+export enum FlexLeadType {
+  Brochure = 'brochure',
+  SiteInspection = 'site_inspection'
+}
 
 export enum FlexOrFullownership {
   Flex = 'flex',
@@ -3457,6 +3559,7 @@ export type Mutation = {
   assignAssociateManagerTarget: AssociateManagerTargetType;
   assignCSManagerTarget: CsManagerTargetType;
   assignCustomersToCSManager: AssignCustomersResult;
+  bookSiteInspection: Scalars['String']['output'];
   bulkAssignAssociateProsToManager: AssociateManagerType;
   buyAssetWithTransfer?: Maybe<Scalars['String']['output']>;
   buyAssetWithWallet: Scalars['String']['output'];
@@ -3555,6 +3658,7 @@ export type Mutation = {
   signinAdmin: Admin;
   signinUser: AuthResponse;
   signupUser: AuthResponse;
+  submitFlexBrochureLead: Scalars['String']['output'];
   submitManagerRating: SubmitManagerRatingResponse;
   suspendAgency: SuspendAgencyResponse;
   suspendMarketplaceListing: AdminMarketplaceActionResponse;
@@ -3577,6 +3681,7 @@ export type Mutation = {
   updateCommissionConfig: CommissionConfig;
   updateCoupon: CouponResponse;
   updateCouponStatus: CouponResponse;
+  updateFlexLead: FlexLead;
   updateKycInfo: User;
   updateMarketplaceListing: MarketplaceListingResponse;
   updateMeeting: Meeting;
@@ -3736,6 +3841,11 @@ export type MutationAssignCsManagerTargetArgs = {
 
 export type MutationAssignCustomersToCsManagerArgs = {
   input: AssignCustomersToCsmInput;
+};
+
+
+export type MutationBookSiteInspectionArgs = {
+  bookSiteInspectionInput: BookSiteInspectionInput;
 };
 
 
@@ -4240,6 +4350,11 @@ export type MutationSignupUserArgs = {
 };
 
 
+export type MutationSubmitFlexBrochureLeadArgs = {
+  flexBrochureLeadInput: FlexBrochureLeadInput;
+};
+
+
 export type MutationSubmitManagerRatingArgs = {
   input: SubmitManagerRatingInput;
 };
@@ -4349,6 +4464,13 @@ export type MutationUpdateCouponArgs = {
 
 export type MutationUpdateCouponStatusArgs = {
   updateCouponStatusInput: UpdateCouponStatusInput;
+};
+
+
+export type MutationUpdateFlexLeadArgs = {
+  adminNotes?: InputMaybe<Scalars['String']['input']>;
+  id: Scalars['ID']['input'];
+  status?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -5000,6 +5122,7 @@ export type Query = {
   adminGetManagerDashboard: ManagerDashboardResponse;
   adminGetManagerSalesRecord?: Maybe<SalesRecordResponse>;
   adminTransactionDataPoint?: Maybe<DataPointResponse>;
+  assistantQueryCounts: AssistantQueryCounts;
   clientAssets: ClientAssetListResponse;
   clientDashboardOverview: ClientDashboardOverviewResponse;
   clientPaymentSchedule: ClientPaymentScheduleResponse;
@@ -5007,6 +5130,7 @@ export type Query = {
   eligibleClientsForLand: EligibleClientsForLandResponse;
   exportManagerDashboardPros: Array<ManagerDashboardProRow>;
   exportManagerSalesRecord: SalesRecordResponse;
+  flexLeadCounts: FlexLeadCounts;
   flexQualifiedUsers?: Maybe<QualifiedUsersResponse>;
   fullownershipQualifiedUsers?: Maybe<QualifiedUsersResponse>;
   generateAdminOtp?: Maybe<Scalars['String']['output']>;
@@ -5042,6 +5166,7 @@ export type Query = {
   getAssetInventoryData?: Maybe<AssetInventoryResponse>;
   getAssetTransaction?: Maybe<TransactionAdminResponse>;
   getAssetTransactionData?: Maybe<TransactionAdminAssetResponse>;
+  getAssistantQueries: AssistantQueryListPayload;
   getAssociateManager?: Maybe<AssociateManagerType>;
   getAssociateManagerTarget?: Maybe<AssociateManagerTargetType>;
   getAssociateManagers: AssociateManagerListResponse;
@@ -5062,6 +5187,7 @@ export type Query = {
   getCoupon: CouponResponse;
   getCustomerAsset?: Maybe<Array<Maybe<UserAsset>>>;
   getDocumentTransaction?: Maybe<TransactionAdminResponse>;
+  getFlexLeads: FlexLeadListPayload;
   getHamperLeaderboard: Array<HamperLeaderboardEntry>;
   getLastActiveAssetPayment: LastActiveAssetPaymentResponse;
   getListOfAllTransactions?: Maybe<TransactionAdminResponse>;
@@ -5391,6 +5517,13 @@ export type QueryGetAssetTransactionDataArgs = {
 };
 
 
+export type QueryGetAssistantQueriesArgs = {
+  filters?: InputMaybe<AssistantQueryFilters>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
 export type QueryGetAssociateManagerArgs = {
   managerId: Scalars['ID']['input'];
 };
@@ -5501,6 +5634,13 @@ export type QueryGetDocumentTransactionArgs = {
   startDate?: InputMaybe<Scalars['Date']['input']>;
   status?: InputMaybe<Scalars['String']['input']>;
   transactionType?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryGetFlexLeadsArgs = {
+  filters?: InputMaybe<FlexLeadFilters>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -7827,6 +7967,20 @@ export type UpdateAssetMutationVariables = Exact<{
 
 export type UpdateAssetMutation = { __typename?: 'Mutation', updateAsset: string };
 
+export type GetAssistantQueriesQueryVariables = Exact<{
+  page?: InputMaybe<Scalars['Int']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  filters?: InputMaybe<AssistantQueryFilters>;
+}>;
+
+
+export type GetAssistantQueriesQuery = { __typename?: 'Query', getAssistantQueries: { __typename?: 'AssistantQueryListPayload', count: number, data: Array<{ __typename?: 'AssistantQuestion', id: string, email: string, firstName?: string | null, lastName?: string | null, audience: AssistantAudience, question: string, answer?: string | null, answered: boolean, createdAt: any }> } };
+
+export type GetAssistantQueryCountsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GetAssistantQueryCountsQuery = { __typename?: 'Query', assistantQueryCounts: { __typename?: 'AssistantQueryCounts', customer: number, associate: number, answered: number, noAnswer: number, total: number } };
+
 export type AddAssociateManagerMutationVariables = Exact<{
   input: AddRemoveManagerInput;
 }>;
@@ -8998,6 +9152,8 @@ export const DeleteBlockDocument = {"kind":"Document","definitions":[{"kind":"Op
 export const CreateFlexAssetDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateFlexAsset"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"createFlexAssetInput"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"CreateFlexAssetInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createFlexAsset"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"createFlexAssetInput"},"value":{"kind":"Variable","name":{"kind":"Name","value":"createFlexAssetInput"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"asset_name"}}]}}]}}]} as unknown as DocumentNode<CreateFlexAssetMutation, CreateFlexAssetMutationVariables>;
 export const CreateFullOwnershipAssetDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateFullOwnershipAsset"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"createFullOwnershipAssetInput"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"CreateFullOwnershipAssetInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createFullOwnershipAsset"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"createFullOwnershipAssetInput"},"value":{"kind":"Variable","name":{"kind":"Name","value":"createFullOwnershipAssetInput"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"asset_name"}}]}}]}}]} as unknown as DocumentNode<CreateFullOwnershipAssetMutation, CreateFullOwnershipAssetMutationVariables>;
 export const UpdateAssetDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"UpdateAsset"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"updateAssetInput"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"UpdateFlexAssetInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"updateAsset"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"updateAssetInput"},"value":{"kind":"Variable","name":{"kind":"Name","value":"updateAssetInput"}}}]}]}}]} as unknown as DocumentNode<UpdateAssetMutation, UpdateAssetMutationVariables>;
+export const GetAssistantQueriesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetAssistantQueries"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filters"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"AssistantQueryFilters"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAssistantQueries"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}},{"kind":"Argument","name":{"kind":"Name","value":"filters"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filters"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"count"}},{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"audience"}},{"kind":"Field","name":{"kind":"Name","value":"question"}},{"kind":"Field","name":{"kind":"Name","value":"answer"}},{"kind":"Field","name":{"kind":"Name","value":"answered"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}}]}}]}}]} as unknown as DocumentNode<GetAssistantQueriesQuery, GetAssistantQueriesQueryVariables>;
+export const GetAssistantQueryCountsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetAssistantQueryCounts"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"assistantQueryCounts"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"customer"}},{"kind":"Field","name":{"kind":"Name","value":"associate"}},{"kind":"Field","name":{"kind":"Name","value":"answered"}},{"kind":"Field","name":{"kind":"Name","value":"noAnswer"}},{"kind":"Field","name":{"kind":"Name","value":"total"}}]}}]}}]} as unknown as DocumentNode<GetAssistantQueryCountsQuery, GetAssistantQueryCountsQueryVariables>;
 export const AddAssociateManagerDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"AddAssociateManager"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"AddRemoveManagerInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"addAssociateManager"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"manager"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"role"}}]}},{"kind":"Field","name":{"kind":"Name","value":"associate_pros"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}}]}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<AddAssociateManagerMutation, AddAssociateManagerMutationVariables>;
 export const GetAllManagersDashboardDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetAllManagersDashboard"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filter"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"ManagerDashboardFilterInput"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAllManagersDashboard"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filter"}}},{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"period"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"periodType"}},{"kind":"Field","name":{"kind":"Name","value":"month"}},{"kind":"Field","name":{"kind":"Name","value":"year"}},{"kind":"Field","name":{"kind":"Name","value":"start"}},{"kind":"Field","name":{"kind":"Name","value":"end"}}]}},{"kind":"Field","name":{"kind":"Name","value":"target"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"recruitedTarget"}},{"kind":"Field","name":{"kind":"Name","value":"recruitedSoFar"}},{"kind":"Field","name":{"kind":"Name","value":"sellingTarget"}},{"kind":"Field","name":{"kind":"Name","value":"sellingSoFar"}},{"kind":"Field","name":{"kind":"Name","value":"revenueTarget"}},{"kind":"Field","name":{"kind":"Name","value":"revenueSoFar"}},{"kind":"Field","name":{"kind":"Name","value":"performanceScoreTarget"}},{"kind":"Field","name":{"kind":"Name","value":"performanceScoreSoFar"}}]}},{"kind":"Field","name":{"kind":"Name","value":"recruitment"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"newSignupsInPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"upgradesInPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedInPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedFreshInPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedCarryoverInPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"totalAssigned"}},{"kind":"Field","name":{"kind":"Name","value":"onboardingQueueCount"}},{"kind":"Field","name":{"kind":"Name","value":"newSignupsBySource"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"managed"}},{"kind":"Field","name":{"kind":"Name","value":"unassigned"}},{"kind":"Field","name":{"kind":"Name","value":"users"}},{"kind":"Field","name":{"kind":"Name","value":"associate"}}]}},{"kind":"Field","name":{"kind":"Name","value":"upgradesBySource"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"managed"}},{"kind":"Field","name":{"kind":"Name","value":"unassigned"}},{"kind":"Field","name":{"kind":"Name","value":"users"}},{"kind":"Field","name":{"kind":"Name","value":"associate"}}]}},{"kind":"Field","name":{"kind":"Name","value":"topNewSignupsContributors"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"proId"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"count"}}]}},{"kind":"Field","name":{"kind":"Name","value":"topUpgradesContributors"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"proId"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"count"}}]}},{"kind":"Field","name":{"kind":"Name","value":"othersNewSignupsCount"}},{"kind":"Field","name":{"kind":"Name","value":"othersUpgradesCount"}},{"kind":"Field","name":{"kind":"Name","value":"activeRecruitingProsCount"}},{"kind":"Field","name":{"kind":"Name","value":"activePromotingProsCount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"salesAndRevenue"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"sellingPros"}},{"kind":"Field","name":{"kind":"Name","value":"sellingProsTarget"}},{"kind":"Field","name":{"kind":"Name","value":"totalRevenue"}},{"kind":"Field","name":{"kind":"Name","value":"initialSalesRevenue"}},{"kind":"Field","name":{"kind":"Name","value":"recurringRevenue"}},{"kind":"Field","name":{"kind":"Name","value":"revenuePerSellingPro"}},{"kind":"Field","name":{"kind":"Name","value":"salesCountBySource"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"managed"}},{"kind":"Field","name":{"kind":"Name","value":"unassigned"}},{"kind":"Field","name":{"kind":"Name","value":"users"}},{"kind":"Field","name":{"kind":"Name","value":"associate"}}]}},{"kind":"Field","name":{"kind":"Name","value":"revenueBySource"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"managed"}},{"kind":"Field","name":{"kind":"Name","value":"unassigned"}},{"kind":"Field","name":{"kind":"Name","value":"users"}},{"kind":"Field","name":{"kind":"Name","value":"associate"}}]}},{"kind":"Field","name":{"kind":"Name","value":"topSellingContributors"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"proId"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"othersSellingRevenue"}},{"kind":"Field","name":{"kind":"Name","value":"activeRevenueGeneratingProsCount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"activity"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"activeCount"}},{"kind":"Field","name":{"kind":"Name","value":"activePct"}},{"kind":"Field","name":{"kind":"Name","value":"recentLoginCount"}},{"kind":"Field","name":{"kind":"Name","value":"recentSaleCount"}},{"kind":"Field","name":{"kind":"Name","value":"recentRecruitCount"}},{"kind":"Field","name":{"kind":"Name","value":"inactiveCount"}},{"kind":"Field","name":{"kind":"Name","value":"inactivePct"}},{"kind":"Field","name":{"kind":"Name","value":"abandonedCount"}},{"kind":"Field","name":{"kind":"Name","value":"abandonedPct"}}]}},{"kind":"Field","name":{"kind":"Name","value":"milestones"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"earlySellers"}},{"kind":"Field","name":{"kind":"Name","value":"lateFirstSellers"}}]}},{"kind":"Field","name":{"kind":"Name","value":"performanceScore"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"score"}},{"kind":"Field","name":{"kind":"Name","value":"sellingComponent"}},{"kind":"Field","name":{"kind":"Name","value":"revenueComponent"}},{"kind":"Field","name":{"kind":"Name","value":"recruitmentComponent"}},{"kind":"Field","name":{"kind":"Name","value":"target"}},{"kind":"Field","name":{"kind":"Name","value":"actual"}},{"kind":"Field","name":{"kind":"Name","value":"ratingCount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"associatePros"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"dateRecruited"}},{"kind":"Field","name":{"kind":"Name","value":"totalSales"}},{"kind":"Field","name":{"kind":"Name","value":"revenueGenerated"}},{"kind":"Field","name":{"kind":"Name","value":"lastLogin"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedAt"}}]}},{"kind":"Field","name":{"kind":"Name","value":"associateProsGroupTotal"}}]}}]}}]} as unknown as DocumentNode<GetAllManagersDashboardQuery, GetAllManagersDashboardQueryVariables>;
 export const AssignAssociateManagerTargetDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"AssignAssociateManagerTarget"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"AssignManagerTargetInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"assignAssociateManagerTarget"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"manager"}},{"kind":"Field","name":{"kind":"Name","value":"month"}},{"kind":"Field","name":{"kind":"Name","value":"year"}},{"kind":"Field","name":{"kind":"Name","value":"associate_pro_recruited_target"}},{"kind":"Field","name":{"kind":"Name","value":"selling_associate_pro_target"}},{"kind":"Field","name":{"kind":"Name","value":"revenue_target"}},{"kind":"Field","name":{"kind":"Name","value":"performance_score_target"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<AssignAssociateManagerTargetMutation, AssignAssociateManagerTargetMutationVariables>;
