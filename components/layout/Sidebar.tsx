@@ -31,6 +31,8 @@ import {
   UserPlus,
   Users,
   Headphones,
+  Bot,
+  MessagesSquare,
 } from "lucide-react";
 
 import LogOutModal from "@/components/settings/LogOutModal";
@@ -83,6 +85,14 @@ const navGroups = [
     icon: <Headphones />,
     items: [
       { name: "CS Manager Performance", link: "/customer-managers", icon: <ShieldCheck /> },
+    ]
+  },
+  {
+    title: "Ilé Assistant",
+    isCollapsible: true,
+    icon: <Bot />,
+    items: [
+      { name: "Questions", link: "/ile-assistant", icon: <MessagesSquare /> },
     ]
   },
   {
