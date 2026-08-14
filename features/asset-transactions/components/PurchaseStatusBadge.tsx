@@ -2,6 +2,7 @@ import { cn } from "@/lib/utils";
 
 import {
   PURCHASE_STATUS_LABELS,
+  isReviewablePurchase,
   type Purchase,
   type PurchaseStatus,
 } from "../schemas/purchase.schema";
@@ -55,6 +56,6 @@ export function PurchaseStatusBadge({
 
 /** A pending transfer is work waiting for an admin — say so beneath the badge. */
 export function ReviewHint({ row }: { row: Purchase }) {
-  if (row.payment_method !== "transfer" || row.admin_status !== "pending") return null;
+  if (!isReviewablePurchase(row)) return null;
   return <p className="text-xs font-medium text-[#B54708]">Needs review</p>;
 }

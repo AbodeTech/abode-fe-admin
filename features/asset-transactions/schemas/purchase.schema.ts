@@ -8,15 +8,13 @@ import { z } from 'zod';
  * lives in `purchase_details.transaction_kind` — a property of the row, not
  * a mode of the page, exactly like offer types on the assets table.
  *
- * Review exists per family: transfer-paid flex purchases pending approval go
- * through POST /admin/acquisitions/flex/:txId/approve|decline. Approve is a
+ * Review exists per family: transfer-paid flex purchases go through
+ * POST /admin/acquisitions/flex/:txId/approve|decline; FO purchases go through
+ * POST /admin/fo/purchase/transactions/:txId/approve|decline. Approve is a
  * heavy action — it creates the payment plan AND pays commission.
  *
- * Full-ownership shipped on 2026-08-13 (ticket 20), so FO rows can now appear
- * here. Their **review** endpoints live at a different path
- * (`POST /admin/fo/purchase/transactions/:txId/approve|decline`) and are not
- * wired yet — `isReviewablePurchase` still recognises flex only, so an FO row
- * displays correctly but offers no Review action.
+ * `fo_outright_doc` is never reviewed on its own: the BE rejects it with
+ * OUTRIGHT_SIBLING_REQUIRED. Action the parent `fo_outright_land` row instead.
  *
  * Amounts are decimal naira.
  * ============================================================ */
@@ -34,6 +32,16 @@ export const FO_KINDS = [
   'fo_outright_doc',
   'fo_doc_payment',
 ] as const;
+
+/** FO kinds the admin may POST approve/decline on. Excludes the outright doc sibling. */
+export const REVIEWABLE_FO_KINDS = [
+  'fo_outright_land',
+  'fo_installment_land',
+  'fo_recurring_land',
+  'fo_doc_payment',
+] as const;
+
+export type PurchaseReviewFamily = 'flex' | 'full-ownership';
 
 /** Open vocabulary on the wire — new kinds must not break the table. */
 export const KIND_LABELS: Record<string, string> = {
@@ -248,22 +256,39 @@ export const PurchaseSchema = z.looseObject({
 
 export type Purchase = z.infer<typeof PurchaseSchema>;
 
+export function purchaseKind(row: Purchase): string {
+  return row.purchase_details?.transaction_kind ?? '';
+}
+
+/** Which admin review family this row belongs to, or null if none. */
+export function purchaseReviewFamily(row: Purchase): PurchaseReviewFamily | null {
+  const kind = purchaseKind(row);
+  if ((FLEX_KINDS as readonly string[]).includes(kind)) return 'flex';
+  if ((REVIEWABLE_FO_KINDS as readonly string[]).includes(kind)) return 'full-ownership';
+  return null;
+}
+
 /**
- * Whether this row can be reviewed **through the flex endpoints**, mirroring
- * `requirePendingTransfer`'s guards exactly: a flex kind, paid by transfer,
- * still pending. Paystack rows confirm via webhook and wallet rows settle
- * instantly, so neither has an admin action.
- *
- * Full-ownership rows return false here even when pending: their review lives
- * at `/admin/fo/purchase/transactions/:txId/*`, a separate family this feature
- * does not call yet. Routing per family is the follow-up to ticket 20.
+ * Whether this row can be reviewed, mirroring each family's
+ * `requirePendingTransfer`: a reviewable kind, paid by transfer, still pending.
+ * Paystack confirms via webhook and wallet settles instantly, so neither has
+ * an admin action. `fo_outright_doc` is never reviewable — approve the land row.
  */
 export function isReviewablePurchase(row: Purchase): boolean {
-  const kind = row.purchase_details?.transaction_kind ?? '';
   return (
-    (FLEX_KINDS as readonly string[]).includes(kind) &&
+    purchaseReviewFamily(row) !== null &&
     row.payment_method === 'transfer' &&
     row.admin_status === 'pending'
+  );
+}
+
+/** Initial land/flex purchase — decline releases reserved units. */
+export function isInitialPurchase(row: Purchase): boolean {
+  const kind = purchaseKind(row);
+  return (
+    kind === 'initial_flex_purchase' ||
+    kind === 'fo_outright_land' ||
+    kind === 'fo_installment_land'
   );
 }
 

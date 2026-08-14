@@ -4,12 +4,12 @@
  * property (`purchase_details.transaction_kind`), not a page split.
  *
  * Buyer, referrer and property are populated and every filter is live as of
- * 2026-08-13 (tickets 24a/b/d). Two things still differ from the screen this
- * replaces: production's **Property Owner** column has no v2 field and no known
- * equivalent (⛔ ticket 24b), and **full-ownership rows carry no Review action**
- * — their review lives at /admin/fo/purchase/transactions/:txId/*, a separate
- * family this feature does not call yet. The stat cards run on labelled sample
- * data; there is still no stats endpoint.
+ * 2026-08-13 (tickets 24a/b/d). Review routes per family: flex at
+ * /admin/acquisitions/flex/:txId/*, FO at /admin/fo/purchase/transactions/:txId/*.
+ * `fo_outright_doc` has no Review action — approve the parent land row.
+ *
+ * Production's **Property Owner** column has no v2 field (⛔ ticket 24b).
+ * The stat cards run on labelled sample data; there is still no stats endpoint.
  */
 
 export { PurchasesTable } from './components/PurchasesTable';
@@ -19,7 +19,7 @@ export { PurchaseStatusBadge } from './components/PurchaseStatusBadge';
 export { ReviewPurchaseDialog } from './components/ReviewPurchaseDialog';
 
 export { usePurchases, DEFAULT_PURCHASE_LIMIT } from './hooks/use-purchases';
-export { useApproveFlexPurchase, useDeclineFlexPurchase } from './hooks/use-purchase-review';
+export { useApprovePurchase, useDeclinePurchase } from './hooks/use-purchase-review';
 export type { PurchaseListFilters } from './hooks/query-keys';
 
 export {
@@ -35,6 +35,7 @@ export {
 export type {
   AssetType,
   Purchase,
+  PurchaseReviewFamily,
   PurchaseStatus,
   SalesType,
 } from './schemas/purchase.schema';

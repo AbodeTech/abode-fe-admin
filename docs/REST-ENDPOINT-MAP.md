@@ -39,7 +39,7 @@ everything analytical or campaign-related.
 | `auth` | ✅ Admin login/me/change-password |
 | `marketplace` | ⚠️ Partial — public list/detail/cancel; **no admin moderation** |
 | `associates` (managers) | 🚧 **None** — 26 operations, zero BE |
-| `transactions` | 🚧 **None** — 19 operations, zero BE admin transactions API |
+| `transactions` | ✅ Partial — `GET /admin/transactions` + flex/FO transfer approve/decline; no stats/export |
 | `dashboard` | 🚧 None |
 | `analytics` | 🚧 None |
 | `campaigns` | 🚧 None |
@@ -148,7 +148,7 @@ BE also exposes `GET /admin/commission/audit/:paymentPlanId` and
 | `DeclineUpgradeRequest` | `PATCH /admin/referrals/upgrades/:id/decline` | ✅ real |
 | `ManualUpgradeToAssociatePro` | `POST /admin/users/:id/manual-upgrade` | ✅ real — `to_tier`, `fee_amount?`, `pay_commission?`, `reason` (min 20); no `paymentUrl` |
 | `SearchUpgradeUsers` | `GET /admin/users?search=` | ✅ real — handler wired 2026-08-13 (ticket 2) |
-| `GetActiveCoupons`, `CreateCoupon`, `UpdateCoupon`, `UpdateCouponStatus`, `DeleteCoupon` | `/promotions/coupons` (GET/POST/PATCH/DELETE) | ✅ real — `UpdateCouponStatus` folds into `PATCH /promotions/coupons/:id` |
+| `GetActiveCoupons`, `CreateCoupon`, `UpdateCoupon`, `UpdateCouponStatus`, `DeleteCoupon` | `/admin/coupons` (GET/POST); `/admin/coupons/:code` (GET/PATCH/DELETE); `/admin/coupons/:code/status` (PATCH) | ✅ real — requires `manage_promotions` |
 | `ExportUpgradeRequests` | — | 🚧 provisional (see Exports) |
 
 ## Requests — `features/requests` (6 ops)
@@ -186,21 +186,20 @@ BE also exposes `GET /admin/commission/audit/:paymentPlanId` and
 **There is no admin marketplace module on the BE** — only the public browse
 endpoints plus a user-side cancel.
 
-## Transactions — `features/transactions` (19 ops) — 🚧 **entirely provisional**
+## Transactions — `features/transactions` + `features/asset-transactions`
 
-The BE has `GET /wallet/transactions` (a user's own) and **no admin
-transactions API whatsoever**. Every operation here is provisional:
+Asset purchases (the screen at `/transactions/assets`) are **live**. Other transaction families (topup, document, commission) remain provisional.
 
-| Operations | Proposed REST |
-|---|---|
-| `GetTopupTransaction`, `GetWithdrawalTransaction`, `GetDocumentTransaction`, `GetCommissionTransactions`, `GetAssetTransaction` | `GET /admin/transactions?type=topup\|withdrawal\|document\|commission\|asset` |
-| `ApproveTransaction`, `DeclineTransaction`, `ApprovePaystackTransaction`, `ApproveAssetTransaction`, `DeclineAssetTransaction`, `DeclineDocumentTransaction` | `PATCH /admin/transactions/:id/approve` / `/decline` (type in body) |
-| `ProcessCommission`, `ProcessReceipt` | `POST /admin/transactions/:id/process` |
-| `AdminTransactionDataPoint`, `GetAssetTransactionsStatistics` | `GET /admin/transactions/statistics` |
-| `GetUsersWithZeroBalance` | `GET /admin/users?balance=0` |
-| `Export*Transactions` (×3) | See Exports |
-
-This is the **single largest BE ask** — a core admin surface with no backend.
+| Operation | REST | Status | Notes |
+|---|---|---|---|
+| Asset purchase list | `GET /admin/transactions?type=purchase` | ✅ real | Filters: `status`, `payment_method`, `sales_type` (`ap`/`rap`/`dp`), `asset_type` (`flex`/`full-ownership`), `search`, `start_date`, `end_date`, `user`. No `admin_status`. |
+| Approve flex transfer | `POST /admin/acquisitions/flex/:txId/approve` | ✅ real | Empty body. Returns `{ payment_plan_id }`. Permission `approve_payments`. |
+| Decline flex transfer | `POST /admin/acquisitions/flex/:txId/decline` | ✅ real | `{ reason }` min 20 chars. |
+| Approve FO transfer | `POST /admin/fo/purchase/transactions/:txId/approve` | ✅ real | Empty body. Returns `{ plan_id }`. Do **not** call on `fo_outright_doc`. |
+| Decline FO transfer | `POST /admin/fo/purchase/transactions/:txId/decline` | ✅ real | `{ reason }` min 20 chars. Outright land also declines the sibling doc tx. |
+| `GetTopupTransaction`, `GetDocumentTransaction`, `GetCommissionTransactions` | `GET /admin/transactions?type=…` | ⚠️ adapt | Same list endpoint; those screens are not migrated. |
+| `AdminTransactionDataPoint`, `GetAssetTransactionsStatistics` | — | 🚧 `GET /admin/transactions/statistics` | |
+| Unified `PATCH /admin/transactions/:id/approve` | — | 🚧 not built | Review is split by family, not a single path. |
 
 ## Associates / Managers — `features/associates`, `features/associate-managers` (26 ops, 7,642 LOC) — 🚧 **entirely provisional**
 

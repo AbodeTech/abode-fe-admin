@@ -30,7 +30,8 @@ import { couponRoutes } from './coupons';
  * withdrawals — /admin/withdrawals/*.
  * asset-transactions — GET /admin/transactions (serves purchase rows; other
  *               types return empty pages until their screens migrate) and
- *               /admin/acquisitions/flex/*. The wallet family
+ *               /admin/acquisitions/flex/* and
+ *               /admin/fo/purchase/transactions/*. The wallet family
  *               (/admin/wallets/*) is unclaimed.
  * upgrades    — /admin/referrals/upgrades/* and POST
  *               /admin/users/:id/manual-upgrade (claimed 2026-08-13 — the

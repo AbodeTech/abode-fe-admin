@@ -1666,10 +1666,10 @@ so the backend team can see they were considered and dismissed.
 > and separate document-fee routes exist (`/doc/paystack`, `/doc/transfer`),
 > which this ticket folded into initiate.
 >
-> **Frontend status: not yet wired.** `features/asset-transactions` reviews flex
-> only, and `purchase.schema.ts` still says full-ownership rows "cannot exist
-> today". That comment is now wrong, and the review action needs to route per
-> family. Tracked as frontend work in ticket 24.
+> **Frontend status: wired.** `features/asset-transactions` reviews both
+> families. Flex goes to `/admin/acquisitions/flex/:txId/*`; FO goes to
+> `/admin/fo/purchase/transactions/:txId/*`. `fo_outright_doc` is not
+> reviewable — the admin acts on the parent `fo_outright_land` row.
 >
 > The original request is kept below for the record.
 
@@ -1910,10 +1910,10 @@ after Payer, matching production's order.
 > questions this ticket put to the backend team rather than requests, and both
 > are unanswered. The Property Owner column is not rendered.
 >
-> One consequence worth noting: full-ownership rows can now arrive in this list
-> (ticket 20), and their review lives at
-> `/admin/fo/purchase/transactions/:txId/*` — a family this feature doesn't call
-> yet. Such rows display correctly and carry no Review action.
+> One consequence worth noting: full-ownership rows arrive in this list
+> (ticket 20). Review is routed per family to
+> `/admin/fo/purchase/transactions/:txId/*`. `fo_outright_doc` carries no
+> Review action — approve the parent land row.
 >
 > The original request is kept below for the record.
 

@@ -23,19 +23,21 @@ import {
   assetName,
   buyerId,
   buyerName,
+  isInitialPurchase,
   kindLabel,
   purchaseDeclineReasonSchema,
+  purchaseReviewFamily,
   referrerId,
   referrerName,
   type Purchase,
 } from "../schemas/purchase.schema";
 import {
-  useApproveFlexPurchase,
-  useDeclineFlexPurchase,
+  useApprovePurchase,
+  useDeclinePurchase,
 } from "../hooks/use-purchase-review";
 
 /* ============================================================
- * Review of one transfer-paid flex purchase.
+ * Review of one transfer-paid purchase (flex or full-ownership).
  *
  * One dialog, two outcomes. The evidence — bank, reference, receipt — sits
  * above the decision, because that is what the admin is actually judging:
@@ -43,7 +45,7 @@ import {
  *
  * Approving is heavy and the copy says so: it creates the payment plan and
  * pays commission in the same motion. Declining an initial purchase releases
- * the units it was holding.
+ * the units it was holding. FO outright also declines the sibling document tx.
  * ============================================================ */
 
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
@@ -64,8 +66,8 @@ export function ReviewPurchaseDialog({
   row: Purchase | null;
   onClose: () => void;
 }) {
-  const approve = useApproveFlexPurchase();
-  const decline = useDeclineFlexPurchase();
+  const approve = useApprovePurchase();
+  const decline = useDeclinePurchase();
 
   const [declining, setDeclining] = useState(false);
   const [reason, setReason] = useState("");
@@ -81,18 +83,25 @@ export function ReviewPurchaseDialog({
   };
 
   if (!row) return null;
+  const family = purchaseReviewFamily(row);
+  if (!family) return null;
+
   const details = row.purchase_details;
-  const isInitial = details?.transaction_kind === "initial_flex_purchase";
+  const isInitial = isInitialPurchase(row);
+  const isFoOutright = details?.transaction_kind === "fo_outright_land";
+  const isDocPayment = details?.transaction_kind === "fo_doc_payment";
 
   const submitApprove = () => {
     approve.mutate(
-      { id: row._id },
+      { id: row._id, family },
       {
         onSuccess: (result) => {
           toast.success(
-            isInitial
-              ? `Approved — payment plan created (${result.payment_plan_id.slice(-6)}) and commission paid`
-              : "Approved — installment recorded and commission paid"
+            isDocPayment
+              ? `Approved — document plan updated (${result.planId.slice(-6)})`
+              : isInitial
+                ? `Approved — payment plan created (${result.planId.slice(-6)}) and commission paid`
+                : "Approved — installment recorded and commission paid"
           );
           close();
         },
@@ -109,7 +118,7 @@ export function ReviewPurchaseDialog({
     }
 
     decline.mutate(
-      { id: row._id, reason: parsed.data },
+      { id: row._id, family, reason: parsed.data },
       {
         onSuccess: (result) => {
           toast.success(
@@ -129,9 +138,13 @@ export function ReviewPurchaseDialog({
         <DialogHeader>
           <DialogTitle>Review transfer payment</DialogTitle>
           <DialogDescription>
-            {isInitial
-              ? "A new purchase paid by bank transfer. Approving creates the payment plan and pays commission; declining releases the held units."
-              : "An installment paid by bank transfer. Approving records it against the plan and pays commission."}
+            {isFoOutright
+              ? "A full-ownership outright purchase paid by bank transfer. Approving creates the land plan, settles the sibling document fee, and pays commission; declining releases the held units and declines the document row with it."
+              : isDocPayment
+                ? "A full-ownership document fee paid by bank transfer. Approving records it against the document plan."
+                : isInitial
+                  ? "A new purchase paid by bank transfer. Approving creates the payment plan and pays commission; declining releases the held units."
+                  : "An installment paid by bank transfer. Approving records it against the plan and pays commission."}
           </DialogDescription>
         </DialogHeader>
 
@@ -257,8 +270,10 @@ export function ReviewPurchaseDialog({
                   <>
                     Approving <Loader2 className="ml-2 h-4 w-4 animate-spin" />
                   </>
-                ) : (
+                ) : isInitial ? (
                   "Approve — create plan & pay commission"
+                ) : (
+                  "Approve — record payment & pay commission"
                 )}
               </Button>
             </>

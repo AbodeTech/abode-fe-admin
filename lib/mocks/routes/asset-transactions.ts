@@ -3,8 +3,9 @@ import { findPerson, matchesPersonSearch } from './people';
 import { body, paged } from './util';
 
 /* ============================================================
- * Asset transactions mocks — GET /admin/transactions (purchase rows) and
- * the flex review pair under /admin/acquisitions/flex.
+ * Asset transactions mocks — GET /admin/transactions (purchase rows),
+ * the flex review pair under /admin/acquisitions/flex, and the FO review
+ * pair under /admin/fo/purchase/transactions.
  *
  * Fixtures cover the states the page exists to render: a transfer-paid
  * initial purchase and a transfer-paid installment both awaiting review, a
@@ -360,13 +361,31 @@ function populate(row: MockPurchase) {
   };
 }
 
-function requirePendingTransfer(id: string): MockPurchase {
+function requirePendingTransfer(
+  id: string,
+  family: 'flex' | 'full-ownership'
+): MockPurchase {
   const row = purchases.find((candidate) => candidate._id === id);
   if (!row) throw new MockHttpError(404, 'Transaction not found', 'TRANSACTION_NOT_FOUND');
 
   const kind = row.purchase_details?.transaction_kind ?? '';
+  if (family === 'full-ownership' && kind === 'fo_outright_doc') {
+    throw new MockHttpError(
+      409,
+      'Approve the parent land transaction instead',
+      'OUTRIGHT_SIBLING_REQUIRED'
+    );
+  }
+
   const isFlex = kind === 'initial_flex_purchase' || kind === 'recurring_flex_payment';
-  if (!isFlex || row.payment_method !== 'transfer' || row.admin_status !== 'pending') {
+  const isFo =
+    kind === 'fo_outright_land' ||
+    kind === 'fo_installment_land' ||
+    kind === 'fo_recurring_land' ||
+    kind === 'fo_doc_payment';
+  const matchesFamily = family === 'flex' ? isFlex : isFo;
+
+  if (!matchesFamily || row.payment_method !== 'transfer' || row.admin_status !== 'pending') {
     throw new MockHttpError(409, 'Not a pending transfer purchase', 'NOT_A_PENDING_TRANSFER');
   }
   return row;
@@ -429,7 +448,7 @@ export const assetTransactionRoutes: MockRoutes = {
   },
 
   'POST /admin/acquisitions/flex/:txId/approve': ({ params }) => {
-    const row = requirePendingTransfer(params.txId);
+    const row = requirePendingTransfer(params.txId, 'flex');
 
     const isInitial = row.purchase_details?.transaction_kind === 'initial_flex_purchase';
     const planId = isInitial
@@ -444,7 +463,7 @@ export const assetTransactionRoutes: MockRoutes = {
   },
 
   'POST /admin/acquisitions/flex/:txId/decline': ({ params, body: raw }) => {
-    const row = requirePendingTransfer(params.txId);
+    const row = requirePendingTransfer(params.txId, 'flex');
 
     const dto = body<{ reason?: string }>(raw);
     const reason = (dto.reason ?? '').trim();
@@ -465,6 +484,75 @@ export const assetTransactionRoutes: MockRoutes = {
       message: isInitial
         ? 'Transfer purchase declined and units released.'
         : 'Recurring transfer payment declined.',
+    };
+  },
+
+  'POST /admin/fo/purchase/transactions/:txId/approve': ({ params }) => {
+    const row = requirePendingTransfer(params.txId, 'full-ownership');
+    const kind = row.purchase_details?.transaction_kind;
+    const isInitialLand = kind === 'fo_outright_land' || kind === 'fo_installment_land';
+    const planId = isInitialLand
+      ? `665fpl00000000000000f${String(Date.now() % 100).padStart(2, '0')}`
+      : (row.purchase_details?.payment_plan_id ?? '665fpl00000000000000fo99');
+
+    row.status = 'completed';
+    row.admin_status = 'approved';
+    if (row.purchase_details) row.purchase_details.payment_plan_id = planId;
+
+    if (kind === 'fo_outright_land') {
+      const sibling = purchases.find(
+        (candidate) =>
+          candidate.purchase_details?.transaction_kind === 'fo_outright_doc' &&
+          candidate.user === row.user &&
+          candidate.source_asset === row.source_asset &&
+          candidate.admin_status === 'pending'
+      );
+      if (sibling) {
+        sibling.status = 'completed';
+        sibling.admin_status = 'approved';
+      }
+    }
+
+    return { plan_id: planId };
+  },
+
+  'POST /admin/fo/purchase/transactions/:txId/decline': ({ params, body: raw }) => {
+    const row = requirePendingTransfer(params.txId, 'full-ownership');
+
+    const dto = body<{ reason?: string }>(raw);
+    const reason = (dto.reason ?? '').trim();
+    if (reason.length < 20) {
+      throw new MockHttpError(
+        400,
+        'DECLINE_REASON_TOO_SHORT: A decline reason of at least 20 characters is required',
+        'VALIDATION_FAILED'
+      );
+    }
+
+    const kind = row.purchase_details?.transaction_kind;
+    const isInitialLand = kind === 'fo_outright_land' || kind === 'fo_installment_land';
+    row.status = 'failed';
+    row.admin_status = 'declined';
+    row.decline_reason = reason;
+
+    if (kind === 'fo_outright_land') {
+      const sibling = purchases.find(
+        (candidate) =>
+          candidate.purchase_details?.transaction_kind === 'fo_outright_doc' &&
+          candidate.user === row.user &&
+          candidate.source_asset === row.source_asset
+      );
+      if (sibling && sibling.admin_status === 'pending') {
+        sibling.status = 'failed';
+        sibling.admin_status = 'declined';
+        sibling.decline_reason = reason;
+      }
+    }
+
+    return {
+      message: isInitialLand
+        ? 'Full-ownership purchase declined and units released.'
+        : 'Full-ownership payment declined.',
     };
   },
 };
