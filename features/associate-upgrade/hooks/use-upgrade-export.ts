@@ -7,8 +7,24 @@ import { exportToCsv } from "../utils/export-csv";
 
 // Flat query (no fragment masking) so the export can read fields directly.
 const EXPORT_UPGRADE_REQUESTS = graphql(`
-  query ExportUpgradeRequests($page: Int!, $limit: Int!, $adminStatus: AdminStatus, $search: String) {
-    getAllUpgradeRequests(page: $page, limit: $limit, adminStatus: $adminStatus, search: $search) {
+  query ExportUpgradeRequests(
+    $page: Int!
+    $limit: Int!
+    $adminStatus: AdminStatus
+    $upgradeType: String
+    $startDate: String
+    $endDate: String
+    $search: String
+  ) {
+    getAllUpgradeRequests(
+      page: $page
+      limit: $limit
+      adminStatus: $adminStatus
+      upgradeType: $upgradeType
+      startDate: $startDate
+      endDate: $endDate
+      search: $search
+    ) {
       upgradeRequests {
         _id
         admin_status
@@ -48,17 +64,22 @@ const EXPORT_PAGE_SIZE = 200;
 
 export interface UpgradeExportFilters {
   adminStatus?: string | null;
+  upgradeType?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
   search?: string | null;
 }
 
 async function fetchAllUpgradeRequests(
-  adminStatus?: string | null,
-  search?: string | null
+  filters: UpgradeExportFilters
 ): Promise<ExportRow[]> {
   const variables = {
     limit: EXPORT_PAGE_SIZE,
-    adminStatus: (adminStatus || undefined) as AdminStatus | undefined,
-    search: search ?? null,
+    adminStatus: (filters.adminStatus || undefined) as AdminStatus | undefined,
+    upgradeType: filters.upgradeType ?? null,
+    startDate: filters.startDate ?? null,
+    endDate: filters.endDate ?? null,
+    search: filters.search ?? null,
   };
 
   const first = await execute(EXPORT_UPGRADE_REQUESTS, { ...variables, page: 1 });
@@ -83,7 +104,7 @@ async function fetchAllUpgradeRequests(
 
 export const useUpgradeExport = (filters: UpgradeExportFilters) => {
   const mutation = useMutation({
-    mutationFn: () => fetchAllUpgradeRequests(filters.adminStatus, filters.search),
+    mutationFn: () => fetchAllUpgradeRequests(filters),
     onSuccess: (rows) => {
       if (rows.length === 0) {
         toast.info("No upgrade requests to export for the current filters.");

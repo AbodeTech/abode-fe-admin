@@ -82,7 +82,7 @@ export function CommissionExport() {
             Client_name: parsed.clientName || "N/A",
             Transaction_amount: gross !== null ? gross : "N/A",
             Asset_type: parsed.assetType || row.asset_type || "N/A",
-            Associate_name: `${row.user?.firstName ?? ""} ${row.user?.lastName ?? ""}`.trim() || "N/A",
+            Associate_name: `${row.user?.lastName ?? ""} ${row.user?.firstName ?? ""}`.trim() || "N/A",
             Associate_status: row.user?.referral_status || "N/A",
             Percentage_earned: percentageEarned,
             Commission: commission,

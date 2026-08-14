@@ -24,6 +24,7 @@ export interface AllocationClientFilters {
   assetType?: string | null;
   percentage?: number | null;
   search?: string | null;
+  allocationStatus?: string | null;
   startDate?: string | null;
   endDate?: string | null;
   [key: string]: unknown;
@@ -39,6 +40,7 @@ export const useAllocationClients = (filters: AllocationClientFilters) => {
     assetType,
     percentage,
     search,
+    allocationStatus,
     startDate,
     endDate,
   } = filters;
@@ -51,6 +53,7 @@ export const useAllocationClients = (filters: AllocationClientFilters) => {
         assetType: assetType || undefined,
         percentage: percentage ?? undefined,
         search: search || undefined,
+        allocationStatus: allocationStatus || undefined,
         // API supports date range for this endpoint; generated FiltersInput is currently stale.
         startDate: startDate || undefined,
         endDate: endDate || undefined,

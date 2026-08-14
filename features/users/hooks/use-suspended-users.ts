@@ -75,7 +75,7 @@ export const useExportSuspendedUsers = () => {
         { header: 'User ID', accessor: (r) => r._id },
         { header: 'First Name', accessor: (r) => r.firstName },
         { header: 'Last Name', accessor: (r) => r.lastName },
-        { header: 'Full Name', accessor: (r) => `${r.firstName} ${r.lastName}`.trim() },
+        { header: 'Full Name', accessor: (r) => `${r.lastName} ${r.firstName}`.trim() },
         { header: 'Email', accessor: (r) => r.email },
         { header: 'Gender', accessor: (r) => r.gender ?? '' },
         { header: 'Country', accessor: (r) => r.country ?? '' },

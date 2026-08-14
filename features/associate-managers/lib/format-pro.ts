@@ -31,7 +31,7 @@ export const formatProFullName = (pro: {
   lastName?: string | null;
   email?: string | null;
 }) => {
-  const name = `${pro.firstName ?? ""} ${pro.lastName ?? ""}`.trim();
+  const name = `${pro.lastName ?? ""} ${pro.firstName ?? ""}`.trim();
   return name || pro.email || "Unknown";
 };
 

@@ -19,6 +19,7 @@ import {
   LandPlot,
   LayoutDashboard,
   LogOut,
+  NotebookPen,
   Percent,
   ScrollText,
   Settings,
@@ -29,6 +30,7 @@ import {
   Upload,
   UserPlus,
   Users,
+  Headphones,
   Video,
 } from "lucide-react";
 
@@ -46,6 +48,8 @@ const navGroups = [
       { name: "Sales", link: "/sales", icon: <ShoppingCart /> },
       { name: "Agency", link: "/agency", icon: <Building2 /> },
       { name: "Allocation", link: "/allocation", icon: <Building2 /> },
+      { name: "Purchase Confirmations", link: "/purchase-confirmations", icon: <CheckCircle /> },
+      { name: "Flex Leads", link: "/flex-leads", icon: <NotebookPen /> },
       { name: "Marketplace", link: "/marketplace", icon: <Store /> },
       { name: "Requests", link: "/requests", icon: <ClipboardList /> },
     ]
@@ -73,6 +77,14 @@ const navGroups = [
       { name: "Associate Performance", link: "/associates/performance", icon: <Activity />, requiresSuperAdmin: true },
       { name: "Manager Performance", link: "/associates/managers", icon: <ShieldCheck />, requiresAdminOrManager: true },
       { name: "Meetings", link: "/meetings", icon: <Video /> },
+    ]
+  },
+  {
+    title: "Customer Success",
+    isCollapsible: true,
+    icon: <Headphones />,
+    items: [
+      { name: "CS Manager Performance", link: "/customer-managers", icon: <ShieldCheck /> },
     ]
   },
   {

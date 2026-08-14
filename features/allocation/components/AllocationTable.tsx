@@ -108,7 +108,7 @@ export function AllocationTable({ rows, isLoading, onSend, onResend }: Allocatio
               const client = getFragmentData(AllocationTableRowFragment, row);
               const hasAllocation = Boolean(client.allocation);
               return (
-                <AdminMobileCard key={`${client.email}-${idx}`} title={`${client.firstName} ${client.lastName}`} subtitle={client.email}>
+                <AdminMobileCard key={`${client.email}-${idx}`} title={`${client.lastName} ${client.firstName}`} subtitle={client.email}>
                   <AdminMobileField label="Phone" value={client.phoneNumber || "—"} />
                   <AdminMobileField label="Referrer" value={client.referral || "not added yet"} />
                   <AdminMobileField
@@ -218,7 +218,7 @@ export function AllocationTable({ rows, isLoading, onSend, onResend }: Allocatio
                   <TableRow key={`${client.email}-${idx}`}>
                     <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed">
                       <span className="block wrap-break-word font-medium">
-                        {client.firstName} {client.lastName}
+                        {client.lastName} {client.firstName}
                       </span>
                     </TableCell>
                     <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed wrap-break-word">

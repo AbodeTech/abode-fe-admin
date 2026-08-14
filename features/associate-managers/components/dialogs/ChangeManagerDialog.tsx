@@ -46,7 +46,7 @@ const fullName = (m?: {
   userName?: string | null;
   email?: string | null;
 } | null) =>
-  `${m?.firstName ?? ""} ${m?.lastName ?? ""}`.trim() ||
+  `${m?.lastName ?? ""} ${m?.firstName ?? ""}`.trim() ||
   m?.userName ||
   m?.email ||
   "Manager";
@@ -116,7 +116,7 @@ export function ChangeManagerDialog({
   const filteredPros = sourcePros.filter((p) => {
     const term = search.toLowerCase();
     return (
-      `${p.firstName} ${p.lastName}`.toLowerCase().includes(term) ||
+      `${p.lastName} ${p.firstName}`.toLowerCase().includes(term) ||
       p.email.toLowerCase().includes(term)
     );
   });
@@ -283,7 +283,7 @@ export function ChangeManagerDialog({
                     />
                     <div className="flex-1">
                       <p className="text-sm font-medium text-gray-900">
-                        {`${pro.firstName} ${pro.lastName}`.trim() || pro.email}
+                        {`${pro.lastName} ${pro.firstName}`.trim() || pro.email}
                       </p>
                       <p className="text-xs text-gray-500">{pro.email}</p>
                     </div>

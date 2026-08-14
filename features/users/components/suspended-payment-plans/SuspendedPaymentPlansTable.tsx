@@ -56,7 +56,7 @@ export function SuspendedPaymentPlansTable({ plans }: SuspendedPaymentPlansTable
     <div className="w-full min-w-0 space-y-3">
       <AdminMobileStack>
         {validRows.map((row, idx) => (
-          <AdminMobileCard key={`${row.email}-${idx}`} title={`${row.firstName} ${row.lastName}`} subtitle={row.email}>
+          <AdminMobileCard key={`${row.email}-${idx}`} title={`${row.lastName} ${row.firstName}`} subtitle={row.email}>
             <AdminMobileField label="Phone" value={row.phoneNumber || "—"} />
             <AdminMobileField label="Referrer" value={row.referrer || "—"} />
             <AdminMobileField label="Asset" value={row.asset_name || "—"} />

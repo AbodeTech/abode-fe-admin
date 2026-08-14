@@ -53,13 +53,13 @@ export default function TopAssociates({ data }: TopAssociatesProps) {
           <div key={idx} className="flex min-w-0 items-start gap-3 sm:gap-4">
             <Avatar className="h-11 w-11 shrink-0 sm:h-12 sm:w-12">
               <AvatarFallback className="bg-primary/10 text-primary text-xs sm:text-sm">
-                {associate.firstName?.[0]?.toUpperCase()}
                 {associate.lastName?.[0]?.toUpperCase()}
+                {associate.firstName?.[0]?.toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
               <h3 className="line-clamp-2 text-sm font-medium capitalize">
-                {associate.firstName} {associate.lastName}
+                {associate.lastName} {associate.firstName}
               </h3>
               <p className="mt-1 truncate text-xs text-gray-500" title={associate.email ?? undefined}>
                 {associate.email}

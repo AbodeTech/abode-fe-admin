@@ -23,6 +23,8 @@ const GET_ALL_MANAGERS_DASHBOARD_QUERY = graphql(`
         recruitedSoFar
         sellingTarget
         sellingSoFar
+        revenueTarget
+        revenueSoFar
         performanceScoreTarget
         performanceScoreSoFar
       }
@@ -72,6 +74,10 @@ const GET_ALL_MANAGERS_DASHBOARD_QUERY = graphql(`
         lateFirstSellers
       }
       performanceScore {
+        score
+        sellingComponent
+        revenueComponent
+        recruitmentComponent
         target
         actual
         ratingCount

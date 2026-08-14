@@ -24,4 +24,6 @@ export const PRO_SORT_OPTIONS = [
   { label: "Total sales (high)", value: "total_sales_desc" },
   { label: "Revenue (high)", value: "revenue_desc" },
   { label: "Onboarded (recent)", value: "onboarded_at_desc" },
+  { label: "Last recruit (recent)", value: "last_recruit_desc" },
+  { label: "Last sale (recent)", value: "last_sale_desc" },
 ] as const;
