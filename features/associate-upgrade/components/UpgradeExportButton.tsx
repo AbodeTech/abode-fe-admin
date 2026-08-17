@@ -7,11 +7,29 @@ import { useUpgradeExport, type UpgradeExportFilters } from "../hooks/use-upgrad
 
 interface UpgradeExportButtonProps {
   adminStatus?: string | null;
+  transactionType?: string | null;
+  upgradeType?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
   search?: string | null;
 }
 
-export function UpgradeExportButton({ adminStatus, search }: UpgradeExportButtonProps) {
-  const filters: UpgradeExportFilters = { adminStatus, search };
+export function UpgradeExportButton({
+  adminStatus,
+  transactionType,
+  upgradeType,
+  startDate,
+  endDate,
+  search,
+}: UpgradeExportButtonProps) {
+  const filters: UpgradeExportFilters = {
+    adminStatus,
+    transactionType,
+    upgradeType,
+    startDate,
+    endDate,
+    search,
+  };
   const { exportCsv, isExporting } = useUpgradeExport(filters);
 
   return (

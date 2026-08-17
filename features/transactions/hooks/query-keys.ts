@@ -13,7 +13,7 @@ export const transactionKeys = {
 
   // Document transactions
   document: () => [...transactionKeys.all, 'document'] as const,
-  documentList: (filters?: { page?: number; limit?: number; status?: string | null; assetType?: string | null; salesType?: string | null; startDate?: string | null; endDate?: string | null; search?: string | null }) =>
+  documentList: (filters?: { page?: number; limit?: number; status?: string | null; transactionType?: string | null; assetType?: string | null; salesType?: string | null; startDate?: string | null; endDate?: string | null; search?: string | null }) =>
     [...transactionKeys.document(), 'list', filters] as const,
 
   // Commission transactions
