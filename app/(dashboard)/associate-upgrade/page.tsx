@@ -31,6 +31,7 @@ function AssociateUpgradeContent() {
   const page = Number(searchParams.get("page")) || 1;
   const statusParam = searchParams.get("adminStatus") ?? searchParams.get("status");
   const searchParam = searchParams.get("search") || "";
+  const transactionTypeParam = searchParams.get("transactionType");
   const upgradeTypeParam = searchParams.get("upgradeType");
   const startDateParam = searchParams.get("start_date");
   const endDateParam = searchParams.get("end_date");
@@ -44,6 +45,7 @@ function AssociateUpgradeContent() {
     page,
     limit: DEFAULT_UPGRADE_LIMIT,
     adminStatus: statusParam,
+    transactionType: transactionTypeParam,
     upgradeType: upgradeTypeParam,
     startDate: startDateParam,
     endDate: endDateParam,
@@ -96,6 +98,10 @@ function AssociateUpgradeContent() {
 
   const handleStatusChange = (value: string | null) => {
     updateParams({ adminStatus: value, page: 1 });
+  };
+
+  const handleTransactionTypeChange = (value: string | null) => {
+    updateParams({ transactionType: value, page: 1 });
   };
 
   const handleUpgradeTypeChange = (value: string | null) => {
@@ -158,6 +164,7 @@ function AssociateUpgradeContent() {
         <div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end">
           <UpgradeExportButton
             adminStatus={statusParam}
+            transactionType={transactionTypeParam}
             upgradeType={upgradeTypeParam}
             startDate={startDateParam}
             endDate={endDateParam}
@@ -173,11 +180,13 @@ function AssociateUpgradeContent() {
       <UpgradeFilters
         search={search}
         status={statusParam}
+        transactionType={transactionTypeParam}
         upgradeType={upgradeTypeParam}
         startDate={startDateParam}
         endDate={endDateParam}
         onSearchChange={setSearch}
         onStatusChange={handleStatusChange}
+        onTransactionTypeChange={handleTransactionTypeChange}
         onUpgradeTypeChange={handleUpgradeTypeChange}
         onDateRangeChange={handleDateRangeChange}
       />

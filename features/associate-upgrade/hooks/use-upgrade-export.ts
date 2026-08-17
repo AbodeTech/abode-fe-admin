@@ -2,7 +2,7 @@ import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { execute } from "@/lib/graphql-client";
 import { graphql } from "@/lib/gql";
-import { AdminStatus, type ExportUpgradeRequestsQuery } from "@/lib/gql/graphql";
+import { AdminStatus, TransactionType, type ExportUpgradeRequestsQuery } from "@/lib/gql/graphql";
 import { exportToCsv } from "../utils/export-csv";
 
 // Flat query (no fragment masking) so the export can read fields directly.
@@ -11,6 +11,7 @@ const EXPORT_UPGRADE_REQUESTS = graphql(`
     $page: Int!
     $limit: Int!
     $adminStatus: AdminStatus
+    $transactionType: TransactionType
     $upgradeType: String
     $startDate: String
     $endDate: String
@@ -20,6 +21,7 @@ const EXPORT_UPGRADE_REQUESTS = graphql(`
       page: $page
       limit: $limit
       adminStatus: $adminStatus
+      transactionType: $transactionType
       upgradeType: $upgradeType
       startDate: $startDate
       endDate: $endDate
@@ -64,6 +66,7 @@ const EXPORT_PAGE_SIZE = 200;
 
 export interface UpgradeExportFilters {
   adminStatus?: string | null;
+  transactionType?: string | null;
   upgradeType?: string | null;
   startDate?: string | null;
   endDate?: string | null;
@@ -76,6 +79,7 @@ async function fetchAllUpgradeRequests(
   const variables = {
     limit: EXPORT_PAGE_SIZE,
     adminStatus: (filters.adminStatus || undefined) as AdminStatus | undefined,
+    transactionType: (filters.transactionType || undefined) as TransactionType | undefined,
     upgradeType: filters.upgradeType ?? null,
     startDate: filters.startDate ?? null,
     endDate: filters.endDate ?? null,

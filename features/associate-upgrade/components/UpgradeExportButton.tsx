@@ -7,6 +7,7 @@ import { useUpgradeExport, type UpgradeExportFilters } from "../hooks/use-upgrad
 
 interface UpgradeExportButtonProps {
   adminStatus?: string | null;
+  transactionType?: string | null;
   upgradeType?: string | null;
   startDate?: string | null;
   endDate?: string | null;
@@ -15,6 +16,7 @@ interface UpgradeExportButtonProps {
 
 export function UpgradeExportButton({
   adminStatus,
+  transactionType,
   upgradeType,
   startDate,
   endDate,
@@ -22,6 +24,7 @@ export function UpgradeExportButton({
 }: UpgradeExportButtonProps) {
   const filters: UpgradeExportFilters = {
     adminStatus,
+    transactionType,
     upgradeType,
     startDate,
     endDate,

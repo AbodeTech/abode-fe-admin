@@ -14,11 +14,13 @@ import { Label } from "@/components/ui/label";
 interface UpgradeFiltersProps {
   search: string;
   status: string | null;
+  transactionType: string | null;
   upgradeType: string | null;
   startDate: string | null;
   endDate: string | null;
   onSearchChange: (value: string) => void;
   onStatusChange: (value: string | null) => void;
+  onTransactionTypeChange: (value: string | null) => void;
   onUpgradeTypeChange: (value: string | null) => void;
   onDateRangeChange: (start: string | null, end: string | null) => void;
 }
@@ -35,16 +37,18 @@ const UPGRADE_TYPE_OPTIONS = [
 export function UpgradeFilters({
   search,
   status,
+  transactionType,
   upgradeType,
   startDate,
   endDate,
   onSearchChange,
   onStatusChange,
+  onTransactionTypeChange,
   onUpgradeTypeChange,
   onDateRangeChange,
 }: UpgradeFiltersProps) {
   return (
-    <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-6">
+    <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-7">
       <div className="min-w-0 space-y-2 md:col-span-2">
         <Label className="text-sm text-muted-foreground">Search by user or referral</Label>
         <Input
@@ -68,6 +72,25 @@ export function UpgradeFilters({
             <SelectItem value="pending">Pending</SelectItem>
             <SelectItem value="approved">Approved</SelectItem>
             <SelectItem value="declined">Declined</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="min-w-0 space-y-2">
+        <Label className="text-sm text-muted-foreground">Channel</Label>
+        <Select
+          value={transactionType ?? "all"}
+          onValueChange={(value) =>
+            onTransactionTypeChange(value === "all" ? null : value)
+          }
+        >
+          <SelectTrigger className="w-full min-w-0">
+            <SelectValue placeholder="All channels" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All channels</SelectItem>
+            <SelectItem value="paystack">Paystack</SelectItem>
+            <SelectItem value="transfer">Transfer</SelectItem>
+            <SelectItem value="wallet">Wallet</SelectItem>
           </SelectContent>
         </Select>
       </div>

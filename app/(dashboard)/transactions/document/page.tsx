@@ -20,6 +20,7 @@ function DocumentTransactionsContent() {
 
   const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "");
   const status = searchParams.get("transactionstatus") || null;
+  const transactionType = searchParams.get("transactiontype") || null;
   const assetType = searchParams.get("assettype") || null;
   const salesType = searchParams.get("salestype") || null;
   const startDate = searchParams.get("start_date") || null;
@@ -49,6 +50,7 @@ function DocumentTransactionsContent() {
     page,
     limit,
     status,
+    transactionType,
     assetType,
     salesType,
     startDate,
@@ -81,6 +83,16 @@ function DocumentTransactionsContent() {
           ]}
           queryKey="transactionstatus"
           placeholder="Status"
+        />
+        <FilterSelect
+          data={[
+            { label: "All Channels", value: "all" },
+            { label: "Paystack", value: "paystack" },
+            { label: "Transfer", value: "transfer" },
+            { label: "Wallet", value: "wallet" },
+          ]}
+          queryKey="transactiontype"
+          placeholder="Channel"
         />
         <FilterSelect
           data={[
