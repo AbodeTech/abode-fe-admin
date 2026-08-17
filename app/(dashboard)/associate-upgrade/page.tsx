@@ -31,6 +31,9 @@ function AssociateUpgradeContent() {
   const page = Number(searchParams.get("page")) || 1;
   const statusParam = searchParams.get("adminStatus") ?? searchParams.get("status");
   const searchParam = searchParams.get("search") || "";
+  const upgradeTypeParam = searchParams.get("upgradeType");
+  const startDateParam = searchParams.get("start_date");
+  const endDateParam = searchParams.get("end_date");
 
   const [search, setSearch] = useState(searchParam);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -41,6 +44,9 @@ function AssociateUpgradeContent() {
     page,
     limit: DEFAULT_UPGRADE_LIMIT,
     adminStatus: statusParam,
+    upgradeType: upgradeTypeParam,
+    startDate: startDateParam,
+    endDate: endDateParam,
     search: searchParam || null,
   });
 
@@ -90,6 +96,14 @@ function AssociateUpgradeContent() {
 
   const handleStatusChange = (value: string | null) => {
     updateParams({ adminStatus: value, page: 1 });
+  };
+
+  const handleUpgradeTypeChange = (value: string | null) => {
+    updateParams({ upgradeType: value, page: 1 });
+  };
+
+  const handleDateRangeChange = (start: string | null, end: string | null) => {
+    updateParams({ start_date: start, end_date: end, page: 1 });
   };
 
   const openConfirm = (mode: "approve" | "decline", row: FragmentType<typeof UpgradeRowFragment>) => {
@@ -142,7 +156,13 @@ function AssociateUpgradeContent() {
           </p>
         </div>
         <div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end">
-          <UpgradeExportButton adminStatus={statusParam} search={searchParam} />
+          <UpgradeExportButton
+            adminStatus={statusParam}
+            upgradeType={upgradeTypeParam}
+            startDate={startDateParam}
+            endDate={endDateParam}
+            search={searchParam}
+          />
           <CreateUpgradeTransactionDialog />
           <Button asChild className="w-full shrink-0 sm:w-auto">
             <Link href="/associate-upgrade/coupons">Coupon Management</Link>
@@ -153,8 +173,13 @@ function AssociateUpgradeContent() {
       <UpgradeFilters
         search={search}
         status={statusParam}
+        upgradeType={upgradeTypeParam}
+        startDate={startDateParam}
+        endDate={endDateParam}
         onSearchChange={setSearch}
         onStatusChange={handleStatusChange}
+        onUpgradeTypeChange={handleUpgradeTypeChange}
+        onDateRangeChange={handleDateRangeChange}
       />
 
       {isLoading ? (

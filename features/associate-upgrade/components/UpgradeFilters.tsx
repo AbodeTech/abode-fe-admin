@@ -14,18 +14,37 @@ import { Label } from "@/components/ui/label";
 interface UpgradeFiltersProps {
   search: string;
   status: string | null;
+  upgradeType: string | null;
+  startDate: string | null;
+  endDate: string | null;
   onSearchChange: (value: string) => void;
   onStatusChange: (value: string | null) => void;
+  onUpgradeTypeChange: (value: string | null) => void;
+  onDateRangeChange: (start: string | null, end: string | null) => void;
 }
+
+// user_upgrade_type values match BE's ReferralUpgrade docs. Verify with the
+// current BE list if adding new types.
+const UPGRADE_TYPE_OPTIONS = [
+  { value: "all", label: "All upgrade types" },
+  { value: "user to associate", label: "User → Associate" },
+  { value: "user to associate pro", label: "User → Associate Pro" },
+  { value: "associate to associate pro", label: "Associate → Associate Pro" },
+];
 
 export function UpgradeFilters({
   search,
   status,
+  upgradeType,
+  startDate,
+  endDate,
   onSearchChange,
   onStatusChange,
+  onUpgradeTypeChange,
+  onDateRangeChange,
 }: UpgradeFiltersProps) {
   return (
-    <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-3">
+    <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-6">
       <div className="min-w-0 space-y-2 md:col-span-2">
         <Label className="text-sm text-muted-foreground">Search by user or referral</Label>
         <Input
@@ -51,6 +70,46 @@ export function UpgradeFilters({
             <SelectItem value="declined">Declined</SelectItem>
           </SelectContent>
         </Select>
+      </div>
+      <div className="min-w-0 space-y-2">
+        <Label className="text-sm text-muted-foreground">Upgrade type</Label>
+        <Select
+          value={upgradeType ?? "all"}
+          onValueChange={(value) =>
+            onUpgradeTypeChange(value === "all" ? null : value)
+          }
+        >
+          <SelectTrigger className="w-full min-w-0">
+            <SelectValue placeholder="All upgrade types" />
+          </SelectTrigger>
+          <SelectContent>
+            {UPGRADE_TYPE_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="min-w-0 space-y-2">
+        <Label className="text-sm text-muted-foreground">Start date</Label>
+        <Input
+          type="date"
+          value={startDate ?? ""}
+          onChange={(e) => onDateRangeChange(e.target.value || null, endDate)}
+          className="w-full min-w-0"
+          max={endDate ?? undefined}
+        />
+      </div>
+      <div className="min-w-0 space-y-2">
+        <Label className="text-sm text-muted-foreground">End date</Label>
+        <Input
+          type="date"
+          value={endDate ?? ""}
+          onChange={(e) => onDateRangeChange(startDate, e.target.value || null)}
+          className="w-full min-w-0"
+          min={startDate ?? undefined}
+        />
       </div>
     </div>
   );

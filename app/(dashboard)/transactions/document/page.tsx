@@ -20,6 +20,8 @@ function DocumentTransactionsContent() {
 
   const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "");
   const status = searchParams.get("transactionstatus") || null;
+  const assetType = searchParams.get("assettype") || null;
+  const salesType = searchParams.get("salestype") || null;
   const startDate = searchParams.get("start_date") || null;
   const endDate = searchParams.get("end_date") || null;
 
@@ -47,6 +49,8 @@ function DocumentTransactionsContent() {
     page,
     limit,
     status,
+    assetType,
+    salesType,
     startDate,
     endDate,
     search: searchTerm || null,
@@ -77,6 +81,24 @@ function DocumentTransactionsContent() {
           ]}
           queryKey="transactionstatus"
           placeholder="Status"
+        />
+        <FilterSelect
+          data={[
+            { label: "All Asset Types", value: "all" },
+            { label: "Flex", value: "flex" },
+            { label: "Full ownership", value: "full-ownership" },
+          ]}
+          queryKey="assettype"
+          placeholder="Asset type"
+        />
+        <FilterSelect
+          data={[
+            { label: "All Sales Types", value: "all" },
+            { label: "Initial", value: "Initial" },
+            { label: "Recurring", value: "Recurring" },
+          ]}
+          queryKey="salestype"
+          placeholder="Sales type"
         />
         <DateFilter />
       </div>
