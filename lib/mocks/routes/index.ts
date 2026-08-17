@@ -29,10 +29,10 @@ import { couponRoutes } from './coupons';
  *               rather than re-registering when it migrates.
  * withdrawals — /admin/withdrawals/*.
  * asset-transactions — GET /admin/transactions (serves purchase rows; other
- *               types return empty pages until their screens migrate) and
- *               /admin/acquisitions/flex/* and
- *               /admin/fo/purchase/transactions/*. The wallet family
- *               (/admin/wallets/*) is unclaimed.
+ *               types return empty pages until their screens migrate),
+ *               POST /admin/acquisitions/transactions/:txId/approve|decline,
+ *               and GET /admin/fo/purchase/transactions/:txId. The wallet
+ *               family (/admin/wallets/*) is unclaimed.
  * upgrades    — /admin/referrals/upgrades/* and POST
  *               /admin/users/:id/manual-upgrade (claimed 2026-08-13 — the
  *               upgrade queue is where that UI lives). The remaining admin

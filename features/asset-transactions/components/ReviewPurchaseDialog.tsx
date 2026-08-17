@@ -93,7 +93,7 @@ export function ReviewPurchaseDialog({
 
   const submitApprove = () => {
     approve.mutate(
-      { id: row._id, family },
+      { id: row._id },
       {
         onSuccess: (result) => {
           toast.success(
@@ -118,7 +118,7 @@ export function ReviewPurchaseDialog({
     }
 
     decline.mutate(
-      { id: row._id, family, reason: parsed.data },
+      { id: row._id, reason: parsed.data },
       {
         onSuccess: (result) => {
           toast.success(

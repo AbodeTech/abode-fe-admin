@@ -4,8 +4,9 @@
  * property (`purchase_details.transaction_kind`), not a page split.
  *
  * Buyer, referrer and property are populated and every filter is live as of
- * 2026-08-13 (tickets 24a/b/d). Review routes per family: flex at
- * /admin/acquisitions/flex/:txId/*, FO at /admin/fo/purchase/transactions/:txId/*.
+ * 2026-08-13 (tickets 24a/b/d). Review is
+ * POST /admin/acquisitions/transactions/:txId/approve|decline for both families.
+ * Full-ownership rows open GET /admin/fo/purchase/transactions/:id.
  * `fo_outright_doc` has no Review action — approve the parent land row.
  *
  * Production's **Property Owner** column has no v2 field (⛔ ticket 24b).
@@ -16,9 +17,11 @@ export { PurchasesTable } from './components/PurchasesTable';
 export { PurchaseFilters } from './components/PurchaseFilters';
 export { PurchaseStatCards } from './components/PurchaseStatCards';
 export { PurchaseStatusBadge } from './components/PurchaseStatusBadge';
+export { FoTransactionDetail } from './components/FoTransactionDetail';
 export { ReviewPurchaseDialog } from './components/ReviewPurchaseDialog';
 
 export { usePurchases, DEFAULT_PURCHASE_LIMIT } from './hooks/use-purchases';
+export { useFoTransaction } from './hooks/use-fo-transaction';
 export { useApprovePurchase, useDeclinePurchase } from './hooks/use-purchase-review';
 export type { PurchaseListFilters } from './hooks/query-keys';
 
@@ -30,6 +33,7 @@ export {
   SALES_TYPES,
   SALES_TYPE_LABELS,
   isReviewablePurchase,
+  isFoPurchase,
   kindLabel,
 } from './schemas/purchase.schema';
 export type {

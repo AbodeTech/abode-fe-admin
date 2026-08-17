@@ -1,5 +1,8 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -28,6 +31,7 @@ import {
   buyerId,
   buyerName,
   isReviewablePurchase,
+  isFoPurchase,
   kindLabel,
   referrerId,
   referrerName,
@@ -129,6 +133,8 @@ interface Props {
 }
 
 export function PurchasesTable({ rows, isLoading, onReview, emptyState }: Props) {
+  const router = useRouter();
+
   if (isLoading) {
     return (
       <div className="space-y-2">
@@ -165,12 +171,18 @@ export function PurchasesTable({ rows, isLoading, onReview, emptyState }: Props)
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.map((row) => (
-              <TableRow key={row._id}>
-                <TableCell className="max-w-[14rem]">
+            {rows.map((row) => {
+              const foHref = isFoPurchase(row) ? `/transactions/assets/${row._id}` : null;
+              return (
+              <TableRow
+                key={row._id}
+                className={foHref ? "cursor-pointer" : undefined}
+                onClick={foHref ? () => router.push(foHref) : undefined}
+              >
+                <TableCell className="max-w-[14rem]" onClick={(event) => event.stopPropagation()}>
                   <Buyer row={row} />
                 </TableCell>
-                <TableCell className="max-w-[12rem] text-sm">
+                <TableCell className="max-w-[12rem] text-sm" onClick={(event) => event.stopPropagation()}>
                   <Referrer row={row} />
                 </TableCell>
                 <TableCell className="max-w-[14rem]">
@@ -194,21 +206,31 @@ export function PurchasesTable({ rows, isLoading, onReview, emptyState }: Props)
                     <ReviewHint row={row} />
                   </div>
                 </TableCell>
-                <TableCell className="text-right">
-                  {isReviewablePurchase(row) ? (
-                    <Button size="sm" variant="outline" onClick={() => onReview(row)}>
-                      Review
-                    </Button>
-                  ) : null}
+                <TableCell className="text-right" onClick={(event) => event.stopPropagation()}>
+                  <div className="flex justify-end gap-2">
+                    {foHref ? (
+                      <Button size="sm" variant="outline" asChild>
+                        <Link href={foHref}>View</Link>
+                      </Button>
+                    ) : null}
+                    {isReviewablePurchase(row) ? (
+                      <Button size="sm" variant="outline" onClick={() => onReview(row)}>
+                        Review
+                      </Button>
+                    ) : null}
+                  </div>
                 </TableCell>
               </TableRow>
-            ))}
+              );
+            })}
           </TableBody>
         </Table>
       </AdminDesktopTableWrap>
 
       <AdminMobileStack>
-        {rows.map((row) => (
+        {rows.map((row) => {
+          const foHref = isFoPurchase(row) ? `/transactions/assets/${row._id}` : null;
+          return (
           <AdminMobileCard
             key={row._id}
             title={
@@ -223,15 +245,23 @@ export function PurchasesTable({ rows, isLoading, onReview, emptyState }: Props)
             <AdminMobileField label="Referrer" value={<Referrer row={row} />} />
             <AdminMobileField label="Property" value={<Property row={row} />} />
             <AdminMobileField label="Method" value={PAYMENT_METHOD_LABELS[row.payment_method]} />
-            {isReviewablePurchase(row) ? (
-              <div className="mt-2">
-                <Button size="sm" onClick={() => onReview(row)}>
-                  Review
-                </Button>
+            {foHref || isReviewablePurchase(row) ? (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {foHref ? (
+                  <Button size="sm" variant="outline" asChild>
+                    <Link href={foHref}>View</Link>
+                  </Button>
+                ) : null}
+                {isReviewablePurchase(row) ? (
+                  <Button size="sm" onClick={() => onReview(row)}>
+                    Review
+                  </Button>
+                ) : null}
               </div>
             ) : null}
           </AdminMobileCard>
-        ))}
+          );
+        })}
       </AdminMobileStack>
     </>
   );

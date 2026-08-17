@@ -39,7 +39,7 @@ everything analytical or campaign-related.
 | `auth` | ✅ Admin login/me/change-password |
 | `marketplace` | ⚠️ Partial — public list/detail/cancel; **no admin moderation** |
 | `associates` (managers) | 🚧 **None** — 26 operations, zero BE |
-| `transactions` | ✅ Partial — `GET /admin/transactions` + flex/FO transfer approve/decline; no stats/export |
+| `transactions` | ✅ Partial — `GET /admin/transactions` + unified transfer approve/decline; no stats/export |
 | `dashboard` | 🚧 None |
 | `analytics` | 🚧 None |
 | `campaigns` | 🚧 None |
@@ -193,13 +193,11 @@ Asset purchases (the screen at `/transactions/assets`) are **live**. Other trans
 | Operation | REST | Status | Notes |
 |---|---|---|---|
 | Asset purchase list | `GET /admin/transactions?type=purchase` | ✅ real | Filters: `status`, `payment_method`, `sales_type` (`ap`/`rap`/`dp`), `asset_type` (`flex`/`full-ownership`), `search`, `start_date`, `end_date`, `user`. No `admin_status`. |
-| Approve flex transfer | `POST /admin/acquisitions/flex/:txId/approve` | ✅ real | Empty body. Returns `{ payment_plan_id }`. Permission `approve_payments`. |
-| Decline flex transfer | `POST /admin/acquisitions/flex/:txId/decline` | ✅ real | `{ reason }` min 20 chars. |
-| Approve FO transfer | `POST /admin/fo/purchase/transactions/:txId/approve` | ✅ real | Empty body. Returns `{ plan_id }`. Do **not** call on `fo_outright_doc`. |
-| Decline FO transfer | `POST /admin/fo/purchase/transactions/:txId/decline` | ✅ real | `{ reason }` min 20 chars. Outright land also declines the sibling doc tx. |
+| FO transaction detail | `GET /admin/fo/purchase/transactions/:id` | ✅ real | Land row includes the outright document sibling. Used by `/transactions/assets/:id`. |
+| Approve transfer | `POST /admin/acquisitions/transactions/:txId/approve` | ✅ real | Empty body. BE routes by kind (flex or FO). Returns `{ payment_plan_id }` (flex) or `{ plan_id }` (FO). Permission `approve_payments`. Do **not** call on `fo_outright_doc`. |
+| Decline transfer | `POST /admin/acquisitions/transactions/:txId/decline` | ✅ real | `{ reason }` min 20 chars. Outright land also declines the sibling doc tx. |
 | `GetTopupTransaction`, `GetDocumentTransaction`, `GetCommissionTransactions` | `GET /admin/transactions?type=…` | ⚠️ adapt | Same list endpoint; those screens are not migrated. |
 | `AdminTransactionDataPoint`, `GetAssetTransactionsStatistics` | — | 🚧 `GET /admin/transactions/statistics` | |
-| Unified `PATCH /admin/transactions/:id/approve` | — | 🚧 not built | Review is split by family, not a single path. |
 
 ## Associates / Managers — `features/associates`, `features/associate-managers` (26 ops, 7,642 LOC) — 🚧 **entirely provisional**
 

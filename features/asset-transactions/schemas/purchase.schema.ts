@@ -8,10 +8,10 @@ import { z } from 'zod';
  * lives in `purchase_details.transaction_kind` — a property of the row, not
  * a mode of the page, exactly like offer types on the assets table.
  *
- * Review exists per family: transfer-paid flex purchases go through
- * POST /admin/acquisitions/flex/:txId/approve|decline; FO purchases go through
- * POST /admin/fo/purchase/transactions/:txId/approve|decline. Approve is a
- * heavy action — it creates the payment plan AND pays commission.
+ * Review is one pair for every asset purchase:
+ * POST /admin/acquisitions/transactions/:txId/approve|decline. The BE routes
+ * by kind. Approve is a heavy action — it creates the payment plan AND pays
+ * commission.
  *
  * `fo_outright_doc` is never reviewed on its own: the BE rejects it with
  * OUTRIGHT_SIBLING_REQUIRED. Action the parent `fo_outright_land` row instead.
@@ -260,6 +260,48 @@ export function purchaseKind(row: Purchase): string {
   return row.purchase_details?.transaction_kind ?? '';
 }
 
+/** Any full-ownership purchase row, including the outright document sibling. */
+export function isFoPurchase(row: Purchase): boolean {
+  return (FO_KINDS as readonly string[]).includes(purchaseKind(row));
+}
+
+/**
+ * GET /admin/fo/purchase/transactions/:id — the transaction, plus the outright
+ * document sibling when this is a land row (or the land parent when this is
+ * the document row). The BE may return the tx at the root with `sibling`, or
+ * wrap both as `{ transaction, sibling }`.
+ */
+function nestedPurchase(value: unknown): unknown {
+  if (!value || typeof value !== 'object') return null;
+  if ('_id' in value) return value;
+  return null;
+}
+
+function normalizeFoDetail(raw: unknown): unknown {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return raw;
+  const record = raw as Record<string, unknown>;
+  const nested = nestedPurchase(record.transaction);
+  if (nested && !record._id) {
+    return {
+      ...(nested as Record<string, unknown>),
+      sibling:
+        nestedPurchase(record.sibling) ??
+        nestedPurchase(record.outright_sibling) ??
+        null,
+    };
+  }
+  return raw;
+}
+
+export type FoTransactionDetail = Purchase & { sibling?: Purchase | null };
+
+export const FoTransactionDetailSchema = z.looseObject({}).transform((raw) => {
+  const parsed = PurchaseSchema.and(
+    z.looseObject({ sibling: PurchaseSchema.nullable().optional() })
+  ).parse(normalizeFoDetail(raw));
+  return parsed as FoTransactionDetail;
+});
+
 /** Which admin review family this row belongs to, or null if none. */
 export function purchaseReviewFamily(row: Purchase): PurchaseReviewFamily | null {
   const kind = purchaseKind(row);
@@ -269,7 +311,7 @@ export function purchaseReviewFamily(row: Purchase): PurchaseReviewFamily | null
 }
 
 /**
- * Whether this row can be reviewed, mirroring each family's
+ * Whether this row can be reviewed, mirroring the unified
  * `requirePendingTransfer`: a reviewable kind, paid by transfer, still pending.
  * Paystack confirms via webhook and wallet settles instantly, so neither has
  * an admin action. `fo_outright_doc` is never reviewable — approve the land row.
