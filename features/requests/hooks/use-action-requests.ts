@@ -1,145 +1,95 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { graphql } from "@/lib/gql";
-import { execute, executeRaw } from "@/lib/graphql-client";
-import { toast } from "sonner";
-import { requestKeys } from "./query-keys";
+'use client';
 
-const UPDATE_REQUEST_STATUS_MUTATION = graphql(`
-  mutation UpdateRequestStatus($updateRequestInput: UpdateRequestInput!) {
-    updateRequestStatus(updateRequestInput: $updateRequestInput) {
-      success
-      message
-    }
-  }
-`);
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-const SYSTEM_APPROVE_LOCATION_CHANGE_MUTATION = graphql(`
-  mutation SystemApproveLocationChangeRequest($requestId: ID!) {
-    systemApproveLocationChangeRequest(requestId: $requestId) {
-      success
-      message
-    }
-  }
-`);
+import { apiPatch, apiPost } from '@/lib/api-client';
 
-const SYSTEM_APPROVE_DOCUMENT_CHANGE_MUTATION = graphql(`
-  mutation SystemApproveDocumentChangeRequest($requestId: ID!) {
-    systemApproveDocumentChangeRequest(requestId: $requestId) {
-      success
-      message
-    }
-  }
-`);
+import { ClientRequestSchema, type ApprovalMode } from '../schemas/request.schema';
+import { requestKeys } from './query-keys';
 
-const SYSTEM_APPROVE_ASSET_UPDATE_MUTATION_RAW = `
-  mutation SystemApproveAssetUpdateRequest($requestId: ID!) {
-    systemApproveAssetUpdateRequest(requestId: $requestId) {
-      success
-      message
-    }
-  }
-`;
+/* ============================================================
+ * The five admin actions. Every one returns the updated ClientRequestView,
+ * so the row can be refreshed from the response.
+ *
+ * `requestId` is the human-readable `request_id` ("DCR-2026-0001"), NOT the
+ * document's `id`. The backend's only lookup is `findOne({ request_id })`;
+ * passing the ObjectId 404s as "That request does not exist".
+ *
+ * v1 had one approve mutation per request type. v2 has one endpoint with a
+ * `mode`: `system` runs the completion effect (the document is renamed, the
+ * plan is resized) and lands on `completed`; `manual` records the decision
+ * and stops at `approved`, waiting for a human to do the work and then call
+ * `complete`. Custom requests have no system effect and can only be manual.
+ * ============================================================ */
 
-export function useActionRequests() {
+function useRequestMutation<TVariables>(
+  mutationFn: (variables: TVariables) => Promise<unknown>
+) {
   const queryClient = useQueryClient();
-
-  const updateStatusMutation = useMutation({
-    mutationFn: async (vars: {
-      requestId: string;
-      status: string;
-      adminMessage?: string;
-      declineReason?: string;
-      estimatedCompletionHours?: number;
-    }) => {
-      return execute(UPDATE_REQUEST_STATUS_MUTATION, {
-        updateRequestInput: {
-          requestId: vars.requestId,
-          status: vars.status,
-          adminMessage: vars.adminMessage,
-          declineReason: vars.declineReason,
-          estimatedCompletionHours: vars.estimatedCompletionHours != null
-            ? Math.round(vars.estimatedCompletionHours)
-            : undefined,
-        },
-      });
-    },
-    onSuccess: (data) => {
-      const res = data.updateRequestStatus;
-      if (res?.success) {
-        toast.success(res.message || "Status updated successfully.");
-        queryClient.invalidateQueries({ queryKey: requestKeys.all });
-      } else {
-        toast.error(res?.message || "Failed to update status.");
-      }
-    },
-    onError: (error) => {
-      toast.error(error.message || "An unexpected error occurred.");
+  return useMutation({
+    mutationFn,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: requestKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: requestKeys.details() });
+      // Every action moves a status counter.
+      queryClient.invalidateQueries({ queryKey: [...requestKeys.all, 'stats'] });
     },
   });
-
-  const approveLocationChangeMutation = useMutation({
-    mutationFn: async (requestId: string) => {
-      return execute(SYSTEM_APPROVE_LOCATION_CHANGE_MUTATION, { requestId });
-    },
-    onSuccess: (data) => {
-      const res = data.systemApproveLocationChangeRequest;
-      if (res?.success) {
-        toast.success(res.message || "Status updated successfully.");
-        queryClient.invalidateQueries({ queryKey: requestKeys.all });
-      } else {
-        toast.error(res?.message || "Failed to update status.");
-      }
-    },
-    onError: (error) => {
-      toast.error(error.message || "An unexpected error occurred.");
-    },
-  });
-
-  const approveDocumentChangeMutation = useMutation({
-    mutationFn: async (requestId: string) => {
-      return execute(SYSTEM_APPROVE_DOCUMENT_CHANGE_MUTATION, { requestId });
-    },
-    onSuccess: (data) => {
-      const res = data.systemApproveDocumentChangeRequest;
-      if (res?.success) {
-        toast.success(res.message || "Status updated successfully.");
-        queryClient.invalidateQueries({ queryKey: requestKeys.all });
-      } else {
-        toast.error(res?.message || "Failed to update status.");
-      }
-    },
-    onError: (error) => {
-      toast.error(error.message || "An unexpected error occurred.");
-    },
-  });
-
-  const approveAssetUpdateMutation = useMutation({
-    mutationFn: async (requestId: string) => {
-      return executeRaw<{
-        systemApproveAssetUpdateRequest?: {
-          success?: boolean;
-          message?: string;
-        };
-      }>(SYSTEM_APPROVE_ASSET_UPDATE_MUTATION_RAW, { requestId });
-    },
-    onSuccess: (data) => {
-      const res = data.systemApproveAssetUpdateRequest;
-      if (res?.success) {
-        toast.success(res.message || "Status updated successfully.");
-        queryClient.invalidateQueries({ queryKey: requestKeys.all });
-      } else {
-        toast.error(res?.message || "Failed to update status.");
-      }
-    },
-    onError: (error) => {
-      toast.error(error.message || "An unexpected error occurred.");
-    },
-  });
-
-  return {
-    updateStatus: updateStatusMutation,
-    approveLocationChange: approveLocationChangeMutation,
-    approveDocumentChange: approveDocumentChangeMutation,
-    approveAssetUpdate: approveAssetUpdateMutation,
-  };
 }
+
+export const useReviewRequest = () =>
+  useRequestMutation((args: { requestId: string; admin_notes?: string }) =>
+    apiPatch(
+      `/admin/requests/${args.requestId}/review`,
+      args.admin_notes ? { admin_notes: args.admin_notes } : {},
+      ClientRequestSchema
+    )
+  );
+
+export const useApproveRequest = () =>
+  useRequestMutation(
+    (args: {
+      requestId: string;
+      mode: ApprovalMode;
+      admin_notes?: string;
+      estimated_completion_hours?: number;
+    }) =>
+      apiPost(
+        `/admin/requests/${args.requestId}/approve`,
+        {
+          mode: args.mode,
+          ...(args.admin_notes ? { admin_notes: args.admin_notes } : {}),
+          ...(args.mode === 'manual' && args.estimated_completion_hours
+            ? { estimated_completion_hours: args.estimated_completion_hours }
+            : {}),
+        },
+        ClientRequestSchema
+      )
+  );
+
+export const useCompleteRequest = () =>
+  useRequestMutation((args: { requestId: string; admin_notes?: string }) =>
+    apiPatch(
+      `/admin/requests/${args.requestId}/complete`,
+      args.admin_notes ? { admin_notes: args.admin_notes } : {},
+      ClientRequestSchema
+    )
+  );
+
+export const useDeclineRequest = () =>
+  useRequestMutation((args: { requestId: string; decline_reason: string; admin_notes?: string }) =>
+    apiPatch(
+      `/admin/requests/${args.requestId}/decline`,
+      {
+        decline_reason: args.decline_reason,
+        ...(args.admin_notes ? { admin_notes: args.admin_notes } : {}),
+      },
+      ClientRequestSchema
+    )
+  );
+
+/** The only path that refunds a verified fee — the dialog says so. */
+export const useCancelRequest = () =>
+  useRequestMutation((args: { requestId: string; reason: string }) =>
+    apiPatch(`/admin/requests/${args.requestId}/cancel`, { reason: args.reason }, ClientRequestSchema)
+  );

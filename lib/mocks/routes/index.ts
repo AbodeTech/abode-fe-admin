@@ -6,6 +6,7 @@ import { upgradeRoutes } from './upgrades';
 import { userRoutes } from './users';
 import { withdrawalRoutes } from './withdrawals';
 import { assetTransactionRoutes } from './asset-transactions';
+import { requestRoutes } from './requests';
 import { couponRoutes } from './coupons';
 
 /* ============================================================
@@ -60,6 +61,7 @@ export function ensureRoutesRegistered(): void {
   registerRoutes(userRoutes);
   registerRoutes(withdrawalRoutes);
   registerRoutes(assetTransactionRoutes);
+  registerRoutes(requestRoutes);
   registerRoutes(couponRoutes);
   // ...added per feature as it migrates
 }
