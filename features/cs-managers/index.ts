@@ -7,6 +7,7 @@ export { UnassignedCustomersTable } from "./components/UnassignedCustomersTable"
 export { AddCSManagerDialog } from "./components/AddCSManagerDialog";
 export { AssignCustomersDialog } from "./components/AssignCustomersDialog";
 export { ManageCSTargetsDialog } from "./components/dialogs/ManageCSTargetsDialog";
+export { PlanDetailDrawer } from "./components/drawers/PlanDetailDrawer";
 export {
   useCSManagerDashboard,
   csManagerKeys,
@@ -25,6 +26,12 @@ export {
   type AssignCustomersToCSMInput,
   type AssignCsManagerTargetInput,
 } from "./hooks/use-cs-manager-mutations";
+export {
+  useCustomerOnboardingAttempts,
+  useLogOnboardingCall,
+  useMarkDeedDelivered,
+  planActionKeys,
+} from "./hooks/use-plan-actions";
 export {
   useCSManagerTargets,
   useCSManagerTarget,
