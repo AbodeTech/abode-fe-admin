@@ -26,6 +26,7 @@ import {
   isInitialPurchase,
   kindLabel,
   purchaseDeclineReasonSchema,
+  purchaseKind,
   purchaseReviewFamily,
   referrerId,
   referrerName,
@@ -88,8 +89,9 @@ export function ReviewPurchaseDialog({
 
   const details = row.purchase_details;
   const isInitial = isInitialPurchase(row);
-  const isFoOutright = details?.transaction_kind === "fo_outright_land";
-  const isDocPayment = details?.transaction_kind === "fo_doc_payment";
+  const kind = purchaseKind(row);
+  const isFoOutright = kind === "fo_outright_land";
+  const isDocPayment = kind === "fo_doc_payment";
 
   const submitApprove = () => {
     approve.mutate(

@@ -35,12 +35,17 @@ import {
   Mail,
   Shuffle,
 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useAllocateFoPlan } from "@/features/asset-transactions";
 import {
   useAssetIdByName,
   useAvailablePlotsForAsset,
   type Plot,
 } from "../hooks/use-plots";
+import { allocationKeys } from "../hooks/query-keys";
 import { useAllocateLand } from "../hooks/use-allocate-land";
 import { useDeallocateLand } from "../hooks/use-deallocate-land";
 import { useReassignLand } from "../hooks/use-reassign-land";
@@ -69,15 +74,17 @@ export function AllocationModal({
   const assetType = allocationClient?.assetType ?? "";
   const paymentPlanId = allocationClient?.paymentPlan ?? "";
   const hasExistingAllocation = Boolean(allocationClient?.allocation);
+  const isFo = assetType.trim().toLowerCase() === "full-ownership";
 
   const { data: assetId, isLoading: isResolvingAssetId } = useAssetIdByName(
-    assetName,
-    assetType
+    isFo ? "" : assetName,
+    isFo ? "" : assetType
   );
   const { data: availablePlots = [], isLoading: isLoadingPlots } =
     useAvailablePlotsForAsset({
-      assetId: assetId ?? "",
+      assetId: isFo ? "" : (assetId ?? ""),
       size: assetSize || undefined,
+      enabled: !isFo,
     });
 
   const [selectedPlotIds, setSelectedPlotIds] = useState<Set<string>>(new Set());
@@ -85,7 +92,11 @@ export function AllocationModal({
     Record<string, Plot>
   >({});
   const [isDeallocateConfirmOpen, setIsDeallocateConfirmOpen] = useState(false);
+  const [foBlock, setFoBlock] = useState("");
+  const [foPlot, setFoPlot] = useState("");
 
+  const queryClient = useQueryClient();
+  const allocateFoPlan = useAllocateFoPlan();
   const allocateLand = useAllocateLand();
   const deallocateLand = useDeallocateLand();
   const reassignLand = useReassignLand();
@@ -95,6 +106,8 @@ export function AllocationModal({
     if (open) {
       setSelectedPlotIds(new Set());
       setSelectedPlotsMeta({});
+      setFoBlock("");
+      setFoPlot("");
     }
   }, [open, allocationClient?.email]);
 
@@ -136,7 +149,28 @@ export function AllocationModal({
     return Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b));
   }, [availablePlots]);
 
+  const handleFoAllocate = () => {
+    const block = foBlock.trim();
+    const plot = foPlot.trim();
+    if (!paymentPlanId || !block || !plot) return;
+    allocateFoPlan.mutate(
+      { id: paymentPlanId, block, plot },
+      {
+        onSuccess: (data) => {
+          queryClient.invalidateQueries({ queryKey: allocationKeys.all });
+          toast.success(data.message || `Allocated block ${block}, plot ${plot}`);
+          onOpenChange(false);
+        },
+        onError: (err: Error) => toast.error(err.message),
+      }
+    );
+  };
+
   const handleAllocate = () => {
+    if (isFo) {
+      handleFoAllocate();
+      return;
+    }
     if (!isMatch || !paymentPlanId) return;
     allocateLand.mutate(
       { paymentPlanId, plotIds: Array.from(selectedPlotIds) },
@@ -151,6 +185,10 @@ export function AllocationModal({
   };
 
   const handleReassign = () => {
+    if (isFo) {
+      handleFoAllocate();
+      return;
+    }
     if (!isMatch || !paymentPlanId) return;
     reassignLand.mutate(
       { paymentPlanId, newPlotIds: Array.from(selectedPlotIds) },
@@ -189,9 +227,11 @@ export function AllocationModal({
     });
   };
 
-  const isLoading = isResolvingAssetId || isLoadingPlots;
+  const isLoading = !isFo && (isResolvingAssetId || isLoadingPlots);
+  const foReady = foBlock.trim().length > 0 && foPlot.trim().length > 0;
   const anyMutationPending =
     allocateLand.isPending ||
+    allocateFoPlan.isPending ||
     reassignLand.isPending ||
     sendAllocationEmail.isPending ||
     deallocateLand.isPending;
@@ -200,6 +240,26 @@ export function AllocationModal({
 
   // Determine which primary action is active
   const primaryAction = useMemo(() => {
+    if (isFo) {
+      if (mode === "send" || foReady) {
+        return {
+          kind: "allocate" as const,
+          label: hasExistingAllocation ? "Update allocation" : "Assign",
+          icon: <Send className="h-4 w-4" />,
+          pendingLabel: "Assigning...",
+          disabled: !foReady || !paymentPlanId,
+          handler: handleAllocate,
+        };
+      }
+      return {
+        kind: "resend" as const,
+        label: "Resend email",
+        icon: <Mail className="h-4 w-4" />,
+        pendingLabel: "Sending...",
+        disabled: !paymentPlanId || !hasExistingAllocation,
+        handler: handleResendEmail,
+      };
+    }
     if (mode === "send") {
       return {
         kind: "allocate" as const,
@@ -231,6 +291,8 @@ export function AllocationModal({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
+    isFo,
+    foReady,
     mode,
     hasSelection,
     isMatch,
@@ -240,8 +302,10 @@ export function AllocationModal({
   ]);
 
   const primaryPending =
-    (primaryAction.kind === "allocate" && allocateLand.isPending) ||
-    (primaryAction.kind === "reassign" && reassignLand.isPending) ||
+    (primaryAction.kind === "allocate" &&
+      (isFo ? allocateFoPlan.isPending : allocateLand.isPending)) ||
+    (primaryAction.kind === "reassign" &&
+      (isFo ? allocateFoPlan.isPending : reassignLand.isPending)) ||
     (primaryAction.kind === "resend" && sendAllocationEmail.isPending);
 
   return (
@@ -255,6 +319,8 @@ export function AllocationModal({
             <DialogDescription>
               {!allocationClient
                 ? "Select a client to continue."
+                : isFo
+                ? "Enter the block and plot assigned to this full-ownership plan."
                 : mode === "send"
                 ? "Pick plots whose total sqm equals the purchased amount."
                 : "Resend the current allocation email, or pick new plots to reassign."}
@@ -292,46 +358,69 @@ export function AllocationModal({
                 </div>
               </div>
 
-              {/* Running sum (only when actively picking) */}
-              {(mode === "send" || hasSelection) && (
-                <RunningSumBanner
-                  selected={selectedSqm}
-                  required={requiredSqm}
-                  remaining={remaining}
-                  isMatch={isMatch}
-                  isOver={isOver}
-                />
-              )}
-
-              {/* Plots picker */}
-              {isLoading ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-20 w-full" />
-                  <Skeleton className="h-20 w-full" />
-                </div>
-              ) : !assetId ? (
-                <div className="rounded-md border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
-                  Could not resolve asset ID.
-                </div>
-              ) : availablePlots.length === 0 ? (
-                <div className="rounded-md border border-dashed p-6 text-center">
-                  <p className="text-sm text-muted-foreground">
-                    No available plots for this asset. Go to the asset detail
-                    page to seed blocks and plots.
-                  </p>
+              {isFo ? (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <Label htmlFor="fo-alloc-block">Block</Label>
+                    <Input
+                      id="fo-alloc-block"
+                      value={foBlock}
+                      onChange={(event) => setFoBlock(event.target.value)}
+                      placeholder="A"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="fo-alloc-plot">Plot</Label>
+                    <Input
+                      id="fo-alloc-plot"
+                      value={foPlot}
+                      onChange={(event) => setFoPlot(event.target.value)}
+                      placeholder="12"
+                    />
+                  </div>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {plotsByBlock.map(([blockLabel, plots]) => (
-                    <BlockPlotPicker
-                      key={blockLabel}
-                      blockLabel={blockLabel}
-                      plots={plots}
-                      selectedPlotIds={selectedPlotIds}
-                      onTogglePlot={togglePlot}
+                <>
+                  {(mode === "send" || hasSelection) && (
+                    <RunningSumBanner
+                      selected={selectedSqm}
+                      required={requiredSqm}
+                      remaining={remaining}
+                      isMatch={isMatch}
+                      isOver={isOver}
                     />
-                  ))}
-                </div>
+                  )}
+
+                  {isLoading ? (
+                    <div className="space-y-2">
+                      <Skeleton className="h-20 w-full" />
+                      <Skeleton className="h-20 w-full" />
+                    </div>
+                  ) : !assetId ? (
+                    <div className="rounded-md border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+                      Could not resolve asset ID.
+                    </div>
+                  ) : availablePlots.length === 0 ? (
+                    <div className="rounded-md border border-dashed p-6 text-center">
+                      <p className="text-sm text-muted-foreground">
+                        No available plots for this asset. Go to the asset detail
+                        page to seed blocks and plots.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {plotsByBlock.map(([blockLabel, plots]) => (
+                        <BlockPlotPicker
+                          key={blockLabel}
+                          blockLabel={blockLabel}
+                          plots={plots}
+                          selectedPlotIds={selectedPlotIds}
+                          onTogglePlot={togglePlot}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}

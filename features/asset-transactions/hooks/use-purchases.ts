@@ -7,8 +7,8 @@ import { apiGetPaged } from '@/lib/api-client';
 import { PurchaseSchema } from '../schemas/purchase.schema';
 import { purchaseKeys, type PurchaseListFilters } from './query-keys';
 
-/** The BE defaults to 20; kept explicit so the pagination maths agree. */
-export const DEFAULT_PURCHASE_LIMIT = 20;
+/** Matches production pagination (10 rows per page). */
+export const DEFAULT_PURCHASE_LIMIT = 10;
 
 /**
  * GET /admin/transactions?type=purchase — every asset purchase, flex and

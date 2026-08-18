@@ -24,6 +24,7 @@ import {
   type Purchase,
 } from "../schemas/purchase.schema";
 import { useFoTransaction } from "../hooks/use-fo-transaction";
+import { FoPlanActions } from "./FoPlanActions";
 import { PurchaseStatusBadge } from "./PurchaseStatusBadge";
 import { ReviewPurchaseDialog } from "./ReviewPurchaseDialog";
 
@@ -165,6 +166,18 @@ function siblingTitle(row: Purchase): string {
   return "Related transaction";
 }
 
+const FO_LAND_KINDS = new Set(["fo_outright_land", "fo_installment_land", "fo_recurring_land"]);
+
+function landPlanId(row: Purchase, sibling?: Purchase | null): string | null {
+  if (FO_LAND_KINDS.has(row.purchase_details?.transaction_kind ?? "")) {
+    return row.purchase_details?.payment_plan_id ?? null;
+  }
+  if (sibling && FO_LAND_KINDS.has(sibling.purchase_details?.transaction_kind ?? "")) {
+    return sibling.purchase_details?.payment_plan_id ?? null;
+  }
+  return null;
+}
+
 export function FoTransactionDetail() {
   const params = useParams<{ id: string }>();
   const txId = params.id;
@@ -187,6 +200,7 @@ export function FoTransactionDetail() {
   if (!data) return null;
 
   const canReview = isReviewablePurchase(data);
+  const planId = landPlanId(data, data.sibling);
 
   return (
     <div className="space-y-4">
@@ -216,6 +230,8 @@ export function FoTransactionDetail() {
       {data.sibling ? (
         <TransactionPanel title={siblingTitle(data.sibling)} row={data.sibling} />
       ) : null}
+
+      {planId ? <FoPlanActions planId={planId} /> : null}
 
       <ReviewPurchaseDialog row={reviewing} onClose={() => setReviewing(null)} />
     </div>

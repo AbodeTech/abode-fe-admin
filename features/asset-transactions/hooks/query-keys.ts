@@ -30,4 +30,6 @@ export const purchaseKeys = {
   list: (filters?: PurchaseListFilters) => [...purchaseKeys.lists(), filters ?? {}] as const,
   details: () => [...purchaseKeys.all, 'detail'] as const,
   detail: (id: string) => [...purchaseKeys.details(), id] as const,
+  foPlans: () => [...purchaseKeys.all, 'fo-plan'] as const,
+  foPlan: (id: string) => [...purchaseKeys.foPlans(), id] as const,
 };

@@ -7,6 +7,8 @@
  * 2026-08-13 (tickets 24a/b/d). Review is
  * POST /admin/acquisitions/transactions/:txId/approve|decline for both families.
  * Full-ownership rows open GET /admin/fo/purchase/transactions/:id.
+ * Land plans after approval: PATCH .../payment-plans/:id/suspend|unsuspend
+ * and POST .../payment-plans/:id/allocate.
  * `fo_outright_doc` has no Review action — approve the parent land row.
  *
  * Production's **Property Owner** column has no v2 field (⛔ ticket 24b).
@@ -18,10 +20,17 @@ export { PurchaseFilters } from './components/PurchaseFilters';
 export { PurchaseStatCards } from './components/PurchaseStatCards';
 export { PurchaseStatusBadge } from './components/PurchaseStatusBadge';
 export { FoTransactionDetail } from './components/FoTransactionDetail';
+export { FoPlanActions } from './components/FoPlanActions';
 export { ReviewPurchaseDialog } from './components/ReviewPurchaseDialog';
 
 export { usePurchases, DEFAULT_PURCHASE_LIMIT } from './hooks/use-purchases';
 export { useFoTransaction } from './hooks/use-fo-transaction';
+export {
+  useFoLandPlan,
+  useSuspendFoPlan,
+  useUnsuspendFoPlan,
+  useAllocateFoPlan,
+} from './hooks/use-fo-plan';
 export { useApprovePurchase, useDeclinePurchase } from './hooks/use-purchase-review';
 export type { PurchaseListFilters } from './hooks/query-keys';
 

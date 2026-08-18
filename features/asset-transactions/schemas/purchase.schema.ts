@@ -225,6 +225,127 @@ export function assetLocation(ref: AssetRef | null | undefined): string | null {
   return ref.asset_location ?? null;
 }
 
+/* -------------------- production row normalizer -------------------- */
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  return null;
+}
+
+function coerceMongoId(value: unknown): string | null {
+  if (value == null) return null;
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed && trimmed !== 'null' ? trimmed : null;
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  const nested = asRecord(value);
+  if (nested) return coerceMongoId(nested._id ?? nested.id);
+  return null;
+}
+
+/** BE description literals → `purchase_details.transaction_kind`. */
+const DESCRIPTION_KIND: ReadonlyArray<[RegExp, string]> = [
+  [/AP:\s*flex initial/i, 'initial_flex_purchase'],
+  [/RAP:\s*flex recurring/i, 'recurring_flex_payment'],
+  [/AP:\s*FO installment land/i, 'fo_installment_land'],
+  [/FO outright land/i, 'fo_outright_land'],
+  [/RAP:\s*FO land payment/i, 'fo_recurring_land'],
+  [/FO outright document fee/i, 'fo_outright_doc'],
+  [/DP:\s*FO document payment/i, 'fo_doc_payment'],
+];
+
+function inferTransactionKind(record: Record<string, unknown>): string {
+  const nested = asRecord(record.purchase_details);
+  if (nested?.transaction_kind) return String(nested.transaction_kind);
+
+  const desc = String(record.description ?? '');
+  for (const [pattern, kind] of DESCRIPTION_KIND) {
+    if (pattern.test(desc)) return kind;
+  }
+
+  const assetType = String(record.asset_type ?? '')
+    .toLowerCase()
+    .replace(/_/g, '-');
+  const purchaseKind = String(record.purchase_kind ?? '').toLowerCase();
+  const snap = asRecord(record.purchase_snapshot);
+  const isFlex = assetType === 'flex';
+  const isFo = assetType === 'full-ownership' || assetType.includes('full');
+
+  if (isFlex) {
+    return purchaseKind === 'recurring' ? 'recurring_flex_payment' : 'initial_flex_purchase';
+  }
+  if (isFo) {
+    if (purchaseKind === 'recurring') return 'fo_recurring_land';
+    if (purchaseKind === 'doc' || purchaseKind === 'document') {
+      return snap?.is_full_payment === true ? 'fo_outright_doc' : 'fo_doc_payment';
+    }
+    if (purchaseKind === 'initial') {
+      if (snap?.is_full_payment === true || snap?.tenor_months === 0) {
+        return 'fo_outright_land';
+      }
+      return 'fo_installment_land';
+    }
+  }
+  return '';
+}
+
+/**
+ * Production now flattens purchase fields on the Transaction (`purchase_snapshot`,
+ * root-level transfer evidence, `payment_plan_id`). Mocks and older BE rows still
+ * nest everything under `purchase_details`. Fold both into one shape the UI reads.
+ */
+function buildPurchaseDetails(
+  record: Record<string, unknown>,
+  kind: string
+): Record<string, unknown> | null {
+  const existing = asRecord(record.purchase_details);
+  const snap = asRecord(record.purchase_snapshot);
+
+  if (!existing && !snap && !kind) return null;
+
+  const fromSnap = snap
+    ? {
+        offer_id: snap.offer_id ?? snap.size_id,
+        size_sqm: snap.size_sqm,
+        tenor_months: snap.tenor_months,
+        no_of_units:
+          snap.no_of_units != null ? String(snap.no_of_units) : undefined,
+        total_asset_price: snap.asset_price_total ?? snap.land_price,
+        monthly_installment: snap.monthly_installment_expected,
+        balance: snap.balance,
+        is_full_payment: snap.is_full_payment,
+      }
+    : {};
+
+  return {
+    ...existing,
+    ...fromSnap,
+    transaction_kind: kind || existing?.transaction_kind,
+    payment_plan_id:
+      coerceMongoId(existing?.payment_plan_id) ??
+      coerceMongoId(record.payment_plan_id) ??
+      coerceMongoId(record.source_payment_plan),
+    transfer_bank_name: record.transfer_bank_name ?? existing?.transfer_bank_name,
+    transfer_reference_no:
+      record.transfer_reference_no ??
+      existing?.transfer_reference_no ??
+      record.paystack_reference,
+    transfer_receipt_url:
+      record.transfer_receipt_url ?? existing?.transfer_receipt_url,
+  };
+}
+
+export function normalizePurchaseRow(raw: unknown): unknown {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return raw;
+  const record = raw as Record<string, unknown>;
+  const kind = inferTransactionKind(record);
+  const purchase_details = buildPurchaseDetails(record, kind);
+  return purchase_details ? { ...record, purchase_details } : record;
+}
+
 /* -------------------- entity -------------------- */
 
 /**
@@ -237,8 +358,11 @@ export function assetLocation(ref: AssetRef | null | undefined): string | null {
  * and friends), so reading it would print the same string on every row where
  * the property belongs. The asset name comes from `source_asset`, which is the
  * only honest route to it (⛔ ticket 24c).
+ *
+ * Production may also ship a flat row (`purchase_snapshot`, `purchase_kind`,
+ * root transfer fields). `normalizePurchaseRow` folds that into `purchase_details`.
  */
-export const PurchaseSchema = z.looseObject({
+const PurchaseFieldsSchema = z.looseObject({
   _id: z.string(),
   user: BuyerRefSchema,
   type: z.literal('purchase'),
@@ -246,6 +370,10 @@ export const PurchaseSchema = z.looseObject({
   status: PurchaseStatusSchema,
   admin_status: z.string().nullable().optional(),
   payment_method: z.enum(PAYMENT_METHODS),
+  description: z.string().nullable().optional(),
+  asset_type: z.string().nullable().optional(),
+  property_owner: z.string().nullable().optional(),
+  transfer_receipt_url: z.string().nullable().optional(),
   source_asset: AssetRefSchema.nullable().optional(),
   number_of_units: z.number().nullable().optional(),
   purchase_details: PurchaseDetailsSchema.nullable().optional(),
@@ -253,6 +381,8 @@ export const PurchaseSchema = z.looseObject({
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
 });
+
+export const PurchaseSchema = z.preprocess(normalizePurchaseRow, PurchaseFieldsSchema);
 
 export type Purchase = z.infer<typeof PurchaseSchema>;
 
@@ -341,3 +471,80 @@ export const purchaseDeclineReasonSchema = z
   .string()
   .trim()
   .min(PURCHASE_DECLINE_REASON_MIN, `Explain in at least ${PURCHASE_DECLINE_REASON_MIN} characters`);
+
+/* -------------------- production table display helpers -------------------- */
+
+/** Maps wallet `admin_status` to the badge vocabulary production used. */
+export function adminStatusForBadge(row: Purchase): string {
+  const value = (row.admin_status ?? row.status ?? 'pending').toLowerCase();
+  if (value === 'failed') return 'declined';
+  if (value === 'approved') return 'completed';
+  return value;
+}
+
+export function plotSizeSqm(row: Purchase): number | null {
+  const details = row.purchase_details?.size_sqm;
+  if (typeof details === 'number' && Number.isFinite(details)) return details;
+  return null;
+}
+
+export function purchaseAssetTypeLabel(row: Purchase): string {
+  const raw = String(row.asset_type ?? '').trim();
+  if (raw) {
+    return raw.replace(/_/g, '-').replace(/\b\w/g, (char) => char.toUpperCase());
+  }
+  if (isFoPurchase(row)) return 'Full-Ownership';
+  if ((FLEX_KINDS as readonly string[]).includes(purchaseKind(row))) return 'Flex';
+  return '';
+}
+
+/** Shorten description the way production's asset table did. */
+export function shortenPurchaseDescription(value: string): string {
+  return value.includes('asset purchase')
+    ? value.replace('asset purchase', 'AP')
+    : value;
+}
+
+/**
+ * Production's Property Name column: `{asset_type} - {description}({plot}sqm)`.
+ * Falls back to source asset name when description is absent.
+ */
+export function propertyNameDisplay(row: Purchase): string {
+  const assetType = purchaseAssetTypeLabel(row);
+  const plot = plotSizeSqm(row);
+  const plotSuffix = plot != null ? `(${plot}sqm)` : '';
+  const description =
+    row.description?.trim() ||
+    assetName(row.source_asset) ||
+    kindLabel(purchaseKind(row));
+  const core = shortenPurchaseDescription(`${description}${plotSuffix}`);
+  return assetType ? `${assetType} - ${core}` : core;
+}
+
+export function propertyOwnerLabel(row: Purchase): string | null {
+  const value = row.property_owner?.trim();
+  return value || null;
+}
+
+export function transferReceiptUrl(row: Purchase): string | null {
+  return (
+    row.transfer_receipt_url ??
+    row.purchase_details?.transfer_receipt_url ??
+    null
+  );
+}
+
+export function transactionMethodLabel(row: Purchase): string {
+  const method = row.payment_method;
+  if (method === 'transfer') return 'Transfer';
+  if (method === 'paystack') return 'Paystack';
+  if (method === 'wallet') return 'Wallet';
+  return PAYMENT_METHOD_LABELS[method] ?? method;
+}
+
+export function payerDisplayName(row: Purchase): string {
+  const user = row.user;
+  if (!user || typeof user === 'string') return '—';
+  const parts = [user.lastName, user.firstName].filter(Boolean);
+  return parts.length ? parts.join(' ') : (buyerName(user) ?? '—');
+}

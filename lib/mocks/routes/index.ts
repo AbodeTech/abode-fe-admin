@@ -31,7 +31,9 @@ import { couponRoutes } from './coupons';
  * asset-transactions — GET /admin/transactions (serves purchase rows; other
  *               types return empty pages until their screens migrate),
  *               POST /admin/acquisitions/transactions/:txId/approve|decline,
- *               and GET /admin/fo/purchase/transactions/:txId. The wallet
+ *               GET /admin/fo/purchase/transactions/:txId, and FO land-plan
+ *               GET/PATCH/POST under /admin/fo/purchase/payment-plans/:id.
+ *               The wallet
  *               family (/admin/wallets/*) is unclaimed.
  * upgrades    — /admin/referrals/upgrades/* and POST
  *               /admin/users/:id/manual-upgrade (claimed 2026-08-13 — the

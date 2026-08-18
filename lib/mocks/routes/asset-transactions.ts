@@ -3,8 +3,9 @@ import { findPerson, matchesPersonSearch } from './people';
 import { body, paged } from './util';
 
 /* ============================================================
- * Asset transactions mocks — GET /admin/transactions (purchase rows) and
- * the unified review pair under /admin/acquisitions/transactions/:txId.
+ * Asset transactions mocks — GET /admin/transactions (purchase rows),
+ * the unified review pair under /admin/acquisitions/transactions/:txId,
+ * FO transaction detail, and FO land-plan suspend / unsuspend / allocate.
  *
  * Fixtures cover the states the page exists to render: a transfer-paid
  * initial purchase and a transfer-paid installment both awaiting review, a
@@ -30,6 +31,8 @@ const USER_B = '665fcccc00000000000000c2';
 const USER_C = '665fcccc00000000000000c9';
 const ASSET_AVIATION = '665faaaa00000000000000a1';
 const ASSET_HARMONY = '665faaaa00000000000000a2';
+const FO_PLAN_ID = '665fpl00000000000000fo01';
+const FO_DOC_PLAN_ID = '665fdp00000000000000d01';
 
 /** `.populate('source_asset', 'name asset_location')` — those two fields only. */
 const ASSETS: Record<string, { _id: string; name: string; asset_location: string }> = {
@@ -293,7 +296,105 @@ const purchases: MockPurchase[] = [
     createdAt: daysAgo(1),
     updatedAt: daysAgo(1),
   },
+
+  // Approved FO installment — already has a land plan, so suspend / allocate
+  // can be exercised without going through review first.
+  {
+    ...base,
+    _id: '665fpp0000000000000000t8',
+    user: USER_C,
+    wallet: '665fdddd000000000000wa09',
+    amount: 2_000_000,
+    status: 'completed',
+    admin_status: 'approved',
+    payment_method: 'paystack',
+    source_asset: ASSET_HARMONY,
+    number_of_units: 1,
+    purchase_details: {
+      transaction_kind: 'fo_installment_land',
+      payment_plan_id: FO_PLAN_ID,
+      offer_id: `${ASSET_HARMONY}-offer-2`,
+      size_sqm: 450,
+      tenor_months: 12,
+      no_of_units: '1',
+      total_asset_price: 24_000_000,
+      monthly_installment: 2_000_000,
+      is_full_payment: false,
+    },
+    createdAt: daysAgo(21),
+    updatedAt: daysAgo(18),
+  },
 ];
+
+type MockFoPlan = {
+  _id: string;
+  user: string;
+  asset: string;
+  is_suspended: boolean;
+  suspend_reason: string | null;
+  block: string | null;
+  plot: string | null;
+  allocation_status: 'pending' | 'allocated' | 'email_sent' | 'reassigned';
+  allocation_date: string | null;
+  default_count: number;
+  unique_asset_id: string;
+  asset_type: 'full-ownership';
+  amount_paid: number;
+  amount_payable: number;
+  balance: number;
+  size: number;
+  linked_document_plan_id: string | null;
+  document_plan: { _id: string } | null;
+};
+
+const foPlans: Record<string, MockFoPlan> = {
+  [FO_PLAN_ID]: {
+    _id: FO_PLAN_ID,
+    user: USER_C,
+    asset: ASSET_HARMONY,
+    is_suspended: false,
+    suspend_reason: null,
+    block: null,
+    plot: null,
+    allocation_status: 'pending',
+    allocation_date: null,
+    default_count: 2,
+    unique_asset_id: 'FO-HARMONY-C-01',
+    asset_type: 'full-ownership',
+    amount_paid: 8_000_000,
+    amount_payable: 24_000_000,
+    balance: 16_000_000,
+    size: 450,
+    linked_document_plan_id: FO_DOC_PLAN_ID,
+    document_plan: { _id: FO_DOC_PLAN_ID },
+  },
+};
+
+function seedFoPlan(id: string, row: MockPurchase): MockFoPlan {
+  const payable = row.purchase_details?.total_asset_price ?? row.amount;
+  const plan: MockFoPlan = {
+    _id: id,
+    user: row.user,
+    asset: row.source_asset,
+    is_suspended: false,
+    suspend_reason: null,
+    block: null,
+    plot: null,
+    allocation_status: 'pending',
+    allocation_date: null,
+    default_count: 0,
+    unique_asset_id: `FO-${id.slice(-6)}`,
+    asset_type: 'full-ownership',
+    amount_paid: row.amount,
+    amount_payable: payable,
+    balance: Math.max(0, payable - row.amount),
+    size: row.purchase_details?.size_sqm ?? 0,
+    linked_document_plan_id: null,
+    document_plan: null,
+  };
+  foPlans[id] = plan;
+  return plan;
+}
 
 /* -------------------- filtering helpers -------------------- */
 
@@ -412,6 +513,12 @@ function findOutrightSibling(row: MockPurchase): MockPurchase | null {
   );
 }
 
+function requireFoPlan(id: string): MockFoPlan {
+  const plan = foPlans[id];
+  if (!plan) throw new MockHttpError(404, 'Payment plan not found', 'PAYMENT_PLAN_NOT_FOUND');
+  return plan;
+}
+
 export const assetTransactionRoutes: MockRoutes = {
   /**
    * The all-transactions list. Only `type=purchase` rows live in this file —
@@ -500,6 +607,7 @@ export const assetTransactionRoutes: MockRoutes = {
     row.status = 'completed';
     row.admin_status = 'approved';
     if (row.purchase_details) row.purchase_details.payment_plan_id = planId;
+    if (!isFlex && isInitial) seedFoPlan(planId, row);
 
     if (kind === 'fo_outright_land') {
       const sibling = purchases.find(
@@ -561,6 +669,59 @@ export const assetTransactionRoutes: MockRoutes = {
         : isInitialLand
           ? 'Full-ownership purchase declined and units released.'
           : 'Full-ownership payment declined.',
+    };
+  },
+
+  'GET /admin/fo/purchase/payment-plans/:id': ({ params }) => requireFoPlan(params.id),
+
+  'PATCH /admin/fo/purchase/payment-plans/:id/suspend': ({ params, body: raw }) => {
+    const plan = requireFoPlan(params.id);
+    const dto = body<{ reason?: string }>(raw);
+    const reason = (dto.reason ?? '').trim();
+    if (reason.length < 20) {
+      throw new MockHttpError(
+        400,
+        'SUSPEND_REASON_TOO_SHORT: A reason of at least 20 characters is required',
+        'VALIDATION_FAILED'
+      );
+    }
+    if (plan.is_suspended) {
+      throw new MockHttpError(409, 'Payment plan is already suspended', 'ALREADY_SUSPENDED');
+    }
+    plan.is_suspended = true;
+    plan.suspend_reason = reason;
+    return { message: 'Payment plan suspended.', _id: plan._id };
+  },
+
+  'PATCH /admin/fo/purchase/payment-plans/:id/unsuspend': ({ params }) => {
+    const plan = requireFoPlan(params.id);
+    if (!plan.is_suspended) {
+      throw new MockHttpError(409, 'Payment plan is not suspended', 'NOT_SUSPENDED');
+    }
+    plan.is_suspended = false;
+    plan.suspend_reason = null;
+    plan.default_count = 0;
+    return { message: 'Payment plan unsuspended.', _id: plan._id };
+  },
+
+  'POST /admin/fo/purchase/payment-plans/:id/allocate': ({ params, body: raw }) => {
+    const plan = requireFoPlan(params.id);
+    const dto = body<{ block?: string; plot?: string }>(raw);
+    const block = (dto.block ?? '').trim();
+    const plot = (dto.plot ?? '').trim();
+    if (!block || !plot) {
+      throw new MockHttpError(400, 'block and plot are required', 'VALIDATION_FAILED');
+    }
+    const wasAllocated = Boolean(plan.block && plan.plot);
+    plan.block = block;
+    plan.plot = plot;
+    plan.allocation_status = wasAllocated ? 'reassigned' : 'allocated';
+    plan.allocation_date = new Date().toISOString();
+    return {
+      message: wasAllocated
+        ? `Reallocated to block ${block}, plot ${plot}.`
+        : `Allocated block ${block}, plot ${plot}.`,
+      _id: plan._id,
     };
   },
 };

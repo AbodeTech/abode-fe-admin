@@ -1661,15 +1661,28 @@ so the backend team can see they were considered and dismissed.
 > POST /admin/fo/purchase/transactions/:txId/decline
 > ```
 >
-> Note the admin review pair sits under `/admin/fo/purchase/transactions/:txId/`,
+> Note the admin review pair **originally** sat under `/admin/fo/purchase/transactions/:txId/`,
 > **not** the `/admin/acquisitions/full-ownership/:txId/` this ticket suggested —
 > and separate document-fee routes exist (`/doc/paystack`, `/doc/transfer`),
 > which this ticket folded into initiate.
 >
+> **Update 2026-08-17:** review unified to
+> `POST /admin/acquisitions/transactions/:txId/approve|decline`. Approve is an
+> empty body; decline is `{ reason }` (min 20). The BE routes by kind — do not
+> call the old per-family paths. FO land-plan actions:
+>
+> ```
+> GET   /admin/fo/purchase/payment-plans/:id
+> PATCH /admin/fo/purchase/payment-plans/:id/suspend
+> PATCH /admin/fo/purchase/payment-plans/:id/unsuspend
+> POST  /admin/fo/purchase/payment-plans/:id/allocate
+> ```
+>
 > **Frontend status: wired.** `features/asset-transactions` reviews both
-> families. Flex goes to `/admin/acquisitions/flex/:txId/*`; FO goes to
-> `/admin/fo/purchase/transactions/:txId/*`. `fo_outright_doc` is not
-> reviewable — the admin acts on the parent `fo_outright_land` row.
+> families through that unified pair. `fo_outright_doc` is not reviewable —
+> the admin acts on the parent `fo_outright_land` row. Suspend / unsuspend /
+> allocate sit on the land plan from the FO transaction detail page; FO
+> allocate is also the assign path in the allocation modal.
 >
 > The original request is kept below for the record.
 
@@ -1911,9 +1924,10 @@ after Payer, matching production's order.
 > are unanswered. The Property Owner column is not rendered.
 >
 > One consequence worth noting: full-ownership rows arrive in this list
-> (ticket 20). Review is routed per family to
-> `/admin/fo/purchase/transactions/:txId/*`. `fo_outright_doc` carries no
-> Review action — approve the parent land row.
+> (ticket 20). Review is
+> `POST /admin/acquisitions/transactions/:txId/approve|decline` for both
+> families. `fo_outright_doc` carries no Review action — approve the parent
+> land row.
 >
 > The original request is kept below for the record.
 
