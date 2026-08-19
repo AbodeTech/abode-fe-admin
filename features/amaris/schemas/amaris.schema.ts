@@ -57,11 +57,16 @@ export const AmarisQueryRowSchema = z.looseObject({
 
 export type AmarisQueryRow = z.infer<typeof AmarisQueryRowSchema>;
 
-/** GET /admin/amaris/queries → `{count, data}` inside the envelope. */
-export const AmarisQueryListSchema = z.object({
-  count: z.number(),
-  data: z.array(AmarisQueryRowSchema),
-});
+/**
+ * GET /admin/amaris/queries — a bare array inside the envelope.
+ *
+ * ⛔ ticket 26 — the service returns `{count, data}`, but the global envelope
+ * interceptor lifts any inner `data` key and DROPS the rest, so `count` never
+ * reaches the wire (verified live 2026-08-18). Until the BE returns the
+ * standard paged shape (`data` + `meta`), the total is unknowable here and
+ * pagination runs on a full-page heuristic — no invented totals.
+ */
+export const AmarisQueryListSchema = z.array(AmarisQueryRowSchema);
 
 export type AmarisQueryList = z.infer<typeof AmarisQueryListSchema>;
 

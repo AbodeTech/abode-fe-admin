@@ -1,6 +1,5 @@
 import { type MockRoutes } from '../router';
 import { findPerson } from './people';
-import { paged } from './util';
 
 /* ============================================================
  * Amaris mocks — GET /admin/amaris/queries and /queries/counts.
@@ -136,8 +135,12 @@ export const amarisRoutes: MockRoutes = {
       });
     }
 
-    const { data, meta } = paged(filtered, query, 25);
-    // The BE returns {count, data}, not the paged-envelope meta shape.
-    return { count: meta.total, data };
+    // ⛔ ticket 26 — the deployed endpoint returns a BARE ARRAY: the
+    // envelope interceptor eats the service's `count`. The mock mirrors the
+    // broken truth; a mock that returned the count would hide the bug.
+    const page = Math.max(1, Number(query.page ?? 1) || 1);
+    const limit = Math.min(100, Math.max(1, Number(query.limit ?? 25) || 25));
+    const sorted = [...filtered].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return sorted.slice((page - 1) * limit, page * limit);
   },
 };

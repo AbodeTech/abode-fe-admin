@@ -2175,3 +2175,60 @@ exactly the broken offers above. Widening the read-side enum now so a
 commercial offer created server-side does not fail response validation.
 
 ---
+
+## 26. Amaris query log loses its `count` to the envelope interceptor
+
+**Priority: medium — the list works, but its total is destroyed on the wire,
+so the admin log cannot show real pagination.**
+
+### The mechanism
+
+`AdminAmarisService.listQueries` returns `{ count, data }`. The global
+`TransformInterceptor` wraps every response as:
+
+```ts
+return {
+  success: true,
+  data: data?.data ?? data,   // ← lifts the inner `data` key…
+  message: data?.message ?? 'Success',
+  ...(data?.meta && { meta: data.meta }),
+};
+```
+
+Because the service's return value has a `.data` key, the interceptor lifts
+the rows array into `envelope.data` and **silently discards `count`** (it
+only carries `message` and `meta` through). Verified live 2026-08-18:
+
+```
+GET /admin/amaris/queries?limit=2
+→ { success, data: [ …rows… ], message }     // no count, no meta
+```
+
+### Why flex-leads doesn't have this problem
+
+`GET /admin/flex-leads` returns the `PaginatedResult` shape —
+`{ data, message, meta: {total, page, limit, totalPages} }` — which the
+interceptor is built for: rows land in `envelope.data`, totals survive in
+`envelope.meta`. Same interceptor, right shape.
+
+### Scenario
+
+An admin filters the Amaris log to "No answer" to work the handbook-gap
+backlog. The page can show 25 rows and a Next button, but never "142 gaps
+total" — the number that says whether the backlog is shrinking. The FE
+currently paginates on a full-page heuristic (a full page ⇒ probably a next
+one) rather than inventing a total.
+
+### The fix
+
+One line in `amaris.service.ts` / repository: return the standard shape —
+
+```ts
+return { data, message: 'Amaris queries retrieved', meta: { total: count, page, limit, totalPages: Math.ceil(count / limit) } };
+```
+
+The FE then switches one hook to `apiGetPaged` and real pagination returns.
+Any other endpoint that returns an object with its own `data` key has the
+same trap — worth a lint/convention note on the BE: **service returns either
+a bare payload or the PaginatedResult shape, never a custom object with a
+`data` key.**

@@ -39,7 +39,7 @@ export const COMMISSION_TIER_LABELS: Record<CommissionTier, string> = {
 };
 
 /** Which level of the resolution chain produced a rate. */
-export const OVERRIDE_SOURCES = ['asset_user', 'user', 'asset', 'default', 'agency'] as const;
+export const OVERRIDE_SOURCES = ['asset_user', 'user', 'asset', 'default', 'agency', 'developer_plot'] as const;
 export const OverrideSourceSchema = z.enum(OVERRIDE_SOURCES);
 export type OverrideSource = z.infer<typeof OverrideSourceSchema>;
 
@@ -49,6 +49,7 @@ export const OVERRIDE_SOURCE_LABELS: Record<OverrideSource, string> = {
   asset: 'Asset override',
   default: 'Default rate',
   agency: 'Agency rate',
+  developer_plot: 'Developer-plot config',
 };
 
 /** The three legs a full-ownership sale can pay. Flex pays `direct` only. */
@@ -258,3 +259,54 @@ export const CommissionPreviewSchema = z.object({
 });
 
 export type CommissionPreview = z.infer<typeof CommissionPreviewSchema>;
+
+/* -------------------- developer-plot config -------------------- */
+
+/**
+ * GET/PATCH /admin/commission/developer-plot-config — the three-way split
+ * for developer-plot sales. Exactly two founders always earn; the rate table
+ * depends on whether the buyer's referrer IS one of them:
+ *
+ *   referrer is a founder   → that founder gets `founder_referrer_rate`,
+ *                             the other founder `founder_bystander_rate`
+ *   referrer is external    → referrer gets `external_referrer_rate`,
+ *                             each founder `founder_rate_when_external_referrer`
+ *   no referrer             → nobody is paid (the BE freezes an empty snapshot)
+ *
+ * Singleton with a version counter — PATCH bumps it; existing plans keep the
+ * snapshot they froze at purchase. `null` until first configured, and a
+ * developer-plot sale HARD-FAILS resolution until it is
+ * (`DEVELOPER_PLOT_CONFIG_MISSING`) — the card says so.
+ *
+ * `founder_user_ids` and `last_modified_by` arrive as bare ObjectIds (the
+ * repo does not populate) — names are resolved client-side via
+ * GET /admin/users/:id, which exists; a BE populate would make that
+ * resolution unnecessary but is not required.
+ */
+export const DeveloperPlotConfigSchema = z.looseObject({
+  _id: z.string().optional(),
+  founder_user_ids: z.array(z.string()).length(2),
+  founder_referrer_rate: z.number(),
+  founder_bystander_rate: z.number(),
+  external_referrer_rate: z.number(),
+  founder_rate_when_external_referrer: z.number(),
+  version: z.number(),
+  last_modified_by: z.string().nullable().optional(),
+  reason: z.string().nullable().optional(),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
+});
+
+export type DeveloperPlotConfig = z.infer<typeof DeveloperPlotConfigSchema>;
+
+/** The GET returns null before the first PATCH ever runs. */
+export const DeveloperPlotConfigResponseSchema = DeveloperPlotConfigSchema.nullable();
+
+export const DEVELOPER_PLOT_RATE_FIELDS = [
+  { key: 'founder_referrer_rate', label: 'Founder as referrer', hint: 'The founder who referred the buyer' },
+  { key: 'founder_bystander_rate', label: 'Other founder', hint: 'The founder who did not refer, same sale' },
+  { key: 'external_referrer_rate', label: 'External referrer', hint: 'A non-founder who referred the buyer' },
+  { key: 'founder_rate_when_external_referrer', label: 'Each founder (external sale)', hint: 'What each founder earns when the referrer is external' },
+] as const;
+
+export type DeveloperPlotRateKey = (typeof DEVELOPER_PLOT_RATE_FIELDS)[number]['key'];

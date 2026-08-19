@@ -546,6 +546,19 @@ resolved tickets 6, 8, 9a, 9b, 11 and 12 in one drop:
 | 10 — Preview | `PreviewPanel` on the overrides page rather than inside the dialogs: the endpoint requires user + asset + offer type, and only the asset+user dialog has all three. A standalone panel serves every case |
 | 11 — Per-leg inputs | Enabled in `SubjectOverrideDialog`; payload sends `direct`/`upline`/`topline`. The old flat `rate` **no longer parses** server-side |
 
+**Post-v1 addition (2026-08-18): developer plots.** Staging added
+`GET/PATCH /admin/commission/developer-plot-config` — a singleton, versioned
+three-way split: two fixed founders earn on every developer-plot sale, at one
+of four rates depending on whether the buyer's referrer is a founder. Landed
+as `DeveloperPlotCard` on `/commission/rates` (display + edit dialog with two
+user pickers, four percent fields, reason). Unset renders as a warning, not
+an empty card — until configured, developer-plot sales fail resolution with
+`DEVELOPER_PLOT_CONFIG_MISSING`. The drop also introduced
+`override_source: 'developer_plot'` and a `founder` commission type; the FE
+enums were widened the same day (an audit of a developer-plot plan would
+otherwise have failed schema parsing). Founder refs arrive unpopulated —
+resolved client-side via `GET /admin/users/:id`.
+
 **Not built rather than built-and-degraded.** Both were held deliberately: the
 backend is mid-rebuild, so these are scheduling items for that team, not
 frontend design problems to route around.

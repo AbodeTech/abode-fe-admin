@@ -3,7 +3,9 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-import { Pagination } from "@/components/shared/Pagination";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
 import { useDebounce } from "@/hooks/use-debounce";
 import {
   AMARIS_AUDIENCES,
@@ -65,7 +67,11 @@ function AmarisContent() {
     q: debouncedQ || undefined,
   });
 
-  const totalCount = data?.count ?? 0;
+  const rows = data ?? [];
+  // ⛔ ticket 26 — the endpoint returns no total (the envelope interceptor
+  // drops the service's `count`), so pagination is a full-page heuristic:
+  // a full page means there is probably a next one. No invented totals.
+  const hasNext = rows.length === DEFAULT_AMARIS_LIMIT;
 
   return (
     <div className="space-y-6 py-2">
@@ -95,14 +101,34 @@ function AmarisContent() {
       />
 
       <AmarisQueryTable
-        rows={data?.data ?? []}
+        rows={rows}
         isLoading={isLoading}
         isError={isError}
         errorMessage={error instanceof Error ? error.message : undefined}
       />
 
-      {totalCount > DEFAULT_AMARIS_LIMIT ? (
-        <Pagination count={totalCount} currentIdx={page} limit={DEFAULT_AMARIS_LIMIT} />
+      {page > 1 || hasNext ? (
+        <div className="flex items-center justify-end gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page <= 1 || isLoading}
+            onClick={() => updateParams({ page: page > 2 ? String(page - 1) : null })}
+          >
+            <ChevronLeft className="mr-1 h-4 w-4" aria-hidden />
+            Previous
+          </Button>
+          <span className="text-sm tabular-nums text-muted-foreground">Page {page}</span>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!hasNext || isLoading}
+            onClick={() => updateParams({ page: String(page + 1) })}
+          >
+            Next
+            <ChevronRight className="ml-1 h-4 w-4" aria-hidden />
+          </Button>
+        </div>
       ) : null}
     </div>
   );

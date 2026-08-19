@@ -55,14 +55,6 @@ export const FlexLeadRowSchema = z.looseObject({
 
 export type FlexLeadRow = z.infer<typeof FlexLeadRowSchema>;
 
-/** GET /admin/flex-leads → `{count, data}` inside the envelope. */
-export const FlexLeadListSchema = z.object({
-  count: z.number(),
-  data: z.array(FlexLeadRowSchema),
-});
-
-export type FlexLeadList = z.infer<typeof FlexLeadListSchema>;
-
 /** GET /admin/flex-leads/counts — exactly the five statuses, no total. */
 export const FlexLeadCountsSchema = z.looseObject({
   new: z.number(),

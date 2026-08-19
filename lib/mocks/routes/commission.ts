@@ -335,7 +335,81 @@ function filterRows<T extends OverrideRow>(
   });
 }
 
+
+type MockDeveloperPlotConfig = {
+  _id: string;
+  founder_user_ids: [string, string];
+  founder_referrer_rate: number;
+  founder_bystander_rate: number;
+  external_referrer_rate: number;
+  founder_rate_when_external_referrer: number;
+  version: number;
+  last_modified_by: string | null;
+  reason: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+let developerPlotConfig: MockDeveloperPlotConfig | null = {
+  _id: '665fdp0000000000000000c1',
+  founder_user_ids: [USER_JOHN, USER_UCHE],
+  founder_referrer_rate: 0.08,
+  founder_bystander_rate: 0.05,
+  external_referrer_rate: 0.06,
+  founder_rate_when_external_referrer: 0.05,
+  version: 2,
+  last_modified_by: ADMIN_ID,
+  reason: 'Initial founder line-up for the developer-plot programme',
+  createdAt: '2026-08-10T09:00:00.000Z',
+  updatedAt: '2026-08-15T09:00:00.000Z',
+};
+
 export const commissionRoutes: MockRoutes = {
+  /**
+   * Developer-plot three-way split (singleton, versioned). Starts CONFIGURED
+   * in mock mode so the card's populated state renders; delete the object to
+   * exercise the unset warning.
+   */
+  'GET /admin/commission/developer-plot-config': () => developerPlotConfig,
+
+  'PATCH /admin/commission/developer-plot-config': ({ body: raw }) => {
+    const dto = body<{
+      founder_user_ids?: string[];
+      founder_referrer_rate?: number;
+      founder_bystander_rate?: number;
+      external_referrer_rate?: number;
+      founder_rate_when_external_referrer?: number;
+      reason?: string;
+    }>(raw);
+
+    const founders = dto.founder_user_ids ?? [];
+    if (founders.length !== 2 || new Set(founders).size !== 2) {
+      throw new MockHttpError(
+        400,
+        'DEVELOPER_PLOT_FOUNDERS_INVALID: exactly two founders are required',
+        'DEVELOPER_PLOT_FOUNDERS_INVALID'
+      );
+    }
+
+    developerPlotConfig = {
+      _id: developerPlotConfig?._id ?? '665fdp0000000000000000c1',
+      founder_user_ids: [founders[0], founders[1]],
+      founder_referrer_rate: dto.founder_referrer_rate ?? developerPlotConfig?.founder_referrer_rate ?? 0.08,
+      founder_bystander_rate: dto.founder_bystander_rate ?? developerPlotConfig?.founder_bystander_rate ?? 0.05,
+      external_referrer_rate: dto.external_referrer_rate ?? developerPlotConfig?.external_referrer_rate ?? 0.06,
+      founder_rate_when_external_referrer:
+        dto.founder_rate_when_external_referrer ??
+        developerPlotConfig?.founder_rate_when_external_referrer ??
+        0.05,
+      version: (developerPlotConfig?.version ?? 0) + 1,
+      last_modified_by: ADMIN_ID,
+      reason: dto.reason ?? null,
+      createdAt: developerPlotConfig?.createdAt ?? new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    return developerPlotConfig;
+  },
+
   'GET /admin/commission/config': () => ({
     active: versions[0],
     history: versions,

@@ -2,17 +2,19 @@
 
 import { useQuery } from '@tanstack/react-query';
 
-import { apiGet } from '@/lib/api-client';
+import { apiGet, apiGetPaged } from '@/lib/api-client';
 
-import { FlexLeadCountsSchema, FlexLeadListSchema } from '../schemas/flex-lead.schema';
+import { FlexLeadCountsSchema, FlexLeadRowSchema } from '../schemas/flex-lead.schema';
 import { flexLeadKeys, type FlexLeadListFilters } from './query-keys';
 
 /** The BE defaults to 25 and caps at 100. */
 export const DEFAULT_FLEX_LEADS_LIMIT = 25;
 
 /**
- * GET /admin/flex-leads — newest first. `q` searches full_name, email and
- * phone server-side (regex-escaped there, so a pasted `+234` is safe — FL-15).
+ * GET /admin/flex-leads — newest first, standard paged envelope
+ * (`data[]` + `meta{total,page,limit,totalPages}`) — verified against the
+ * live deployment 2026-08-18. `q` searches full_name, email and phone
+ * server-side (regex-escaped there, so a pasted `+234` is safe — FL-15).
  */
 export const useFlexLeads = (filters?: FlexLeadListFilters) => {
   const { page = 1, limit = DEFAULT_FLEX_LEADS_LIMIT, ...rest } = filters ?? {};
@@ -20,7 +22,7 @@ export const useFlexLeads = (filters?: FlexLeadListFilters) => {
   return useQuery({
     queryKey: flexLeadKeys.list({ page, limit, ...rest }),
     queryFn: () =>
-      apiGet('/admin/flex-leads', FlexLeadListSchema, {
+      apiGetPaged('/admin/flex-leads', FlexLeadRowSchema, {
         params: {
           page,
           limit,

@@ -82,8 +82,8 @@ function FlexLeadsContent() {
     );
   }
 
-  const rows = data?.data ?? [];
-  const count = data?.count ?? 0;
+  const rows = data?.items ?? [];
+  const count = data?.meta.total ?? 0;
 
   return (
     <div className="mx-auto mt-4 w-full min-w-0 max-w-[1600px] space-y-4 px-3 pb-20 sm:px-4">

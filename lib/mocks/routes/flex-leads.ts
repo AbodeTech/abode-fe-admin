@@ -1,5 +1,5 @@
 import { MockHttpError, type MockRoutes } from '../router';
-import { body } from './util';
+import { body, paged } from './util';
 
 /* ============================================================
  * Flex-lead mocks — /admin/flex-leads list, counts, update, soft delete.
@@ -167,11 +167,8 @@ export const flexLeadRoutes: MockRoutes = {
     }
 
     const sorted = [...rows].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-    const page = Math.max(1, Number(query.page ?? 1) || 1);
-    const limit = Math.min(100, Math.max(1, Number(query.limit ?? 25) || 25));
-    const start = (page - 1) * limit;
-
-    return { count: rows.length, data: sorted.slice(start, start + limit) };
+    // The deployed endpoint returns the standard paged envelope (data + meta).
+    return paged(sorted, query, 25);
   },
 
   'PATCH /admin/flex-leads/:id': ({ params, body: raw }) => {
