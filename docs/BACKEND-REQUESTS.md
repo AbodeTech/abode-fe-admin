@@ -1406,7 +1406,13 @@ simpler version above; say if the split is needed and we will add it.
 
 ---
 
-## 16. The assets list cannot be sorted
+## 16. The assets list cannot be sorted — ✅ RESOLVED (staging `a364fdd`)
+
+> `GET /admin/assets` now takes `sort` (`name | createdAt | units_sold | available_units`)
+> and `order` (`asc | desc`); name sorts with a case-insensitive collation and
+> `available_units` via an aggregation. FE not yet sending it — see the asset pass.
+
+> The original request is kept below for the record.
 
 **Priority: low — a growing-catalogue problem, not a blocker.**
 
@@ -1563,11 +1569,14 @@ offers can ever be defined, so it says so.
 
 ---
 
-## 19. Plans can't be added, and a tenor can't be changed — ✅ ADD HALF RESOLVED 2026-07-28
+## 19. Plans can't be added, and a tenor can't be changed — ✅ FULLY RESOLVED (staging `a364fdd`)
 
 > `POST …/sizes/:sizeId/plans` adds one plan atomically, 409
-> `TENOR_ALREADY_EXISTS` on a duplicate. **Changing a tenor still requires
-> full-replacing `plans[]`** — that half stays open.
+> `TENOR_ALREADY_EXISTS` on a duplicate. And as of `a364fdd`,
+> `UpdatePlanDto extends PartialType(PlanInputDto)` — `PATCH …/plans/:tenor`
+> accepts `tenor_months`, and `updatePlan` genuinely moves the plan (guards
+> duplicates and flex-min-1, re-runs the arithmetic on the merged result).
+> The FE's full-replace fallback for tenor edits can be deleted.
 
 > The original request is kept below for the record.
 
@@ -2119,5 +2128,50 @@ carry the same 20-character rule and the same preset-reason history.
 property render with the em-dash + copyable-id pattern. Decline is currently
 free-text at 20 chars, so nothing is broken today — the question above only
 matters when the presets come back.
+
+---
+
+## 25. Commercial offers: validated, then silently mis-stored (AC-ADD-08 missing)
+
+**Priority: P0 — data loss on create, unrecoverable through the API. Must land before any commercial offer is created for real.**
+
+Full write-up, in the addendum's own voice and numbering, is
+`ASSET-CRUD-ADDITIONS v1.1` (delivered 2026-08-18) — this entry is the pointer
+so it lives with the rest of our tickets.
+
+### The short version
+
+ASSET-CRUD-ADDITIONS v1.0 added `'commercial'` to the offer-type enum and
+extended the `payment_type` / `document_fee` validators to require it for
+commercial (AC-ADD-01..04, all shipped). Its task table has no service-layer
+row, on the assumption that "service filter passes through naturally". The
+filter does. The FO-shaped field handling does not — it is seven literal
+`=== 'full-ownership'` comparisons in `asset.service.ts` (lines 244, 322,
+354, 427, 583, 622, 634 as of `a364fdd`) that an enum extension cannot reach.
+
+### Scenario
+
+Admin creates a commercial offer, supplies `payment_type` and `document_fee`
+because the API demands them, gets **201**. Stored offer has **no
+`payment_type`**; every size has **`document_fee: 0`**. A later purchase reads
+`payment_type` to decide whether to create a DocumentPlan (FO-PURCHASE §6.1)
+and finds nothing; the fee charged is ₦0. The admin tries to fix it —
+`PATCH …/offers/commercial {payment_type}` **throws** "only applies to
+full-ownership offers"; `PATCH …/sizes/:id {document_fee}` is silently
+ignored. There is no delete-offer endpoint. **The offer is unrecoverable.**
+
+### The fix (AC-ADD-08)
+
+Replace the seven comparisons with `usesFoModel(offerType)` — a helper that
+already exists in `asset-offer.schema.ts`. ~30 minutes. Plus AC-ADD-06 must
+**read back** the created asset and assert the two fields persisted; a 201
+alone is what let this ship. Also recorded (AC-ADD-10): the admin list's
+price aggregation excludes commercial when unfiltered — undocumented; decide
+and name it.
+
+**Frontend status:** holding the commercial UI (type picker, FO-like fee and
+payment-type handling) until AC-ADD-08 lands — shipping it earlier produces
+exactly the broken offers above. Widening the read-side enum now so a
+commercial offer created server-side does not fail response validation.
 
 ---

@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { useUIStore } from "@/store/ui-store";
 
 import {
+  Bot,
   Activity,
   ArrowDownToLine,
   BarChart3,
@@ -48,6 +49,8 @@ const navGroups = [
       { name: "Allocation", link: "/allocation", icon: <Building2 /> },
       { name: "Marketplace", link: "/marketplace", icon: <Store /> },
       { name: "Requests", link: "/requests", icon: <ClipboardList /> },
+      { name: "Amaris", link: "/amaris", icon: <Bot /> },
+      { name: "Flex Leads", link: "/flex-leads", icon: <UserPlus /> },
       { name: "Upgrade Coupons", link: "/associate-upgrade/coupons", icon: <Gift /> },
     ]
   },

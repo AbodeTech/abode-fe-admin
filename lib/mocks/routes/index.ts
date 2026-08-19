@@ -7,6 +7,8 @@ import { userRoutes } from './users';
 import { withdrawalRoutes } from './withdrawals';
 import { assetTransactionRoutes } from './asset-transactions';
 import { requestRoutes } from './requests';
+import { amarisRoutes } from './amaris';
+import { flexLeadRoutes } from './flex-leads';
 import { couponRoutes } from './coupons';
 
 /* ============================================================
@@ -62,6 +64,8 @@ export function ensureRoutesRegistered(): void {
   registerRoutes(withdrawalRoutes);
   registerRoutes(assetTransactionRoutes);
   registerRoutes(requestRoutes);
+  registerRoutes(amarisRoutes);
+  registerRoutes(flexLeadRoutes);
   registerRoutes(couponRoutes);
   // ...added per feature as it migrates
 }
