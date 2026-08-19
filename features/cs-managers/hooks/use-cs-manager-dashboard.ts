@@ -1,8 +1,9 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { execute } from "@/lib/graphql-client";
 import { graphql } from "@/lib/gql";
+import type { CsPlanFilter, CsPlanSort } from "@/lib/gql/graphql";
 
 /**
  * CS Manager dashboard reads — typed via codegen.
@@ -16,6 +17,9 @@ const GET_CS_MANAGER_DASHBOARD_QUERY = graphql(`
     $year: Int
     $page: Int
     $limit: Int
+    $filter: CSPlanFilter
+    $search: String
+    $sort: CSPlanSort
   ) {
     getCSManagerDashboard(
       managerId: $managerId
@@ -23,6 +27,9 @@ const GET_CS_MANAGER_DASHBOARD_QUERY = graphql(`
       year: $year
       page: $page
       limit: $limit
+      filter: $filter
+      search: $search
+      sort: $sort
     ) {
       period {
         periodType
@@ -82,26 +89,40 @@ const GET_CS_MANAGER_DASHBOARD_QUERY = graphql(`
         lastActivityAt
       }
       plansTotal
+      filterCounts {
+        all
+        dueAllocation
+        onboardingPending
+        dueDoa
+        defaultingSoon
+        completedPayment
+      }
     }
   }
 `);
 
 export const csManagerKeys = {
   dashboards: () => ["cs-manager", "dashboard"] as const,
-  dashboard: (
-    managerId: string,
-    month?: number,
-    year?: number,
-    page?: number,
-    limit?: number
-  ) =>
+  dashboard: (params: {
+    managerId: string;
+    month?: number;
+    year?: number;
+    page?: number;
+    limit?: number;
+    filter?: CsPlanFilter;
+    search?: string;
+    sort?: CsPlanSort;
+  }) =>
     [
       ...csManagerKeys.dashboards(),
-      managerId,
-      month ?? null,
-      year ?? null,
-      page ?? null,
-      limit ?? null,
+      params.managerId,
+      params.month ?? null,
+      params.year ?? null,
+      params.page ?? null,
+      params.limit ?? null,
+      params.filter ?? null,
+      params.search ?? null,
+      params.sort ?? null,
     ] as const,
 };
 
@@ -111,6 +132,11 @@ export interface UseCSManagerDashboardParams {
   year?: number;
   page?: number;
   limit?: number;
+  /** Narrows the plans table only — KPIs, backlogs and portfolio stay
+   * book-wide, per the BE's schema docs. */
+  filter?: CsPlanFilter;
+  search?: string;
+  sort?: CsPlanSort;
   enabled?: boolean;
 }
 
@@ -120,10 +146,22 @@ export const useCSManagerDashboard = ({
   year,
   page,
   limit,
+  filter,
+  search,
+  sort,
   enabled = true,
 }: UseCSManagerDashboardParams) => {
   return useQuery({
-    queryKey: csManagerKeys.dashboard(managerId, month, year, page, limit),
+    queryKey: csManagerKeys.dashboard({
+      managerId,
+      month,
+      year,
+      page,
+      limit,
+      filter,
+      search,
+      sort,
+    }),
     queryFn: () =>
       execute(GET_CS_MANAGER_DASHBOARD_QUERY, {
         managerId,
@@ -131,8 +169,15 @@ export const useCSManagerDashboard = ({
         year: year ?? null,
         page: page ?? null,
         limit: limit ?? null,
+        filter: filter ?? null,
+        search: search?.trim() ? search.trim() : null,
+        sort: sort ?? null,
       }),
     select: (data) => data.getCSManagerDashboard,
     enabled: enabled && !!managerId,
+    // Switching manager or period changes the key. Hold the previous
+    // dashboard while the next one loads so the picker doesn't drop the
+    // whole page to a spinner on every change.
+    placeholderData: keepPreviousData,
   });
 };

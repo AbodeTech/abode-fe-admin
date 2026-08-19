@@ -84,11 +84,16 @@ export const useCSManagersList = () => {
 export interface UseUnassignedCustomersParams {
   page?: number;
   limit?: number;
+  /** `listUnassignedCustomers` is super-admin only — pass false in the
+   * manager view so a CS Manager never fires a request they'd be rejected
+   * for. */
+  enabled?: boolean;
 }
 
 export const useUnassignedCustomers = (params?: UseUnassignedCustomersParams) => {
   const page = params?.page;
   const limit = params?.limit;
+  const enabled = params?.enabled ?? true;
   return useQuery({
     queryKey: csManagersListKeys.unassigned(page, limit),
     queryFn: () =>
@@ -97,6 +102,7 @@ export const useUnassignedCustomers = (params?: UseUnassignedCustomersParams) =>
         limit: limit ?? null,
       }),
     select: (data) => data.listUnassignedCustomers,
+    enabled,
   });
 };
 

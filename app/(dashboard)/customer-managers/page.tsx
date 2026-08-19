@@ -1,101 +1,250 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
-import { Loader2, Plus, UserPlus2, AlertCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Loader2, Lock } from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
+  CSPerformanceHeader,
+  CSManagerSnapshot,
+  BacklogsSection,
+  PortfolioHealthStrip,
+  CustomersTable,
+  NoCSManagersEmptyState,
+  ManageCSTargetsDialog,
+  useCSManagerDashboard,
   useCSManagersList,
-  useUnassignedCustomers,
-  useRemoveCSManager,
-  CSManagersListTable,
-  AddCSManagerDialog,
+  useIsCurrentCSManager,
 } from "@/features/cs-managers";
-import { toast } from "sonner";
+import { csManagerName } from "@/features/cs-managers/lib/manager-display";
+import { useAuthStore } from "@/store/auth-store";
+import type { CsPlanFilter, CsPlanSort } from "@/lib/gql/graphql";
 
-export default function CustomerManagersListPage() {
-  const [addOpen, setAddOpen] = useState(false);
+/** Friendly empty state for admins who shouldn't be here. */
+function NotAuthorized() {
+  return (
+    <div className="flex items-center justify-center h-[calc(100vh-200px)]">
+      <div className="max-w-md text-center space-y-3">
+        <div className="mx-auto h-12 w-12 rounded-full bg-amber-50 text-amber-700 flex items-center justify-center">
+          <Lock className="h-6 w-6" />
+        </div>
+        <h2 className="text-lg font-semibold text-gray-900">
+          CS Manager Performance is restricted
+        </h2>
+        <p className="text-sm text-gray-600">
+          This page is for Super Admins and assigned CS Managers. Ask your
+          admin if you need access.
+        </p>
+      </div>
+    </div>
+  );
+}
 
-  const { data: managers = [], isLoading, isError, error } = useCSManagersList();
-  // BE returns a paginated response — banner just wants the count.
-  const { data: unassignedResponse } = useUnassignedCustomers();
-  const unassignedCount = unassignedResponse?.count ?? 0;
-  const { mutateAsync: removeCSM } = useRemoveCSManager();
+/** Plans are paginated server-side; `getCSManagerDashboard` returns
+ * `plansTotal` for the page count. */
+const PLANS_PER_PAGE = 20;
 
-  const handleRemove = async (managerId: string, displayName: string) => {
-    const confirmed = window.confirm(
-      `Remove ${displayName} from the CS Manager role? Their assigned customers will need to be reassigned.`
+const isAuthErrorMessage = (message: string) =>
+  /not authorized|unauthori[sz]ed|forbidden|only super admins|only assigned/i.test(
+    message
+  );
+
+function CustomerManagersContent() {
+  const searchParams = useSearchParams();
+  const { user } = useAuthStore();
+  const [targetsDialogOpen, setTargetsDialogOpen] = useState(false);
+
+  // Role gating, mirroring the APM dashboard: Super Admins (role === "admin")
+  // get the picker across every manager. Any other admin who is also a CS
+  // Manager sees only their own book. `?view=manager` lets a super admin
+  // preview the manager layout.
+  const isSuperAdmin = user?.role === "admin";
+  const {
+    isCSManager,
+    csManagerId,
+    isLoading: csmCheckLoading,
+  } = useIsCurrentCSManager();
+  const wantsManagerView = searchParams.get("view") === "manager";
+  const isAuthorized = isSuperAdmin || isCSManager || wantsManagerView;
+
+  const viewAs: "super-admin" | "manager" =
+    wantsManagerView || (!isSuperAdmin && isCSManager)
+      ? "manager"
+      : "super-admin";
+
+  const managerIdParam = searchParams.get("manager");
+  const monthParam = searchParams.get("month");
+  const yearParam = searchParams.get("year");
+  const month = monthParam ? Number(monthParam) : undefined;
+  const year = yearParam ? Number(yearParam) : undefined;
+  const page = Number(searchParams.get("page")) || 1;
+  // Plans-table controls — server-side, so they belong in the URL alongside
+  // the rest of the dashboard state.
+  const filter = (searchParams.get("filter") as CsPlanFilter | null) ?? undefined;
+  const search = searchParams.get("search") ?? undefined;
+  const sort = (searchParams.get("sort") as CsPlanSort | null) ?? undefined;
+
+  const managersQuery = useCSManagersList();
+  const managers = managersQuery.data ?? [];
+
+  // Manager view is pinned to their own id — `?manager=` is ignored, so a CS
+  // Manager can't peek at a colleague's book by editing the URL. This is a
+  // UX guard, NOT a security boundary: `getCSManagerDashboard` must reject a
+  // non-owning caller BE-side.
+  const activeManagerId =
+    viewAs === "manager"
+      ? csManagerId
+      : (managerIdParam ?? managers[0]?.manager._id ?? null);
+
+  const dashboardQuery = useCSManagerDashboard({
+    managerId: activeManagerId ?? "",
+    month,
+    year,
+    page,
+    limit: PLANS_PER_PAGE,
+    filter,
+    search,
+    sort,
+    enabled: isAuthorized && !!activeManagerId,
+  });
+
+  // Wait for the CS-Manager check before deciding — otherwise a legitimate
+  // non-super-admin manager would flash the NotAuthorized state.
+  if (csmCheckLoading || managersQuery.isLoading || dashboardQuery.isLoading) {
+    return (
+      <div className="flex items-center justify-center h-[calc(100vh-200px)]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
     );
-    if (!confirmed) return;
-    try {
-      await removeCSM(managerId);
-      toast.success(`${displayName} demoted`);
-    } catch (err: unknown) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to remove CS Manager"
-      );
-    }
-  };
+  }
+
+  // Bail AFTER every hook has been declared, to keep hook order stable.
+  if (!isAuthorized) {
+    return <NotAuthorized />;
+  }
+
+  const error = managersQuery.error || dashboardQuery.error;
+  if (error) {
+    const message = (error as Error).message ?? "";
+    // BE auth errors land here too (e.g. a non-admin forced ?view=manager
+    // through, or listCSManagers is super-admin-gated).
+    if (isAuthErrorMessage(message)) return <NotAuthorized />;
+
+    return (
+      <div className="p-4 rounded-md bg-red-50 text-[#AD1F2A] border border-red-200">
+        <h3 className="font-bold">Error loading CS Manager performance</h3>
+        <p>{message || "An unexpected error occurred."}</p>
+      </div>
+    );
+  }
+
+  // No CS Managers exist yet — friendly state with a primary "Add" CTA
+  // instead of an empty picker over an empty dashboard. Only a super admin
+  // can land here; a CS Manager would always find at least themselves.
+  if (viewAs === "super-admin" && managers.length === 0) {
+    return <NoCSManagersEmptyState />;
+  }
+
+  const data = dashboardQuery.data;
+
+  if (!data) {
+    return (
+      <div className="p-4 rounded-md bg-amber-50 text-amber-700 border border-amber-200">
+        No dashboard data available for this CS Manager.
+      </div>
+    );
+  }
+
+  // BE returns manager: null when the role is unassigned or the admin id in
+  // the URL didn't resolve. Keep the header mounted so a super admin still
+  // has the picker to switch away from the bad selection.
+  if (!data.manager) {
+    return (
+      <div className="space-y-6">
+        <CSPerformanceHeader
+          viewAs={viewAs}
+          managers={managers}
+          activeManagerId={activeManagerId}
+          assignedCustomersCount={0}
+        />
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">
+          This admin is not currently a CS Manager. They may have been
+          removed, or the id in the URL doesn&apos;t match an active role.
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6 py-2">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-xl font-semibold text-gray-900">
-            CS Manager Performance
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Every CS Manager on the team, their current book, and their
-            in-period score.
-          </p>
-        </div>
-        <Button onClick={() => setAddOpen(true)}>
-          <Plus className="h-4 w-4 mr-1.5" />
-          Add CS Manager
-        </Button>
-      </div>
+    <div className="space-y-6">
+      <CSPerformanceHeader
+        viewAs={viewAs}
+        managers={managers}
+        activeManagerId={activeManagerId}
+        assignedCustomersCount={data.portfolio.totalAssigned}
+      />
 
-      {unassignedCount > 0 && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-2 text-sm text-amber-800">
-            <AlertCircle className="h-4 w-4 shrink-0" />
-            <span>
-              <b className="font-semibold">{unassignedCount} customer{unassignedCount === 1 ? "" : "s"}</b>{" "}
-              waiting to be assigned to a CS Manager.
-            </span>
-          </div>
-          <Link
-            href="/customer-managers/unassigned"
-            className="inline-flex items-center gap-1 rounded-md bg-white border border-amber-300 px-3 py-1.5 text-xs font-medium text-amber-900 hover:bg-amber-100"
-          >
-            <UserPlus2 className="h-3.5 w-3.5" />
-            Review queue
-          </Link>
-        </div>
-      )}
-
-      {isLoading ? (
-        <div className="flex items-center justify-center py-20 text-gray-500 text-sm gap-2">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading CS Managers…
-        </div>
-      ) : isError ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-[#AD1F2A]">
-          Couldn't load CS Managers.
-          {error instanceof Error && (
-            <div className="mt-1 text-xs text-red-800">{error.message}</div>
-          )}
-        </div>
-      ) : (
-        <CSManagersListTable
-          managers={managers}
-          onRemove={(m) =>
-            handleRemove(m.manager._id, m.manager.userName || m.manager.email)
+      {/* The previous dashboard stays on screen while the next one loads
+          (keepPreviousData) — dim it so the switch is still legible. */}
+      <div
+        className={cn(
+          "space-y-6 transition-opacity",
+          dashboardQuery.isFetching && "opacity-60"
+        )}
+      >
+        <CSManagerSnapshot
+          manager={data.manager}
+          period={data.period}
+          target={data.target}
+          score={data.performanceScore}
+          obligation={data.obligation}
+          totalAssigned={data.portfolio.totalAssigned}
+          // Setting targets is super-admin only (assignCSManagerTarget),
+          // so a CS Manager gets the read-only snapshot with no CTA.
+          onManageTargets={
+            viewAs === "super-admin"
+              ? () => setTargetsDialogOpen(true)
+              : undefined
           }
         />
-      )}
 
-      <AddCSManagerDialog open={addOpen} onOpenChange={setAddOpen} />
+        <BacklogsSection backlogs={data.backlogs} />
+
+        <PortfolioHealthStrip portfolio={data.portfolio} />
+
+        <CustomersTable
+          plans={data.plans}
+          totalAssigned={data.portfolio.totalAssigned}
+          totalPlans={data.plansTotal}
+          filterCounts={data.filterCounts}
+          page={page}
+          limit={PLANS_PER_PAGE}
+          isFetching={dashboardQuery.isFetching}
+        />
+      </div>
+
+      {viewAs === "super-admin" && (
+        <ManageCSTargetsDialog
+          open={targetsDialogOpen}
+          onOpenChange={setTargetsDialogOpen}
+          managerId={data.manager._id}
+          managerName={csManagerName(data.manager)}
+        />
+      )}
     </div>
+  );
+}
+
+export default function CustomerManagersPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex justify-center py-8">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      }
+    >
+      <CustomerManagersContent />
+    </Suspense>
   );
 }
