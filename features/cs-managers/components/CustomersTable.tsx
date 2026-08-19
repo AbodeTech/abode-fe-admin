@@ -1,10 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, Repeat } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Pagination } from "@/components/shared/Pagination";
+import { useDebounce } from "@/hooks/use-debounce";
 import { cn } from "@/lib/utils";
-import type { PlanRow } from "@/lib/gql/graphql";
+import { CsPlanFilter } from "@/lib/gql/graphql";
+import type { CsPlanFilterCounts, PlanRow } from "@/lib/gql/graphql";
 import {
   AllocationPill,
   DoaPill,
@@ -17,69 +21,46 @@ import {
 import { PlanDetailDrawer } from "./drawers/PlanDetailDrawer";
 
 interface Props {
+  /** One page of plans, already filtered/searched/sorted by the BE. */
   plans: PlanRow[];
   totalAssigned: number;
+  /** Rows matching the active filter + search, before pagination. */
+  totalPlans: number;
+  /** Book-wide per-chip counts — unaffected by the active filter. */
+  filterCounts: CsPlanFilterCounts;
+  page: number;
+  limit: number;
+  isFetching?: boolean;
 }
 
-type FilterKey =
-  | "all"
-  | "due_allocation"
-  | "onboarding_pending"
-  | "due_doa"
-  | "defaulting_soon"
-  | "completed_payment";
-
-const FILTERS: { key: FilterKey; label: string; count: (rows: PlanRow[]) => number }[] = [
-  { key: "all", label: "All", count: (rows) => rows.length },
+const FILTERS: {
+  key: CsPlanFilter;
+  label: string;
+  count: (c: CsPlanFilterCounts) => number;
+}[] = [
+  { key: CsPlanFilter.All, label: "All", count: (c) => c.all },
   {
-    key: "due_allocation",
+    key: CsPlanFilter.DueAllocation,
     label: "Due allocation",
-    count: (rows) => rows.filter((r) => r.allocation === "awaiting").length,
+    count: (c) => c.dueAllocation,
   },
   {
-    key: "onboarding_pending",
+    key: CsPlanFilter.OnboardingPending,
     label: "Onboarding pending",
-    count: (rows) =>
-      rows.filter(
-        (r) => r.onboarding === "call_pending" || r.onboarding === "disputed"
-      ).length,
+    count: (c) => c.onboardingPending,
   },
+  { key: CsPlanFilter.DueDoa, label: "Due DoA", count: (c) => c.dueDoa },
   {
-    key: "due_doa",
-    label: "Due DoA",
-    count: (rows) => rows.filter((r) => r.doa === "not_sent").length,
-  },
-  {
-    key: "defaulting_soon",
+    key: CsPlanFilter.DefaultingSoon,
     label: "Defaulting soon",
-    count: (rows) =>
-      rows.filter((r) => r.paymentStatus === "close_to_default").length,
+    count: (c) => c.defaultingSoon,
   },
   {
-    key: "completed_payment",
+    key: CsPlanFilter.CompletedPayment,
     label: "Completed payment",
-    count: (rows) => rows.filter((r) => r.paymentStatus === "completed").length,
+    count: (c) => c.completedPayment,
   },
 ];
-
-const applyFilter = (rows: PlanRow[], f: FilterKey): PlanRow[] => {
-  switch (f) {
-    case "due_allocation":
-      return rows.filter((r) => r.allocation === "awaiting");
-    case "onboarding_pending":
-      return rows.filter(
-        (r) => r.onboarding === "call_pending" || r.onboarding === "disputed"
-      );
-    case "due_doa":
-      return rows.filter((r) => r.doa === "not_sent");
-    case "defaulting_soon":
-      return rows.filter((r) => r.paymentStatus === "close_to_default");
-    case "completed_payment":
-      return rows.filter((r) => r.paymentStatus === "completed");
-    default:
-      return rows;
-  }
-};
 
 const timeAgo = (iso: string) => {
   const ms = Date.now() - new Date(iso).getTime();
@@ -93,36 +74,80 @@ const timeAgo = (iso: string) => {
   return `${weeks}w ago`;
 };
 
-export function CustomersTable({ plans, totalAssigned }: Props) {
-  const [filter, setFilter] = useState<FilterKey>("all");
-  const [q, setQ] = useState("");
+export function CustomersTable({
+  plans,
+  totalAssigned,
+  totalPlans,
+  filterCounts,
+  page,
+  limit,
+  isFetching = false,
+}: Props) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
   // Hold the id, not the row: mutations in the drawer invalidate the dashboard,
-  // and deriving from the refetched list keeps the drawer's pills live.
+  // and deriving from the refetched page keeps the drawer's pills live.
   const [openPlanId, setOpenPlanId] = useState<string | null>(null);
 
-  const rows = useMemo(() => {
-    const filtered = applyFilter(plans, filter);
-    if (!q) return filtered;
-    const needle = q.toLowerCase();
-    return filtered.filter(
-      (r) =>
-        r.customer.firstName.toLowerCase().includes(needle) ||
-        r.customer.lastName.toLowerCase().includes(needle) ||
-        r.customer.email.toLowerCase().includes(needle) ||
-        r.asset.toLowerCase().includes(needle)
-    );
-  }, [plans, filter, q]);
+  const activeFilter =
+    (searchParams.get("filter") as CsPlanFilter | null) ?? CsPlanFilter.All;
+  const searchParam = searchParams.get("search") ?? "";
+
+  // Local input state so typing stays responsive; the URL (and the query)
+  // only move once typing settles.
+  const [q, setQ] = useState(searchParam);
+  const debouncedQ = useDebounce(q, 400);
+
+  // Resync when the URL changes from elsewhere (back button, manager switch).
+  // Adjusted during render rather than in an effect — React re-renders before
+  // committing, so there's no flash of the stale value.
+  const [lastSearchParam, setLastSearchParam] = useState(searchParam);
+  if (searchParam !== lastSearchParam) {
+    setLastSearchParam(searchParam);
+    setQ(searchParam);
+  }
+
+  const pushParams = (mutate: (p: URLSearchParams) => void) => {
+    const params = new URLSearchParams(searchParams.toString());
+    mutate(params);
+    // Any change to the result set restarts paging.
+    params.set("page", "1");
+    router.push(`?${params.toString()}`, { scroll: false });
+  };
+
+  useEffect(() => {
+    if (debouncedQ === searchParam) return;
+    const params = new URLSearchParams(searchParams.toString());
+    if (debouncedQ.trim()) params.set("search", debouncedQ.trim());
+    else params.delete("search");
+    params.set("page", "1");
+    router.push(`?${params.toString()}`, { scroll: false });
+    // searchParams/router are stable enough here; re-running on every render
+    // would fight the debounce.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedQ]);
+
+  const setFilter = (key: CsPlanFilter) =>
+    pushParams((p) => {
+      if (key === CsPlanFilter.All) p.delete("filter");
+      else p.set("filter", key);
+    });
 
   const openPlan = openPlanId
     ? plans.find((p) => p.planId === openPlanId) ?? null
     : null;
+
+  const rangeStart = totalPlans === 0 ? 0 : (page - 1) * limit + 1;
+  const rangeEnd = Math.min(page * limit, totalPlans);
 
   return (
     <section className="space-y-3">
       <div className="flex items-baseline justify-between gap-3 flex-wrap">
         <h2 className="text-base font-semibold text-gray-900">Purchases</h2>
         <span className="text-xs text-gray-500">
-          {plans.length} plan{plans.length === 1 ? "" : "s"} across {totalAssigned} customer
+          {rangeStart}–{rangeEnd} of {totalPlans.toLocaleString()} plan
+          {totalPlans === 1 ? "" : "s"} across {totalAssigned} customer
           {totalAssigned === 1 ? "" : "s"}
         </span>
       </div>
@@ -131,8 +156,7 @@ export function CustomersTable({ plans, totalAssigned }: Props) {
         <div className="flex items-center justify-between gap-3 flex-wrap p-3 border-b border-gray-200">
           <div className="flex flex-wrap gap-1.5">
             {FILTERS.map((f) => {
-              const n = f.count(plans);
-              const active = filter === f.key;
+              const active = activeFilter === f.key;
               return (
                 <button
                   key={f.key}
@@ -146,8 +170,13 @@ export function CustomersTable({ plans, totalAssigned }: Props) {
                   )}
                 >
                   {f.label}
-                  <span className={cn("tabular-nums text-[11px]", active ? "opacity-90" : "text-gray-400")}>
-                    {n}
+                  <span
+                    className={cn(
+                      "tabular-nums text-[11px]",
+                      active ? "opacity-90" : "text-gray-400"
+                    )}
+                  >
+                    {f.count(filterCounts).toLocaleString()}
                   </span>
                 </button>
               );
@@ -161,7 +190,7 @@ export function CustomersTable({ plans, totalAssigned }: Props) {
           />
         </div>
 
-        <div className="overflow-x-auto">
+        <div className={cn("overflow-x-auto transition-opacity", isFetching && "opacity-60")}>
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-[11px] uppercase tracking-wide text-gray-500 bg-gray-50">
@@ -176,15 +205,23 @@ export function CustomersTable({ plans, totalAssigned }: Props) {
               </tr>
             </thead>
             <tbody>
-              {rows.length === 0 ? (
+              {plans.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-gray-500 text-sm">
-                    No plans match this filter.
+                  <td
+                    colSpan={8}
+                    className="px-4 py-8 text-center text-gray-500 text-sm"
+                  >
+                    {searchParam || activeFilter !== CsPlanFilter.All
+                      ? "No plans match this filter."
+                      : "No plans in this book yet."}
                   </td>
                 </tr>
               ) : (
-                rows.map((r) => (
-                  <tr key={r.planId} className="border-t border-gray-100 hover:bg-gray-50/60">
+                plans.map((r) => (
+                  <tr
+                    key={r.planId}
+                    className="border-t border-gray-100 hover:bg-gray-50/60"
+                  >
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
                         <div className="h-8 w-8 rounded-full bg-[#E0F2F1] text-[#00695C] flex items-center justify-center text-[11px] font-semibold">
@@ -214,17 +251,24 @@ export function CustomersTable({ plans, totalAssigned }: Props) {
                     <td className="px-4 py-3 text-gray-700">
                       <p className="leading-tight">{r.asset}</p>
                       <p className="text-xs text-gray-500 leading-tight">
-                        {r.product === "flex" ? "Flex" : "Full-ownership"} · opened {formatShortDate(r.purchaseDate)}
+                        {r.product === "flex" ? "Flex" : "Full-ownership"} ·
+                        opened {formatShortDate(r.purchaseDate)}
                       </p>
                     </td>
                     <td className="px-4 py-3">
-                      <PaymentPill status={r.paymentStatus} label={r.paymentLabel} />
+                      <PaymentPill
+                        status={r.paymentStatus}
+                        label={r.paymentLabel}
+                      />
                     </td>
                     <td className="px-4 py-3">
                       <OnboardingPill status={r.onboarding} />
                     </td>
                     <td className="px-4 py-3">
-                      <AllocationPill status={r.allocation} label={r.allocationLabel} />
+                      <AllocationPill
+                        status={r.allocation}
+                        label={r.allocationLabel}
+                      />
                     </td>
                     <td className="px-4 py-3">
                       <DoaPill status={r.doa} label={r.doaLabel} />
@@ -249,11 +293,12 @@ export function CustomersTable({ plans, totalAssigned }: Props) {
           </table>
         </div>
 
-        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 text-xs text-gray-500">
+        <div className="flex items-center justify-between gap-3 flex-wrap px-4 py-3 border-t border-gray-100 text-xs text-gray-500">
           <span>
-            Showing {rows.length} of {plans.length} plans
+            Showing {plans.length} of {totalPlans.toLocaleString()} matching plan
+            {totalPlans === 1 ? "" : "s"}
           </span>
-          {/* Pagination controls wire up once BE ships a real page/limit query */}
+          <Pagination count={totalPlans} currentIdx={page} limit={limit} />
         </div>
       </div>
 
