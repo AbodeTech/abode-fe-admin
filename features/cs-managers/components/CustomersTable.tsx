@@ -8,14 +8,17 @@ import { Pagination } from "@/components/shared/Pagination";
 import { useDebounce } from "@/hooks/use-debounce";
 import { cn } from "@/lib/utils";
 import { CsPlanFilter } from "@/lib/gql/graphql";
-import type {
-  AllocationStatus,
-  CsPlanFilterCounts,
-  DoaStatus,
-  OnboardingStatus,
-  PaymentStatus,
-  PlanRow,
-} from "@/lib/gql/graphql";
+import type { CsPlanFilterCounts, PlanRow } from "@/lib/gql/graphql";
+import {
+  AllocationPill,
+  DoaPill,
+  OnboardingPill,
+  PaymentPill,
+  formatShortDate,
+  planCustomerInitials,
+  planCustomerName,
+} from "./status-pills";
+import { PlanDetailDrawer } from "./drawers/PlanDetailDrawer";
 
 interface Props {
   /** One page of plans, already filtered/searched/sorted by the BE. */
@@ -83,6 +86,10 @@ export function CustomersTable({
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  // Hold the id, not the row: mutations in the drawer invalidate the dashboard,
+  // and deriving from the refetched page keeps the drawer's pills live.
+  const [openPlanId, setOpenPlanId] = useState<string | null>(null);
+
   const activeFilter =
     (searchParams.get("filter") as CsPlanFilter | null) ?? CsPlanFilter.All;
   const searchParam = searchParams.get("search") ?? "";
@@ -126,6 +133,10 @@ export function CustomersTable({
       if (key === CsPlanFilter.All) p.delete("filter");
       else p.set("filter", key);
     });
+
+  const openPlan = openPlanId
+    ? plans.find((p) => p.planId === openPlanId) ?? null
+    : null;
 
   const rangeStart = totalPlans === 0 ? 0 : (page - 1) * limit + 1;
   const rangeEnd = Math.min(page * limit, totalPlans);
@@ -214,12 +225,12 @@ export function CustomersTable({
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
                         <div className="h-8 w-8 rounded-full bg-[#E0F2F1] text-[#00695C] flex items-center justify-center text-[11px] font-semibold">
-                          {initialsOf(r)}
+                          {planCustomerInitials(r.customer)}
                         </div>
                         <div>
                           <div className="flex items-center gap-1.5">
                             <p className="font-medium text-gray-900 leading-tight">
-                              {fullName(r)}
+                              {planCustomerName(r.customer)}
                             </p>
                             {r.priorPlansCount > 0 && (
                               <span
@@ -268,6 +279,7 @@ export function CustomersTable({
                     <td className="px-4 py-3">
                       <button
                         type="button"
+                        onClick={() => setOpenPlanId(r.planId)}
                         className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-[#00695C] border border-gray-200 rounded-md px-2 py-1"
                       >
                         Open
@@ -289,90 +301,12 @@ export function CustomersTable({
           <Pagination count={totalPlans} currentIdx={page} limit={limit} />
         </div>
       </div>
+
+      <PlanDetailDrawer
+        plan={openPlan}
+        open={!!openPlan}
+        onOpenChange={(o) => !o && setOpenPlanId(null)}
+      />
     </section>
   );
-}
-
-const initialsOf = (r: PlanRow) =>
-  ((r.customer.lastName?.[0] ?? "") + (r.customer.firstName?.[0] ?? "")).toUpperCase();
-
-const fullName = (r: PlanRow) =>
-  `${r.customer.lastName ?? ""} ${r.customer.firstName ?? ""}`.trim();
-
-const MONTHS_SHORT = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-];
-
-const formatShortDate = (iso: string) => {
-  const d = new Date(iso);
-  return `${d.getDate()} ${MONTHS_SHORT[d.getMonth()]} ${d.getFullYear()}`;
-};
-
-/* Pill helpers — tiny local components so the table markup stays readable */
-
-const PILL_BASE =
-  "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium";
-
-function PaymentPill({ status, label }: { status: PaymentStatus; label: string }) {
-  const cls =
-    status === "completed"
-      ? "bg-emerald-50 text-emerald-700"
-      : status === "close_to_default"
-      ? "bg-red-50 text-[#AD1F2A]"
-      : "bg-[#E0F2F1] text-[#00695C]";
-  return <span className={cn(PILL_BASE, cls)}>{label}</span>;
-}
-
-function OnboardingPill({ status }: { status: OnboardingStatus }) {
-  switch (status) {
-    case "confirmed":
-      return <span className={cn(PILL_BASE, "bg-emerald-50 text-emerald-700")}>Confirmed</span>;
-    case "call_pending":
-      return <span className={cn(PILL_BASE, "bg-amber-50 text-amber-700")}>Call pending</span>;
-    case "disputed":
-      return <span className={cn(PILL_BASE, "bg-red-50 text-[#AD1F2A]")}>Disputed</span>;
-    default:
-      return <span className={cn(PILL_BASE, "bg-gray-100 text-gray-400")}>—</span>;
-  }
-}
-
-function AllocationPill({
-  status,
-  label,
-}: {
-  status: AllocationStatus;
-  label?: string | null;
-}) {
-  switch (status) {
-    case "allocated":
-      return (
-        <span className={cn(PILL_BASE, "bg-emerald-50 text-emerald-700")}>
-          {label ?? "Allocated"}
-        </span>
-      );
-    case "awaiting":
-      return (
-        <span className={cn(PILL_BASE, "bg-red-50 text-[#AD1F2A]")}>Awaiting</span>
-      );
-    default:
-      return <span className={cn(PILL_BASE, "bg-gray-100 text-gray-400")}>—</span>;
-  }
-}
-
-function DoaPill({ status, label }: { status: DoaStatus; label?: string | null }) {
-  switch (status) {
-    case "sent":
-      return (
-        <span className={cn(PILL_BASE, "bg-emerald-50 text-emerald-700")}>
-          {label ?? "Sent"}
-        </span>
-      );
-    case "not_sent":
-      return (
-        <span className={cn(PILL_BASE, "bg-amber-50 text-amber-700")}>Not sent</span>
-      );
-    default:
-      return <span className={cn(PILL_BASE, "bg-gray-100 text-gray-400")}>—</span>;
-  }
 }
