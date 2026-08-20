@@ -12,7 +12,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart, User as UserIcon, Calendar, Ban, CheckCircle } from "lucide-react";
 import { format } from "date-fns";
-import type { MarketplaceListingAdmin } from "../hooks/use-marketplace-listings";
+import {
+  MARKETPLACE_LISTING_STATUS_LABELS,
+  assetRefLabel,
+  personRefName,
+  type MarketplaceListing,
+} from "../schemas/marketplace.schema";
 import {
   AdminDesktopTableWrap,
   AdminMobileCard,
@@ -21,10 +26,10 @@ import {
 } from "@/components/shared/admin-responsive-table";
 
 interface MarketplaceListingsTableProps {
-  data: MarketplaceListingAdmin[] | null | undefined;
+  data: MarketplaceListing[] | null | undefined;
   isLoading?: boolean;
-  onSuspend?: (listing: MarketplaceListingAdmin) => void;
-  onUnsuspend?: (listing: MarketplaceListingAdmin) => void;
+  onSuspend?: (listing: MarketplaceListing) => void;
+  onUnsuspend?: (listing: MarketplaceListing) => void;
 }
 
 const formatCurrency = (amount: number) => {
@@ -51,16 +56,6 @@ const statusStyles: Record<string, string> = {
   cancelled: "bg-[#F2F4F7] text-[#344054] border-[#E4E7EC]",
   expired: "bg-[#FEF3F2] text-[#B42318] border-[#FECDCA]",
   suspended: "bg-[#FEF3F2] text-[#B42318] border-[#FECDCA]",
-};
-
-const statusLabels: Record<string, string> = {
-  active: "Active",
-  pending_payment: "Pending Payment",
-  pending_approval: "Pending Approval",
-  sold: "Sold",
-  cancelled: "Cancelled",
-  expired: "Expired",
-  suspended: "Suspended",
 };
 
 export function MarketplaceListingsTable({
@@ -91,10 +86,8 @@ export function MarketplaceListingsTable({
         {data.map((listing) => (
           <AdminMobileCard
             key={listing._id}
-            title={
-              listing.seller ? `${listing.seller.firstName} ${listing.seller.lastName}` : "N/A"
-            }
-            subtitle={listing.asset?.asset_name || "N/A"}
+            title={personRefName(listing.seller)}
+            subtitle={assetRefLabel(listing.asset)}
           >
             <AdminMobileField label="Price" value={formatCurrency(listing.listing_price)} />
             <AdminMobileField label="Type" value={listing.asset_type} />
@@ -103,7 +96,7 @@ export function MarketplaceListingsTable({
               label="Status"
               value={
                 <Badge variant="outline" className={`${statusStyles[listing.status] || statusStyles.cancelled} font-medium border`}>
-                  {statusLabels[listing.status] || listing.status}
+                  {MARKETPLACE_LISTING_STATUS_LABELS[listing.status] || listing.status}
                 </Badge>
               }
             />
@@ -160,15 +153,13 @@ export function MarketplaceListingsTable({
               className="border-b border-[#E5EAEF] bg-white transition-colors hover:bg-gray-50"
             >
               <TableCell className="max-w-[10rem] px-3 py-4 text-sm font-medium text-[#333333] sm:px-4 sm:py-5">
-                <span className="line-clamp-2 wrap-break-word" title={listing.seller ? `${listing.seller.firstName} ${listing.seller.lastName}` : undefined}>
-                  {listing.seller
-                    ? `${listing.seller.firstName} ${listing.seller.lastName}`
-                    : "N/A"}
+                <span className="line-clamp-2 wrap-break-word" title={personRefName(listing.seller)}>
+                  {personRefName(listing.seller)}
                 </span>
               </TableCell>
               <TableCell className="max-w-[12rem] px-3 py-4 text-sm text-[#667085] sm:px-4 sm:py-5">
-                <span className="line-clamp-2 wrap-break-word" title={listing.asset?.asset_name ?? undefined}>
-                  {listing.asset?.asset_name || "N/A"}
+                <span className="line-clamp-2 wrap-break-word" title={assetRefLabel(listing.asset)}>
+                  {assetRefLabel(listing.asset)}
                 </span>
               </TableCell>
               <TableCell className="px-3 py-4 text-sm font-semibold tabular-nums wrap-break-word text-[#333333] sm:px-4 sm:py-5">
@@ -185,7 +176,7 @@ export function MarketplaceListingsTable({
                   variant="outline"
                   className={`${statusStyles[listing.status] || statusStyles.cancelled} font-medium border`}
                 >
-                  {statusLabels[listing.status] || listing.status}
+                  {MARKETPLACE_LISTING_STATUS_LABELS[listing.status] || listing.status}
                 </Badge>
               </TableCell>
               <TableCell className="whitespace-nowrap px-3 py-4 text-sm text-[#333333] sm:px-4 sm:py-5">

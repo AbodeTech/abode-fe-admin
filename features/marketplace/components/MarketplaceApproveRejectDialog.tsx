@@ -28,12 +28,12 @@ import {
   useApproveMarketplacePurchase,
   useRejectMarketplacePurchase,
 } from "../hooks/use-marketplace-mutations";
-import type { MarketplaceListingAdmin } from "../hooks/use-marketplace-listings";
+import { assetRefLabel, personRefName, type MarketplaceListing } from "../schemas/marketplace.schema";
 
 // ─── Approve Dialog ───
 
 interface ApproveDialogProps {
-  listing: MarketplaceListingAdmin | null;
+  listing: MarketplaceListing | null;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -41,16 +41,16 @@ interface ApproveDialogProps {
 export function MarketplaceApproveDialog({ listing, isOpen, onClose }: ApproveDialogProps) {
   const approveMutation = useApproveMarketplacePurchase();
 
-  const handleApprove = async () => {
+  const handleApprove = () => {
     if (!listing?._id) return;
 
-    try {
-      await approveMutation.mutateAsync(listing._id);
-      toast.success("Purchase approved. Ownership transfer completed.");
-      onClose();
-    } catch (error: any) {
-      toast.error(error.message || "Failed to approve purchase");
-    }
+    approveMutation.mutate(listing._id, {
+      onSuccess: () => {
+        toast.success("Purchase approved. Ownership transfer completed.");
+        onClose();
+      },
+      onError: (error) => toast.error(error.message || "Failed to approve purchase"),
+    });
   };
 
   const formatCurrency = (amount: number) =>
@@ -75,19 +75,15 @@ export function MarketplaceApproveDialog({ listing, isOpen, onClose }: ApproveDi
           <div className="py-4 space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-gray-500">Asset:</span>
-              <span className="font-medium">{listing.asset?.asset_name}</span>
+              <span className="font-medium">{assetRefLabel(listing.asset)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Buyer:</span>
-              <span className="font-medium">
-                {listing.buyer?.firstName} {listing.buyer?.lastName}
-              </span>
+              <span className="font-medium">{personRefName(listing.buyer)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Seller:</span>
-              <span className="font-medium">
-                {listing.seller?.firstName} {listing.seller?.lastName}
-              </span>
+              <span className="font-medium">{personRefName(listing.seller)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Listing Price:</span>
@@ -139,7 +135,7 @@ export function MarketplaceApproveDialog({ listing, isOpen, onClose }: ApproveDi
 // ─── Reject Dialog ───
 
 interface RejectDialogProps {
-  listing: MarketplaceListingAdmin | null;
+  listing: MarketplaceListing | null;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -148,21 +144,24 @@ export function MarketplaceRejectDialog({ listing, isOpen, onClose }: RejectDial
   const [reason, setReason] = useState("");
   const rejectMutation = useRejectMarketplacePurchase();
 
-  const handleReject = async () => {
+  const handleReject = () => {
     if (!listing?._id) return;
     if (!reason.trim()) {
       toast.error("Please provide a reason for rejection");
       return;
     }
 
-    try {
-      await rejectMutation.mutateAsync({ listingId: listing._id, reason: reason.trim() });
-      toast.success("Purchase rejected. Listing returned to active.");
-      setReason("");
-      onClose();
-    } catch (error: any) {
-      toast.error(error.message || "Failed to reject purchase");
-    }
+    rejectMutation.mutate(
+      { id: listing._id, reason: reason.trim() },
+      {
+        onSuccess: () => {
+          toast.success("Purchase rejected. Listing returned to active.");
+          setReason("");
+          onClose();
+        },
+        onError: (error) => toast.error(error.message || "Failed to reject purchase"),
+      }
+    );
   };
 
   return (

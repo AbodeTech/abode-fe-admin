@@ -9,7 +9,8 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { MarketplaceStats } from "../hooks/use-marketplace-stats";
+import type { MarketplaceStats } from "../schemas/marketplace.schema";
+import { totalListingsFromStats } from "../schemas/marketplace.schema";
 
 interface MarketplaceDataPointsProps {
   data: MarketplaceStats | undefined;
@@ -43,6 +44,8 @@ export function MarketplaceDataPoints({ data, isLoading }: MarketplaceDataPoints
     );
   }
 
+  const byStatus = data?.by_status ?? {};
+
   return (
     <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
       <Card className="min-w-0 overflow-hidden">
@@ -51,8 +54,10 @@ export function MarketplaceDataPoints({ data, isLoading }: MarketplaceDataPoints
           <ShoppingCart className="h-4 w-4 shrink-0 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-xl font-bold tabular-nums sm:text-2xl">{data?.total_listings || 0}</div>
-          <p className="text-xs text-muted-foreground">All marketplace listings</p>
+          <div className="text-xl font-bold tabular-nums sm:text-2xl">
+            {data ? totalListingsFromStats(data) : 0}
+          </div>
+          <p className="text-xs text-muted-foreground">All marketplace listings, any status</p>
         </CardContent>
       </Card>
 
@@ -62,7 +67,7 @@ export function MarketplaceDataPoints({ data, isLoading }: MarketplaceDataPoints
           <CircleDollarSign className="h-4 w-4 shrink-0 text-green-500" />
         </CardHeader>
         <CardContent>
-          <div className="text-xl font-bold tabular-nums sm:text-2xl">{data?.active_listings || 0}</div>
+          <div className="text-xl font-bold tabular-nums sm:text-2xl">{byStatus.active || 0}</div>
           <p className="text-xs text-muted-foreground">Currently available for purchase</p>
         </CardContent>
       </Card>
@@ -73,7 +78,7 @@ export function MarketplaceDataPoints({ data, isLoading }: MarketplaceDataPoints
           <CheckCircle className="h-4 w-4 shrink-0 text-blue-500" />
         </CardHeader>
         <CardContent>
-          <div className="text-xl font-bold tabular-nums sm:text-2xl">{data?.sold_listings || 0}</div>
+          <div className="text-xl font-bold tabular-nums sm:text-2xl">{byStatus.sold || 0}</div>
           <p className="text-xs text-muted-foreground">Completed sales</p>
         </CardContent>
       </Card>
@@ -84,21 +89,25 @@ export function MarketplaceDataPoints({ data, isLoading }: MarketplaceDataPoints
           <ClipboardList className="h-4 w-4 shrink-0 text-orange-500" />
         </CardHeader>
         <CardContent>
-          <div className="text-xl font-bold tabular-nums sm:text-2xl">{data?.pending_approval_listings || 0}</div>
+          <div className="text-xl font-bold tabular-nums sm:text-2xl">
+            {byStatus.pending_approval || 0}
+          </div>
           <p className="text-xs text-muted-foreground">Receipt purchases awaiting review</p>
         </CardContent>
       </Card>
 
       <Card className="min-w-0 overflow-hidden">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Volume</CardTitle>
+          <CardTitle className="text-sm font-medium">Total Sales Value</CardTitle>
           <DollarSign className="h-4 w-4 shrink-0 text-muted-foreground" />
         </CardHeader>
         <CardContent>
           <div className="text-lg font-bold tabular-nums wrap-break-word sm:text-xl md:text-2xl">
-            {formatCurrency(data?.total_volume || 0)}
+            {formatCurrency(data?.total_sales_value || 0)}
           </div>
-          <p className="text-xs text-muted-foreground">Total marketplace transaction volume</p>
+          <p className="text-xs text-muted-foreground">
+            {data?.total_sales || 0} completed sale{data?.total_sales === 1 ? "" : "s"}
+          </p>
         </CardContent>
       </Card>
 
