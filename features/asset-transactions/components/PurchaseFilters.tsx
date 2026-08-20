@@ -71,7 +71,7 @@ export function PurchaseFilters() {
   }, [debounced, urlSearch, router, searchParams]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 mt-20">
       <div className="relative min-w-0 max-w-2xl bg-white">
         <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input

@@ -65,8 +65,6 @@ function AssetTransactionsContent() {
 
   return (
     <>
-      <PurchaseFilters />
-
       <h3 className="font-sans text-xl font-semibold uppercase text-[#333333]">
         Asset Transactions
       </h3>
@@ -78,6 +76,8 @@ function AssetTransactionsContent() {
       ) : (
         <div className="space-y-4">
           <PurchaseStatCards />
+
+          <PurchaseFilters />
 
           <div className="min-w-0 overflow-hidden rounded-md border border-[#E5EAEF] bg-white pb-10">
             <PurchasesTable
