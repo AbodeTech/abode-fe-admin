@@ -19,6 +19,7 @@ import {
   LandPlot,
   LayoutDashboard,
   LogOut,
+  MessageSquare,
   NotebookPen,
   Percent,
   ScrollText,
@@ -53,6 +54,7 @@ const navGroups = [
       { name: "Flex Leads", link: "/flex-leads", icon: <NotebookPen /> },
       { name: "Marketplace", link: "/marketplace", icon: <Store /> },
       { name: "Requests", link: "/requests", icon: <ClipboardList /> },
+      { name: "WhatsApp", link: "/whatsapp", icon: <MessageSquare /> },
     ]
   },
   {
