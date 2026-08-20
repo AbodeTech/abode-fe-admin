@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { format, isSameDay } from "date-fns";
 import {
   AlertTriangle,
@@ -7,6 +8,8 @@ import {
   BellOff,
   ChevronUp,
   ExternalLink,
+  FileText,
+  ImageIcon,
   Loader2,
   MessageSquare,
 } from "lucide-react";
@@ -35,8 +38,31 @@ const STATUS_STYLES: Record<string, string> = {
   rejected: "bg-amber-100 text-amber-800",
 };
 
+/**
+ * Media the customer sent, described from what we kept.
+ *
+ * The webhook stores Meta's media id and mime type and deliberately nothing
+ * else — not the file, not the sender's filename. A Meta media id is not a url:
+ * fetching it takes a server-side Graph call carrying the app token, and the
+ * link that returns expires. So the pane names the attachment rather than
+ * pretending it can show it; see the note in `MediaBlock`.
+ */
+const mediaKind = (message: WhatsappMessage) => {
+  const mime = message.payload?.media_mime_type ?? "";
+  const type = message.messageType ?? "";
+
+  if (type === "image" || mime.startsWith("image/")) return "image" as const;
+  if (type === "document" || mime === "application/pdf") return "document" as const;
+  return null;
+};
+
+/**
+ * `preview` is the backend's stand-in for an empty body — "[image]", "[buttons]".
+ * Where a media block already says that visually, repeating the bracketed text
+ * under it is noise, so the body falls back to nothing rather than the preview.
+ */
 const messageBody = (message: WhatsappMessage) =>
-  message.text || message.preview || "—";
+  message.text || (mediaKind(message) ? "" : message.preview || "—");
 
 interface Props {
   contact: WhatsappContactIdentity | null;
@@ -61,6 +87,20 @@ export function WhatsappConversation({
   isLoading,
   error,
 }: Props) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * Open a conversation at its newest message, the way opening a chat does.
+   * Page 1 is the end of the transcript and later pages are older slices, but
+   * both are read bottom-up — the row nearest the fold is the one that follows
+   * on from what you were just reading — so every page lands at the bottom.
+   */
+  useEffect(() => {
+    const node = scrollRef.current;
+    if (!node || isLoading) return;
+    node.scrollTop = node.scrollHeight;
+  }, [contact?.phoneNumber, page, isLoading, messages.length]);
+
   if (!contact && !isLoading) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 p-8 text-center">
@@ -142,7 +182,10 @@ export function WhatsappConversation({
         )}
       </header>
 
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-muted/30 p-4">
+      <div
+        ref={scrollRef}
+        className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-muted/30 p-4"
+      >
         {isLoading ? (
           <div className="flex h-40 items-center justify-center">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -209,6 +252,8 @@ function MessageRow({
   const timestamp = new Date(message.createdAt);
   const isOutbound = message.direction === "outbound";
   const statusStyle = STATUS_STYLES[message.status];
+  const media = mediaKind(message);
+  const body = messageBody(message);
 
   // A transcript spanning days is unreadable without them, and page boundaries
   // mean the first row on any page needs one too.
@@ -234,7 +279,18 @@ function MessageRow({
               : "rounded-bl-sm bg-background text-foreground"
           )}
         >
-          <p className="whitespace-pre-wrap break-words">{messageBody(message)}</p>
+          {media && <MediaBlock message={message} kind={media} />}
+
+          {body && (
+            <p
+              className={cn(
+                "whitespace-pre-wrap break-words",
+                media && "mt-1.5"
+              )}
+            >
+              {body}
+            </p>
+          )}
 
           {message.templateName && (
             <p className="mt-1 text-[11px] text-muted-foreground">
@@ -265,5 +321,49 @@ function MessageRow({
         </div>
       </div>
     </>
+  );
+}
+
+/**
+ * An attachment named, not shown.
+ *
+ * Showing it is not a frontend change: the message log keeps Meta's media id and
+ * mime type and nothing more, and that id only resolves through a server-side
+ * Graph call carrying the app token, into a link that expires. Rendering the id
+ * as a src would give every media message a broken-image icon, which reads as a
+ * bug in the inbox rather than a deliberate limit on what is stored. The id is
+ * surfaced because it is what a support request to the backend needs to quote.
+ */
+function MediaBlock({
+  message,
+  kind,
+}: {
+  message: WhatsappMessage;
+  kind: "image" | "document";
+}) {
+  const Icon = kind === "image" ? ImageIcon : FileText;
+  const mime = message.payload?.media_mime_type;
+  const mediaId = message.payload?.media_id;
+
+  return (
+    <div className="flex items-start gap-2 rounded-md border border-dashed border-border bg-muted/40 px-2.5 py-2">
+      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+      <div className="min-w-0">
+        <p className="text-xs font-medium text-foreground">
+          {kind === "image" ? "Photo" : "Document"}
+          {mime ? (
+            <span className="ml-1 font-normal text-muted-foreground">{mime}</span>
+          ) : null}
+        </p>
+        <p className="text-[11px] text-muted-foreground">
+          Not stored — WhatsApp media is kept by Meta, not by us.
+        </p>
+        {mediaId && (
+          <p className="mt-0.5 truncate font-mono text-[10px] text-muted-foreground/80">
+            {mediaId}
+          </p>
+        )}
+      </div>
+    </div>
   );
 }

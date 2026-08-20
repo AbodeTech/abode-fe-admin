@@ -30,6 +30,7 @@ const WHATSAPP_CONVERSATION_QUERY = `
         status
         error
         durationMs
+        payload
         createdAt
       }
     }
@@ -48,7 +49,23 @@ export interface WhatsappMessage {
   status: string;
   error: string | null;
   durationMs: number | null;
+  /**
+   * The webhook's whitelisted slice of Meta's message object. Only `media_id`
+   * and `media_mime_type` are relevant here — the backend deliberately stores
+   * ids, never the file — so an inbound photo can be named but not shown.
+   */
+  payload: WhatsappMessagePayload | null;
   createdAt: string;
+}
+
+export interface WhatsappMessagePayload {
+  id?: string;
+  from?: string;
+  type?: string;
+  timestamp?: string;
+  interactive?: unknown;
+  media_id?: string;
+  media_mime_type?: string;
 }
 
 export interface WhatsappContactIdentity {

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
+import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { Pagination } from "@/components/shared/Pagination";
 import {
@@ -87,11 +88,14 @@ export function WhatsappInbox() {
   return (
     <div className="space-y-4">
       <Card className="overflow-hidden p-0">
-        <div className="grid h-[calc(100vh-16rem)] min-h-[28rem] grid-cols-1 lg:grid-cols-[22rem_1fr]">
+        <div className="grid h-[calc(100vh-16rem)] min-h-[28rem] grid-cols-1 grid-rows-[minmax(0,1fr)] lg:grid-cols-[22rem_1fr]">
           {/* On mobile the two panes share the space, so only one shows at a
               time — an open conversation hides the list. */}
           <div
-            className={selected ? "hidden border-r border-border lg:block" : "border-r border-border"}
+            className={cn(
+              "min-h-0 overflow-hidden border-r border-border",
+              selected && "hidden lg:block"
+            )}
           >
             <WhatsappContactList
               contacts={contacts}
@@ -113,7 +117,12 @@ export function WhatsappInbox() {
             />
           </div>
 
-          <div className={selected ? "min-w-0" : "hidden min-w-0 lg:block"}>
+          <div
+            className={cn(
+              "min-h-0 min-w-0 overflow-hidden",
+              !selected && "hidden lg:block"
+            )}
+          >
             <WhatsappConversation
               contact={conversationQuery.data?.contact ?? null}
               messages={conversationQuery.data?.messages ?? []}
