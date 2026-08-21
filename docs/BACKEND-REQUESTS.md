@@ -2232,3 +2232,96 @@ Any other endpoint that returns an object with its own `data` key has the
 same trap — worth a lint/convention note on the BE: **service returns either
 a bare payload or the PaginatedResult shape, never a custom object with a
 `data` key.**
+
+## 27. Admin marketplace: list endpoints return unresolved seller/buyer/asset ids
+
+**Priority: high — without this, the admin can't tell whose listing they're
+looking at or which asset it's for. Blocks a usable admin marketplace screen.**
+
+### The mechanism
+
+`MarketplaceRepository.findAllPaginated` — used by both
+`adminGetAllListings` (`GET /admin/marketplace/listings`) and
+`adminGetPendingApprovals` (`GET /admin/marketplace/pending-approvals`) — runs
+a bare `find()` with no `.populate()`:
+
+```ts
+async findAllPaginated(filter, page, limit) {
+  const [data, total] = await Promise.all([
+    this.listingModel.find(filter).sort({ listed_at: -1 }).skip(skip).limit(limit).exec(),
+    this.listingModel.countDocuments(filter).exec(),
+  ]);
+  return { data, total };
+}
+```
+
+So every row in both list endpoints carries `seller`, `buyer`, `asset` and
+`payment_plan` as bare Mongo ObjectId strings — no name, no asset title, no
+plan reference an admin could act on.
+
+Compare `findById` (used to build the response for approve/reject/suspend/
+unsuspend and `getListingDetail`):
+
+```ts
+async findById(id: string) {
+  return this.listingModel.findById(id).populate('asset').populate('seller', '-password -salt').exec();
+}
+```
+
+This populates `asset` and `seller` — but **not `buyer`**, even here. Verified
+live 2026-08-20 (`GET /admin/marketplace/listings` against an empty dataset —
+the response shape is confirmed by the source above since no rows existed to
+inspect directly):
+
+```
+GET /admin/marketplace/listings?page=1&limit=3
+→ { success, data: [], message: "Listings retrieved", meta: {...} }
+```
+
+### Scenario
+
+An admin opens "Pending Approvals" to review a receipt purchase. The row
+shows a buyer id, a seller id and an asset id — three raw ObjectIds — with no
+way to tell who's buying, who's selling, or what asset is changing hands
+without pasting each id into another admin screen first. The same problem
+hits "All Listings". After an admin approves or rejects, the single returned
+listing is *better* (seller + asset resolved) but the buyer is still a bare
+id, so the audit trail for "who bought this" never resolves anywhere in the
+admin marketplace.
+
+### The fix
+
+Populate `seller`, `buyer` and `asset` in `findAllPaginated` (name/email is
+enough — no need for the full documents `findById` pulls):
+
+```ts
+this.listingModel
+  .find(filter)
+  .populate('seller', 'firstName lastName')
+  .populate('buyer', 'firstName lastName')
+  .populate('asset', 'name asset_location')
+  .sort({ listed_at: -1 })
+  .skip(skip)
+  .limit(limit)
+  .exec();
+```
+
+And add `.populate('buyer', 'firstName lastName')` to `findById` so the
+approve/reject/suspend/unsuspend responses resolve every party, not just two
+of three.
+
+### Also missing: `asset_type` filter on the admin listings query
+
+`AdminListingsQueryDto` only accepts `page`, `limit`, `status`. The old v1
+GraphQL filter input also took `asset_type` — the admin listings table has no
+equivalent today. Low priority next to the population gap above, but worth
+adding in the same pass if `AdminListingsQueryDto` is being touched.
+
+### FE status
+
+Built and shipped against the current (unpopulated) shape — `features/
+marketplace/schemas/marketplace.schema.ts` models `seller`/`buyer`/`asset` as
+`string | PopulatedRef`, and the table falls back to a truncated
+"Unresolved (…id)" label rather than fabricating a name or firing N+1
+`GET /admin/users/:id` calls per row. No FE change needed once this ships —
+the union already accepts the populated shape.

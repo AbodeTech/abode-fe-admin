@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ClipboardList, User as UserIcon, CheckCircle, XCircle, Image as ImageIcon } from "lucide-react";
 import { format } from "date-fns";
-import type { MarketplaceListingAdmin } from "../hooks/use-marketplace-listings";
+import { assetRefLabel, personRefName, type MarketplaceListing } from "../schemas/marketplace.schema";
 import {
   AdminDesktopTableWrap,
   AdminMobileCard,
@@ -20,10 +20,10 @@ import {
 } from "@/components/shared/admin-responsive-table";
 
 interface PendingApprovalsTableProps {
-  data: MarketplaceListingAdmin[] | null | undefined;
+  data: MarketplaceListing[] | null | undefined;
   isLoading?: boolean;
-  onApprove?: (listing: MarketplaceListingAdmin) => void;
-  onReject?: (listing: MarketplaceListingAdmin) => void;
+  onApprove?: (listing: MarketplaceListing) => void;
+  onReject?: (listing: MarketplaceListing) => void;
 }
 
 const formatCurrency = (amount: number) => {
@@ -70,12 +70,10 @@ export function PendingApprovalsTable({
         {data.map((listing) => (
           <AdminMobileCard
             key={listing._id}
-            title={
-              listing.buyer ? `${listing.buyer.firstName} ${listing.buyer.lastName}` : "N/A"
-            }
-            subtitle={listing.seller ? `Seller: ${listing.seller.firstName} ${listing.seller.lastName}` : undefined}
+            title={personRefName(listing.buyer)}
+            subtitle={`Seller: ${personRefName(listing.seller)}`}
           >
-            <AdminMobileField label="Asset" value={listing.asset?.asset_name || "N/A"} />
+            <AdminMobileField label="Asset" value={assetRefLabel(listing.asset)} />
             <AdminMobileField label="Price" value={formatCurrency(listing.listing_price)} />
             <AdminMobileField
               label="Receipt"
@@ -148,22 +146,18 @@ export function PendingApprovalsTable({
               className="border-b border-[#E5EAEF] bg-white transition-colors hover:bg-gray-50"
             >
               <TableCell className="max-w-36 px-3 py-4 text-sm font-medium text-[#333333] sm:px-4 sm:py-5">
-                <span className="line-clamp-2 wrap-break-word" title={listing.buyer ? `${listing.buyer.firstName} ${listing.buyer.lastName}` : undefined}>
-                  {listing.buyer
-                    ? `${listing.buyer.firstName} ${listing.buyer.lastName}`
-                    : "N/A"}
+                <span className="line-clamp-2 wrap-break-word" title={personRefName(listing.buyer)}>
+                  {personRefName(listing.buyer)}
                 </span>
               </TableCell>
               <TableCell className="max-w-36 px-3 py-4 text-sm text-[#667085] sm:px-4 sm:py-5">
-                <span className="line-clamp-2 wrap-break-word" title={listing.seller ? `${listing.seller.firstName} ${listing.seller.lastName}` : undefined}>
-                  {listing.seller
-                    ? `${listing.seller.firstName} ${listing.seller.lastName}`
-                    : "N/A"}
+                <span className="line-clamp-2 wrap-break-word" title={personRefName(listing.seller)}>
+                  {personRefName(listing.seller)}
                 </span>
               </TableCell>
               <TableCell className="max-w-44 px-3 py-4 text-sm text-[#667085] sm:px-4 sm:py-5">
-                <span className="line-clamp-2 wrap-break-word" title={listing.asset?.asset_name ?? undefined}>
-                  {listing.asset?.asset_name || "N/A"}
+                <span className="line-clamp-2 wrap-break-word" title={assetRefLabel(listing.asset)}>
+                  {assetRefLabel(listing.asset)}
                 </span>
               </TableCell>
               <TableCell className="px-3 py-4 text-sm font-semibold tabular-nums wrap-break-word text-[#333333] sm:px-4 sm:py-5">

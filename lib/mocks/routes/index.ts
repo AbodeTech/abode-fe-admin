@@ -11,6 +11,7 @@ import { amarisRoutes } from './amaris';
 import { flexLeadRoutes } from './flex-leads';
 import { couponRoutes } from './coupons';
 import { dashboardRoutes } from './dashboard';
+import { marketplaceRoutes } from './marketplace';
 
 /* ============================================================
  * Route registration. Importing this module (via lib/mocks/index.ts)
@@ -50,6 +51,11 @@ import { dashboardRoutes } from './dashboard';
  * people.ts   — not a domain: the shared person fixtures every route populates
  *               refs from, so one id means one person across all of them.
  * dashboard   — GET /admin/dashboard/kpis, top-products, top-associates.
+ * marketplace — /admin/marketplace/* (listings, pending-approvals, stats,
+ *               approve/reject/suspend/unsuspend). List rows carry bare
+ *               seller/buyer/asset ids (the BE's list query doesn't
+ *               populate); the four action responses populate seller+asset
+ *               only, never buyer — mirrors `findById` exactly (ticket #27).
  * ============================================================ */
 
 let registered = false;
@@ -70,5 +76,6 @@ export function ensureRoutesRegistered(): void {
   registerRoutes(flexLeadRoutes);
   registerRoutes(couponRoutes);
   registerRoutes(dashboardRoutes);
+  registerRoutes(marketplaceRoutes);
   // ...added per feature as it migrates
 }
