@@ -5,6 +5,12 @@ export { TicketDetailDrawer } from "./components/TicketDetailDrawer";
 export { CreateTicketDialog } from "./components/CreateTicketDialog";
 export { AssignAdminDialog } from "./components/AssignAdminDialog";
 export { AssignAffectedUserDialog } from "./components/AssignAffectedUserDialog";
+export { IssueStatusChips } from "./components/IssueStatusChips";
+export { IssuesTable } from "./components/IssuesTable";
+export { IssueDetail } from "./components/IssueDetail";
+export { CreateIssueDialog } from "./components/CreateIssueDialog";
+export { LinkTicketToIssueDialog } from "./components/LinkTicketToIssueDialog";
+export { ResolveIssueDialog } from "./components/ResolveIssueDialog";
 export {
   useTicketAdminPicker,
   useTicketUserSearch,

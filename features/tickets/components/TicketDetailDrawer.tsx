@@ -28,9 +28,12 @@ import {
   useAddTicketNote,
   useResolveTicket,
   useUpdateTicket,
+  useUnlinkTicketFromIssue,
 } from "../hooks/use-ticket-mutations";
 import { AssignAdminDialog } from "./AssignAdminDialog";
 import { AssignAffectedUserDialog } from "./AssignAffectedUserDialog";
+import { LinkTicketToIssueDialog } from "./LinkTicketToIssueDialog";
+import Link from "next/link";
 import {
   ISSUE_STATUS_LABELS,
   ISSUE_STATUS_PILL_CLASS,
@@ -80,10 +83,24 @@ export function TicketDetailDrawer({ ticketId, onClose }: Props) {
   const [resolutionText, setResolutionText] = useState("");
   const [assignAdminOpen, setAssignAdminOpen] = useState(false);
   const [assignUserOpen, setAssignUserOpen] = useState(false);
+  const [linkIssueOpen, setLinkIssueOpen] = useState(false);
 
   const addNote = useAddTicketNote();
   const resolveTicket = useResolveTicket();
   const updateTicket = useUpdateTicket();
+  const unlinkIssue = useUnlinkTicketFromIssue();
+
+  const handleUnlinkIssue = async () => {
+    if (!ticketId) return;
+    try {
+      await unlinkIssue.mutateAsync(ticketId);
+      toast.success("Unlinked from issue");
+    } catch (err: unknown) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to unlink issue"
+      );
+    }
+  };
 
   // Esc key closes the drawer. Guarded on the ticketId so we don't
   // subscribe when nothing's open.
@@ -237,25 +254,47 @@ export function TicketDetailDrawer({ ticketId, onClose }: Props) {
               </div>
             )}
 
-            {ticket.issue && (
-              <div className="rounded-lg border border-red-200 bg-red-50/50 p-3 space-y-1">
-                <div className="flex items-center gap-2 text-xs text-[#AD1F2A]">
-                  <AlertCircle className="h-3.5 w-3.5" />
-                  Blocked on issue
+            {ticket.issue ? (
+              <div className="rounded-lg border border-red-200 bg-red-50/50 p-3 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-xs text-[#AD1F2A]">
+                    <AlertCircle className="h-3.5 w-3.5" />
+                    Blocked on issue
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleUnlinkIssue}
+                    disabled={unlinkIssue.isPending}
+                    className="text-xs text-gray-500 hover:text-[#AD1F2A]"
+                  >
+                    {unlinkIssue.isPending ? "Unlinking…" : "Unlink"}
+                  </button>
                 </div>
-                <div className="text-sm text-gray-900 flex items-center gap-2">
+                <Link
+                  href={`/issues/${ticket.issue._id}`}
+                  className="text-sm text-gray-900 flex items-center gap-2 hover:text-[#00695C]"
+                >
                   <span className="font-medium">{ticket.issue.issue_ref}</span>
                   <span className="truncate">{ticket.issue.title}</span>
                   <span
                     className={cn(
-                      "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium",
+                      "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium shrink-0",
                       ISSUE_STATUS_PILL_CLASS[ticket.issue.status]
                     )}
                   >
                     {ISSUE_STATUS_LABELS[ticket.issue.status]}
                   </span>
-                </div>
+                </Link>
               </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setLinkIssueOpen(true)}
+                className="w-full flex items-center justify-center gap-1.5 rounded-md border border-dashed border-gray-300 px-3 py-2 text-xs text-gray-600 hover:border-gray-400 hover:text-gray-800"
+              >
+                <AlertCircle className="h-3.5 w-3.5" />
+                Link to issue
+              </button>
             )}
 
             {ticket.body && (
@@ -446,6 +485,13 @@ export function TicketDetailDrawer({ ticketId, onClose }: Props) {
           onOpenChange={setAssignUserOpen}
           ticketId={ticket._id}
           currentUserId={ticket.user_affected?._id ?? null}
+        />
+      )}
+      {ticket && (
+        <LinkTicketToIssueDialog
+          open={linkIssueOpen}
+          onOpenChange={setLinkIssueOpen}
+          ticketId={ticket._id}
         />
       )}
 

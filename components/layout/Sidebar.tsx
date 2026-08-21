@@ -34,6 +34,7 @@ import {
   Bot,
   MessagesSquare,
   Inbox,
+  AlertOctagon,
 } from "lucide-react";
 
 import LogOutModal from "@/components/settings/LogOutModal";
@@ -87,6 +88,7 @@ const navGroups = [
     items: [
       { name: "CS Manager Performance", link: "/customer-managers", icon: <ShieldCheck /> },
       { name: "Tickets", link: "/tickets", icon: <Inbox /> },
+      { name: "Issues", link: "/issues", icon: <AlertOctagon /> },
     ]
   },
   {
