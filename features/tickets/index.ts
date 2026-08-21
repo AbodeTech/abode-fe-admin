@@ -3,6 +3,14 @@ export { TicketsToolbar } from "./components/TicketsToolbar";
 export { TicketsTable } from "./components/TicketsTable";
 export { TicketDetailDrawer } from "./components/TicketDetailDrawer";
 export { CreateTicketDialog } from "./components/CreateTicketDialog";
+export { AssignAdminDialog } from "./components/AssignAdminDialog";
+export { AssignAffectedUserDialog } from "./components/AssignAffectedUserDialog";
+export {
+  useTicketAdminPicker,
+  useTicketUserSearch,
+  type TicketAdminOption,
+  type TicketUserOption,
+} from "./hooks/use-ticket-pickers";
 export {
   useTickets,
   useTicket,

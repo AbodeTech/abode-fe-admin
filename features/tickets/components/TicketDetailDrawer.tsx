@@ -29,6 +29,8 @@ import {
   useResolveTicket,
   useUpdateTicket,
 } from "../hooks/use-ticket-mutations";
+import { AssignAdminDialog } from "./AssignAdminDialog";
+import { AssignAffectedUserDialog } from "./AssignAffectedUserDialog";
 import {
   ISSUE_STATUS_LABELS,
   ISSUE_STATUS_PILL_CLASS,
@@ -76,6 +78,8 @@ export function TicketDetailDrawer({ ticketId, onClose }: Props) {
   const [noteBody, setNoteBody] = useState("");
   const [resolveOpen, setResolveOpen] = useState(false);
   const [resolutionText, setResolutionText] = useState("");
+  const [assignAdminOpen, setAssignAdminOpen] = useState(false);
+  const [assignUserOpen, setAssignUserOpen] = useState(false);
 
   const addNote = useAddTicketNote();
   const resolveTicket = useResolveTicket();
@@ -207,18 +211,26 @@ export function TicketDetailDrawer({ ticketId, onClose }: Props) {
               </div>
             </section>
 
-            <IdentityRow
-              label="Affected"
-              user={ticket.user_affected}
-              helper="whose account this is about"
-            />
-            {ticket.sender && ticket.sender._id !== ticket.user_affected?._id && (
+            <div className="rounded-lg border border-gray-200 divide-y divide-gray-100">
               <IdentityRow
-                label="Sender"
-                user={ticket.sender}
-                helper="who raised it"
+                label="Affected"
+                user={ticket.user_affected}
+                helper="whose account this is about"
+                actionLabel={ticket.user_affected ? "Change" : "Link user"}
+                onAction={() => setAssignUserOpen(true)}
               />
-            )}
+              {ticket.sender && ticket.sender._id !== ticket.user_affected?._id && (
+                <IdentityRow
+                  label="Sender"
+                  user={ticket.sender}
+                  helper="who raised it"
+                />
+              )}
+              <AssignedAdminRow
+                admin={ticket.assigned_admin}
+                onAssign={() => setAssignAdminOpen(true)}
+              />
+            </div>
             {ticket.source_reference && (
               <div className="text-xs text-gray-500">
                 Source: <span className="text-gray-700 tabular-nums">{ticket.source_reference}</span>
@@ -420,6 +432,23 @@ export function TicketDetailDrawer({ ticketId, onClose }: Props) {
         </footer>
       )}
 
+      {ticket && (
+        <AssignAdminDialog
+          open={assignAdminOpen}
+          onOpenChange={setAssignAdminOpen}
+          ticketId={ticket._id}
+          currentAdminId={ticket.assigned_admin?._id ?? null}
+        />
+      )}
+      {ticket && (
+        <AssignAffectedUserDialog
+          open={assignUserOpen}
+          onOpenChange={setAssignUserOpen}
+          ticketId={ticket._id}
+          currentUserId={ticket.user_affected?._id ?? null}
+        />
+      )}
+
       {resolveOpen && (
         <div
           className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"
@@ -475,41 +504,86 @@ function IdentityRow({
   label,
   user,
   helper,
+  actionLabel,
+  onAction,
 }: {
   label: string;
   user?: { firstName?: string | null; lastName?: string | null; email?: string | null; phoneNumber?: string | null } | null;
   helper?: string;
+  actionLabel?: string;
+  onAction?: () => void;
 }) {
   const name = displayUser(user);
-  if (!name) {
-    return (
-      <div className="flex items-center gap-3 text-sm">
-        <span className="text-xs uppercase tracking-wide text-gray-500 w-20 shrink-0">
-          {label}
-        </span>
-        <span className="text-xs text-amber-700 italic">
-          Unlinked — resolve via user suggestions
-        </span>
-      </div>
-    );
-  }
   return (
-    <div className="flex items-start gap-3 text-sm">
+    <div className="flex items-start gap-3 text-sm px-3 py-2.5">
       <span className="text-xs uppercase tracking-wide text-gray-500 w-20 shrink-0 mt-0.5">
         {label}
       </span>
-      <div>
-        <p className="text-gray-900 font-medium leading-tight">{name}</p>
-        <p className="text-xs text-gray-500 leading-tight">
-          {user?.email}
-          {user?.phoneNumber && ` · ${user.phoneNumber}`}
-        </p>
-        {helper && (
-          <p className="text-[10px] text-gray-400 uppercase tracking-wide mt-0.5">
-            {helper}
+      <div className="flex-1 min-w-0">
+        {name ? (
+          <>
+            <p className="text-gray-900 font-medium leading-tight truncate">{name}</p>
+            <p className="text-xs text-gray-500 leading-tight truncate">
+              {user?.email}
+              {user?.phoneNumber && ` · ${user.phoneNumber}`}
+            </p>
+            {helper && (
+              <p className="text-[10px] text-gray-400 uppercase tracking-wide mt-0.5">
+                {helper}
+              </p>
+            )}
+          </>
+        ) : (
+          <p className="text-xs text-amber-700 italic">
+            Unlinked
+            {helper && ` — ${helper}`}
           </p>
         )}
       </div>
+      {onAction && actionLabel && (
+        <button
+          type="button"
+          onClick={onAction}
+          className="shrink-0 text-xs text-[#00695C] hover:text-[#004D40] font-medium"
+        >
+          {actionLabel}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function AssignedAdminRow({
+  admin,
+  onAssign,
+}: {
+  admin?: { _id: string; userName: string; email?: string | null } | null;
+  onAssign: () => void;
+}) {
+  return (
+    <div className="flex items-start gap-3 text-sm px-3 py-2.5">
+      <span className="text-xs uppercase tracking-wide text-gray-500 w-20 shrink-0 mt-0.5">
+        Assigned
+      </span>
+      <div className="flex-1 min-w-0">
+        {admin ? (
+          <>
+            <p className="text-gray-900 font-medium leading-tight">{admin.userName}</p>
+            {admin.email && (
+              <p className="text-xs text-gray-500 leading-tight truncate">{admin.email}</p>
+            )}
+          </>
+        ) : (
+          <p className="text-xs text-amber-700 italic">Unassigned</p>
+        )}
+      </div>
+      <button
+        type="button"
+        onClick={onAssign}
+        className="shrink-0 text-xs text-[#00695C] hover:text-[#004D40] font-medium"
+      >
+        {admin ? "Reassign" : "Assign"}
+      </button>
     </div>
   );
 }
