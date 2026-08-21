@@ -33,6 +33,8 @@ import {
   Headphones,
   Bot,
   MessagesSquare,
+  LifeBuoy,
+  Inbox,
 } from "lucide-react";
 
 import LogOutModal from "@/components/settings/LogOutModal";
@@ -85,6 +87,14 @@ const navGroups = [
     icon: <Headphones />,
     items: [
       { name: "CS Manager Performance", link: "/customer-managers", icon: <ShieldCheck /> },
+    ]
+  },
+  {
+    title: "Support",
+    isCollapsible: true,
+    icon: <LifeBuoy />,
+    items: [
+      { name: "Tickets", link: "/tickets", icon: <Inbox /> },
     ]
   },
   {
