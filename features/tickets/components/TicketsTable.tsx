@@ -91,6 +91,7 @@ export function TicketsTable({
               <th className="px-3 py-2.5 font-medium w-8"></th>
               <th className="px-3 py-2.5 font-medium">Subject</th>
               <th className="px-3 py-2.5 font-medium">Affected</th>
+              <th className="px-3 py-2.5 font-medium">Sender</th>
               <th className="px-3 py-2.5 font-medium">Assigned</th>
               <th className="px-3 py-2.5 font-medium">Issue</th>
               <th className="px-3 py-2.5 font-medium">Status</th>
@@ -143,10 +144,27 @@ export function TicketsTable({
                     {affected ?? (
                       <span className="text-gray-400 text-xs italic">Unlinked</span>
                     )}
-                    {senderDifferent && (
-                      <p className="text-[10px] text-gray-500 mt-0.5">
-                        via {formatUser(r.sender)}
-                      </p>
+                  </td>
+                  <td className="px-3 py-3 whitespace-nowrap">
+                    {r.sender ? (
+                      <span
+                        className={cn(
+                          "text-sm",
+                          senderDifferent ? "text-gray-800" : "text-gray-400"
+                        )}
+                        title={
+                          senderDifferent
+                            ? "Raised on behalf of the affected user"
+                            : "Sender is the affected user"
+                        }
+                      >
+                        {formatUser(r.sender)}
+                        {!senderDifferent && (
+                          <span className="text-[10px] text-gray-400 ml-1">= affected</span>
+                        )}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-gray-400">—</span>
                     )}
                   </td>
                   <td className="px-3 py-3 text-gray-700 whitespace-nowrap">
