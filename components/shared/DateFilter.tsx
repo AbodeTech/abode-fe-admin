@@ -12,67 +12,99 @@ import {
 } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useEffect } from "react";
-import { format, subDays, subWeeks } from "date-fns";
+import { useMemo, useState, useSyncExternalStore } from "react";
+import { format, isSameDay, startOfDay, subDays, subWeeks } from "date-fns";
+import { type DateRange } from "react-day-picker";
 import { cn } from "@/lib/utils";
 
 type DateOption = "all" | "7days" | "2weeks" | "4weeks" | "custom";
 
-interface DateRange {
-  from: Date;
-  to: Date;
+function parseLocalDate(value: string): Date {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function formatLocalDate(date: Date): string {
+  return format(date, "yyyy-MM-dd");
+}
+
+function presetBounds(option: Exclude<DateOption, "all" | "custom">): DateRange {
+  const to = startOfDay(new Date());
+  const from =
+    option === "7days"
+      ? subDays(to, 7)
+      : option === "2weeks"
+        ? subWeeks(to, 2)
+        : subWeeks(to, 4);
+  return { from: startOfDay(from), to };
+}
+
+function matchPreset(from: Date, to: Date): DateOption {
+  const today = startOfDay(new Date());
+  if (!isSameDay(to, today)) return "custom";
+
+  for (const option of ["7days", "2weeks", "4weeks"] as const) {
+    const preset = presetBounds(option);
+    if (preset.from && isSameDay(from, preset.from)) return option;
+  }
+  return "custom";
+}
+
+function subscribeNarrowScreen(onChange: () => void) {
+  const mq = window.matchMedia("(max-width: 640px)");
+  mq.addEventListener("change", onChange);
+  return () => mq.removeEventListener("change", onChange);
+}
+
+function getNarrowScreenSnapshot() {
+  return window.matchMedia("(max-width: 640px)").matches;
+}
+
+function getNarrowScreenServerSnapshot() {
+  return false;
 }
 
 export function DateFilter() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const initializeFromURL = () => {
-    const startDate = searchParams.get("start_date");
-    const endDate = searchParams.get("end_date");
+  const startDateParam = searchParams.get("start_date");
+  const endDateParam = searchParams.get("end_date");
 
-    if (startDate && endDate) {
-      const from = new Date(startDate);
-      const to = new Date(endDate);
-      const today = new Date();
-      const daysDiff = Math.round((today.getTime() - from.getTime()) / (1000 * 60 * 60 * 24));
-
-      let option: DateOption = "custom";
-      if (daysDiff === 7) option = "7days";
-      else if (daysDiff === 14) option = "2weeks";
-      else if (daysDiff === 28) option = "4weeks";
-
-      return { option, range: { from, to } };
-    }
-
+  const appliedRange = useMemo(() => {
+    if (!startDateParam || !endDateParam) return undefined;
     return {
-      option: "all" as DateOption,
-      range: { from: subDays(new Date(), 7), to: new Date() },
+      from: parseLocalDate(startDateParam),
+      to: parseLocalDate(endDateParam),
     };
-  };
+  }, [startDateParam, endDateParam]);
 
-  const { option: initialOption, range: initialRange } = initializeFromURL();
-  const [selectedOption, setSelectedOption] = useState<DateOption>(initialOption);
-  const [dateRange, setDateRange] = useState<DateRange>(initialRange);
+  const [draftRange, setDraftRange] = useState<DateRange | undefined>();
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-  const [isNarrowScreen, setIsNarrowScreen] = useState(false);
+  /** Keeps the range picker visible only after "Custom range" is chosen. */
+  const [showCustomPicker, setShowCustomPicker] = useState(false);
 
-  useEffect(() => {
-    const mq = window.matchMedia("(max-width: 640px)");
-    const update = () => setIsNarrowScreen(mq.matches);
-    update();
-    mq.addEventListener("change", update);
-    return () => mq.removeEventListener("change", update);
-  }, []);
+  const isNarrowScreen = useSyncExternalStore(
+    subscribeNarrowScreen,
+    getNarrowScreenSnapshot,
+    getNarrowScreenServerSnapshot
+  );
+
+  const urlOption: DateOption =
+    appliedRange?.from && appliedRange?.to
+      ? matchPreset(appliedRange.from, appliedRange.to)
+      : "all";
+
+  const selectedOption: DateOption = showCustomPicker || isCalendarOpen ? "custom" : urlOption;
 
   const updateURL = (from: Date | null, to: Date | null) => {
     const params = new URLSearchParams(searchParams.toString());
 
     if (from && to) {
-      params.set("start_date", from.toISOString().split("T")[0]);
-      params.set("end_date", to.toISOString().split("T")[0]);
+      params.set("start_date", formatLocalDate(from));
+      params.set("end_date", formatLocalDate(to));
     } else {
       params.delete("start_date");
       params.delete("end_date");
@@ -82,36 +114,58 @@ export function DateFilter() {
     router.push(`?${params.toString()}`, { scroll: false });
   };
 
-  const handleOptionChange = (value: DateOption) => {
-    setSelectedOption(value);
-    const today = new Date();
+  const openCalendar = () => {
+    setShowCustomPicker(true);
+    setDraftRange(undefined);
+    setIsCalendarOpen(true);
+  };
 
+  const handleReset = () => {
+    setDraftRange(undefined);
+    setIsCalendarOpen(false);
+    setShowCustomPicker(false);
+    updateURL(null, null);
+  };
+
+  const handleOptionChange = (value: DateOption) => {
     switch (value) {
-      case "7days": {
-        const from = subDays(today, 7);
-        setDateRange({ from, to: today });
-        updateURL(from, today);
-        break;
-      }
-      case "2weeks": {
-        const from = subWeeks(today, 2);
-        setDateRange({ from, to: today });
-        updateURL(from, today);
-        break;
-      }
+      case "7days":
+      case "2weeks":
       case "4weeks": {
-        const from = subWeeks(today, 4);
-        setDateRange({ from, to: today });
-        updateURL(from, today);
+        const range = presetBounds(value);
+        setDraftRange(undefined);
+        setIsCalendarOpen(false);
+        setShowCustomPicker(false);
+        if (range.from && range.to) updateURL(range.from, range.to);
         break;
       }
       case "custom":
-        setIsCalendarOpen(true);
+        openCalendar();
         break;
       default:
-        updateURL(null, null);
+        handleReset();
     }
   };
+
+  const handleRangeSelect = (range: DateRange | undefined) => {
+    setDraftRange(range);
+    if (range?.from && range?.to) {
+      updateURL(startOfDay(range.from), startOfDay(range.to));
+      setIsCalendarOpen(false);
+      setDraftRange(undefined);
+      setShowCustomPicker(true);
+    }
+  };
+
+  const hasCompleteRange = Boolean(appliedRange?.from && appliedRange?.to);
+  const showRangeControls = showCustomPicker || isCalendarOpen || urlOption === "custom";
+
+  const rangeLabel =
+    isCalendarOpen && draftRange?.from && !draftRange?.to
+      ? `${format(draftRange.from, "MMM d")} – Pick end date`
+      : appliedRange?.from && appliedRange?.to && urlOption === "custom"
+        ? `${format(appliedRange.from, "MMM d")} – ${format(appliedRange.to, "MMM d, yyyy")}`
+        : "Pick start and end date";
 
   return (
     <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
@@ -131,39 +185,56 @@ export function DateFilter() {
         </SelectContent>
       </Select>
 
-      {selectedOption === "custom" && (
-        <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              className={cn(
-                "h-auto min-h-10 w-full justify-start whitespace-normal px-3 py-2 text-left text-sm font-normal leading-snug sm:h-9 sm:min-h-0 sm:w-fit sm:whitespace-nowrap sm:py-2 bg-white",
-                !dateRange && "text-muted-foreground"
-              )}
+      {showRangeControls && (
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+          <Popover
+            open={isCalendarOpen}
+            onOpenChange={(open) => (open ? openCalendar() : setIsCalendarOpen(false))}
+          >
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                className={cn(
+                  "h-auto min-h-10 w-full justify-start whitespace-normal px-3 py-2 text-left text-sm font-normal leading-snug sm:h-9 sm:min-h-0 sm:w-fit sm:whitespace-nowrap sm:py-2 bg-white",
+                  !hasCompleteRange && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
+                <span className="min-w-0 wrap-break-word">{rangeLabel}</span>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent
+              className="w-[min(100vw-1.5rem,20.5rem)] max-w-[calc(100vw-1.5rem)] overflow-x-hidden p-0 sm:w-auto sm:max-w-none"
+              align="center"
+              side="bottom"
+              sideOffset={8}
+              collisionPadding={12}
             >
-              <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
-              <span className="min-w-0 wrap-break-word">
-                {format(dateRange.from, "MMM d")} – {format(dateRange.to, "MMM d, yyyy")}
-              </span>
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-[min(100vw-1.5rem,36rem)] max-w-[calc(100vw-1.5rem)] p-0 sm:w-auto" align="start" sideOffset={4}>
-            <Calendar
-              initialFocus
-              mode="range"
-              defaultMonth={dateRange.from}
-              selected={{ from: dateRange.from, to: dateRange.to }}
-              onSelect={(range) => {
-                if (range?.from && range?.to) {
-                  setDateRange({ from: range.from, to: range.to });
-                  updateURL(range.from, range.to);
-                  setIsCalendarOpen(false);
-                }
-              }}
-              numberOfMonths={isNarrowScreen ? 1 : 2}
-            />
-          </PopoverContent>
-        </Popover>
+              <Calendar
+                className="mx-auto"
+                initialFocus
+                mode="range"
+                min={1}
+                defaultMonth={new Date()}
+                selected={draftRange}
+                onSelect={handleRangeSelect}
+                numberOfMonths={isNarrowScreen ? 1 : 2}
+              />
+            </PopoverContent>
+          </Popover>
+
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-10 w-full gap-1.5 sm:h-9 sm:w-auto"
+            onClick={handleReset}
+          >
+            <X className="h-3.5 w-3.5" />
+            Reset
+          </Button>
+        </div>
       )}
     </div>
   );

@@ -10,6 +10,7 @@ import { requestRoutes } from './requests';
 import { amarisRoutes } from './amaris';
 import { flexLeadRoutes } from './flex-leads';
 import { couponRoutes } from './coupons';
+import { dashboardRoutes } from './dashboard';
 
 /* ============================================================
  * Route registration. Importing this module (via lib/mocks/index.ts)
@@ -26,7 +27,7 @@ import { couponRoutes } from './coupons';
  * auth        — /auth/*, including the shared POST /auth/refresh and POST
  *               /auth/logout (both are user+admin endpoints on the BE; the
  *               admin app only ever calls them for an admin session).
- * commission  — /admin/commission/* (config, overrides, audit).
+ * commission  — /admin/commission/* (config, overrides, audit, transactions).
  * assets      — /admin/assets/*. Currently only the list route, added for the
  *               commission override pickers; the assets feature extends it
  *               rather than re-registering when it migrates.
@@ -48,6 +49,7 @@ import { couponRoutes } from './coupons';
  *               re-registering the path.
  * people.ts   — not a domain: the shared person fixtures every route populates
  *               refs from, so one id means one person across all of them.
+ * dashboard   — GET /admin/dashboard/kpis, top-products, top-associates.
  * ============================================================ */
 
 let registered = false;
@@ -67,5 +69,6 @@ export function ensureRoutesRegistered(): void {
   registerRoutes(amarisRoutes);
   registerRoutes(flexLeadRoutes);
   registerRoutes(couponRoutes);
+  registerRoutes(dashboardRoutes);
   // ...added per feature as it migrates
 }

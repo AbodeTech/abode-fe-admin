@@ -1,84 +1,18 @@
 "use client";
 
-import { useMemo, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { SuspensePageFallback } from "@/components/shared/page-content-loader";
+import { Suspense } from "react";
 
 import {
-  useTopAssociates,
-  DEFAULT_TOP_ASSOCIATES_LIMIT,
-  DEFAULT_TOP_ASSOCIATES_SORT,
+  DashboardTopAssociatesTable,
 } from "@/features/associates";
-import { TopAssociatesHeader, AssociateSortKey } from "@/features/associates";
-import { TopAssociatesTable } from "@/features/associates";
-import { Pagination } from "@/components/shared/Pagination";
-
-const ASSOCIATE_SORT_KEYS: AssociateSortKey[] = [
-  "sales_person",
-  "no_of_clients",
-  "units_sold",
-  "size_sold",
-  "expected_revenue",
-  "received_revenue",
-  "commission",
-  "collection_rate",
-];
-
-const parseSort = (value?: string | null) => {
-  const fallback = DEFAULT_TOP_ASSOCIATES_SORT;
-  const raw = value || fallback;
-  const [rawKey, rawDirection] = raw.split(":");
-  const fallbackKey = fallback.split(":")[0] as AssociateSortKey;
-  const key = ASSOCIATE_SORT_KEYS.includes(rawKey as AssociateSortKey)
-    ? (rawKey as AssociateSortKey)
-    : fallbackKey;
-  const direction = (rawDirection === "asc" || rawDirection === "desc"
-    ? rawDirection
-    : "desc") as "asc" | "desc";
-  return {
-    sortKey: key,
-    sortDirection: direction,
-    sortParam: `${key}:${direction}`,
-  };
-};
+import {
+  MAX_TOP_LIST_LIMIT,
+  useDashboardTopAssociates,
+} from "@/features/dashboard";
+import { SuspensePageFallback } from "@/components/shared/page-content-loader";
 
 function TopAssociatesContent() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-
-  const page = Number(searchParams.get("page")) || 1;
-  const { sortKey, sortDirection, sortParam } = parseSort(searchParams.get("sort"));
-  const startDate = searchParams.get("start_date") || null;
-  const endDate = searchParams.get("end_date") || null;
-
-  const { data, isLoading, error } = useTopAssociates({
-    page,
-    limit: DEFAULT_TOP_ASSOCIATES_LIMIT,
-    sortBy: sortParam,
-    startDate,
-    endDate,
-  });
-
-  const rows = useMemo(
-    () => (data?.data ?? []).filter((item): item is NonNullable<typeof item> => Boolean(item)),
-    [data?.data]
-  );
-
-  const updateParams = (next: Record<string, string | number | undefined | null>) => {
-    const params = new URLSearchParams(searchParams.toString());
-    Object.entries(next).forEach(([key, value]) => {
-      if (value === undefined || value === null || value === "") {
-        params.delete(key);
-      } else {
-        params.set(key, String(value));
-      }
-    });
-    router.push(`?${params.toString()}`, { scroll: false });
-  };
-
-  const handleSortChange = (key: AssociateSortKey, direction: "asc" | "desc") => {
-    updateParams({ sort: `${key}:${direction}`, page: 1 });
-  };
+  const { data, isLoading, error } = useDashboardTopAssociates(MAX_TOP_LIST_LIMIT);
 
   if (error) {
     return (
@@ -93,19 +27,15 @@ function TopAssociatesContent() {
 
   return (
     <div className="mx-auto mt-4 w-full min-w-0 max-w-[1600px] space-y-4 px-3 pb-16 sm:space-y-6 sm:px-4 sm:pb-20">
-      <TopAssociatesHeader
-        sortKey={sortKey}
-        sortDirection={sortDirection}
-        onSortChange={handleSortChange}
-      />
+      <div className="min-w-0">
+        <h1 className="text-xl font-bold text-[#333333] sm:text-2xl">Top Associates</h1>
+        <p className="mt-1 text-sm text-[#667085]">
+          Highest-earning associates by commission paid (lifetime), up to{" "}
+          {MAX_TOP_LIST_LIMIT}.
+        </p>
+      </div>
 
-      {isLoading ? (
-        <TopAssociatesTable isLoading />
-      ) : (
-        <TopAssociatesTable data={rows} />
-      )}
-
-      <Pagination count={data?.count ?? 0} currentIdx={page} limit={DEFAULT_TOP_ASSOCIATES_LIMIT} />
+      <DashboardTopAssociatesTable data={data} isLoading={isLoading} />
     </div>
   );
 }

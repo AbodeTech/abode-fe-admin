@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { execute, executeRaw } from '@/lib/graphql-client';
+import { execute } from '@/lib/graphql-client';
 import { graphql } from '@/lib/gql';
 import { transactionKeys } from './query-keys';
 type TransactionType = "credit" | "debit" | "asset" | "commission" | "document";
@@ -27,42 +27,6 @@ const GET_DOCUMENT_TRANSACTION_QUERY = graphql(`
     }
   }
 `);
-
-const GET_COMMISSION_TRANSACTIONS_QUERY = `
-  query GetCommissionTransactions($page: Int!, $limit: Int!, $startDate: String, $endDate: String, $commissionSource: String) {
-    getCommissionTransactions(
-      page: $page,
-      startDate: $startDate,
-      endDate: $endDate,
-      limit: $limit,
-      commissionSource: $commissionSource
-    ) {
-      count
-      data {
-        _id
-        tin
-        admin_status
-        amount
-        asset_type
-        description
-        user {
-          _id
-          firstName
-          lastName
-          referrer
-          referral_status
-          email
-          tin
-        }
-        plot_size
-        status
-        referral
-        transaction_type
-        time_of_transaction
-      }
-    }
-  }
-`;
 
 const GET_TRANSACTION_DATA_POINTS_QUERY = graphql(`
   query AdminTransactionDataPoint($dataPointInput: DataPointInput!) {
@@ -116,25 +80,6 @@ export const useDocumentTransactions = (params?: UseDocumentTransactionsParams) 
   });
 };
 
-interface UseCommissionTransactionsParams {
-  page?: number;
-  limit?: number;
-  startDate?: string | null;
-  endDate?: string | null;
-  commissionSource?: string | null;
-}
-
-export const useCommissionTransactions = (params?: UseCommissionTransactionsParams) => {
-  const { page = 1, limit = 10, startDate = null, endDate = null, commissionSource = null } = params ?? {};
-
-  return useQuery({
-    queryKey: transactionKeys.commissionList({ page, limit, startDate, endDate, commissionSource }),
-    queryFn: () =>
-      executeRaw(GET_COMMISSION_TRANSACTIONS_QUERY, { page, limit, startDate, endDate, commissionSource }),
-    select: (data: any) => data.getCommissionTransactions,
-  });
-};
-
 export const useTransactionDataPoints = (type: TransactionType) => {
   return useQuery({
     queryKey: transactionKeys.dataPoints(type),
@@ -147,4 +92,3 @@ export const useTransactionDataPoints = (type: TransactionType) => {
 // Export types for consumers
 export type TopupTransactionsData = NonNullable<ReturnType<typeof useTopupTransactions>['data']>;
 export type DocumentTransactionsData = NonNullable<ReturnType<typeof useDocumentTransactions>['data']>;
-export type CommissionTransactionsData = NonNullable<ReturnType<typeof useCommissionTransactions>['data']>;

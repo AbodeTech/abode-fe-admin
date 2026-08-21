@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, type ReactNode } from "react";
 import {
   ArrowDownIcon,
   ArrowUpIcon,
@@ -12,209 +13,216 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-import { graphql } from '@/lib/gql';
-import { FragmentType, useFragment } from '@/lib/gql';
-
-export const DashboardQuickOverviewFragment = graphql(`
-  fragment DashboardQuickOverview_data on AdminDashboard {
-    users
-    monthly_recurring_revenue
-    associate_users
-    associate_pro_users
-    total_asset
-    default_users
-    suspended_users
-    suspended_payment_plans
-    total_payable
-    sales
-    inflow
-    outflow
-    total_wallet_balance
-  }
-`);
+import type { DashboardKpis } from "../schemas/dashboard-kpi.schema";
 
 interface DashboardQuickOverviewProps {
-  data: FragmentType<typeof DashboardQuickOverviewFragment>;
+  data: DashboardKpis;
 }
 
-export default function DashboardQuickOverview(props: DashboardQuickOverviewProps) {
-  const data = useFragment(DashboardQuickOverviewFragment, props.data);
+type MetricCard = {
+  id: string;
+  title: string;
+  value: ReactNode;
+  description: ReactNode;
+  icon: ReactNode;
+  href?: string;
+  delta?: number | null;
+};
+
+function Delta({ value }: { value: number | null | undefined }) {
+  if (value == null) return null;
+  const up = value > 0;
+  const flat = value === 0;
+  return (
+    <p
+      className={`text-xs ${
+        flat ? "text-muted-foreground" : up ? "text-green-600" : "text-destructive"
+      }`}
+    >
+      {flat ? "No change" : `${up ? "+" : ""}${value}% vs prior period`}
+    </p>
+  );
+}
+
+function MetricCardView({ card }: { card: MetricCard }) {
+  const content = (
+    <Card
+      className={`min-w-0 overflow-hidden ${
+        card.href ? "h-full cursor-pointer transition-colors hover:bg-muted/50" : ""
+      }`}
+    >
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
+        {card.icon}
+      </CardHeader>
+      <CardContent>
+        <div className="wrap-break-word text-lg font-bold tabular-nums sm:text-xl md:text-2xl">
+          {card.value}
+        </div>
+        <div className="text-xs text-muted-foreground">{card.description}</div>
+        <Delta value={card.delta} />
+      </CardContent>
+    </Card>
+  );
+
+  if (card.href) {
+    return (
+      <Link href={card.href} className="block min-w-0">
+        {content}
+      </Link>
+    );
+  }
+
+  return content;
+}
+
+export default function DashboardQuickOverview({ data }: DashboardQuickOverviewProps) {
+  const [showAll, setShowAll] = useState(false);
+  const delta = data.delta_pct ?? null;
+
+  const primaryCards: MetricCard[] = [
+    {
+      id: "users",
+      title: "Users",
+      value: data.total_users || 0,
+      description: "Total registered users",
+      icon: <UsersIcon className="h-4 w-4 shrink-0 text-muted-foreground" />,
+    },
+    {
+      id: "associates",
+      title: "Associates",
+      value: data.associate_users || 0,
+      description: "Total associates",
+      icon: <UsersIcon className="h-4 w-4 shrink-0 text-muted-foreground" />,
+    },
+    {
+      id: "associates-pro",
+      title: "Associates Pro",
+      value: data.associate_pro_users || 0,
+      description: "Total pro associates",
+      icon: <UsersIcon className="h-4 w-4 shrink-0 text-muted-foreground" />,
+    },
+    {
+      id: "revenue",
+      title: "Revenue",
+      value: formatCurrency(data.period_revenue || 0),
+      description: "Money taken in the selected window",
+      icon: <DollarSignIcon className="h-4 w-4 shrink-0 text-muted-foreground" />,
+      delta: delta?.period_revenue,
+    },
+    {
+      id: "inflow",
+      title: "Inflow",
+      value: formatCurrency(data.inflow || 0),
+      description: "Total incoming funds",
+      icon: <ArrowDownIcon className="h-4 w-4 shrink-0 text-green-500" />,
+      delta: delta?.inflow,
+    },
+    {
+      id: "outflow",
+      title: "Outflow",
+      value: formatCurrency(data.outflow || 0),
+      description: "Total outgoing funds",
+      icon: <ArrowUpIcon className="h-4 w-4 shrink-0 text-destructive" />,
+      delta: delta?.outflow,
+    },
+  ];
+
+  const secondaryCards: MetricCard[] = [
+    {
+      id: "products",
+      title: "Products",
+      value: data.total_assets || 0,
+      description: "Total products available",
+      icon: <PackageIcon className="h-4 w-4 shrink-0 text-muted-foreground" />,
+    },
+    {
+      id: "suspended-users",
+      title: "Suspended Users",
+      value: data.suspended_users || 0,
+      description: "Click to view details",
+      icon: <UsersIcon className="h-4 w-4 shrink-0 text-destructive" />,
+      href: "/users/suspended",
+    },
+    {
+      id: "terminated-plans",
+      title: "Termination Payment Plans",
+      value: data.suspended_payment_plans || 0,
+      description: "Click to view details",
+      icon: <UsersIcon className="h-4 w-4 shrink-0 text-destructive" />,
+      href: "/users/suspended-payment-plans",
+    },
+    {
+      id: "default-users",
+      title: "Default Users",
+      value: data.default_users || 0,
+      description: "Click to view details",
+      icon: <UsersIcon className="h-4 w-4 shrink-0 text-destructive" />,
+      href: "/users/defaults",
+    },
+    {
+      id: "payment-plans",
+      title: "Payment plans",
+      value: data.total_payment_plans || 0,
+      description: (
+        <>
+          {data.closed_plans_count || 0} closed · {data.admin_created_plans_count || 0}{" "}
+          admin-created
+        </>
+      ),
+      icon: <CreditCardIcon className="h-4 w-4 shrink-0 text-muted-foreground" />,
+    },
+    {
+      id: "new-plans",
+      title: "New plans (period)",
+      value: data.period_new_payment_plans || 0,
+      description: <>{data.period_new_users || 0} new users in period</>,
+      icon: <ShoppingCartIcon className="h-4 w-4 shrink-0 text-muted-foreground" />,
+      delta: delta?.period_new_payment_plans,
+    },
+    {
+      id: "wallet",
+      title: "Wallet Balance",
+      value: formatCurrency(data.wallet_balances_held_total || 0),
+      description: "Total wallet balances held",
+      icon: <WalletIcon className="h-4 w-4 shrink-0 text-muted-foreground" />,
+    },
+  ];
+
+  const visibleCards = showAll ? [...primaryCards, ...secondaryCards] : primaryCards;
 
   return (
     <div className="space-y-3 sm:space-y-4">
-      <h2 className="text-lg font-bold tracking-tight sm:text-xl md:text-2xl">Dashboard Data Points</h2>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="text-lg font-bold tracking-tight sm:text-xl md:text-2xl">
+          Dashboard Data Points
+        </h2>
+        <Button
+          type="button"
+          variant="link"
+          className="h-auto justify-start px-0 text-sm font-medium sm:justify-end"
+          onClick={() => setShowAll((prev) => !prev)}
+        >
+          {showAll ? "Show less" : `Show more (${secondaryCards.length})`}
+        </Button>
+      </div>
 
-      <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2 sm:gap-4 md:gap-4 lg:grid-cols-3">
-        <Card className="min-w-0 overflow-hidden">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Users</CardTitle>
-            <UsersIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl font-bold tabular-nums sm:text-2xl">{data.users || 0}</div>
-            <p className="text-xs text-muted-foreground">Total registered users</p>
-          </CardContent>
-        </Card>
-
-        <Card className="min-w-0 overflow-hidden">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Revenue</CardTitle>
-            <DollarSignIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="break-words text-lg font-bold tabular-nums sm:text-xl md:text-2xl">
-              {formatCurrency(data.monthly_recurring_revenue || 0)}
-            </div>
-            <p className="text-xs text-muted-foreground">Total revenue generated</p>
-          </CardContent>
-        </Card>
-
-        <Card className="min-w-0 overflow-hidden">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Products</CardTitle>
-            <PackageIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl font-bold tabular-nums sm:text-2xl">{data.total_asset || 0}</div>
-            <p className="text-xs text-muted-foreground">Total products available</p>
-          </CardContent>
-        </Card>
-
-        <Card className="min-w-0 overflow-hidden">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Associates</CardTitle>
-            <UsersIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl font-bold tabular-nums sm:text-2xl">{data.associate_users || 0}</div>
-            <p className="text-xs text-muted-foreground">Total associates</p>
-          </CardContent>
-        </Card>
-
-        <Card className="min-w-0 overflow-hidden">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Associates Pro</CardTitle>
-            <UsersIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl font-bold tabular-nums sm:text-2xl">{data.associate_pro_users || 0}</div>
-            <p className="text-xs text-muted-foreground">Total pro associates</p>
-          </CardContent>
-        </Card>
-
-        <Link href="/users/suspended" className="block min-w-0">
-          <Card className="h-full min-w-0 overflow-hidden transition-colors hover:bg-muted/50 cursor-pointer">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Suspended Users</CardTitle>
-              <UsersIcon className="h-4 w-4 shrink-0 text-destructive" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-xl font-bold tabular-nums sm:text-2xl">{data.suspended_users || 0}</div>
-              <p className="text-xs text-muted-foreground">Click to view details</p>
-            </CardContent>
-          </Card>
-        </Link>
-
-      <Link href="/users/suspended-payment-plans" className="block min-w-0">
-        <Card className="h-full min-w-0 overflow-hidden transition-colors hover:bg-muted/50 cursor-pointer">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Termination Payment Plans</CardTitle>
-            <UsersIcon className="h-4 w-4 shrink-0 text-destructive" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl font-bold tabular-nums sm:text-2xl">{data.suspended_payment_plans || 0}</div>
-            <p className="text-xs text-muted-foreground">Click to view details</p>
-          </CardContent>
-        </Card>
-      </Link>
-
-      <Link href="/users/defaults" className="block min-w-0">
-        <Card className="h-full min-w-0 overflow-hidden transition-colors hover:bg-muted/50 cursor-pointer">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Default Users</CardTitle>
-            <UsersIcon className="h-4 w-4 shrink-0 text-destructive" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl font-bold tabular-nums sm:text-2xl">{data.default_users || 0}</div>
-            <p className="text-xs text-muted-foreground">Click to view details</p>
-          </CardContent>
-        </Card>
-      </Link>
-
-        <Card className="min-w-0 overflow-hidden">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Payables</CardTitle>
-            <CreditCardIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="break-words text-lg font-bold tabular-nums sm:text-xl md:text-2xl">
-              {formatCurrency(data.total_payable || 0)}
-            </div>
-            <p className="text-xs text-muted-foreground">Outstanding payments</p>
-          </CardContent>
-        </Card>
-
-        <Card className="min-w-0 overflow-hidden">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Sales</CardTitle>
-            <ShoppingCartIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl font-bold tabular-nums sm:text-2xl">{data.sales || 0}</div>
-            <p className="text-xs text-muted-foreground">Total sales volume</p>
-          </CardContent>
-        </Card>
-
-        <Card className="min-w-0 overflow-hidden">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Inflow</CardTitle>
-            <ArrowDownIcon className="h-4 w-4 shrink-0 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="break-words text-lg font-bold tabular-nums sm:text-xl md:text-2xl">
-              {formatCurrency(data.inflow || 0)}
-            </div>
-            <p className="text-xs text-muted-foreground">Total incoming funds</p>
-          </CardContent>
-        </Card>
-
-        <Card className="min-w-0 overflow-hidden">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Outflow</CardTitle>
-            <ArrowUpIcon className="h-4 w-4 shrink-0 text-destructive" />
-          </CardHeader>
-          <CardContent>
-            <div className="break-words text-lg font-bold tabular-nums sm:text-xl md:text-2xl">
-              {formatCurrency(data.outflow || 0)}
-            </div>
-            <p className="text-xs text-muted-foreground">Total outgoing funds</p>
-          </CardContent>
-        </Card>
-
-        <Card className="min-w-0 overflow-hidden">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Wallet Balance</CardTitle>
-            <WalletIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="break-words text-lg font-bold tabular-nums sm:text-xl md:text-2xl">
-              {formatCurrency(data.total_wallet_balance || 0)}
-            </div>
-            <p className="text-xs text-muted-foreground">Total wallet balance</p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+        {visibleCards.map((card) => (
+          <MetricCardView key={card.id} card={card} />
+        ))}
       </div>
     </div>
   );
 }
-// Helper to format currency
-const formatCurrency = (value: number) => {
-  return new Intl.NumberFormat("en-NG", {
+
+const formatCurrency = (value: number) =>
+  new Intl.NumberFormat("en-NG", {
     style: "currency",
     currency: "NGN",
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(value || 0);
-};
