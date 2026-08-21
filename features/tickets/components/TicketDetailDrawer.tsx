@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   X,
   Loader2,
@@ -81,6 +81,17 @@ export function TicketDetailDrawer({ ticketId, onClose }: Props) {
   const resolveTicket = useResolveTicket();
   const updateTicket = useUpdateTicket();
 
+  // Esc key closes the drawer. Guarded on the ticketId so we don't
+  // subscribe when nothing's open.
+  useEffect(() => {
+    if (!ticketId) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !resolveOpen) onClose();
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [ticketId, onClose, resolveOpen]);
+
   if (!ticketId) return null;
 
   const ticket = data?.ticket;
@@ -127,7 +138,15 @@ export function TicketDetailDrawer({ ticketId, onClose }: Props) {
   };
 
   return (
-    <aside className="fixed top-0 right-0 z-40 h-screen w-full max-w-xl bg-white border-l border-gray-200 shadow-2xl flex flex-col">
+    <>
+      {/* Backdrop: dims the page and closes the drawer on click. Wrapping
+          both siblings in a fragment so the aside can layer on top. */}
+      <div
+        className="fixed inset-0 z-30 bg-black/30"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      <aside className="fixed top-0 right-0 z-40 h-screen w-full max-w-xl bg-white border-l border-gray-200 shadow-2xl flex flex-col">
       <header className="flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-200 shrink-0">
         <div className="flex items-center gap-3 min-w-0">
           {ticket ? (
@@ -448,6 +467,7 @@ export function TicketDetailDrawer({ ticketId, onClose }: Props) {
         </div>
       )}
     </aside>
+    </>
   );
 }
 
