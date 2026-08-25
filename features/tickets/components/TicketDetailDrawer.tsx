@@ -26,10 +26,13 @@ import { TicketChannel, TicketStatus } from "@/lib/gql/graphql";
 import { useTicket } from "../hooks/use-tickets";
 import {
   useAddTicketNote,
+  useRemoveTicketCollaborator,
   useResolveTicket,
   useUpdateTicket,
   useUnlinkTicketFromIssue,
 } from "../hooks/use-ticket-mutations";
+import { AddCollaboratorDialog } from "./AddCollaboratorDialog";
+import { TicketClassificationPanel } from "./TicketClassificationPanel";
 import { AssignAdminDialog } from "./AssignAdminDialog";
 import { AssignAffectedUserDialog } from "./AssignAffectedUserDialog";
 import { LinkTicketToIssueDialog } from "./LinkTicketToIssueDialog";
@@ -82,6 +85,7 @@ export function TicketDetailDrawer({ ticketId, onClose }: Props) {
   const [resolveOpen, setResolveOpen] = useState(false);
   const [resolutionText, setResolutionText] = useState("");
   const [assignAdminOpen, setAssignAdminOpen] = useState(false);
+  const [addCollaboratorOpen, setAddCollaboratorOpen] = useState(false);
   const [assignUserOpen, setAssignUserOpen] = useState(false);
   const [linkIssueOpen, setLinkIssueOpen] = useState(false);
 
@@ -89,6 +93,24 @@ export function TicketDetailDrawer({ ticketId, onClose }: Props) {
   const resolveTicket = useResolveTicket();
   const updateTicket = useUpdateTicket();
   const unlinkIssue = useUnlinkTicketFromIssue();
+  const removeCollaborator = useRemoveTicketCollaborator();
+  // Which row is mid-removal, so only that chip shows a spinner.
+  const [removingAdminId, setRemovingAdminId] = useState<string | null>(null);
+
+  const handleRemoveCollaborator = async (adminId: string) => {
+    if (!ticketId) return;
+    setRemovingAdminId(adminId);
+    try {
+      await removeCollaborator.mutateAsync({ ticketId, adminId });
+      toast.success("Collaborator removed");
+    } catch (err: unknown) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to remove collaborator"
+      );
+    } finally {
+      setRemovingAdminId(null);
+    }
+  };
 
   const handleUnlinkIssue = async () => {
     if (!ticketId) return;
@@ -219,14 +241,11 @@ export function TicketDetailDrawer({ ticketId, onClose }: Props) {
               </h2>
               <div className="flex items-center gap-2 text-xs text-gray-500">
                 <ChannelChip channel={ticket.channel} />
-                {ticket.category && (
-                  <span className="rounded-full bg-gray-100 text-gray-700 px-2 py-0.5">
-                    {ticket.category}
-                  </span>
-                )}
                 <span>opened {formatWhen(ticket.createdAt)}</span>
               </div>
             </section>
+
+            <TicketClassificationPanel ticket={ticket} />
 
             <div className="rounded-lg border border-gray-200 divide-y divide-gray-100">
               <IdentityRow
@@ -246,6 +265,12 @@ export function TicketDetailDrawer({ ticketId, onClose }: Props) {
               <AssignedAdminRow
                 admin={ticket.assigned_admin}
                 onAssign={() => setAssignAdminOpen(true)}
+              />
+              <CollaboratorsRow
+                collaborators={ticket.collaborators}
+                onAdd={() => setAddCollaboratorOpen(true)}
+                onRemove={handleRemoveCollaborator}
+                removingId={removeCollaborator.isPending ? removingAdminId : null}
               />
             </div>
             {ticket.source_reference && (
@@ -472,6 +497,17 @@ export function TicketDetailDrawer({ ticketId, onClose }: Props) {
       )}
 
       {ticket && (
+        <AddCollaboratorDialog
+          open={addCollaboratorOpen}
+          onOpenChange={setAddCollaboratorOpen}
+          ticketId={ticket._id}
+          excludeAdminIds={[
+            ...(ticket.assigned_admin ? [ticket.assigned_admin._id] : []),
+            ...ticket.collaborators.map((c) => c._id),
+          ]}
+        />
+      )}
+      {ticket && (
         <AssignAdminDialog
           open={assignAdminOpen}
           onOpenChange={setAssignAdminOpen}
@@ -629,6 +665,66 @@ function AssignedAdminRow({
         className="shrink-0 text-xs text-[#00695C] hover:text-[#004D40] font-medium"
       >
         {admin ? "Reassign" : "Assign"}
+      </button>
+    </div>
+  );
+}
+
+/**
+ * Specialists pulled in to help resolve. Sits under the owner rather than
+ * beside it: the owner is who is answerable, collaborators are who is helping,
+ * and flattening the two loses that distinction.
+ */
+function CollaboratorsRow({
+  collaborators,
+  onAdd,
+  onRemove,
+  removingId,
+}: {
+  collaborators: { _id: string; userName: string; email?: string | null; role?: string | null }[];
+  onAdd: () => void;
+  onRemove: (adminId: string) => void;
+  removingId: string | null;
+}) {
+  return (
+    <div className="flex items-start gap-3 text-sm px-3 py-2.5">
+      <span className="text-xs uppercase tracking-wide text-gray-500 w-20 shrink-0 mt-0.5">
+        Helping
+      </span>
+      <div className="flex-1 min-w-0">
+        {collaborators.length === 0 ? (
+          <p className="text-xs text-gray-400 italic">No collaborators</p>
+        ) : (
+          <ul className="flex flex-wrap gap-1.5">
+            {collaborators.map((c) => (
+              <li key={c._id}>
+                <span className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-gray-50 pl-2 pr-1 py-0.5 text-[11px] text-gray-700">
+                  <span title={c.email ?? undefined}>{c.userName}</span>
+                  <button
+                    type="button"
+                    onClick={() => onRemove(c._id)}
+                    disabled={removingId === c._id}
+                    aria-label={`Remove ${c.userName}`}
+                    className="rounded-full p-0.5 text-gray-400 hover:text-[#AD1F2A] disabled:opacity-50"
+                  >
+                    {removingId === c._id ? (
+                      <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                    ) : (
+                      <X className="h-2.5 w-2.5" />
+                    )}
+                  </button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      <button
+        type="button"
+        onClick={onAdd}
+        className="shrink-0 text-xs text-[#00695C] hover:text-[#004D40] font-medium"
+      >
+        Add
       </button>
     </div>
   );

@@ -7,6 +7,9 @@ export const ticketKeys = {
     [...ticketKeys.root(), "detail", ticketId] as const,
   userSuggestions: (ticketId: string) =>
     [...ticketKeys.root(), "user-suggestions", ticketId] as const,
+  categories: () => [...ticketKeys.root(), "categories"] as const,
+  issueSuggestions: (ticketId: string) =>
+    [...ticketKeys.root(), "issue-suggestions", ticketId] as const,
   similar: (search: string) =>
     [...ticketKeys.root(), "similar", search] as const,
 };

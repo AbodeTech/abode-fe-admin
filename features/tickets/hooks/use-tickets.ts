@@ -34,6 +34,7 @@ const TICKET_ROW_FIELDS = `
   sender { _id firstName lastName email }
   user_affected { _id firstName lastName email phoneNumber }
   assigned_admin { _id userName email }
+  collaborators { _id userName email role }
   issue { _id issue_ref title status }
   attachments { url filename mime size }
   resolved_by { _id userName email }
@@ -51,6 +52,9 @@ const GET_TICKETS = graphql(`
         subject
         body
         category
+        type
+        category_source
+        type_source
         status
         resolution
         resolved_at
@@ -60,10 +64,12 @@ const GET_TICKETS = graphql(`
         sender { _id firstName lastName email }
         user_affected { _id firstName lastName email phoneNumber }
         assigned_admin { _id userName email }
+        collaborators { _id userName email role }
         issue { _id issue_ref title status }
       }
       filterCounts {
         all
+        mine
         unassigned
         unlinked
         open
@@ -86,6 +92,18 @@ const GET_TICKET = graphql(`
         subject
         body
         category
+        type
+        category_source
+        type_source
+        ai {
+          suggested_category
+          suggested_type
+          confidence
+          model
+          classified_at
+          error
+          affected_hints { value kind note }
+        }
         status
         resolution
         resolved_at
@@ -95,6 +113,7 @@ const GET_TICKET = graphql(`
         sender { _id firstName lastName email }
         user_affected { _id firstName lastName email phoneNumber }
         assigned_admin { _id userName email }
+        collaborators { _id userName email role }
         issue { _id issue_ref title status }
         attachments { url filename mime size }
         resolved_by { _id userName email }
@@ -146,6 +165,28 @@ const FIND_SIMILAR_TICKETS = graphql(`
       status
       createdAt
       user_affected { _id firstName lastName email }
+    }
+  }
+`);
+
+/**
+ * The category list the classifier is constrained to. Free-typed categories
+ * would sit outside the set the model can produce, which quietly corrupts the
+ * ai-vs-human comparison that category_source exists to enable.
+ */
+const TICKET_CATEGORIES = graphql(`
+  query TicketCategories {
+    ticketCategories
+  }
+`);
+
+/** Candidate issues by keyword overlap. Suggestion only — nothing is linked. */
+const SUGGEST_ISSUES_FOR_TICKET = graphql(`
+  query SuggestIssuesForTicket($ticketId: ID!) {
+    suggestIssuesForTicket(ticketId: $ticketId) {
+      matchedTerms
+      score
+      issue { _id issue_ref title status }
     }
   }
 `);
@@ -209,3 +250,25 @@ export const useSimilarTickets = (search: string, enabled = true) => {
 // individual queries above spell fields out so codegen infers narrower
 // operation types.
 void TICKET_ROW_FIELDS;
+
+export const useTicketCategories = (enabled = true) =>
+  useQuery({
+    queryKey: ticketKeys.categories(),
+    queryFn: () => execute(TICKET_CATEGORIES, {}),
+    select: (data) => data.ticketCategories,
+    // A constant per deploy — no reason to refetch it on every drawer open.
+    staleTime: Infinity,
+    enabled,
+  });
+
+export const useTicketIssueSuggestions = (
+  ticketId: string | null | undefined,
+  enabled = true
+) =>
+  useQuery({
+    queryKey: ticketKeys.issueSuggestions(ticketId ?? ""),
+    queryFn: () =>
+      execute(SUGGEST_ISSUES_FOR_TICKET, { ticketId: ticketId as string }),
+    select: (data) => data.suggestIssuesForTicket,
+    enabled: !!ticketId && enabled,
+  });

@@ -19,6 +19,9 @@ const ISSUE_FIELDS = `
   status
   resolution_note
   resolved_at
+  reopen_count
+  reopened_at
+  first_resolved_at
   ticketCount
   createdAt
   updatedAt
@@ -38,6 +41,9 @@ const GET_ISSUES = graphql(`
         description
         status
         ticketCount
+        reopen_count
+        reopened_at
+        first_resolved_at
         createdAt
         updatedAt
         owner { _id userName email }
@@ -57,6 +63,9 @@ const GET_ISSUE = graphql(`
         status
         resolution_note
         resolved_at
+        reopen_count
+        reopened_at
+        first_resolved_at
         ticketCount
         createdAt
         updatedAt

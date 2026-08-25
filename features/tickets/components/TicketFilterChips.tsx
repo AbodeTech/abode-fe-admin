@@ -19,6 +19,9 @@ export function TicketFilterChips({ active, onChange, counts }: Props) {
     tone: "neutral" | "warn" | "critical";
   }[] = [
     { key: TicketFilter.All, count: counts?.all, tone: "neutral" },
+    // Resolved server-side from the auth context: owned by me, OR I was pulled
+    // in as a collaborator. Without it a specialist has no queue of their own.
+    { key: TicketFilter.Mine, count: counts?.mine, tone: "neutral" },
     { key: TicketFilter.Unassigned, count: counts?.unassigned, tone: "warn" },
     { key: TicketFilter.Unlinked, count: counts?.unlinked, tone: "warn" },
     { key: TicketFilter.Open, count: counts?.open, tone: "neutral" },

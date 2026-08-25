@@ -6,7 +6,13 @@ import {
   TicketChannel,
   type GetTicketsQuery,
 } from "@/lib/gql/graphql";
-import { STATUS_LABELS, STATUS_PILL_CLASS } from "../lib/ticket-display";
+import {
+  STATUS_LABELS,
+  STATUS_PILL_CLASS,
+  TYPE_LABELS,
+  TYPE_PILL_CLASS,
+  categoryLabel,
+} from "../lib/ticket-display";
 
 type Row = GetTicketsQuery["getTickets"]["results"][number];
 
@@ -134,6 +140,25 @@ export function TicketsTable({
                         </span>
                       )}
                     </p>
+                    {(r.type || r.category) && (
+                      <span className="flex flex-wrap items-center gap-1 mt-1">
+                        {r.type && (
+                          <span
+                            className={cn(
+                              "inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium",
+                              TYPE_PILL_CLASS[r.type]
+                            )}
+                          >
+                            {TYPE_LABELS[r.type]}
+                          </span>
+                        )}
+                        {r.category && (
+                          <span className="inline-flex items-center rounded-full bg-gray-100 text-gray-600 px-1.5 py-0.5 text-[10px]">
+                            {categoryLabel(r.category)}
+                          </span>
+                        )}
+                      </span>
+                    )}
                     {r.body && (
                       <p className="text-xs text-gray-500 leading-tight line-clamp-1 mt-0.5">
                         {r.body}

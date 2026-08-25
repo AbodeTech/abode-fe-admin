@@ -4,6 +4,8 @@ export { TicketsTable } from "./components/TicketsTable";
 export { TicketDetailDrawer } from "./components/TicketDetailDrawer";
 export { CreateTicketDialog } from "./components/CreateTicketDialog";
 export { AssignAdminDialog } from "./components/AssignAdminDialog";
+export { AddCollaboratorDialog } from "./components/AddCollaboratorDialog";
+export { TicketClassificationPanel } from "./components/TicketClassificationPanel";
 export { AssignAffectedUserDialog } from "./components/AssignAffectedUserDialog";
 export { IssueStatusChips } from "./components/IssueStatusChips";
 export { IssuesTable } from "./components/IssuesTable";
@@ -21,6 +23,8 @@ export {
   useTickets,
   useTicket,
   useTicketUserSuggestions,
+  useTicketIssueSuggestions,
+  useTicketCategories,
   useSimilarTickets,
   DEFAULT_TICKETS_LIMIT,
 } from "./hooks/use-tickets";
@@ -30,11 +34,15 @@ export {
   useResolveTicket,
   useAddTicketNote,
   useMergeTickets,
+  useClassifyTicket,
+  useAddTicketCollaborator,
+  useRemoveTicketCollaborator,
   useLinkTicketToIssue,
   useUnlinkTicketFromIssue,
   type AddTicketNoteInput,
   type MergeTicketsInput,
   type LinkTicketToIssueInput,
+  type TicketCollaboratorInput,
 } from "./hooks/use-ticket-mutations";
 export {
   useIssues,
@@ -52,6 +60,15 @@ export {
   ISSUE_STATUS_LABELS,
   ISSUE_STATUS_PILL_CLASS,
   FILTER_LABELS,
+  recurrenceLabel,
+  recurrencePillClass,
+  TYPE_LABELS,
+  TYPE_PILL_CLASS,
+  TYPE_OPTIONS,
+  SOURCE_LABELS,
+  categoryLabel,
+  formatConfidence,
+  AUTO_WRITE_CONFIDENCE,
   SORT_OPTIONS,
   CHANNEL_OPTIONS,
   STATUS_OPTIONS,

@@ -162,6 +162,62 @@ export const useMergeTickets = () => {
   });
 };
 
+/**
+ * Collaborators — specialists pulled in to help resolve. They can act on the
+ * ticket and close it; the assigned admin stays accountable for the outcome.
+ * Both mutations return the populated ticket, so the drawer updates from the
+ * response without waiting on a refetch.
+ */
+const ADD_TICKET_COLLABORATOR = graphql(`
+  mutation AddTicketCollaborator($ticketId: ID!, $adminId: ID!) {
+    addTicketCollaborator(ticketId: $ticketId, adminId: $adminId) {
+      _id
+      ticket_ref
+      assigned_admin { _id userName email }
+      collaborators { _id userName email role }
+      updatedAt
+    }
+  }
+`);
+
+const REMOVE_TICKET_COLLABORATOR = graphql(`
+  mutation RemoveTicketCollaborator($ticketId: ID!, $adminId: ID!) {
+    removeTicketCollaborator(ticketId: $ticketId, adminId: $adminId) {
+      _id
+      ticket_ref
+      assigned_admin { _id userName email }
+      collaborators { _id userName email role }
+      updatedAt
+    }
+  }
+`);
+
+/**
+ * Re-run classification. Worth doing after the model was unreachable, or after
+ * the category list changes. Never overwrites a value a human has set, so a
+ * re-classify cannot silently undo a correction.
+ */
+const CLASSIFY_TICKET = graphql(`
+  mutation ClassifyTicket($ticketId: ID!) {
+    classifyTicket(ticketId: $ticketId) {
+      _id
+      category
+      type
+      category_source
+      type_source
+      ai {
+        suggested_category
+        suggested_type
+        confidence
+        model
+        classified_at
+        error
+      }
+      updatedAt
+    }
+  }
+`);
+
 export interface LinkTicketToIssueInput {
   ticketId: string;
   issueId: string;
@@ -181,6 +237,39 @@ export const useUnlinkTicketFromIssue = () => {
   return useMutation({
     mutationFn: (ticketId: string) =>
       execute(UNLINK_TICKET_FROM_ISSUE, { ticketId }),
+    onSuccess: (_, ticketId) => invalidateAll(qc, ticketId),
+  });
+};
+
+export interface TicketCollaboratorInput {
+  ticketId: string;
+  adminId: string;
+}
+
+export const useAddTicketCollaborator = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ ticketId, adminId }: TicketCollaboratorInput) =>
+      execute(ADD_TICKET_COLLABORATOR, { ticketId, adminId }),
+    // The `mine` chip counts collaborator tickets too, so the list counts move.
+    onSuccess: (_, vars) => invalidateAll(qc, vars.ticketId),
+  });
+};
+
+export const useRemoveTicketCollaborator = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ ticketId, adminId }: TicketCollaboratorInput) =>
+      execute(REMOVE_TICKET_COLLABORATOR, { ticketId, adminId }),
+    onSuccess: (_, vars) => invalidateAll(qc, vars.ticketId),
+  });
+};
+
+export const useClassifyTicket = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (ticketId: string) => execute(CLASSIFY_TICKET, { ticketId }),
+    // Category/type can change, so the row in the list moves too.
     onSuccess: (_, ticketId) => invalidateAll(qc, ticketId),
   });
 };
