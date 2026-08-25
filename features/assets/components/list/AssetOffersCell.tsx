@@ -9,8 +9,9 @@ import {
 /**
  * The cell that makes a single assets table possible.
  *
- * An asset can carry a flex offer, a full-ownership offer, or both — so offer
- * type is a property of the row rather than a reason for a second table.
+ * An asset can carry a flex, full-ownership or commercial offer, or any mix of
+ * them — so offer type is a property of the row rather than a reason for a
+ * second table.
  *
  * Filled badge when the offer is on sale, outlined and muted when it isn't.
  */

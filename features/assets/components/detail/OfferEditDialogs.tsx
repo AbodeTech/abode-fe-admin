@@ -45,7 +45,12 @@ import {
 } from "@/components/ui/select";
 import { formatNaira } from "@/lib/utils/format";
 
-import { OFFER_TYPE_LABELS, PAYMENT_TYPES, type OfferType } from "../../schemas/asset.schema";
+import {
+  OFFER_TYPE_LABELS,
+  PAYMENT_TYPES,
+  usesFoModel,
+  type OfferType,
+} from "../../schemas/asset.schema";
 import type { AssetDetail, Plan, Size } from "../../schemas/asset-detail.schema";
 import {
   expectedLandPrice,
@@ -139,7 +144,7 @@ function EditOfferDialog({ asset, offerType }: { asset: AssetDetail; offerType: 
   const update = useUpdateOffer(asset._id, offerType);
 
   const offer = asset.offers.find((candidate) => candidate.offer_type === offerType);
-  const isFlex = offerType === "flex";
+  const isFo = usesFoModel(offerType);
 
   const form = useForm<OfferFormValues>({
     resolver: zodResolver(offerFormSchema),
@@ -156,7 +161,7 @@ function EditOfferDialog({ asset, offerType }: { asset: AssetDetail; offerType: 
       {
         allocation_qualification_pct: values.allocation_qualification_pct,
         // Sending payment_type on a flex offer is a 400.
-        ...(isFlex ? {} : { payment_type: values.payment_type }),
+        ...(isFo ? { payment_type: values.payment_type } : {}),
       },
       {
         onSuccess: () => {
@@ -197,7 +202,7 @@ function EditOfferDialog({ asset, offerType }: { asset: AssetDetail; offerType: 
               )}
             />
 
-            {!isFlex ? (
+            {isFo ? (
               <FormField
                 control={form.control}
                 name="payment_type"
@@ -273,6 +278,7 @@ function AddOfferDialog({ asset, offerType }: { asset: AssetDetail; offerType: O
   const close = useAssetFormStore((state) => state.closeOfferEdit);
   const addOffer = useAddOffer(asset._id);
   const isFlex = offerType === "flex";
+  const isFo = usesFoModel(offerType);
 
   const form = useForm<AddOfferValues>({
     resolver: zodResolver(addOfferSchema),
@@ -286,7 +292,7 @@ function AddOfferDialog({ asset, offerType }: { asset: AssetDetail; offerType: O
   });
 
   const submit = form.handleSubmit((values) => {
-    if (!isFlex && !values.payment_type) {
+    if (isFo && !values.payment_type) {
       form.setError("payment_type", { message: "Choose how documents are paid for" });
       return;
     }
@@ -296,12 +302,12 @@ function AddOfferDialog({ asset, offerType }: { asset: AssetDetail; offerType: O
         offer_type: offerType,
         is_active: true,
         allocation_qualification_pct: values.allocation_qualification_pct,
-        ...(isFlex ? {} : { payment_type: values.payment_type }),
+        ...(isFo ? { payment_type: values.payment_type } : {}),
         sizes: [
           {
             size_sqm: values.size_sqm,
             units_available: values.units_available,
-            ...(isFlex ? {} : { document_fee: values.document_fee ?? 0 }),
+            ...(isFo ? { document_fee: values.document_fee ?? 0 } : {}),
             plans: [
               {
                 tenor_months: isFlex ? 12 : 0,
@@ -353,7 +359,7 @@ function AddOfferDialog({ asset, offerType }: { asset: AssetDetail; offerType: O
               )}
             />
 
-            {!isFlex ? (
+            {isFo ? (
               <FormField
                 control={form.control}
                 name="payment_type"
@@ -409,7 +415,7 @@ function AddOfferDialog({ asset, offerType }: { asset: AssetDetail; offerType: O
               />
             </div>
 
-            {!isFlex ? (
+            {isFo ? (
               <FormField
                 control={form.control}
                 name="document_fee"
@@ -472,6 +478,7 @@ function SizeDialog({
   const offer = asset.offers.find((candidate) => candidate.offer_type === offerType);
   const size = offer?.sizes.find((candidate) => candidate._id === sizeId);
   const isFlex = offerType === "flex";
+  const isFo = usesFoModel(offerType);
   const isEdit = Boolean(sizeId);
 
   const form = useForm<SizeFieldsValues>({
@@ -484,7 +491,7 @@ function SizeDialog({
   });
 
   const submit = form.handleSubmit((values) => {
-    const document_fee = isFlex ? undefined : (values.document_fee ?? 0);
+    const document_fee = isFo ? (values.document_fee ?? 0) : undefined;
 
     if (isEdit && sizeId) {
       updateSize.mutate(
@@ -578,7 +585,7 @@ function SizeDialog({
               )}
             />
 
-            {!isFlex ? (
+            {isFo ? (
               <FormField
                 control={form.control}
                 name="document_fee"
@@ -589,7 +596,8 @@ function SizeDialog({
                       <NumberInput field={field} prefix="₦" />
                     </FormControl>
                     <FormDescription className="text-xs">
-                      Required on full-ownership sizes. Enter 0 if there isn&apos;t one.
+                      Required on full-ownership and commercial sizes. Enter 0 if there
+                      isn&apos;t one.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -682,6 +690,7 @@ function PlanDialog({
   const size = offer?.sizes.find((candidate) => candidate._id === sizeId);
   const plan = size?.plans.find((candidate) => candidate.tenor_months === tenor);
   const isFlex = offerType === "flex";
+  const isFo = usesFoModel(offerType);
   const isEdit = tenor !== undefined;
 
   const form = useForm<PlanFormValues>({
@@ -707,7 +716,8 @@ function PlanDialog({
 
     if (isFlex && values.tenor_months < 1) {
       form.setError("tenor_months", {
-        message: "Flex plans run for at least one month — outright is full-ownership only",
+        message:
+          "Flex plans run for at least one month — only full ownership and commercial sell outright",
       });
       return;
     }
@@ -732,7 +742,7 @@ function PlanDialog({
           land_price: values.land_price,
           initial_payment: values.initial_payment,
           monthly_installment: values.monthly_installment,
-          ...(isFlex ? {} : { is_promo: values.is_promo ?? false }),
+          ...(isFo ? { is_promo: values.is_promo ?? false } : {}),
         },
         { onSuccess: done("Plan saved"), onError: fail }
       );
@@ -751,7 +761,7 @@ function PlanDialog({
           initial_payment: values.initial_payment,
           monthly_installment: values.monthly_installment,
           is_active: true,
-          ...(isFlex ? {} : { is_promo: values.is_promo ?? false }),
+          ...(isFo ? { is_promo: values.is_promo ?? false } : {}),
         },
         { onSuccess: done("Plan added"), onError: fail }
       );
@@ -770,7 +780,7 @@ function PlanDialog({
         initial_payment: values.initial_payment,
         monthly_installment: values.monthly_installment,
         is_active: true,
-        ...(isFlex ? {} : { is_promo: values.is_promo ?? false }),
+        ...(isFo ? { is_promo: values.is_promo ?? false } : {}),
       },
     ].sort((a, b) => a.tenor_months - b.tenor_months);
 

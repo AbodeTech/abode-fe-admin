@@ -54,6 +54,7 @@ export {
   VISIBILITIES,
   VISIBILITY_LABELS,
   availableUnits,
+  usesFoModel,
 } from './schemas/asset.schema';
 export type { Asset, OfferSummary, OfferType, Visibility } from './schemas/asset.schema';
 

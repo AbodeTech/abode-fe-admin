@@ -22,7 +22,7 @@ import {
 import { formatNaira } from "@/lib/utils/format";
 import { cn } from "@/lib/utils";
 
-import { OFFER_TYPES, OFFER_TYPE_LABELS } from "../../schemas/asset.schema";
+import { OFFER_TYPES, OFFER_TYPE_LABELS, usesFoModel } from "../../schemas/asset.schema";
 import { sortedPlans, type Offer, type Plan, type Size } from "../../schemas/asset-detail.schema";
 import {
   DropdownMenu,
@@ -157,11 +157,12 @@ function PlansTable({ size, offerType }: { size: Size; offerType: string }) {
 
 function SizeCard({
   size,
-  isFlex,
+  isFo,
   offerType,
 }: {
   size: Size;
-  isFlex: boolean;
+  /** Full-ownership model — full ownership and commercial carry a document fee. */
+  isFo: boolean;
   offerType: string;
 }) {
   const openOfferEdit = useAssetFormStore((state) => state.openOfferEdit);
@@ -177,7 +178,7 @@ function SizeCard({
         </p>
 
         <div className="flex flex-wrap items-center gap-2">
-          {!isFlex && typeof size.document_fee === "number" ? (
+          {isFo && typeof size.document_fee === "number" ? (
             <p className="text-sm text-muted-foreground tabular-nums">
               Document fee {formatNaira(size.document_fee)}
             </p>
@@ -224,7 +225,7 @@ function SizeCard({
 }
 
 function OfferCard({ assetId, offer }: { assetId: string; offer: Offer }) {
-  const isFlex = offer.offer_type === "flex";
+  const isFo = usesFoModel(offer.offer_type);
   const updateOffer = useUpdateOffer(assetId, offer.offer_type);
   const openOfferEdit = useAssetFormStore((state) => state.openOfferEdit);
 
@@ -308,7 +309,7 @@ function OfferCard({ assetId, offer }: { assetId: string; offer: Offer }) {
             <SizeCard
               key={size._id}
               size={size}
-              isFlex={isFlex}
+              isFo={isFo}
               offerType={offer.offer_type}
             />
           ))

@@ -31,7 +31,7 @@ export const PlanSchema = z.object({
   land_price: z.number(),
   initial_payment: z.number(),
   monthly_installment: z.number(),
-  /** Full-ownership only. */
+  /** Full-ownership model only — full-ownership and commercial. */
   is_promo: z.boolean().optional(),
   is_active: z.boolean().default(true),
 });
@@ -43,7 +43,7 @@ export const SizeSchema = z.object({
   offer_id: z.string().optional(),
   size_sqm: z.number(),
   units_available: z.number(),
-  /** Required on full-ownership sizes; absent on flex. */
+  /** Required on full-ownership and commercial sizes; absent on flex. */
   document_fee: z.number().optional(),
   is_active: z.boolean().default(true),
   plans: z.array(PlanSchema).default([]),
@@ -59,7 +59,7 @@ export const OfferSchema = z.object({
   offer_type: OfferTypeSchema,
   is_active: z.boolean().default(true),
   allocation_qualification_pct: z.number(),
-  /** Full-ownership only. */
+  /** Full-ownership model only — full-ownership and commercial. */
   payment_type: PaymentTypeSchema.optional(),
   sizes: z.array(SizeSchema).default([]),
   createdAt: z.string().optional(),

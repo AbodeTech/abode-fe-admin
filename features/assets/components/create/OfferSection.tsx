@@ -21,7 +21,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import { OFFER_TYPE_LABELS, PAYMENT_TYPES } from "../../schemas/asset.schema";
+import {
+  OFFER_TYPE_LABELS,
+  PAYMENT_TYPES,
+  usesFoModel,
+  type OfferType,
+} from "../../schemas/asset.schema";
 import type { CreateAssetFormValues } from "../../schemas/create-asset.schema";
 import { useAssetFormStore } from "../../store/asset-form-store";
 import { FormSection } from "./FormSection";
@@ -50,13 +55,13 @@ const emptySize = () => ({
 function SizeCard({
   offerIndex,
   sizeIndex,
-  isFlex,
+  offerType,
   onRemove,
   canRemove,
 }: {
   offerIndex: number;
   sizeIndex: number;
-  isFlex: boolean;
+  offerType: OfferType;
   onRemove: () => void;
   canRemove: boolean;
 }) {
@@ -67,6 +72,12 @@ function SizeCard({
     control,
     name: `offers.${offerIndex}.sizes.${sizeIndex}.plans` as const,
   });
+
+  // Two different questions. Flex is the only type that can't sell outright;
+  // the full-ownership model — full ownership and commercial — is the one that
+  // carries a document fee.
+  const isFlex = offerType === "flex";
+  const isFo = usesFoModel(offerType);
 
   return (
     <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
@@ -125,8 +136,8 @@ function SizeCard({
           )}
         />
 
-        {/* Required on full-ownership sizes; the backend rejects the offer without it. */}
-        {!isFlex ? (
+        {/* Required on the full-ownership model; the backend rejects the offer without it. */}
+        {isFo ? (
           <FormField
             control={control}
             name={`offers.${offerIndex}.sizes.${sizeIndex}.document_fee` as const}
@@ -226,6 +237,7 @@ export function OfferSection({
 
   const offerType = useWatch({ control, name: `offers.${offerIndex}.offer_type` as const });
   const isFlex = offerType === "flex";
+  const isFo = usesFoModel(offerType as OfferType);
 
   const sizes = useFieldArray({ control, name: `offers.${offerIndex}.sizes` as const });
 
@@ -235,7 +247,7 @@ export function OfferSection({
       title={OFFER_TYPE_LABELS[offerType as keyof typeof OFFER_TYPE_LABELS] ?? "Offer"}
       description={
         isFlex
-          ? "Instalment plans only — outright purchase is full-ownership."
+          ? "Instalment plans only — only full ownership and commercial sell outright."
           : "Supports outright purchase (tenor 0) as well as instalments."
       }
       badge={
@@ -294,8 +306,8 @@ export function OfferSection({
             )}
           />
 
-          {/* Full-ownership only — sending it on a flex offer is a 400. */}
-          {!isFlex ? (
+          {/* Full-ownership model only — sending it on a flex offer is a 400. */}
+          {isFo ? (
             <FormField
               control={control}
               name={`offers.${offerIndex}.payment_type` as const}
@@ -329,7 +341,7 @@ export function OfferSection({
               key={size.id}
               offerIndex={offerIndex}
               sizeIndex={sizeIndex}
-              isFlex={isFlex}
+              offerType={offerType as OfferType}
               canRemove={sizes.fields.length > 1}
               onRemove={() => sizes.remove(sizeIndex)}
             />

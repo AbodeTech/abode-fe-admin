@@ -7,16 +7,19 @@ import { body, paged } from './util';
  * Rows match what `asset.service.findAll` returns: the full asset document
  * plus an `offers[]` summary aggregated across both size collections.
  *
- * Note the fixtures deliberately include an asset carrying **both** offer
- * types, one with an inactive offer, a draft, a sold-out, and a soft-deleted
- * one — the states the single table exists to render, none of which v1's two
- * tables could express.
+ * Note the fixtures deliberately include an asset carrying **all three** offer
+ * types, one with an inactive offer, a draft, a sold-out, a commercial-only
+ * one, and a soft-deleted one — the states the single table exists to render,
+ * none of which v1's two tables could express.
+ *
+ * `commercial` is stored and priced exactly like `full-ownership` (the BE's
+ * `usesFoModel`), so every non-flex branch below covers it.
  *
  * Money is decimal naira.
  * ============================================================ */
 
 type MockOfferSummary = {
-  offer_type: 'flex' | 'full-ownership';
+  offer_type: 'flex' | 'full-ownership' | 'commercial';
   is_active: boolean;
   size_count: number;
   plan_count: number;
@@ -81,7 +84,7 @@ const asset = (
 };
 
 const assets: MockAsset[] = [
-  // Both offer types on one asset — impossible in v1's model.
+  // All three offer types on one asset — impossible in v1's model.
   asset({
     _id: '665faaaa00000000000000a1',
     name: 'Aviation City',
@@ -92,6 +95,7 @@ const assets: MockAsset[] = [
     offers: [
       { offer_type: 'flex', is_active: true, size_count: 3, plan_count: 9 },
       { offer_type: 'full-ownership', is_active: true, size_count: 2, plan_count: 4 },
+      { offer_type: 'commercial', is_active: true, size_count: 2, plan_count: 4 },
     ],
     createdAt: daysAgo(210),
   }),
@@ -147,6 +151,17 @@ const assets: MockAsset[] = [
     visibility: 'internal',
     offers: [{ offer_type: 'full-ownership', is_active: true, size_count: 3, plan_count: 7 }],
     createdAt: daysAgo(28),
+  }),
+  // Commercial only — the offer type that landed with the 2026-08-22 BE merge.
+  asset({
+    _id: '665faaaa00000000000000a8',
+    name: 'Trade Fair Commercial Hub',
+    asset_location: 'Ojo, Lagos',
+    sales_cap: 75,
+    sold_units: 9,
+    asset_purpose: 'Commercial',
+    offers: [{ offer_type: 'commercial', is_active: true, size_count: 2, plan_count: 4 }],
+    createdAt: daysAgo(19),
   }),
   // Soft-deleted — hidden unless include_deleted is set.
   asset({
@@ -334,7 +349,7 @@ export const assetRoutes: MockRoutes = {
       sales_cap?: number;
       visibility?: MockAsset['visibility'];
       offers?: {
-        offer_type: 'flex' | 'full-ownership';
+        offer_type: 'flex' | 'full-ownership' | 'commercial';
         is_active?: boolean;
         allocation_qualification_pct?: number;
         payment_type?: string;
@@ -426,7 +441,7 @@ export const assetRoutes: MockRoutes = {
 
     const tree = offerTree(row);
     const dto = body<{
-      offer_type: 'flex' | 'full-ownership';
+      offer_type: 'flex' | 'full-ownership' | 'commercial';
       is_active?: boolean;
       allocation_qualification_pct?: number;
       payment_type?: string;

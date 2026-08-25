@@ -84,7 +84,7 @@ function AssetsPageContent() {
           ) : (
             <EmptyState
               title="No assets yet"
-              body="Create one to start selling flex or full-ownership plots."
+              body="Create one to start selling flex, full-ownership or commercial plots."
             />
           )
         }
