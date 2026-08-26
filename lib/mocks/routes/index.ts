@@ -12,6 +12,7 @@ import { flexLeadRoutes } from './flex-leads';
 import { couponRoutes } from './coupons';
 import { dashboardRoutes } from './dashboard';
 import { marketplaceRoutes } from './marketplace';
+import { meetingRoutes } from './meetings';
 
 /* ============================================================
  * Route registration. Importing this module (via lib/mocks/index.ts)
@@ -56,6 +57,7 @@ import { marketplaceRoutes } from './marketplace';
  *               seller/buyer/asset ids (the BE's list query doesn't
  *               populate); the four action responses populate seller+asset
  *               only, never buyer — mirrors `findById` exactly (ticket #27).
+ * meetings    — /admin/meetings* (CRUD, toggle-active, verifications).
  * ============================================================ */
 
 let registered = false;
@@ -77,5 +79,6 @@ export function ensureRoutesRegistered(): void {
   registerRoutes(couponRoutes);
   registerRoutes(dashboardRoutes);
   registerRoutes(marketplaceRoutes);
+  registerRoutes(meetingRoutes);
   // ...added per feature as it migrates
 }

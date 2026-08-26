@@ -64,6 +64,9 @@ export const ADMIN_PERMISSIONS = [
   'view_reports',
   'generate_reports',
   'view_audit_logs',
+
+  'view_meetings',
+  'manage_meetings',
 ] as const;
 
 export type AdminPermission = (typeof ADMIN_PERMISSIONS)[number];
