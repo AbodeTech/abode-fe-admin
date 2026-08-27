@@ -2325,3 +2325,97 @@ marketplace/schemas/marketplace.schema.ts` models `seller`/`buyer`/`asset` as
 "Unresolved (…id)" label rather than fabricating a name or firing N+1
 `GET /admin/users/:id` calls per row. No FE change needed once this ships —
 the union already accepts the populated shape.
+
+## 28. CS Manager dashboard — ✅ RESOLVED 2026-08-27
+
+**Original gap: role/target/assignment endpoints existed, the performance
+dashboard (CSM-21/CSM-39) didn't — this is the feature, everything else was
+scaffolding around a screen that wasn't buildable yet.**
+
+### Resolution
+
+Landed in two pieces:
+- `CSManagerAdminController` (`admin/cs-managers` — promote/demote, list,
+  unassigned-customers, assign-customers, targets CRUD) and
+  `CustomerOnboardingAdminController` (`admin/payment-plans/:plan_id/*` —
+  onboarding-attempts, mark-deed-delivered) — merged to `staging` via PR #46
+  (same push as purchase-confirmations, ticket 29).
+- The dashboard itself — `csm-dashboard.derive.ts` (CSM-21's row derivation
+  and book-wide accumulation, done as a single in-app pass rather than a
+  `$facet` — see that file's own header comment for why), `GET
+  /admin/cs-managers/:manager_id/dashboard` (CSM-39), and `GET
+  /admin/cs-managers/:manager_id/exports/plans` (streaming CSV) — sits on
+  `feat/cs-manager-dashboard`, **not yet merged to `staging`** but clean (0
+  behind, 1 ahead, no conflicts).
+
+Both pieces are real backend work (services, repositories, DTOs, schemas,
+tests) — confirmed by reading the source directly, not live-verified either
+way. The Railway deployment is down as of this writing ("Application not
+found" on every route, not the app's own 404) — re-verify against real data
+once it's back up, and once `feat/cs-manager-dashboard` merges.
+
+### FE status
+
+Built and shipped in full against both pieces: `features/cs-managers/` now
+has the complete performance dashboard — `CSPerformanceHeader` (manager
+picker + period filter + unassigned-customer badge), `CSManagerSnapshot`
+(4 KPI tiles + score), `BacklogsSection` (3 age-split backlog cards),
+`PortfolioHealthStrip`, `CustomersTable` (filterable/searchable/sortable
+plans table with a CSV export button — the export UI itself is new, main
+never built one), and `PlanDetailDrawer` (onboarding-call log + mark-deed-
+delivered). Role/target/assignment management (promote, demote, unassigned
+queue, targets CRUD) shipped earlier this session against the first piece.
+Ported the shared `KpiTile` component from `main` (`components/shared/
+KpiTile.tsx`) since this branch didn't have it yet.
+
+## 29. Associate manager performance: repository layer only, no controllers
+
+**Purchase confirmations note (for the record): the previous version of this
+ticket flagged purchase confirmations as blocked on the same missing-
+controller shape. Resolved 2026-08-27 — `PurchaseConfirmationAdminController`
+landed on `staging` via PR #46 (list, counts, streaming CSV export,
+resolve-dispute, resend), and `features/purchase-confirmations/` on this
+branch has been rewritten to REST against it. Not live-verified — the
+Railway deployment is down as of this writing ("Application not found" on
+every route) — re-verify against real data once it's back up.**
+
+**Priority: medium — this feature already ships on `admin-graphql-decoupling`
+against the old v1 GraphQL backend (`/associates/managers`), so nothing is
+blocked today. This tracks the REST rebuild.**
+
+### What exists
+
+Same shape of gap as ticket 28, earlier-stage. Local (uncommitted)
+`abode-be-v2` has `src/modules/associate-manager/` — schemas (manager,
+target, onboarding-attempt, manager-rating), repositories (including a
+`dashboard-rollup.ts` + `period.ts` pair that looks like the start of the
+big aggregation), and a guard. **Zero controllers** — confirmed via
+`grep -rl "@Controller" src/modules/associate-manager/`, nothing matches.
+`docs/ASSOCIATE-MANAGER-PERFORMANCE-TRACKER-TODOS.md` (local, uncommitted)
+estimates the whole buildout — module, 3 schemas, 9 repository methods
+including the dashboard `$facet`, 18 service methods, a cron worker, 5
+controllers, cache invalidation, migration script, and tests — at **~32
+engineering days**, ~4 of which are FE cutover across ~50 files.
+
+### Current FE state
+
+`features/associate-managers/` already exists on `admin-graphql-decoupling`
+(53 files, ported already, not something this session added) and is wired to
+`execute()`/`graphql()` against the v1 GraphQL schema — same as it is on
+`main`. It doesn't work right now: this branch's admin session is a v2 REST
+token (`POST /auth/admin/login`), and v1 GraphQL is a separate credential
+store — confirmed live, the same admin's v2 credentials get "Invalid email or
+password" against `api-staging.abodeflex.ng/graphql`. `.env.local` already
+flags this as an unmigrated feature that "will show error states until
+[it's] ported." No FE work is useful here until either this ticket's REST
+buildout ships, or a decision is made about bridging v1/v2 auth for
+still-GraphQL features in the meantime.
+
+### The fix
+
+Build per `docs/ASSOCIATE-MANAGER-PERFORMANCE-TRACKER-TODOS.md`'s rollout
+order (commit it alongside the code, same as ticket 28) — foundation first,
+then the small repository methods, then the dashboard aggregation early
+(flagged in the doc itself as the risk item), then service layer, cron,
+controllers, migration, tests. Ships as one BE PR + one FE PR per the doc's
+own recommendation.

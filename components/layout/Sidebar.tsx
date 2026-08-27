@@ -30,6 +30,7 @@ import {
   Video,
   TrendingUp,
   Upload,
+  UserCog,
   UserPlus,
   Users,
 } from "lucide-react";
@@ -48,6 +49,7 @@ const navGroups = [
       { name: "Sales", link: "/sales", icon: <ShoppingCart /> },
       { name: "Agency", link: "/agency", icon: <Building2 /> },
       { name: "Allocation", link: "/allocation", icon: <Building2 /> },
+      { name: "Purchase Confirmations", link: "/purchase-confirmations", icon: <CheckCircle /> },
       { name: "Marketplace", link: "/marketplace", icon: <Store /> },
       { name: "Meetings", link: "/meetings", icon: <Video /> },
       { name: "Requests", link: "/requests", icon: <ClipboardList /> },
@@ -77,6 +79,14 @@ const navGroups = [
       { name: "Top associates", link: "/associates", icon: <TrendingUp /> },
       { name: "Associate Performance", link: "/associates/performance", icon: <Activity />, requiresSuperAdmin: true },
       { name: "Manager Performance", link: "/associates/managers", icon: <ShieldCheck />, requiresAdminOrManager: true },
+    ]
+  },
+  {
+    title: "Customer Success",
+    isCollapsible: true,
+    icon: <UserCog />,
+    items: [
+      { name: "CS Manager Performance", link: "/customer-managers", icon: <ShieldCheck /> },
     ]
   },
   {
