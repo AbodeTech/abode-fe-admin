@@ -13,6 +13,8 @@ import { couponRoutes } from './coupons';
 import { dashboardRoutes } from './dashboard';
 import { marketplaceRoutes } from './marketplace';
 import { meetingRoutes } from './meetings';
+import { csManagerRoutes } from './cs-managers';
+import { purchaseConfirmationRoutes } from './purchase-confirmations';
 
 /* ============================================================
  * Route registration. Importing this module (via lib/mocks/index.ts)
@@ -58,6 +60,19 @@ import { meetingRoutes } from './meetings';
  *               populate); the four action responses populate seller+asset
  *               only, never buyer — mirrors `findById` exactly (ticket #27).
  * meetings    — /admin/meetings* (CRUD, toggle-active, verifications).
+ * cs-managers — /admin/cs-managers/* (role, targets, unassigned customers)
+ *               and GET /admin/admins, claimed narrowly here as the admin
+ *               picker source — roles-permissions still calls GraphQL's
+ *               getAllAdminWithRoles and should extend this route rather
+ *               than re-registering when it migrates. No dashboard route
+ *               (CSM-21/CSM-39 don't exist on the BE yet, committed or not
+ *               — ticket in docs/BACKEND-REQUESTS.md) and no onboarding-
+ *               attempts / mark-deed-delivered routes (nothing in this
+ *               scoped UI reaches a plan_id to call them with).
+ * purchase-confirmations — /admin/purchase-confirmations/* (list, counts,
+ *               resolve-dispute, resend). No export route — the real
+ *               endpoint streams CSV with @SkipTransform; the FE hook
+ *               refuses in mock mode instead (matches flex-leads).
  * ============================================================ */
 
 let registered = false;
@@ -80,5 +95,7 @@ export function ensureRoutesRegistered(): void {
   registerRoutes(dashboardRoutes);
   registerRoutes(marketplaceRoutes);
   registerRoutes(meetingRoutes);
+  registerRoutes(csManagerRoutes);
+  registerRoutes(purchaseConfirmationRoutes);
   // ...added per feature as it migrates
 }
