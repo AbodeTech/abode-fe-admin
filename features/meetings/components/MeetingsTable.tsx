@@ -25,7 +25,8 @@ import {
 import { formatMeetingWhen, type Meeting } from "../schemas/meeting.schema";
 
 const HEAD =
-  "whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground";
+  "whitespace-nowrap px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground";
+const CELL = "px-4 py-3.5 align-middle";
 
 interface MeetingsTableProps {
   rows?: Meeting[] | null;
@@ -92,7 +93,7 @@ export function MeetingsTable({ rows, isLoading }: MeetingsTableProps) {
                 <TableHead className={HEAD}>Starts (WAT)</TableHead>
                 <TableHead className={HEAD}>Audience</TableHead>
                 <TableHead className={HEAD}>Status</TableHead>
-                <TableHead className={HEAD}>Verified</TableHead>
+                <TableHead className={`${HEAD} text-center`}>Verified</TableHead>
                 <TableHead className={HEAD} />
               </TableRow>
             </TableHeader>
@@ -106,10 +107,12 @@ export function MeetingsTable({ rows, isLoading }: MeetingsTableProps) {
               ) : (
                 safeRows.map((row) => (
                   <TableRow key={row.id}>
-                    <TableCell className="font-medium">{row.name}</TableCell>
-                    <TableCell className="whitespace-nowrap">{formatMeetingWhen(row.starts_at)}</TableCell>
-                    <TableCell>{row.audience_label}</TableCell>
-                    <TableCell>
+                    <TableCell className={`${CELL} font-medium`}>{row.name}</TableCell>
+                    <TableCell className={`${CELL} whitespace-nowrap`}>
+                      {formatMeetingWhen(row.starts_at)}
+                    </TableCell>
+                    <TableCell className={CELL}>{row.audience_label}</TableCell>
+                    <TableCell className={CELL}>
                       <Badge
                         className={
                           row.is_active
@@ -120,8 +123,10 @@ export function MeetingsTable({ rows, isLoading }: MeetingsTableProps) {
                         {row.is_active ? "Active" : "Inactive"}
                       </Badge>
                     </TableCell>
-                    <TableCell>{row.verification_count}</TableCell>
-                    <TableCell className="text-right">{viewButton(row)}</TableCell>
+                    <TableCell className={`${CELL} text-center tabular-nums`}>
+                      {row.verification_count}
+                    </TableCell>
+                    <TableCell className={`${CELL} text-right`}>{viewButton(row)}</TableCell>
                   </TableRow>
                 ))
               )}
