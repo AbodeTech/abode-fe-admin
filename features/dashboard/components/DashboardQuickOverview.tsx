@@ -81,53 +81,52 @@ function MetricCardView({ card }: { card: MetricCard }) {
 
 export default function DashboardQuickOverview({ data }: DashboardQuickOverviewProps) {
   const [showAll, setShowAll] = useState(false);
-  const delta = data.delta_pct ?? null;
 
   const primaryCards: MetricCard[] = [
     {
       id: "users",
       title: "Users",
-      value: data.total_users || 0,
+      value: data.total_users.value,
       description: "Total registered users",
       icon: <UsersIcon className="h-4 w-4 shrink-0 text-muted-foreground" />,
     },
     {
       id: "associates",
       title: "Associates",
-      value: data.associate_users || 0,
+      value: data.associate_users.value,
       description: "Total associates",
       icon: <UsersIcon className="h-4 w-4 shrink-0 text-muted-foreground" />,
     },
     {
       id: "associates-pro",
       title: "Associates Pro",
-      value: data.associate_pro_users || 0,
+      value: data.associate_pro_users.value,
       description: "Total pro associates",
       icon: <UsersIcon className="h-4 w-4 shrink-0 text-muted-foreground" />,
     },
     {
       id: "revenue",
       title: "Revenue",
-      value: formatCurrency(data.period_revenue || 0),
+      value: formatCurrency(data.period_revenue.value),
       description: "Money taken in the selected window",
       icon: <DollarSignIcon className="h-4 w-4 shrink-0 text-muted-foreground" />,
-      delta: delta?.period_revenue,
+      delta: data.period_revenue.delta_pct,
     },
     {
       id: "inflow",
       title: "Inflow",
-      value: formatCurrency(data.inflow || 0),
+      value: formatCurrency(data.inflow.value),
       description: "Total incoming funds",
       icon: <ArrowDownIcon className="h-4 w-4 shrink-0 text-green-500" />,
-      delta: delta?.inflow,
+      delta: data.inflow.delta_pct,
     },
     {
       id: "outflow",
       title: "Outflow",
-      value: formatCurrency(data.outflow || 0),
+      value: formatCurrency(data.outflow.value),
       description: "Total outgoing funds",
       icon: <ArrowUpIcon className="h-4 w-4 shrink-0 text-destructive" />,
-      delta: delta?.outflow,
+      delta: data.outflow.delta_pct,
     },
   ];
 
@@ -135,14 +134,14 @@ export default function DashboardQuickOverview({ data }: DashboardQuickOverviewP
     {
       id: "products",
       title: "Products",
-      value: data.total_assets || 0,
+      value: data.total_assets.value,
       description: "Total products available",
       icon: <PackageIcon className="h-4 w-4 shrink-0 text-muted-foreground" />,
     },
     {
       id: "suspended-users",
       title: "Suspended Users",
-      value: data.suspended_users || 0,
+      value: data.suspended_users.value,
       description: "Click to view details",
       icon: <UsersIcon className="h-4 w-4 shrink-0 text-destructive" />,
       href: "/users/suspended",
@@ -150,7 +149,7 @@ export default function DashboardQuickOverview({ data }: DashboardQuickOverviewP
     {
       id: "terminated-plans",
       title: "Termination Payment Plans",
-      value: data.suspended_payment_plans || 0,
+      value: data.suspended_payment_plans.value,
       description: "Click to view details",
       icon: <UsersIcon className="h-4 w-4 shrink-0 text-destructive" />,
       href: "/users/suspended-payment-plans",
@@ -158,7 +157,7 @@ export default function DashboardQuickOverview({ data }: DashboardQuickOverviewP
     {
       id: "default-users",
       title: "Default Users",
-      value: data.default_users || 0,
+      value: data.default_users.value,
       description: "Click to view details",
       icon: <UsersIcon className="h-4 w-4 shrink-0 text-destructive" />,
       href: "/users/defaults",
@@ -166,10 +165,10 @@ export default function DashboardQuickOverview({ data }: DashboardQuickOverviewP
     {
       id: "payment-plans",
       title: "Payment plans",
-      value: data.total_payment_plans || 0,
+      value: data.total_payment_plans.value,
       description: (
         <>
-          {data.closed_plans_count || 0} closed · {data.admin_created_plans_count || 0}{" "}
+          {data.closed_plans_count.value} closed · {data.admin_created_plans_count.value}{" "}
           admin-created
         </>
       ),
@@ -178,15 +177,15 @@ export default function DashboardQuickOverview({ data }: DashboardQuickOverviewP
     {
       id: "new-plans",
       title: "New plans (period)",
-      value: data.period_new_payment_plans || 0,
-      description: <>{data.period_new_users || 0} new users in period</>,
+      value: data.period_new_payment_plans.value,
+      description: <>{data.period_new_users.value} new users in period</>,
       icon: <ShoppingCartIcon className="h-4 w-4 shrink-0 text-muted-foreground" />,
-      delta: delta?.period_new_payment_plans,
+      delta: data.period_new_payment_plans.delta_pct,
     },
     {
       id: "wallet",
       title: "Wallet Balance",
-      value: formatCurrency(data.wallet_balances_held_total || 0),
+      value: formatCurrency(data.wallet_balances_held_total.value),
       description: "Total wallet balances held",
       icon: <WalletIcon className="h-4 w-4 shrink-0 text-muted-foreground" />,
     },
