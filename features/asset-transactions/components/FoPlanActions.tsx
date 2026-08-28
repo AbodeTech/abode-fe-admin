@@ -31,6 +31,8 @@ import {
   useUnsuspendFoPlan,
 } from "../hooks/use-fo-plan";
 
+type LandPlanQuery = ReturnType<typeof useFoLandPlan>;
+
 function formatDate(value: string | null | undefined): string {
   if (!value) return "—";
   const parsed = new Date(value);
@@ -61,8 +63,18 @@ function allocationLabel(plan: FoLandPlan): string {
   return "Unallocated";
 }
 
-export function FoPlanActions({ planId }: { planId: string }) {
-  const { data: plan, isLoading, error } = useFoLandPlan(planId);
+export function FoPlanActions({
+  planId,
+  usePlan = useFoLandPlan,
+  title = "Land payment plan",
+  allocateDescription = "Full-ownership allocation is a single block and plot pair on the land plan.",
+}: {
+  planId: string;
+  usePlan?: (planId: string | null | undefined) => LandPlanQuery;
+  title?: string;
+  allocateDescription?: string;
+}) {
+  const { data: plan, isLoading, error } = usePlan(planId);
   const suspend = useSuspendFoPlan();
   const unsuspend = useUnsuspendFoPlan();
   const allocate = useAllocateFoPlan();
@@ -166,7 +178,7 @@ export function FoPlanActions({ planId }: { planId: string }) {
   return (
     <section className="rounded-lg border">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3">
-        <h2 className="font-medium">Land payment plan</h2>
+        <h2 className="font-medium">{title}</h2>
         <span
           className={
             suspended
@@ -281,7 +293,7 @@ export function FoPlanActions({ planId }: { planId: string }) {
           <DialogHeader>
             <DialogTitle>{hasAllocation ? "Update allocation" : "Allocate plot"}</DialogTitle>
             <DialogDescription>
-              Full-ownership allocation is a single block and plot pair on the land plan.
+              {allocateDescription}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-3 sm:grid-cols-2">

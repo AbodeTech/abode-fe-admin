@@ -49,6 +49,7 @@ const navGroups = [
       { name: "Sales", link: "/sales", icon: <ShoppingCart /> },
       { name: "Agency", link: "/agency", icon: <Building2 /> },
       { name: "Allocation", link: "/allocation", icon: <Building2 /> },
+      { name: "Commercial Plots", link: "/commercial-plots", icon: <LandPlot /> },
       { name: "Purchase Confirmations", link: "/purchase-confirmations", icon: <CheckCircle /> },
       { name: "Marketplace", link: "/marketplace", icon: <Store /> },
       { name: "Meetings", link: "/meetings", icon: <Video /> },

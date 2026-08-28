@@ -1,5 +1,6 @@
 import { MockHttpError, type MockRoutes } from '../router';
 import { findPerson, matchesPersonSearch } from './people';
+import { findCommercialPlan } from './commercial-plots';
 import { body, paged } from './util';
 
 /* ============================================================
@@ -514,8 +515,8 @@ function findOutrightSibling(row: MockPurchase): MockPurchase | null {
   );
 }
 
-function requireFoPlan(id: string): MockFoPlan {
-  const plan = foPlans[id];
+function requireFoPlan(id: string): MockFoPlan | NonNullable<ReturnType<typeof findCommercialPlan>> {
+  const plan = foPlans[id] ?? findCommercialPlan(id);
   if (!plan) throw new MockHttpError(404, 'Payment plan not found', 'PAYMENT_PLAN_NOT_FOUND');
   return plan;
 }
