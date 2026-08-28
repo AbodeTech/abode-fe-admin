@@ -5,24 +5,34 @@ import { z } from 'zod';
  *
  * An asset is a **place**, and what it sells is an **offer**:
  *
- *   Asset → AssetOffer (flex | full-ownership) → Size → Plan
+ *   Asset → AssetOffer (flex | full-ownership | commercial) → Size → Plan
  *
- * `AssetOffer` is unique on (asset_id, offer_type), so one asset can sell both
- * flex and full-ownership at once. That is why there is one assets table
- * rather than the two v1 had — offer type is a property of a row, not a
- * separate screen.
+ * `AssetOffer` is unique on (asset_id, offer_type), so one asset can sell
+ * flex, full-ownership and commercial at once. That is why there is one
+ * assets table rather than the per-type screens v1 had — offer type is a
+ * property of a row, not a separate screen.
  *
  * Money is decimal naira. See docs/ASSETS-ADMIN-DESIGN.md.
  * ============================================================ */
 
-export const OFFER_TYPES = ['flex', 'full-ownership'] as const;
+export const OFFER_TYPES = ['flex', 'full-ownership', 'commercial'] as const;
 export const OfferTypeSchema = z.enum(OFFER_TYPES);
 export type OfferType = z.infer<typeof OfferTypeSchema>;
 
 export const OFFER_TYPE_LABELS: Record<OfferType, string> = {
   flex: 'Flex',
   'full-ownership': 'Full ownership',
+  commercial: 'Commercial',
 };
+
+/**
+ * Mirrors the backend's `usesFoModel()` (`asset-offer.schema.ts`): commercial
+ * offers reuse the full-ownership shape — `payment_type` required, sizes
+ * carry `document_fee`, tenor 0 is a valid outright plan. Only flex is exempt.
+ */
+export function usesFoModel(offerType: OfferType): boolean {
+  return offerType === 'full-ownership' || offerType === 'commercial';
+}
 
 export const VISIBILITIES = ['draft', 'internal', 'public'] as const;
 export const VisibilitySchema = z.enum(VISIBILITIES);
