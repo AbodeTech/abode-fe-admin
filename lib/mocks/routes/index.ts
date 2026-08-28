@@ -1,4 +1,5 @@
 import { registerRoutes } from '../router';
+import { allocationRoutes } from './allocation';
 import { assetRoutes } from './assets';
 import { authRoutes } from './auth';
 import { commissionRoutes } from './commission';
@@ -34,6 +35,12 @@ import { assetTransactionRoutes } from './asset-transactions';
  *               routes (/admin/users/:id/manual-upgrade, referral-status,
  *               referrer, downlines) are unclaimed — they belong to whichever
  *               feature builds that UI.
+ * allocation  — GET /admin/allocation/eligible-clients,
+ *               GET /admin/allocation/assets/:asset_id/available-plots,
+ *               POST /admin/allocation/payment-plans/:plan_id/allocate,
+ *               .../deallocate, .../reassign, .../send-email,
+ *               GET .../history. Only the assets dropdown and CSV export
+ *               are still GraphQL — see lib/mocks/handlers/allocation.ts.
  * ============================================================ */
 
 let registered = false;
@@ -48,5 +55,6 @@ export function ensureRoutesRegistered(): void {
   registerRoutes(upgradeRoutes);
   registerRoutes(withdrawalRoutes);
   registerRoutes(assetTransactionRoutes);
+  registerRoutes(allocationRoutes);
   // ...added per feature as it migrates
 }

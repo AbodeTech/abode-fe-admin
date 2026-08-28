@@ -1,8 +1,7 @@
 "use client";
 
 import React from "react";
-import { graphql } from "@/lib/gql";
-import { FragmentType, useFragment as getFragmentData } from "@/lib/gql";
+import type { AllocationClient } from "../schemas/allocation.schema";
 import {
   Table,
   TableBody,
@@ -23,36 +22,32 @@ import {
   AdminMobileStack,
 } from "@/components/shared/admin-responsive-table";
 
-export const AllocationTableRowFragment = graphql(`
-  fragment AllocationTableRowFragment on EligibleClient {
-    allocation
-    allocationStatus
-    allocationDate
-    amountPaid
-    assetName
-    assetSize
-    assetType
-    duration
-    email
-    end_date
-    firstName
-    lastName
-    location
-    paymentPlan
-    paymentPercentage
-    phoneNumber
-    referral
-    referralStatus
-    totalPrice
-    unit
-  }
-`);
+export type AllocationTableRow = Pick<
+  AllocationClient,
+  | "payment_plan_id"
+  | "name"
+  | "email"
+  | "phone"
+  | "asset_id"
+  | "asset_name"
+  | "asset_location"
+  | "asset_type"
+  | "size"
+  | "no_of_units"
+  | "amount_paid"
+  | "amount_payable"
+  | "balance"
+  | "payment_percentage"
+  | "allocation_status"
+  | "allocation_date"
+  | "date_joined"
+>;
 
 interface AllocationTableProps {
-  rows?: (FragmentType<typeof AllocationTableRowFragment> | null)[] | null;
+  rows?: AllocationTableRow[] | null;
   isLoading?: boolean;
-  onSend: (client: FragmentType<typeof AllocationTableRowFragment>) => void;
-  onResend: (client: FragmentType<typeof AllocationTableRowFragment>) => void;
+  onSend: (client: AllocationTableRow) => void;
+  onResend: (client: AllocationTableRow) => void;
 }
 
 const formatAmount = (value?: number | null) =>
@@ -79,6 +74,30 @@ const formatDate = (value?: string | null) => {
   return date.toLocaleDateString();
 };
 
+const ALLOCATION_STATUS_LABELS: Record<AllocationTableRow["allocation_status"], string> = {
+  pending: "Not assigned yet",
+  allocated: "Allocated",
+  email_sent: "Email sent",
+};
+
+function AllocationStatusBadge({ status }: { status: AllocationTableRow["allocation_status"] }) {
+  if (status === "pending") {
+    return (
+      <Badge
+        variant="secondary"
+        className="inline-block max-w-full whitespace-normal bg-orange-100 px-2.5 py-1 text-left text-sm font-normal leading-snug text-orange-800"
+      >
+        {ALLOCATION_STATUS_LABELS[status]}
+      </Badge>
+    );
+  }
+  return (
+    <Badge className="inline-block max-w-full wrap-break-word bg-green-100 px-2.5 py-1 text-left text-sm font-normal leading-snug text-green-800 hover:bg-green-100">
+      {ALLOCATION_STATUS_LABELS[status]}
+    </Badge>
+  );
+}
+
 export function AllocationTable({ rows, isLoading, onSend, onResend }: AllocationTableProps) {
   if (isLoading) {
     return (
@@ -93,9 +112,7 @@ export function AllocationTable({ rows, isLoading, onSend, onResend }: Allocatio
     );
   }
 
-  const safeRows = (rows ?? []).filter(
-    (item): item is NonNullable<typeof item> => item !== null
-  );
+  const safeRows = rows ?? [];
 
   return (
     <Card className="min-w-0 border-none shadow-sm">
@@ -105,35 +122,26 @@ export function AllocationTable({ rows, isLoading, onSend, onResend }: Allocatio
             <p className="py-8 text-center text-sm text-muted-foreground">No eligible clients found.</p>
           ) : (
             safeRows.map((row, idx) => {
-              const client = getFragmentData(AllocationTableRowFragment, row);
-              const hasAllocation = Boolean(client.allocation);
+              const client = row;
+              const hasAllocation = client.allocation_status !== "pending";
               return (
-                <AdminMobileCard key={`${client.email}-${idx}`} title={`${client.firstName} ${client.lastName}`} subtitle={client.email}>
-                  <AdminMobileField label="Phone" value={client.phoneNumber || "—"} />
-                  <AdminMobileField label="Referrer" value={client.referral || "not added yet"} />
+                <AdminMobileCard key={`${client.payment_plan_id}-${idx}`} title={client.name} subtitle={client.email}>
+                  <AdminMobileField label="Phone" value={client.phone || "—"} />
                   <AdminMobileField
                     label="Asset"
-                    value={client.assetType ? `${client.assetName} (${client.assetType})` : (client.assetName ?? "—")}
+                    value={client.asset_type ? `${client.asset_name} (${client.asset_type})` : client.asset_name}
                   />
-                  <AdminMobileField label="Land size" value={formatNumber(client.assetSize)} />
-                  <AdminMobileField label="Units" value={formatNumber(client.unit)} />
-                  <AdminMobileField label="Payment %" value={`${client.paymentPercentage ?? "—"}%`} />
-                  <AdminMobileField label="Amount paid" value={formatAmount(client.amountPaid)} />
-                  <AdminMobileField label="Total price" value={formatAmount(client.totalPrice)} />
-                  <AdminMobileField label="Duration" value={`${client.duration} months`} />
-                  <AdminMobileField label="Location" value={client.location ?? "—"} />
-                  <AdminMobileField label="Bought date" value={formatDate(client.end_date)} />
+                  <AdminMobileField label="Land size" value={formatNumber(client.size)} />
+                  <AdminMobileField label="Units" value={formatNumber(client.no_of_units)} />
+                  <AdminMobileField label="Payment %" value={`${client.payment_percentage}%`} />
+                  <AdminMobileField label="Amount paid" value={formatAmount(client.amount_paid)} />
+                  <AdminMobileField label="Amount payable" value={formatAmount(client.amount_payable)} />
+                  <AdminMobileField label="Balance" value={formatAmount(client.balance)} />
+                  <AdminMobileField label="Location" value={client.asset_location ?? "—"} />
+                  <AdminMobileField label="Date joined" value={formatDate(client.date_joined)} />
                   <AdminMobileField
                     label="Allocation"
-                    value={
-                      hasAllocation ? (
-                        <Badge className="bg-green-100 text-green-800 hover:bg-green-100">{client.allocation}</Badge>
-                      ) : (
-                        <Badge variant="secondary" className="bg-orange-100 text-orange-800">
-                          Not assigned yet
-                        </Badge>
-                      )
-                    }
+                    value={<AllocationStatusBadge status={client.allocation_status} />}
                   />
                   <div className="border-t border-border pt-2">
                     {hasAllocation ? (
@@ -155,14 +163,11 @@ export function AllocationTable({ rows, isLoading, onSend, onResend }: Allocatio
         </AdminMobileStack>
 
         <AdminDesktopTableWrap>
-        <Table className="w-max min-w-[1520px] table-auto text-sm">
+        <Table className="w-max min-w-[1420px] table-auto text-sm">
           <TableHeader>
             <TableRow className="hover:bg-transparent">
               <TableHead className="min-w-44 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Client Name
-              </TableHead>
-              <TableHead className="min-w-40 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Referrer
               </TableHead>
               <TableHead className="min-w-52 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Asset Name
@@ -180,19 +185,19 @@ export function AllocationTable({ rows, isLoading, onSend, onResend }: Allocatio
                 Amount Paid
               </TableHead>
               <TableHead className="min-w-38 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Total Price
+                Amount Payable
               </TableHead>
-              <TableHead className="min-w-26 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Duration
+              <TableHead className="min-w-38 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Balance
               </TableHead>
               <TableHead className="min-w-48 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Location
               </TableHead>
               <TableHead className="min-w-34 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Bought Date
+                Date Joined
               </TableHead>
               <TableHead className="min-w-40 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Allocation #
+                Allocation
               </TableHead>
               <TableHead className="min-w-38 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Action
@@ -203,7 +208,7 @@ export function AllocationTable({ rows, isLoading, onSend, onResend }: Allocatio
             {safeRows.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={13}
+                  colSpan={12}
                   className="whitespace-normal px-4 py-12 text-center text-sm text-muted-foreground"
                 >
                   No eligible clients found.
@@ -211,64 +216,48 @@ export function AllocationTable({ rows, isLoading, onSend, onResend }: Allocatio
               </TableRow>
             ) : (
               safeRows.map((row, idx) => {
-                const client = getFragmentData(AllocationTableRowFragment, row);
-                const hasAllocation = Boolean(client.allocation);
+                const client = row;
+                const hasAllocation = client.allocation_status !== "pending";
 
                 return (
-                  <TableRow key={`${client.email}-${idx}`}>
+                  <TableRow key={`${client.payment_plan_id}-${idx}`}>
                     <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed">
-                      <span className="block wrap-break-word font-medium">
-                        {client.firstName} {client.lastName}
-                      </span>
+                      <span className="block wrap-break-word font-medium">{client.name}</span>
                     </TableCell>
                     <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed wrap-break-word">
-                      {client.referral || "not added yet"}
-                    </TableCell>
-                    <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed wrap-break-word">
-                      {client.assetType
-                        ? `${client.assetName} (${client.assetType})`
-                        : client.assetName}
+                      {client.asset_type
+                        ? `${client.asset_name} (${client.asset_type})`
+                        : client.asset_name}
                     </TableCell>
                     <TableCell className="align-top whitespace-nowrap px-4 py-4 tabular-nums leading-relaxed">
-                      {formatNumber(client.assetSize)}
+                      {formatNumber(client.size)}
                     </TableCell>
                     <TableCell className="align-top whitespace-nowrap px-4 py-4 tabular-nums leading-relaxed">
-                      {formatNumber(client.unit)}
+                      {formatNumber(client.no_of_units)}
                     </TableCell>
                     <TableCell className="align-top whitespace-nowrap px-4 py-4 tabular-nums leading-relaxed">
-                      {client.paymentPercentage ?? "—"}%
+                      {client.payment_percentage}%
                     </TableCell>
                     <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 tabular-nums leading-relaxed wrap-break-word">
-                      {formatAmount(client.amountPaid)}
+                      {formatAmount(client.amount_paid)}
                     </TableCell>
                     <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 tabular-nums leading-relaxed wrap-break-word">
-                      {formatAmount(client.totalPrice)}
+                      {formatAmount(client.amount_payable)}
                     </TableCell>
-                    <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed wrap-break-word">
-                      {client.duration} months
+                    <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 tabular-nums leading-relaxed wrap-break-word">
+                      {formatAmount(client.balance)}
                     </TableCell>
                     <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed">
                       <div className="flex min-w-0 items-start gap-2">
                         <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                        <span className="min-w-0 wrap-break-word">{client.location}</span>
+                        <span className="min-w-0 wrap-break-word">{client.asset_location}</span>
                       </div>
                     </TableCell>
                     <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed wrap-break-word">
-                      {formatDate(client.end_date)}
+                      {formatDate(client.date_joined)}
                     </TableCell>
                     <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed">
-                      {hasAllocation ? (
-                        <Badge className="inline-block max-w-full wrap-break-word bg-green-100 px-2.5 py-1 text-left text-sm font-normal leading-snug text-green-800 hover:bg-green-100">
-                          {client.allocation}
-                        </Badge>
-                      ) : (
-                        <Badge
-                          variant="secondary"
-                          className="inline-block max-w-full whitespace-normal bg-orange-100 px-2.5 py-1 text-left text-sm font-normal leading-snug text-orange-800"
-                        >
-                          Not assigned yet
-                        </Badge>
-                      )}
+                      <AllocationStatusBadge status={client.allocation_status} />
                     </TableCell>
                     <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4">
                       {hasAllocation ? (

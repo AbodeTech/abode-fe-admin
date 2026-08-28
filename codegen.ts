@@ -17,7 +17,7 @@ const config: CodegenConfig = {
     // TEMP exclusions — FE queries ahead of / drifted from BE staging schema.
     // Remove each once the BE schema catches up (or the FE hook is updated).
     "!features/assets/hooks/use-plots.ts",
-    "!features/allocation/hooks/use-allocate-land.ts",
+    "!features/allocation/hooks/use-allocation-export.ts",
     "!features/associates/hooks/use-top-associates.ts",
     "!features/associate-managers/hooks/use-manager-rating-series.ts",
   ],
