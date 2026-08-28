@@ -36,6 +36,7 @@ import {
   MessagesSquare,
   Inbox,
   AlertOctagon,
+  Video,
 } from "lucide-react";
 
 import LogOutModal from "@/components/settings/LogOutModal";
@@ -81,6 +82,7 @@ const navGroups = [
       { name: "Top associates", link: "/associates", icon: <TrendingUp /> },
       { name: "Associate Performance", link: "/associates/performance", icon: <Activity />, requiresSuperAdmin: true },
       { name: "Manager Performance", link: "/associates/managers", icon: <ShieldCheck />, requiresAdminOrManager: true },
+      { name: "Meetings", link: "/meetings", icon: <Video /> },
     ]
   },
   {
