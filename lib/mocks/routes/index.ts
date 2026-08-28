@@ -39,8 +39,9 @@ import { purchaseConfirmationRoutes } from './purchase-confirmations';
  * asset-transactions — GET /admin/transactions (serves purchase rows; other
  *               types return empty pages until their screens migrate),
  *               POST /admin/acquisitions/transactions/:txId/approve|decline,
- *               GET /admin/fo/purchase/transactions/:txId, and FO land-plan
- *               GET/PATCH/POST under /admin/fo/purchase/payment-plans/:id.
+ *               GET /admin/fo/purchase/transactions/:txId, FO land-plan
+ *               GET /admin/fo/purchase/payment-plans/:id, and plan actions
+ *               POST /admin/acquisitions/plans/:planId/suspend|unsuspend|allocate.
  *               The wallet
  *               family (/admin/wallets/*) is unclaimed.
  * upgrades    — /admin/referrals/upgrades/* and POST

@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { apiGet, apiPatch, apiPost, isClientError } from '@/lib/api-client';
+import { apiGet, apiPost, isClientError } from '@/lib/api-client';
 
 import {
   FoLandPlanDetailSchema,
@@ -36,31 +36,27 @@ function useFoPlanMutation<TVariables, TData>(
   });
 }
 
-/** PATCH /admin/fo/purchase/payment-plans/:id/suspend — `{ reason }` min 20. */
+/** POST /admin/acquisitions/plans/:planId/suspend — `{ reason }` min 20. */
 export const useSuspendFoPlan = () =>
   useFoPlanMutation((args: { id: string; reason: string }) =>
-    apiPatch(
-      `/admin/fo/purchase/payment-plans/${args.id}/suspend`,
+    apiPost(
+      `/admin/acquisitions/plans/${args.id}/suspend`,
       { reason: args.reason },
       FoPlanActionResultSchema
     )
   );
 
-/** PATCH /admin/fo/purchase/payment-plans/:id/unsuspend — empty body; resets default count. */
+/** POST /admin/acquisitions/plans/:planId/unsuspend — empty body; resets default count. */
 export const useUnsuspendFoPlan = () =>
   useFoPlanMutation((args: { id: string }) =>
-    apiPatch(
-      `/admin/fo/purchase/payment-plans/${args.id}/unsuspend`,
-      {},
-      FoPlanActionResultSchema
-    )
+    apiPost(`/admin/acquisitions/plans/${args.id}/unsuspend`, {}, FoPlanActionResultSchema)
   );
 
-/** POST /admin/fo/purchase/payment-plans/:id/allocate — `{ block, plot }`. */
+/** POST /admin/acquisitions/plans/:planId/allocate — `{ block, plot }`. */
 export const useAllocateFoPlan = () =>
   useFoPlanMutation((args: { id: string } & AllocateFoPlanInput) =>
     apiPost(
-      `/admin/fo/purchase/payment-plans/${args.id}/allocate`,
+      `/admin/acquisitions/plans/${args.id}/allocate`,
       { block: args.block, plot: args.plot },
       FoPlanActionResultSchema
     )

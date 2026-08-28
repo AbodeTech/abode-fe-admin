@@ -7,8 +7,8 @@
  * 2026-08-13 (tickets 24a/b/d). Review is
  * POST /admin/acquisitions/transactions/:txId/approve|decline for both families.
  * Full-ownership rows open GET /admin/fo/purchase/transactions/:id.
- * Land plans after approval: PATCH .../payment-plans/:id/suspend|unsuspend
- * and POST .../payment-plans/:id/allocate.
+ * Land plans after approval:
+ * POST /admin/acquisitions/plans/:planId/suspend|unsuspend|allocate.
  * `fo_outright_doc` has no Review action — approve the parent land row.
  *
  * Production's **Property Owner** column has no v2 field (⛔ ticket 24b).

@@ -197,9 +197,9 @@ Asset purchases (the screen at `/transactions/assets`) are **live**. Other trans
 | Approve transfer | `POST /admin/acquisitions/transactions/:txId/approve` | ✅ real | Empty body. BE routes by kind (flex or FO). Returns `{ payment_plan_id }` (flex) or `{ plan_id }` (FO). Permission `approve_payments`. Do **not** call on `fo_outright_doc`. |
 | Decline transfer | `POST /admin/acquisitions/transactions/:txId/decline` | ✅ real | `{ reason }` min 20 chars. Outright land also declines the sibling doc tx. |
 | FO land plan detail | `GET /admin/fo/purchase/payment-plans/:id` | ✅ real | Land plan with linked document plan. Used to drive suspend / allocate on the FO transaction page. |
-| Suspend FO land plan | `PATCH /admin/fo/purchase/payment-plans/:id/suspend` | ✅ real | `{ reason }` min 20 chars (`DeclineFoTransferDto`). |
-| Unsuspend FO land plan | `PATCH /admin/fo/purchase/payment-plans/:id/unsuspend` | ✅ real | Empty body. Resets default count. |
-| Allocate FO land plan | `POST /admin/fo/purchase/payment-plans/:id/allocate` | ✅ real | `{ block, plot }` both required strings. Also used from the allocation modal for `assetType=full-ownership`. |
+| Suspend plan | `POST /admin/acquisitions/plans/:planId/suspend` | ✅ real | `{ reason }` min 20 chars. Replaces FO/flex/legacy acquisition suspend. |
+| Unsuspend plan | `POST /admin/acquisitions/plans/:planId/unsuspend` | ✅ real | Empty body. Resets default count. Replaces FO/flex unsuspend. |
+| Allocate plan | `POST /admin/acquisitions/plans/:planId/allocate` | ✅ real | `{ block, plot }` both required strings. Also used from the allocation modal for `assetType=full-ownership`. |
 | `GetTopupTransaction`, `GetDocumentTransaction`, `GetCommissionTransactions` | `GET /admin/transactions?type=…` | ⚠️ adapt | Same list endpoint; those screens are not migrated. |
 | `AdminTransactionDataPoint`, `GetAssetTransactionsStatistics` | — | 🚧 `GET /admin/transactions/statistics` | |
 
@@ -222,11 +222,11 @@ Because this feature is large and entirely unbacked, consider migrating it
 | `analytics` | `GetSalesAnalytics` (+2) | `GET /admin/analytics/sales` |
 | `sales` | `GetSalesRecord`, `GetSalesStatusCounts`, `GetSalesDashboard`, `ExportSales` | `GET /admin/sales[...]` |
 | `campaigns` | 8 ops (raffle, hamper, Campaign2000, recruitment analytics, leaderboards) | `GET /admin/campaigns/*` |
-| `allocation` | 7 ops (eligible clients, allocate/deallocate/reassign land, allocation email) | `/admin/allocation/*` — FO assign/reassign is `POST /admin/fo/purchase/payment-plans/:id/allocate` |
+| `allocation` | 7 ops (eligible clients, allocate/deallocate/reassign land, allocation email) | `/admin/allocation/*` — FO assign/reassign is `POST /admin/acquisitions/plans/:planId/allocate` |
 
 None of these exist on the BE as GraphQL domains. Campaigns remain unbacked.
 FO assign/reassign is the exception: it uses
-`POST /admin/fo/purchase/payment-plans/:id/allocate` (see Transactions above).
+`POST /admin/acquisitions/plans/:planId/allocate` (see Transactions above).
 
 ---
 

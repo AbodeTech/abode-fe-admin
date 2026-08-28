@@ -4,7 +4,7 @@ import { PURCHASE_DECLINE_REASON_MIN } from './purchase.schema';
 
 /* ============================================================
  * Full-ownership land payment plan — GET /admin/fo/purchase/payment-plans/:id
- * plus suspend / unsuspend / allocate.
+ * plus POST /admin/acquisitions/plans/:planId/suspend|unsuspend|allocate.
  *
  * Suspend reuses the decline DTO: `{ reason }` min 20 chars.
  * Allocate is `{ block, plot }` — both required strings, one pair.

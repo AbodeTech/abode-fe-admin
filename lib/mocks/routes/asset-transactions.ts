@@ -5,7 +5,8 @@ import { body, paged } from './util';
 /* ============================================================
  * Asset transactions mocks — GET /admin/transactions (purchase rows),
  * the unified review pair under /admin/acquisitions/transactions/:txId,
- * FO transaction detail, and FO land-plan suspend / unsuspend / allocate.
+ * FO transaction detail, GET FO land-plan, and unified plan
+ * suspend / unsuspend / allocate under /admin/acquisitions/plans/:planId.
  *
  * Fixtures cover the states the page exists to render: a transfer-paid
  * initial purchase and a transfer-paid installment both awaiting review, a
@@ -674,8 +675,8 @@ export const assetTransactionRoutes: MockRoutes = {
 
   'GET /admin/fo/purchase/payment-plans/:id': ({ params }) => requireFoPlan(params.id),
 
-  'PATCH /admin/fo/purchase/payment-plans/:id/suspend': ({ params, body: raw }) => {
-    const plan = requireFoPlan(params.id);
+  'POST /admin/acquisitions/plans/:planId/suspend': ({ params, body: raw }) => {
+    const plan = requireFoPlan(params.planId);
     const dto = body<{ reason?: string }>(raw);
     const reason = (dto.reason ?? '').trim();
     if (reason.length < 20) {
@@ -693,8 +694,8 @@ export const assetTransactionRoutes: MockRoutes = {
     return { message: 'Payment plan suspended.', _id: plan._id };
   },
 
-  'PATCH /admin/fo/purchase/payment-plans/:id/unsuspend': ({ params }) => {
-    const plan = requireFoPlan(params.id);
+  'POST /admin/acquisitions/plans/:planId/unsuspend': ({ params }) => {
+    const plan = requireFoPlan(params.planId);
     if (!plan.is_suspended) {
       throw new MockHttpError(409, 'Payment plan is not suspended', 'NOT_SUSPENDED');
     }
@@ -704,8 +705,8 @@ export const assetTransactionRoutes: MockRoutes = {
     return { message: 'Payment plan unsuspended.', _id: plan._id };
   },
 
-  'POST /admin/fo/purchase/payment-plans/:id/allocate': ({ params, body: raw }) => {
-    const plan = requireFoPlan(params.id);
+  'POST /admin/acquisitions/plans/:planId/allocate': ({ params, body: raw }) => {
+    const plan = requireFoPlan(params.planId);
     const dto = body<{ block?: string; plot?: string }>(raw);
     const block = (dto.block ?? '').trim();
     const plot = (dto.plot ?? '').trim();

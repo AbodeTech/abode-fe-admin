@@ -1682,10 +1682,16 @@ so the backend team can see they were considered and dismissed.
 >
 > ```
 > GET   /admin/fo/purchase/payment-plans/:id
-> PATCH /admin/fo/purchase/payment-plans/:id/suspend
-> PATCH /admin/fo/purchase/payment-plans/:id/unsuspend
-> POST  /admin/fo/purchase/payment-plans/:id/allocate
+> POST  /admin/acquisitions/plans/:planId/suspend
+> POST  /admin/acquisitions/plans/:planId/unsuspend
+> POST  /admin/acquisitions/plans/:planId/allocate
 > ```
+>
+> **Update 2026-08-27:** plan suspend / unsuspend / allocate unified to those
+> three POSTs. Do not call `PATCH /admin/fo/purchase/payment-plans/:id/suspend|unsuspend`,
+> `POST /admin/fo/purchase/payment-plans/:id/allocate`,
+> `PATCH /admin/flex/purchase/plans/:planId/suspend|unsuspend`, or
+> `PATCH /acquisitions/:id/suspend`.
 >
 > **Frontend status: wired.** `features/asset-transactions` reviews both
 > families through that unified pair. `fo_outright_doc` is not reviewable —
