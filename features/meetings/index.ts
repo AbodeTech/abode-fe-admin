@@ -25,6 +25,7 @@ export type { MeetingListFilters } from './hooks/query-keys';
 export {
   MEETING_AUDIENCE_TYPES,
   MEETING_AUDIENCE_LABELS,
+  DEFAULT_DURATION_MINUTES,
   formatMeetingWhen,
 } from './schemas/meeting.schema';
 export type {

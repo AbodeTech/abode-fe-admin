@@ -13,6 +13,7 @@ import { Pagination } from "@/components/shared/Pagination";
 import { SuspensePageFallback } from "@/components/shared/page-content-loader";
 import { useHasPermission } from "@/hooks/use-admin-permission";
 import {
+  DEFAULT_DURATION_MINUTES,
   DEFAULT_MEETINGS_LIMIT,
   EditMeetingDialog,
   formatMeetingWhen,
@@ -122,24 +123,38 @@ function MeetingDetailContent() {
 
       {meeting ? (
         <>
-          <Card className="border-none shadow-sm">
+          <Card className="min-w-0 overflow-hidden border-none shadow-sm">
             <CardHeader>
               <CardTitle className="text-base">Details</CardTitle>
             </CardHeader>
-            <CardContent className="grid gap-4 text-sm sm:grid-cols-2">
+            <CardContent className="grid min-w-0 gap-4 overflow-hidden text-sm sm:grid-cols-2">
               <div>
                 <p className="text-muted-foreground">Slug</p>
                 <p className="font-medium">{meeting.slug}</p>
               </div>
               <div>
+                <p className="text-muted-foreground">Duration</p>
+                <p className="font-medium">
+                  {meeting.duration_minutes ?? DEFAULT_DURATION_MINUTES} minutes
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Ends (WAT)</p>
+                <p className="font-medium">
+                  {meeting.ends_at ? formatMeetingWhen(meeting.ends_at) : "—"}
+                </p>
+              </div>
+              <div>
                 <p className="text-muted-foreground">Verification opens</p>
                 <p className="font-medium">{meeting.verification_lead_minutes} minutes before start</p>
               </div>
-              <div className="sm:col-span-2">
+              <div className="min-w-0 overflow-hidden sm:col-span-2">
                 <p className="text-muted-foreground">Share URL</p>
-                <div className="mt-1 flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
-                  <p className="min-w-0 truncate font-medium">{meeting.share_url}</p>
-                  <div className="flex gap-2">
+                <div className="mt-1 flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start">
+                  <p className="min-w-0 max-w-full overflow-hidden break-all font-medium">
+                    {meeting.share_url}
+                  </p>
+                  <div className="flex shrink-0 gap-2">
                     <Button variant="outline" size="sm" className="gap-2" onClick={copyShareUrl}>
                       <Copy className="h-4 w-4" />
                       Copy

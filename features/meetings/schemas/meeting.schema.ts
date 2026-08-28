@@ -8,7 +8,12 @@ import { z } from 'zod';
  *
  * Response DTOs expose `id` (class-transformer), not `_id`. Dates arrive as
  * ISO strings. `starts_at` is stored UTC; display in Africa/Lagos (WAT).
+ * `ends_at` is denormalised on the BE from starts_at + duration_minutes.
  * ============================================================ */
+
+export const DEFAULT_DURATION_MINUTES = 60;
+export const MIN_DURATION_MINUTES = 1;
+export const MAX_DURATION_MINUTES = 1440;
 
 export const MEETING_AUDIENCE_TYPES = [
   'all_associates',
@@ -43,6 +48,8 @@ export const MeetingSchema = z.looseObject({
   share_url: z.string(),
   starts_at: IsoDateSchema,
   verification_lead_minutes: z.number(),
+  duration_minutes: z.number().optional(),
+  ends_at: IsoDateSchema.nullable().optional(),
   is_active: z.boolean(),
   verification_count: z.number(),
   createdAt: IsoDateSchema.optional(),
@@ -91,6 +98,7 @@ export type CreateMeetingInput = {
   audience_type: MeetingAudienceType;
   starts_at: string;
   verification_lead_minutes?: number;
+  duration_minutes?: number;
 };
 
 export type UpdateMeetingInput = Partial<CreateMeetingInput>;

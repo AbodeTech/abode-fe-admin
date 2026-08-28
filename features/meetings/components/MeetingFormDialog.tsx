@@ -26,10 +26,13 @@ import {
 
 import { useCreateMeeting, useUpdateMeeting } from "../hooks/use-meetings";
 import {
+  DEFAULT_DURATION_MINUTES,
   fromDatetimeLocalValue,
   isGoogleMeetUrl,
+  MAX_DURATION_MINUTES,
   MEETING_AUDIENCE_LABELS,
   MEETING_AUDIENCE_TYPES,
+  MIN_DURATION_MINUTES,
   toDatetimeLocalValue,
   type Meeting,
   type MeetingAudienceType,
@@ -41,6 +44,7 @@ type FormState = {
   audience_type: MeetingAudienceType;
   starts_at: string;
   verification_lead_minutes: string;
+  duration_minutes: string;
 };
 
 const emptyForm = (): FormState => ({
@@ -49,6 +53,7 @@ const emptyForm = (): FormState => ({
   audience_type: "all_associates",
   starts_at: "",
   verification_lead_minutes: "30",
+  duration_minutes: String(DEFAULT_DURATION_MINUTES),
 });
 
 function formFromMeeting(meeting: Meeting): FormState {
@@ -58,6 +63,7 @@ function formFromMeeting(meeting: Meeting): FormState {
     audience_type: meeting.audience_type,
     starts_at: toDatetimeLocalValue(meeting.starts_at),
     verification_lead_minutes: String(meeting.verification_lead_minutes),
+    duration_minutes: String(meeting.duration_minutes ?? DEFAULT_DURATION_MINUTES),
   };
 }
 
@@ -129,17 +135,35 @@ function MeetingFormFields({
           />
         </div>
       </div>
-      <div className="space-y-2">
-        <Label htmlFor="meeting-starts">Starts at</Label>
-        <Input
-          id="meeting-starts"
-          type="datetime-local"
-          value={form.starts_at}
-          onChange={(e) => setForm({ ...form, starts_at: e.target.value })}
-          required
-          disabled={disabled}
-        />
-        <p className="text-xs text-muted-foreground">Sent to the API as UTC ISO. Displayed in WAT on lists.</p>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="meeting-starts">Starts at</Label>
+          <Input
+            id="meeting-starts"
+            type="datetime-local"
+            value={form.starts_at}
+            onChange={(e) => setForm({ ...form, starts_at: e.target.value })}
+            required
+            disabled={disabled}
+          />
+          <p className="text-xs text-muted-foreground">Sent as UTC ISO. Shown in WAT on lists.</p>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="meeting-duration">Duration (minutes)</Label>
+          <Input
+            id="meeting-duration"
+            type="number"
+            min={MIN_DURATION_MINUTES}
+            max={MAX_DURATION_MINUTES}
+            value={form.duration_minutes}
+            onChange={(e) => setForm({ ...form, duration_minutes: e.target.value })}
+            required
+            disabled={disabled}
+          />
+          <p className="text-xs text-muted-foreground">
+            Backend stores ends_at from start + duration (default {DEFAULT_DURATION_MINUTES}).
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -154,6 +178,15 @@ function validateForm(form: FormState): string | null {
   const lead = Number(form.verification_lead_minutes);
   if (Number.isNaN(lead) || lead < 0 || lead > 720) {
     return "Verification lead must be between 0 and 720 minutes";
+  }
+  const duration = Number(form.duration_minutes);
+  if (
+    Number.isNaN(duration) ||
+    !Number.isInteger(duration) ||
+    duration < MIN_DURATION_MINUTES ||
+    duration > MAX_DURATION_MINUTES
+  ) {
+    return `Duration must be a whole number between ${MIN_DURATION_MINUTES} and ${MAX_DURATION_MINUTES} minutes`;
   }
   return null;
 }
@@ -177,6 +210,7 @@ export function CreateMeetingDialog() {
         audience_type: form.audience_type,
         starts_at: fromDatetimeLocalValue(form.starts_at),
         verification_lead_minutes: Number(form.verification_lead_minutes),
+        duration_minutes: Number(form.duration_minutes),
       });
       toast.success("Meeting created");
       setOpen(false);
@@ -248,6 +282,7 @@ export function EditMeetingDialog({
         audience_type: form.audience_type,
         starts_at: fromDatetimeLocalValue(form.starts_at),
         verification_lead_minutes: Number(form.verification_lead_minutes),
+        duration_minutes: Number(form.duration_minutes),
       });
       toast.success("Meeting updated");
       onOpenChange(false);

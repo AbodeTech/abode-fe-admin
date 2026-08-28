@@ -21,6 +21,12 @@ const AUDIENCE_LABELS: Record<Audience, string> = {
   associate_only: 'Associates only',
 };
 
+const DEFAULT_DURATION_MINUTES = 60;
+
+function computeEndsAt(startsAt: string, durationMinutes: number) {
+  return new Date(new Date(startsAt).getTime() + durationMinutes * 60_000).toISOString();
+}
+
 type MockMeeting = {
   id: string;
   slug: string;
@@ -29,6 +35,8 @@ type MockMeeting = {
   audience_type: Audience;
   starts_at: string;
   verification_lead_minutes: number;
+  duration_minutes: number;
+  ends_at: string;
   is_active: boolean;
   createdAt: string;
   updatedAt: string;
@@ -77,6 +85,8 @@ const meetings: MockMeeting[] = [
     audience_type: 'all_associates',
     starts_at: hoursFromNow(6),
     verification_lead_minutes: 30,
+    duration_minutes: 60,
+    ends_at: hoursFromNow(7),
     is_active: true,
     createdAt: now(),
     updatedAt: now(),
@@ -89,6 +99,8 @@ const meetings: MockMeeting[] = [
     audience_type: 'associate_pro_plus',
     starts_at: hoursFromNow(48),
     verification_lead_minutes: 45,
+    duration_minutes: 90,
+    ends_at: hoursFromNow(49.5),
     is_active: true,
     createdAt: now(),
     updatedAt: now(),
@@ -101,6 +113,8 @@ const meetings: MockMeeting[] = [
     audience_type: 'associate_only',
     starts_at: hoursFromNow(-72),
     verification_lead_minutes: 30,
+    duration_minutes: 60,
+    ends_at: hoursFromNow(-71),
     is_active: false,
     createdAt: now(),
     updatedAt: now(),
@@ -149,6 +163,8 @@ function publicMeeting(m: MockMeeting) {
     share_url: shareUrl(m.slug),
     starts_at: m.starts_at,
     verification_lead_minutes: m.verification_lead_minutes,
+    duration_minutes: m.duration_minutes,
+    ends_at: m.ends_at,
     is_active: m.is_active,
     verification_count: verifications.filter((v) => v.meeting === m.id).length,
     createdAt: m.createdAt,
@@ -209,6 +225,7 @@ export const meetingRoutes: MockRoutes = {
       audience_type?: Audience;
       starts_at?: string;
       verification_lead_minutes?: number;
+      duration_minutes?: number;
     }>(raw);
 
     const name = (input.name ?? '').trim();
@@ -222,14 +239,22 @@ export const meetingRoutes: MockRoutes = {
     }
     if (!input.starts_at) throw new MockHttpError(400, 'starts_at is required', 'VALIDATION_ERROR');
 
+    const duration = Number(input.duration_minutes ?? DEFAULT_DURATION_MINUTES);
+    if (!Number.isInteger(duration) || duration < 1 || duration > 1440) {
+      throw new MockHttpError(400, 'duration_minutes must be between 1 and 1440', 'VALIDATION_ERROR');
+    }
+    const starts_at = new Date(input.starts_at).toISOString();
+
     const created: MockMeeting = {
       id: `665fmt000000000000000${String(nextId++).padStart(2, '0')}`,
       slug: `${slugify(name) || 'meeting'}-${Math.random().toString(16).slice(2, 8)}`,
       name,
       google_meet_url,
       audience_type: input.audience_type,
-      starts_at: new Date(input.starts_at).toISOString(),
+      starts_at,
       verification_lead_minutes: input.verification_lead_minutes ?? 30,
+      duration_minutes: duration,
+      ends_at: computeEndsAt(starts_at, duration),
       is_active: true,
       createdAt: now(),
       updatedAt: now(),
@@ -253,6 +278,7 @@ export const meetingRoutes: MockRoutes = {
       audience_type?: Audience;
       starts_at?: string;
       verification_lead_minutes?: number;
+      duration_minutes?: number;
     }>(raw);
 
     if (input.google_meet_url !== undefined) {
@@ -266,6 +292,16 @@ export const meetingRoutes: MockRoutes = {
     if (input.starts_at !== undefined) meeting.starts_at = new Date(input.starts_at).toISOString();
     if (input.verification_lead_minutes !== undefined) {
       meeting.verification_lead_minutes = input.verification_lead_minutes;
+    }
+    if (input.duration_minutes !== undefined) {
+      const duration = Number(input.duration_minutes);
+      if (!Number.isInteger(duration) || duration < 1 || duration > 1440) {
+        throw new MockHttpError(400, 'duration_minutes must be between 1 and 1440', 'VALIDATION_ERROR');
+      }
+      meeting.duration_minutes = duration;
+    }
+    if (input.starts_at !== undefined || input.duration_minutes !== undefined) {
+      meeting.ends_at = computeEndsAt(meeting.starts_at, meeting.duration_minutes);
     }
     meeting.updatedAt = now();
     return publicMeeting(meeting);

@@ -22,7 +22,7 @@ import {
   AdminMobileStack,
 } from "@/components/shared/admin-responsive-table";
 
-import { formatMeetingWhen, type Meeting } from "../schemas/meeting.schema";
+import { DEFAULT_DURATION_MINUTES, formatMeetingWhen, type Meeting } from "../schemas/meeting.schema";
 
 const HEAD =
   "whitespace-nowrap px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground";
@@ -73,6 +73,10 @@ export function MeetingsTable({ rows, isLoading }: MeetingsTableProps) {
                 title={row.name}
                 subtitle={formatMeetingWhen(row.starts_at)}
               >
+                <AdminMobileField
+                  label="Duration"
+                  value={`${row.duration_minutes ?? DEFAULT_DURATION_MINUTES} min`}
+                />
                 <AdminMobileField label="Audience" value={row.audience_label} />
                 <AdminMobileField
                   label="Status"
@@ -91,6 +95,7 @@ export function MeetingsTable({ rows, isLoading }: MeetingsTableProps) {
               <TableRow>
                 <TableHead className={HEAD}>Name</TableHead>
                 <TableHead className={HEAD}>Starts (WAT)</TableHead>
+                <TableHead className={HEAD}>Duration</TableHead>
                 <TableHead className={HEAD}>Audience</TableHead>
                 <TableHead className={HEAD}>Status</TableHead>
                 <TableHead className={`${HEAD} text-center`}>Verified</TableHead>
@@ -100,7 +105,7 @@ export function MeetingsTable({ rows, isLoading }: MeetingsTableProps) {
             <TableBody>
               {safeRows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
+                    <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
                     No meetings match these filters.
                   </TableCell>
                 </TableRow>
@@ -110,6 +115,9 @@ export function MeetingsTable({ rows, isLoading }: MeetingsTableProps) {
                     <TableCell className={`${CELL} font-medium`}>{row.name}</TableCell>
                     <TableCell className={`${CELL} whitespace-nowrap`}>
                       {formatMeetingWhen(row.starts_at)}
+                    </TableCell>
+                    <TableCell className={`${CELL} tabular-nums`}>
+                      {row.duration_minutes ?? DEFAULT_DURATION_MINUTES} min
                     </TableCell>
                     <TableCell className={CELL}>{row.audience_label}</TableCell>
                     <TableCell className={CELL}>
