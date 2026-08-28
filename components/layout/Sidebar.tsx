@@ -19,6 +19,7 @@ import {
   LandPlot,
   LayoutDashboard,
   LogOut,
+  MessageSquare,
   NotebookPen,
   Percent,
   ScrollText,
@@ -31,6 +32,10 @@ import {
   UserPlus,
   Users,
   Headphones,
+  Bot,
+  MessagesSquare,
+  Inbox,
+  AlertOctagon,
   Video,
 } from "lucide-react";
 
@@ -52,6 +57,7 @@ const navGroups = [
       { name: "Flex Leads", link: "/flex-leads", icon: <NotebookPen /> },
       { name: "Marketplace", link: "/marketplace", icon: <Store /> },
       { name: "Requests", link: "/requests", icon: <ClipboardList /> },
+      { name: "WhatsApp", link: "/whatsapp", icon: <MessageSquare /> },
     ]
   },
   {
@@ -85,6 +91,16 @@ const navGroups = [
     icon: <Headphones />,
     items: [
       { name: "CS Manager Performance", link: "/customer-managers", icon: <ShieldCheck /> },
+      { name: "Tickets", link: "/tickets", icon: <Inbox /> },
+      { name: "Issues", link: "/issues", icon: <AlertOctagon /> },
+    ]
+  },
+  {
+    title: "Ilé Assistant",
+    isCollapsible: true,
+    icon: <Bot />,
+    items: [
+      { name: "Questions", link: "/ile-assistant", icon: <MessagesSquare /> },
     ]
   },
   {

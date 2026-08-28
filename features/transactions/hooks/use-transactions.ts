@@ -29,8 +29,8 @@ const GET_WITHDRAWAL_TRANSACTION_QUERY = graphql(`
 `);
 
 const GET_DOCUMENT_TRANSACTION_QUERY = graphql(`
-  query GetDocumentTransaction($page: Int!, $limit: Int!, $status: String, $assetType: String, $salesType: String, $startDate: Date, $endDate: Date, $search: String) {
-    getDocumentTransaction(page: $page, limit: $limit, status: $status, assetType: $assetType, salesType: $salesType, startDate: $startDate, endDate: $endDate, search: $search) {
+  query GetDocumentTransaction($page: Int!, $limit: Int!, $status: String, $transactionType: String, $assetType: String, $salesType: String, $startDate: Date, $endDate: Date, $search: String) {
+    getDocumentTransaction(page: $page, limit: $limit, status: $status, transactionType: $transactionType, assetType: $assetType, salesType: $salesType, startDate: $startDate, endDate: $endDate, search: $search) {
       data {
         ...DocumentTransactionsTable_data
       }
@@ -129,6 +129,8 @@ interface UseDocumentTransactionsParams {
   page?: number;
   limit?: number;
   status?: string | null;
+  /** Payment channel — "paystack" | "transfer" | "wallet". */
+  transactionType?: string | null;
   /** Asset type filter (e.g. "flex" | "full-ownership") — BE addition. */
   assetType?: string | null;
   /** Sales type filter — BE addition. */
@@ -143,6 +145,7 @@ export const useDocumentTransactions = (params?: UseDocumentTransactionsParams) 
     page = 1,
     limit = 10,
     status = null,
+    transactionType = null,
     assetType = null,
     salesType = null,
     startDate = null,
@@ -155,6 +158,7 @@ export const useDocumentTransactions = (params?: UseDocumentTransactionsParams) 
       page,
       limit,
       status,
+      transactionType,
       assetType,
       salesType,
       startDate,
@@ -166,6 +170,7 @@ export const useDocumentTransactions = (params?: UseDocumentTransactionsParams) 
         page,
         limit,
         status,
+        transactionType,
         assetType,
         salesType,
         startDate,

@@ -4,7 +4,7 @@ This document describes what the admin frontend (`/flex-leads`) expects from the
 
 Public forms live on **abode-v2** (Flex product landing). Admin does **not** create leads — it only reads and updates them after the public (or realtor) side persists submissions.
 
-While the API is missing, admin uses in-memory dummy data (`USE_DUMMY_FLEX_LEADS = true` in `features/flex-leads/hooks/dummy-flex-leads.ts`). Set that flag to `false` once these operations are live.
+Admin `/flex-leads` calls `getFlexLeads`, `flexLeadCounts`, and `updateFlexLead` live.
 
 ---
 
@@ -341,6 +341,6 @@ Indexes useful for admin list:
 
 1. Ship schema + resolvers for `getFlexLeads`, `flexLeadCounts`, `updateFlexLead`, and public creates.
 2. Confirm responses use camelCase field names listed above.
-3. In admin: set `USE_DUMMY_FLEX_LEADS` to `false` in `features/flex-leads/hooks/dummy-flex-leads.ts`.
-4. Optionally replace `executeRaw` with `graphql()` + `npm run codegen` once introspection includes these types.
-5. Wire abode-v2 `use-flex-leads.ts` fake submitters to `createBrochureLead` / `createSiteInspectionLead`.
+3. Admin is wired: `features/flex-leads/hooks/use-flex-leads.ts` and `use-flex-lead-actions.ts`.
+4. Optionally replace `executeRaw` with `graphql()` + `npm run codegen` once staging allows introspection.
+4. Wire abode-v2 public forms to `submitFlexBrochureLead` / `bookSiteInspection`.

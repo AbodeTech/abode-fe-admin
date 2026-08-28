@@ -12,6 +12,9 @@ import { useDocumentExport } from "../../hooks/use-document-export";
 export function DocumentExport() {
   const searchParams = useSearchParams();
   const status = searchParams.get("transactionstatus") || null;
+  const transactionType = searchParams.get("transactiontype") || null;
+  const assetType = searchParams.get("assettype") || null;
+  const salesType = searchParams.get("salestype") || null;
   const startDate = searchParams.get("start_date") || null;
   const endDate = searchParams.get("end_date") || null;
   const search = searchParams.get("search") || null;
@@ -20,7 +23,15 @@ export function DocumentExport() {
 
   const handleExport = async () => {
     try {
-      const response = await exportDocuments({ status, startDate, endDate, search });
+      const response = await exportDocuments({
+        status,
+        transactionType,
+        assetType,
+        salesType,
+        startDate,
+        endDate,
+        search,
+      });
       const rows = response.getDocumentTransaction?.data ?? [];
 
       if (!rows.length) {

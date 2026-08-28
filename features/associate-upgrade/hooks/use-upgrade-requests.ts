@@ -2,13 +2,14 @@ import { useQuery } from '@tanstack/react-query';
 import { execute } from '@/lib/graphql-client';
 import { graphql } from '@/lib/gql';
 import { upgradeKeys } from './query-keys';
-import { AdminStatus } from '@/lib/gql/graphql';
+import { AdminStatus, TransactionType } from '@/lib/gql/graphql';
 
 const GET_UPGRADE_REQUESTS = graphql(`
   query GetAllUpgradeRequests(
     $page: Int!
     $limit: Int!
     $adminStatus: AdminStatus
+    $transactionType: TransactionType
     $upgradeType: String
     $startDate: String
     $endDate: String
@@ -18,6 +19,7 @@ const GET_UPGRADE_REQUESTS = graphql(`
       page: $page
       limit: $limit
       adminStatus: $adminStatus
+      transactionType: $transactionType
       upgradeType: $upgradeType
       startDate: $startDate
       endDate: $endDate
@@ -40,6 +42,8 @@ export interface UpgradeRequestsFilters {
   page?: number;
   limit?: number;
   adminStatus?: string | null;
+  /** Payment channel — "paystack" | "transfer" | "wallet". */
+  transactionType?: string | null;
   /** BE addition: filter by upgrade type (e.g. "associate" | "associate-pro"). */
   upgradeType?: string | null;
   /** BE addition: ISO/period start of the createdAt window. */
@@ -56,6 +60,7 @@ export const useUpgradeRequests = (filters: UpgradeRequestsFilters) => {
     page = 1,
     limit = DEFAULT_UPGRADE_LIMIT,
     adminStatus,
+    transactionType = null,
     upgradeType = null,
     startDate = null,
     endDate = null,
@@ -65,6 +70,7 @@ export const useUpgradeRequests = (filters: UpgradeRequestsFilters) => {
     page,
     limit,
     adminStatus: adminStatus ?? null,
+    transactionType,
     upgradeType,
     startDate,
     endDate,
@@ -78,6 +84,7 @@ export const useUpgradeRequests = (filters: UpgradeRequestsFilters) => {
         page,
         limit,
         adminStatus: (adminStatus || undefined) as AdminStatus | undefined,
+        transactionType: (transactionType || undefined) as TransactionType | undefined,
         upgradeType,
         startDate,
         endDate,
