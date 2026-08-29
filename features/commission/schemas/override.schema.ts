@@ -99,7 +99,8 @@ export function assetRefName(ref: AssetRef | null | undefined): string | null {
 export function personRefName(ref: UserRef | AdminRef | null | undefined): string | null {
   if (!ref || typeof ref === 'string') return null;
 
-  const full = [ref.firstName, ref.lastName].filter(Boolean).join(' ').trim();
+  // lastName firstName — the platform convention for full-name displays.
+  const full = [ref.lastName, ref.firstName].filter(Boolean).join(' ').trim();
   return full || ref.email || null;
 }
 

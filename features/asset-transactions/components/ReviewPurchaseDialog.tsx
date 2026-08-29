@@ -19,17 +19,26 @@ import { formatNaira } from "@/lib/utils/format";
 
 import {
   PURCHASE_DECLINE_REASON_MIN,
+  assetId,
+  assetName,
+  buyerId,
+  buyerName,
+  isInitialPurchase,
   kindLabel,
   purchaseDeclineReasonSchema,
+  purchaseKind,
+  purchaseReviewFamily,
+  referrerId,
+  referrerName,
   type Purchase,
 } from "../schemas/purchase.schema";
 import {
-  useApproveFlexPurchase,
-  useDeclineFlexPurchase,
+  useApprovePurchase,
+  useDeclinePurchase,
 } from "../hooks/use-purchase-review";
 
 /* ============================================================
- * Review of one transfer-paid flex purchase.
+ * Review of one transfer-paid purchase (flex or full-ownership).
  *
  * One dialog, two outcomes. The evidence — bank, reference, receipt — sits
  * above the decision, because that is what the admin is actually judging:
@@ -37,7 +46,7 @@ import {
  *
  * Approving is heavy and the copy says so: it creates the payment plan and
  * pays commission in the same motion. Declining an initial purchase releases
- * the units it was holding.
+ * the units it was holding. FO outright also declines the sibling document tx.
  * ============================================================ */
 
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
@@ -58,8 +67,8 @@ export function ReviewPurchaseDialog({
   row: Purchase | null;
   onClose: () => void;
 }) {
-  const approve = useApproveFlexPurchase();
-  const decline = useDeclineFlexPurchase();
+  const approve = useApprovePurchase();
+  const decline = useDeclinePurchase();
 
   const [declining, setDeclining] = useState(false);
   const [reason, setReason] = useState("");
@@ -75,8 +84,14 @@ export function ReviewPurchaseDialog({
   };
 
   if (!row) return null;
+  const family = purchaseReviewFamily(row);
+  if (!family) return null;
+
   const details = row.purchase_details;
-  const isInitial = details?.transaction_kind === "initial_flex_purchase";
+  const isInitial = isInitialPurchase(row);
+  const kind = purchaseKind(row);
+  const isFoOutright = kind === "fo_outright_land";
+  const isDocPayment = kind === "fo_doc_payment";
 
   const submitApprove = () => {
     approve.mutate(
@@ -84,9 +99,11 @@ export function ReviewPurchaseDialog({
       {
         onSuccess: (result) => {
           toast.success(
-            isInitial
-              ? `Approved — payment plan created (${result.payment_plan_id.slice(-6)}) and commission paid`
-              : "Approved — installment recorded and commission paid"
+            isDocPayment
+              ? `Approved — document plan updated (${result.planId.slice(-6)})`
+              : isInitial
+                ? `Approved — payment plan created (${result.planId.slice(-6)}) and commission paid`
+                : "Approved — installment recorded and commission paid"
           );
           close();
         },
@@ -123,9 +140,13 @@ export function ReviewPurchaseDialog({
         <DialogHeader>
           <DialogTitle>Review transfer payment</DialogTitle>
           <DialogDescription>
-            {isInitial
-              ? "A new purchase paid by bank transfer. Approving creates the payment plan and pays commission; declining releases the held units."
-              : "An installment paid by bank transfer. Approving records it against the plan and pays commission."}
+            {isFoOutright
+              ? "A full-ownership outright purchase paid by bank transfer. Approving creates the land plan, settles the sibling document fee, and pays commission; declining releases the held units and declines the document row with it."
+              : isDocPayment
+                ? "A full-ownership document fee paid by bank transfer. Approving records it against the document plan."
+                : isInitial
+                  ? "A new purchase paid by bank transfer. Approving creates the payment plan and pays commission; declining releases the held units."
+                  : "An installment paid by bank transfer. Approving records it against the plan and pays commission."}
           </DialogDescription>
         </DialogHeader>
 
@@ -144,11 +165,34 @@ export function ReviewPurchaseDialog({
             ) : null}
             <Row
               label="Buyer"
-              value={<UnresolvedRef name={null} id={row.user} kind="buyer" />}
+              value={
+                <UnresolvedRef name={buyerName(row.user)} id={buyerId(row.user)} kind="buyer" />
+              }
             />
             <Row
               label="Asset"
-              value={<UnresolvedRef name={null} id={row.source_asset} kind="asset" />}
+              value={
+                <UnresolvedRef
+                  name={assetName(row.source_asset)}
+                  id={assetId(row.source_asset)}
+                  kind="asset"
+                />
+              }
+            />
+            {/* Who this approval pays commission to — worth stating before the click. */}
+            <Row
+              label="Referrer"
+              value={
+                referrerId(row.user) || referrerName(row.user) ? (
+                  <UnresolvedRef
+                    name={referrerName(row.user)}
+                    id={referrerId(row.user)}
+                    kind="referrer"
+                  />
+                ) : (
+                  "No referrer — no commission is paid"
+                )
+              }
             />
           </div>
 
@@ -228,8 +272,10 @@ export function ReviewPurchaseDialog({
                   <>
                     Approving <Loader2 className="ml-2 h-4 w-4 animate-spin" />
                   </>
-                ) : (
+                ) : isInitial ? (
                   "Approve — create plan & pay commission"
+                ) : (
+                  "Approve — record payment & pay commission"
                 )}
               </Button>
             </>

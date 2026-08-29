@@ -2,6 +2,7 @@
 export { RatesCard } from './components/rates/RatesCard';
 export { EditRatesDialog } from './components/rates/EditRatesDialog';
 export { ConfigHistory } from './components/rates/ConfigHistory';
+export { DeveloperPlotCard } from './components/rates/DeveloperPlotCard';
 export { OverridesTable } from './components/overrides/OverridesTable';
 export { PreviewPanel } from './components/overrides/PreviewPanel';
 export { PlanAuditView } from './components/audit/PlanAuditView';
@@ -24,6 +25,10 @@ export { useRevokeOverride } from './hooks/use-revoke-override';
 export { commissionKeys } from './hooks/query-keys';
 export type { OverrideListFilters, PreviewParams } from './hooks/query-keys';
 export { useCommissionPreview } from './hooks/use-commission-preview';
+export {
+  useDeveloperPlotConfig,
+  useUpsertDeveloperPlotConfig,
+} from './hooks/use-developer-plot-config';
 
 // Schemas — other features may need the shared vocabulary (offer types, tiers).
 export {

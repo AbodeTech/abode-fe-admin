@@ -27,11 +27,23 @@ import {
 } from "@/components/shared/admin-responsive-table";
 import { formatNaira } from "@/lib/utils/format";
 
+import { cn } from "@/lib/utils";
+
 import {
+  KYC_STATE_LABELS,
   PAYMENT_PROVIDER_LABELS,
+  bankAccountName,
+  bankAccountNumber,
+  bankDetailsId,
+  bankName,
+  personEmail,
+  personId,
+  personName,
+  personTin,
   withdrawalActions,
   type Withdrawal,
 } from "../schemas/withdrawal.schema";
+import { ProcessingMethodBadge } from "./ProcessingMethodBadge";
 import { MoneyState, WithdrawalStatusBadge } from "./WithdrawalStatusBadge";
 
 function formatDate(value: string | null | undefined): string {
@@ -39,6 +51,86 @@ function formatDate(value: string | null | undefined): string {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
   return parsed.toLocaleDateString("en-NG", { year: "numeric", month: "short", day: "numeric" });
+}
+
+/**
+ * Who is requesting — name when populated, em-dash + id otherwise, linked
+ * through to their profile. An admin about to release money reaches for the
+ * account behind it constantly.
+ */
+function Requester({ row }: { row: Withdrawal }) {
+  const email = personEmail(row.user);
+  const id = personId(row.user);
+  return (
+    <div className="min-w-0 space-y-0.5">
+      <UnresolvedRef
+        name={personName(row.user)}
+        id={id}
+        href={id ? `/users/${id}` : null}
+        kind="requester"
+      />
+      {email ? <p className="truncate text-xs text-muted-foreground">{email}</p> : null}
+    </div>
+  );
+}
+
+/**
+ * The requester's tax ID (ticket 23).
+ *
+ * An unverified TIN renders muted with its state, because this screen releases
+ * money and a number nobody has checked must not read the same as one that has
+ * been. Only `approved` gets the plain treatment.
+ */
+function Tin({ row }: { row: Withdrawal }) {
+  const tin = personTin(row.user);
+
+  if (!tin?.value) {
+    return (
+      <span className="text-sm text-muted-foreground" aria-label="No TIN on file">
+        —
+      </span>
+    );
+  }
+
+  const verified = tin.state === "approved";
+
+  return (
+    <div className="min-w-0 space-y-0.5">
+      <p className={cn("font-mono text-sm tabular-nums", !verified && "text-muted-foreground")}>
+        {tin.value}
+      </p>
+      {!verified ? (
+        <p className="text-xs text-amber-700">
+          {tin.state ? KYC_STATE_LABELS[tin.state] : "Unverified"}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * One field of the destination account. Rendered as three separate columns as
+ * the production screen does, because an admin scanning the queue is comparing
+ * account numbers down a column — not reading a combined label per row.
+ *
+ * Falls back to the em-dash + copyable-id pattern when the whole ref is a bare
+ * id, so the destination is never silently blank.
+ */
+function BankField({
+  row,
+  value,
+  mono,
+}: {
+  row: Withdrawal;
+  value: string | null;
+  mono?: boolean;
+}) {
+  if (value) {
+    return <span className={mono ? "font-mono text-sm tabular-nums" : "text-sm"}>{value}</span>;
+  }
+  return (
+    <UnresolvedRef name={null} id={bankDetailsId(row.bank_details_id)} kind="bank account" />
+  );
 }
 
 /**
@@ -143,14 +235,31 @@ export function WithdrawalsTable({
 
   return (
     <>
+      {/*
+        Column order follows the production screen: payer, then the destination
+        account in three columns, amount, date, how it was processed, status,
+        action.
+
+        Two differences. **TIN is absent** — in v2 it moved onto the KYC
+        subdocument and isn't reachable from this endpoint (⛔ ticket 23); when it
+        lands it slots in directly after Requested by. And **Provider** is new —
+        v2 can route a payout through Paystack or Paga and record the rail's
+        refusal, which production had no concept of; it sits beside Method, the
+        other "how did this get paid" column.
+      */}
       <AdminDesktopTableWrap>
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Requested by</TableHead>
+              <TableHead>TIN</TableHead>
+              <TableHead>Bank</TableHead>
+              <TableHead>Account number</TableHead>
+              <TableHead>Account name</TableHead>
               <TableHead>Amount</TableHead>
-              <TableHead>Provider</TableHead>
               <TableHead>Requested</TableHead>
+              <TableHead>Method</TableHead>
+              <TableHead>Provider</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="w-px" />
             </TableRow>
@@ -158,21 +267,32 @@ export function WithdrawalsTable({
           <TableBody>
             {rows.map((row) => (
               <TableRow key={row._id}>
-                <TableCell>
-                  {/*
-                    ⛔ ticket 13 — a bare ObjectId. The queue's central column
-                    is an em-dash until the backend populates the user.
-                  */}
-                  <UnresolvedRef name={null} id={row.user} kind="requester" />
+                <TableCell className="max-w-[14rem]">
+                  <Requester row={row} />
+                </TableCell>
+                <TableCell className="whitespace-nowrap">
+                  <Tin row={row} />
+                </TableCell>
+                <TableCell className="max-w-[10rem]">
+                  <BankField row={row} value={bankName(row.bank_details_id)} />
+                </TableCell>
+                <TableCell className="whitespace-nowrap">
+                  <BankField row={row} value={bankAccountNumber(row.bank_details_id)} mono />
+                </TableCell>
+                <TableCell className="max-w-[12rem]">
+                  <BankField row={row} value={bankAccountName(row.bank_details_id)} />
                 </TableCell>
                 <TableCell>
                   <Amount row={row} />
                 </TableCell>
-                <TableCell>
-                  <Provider row={row} />
-                </TableCell>
                 <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
                   {formatDate(row.createdAt)}
+                </TableCell>
+                <TableCell>
+                  <ProcessingMethodBadge type={row.processing_type} />
+                </TableCell>
+                <TableCell>
+                  <Provider row={row} />
                 </TableCell>
                 <TableCell>
                   <div className="space-y-1">
@@ -208,9 +328,23 @@ export function WithdrawalsTable({
               }
               subtitle={formatDate(row.createdAt)}
             >
+              <AdminMobileField label="Requested by" value={<Requester row={row} />} />
+              <AdminMobileField label="TIN" value={<Tin row={row} />} />
               <AdminMobileField
-                label="Requested by"
-                value={<UnresolvedRef name={null} id={row.user} kind="requester" />}
+                label="Bank"
+                value={<BankField row={row} value={bankName(row.bank_details_id)} />}
+              />
+              <AdminMobileField
+                label="Account number"
+                value={<BankField row={row} value={bankAccountNumber(row.bank_details_id)} mono />}
+              />
+              <AdminMobileField
+                label="Account name"
+                value={<BankField row={row} value={bankAccountName(row.bank_details_id)} />}
+              />
+              <AdminMobileField
+                label="Method"
+                value={<ProcessingMethodBadge type={row.processing_type} />}
               />
               <AdminMobileField
                 label="Provider"

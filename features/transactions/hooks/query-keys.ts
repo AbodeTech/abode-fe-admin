@@ -16,10 +16,18 @@ export const transactionKeys = {
   documentList: (filters?: { page?: number; limit?: number; status?: string | null; startDate?: string | null; endDate?: string | null; search?: string | null }) =>
     [...transactionKeys.document(), 'list', filters] as const,
 
-  // Commission transactions
+  // Commission transactions — GET /admin/commission/transactions
   commission: () => [...transactionKeys.all, 'commission'] as const,
-  commissionList: (filters?: { page?: number; limit?: number; startDate?: string | null; endDate?: string | null; commissionSource?: string | null }) =>
-    [...transactionKeys.commission(), 'list', filters] as const,
+  commissionList: (filters?: {
+    page?: number;
+    limit?: number;
+    from?: string | null;
+    to?: string | null;
+    source_type?: string | null;
+    q?: string | null;
+    sort_by?: string | null;
+    sort_dir?: string | null;
+  }) => [...transactionKeys.commission(), 'list', filters] as const,
 
   // Asset transactions
   asset: () => [...transactionKeys.all, 'asset'] as const,

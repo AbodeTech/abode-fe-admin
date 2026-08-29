@@ -2,10 +2,11 @@
 
 import { Suspense, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { Pagination } from "@/components/shared/Pagination";
 import { SuspensePageFallback } from "@/components/shared/page-content-loader";
-import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
+  DEFAULT_MARKETPLACE_LISTINGS_LIMIT,
   useMarketplaceListings,
   usePendingApprovals,
   useMarketplaceStats,
@@ -17,7 +18,7 @@ import {
   MarketplaceApproveDialog,
   MarketplaceRejectDialog,
 } from "@/features/marketplace";
-import type { MarketplaceListingAdmin } from "@/features/marketplace";
+import type { MarketplaceListing } from "@/features/marketplace";
 
 function MarketplaceContent() {
   const router = useRouter();
@@ -26,25 +27,23 @@ function MarketplaceContent() {
   const activeTab = searchParams.get("tab") || "listings";
   const page = Number(searchParams.get("page") || "1");
   const status = searchParams.get("status") || undefined;
-  const assetType = searchParams.get("asset_type") || undefined;
 
   // Dialog state
-  const [suspendListing, setSuspendListing] = useState<MarketplaceListingAdmin | null>(null);
-  const [approveListing, setApproveListing] = useState<MarketplaceListingAdmin | null>(null);
-  const [rejectListing, setRejectListing] = useState<MarketplaceListingAdmin | null>(null);
+  const [suspendListing, setSuspendListing] = useState<MarketplaceListing | null>(null);
+  const [approveListing, setApproveListing] = useState<MarketplaceListing | null>(null);
+  const [rejectListing, setRejectListing] = useState<MarketplaceListing | null>(null);
 
   // Queries
   const statsQuery = useMarketplaceStats();
   const listingsQuery = useMarketplaceListings({
     page,
-    limit: 20,
+    limit: DEFAULT_MARKETPLACE_LISTINGS_LIMIT,
     status,
-    asset_type: assetType,
   });
-  const pendingQuery = usePendingApprovals({ page, limit: 20 });
+  const pendingQuery = usePendingApprovals({ page, limit: DEFAULT_MARKETPLACE_LISTINGS_LIMIT });
   const unsuspendMutation = useUnsuspendListing();
 
-  const handleUnsuspend = async (listing: MarketplaceListingAdmin) => {
+  const handleUnsuspend = async (listing: MarketplaceListing) => {
     try {
       await unsuspendMutation.mutateAsync(listing._id);
       toast.success("Listing unsuspended");
@@ -63,6 +62,12 @@ function MarketplaceContent() {
     if (key !== "page") params.set("page", "1");
     router.push(`/marketplace?${params.toString()}`, { scroll: false });
   };
+
+  const listings = listingsQuery.data?.items ?? [];
+  const listingsCount = listingsQuery.data?.meta.total ?? 0;
+  const pending = pendingQuery.data?.items ?? [];
+  const pendingCount = pendingQuery.data?.meta.total ?? 0;
+  const byStatus = statsQuery.data?.by_status ?? {};
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-[1600px] space-y-4 sm:space-y-6">
@@ -94,9 +99,9 @@ function MarketplaceContent() {
           }`}
         >
           <span className="whitespace-nowrap">Pending Approvals</span>
-          {(statsQuery.data?.pending_approval_listings || 0) > 0 && (
+          {(byStatus.pending_approval || 0) > 0 && (
             <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-bold text-orange-700">
-              {statsQuery.data?.pending_approval_listings}
+              {byStatus.pending_approval}
             </span>
           )}
         </button>
@@ -104,6 +109,11 @@ function MarketplaceContent() {
 
       {activeTab === "listings" && (
         <div className="min-w-0 space-y-4">
+          {/*
+            Only `status` is filterable server-side — AdminListingsQueryDto has
+            no `asset_type` field, unlike the old GraphQL filter input. Dropped
+            rather than sent-and-ignored. See docs/BACKEND-REQUESTS.md #27.
+          */}
           <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-3">
             <select
               value={status || ""}
@@ -119,92 +129,32 @@ function MarketplaceContent() {
               <option value="expired">Expired</option>
               <option value="suspended">Suspended</option>
             </select>
-
-            <select
-              value={assetType || ""}
-              onChange={(e) => setSearchParam("asset_type", e.target.value || null)}
-              className="h-10 w-full rounded-lg border bg-white px-3 text-sm sm:h-auto sm:min-w-40 sm:w-auto"
-            >
-              <option value="">All Types</option>
-              <option value="flex">Flex</option>
-              <option value="full-ownership">Full Ownership</option>
-              <option value="co-ownership">Co-Ownership</option>
-              <option value="land-banking">Land Banking</option>
-            </select>
           </div>
 
-          {/* Table */}
           <MarketplaceListingsTable
-            data={listingsQuery.data?.listings}
+            data={listings}
             isLoading={listingsQuery.isLoading}
             onSuspend={(listing) => setSuspendListing(listing)}
             onUnsuspend={handleUnsuspend}
           />
 
-          {/* Pagination */}
-          {listingsQuery.data?.pagination && listingsQuery.data.pagination.totalPages > 1 && (
-            <div className="flex flex-col items-stretch gap-2 py-4 sm:flex-row sm:items-center sm:justify-center sm:gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full sm:w-auto"
-                onClick={() => setSearchParam("page", String(page - 1))}
-                disabled={page <= 1}
-              >
-                Previous
-              </Button>
-              <span className="flex items-center justify-center px-3 text-sm text-gray-600">
-                Page {listingsQuery.data.pagination.currentPage} of{" "}
-                {listingsQuery.data.pagination.totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full sm:w-auto"
-                onClick={() => setSearchParam("page", String(page + 1))}
-                disabled={page >= listingsQuery.data.pagination.totalPages}
-              >
-                Next
-              </Button>
-            </div>
-          )}
+          {listingsCount > DEFAULT_MARKETPLACE_LISTINGS_LIMIT ? (
+            <Pagination count={listingsCount} currentIdx={page} limit={DEFAULT_MARKETPLACE_LISTINGS_LIMIT} />
+          ) : null}
         </div>
       )}
 
       {activeTab === "approvals" && (
         <div className="min-w-0 space-y-4">
           <PendingApprovalsTable
-            data={pendingQuery.data?.listings}
+            data={pending}
             isLoading={pendingQuery.isLoading}
             onApprove={(listing) => setApproveListing(listing)}
             onReject={(listing) => setRejectListing(listing)}
           />
-          {pendingQuery.data?.pagination && pendingQuery.data.pagination.totalPages > 1 && (
-            <div className="flex flex-col items-stretch gap-2 py-4 sm:flex-row sm:items-center sm:justify-center sm:gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full sm:w-auto"
-                onClick={() => setSearchParam("page", String(page - 1))}
-                disabled={page <= 1}
-              >
-                Previous
-              </Button>
-              <span className="flex items-center justify-center px-3 text-sm text-gray-600">
-                Page {pendingQuery.data.pagination.currentPage} of{" "}
-                {pendingQuery.data.pagination.totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full sm:w-auto"
-                onClick={() => setSearchParam("page", String(page + 1))}
-                disabled={page >= pendingQuery.data.pagination.totalPages}
-              >
-                Next
-              </Button>
-            </div>
-          )}
+          {pendingCount > DEFAULT_MARKETPLACE_LISTINGS_LIMIT ? (
+            <Pagination count={pendingCount} currentIdx={page} limit={DEFAULT_MARKETPLACE_LISTINGS_LIMIT} />
+          ) : null}
         </div>
       )}
 

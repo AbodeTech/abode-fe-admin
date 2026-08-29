@@ -154,7 +154,7 @@ export function PlanGeneratorDialog() {
             <p className="text-xs text-muted-foreground">
               Comma separated.{" "}
               {isFlex
-                ? "Flex plans run for at least one month — outright is full-ownership only."
+                ? "Flex plans run for at least one month — only full ownership and commercial sell outright."
                 : "Use 0 for an outright purchase."}
             </p>
           </div>

@@ -28,6 +28,11 @@ import {
   PAYMENT_PROVIDERS,
   PAYMENT_PROVIDER_LABELS,
   WITHDRAWAL_REASON_MIN,
+  bankDetailsId,
+  bankDetailsLabel,
+  bankDetailsSubtitle,
+  personId,
+  personName,
   withdrawalReasonSchema,
   type PaymentProvider,
   type Withdrawal,
@@ -65,6 +70,23 @@ function railOutcomeToast(result: ApproveResult, verb: string) {
   toast.success(`${verb} — transfer initiated`);
 }
 
+function Destination({ row }: { row: Withdrawal }) {
+  const label = bankDetailsLabel(row.bank_details_id);
+  const subtitle = bankDetailsSubtitle(row.bank_details_id);
+  return (
+    <div className="min-w-0 text-right space-y-0.5">
+      <UnresolvedRef
+        name={label}
+        id={bankDetailsId(row.bank_details_id)}
+        kind="bank account"
+      />
+      {subtitle ? (
+        <p className="font-mono text-xs text-muted-foreground tabular-nums">{subtitle}</p>
+      ) : null}
+    </div>
+  );
+}
+
 function Summary({ row }: { row: Withdrawal }) {
   return (
     <div className="space-y-1 rounded-md border bg-muted/30 p-3 text-sm">
@@ -80,15 +102,11 @@ function Summary({ row }: { row: Withdrawal }) {
       ) : null}
       <div className="flex items-baseline justify-between gap-3">
         <span className="text-muted-foreground">Requested by</span>
-        <UnresolvedRef name={null} id={row.user} kind="requester" />
+        <UnresolvedRef name={personName(row.user)} id={personId(row.user)} kind="requester" />
       </div>
-      {/*
-        ⛔ ticket 13 — the destination account is a bare ObjectId. Approving
-        money to an account the screen cannot show is worth saying out loud.
-      */}
       <div className="flex items-baseline justify-between gap-3">
         <span className="text-muted-foreground">Destination account</span>
-        <UnresolvedRef name={null} id={row.bank_details_id} kind="bank account" />
+        <Destination row={row} />
       </div>
     </div>
   );

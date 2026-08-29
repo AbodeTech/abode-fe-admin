@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useDeferredValue, useState } from "react";
 import {
   CouponFilters,
   CouponsTable,
@@ -10,28 +10,34 @@ import {
   useUpdateCoupon,
   useUpdateCouponStatus,
 } from "@/features/coupons";
+import type {
+  CouponStatus,
+  ManualCouponStatus,
+  UpdateCouponInput,
+} from "@/features/coupons/schemas/coupon.schema";
 import { toast } from "sonner";
 
 export default function CouponsPage() {
-  const { data, isLoading, error } = useCoupons();
+  const [status, setStatus] = useState<CouponStatus | null>(null);
+  const [search, setSearch] = useState("");
+  const deferredSearch = useDeferredValue(search);
+
+  const { data, isLoading, error } = useCoupons({
+    status: status ?? undefined,
+    search: deferredSearch.trim() || undefined,
+    applies_to: "associate-pro-upgrade",
+  });
   const { mutateAsync: updateStatus, isPending: updating } = useUpdateCouponStatus();
   const { mutateAsync: deleteCoupon, isPending: deleting } = useDeleteCoupon();
   const { mutateAsync: updateCoupon, isPending: editing } = useUpdateCoupon();
 
-  const [status, setStatus] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-
-  const filtered = useMemo(() => {
-    const rows = data?.data ?? [];
-    return rows
-      .filter((c): c is NonNullable<typeof c> => c !== null)
-      .filter((c) => (status ? c.status?.toLowerCase() === status : true))
-      .filter((c) => (search ? c.couponCode?.toLowerCase().includes(search.toLowerCase()) : true));
-  }, [data?.data, status, search]);
-
-  const handleStatusChange = async (code: string, nextStatus: string) => {
+  const handleStatusChange = async (
+    code: string,
+    nextStatus: ManualCouponStatus,
+    reason?: string
+  ) => {
     try {
-      await updateStatus({ couponCode: code, status: nextStatus });
+      await updateStatus({ couponCode: code, status: nextStatus, reason });
       toast.success("Coupon status updated");
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Failed to update status");
@@ -47,16 +53,7 @@ export default function CouponsPage() {
     }
   };
 
-  const handleUpdate = async (input: {
-    couponCode: string;
-    discountPercentage: number;
-    usageLimitType: string;
-    usageLimit?: number;
-    expiryType: string;
-    startDate?: Date;
-    endDate?: Date;
-    expiryDate?: Date;
-  }) => {
+  const handleUpdate = async (input: { couponCode: string } & UpdateCouponInput) => {
     try {
       await updateCoupon(input);
       toast.success("Coupon updated");
@@ -92,7 +89,7 @@ export default function CouponsPage() {
       <CouponFilters status={status} onStatusChange={setStatus} search={search} onSearchChange={setSearch} />
 
       <CouponsTable
-        data={filtered}
+        data={data?.items ?? []}
         isLoading={isLoading || updating || deleting || editing}
         onStatusChange={handleStatusChange}
         onDelete={handleDelete}

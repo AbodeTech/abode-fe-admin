@@ -20,23 +20,31 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Coupon, UsageLimitType, ExpiryType } from "@/lib/gql/graphql";
+import {
+  COUPON_APPLY_SITE_LABELS,
+  type Coupon,
+  type CouponApplySite,
+  type CouponExpiryType,
+  type CouponUsageLimitType,
+  type UpdateCouponInput,
+} from "../schemas/coupon.schema";
 
 interface EditCouponDialogProps {
   coupon: Coupon;
   open: boolean;
   isPending?: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (payload: {
-    couponCode: string;
-    discountPercentage: number;
-    usageLimitType: string;
-    usageLimit?: number;
-    expiryType: string;
-    startDate?: Date;
-    endDate?: Date;
-    expiryDate?: Date;
-  }) => Promise<void>;
+  onSubmit: (payload: { couponCode: string } & UpdateCouponInput) => Promise<void>;
+}
+
+function toDateInput(value?: string | null) {
+  if (!value) return "";
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? "" : parsed.toISOString().slice(0, 10);
+}
+
+function toIsoDate(date: string): string {
+  return new Date(`${date}T00:00:00.000Z`).toISOString();
 }
 
 export function EditCouponDialog({
@@ -46,26 +54,56 @@ export function EditCouponDialog({
   onOpenChange,
   onSubmit,
 }: EditCouponDialogProps) {
-  const [discount, setDiscount] = useState(Number(coupon.discountPercentage ?? 0));
-  const [usageLimitType, setUsageLimitType] = useState<UsageLimitType>(coupon.usageLimitType ?? "unlimited");
-  const [usageLimit, setUsageLimit] = useState<number | undefined>(coupon.usageLimit ?? undefined);
-  const [expiryType, setExpiryType] = useState<ExpiryType>(coupon.expiryType ?? "no_expiry");
-  const [startDate, setStartDate] = useState(coupon.startDate ? new Date(coupon.startDate).toISOString().slice(0, 10) : "");
-  const [endDate, setEndDate] = useState(coupon.endDate ? new Date(coupon.endDate).toISOString().slice(0, 10) : "");
-  const [expiryDate, setExpiryDate] = useState(coupon.expiryDate ? new Date(coupon.expiryDate).toISOString().slice(0, 10) : "");
+  const [discount, setDiscount] = useState(String(coupon.discount_percentage));
+  const [maxDiscountAmount, setMaxDiscountAmount] = useState<number | undefined>(
+    coupon.max_discount_amount ?? undefined
+  );
+  const [appliesTo, setAppliesTo] = useState<CouponApplySite>(
+    coupon.applies_to[0] ?? "associate-pro-upgrade"
+  );
+  const [usageLimitType, setUsageLimitType] = useState<CouponUsageLimitType>(
+    coupon.usage_limit_type
+  );
+  const [usageLimit, setUsageLimit] = useState<number | undefined>(coupon.usage_limit ?? undefined);
+  const [maxUsesPerUser, setMaxUsesPerUser] = useState<number | undefined>(
+    coupon.max_uses_per_user ?? undefined
+  );
+  const [expiryType, setExpiryType] = useState<CouponExpiryType>(coupon.expiry_type);
+  const [startDate, setStartDate] = useState(toDateInput(coupon.starts_at));
+  const [endDate, setEndDate] = useState(toDateInput(coupon.ends_at));
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
+    const discountPercentage = Number(discount);
+    if (
+      discount.trim() === "" ||
+      Number.isNaN(discountPercentage) ||
+      discountPercentage < 0 ||
+      discountPercentage > 100
+    ) {
+      return;
+    }
+
+    if (usageLimitType === "limited" && (!usageLimit || usageLimit < 1)) {
+      return;
+    }
+
+    if (expiryType === "expires_on" && !endDate) {
+      return;
+    }
+
     await onSubmit({
       couponCode: coupon.couponCode,
-      discountPercentage: discount,
-      usageLimitType,
-      usageLimit: usageLimitType === "limited" ? usageLimit : undefined,
-      expiryType,
-      startDate: startDate ? new Date(startDate) : undefined,
-      endDate: endDate ? new Date(endDate) : undefined,
-      expiryDate: expiryDate ? new Date(expiryDate) : undefined,
+      discount_percentage: discountPercentage,
+      max_discount_amount: maxDiscountAmount ?? null,
+      applies_to: [appliesTo],
+      usage_limit_type: usageLimitType,
+      usage_limit: usageLimitType === "limited" ? usageLimit : null,
+      max_uses_per_user: maxUsesPerUser ?? null,
+      expiry_type: expiryType,
+      starts_at: startDate ? toIsoDate(startDate) : null,
+      ends_at: expiryType === "expires_on" && endDate ? toIsoDate(endDate) : null,
     });
   };
 
@@ -83,22 +121,62 @@ export function EditCouponDialog({
             <Input value={coupon.couponCode} disabled />
           </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Discount %</Label>
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                inputMode="numeric"
+                value={discount}
+                onChange={(e) => setDiscount(e.target.value)}
+                disabled={isPending}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Max discount (₦)</Label>
+              <Input
+                type="number"
+                min={0}
+                value={maxDiscountAmount ?? ""}
+                onChange={(e) =>
+                  setMaxDiscountAmount(e.target.value === "" ? undefined : Number(e.target.value))
+                }
+                placeholder="No cap"
+                disabled={isPending}
+              />
+            </div>
+          </div>
+
           <div className="space-y-2">
-            <Label>Discount %</Label>
-            <Input
-              type="number"
-              min={1}
-              max={100}
-              value={discount}
-              onChange={(e) => setDiscount(Number(e.target.value))}
+            <Label>Applies to</Label>
+            <Select
+              value={appliesTo}
+              onValueChange={(value) => setAppliesTo(value as CouponApplySite)}
               disabled={isPending}
-            />
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(Object.keys(COUPON_APPLY_SITE_LABELS) as CouponApplySite[]).map((site) => (
+                  <SelectItem key={site} value={site}>
+                    {COUPON_APPLY_SITE_LABELS[site]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Usage Limit Type</Label>
-              <Select value={usageLimitType} onValueChange={(value) => setUsageLimitType(value as UsageLimitType)} disabled={isPending}>
+              <Select
+                value={usageLimitType}
+                onValueChange={(value) => setUsageLimitType(value as CouponUsageLimitType)}
+                disabled={isPending}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -123,8 +201,26 @@ export function EditCouponDialog({
           </div>
 
           <div className="space-y-2">
+            <Label>Max uses per user</Label>
+            <Input
+              type="number"
+              min={1}
+              value={maxUsesPerUser ?? ""}
+              onChange={(e) =>
+                setMaxUsesPerUser(e.target.value === "" ? undefined : Number(e.target.value))
+              }
+              placeholder="Unlimited"
+              disabled={isPending}
+            />
+          </div>
+
+          <div className="space-y-2">
             <Label>Expiry Type</Label>
-            <Select value={expiryType} onValueChange={(value) => setExpiryType(value as ExpiryType)} disabled={isPending}>
+            <Select
+              value={expiryType}
+              onValueChange={(value) => setExpiryType(value as CouponExpiryType)}
+              disabled={isPending}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -134,18 +230,6 @@ export function EditCouponDialog({
               </SelectContent>
             </Select>
           </div>
-
-          {expiryType === "expires_on" && (
-            <div className="space-y-2">
-              <Label>Expiry Date</Label>
-              <Input
-                type="date"
-                value={expiryDate}
-                onChange={(e) => setExpiryDate(e.target.value)}
-                disabled={isPending}
-              />
-            </div>
-          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -157,22 +241,24 @@ export function EditCouponDialog({
                 disabled={isPending}
               />
             </div>
-            <div className="space-y-2">
-              <Label>End Date</Label>
-              <Input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                disabled={isPending}
-              />
-            </div>
+            {expiryType === "expires_on" && (
+              <div className="space-y-2">
+                <Label>End Date</Label>
+                <Input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  disabled={isPending}
+                />
+              </div>
+            )}
           </div>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isPending}>
+            <Button type="submit" disabled={isPending || coupon.status === "expired"}>
               {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Save Changes
             </Button>

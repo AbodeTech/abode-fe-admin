@@ -48,7 +48,12 @@ const LogOutModal = ({ isOpen, onClose }: LogOutModalProps) => {
           <Button variant="outline" onClick={onClose} disabled={logout.isPending}>
             Cancel
           </Button>
-          <Button variant="destructive" onClick={handleLogout} disabled={logout.isPending}>
+          <Button
+            variant="destructive"
+            className="bg-destructive text-white disabled:opacity-50"
+            onClick={handleLogout}
+            disabled={logout.isPending}
+          >
             {logout.isPending ? "Logging out…" : "Logout"}
           </Button>
         </DialogFooter>

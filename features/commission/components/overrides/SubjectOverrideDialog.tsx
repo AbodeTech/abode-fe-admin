@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm, type Control } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
@@ -53,7 +53,7 @@ import {
   useUpsertUserOverride,
 } from "../../hooks/use-upsert-override";
 import { AssetPicker } from "../shared/AssetPicker";
-import { UserPicker } from "../shared/UserPicker";
+import { UserPicker } from "@/components/shared/UserPicker";
 
 type SubjectType = "user" | "asset-user";
 type FormControl = Control<SubjectOverrideFormValues>;
@@ -109,7 +109,8 @@ function LegField({
                 className="pr-7"
                 value={field.value ?? ""}
                 onChange={(e) =>
-                  field.onChange(e.target.value === "" ? undefined : e.target.valueAsNumber)
+                  // Empty string — not undefined — so RHF doesn't fall back to defaultValues.
+                  field.onChange(e.target.value === "" ? "" : e.target.valueAsNumber)
                 }
                 onBlur={field.onBlur}
                 name={field.name}
@@ -152,14 +153,21 @@ export function SubjectOverrideDialog({
   const [formKey, setFormKey] = useState(0);
   const form = useForm<SubjectOverrideFormValues>({
     resolver: zodResolver(subjectOverrideFormSchema),
-    defaultValues: override ? subjectOverrideToForm(override) : emptySubjectOverrideForm(),
+    defaultValues: emptySubjectOverrideForm(),
   });
+  const { isDirty } = form.formState;
+
+  // Parent opens via controlled `open` — Radix does not call onOpenChange(true),
+  // so seed the form when the dialog opens (create or edit).
+  useEffect(() => {
+    if (!open) return;
+    form.reset(override ? subjectOverrideToForm(override) : emptySubjectOverrideForm());
+    setFormKey((key) => key + 1);
+    // Only re-seed when the dialog opens or the edited row changes — not on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `form` is stable; including it can re-reset mid-edit
+  }, [open, override]);
 
   const handleOpenChange = (next: boolean) => {
-    if (next) {
-      form.reset(override ? subjectOverrideToForm(override) : emptySubjectOverrideForm());
-      setFormKey((key) => key + 1);
-    }
     onOpenChange(next);
   };
 
@@ -181,6 +189,7 @@ export function SubjectOverrideDialog({
   }
 
   const disabled = mutation.isPending;
+  const saveDisabled = disabled || (isEdit && !isDirty);
   const control = form.control;
 
   return (
@@ -234,6 +243,7 @@ export function SubjectOverrideDialog({
                         onChange={field.onChange}
                         disabled={disabled || isEdit}
                         fallbackLabel={override ? personRefName(override.user) : null}
+                        placeholder="Select a referrer"
                       />
                     </FormControl>
                     <FormMessage />
@@ -351,12 +361,12 @@ export function SubjectOverrideDialog({
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => onOpenChange(false)}
+                onClick={() => handleOpenChange(false)}
                 disabled={disabled}
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={disabled}>
+              <Button type="submit" disabled={saveDisabled}>
                 {disabled ? (
                   <>
                     Saving <Loader2 className="ml-2 h-4 w-4 animate-spin" />

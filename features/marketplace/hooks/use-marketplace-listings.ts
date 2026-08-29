@@ -1,153 +1,41 @@
+'use client';
+
 import { useQuery } from '@tanstack/react-query';
-import { executeRaw } from '@/lib/graphql-client';
-import { marketplaceKeys } from './query-keys';
 
-const VIEW_ALL_LISTINGS_QUERY = `
-  query ViewAllMarketplaceListings($filters: AdminMarketplaceFilterInput) {
-    viewAllMarketplaceListings(filters: $filters) {
-      listings {
-        _id
-        seller { _id firstName lastName }
-        buyer { _id firstName lastName }
-        asset { _id asset_name asset_location asset_type }
-        listing_price
-        commission_percentage
-        platform_fee
-        referral_commission
-        seller_proceeds
-        no_of_units
-        unique_asset_id
-        asset_type
-        status
-        listed_at
-        expires_at
-        sold_at
-        cancelled_at
-        receipt_image
-        receipt_amount
-        receipt_reference
-        suspended_reason
-        createdAt
-      }
-      pagination {
-        currentPage
-        totalPages
-        totalCount
-        limit
-      }
-    }
-  }
-`;
+import { apiGetPaged } from '@/lib/api-client';
 
-const VIEW_PENDING_APPROVALS_QUERY = `
-  query ViewPendingMarketplaceApprovals($page: Int, $limit: Int) {
-    viewPendingMarketplaceApprovals(page: $page, limit: $limit) {
-      listings {
-        _id
-        seller { _id firstName lastName }
-        buyer { _id firstName lastName }
-        asset { _id asset_name asset_location asset_type }
-        listing_price
-        commission_percentage
-        platform_fee
-        referral_commission
-        seller_proceeds
-        no_of_units
-        unique_asset_id
-        asset_type
-        status
-        listed_at
-        receipt_image
-        receipt_amount
-        receipt_reference
-        createdAt
-      }
-      pagination {
-        currentPage
-        totalPages
-        totalCount
-        limit
-      }
-    }
-  }
-`;
+import { MarketplaceListingSchema } from '../schemas/marketplace.schema';
+import { marketplaceKeys, type MarketplaceListFilters } from './query-keys';
 
-export interface MarketplaceListingAdmin {
-  _id: string;
-  seller: { _id: string; firstName: string; lastName: string } | null;
-  buyer: { _id: string; firstName: string; lastName: string } | null;
-  asset: { _id: string; asset_name: string; asset_location: string; asset_type: string } | null;
-  listing_price: number;
-  commission_percentage: number;
-  platform_fee: number;
-  referral_commission: number;
-  seller_proceeds: number;
-  no_of_units: number;
-  unique_asset_id: string;
-  asset_type: string;
-  status: string;
-  listed_at: string;
-  expires_at: string;
-  sold_at: string | null;
-  cancelled_at: string | null;
-  receipt_image: string | null;
-  receipt_amount: number | null;
-  receipt_reference: string | null;
-  suspended_reason: string | null;
-  createdAt: string;
-}
+/** The BE defaults to 20. */
+export const DEFAULT_MARKETPLACE_LISTINGS_LIMIT = 20;
 
-export interface MarketplacePagination {
-  currentPage: number;
-  totalPages: number;
-  totalCount: number;
-  limit: number;
-}
-
-interface ListingsResponse {
-  viewAllMarketplaceListings: {
-    listings: MarketplaceListingAdmin[];
-    pagination: MarketplacePagination;
-  };
-}
-
-interface PendingApprovalsResponse {
-  viewPendingMarketplaceApprovals: {
-    listings: MarketplaceListingAdmin[];
-    pagination: MarketplacePagination;
-  };
-}
-
-interface UseMarketplaceListingsParams {
-  page?: number;
-  limit?: number;
-  status?: string;
-  asset_type?: string;
-}
-
-export const useMarketplaceListings = (params?: UseMarketplaceListingsParams) => {
-  const { page = 1, limit = 20, ...filters } = params ?? {};
+/**
+ * GET /admin/marketplace/listings — standard paged envelope, verified live
+ * 2026-08-20. Only `status` is filterable server-side — `AdminListingsQueryDto`
+ * has no `asset_type` field, unlike the old GraphQL filter input (ticket #27).
+ */
+export const useMarketplaceListings = (filters?: MarketplaceListFilters) => {
+  const { page = 1, limit = DEFAULT_MARKETPLACE_LISTINGS_LIMIT, status } = filters ?? {};
 
   return useQuery({
-    queryKey: marketplaceKeys.list({ page, limit, ...filters }),
+    queryKey: marketplaceKeys.list({ page, limit, status }),
     queryFn: () =>
-      executeRaw<ListingsResponse>(VIEW_ALL_LISTINGS_QUERY, {
-        filters: { page, limit, ...filters },
+      apiGetPaged('/admin/marketplace/listings', MarketplaceListingSchema, {
+        params: { page, limit, status: status || undefined },
       }),
-    select: (data) => data.viewAllMarketplaceListings,
   });
 };
 
-export const usePendingApprovals = (params?: { page?: number; limit?: number }) => {
-  const { page = 1, limit = 20 } = params ?? {};
+/** GET /admin/marketplace/pending-approvals — receipt-path listings awaiting a decision. */
+export const usePendingApprovals = (filters?: { page?: number; limit?: number }) => {
+  const { page = 1, limit = DEFAULT_MARKETPLACE_LISTINGS_LIMIT } = filters ?? {};
 
   return useQuery({
     queryKey: marketplaceKeys.pendingApprovals({ page, limit }),
     queryFn: () =>
-      executeRaw<PendingApprovalsResponse>(VIEW_PENDING_APPROVALS_QUERY, {
-        page,
-        limit,
+      apiGetPaged('/admin/marketplace/pending-approvals', MarketplaceListingSchema, {
+        params: { page, limit },
       }),
-    select: (data) => data.viewPendingMarketplaceApprovals,
   });
 };

@@ -1,15 +1,19 @@
 /* Withdrawals — the admin review queue, on REST against /admin/withdrawals.
  *
- * Replaces the GraphQL withdrawal-transactions screen. Known gaps, all
- * recorded in docs/BACKEND-REQUESTS.md: no populate on the queue (user and
- * bank are bare ObjectIds — ticket 13), no search (14-family), and no stats
- * endpoint for the old summary cards.
+ * Replaces the GraphQL withdrawal-transactions screen. Refs are populated as of
+ * 2026-08-13 (ticket 13) and `search` is live (confirmed against the deployed
+ * spec), so the queue reaches parity with the screen it replaces except for one
+ * column: the requester's TIN, which moved onto the KYC subdocument in v2 and
+ * isn't reachable from this endpoint (⛔ ticket 23). No stats endpoint exists for
+ * the summary cards, which is why they carry a "sample data" chip.
  */
 
 export { WithdrawalsTable } from './components/WithdrawalsTable';
 export { WithdrawalFilters } from './components/WithdrawalFilters';
+export { WithdrawalExportButton } from './components/WithdrawalExportButton';
 export { WithdrawalStatCards } from './components/WithdrawalStatCards';
 export { WithdrawalStatusBadge } from './components/WithdrawalStatusBadge';
+export { ProcessingMethodBadge } from './components/ProcessingMethodBadge';
 export {
   ReviewWithdrawalDialogs,
   type ReviewAction,
@@ -21,6 +25,7 @@ export {
   useDeclineWithdrawal,
   useRetryWithdrawal,
 } from './hooks/use-withdrawal-review';
+export { useWithdrawalExport } from './hooks/use-withdrawal-export';
 export type { WithdrawalListFilters } from './hooks/query-keys';
 
 export {

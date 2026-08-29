@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { OfferTypeSchema, type TierRates } from './commission.schema';
-import type { NormalisedOverride } from './override.schema';
+import { refId, type NormalisedOverride } from './override.schema';
 
 /* ============================================================
  * Override create/edit forms.
@@ -123,7 +123,7 @@ export function assetOverrideToForm(override: NormalisedOverride): AssetOverride
   };
 
   return {
-    asset_id: (typeof override.asset === 'string' ? override.asset : override.asset?._id) ?? '',
+    asset_id: refId(override.asset) ?? '',
     offer_type: override.offerType,
     direct: tiered('direct'),
     upline: tiered('upline'),
@@ -220,8 +220,8 @@ export function subjectOverrideToForm(override: NormalisedOverride): SubjectOver
   };
 
   return {
-    asset_id: (typeof override.asset === 'string' ? override.asset : override.asset?._id) ?? '',
-    user_id: (typeof override.user === 'string' ? override.user : override.user?._id) ?? '',
+    asset_id: refId(override.asset) ?? '',
+    user_id: refId(override.user) ?? '',
     offer_type: override.offerType,
     direct: flat('direct'),
     upline: flat('upline'),

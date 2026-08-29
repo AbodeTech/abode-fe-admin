@@ -1,5 +1,5 @@
 import { MockHttpError, type MockRoutes } from '../router';
-import { body } from './util';
+import { body, paged } from './util';
 
 /* ============================================================
  * Commission mock routes — "METHOD /path", inner payload only.
@@ -335,7 +335,185 @@ function filterRows<T extends OverrideRow>(
   });
 }
 
+
+type MockDeveloperPlotConfig = {
+  _id: string;
+  founder_user_ids: [string, string];
+  founder_referrer_rate: number;
+  founder_bystander_rate: number;
+  external_referrer_rate: number;
+  founder_rate_when_external_referrer: number;
+  version: number;
+  last_modified_by: string | null;
+  reason: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+let developerPlotConfig: MockDeveloperPlotConfig | null = {
+  _id: '665fdp0000000000000000c1',
+  founder_user_ids: [USER_JOHN, USER_UCHE],
+  founder_referrer_rate: 0.08,
+  founder_bystander_rate: 0.05,
+  external_referrer_rate: 0.06,
+  founder_rate_when_external_referrer: 0.05,
+  version: 2,
+  last_modified_by: ADMIN_ID,
+  reason: 'Initial founder line-up for the developer-plot programme',
+  createdAt: '2026-08-10T09:00:00.000Z',
+  updatedAt: '2026-08-15T09:00:00.000Z',
+};
+
+const COMMISSION_LEDGER = [
+  {
+    id: '665fee00000000000000t01',
+    created_at: '2026-08-18T10:15:00.000Z',
+    source_type: 'direct',
+    referrer_id: USER_JOHN,
+    referrer_name: 'John Okafor',
+    referrer_email: 'john.okafor@example.com',
+    referrer_tin: '12345678-0001',
+    source_user_id: '665fcccc00000000000000c9',
+    source_user_name: 'Amaka Obi',
+    source_user_email: 'amaka.obi@example.com',
+    asset_id: ASSET_AVIATION,
+    asset_name: 'Aviation City',
+    rate_applied: 0.1,
+    gross_commission: 250_000,
+    wht_deducted: 12_500,
+    net_commission: 237_500,
+    tier_at_creation: 'associate-pro',
+    override_source: 'default',
+    commission_config_version: 3,
+    status: 'completed',
+  },
+  {
+    id: '665fee00000000000000t02',
+    created_at: '2026-08-17T14:40:00.000Z',
+    source_type: 'upline',
+    referrer_id: USER_UCHE,
+    referrer_name: 'Uche Eze',
+    referrer_email: 'uche.eze@example.com',
+    referrer_tin: '12345678-0002',
+    source_user_id: '665fcccc00000000000000c8',
+    source_user_name: 'Bola Adewale',
+    source_user_email: 'bola.adewale@example.com',
+    asset_id: ASSET_HARMONY,
+    asset_name: 'Harmony Gardens',
+    rate_applied: 0.03,
+    gross_commission: 75_000,
+    wht_deducted: 3_750,
+    net_commission: 71_250,
+    tier_at_creation: 'premium',
+    override_source: 'default',
+    commission_config_version: 3,
+    status: 'completed',
+  },
+  {
+    id: '665fee00000000000000t03',
+    created_at: '2026-08-16T09:05:00.000Z',
+    source_type: 'wht',
+    referrer_id: null,
+    referrer_name: null,
+    referrer_email: null,
+    referrer_tin: null,
+    source_user_id: '665fcccc00000000000000c9',
+    source_user_name: 'Amaka Obi',
+    source_user_email: 'amaka.obi@example.com',
+    asset_id: ASSET_AVIATION,
+    asset_name: 'Aviation City',
+    rate_applied: 0.05,
+    gross_commission: 12_500,
+    wht_deducted: 0,
+    net_commission: 12_500,
+    tier_at_creation: null,
+    override_source: 'default',
+    commission_config_version: 3,
+    status: 'completed',
+  },
+];
+
 export const commissionRoutes: MockRoutes = {
+  /**
+   * Commission ledger — standard paged envelope for apiGetPaged.
+   * Filters: source_type, from/to (ISO date), q (name/email/tin/asset).
+   */
+  'GET /admin/commission/transactions': ({ query }) => {
+    let rows = [...COMMISSION_LEDGER];
+
+    const sourceType = typeof query.source_type === 'string' ? query.source_type : null;
+    if (sourceType) {
+      rows = rows.filter((row) => row.source_type === sourceType);
+    }
+
+    const from = typeof query.from === 'string' ? new Date(query.from) : null;
+    const to = typeof query.to === 'string' ? new Date(query.to) : null;
+    if (from && !Number.isNaN(from.getTime())) {
+      rows = rows.filter((row) => new Date(row.created_at) >= from);
+    }
+    if (to && !Number.isNaN(to.getTime())) {
+      const end = new Date(to);
+      end.setUTCHours(23, 59, 59, 999);
+      rows = rows.filter((row) => new Date(row.created_at) <= end);
+    }
+
+    const q = typeof query.q === 'string' ? query.q.trim().toLowerCase() : '';
+    if (q) {
+      rows = rows.filter((row) =>
+        [row.referrer_name, row.referrer_email, row.referrer_tin, row.source_user_name, row.asset_name]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(q))
+      );
+    }
+
+    return paged(rows, query, 25);
+  },
+
+  /**
+   * Developer-plot three-way split (singleton, versioned). Starts CONFIGURED
+   * in mock mode so the card's populated state renders; delete the object to
+   * exercise the unset warning.
+   */
+  'GET /admin/commission/developer-plot-config': () => developerPlotConfig,
+
+  'PATCH /admin/commission/developer-plot-config': ({ body: raw }) => {
+    const dto = body<{
+      founder_user_ids?: string[];
+      founder_referrer_rate?: number;
+      founder_bystander_rate?: number;
+      external_referrer_rate?: number;
+      founder_rate_when_external_referrer?: number;
+      reason?: string;
+    }>(raw);
+
+    const founders = dto.founder_user_ids ?? [];
+    if (founders.length !== 2 || new Set(founders).size !== 2) {
+      throw new MockHttpError(
+        400,
+        'DEVELOPER_PLOT_FOUNDERS_INVALID: exactly two founders are required',
+        'DEVELOPER_PLOT_FOUNDERS_INVALID'
+      );
+    }
+
+    developerPlotConfig = {
+      _id: developerPlotConfig?._id ?? '665fdp0000000000000000c1',
+      founder_user_ids: [founders[0], founders[1]],
+      founder_referrer_rate: dto.founder_referrer_rate ?? developerPlotConfig?.founder_referrer_rate ?? 0.08,
+      founder_bystander_rate: dto.founder_bystander_rate ?? developerPlotConfig?.founder_bystander_rate ?? 0.05,
+      external_referrer_rate: dto.external_referrer_rate ?? developerPlotConfig?.external_referrer_rate ?? 0.06,
+      founder_rate_when_external_referrer:
+        dto.founder_rate_when_external_referrer ??
+        developerPlotConfig?.founder_rate_when_external_referrer ??
+        0.05,
+      version: (developerPlotConfig?.version ?? 0) + 1,
+      last_modified_by: ADMIN_ID,
+      reason: dto.reason ?? null,
+      createdAt: developerPlotConfig?.createdAt ?? new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    return developerPlotConfig;
+  },
+
   'GET /admin/commission/config': () => ({
     active: versions[0],
     history: versions,

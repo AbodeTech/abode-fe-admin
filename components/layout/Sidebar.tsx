@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { useUIStore } from "@/store/ui-store";
 
 import {
+  Bot,
   Activity,
   ArrowDownToLine,
   BarChart3,
@@ -26,8 +27,10 @@ import {
   SlidersHorizontal,
   Store,
   Tags,
+  Video,
   TrendingUp,
   Upload,
+  UserCog,
   UserPlus,
   Users,
 } from "lucide-react";
@@ -46,8 +49,13 @@ const navGroups = [
       { name: "Sales", link: "/sales", icon: <ShoppingCart /> },
       { name: "Agency", link: "/agency", icon: <Building2 /> },
       { name: "Allocation", link: "/allocation", icon: <Building2 /> },
+      { name: "Purchase Confirmations", link: "/purchase-confirmations", icon: <CheckCircle /> },
       { name: "Marketplace", link: "/marketplace", icon: <Store /> },
+      { name: "Meetings", link: "/meetings", icon: <Video /> },
       { name: "Requests", link: "/requests", icon: <ClipboardList /> },
+      { name: "Amaris", link: "/amaris", icon: <Bot /> },
+      { name: "Flex Leads", link: "/flex-leads", icon: <UserPlus /> },
+      { name: "Upgrade Coupons", link: "/associate-upgrade/coupons", icon: <Gift /> },
     ]
   },
   {
@@ -68,10 +76,17 @@ const navGroups = [
     icon: <Users />,
     items: [
       { name: "Associates Upgrade", link: "/associate-upgrade", icon: <UserPlus /> },
-      { name: "Upgrade Coupons", link: "/associate-upgrade/coupons", icon: <Gift /> },
       { name: "Top associates", link: "/associates", icon: <TrendingUp /> },
       { name: "Associate Performance", link: "/associates/performance", icon: <Activity />, requiresSuperAdmin: true },
       { name: "Manager Performance", link: "/associates/managers", icon: <ShieldCheck />, requiresAdminOrManager: true },
+    ]
+  },
+  {
+    title: "Customer Success",
+    isCollapsible: true,
+    icon: <UserCog />,
+    items: [
+      { name: "CS Manager Performance", link: "/customer-managers", icon: <ShieldCheck /> },
     ]
   },
   {
@@ -118,43 +133,62 @@ const navGroups = [
   }
 ];
 
+function getRouteOpenGroups(pathname: string): Record<string, boolean> {
+  const open: Record<string, boolean> = {};
+  const exactOwner = navGroups.some((group) =>
+    group.items.some((item) => item.link === pathname)
+  );
+
+  for (const group of navGroups) {
+    if (!group.isCollapsible) continue;
+    const activeHere = group.items.some((item) => {
+      if (pathname === item.link) return true;
+      // Prefix match only when no other nav item owns this path exactly
+      // (e.g. /associate-upgrade/coupons is a standalone General link).
+      if (exactOwner) return false;
+      return item.link.length > 1 && pathname.startsWith(`${item.link}/`);
+    });
+    if (activeHere) open[group.title] = true;
+  }
+
+  return open;
+}
+
 const Sidebar = () => {
   const pathname = usePathname();
   const { isSidebarCollapsed, isMobileNavOpen, closeMobileNav } = useUIStore();
   const { user } = useAuthStore();
   const { isManager } = useIsCurrentUserManager();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+  /** Manual open/close overrides; cleared on navigation so route-driven opens win. */
+  const [manualOpenGroups, setManualOpenGroups] = useState<Record<string, boolean>>({});
+  const [prevPathname, setPrevPathname] = useState(pathname);
+
+  if (pathname !== prevPathname) {
+    setPrevPathname(pathname);
+    setManualOpenGroups({});
+  }
+
+  const routeOpenGroups = getRouteOpenGroups(pathname);
 
   /** On mobile drawer, always show labels and nested links (collapsed desktop mode hides sub-routes). */
   const showNavDetails = !isSidebarCollapsed || isMobileNavOpen;
-  const showCollapsibleChildren = (groupTitle: string) => Boolean(openGroups[groupTitle]) && showNavDetails;
+  const isGroupExpanded = (groupTitle: string) =>
+    manualOpenGroups[groupTitle] ?? routeOpenGroups[groupTitle] ?? false;
+  const showCollapsibleChildren = (groupTitle: string) =>
+    isGroupExpanded(groupTitle) && showNavDetails;
 
   const toggleGroup = (groupTitle: string) => {
-    setOpenGroups(prev => ({ ...prev, [groupTitle]: !prev[groupTitle] }));
+    setManualOpenGroups((prev) => ({
+      ...prev,
+      [groupTitle]: !(prev[groupTitle] ?? routeOpenGroups[groupTitle] ?? false),
+    }));
   };
 
   // Close the mobile drawer when navigating.
   useEffect(() => {
     closeMobileNav();
   }, [pathname, closeMobileNav]);
-
-  // Auto-open the collapsible group whose active route matches the current path.
-  useEffect(() => {
-    setOpenGroups((prev) => {
-      const next = { ...prev };
-      for (const group of navGroups) {
-        if (!group.isCollapsible) continue;
-        const activeHere = group.items.some(
-          (item) =>
-            pathname === item.link ||
-            (item.link.length > 1 && pathname.startsWith(`${item.link}/`))
-        );
-        if (activeHere) next[group.title] = true;
-      }
-      return next;
-    });
-  }, [pathname]);
 
   const isSuperAdmin = user?.role === "admin";
 
@@ -206,7 +240,7 @@ const Sidebar = () => {
       {/* Navigation Area */}
       <div className="flex-1 overflow-y-auto py-4 px-3 ">
         {visibleNavGroups.map((group, groupIdx) => {
-          const isGroupOpen = Boolean(openGroups[group.title]);
+          const isGroupOpen = isGroupExpanded(group.title);
 
           // Special handling for collapsible groups ("Transactions")
           if (group.isCollapsible) {

@@ -1,162 +1,75 @@
 "use client";
 
-import { useState } from "react";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import {
-  ArrowDownIcon,
-  ArrowUpIcon,
-  User,
-  DollarSign,
-  Calendar,
-  Building,
-  UserCheck,
-  TrendingUp,
-  CheckCircle,
-  Wallet,
-} from "lucide-react";
 import { format } from "date-fns";
-import { graphql } from "@/lib/gql";
-import { FragmentType, useFragment as getFragmentData } from "@/lib/gql";
-import { CommissionTransactionsTable_DataFragment } from "@/lib/gql/graphql";
+import { TrendingUp } from "lucide-react";
+import Link from "next/link";
+
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   AdminDesktopTableWrap,
   AdminMobileCard,
   AdminMobileField,
   AdminMobileStack,
 } from "@/components/shared/admin-responsive-table";
-import Link from "next/link";
+import { formatNaira, formatPercent } from "@/lib/utils/format";
 
-export const CommissionTransactionsFragment = graphql(`
-  fragment CommissionTransactionsTable_data on AdminTransactions {
-    _id
-    tin
-    admin_status
-    amount
-    asset_type
-    description
-    user {
-      _id
-      firstName
-      lastName
-      referrer
-      referral_status
-      email
-      tin
-    }
-    plot_size
-    status
-    referral
-    transaction_type
-    time_of_transaction
-  }
-`);
+import {
+  COMMISSION_SOURCE_TYPE_LABELS,
+  type CommissionSourceType,
+  type CommissionTransactionRow,
+} from "../../schemas/commission-transaction.schema";
 
-
-const formatNumber = (amount: number | string) => {
-  const num = Number(amount);
-  return isNaN(num) ? "0" : num.toLocaleString();
-};
-
-const formatDate = (date: Date) => {
+const formatDateTime = (value: string) => {
   try {
+    const date = new Date(value);
     return {
       date: format(date, "dd MMM yyyy,"),
-      time: format(date, "hh:mm a").toLowerCase()
+      time: format(date, "hh:mm a").toLowerCase(),
     };
   } catch {
-    return { date: "N/A", time: "" };
+    return { date: "—", time: "" };
   }
 };
 
-const parseCommissionDescription = (description: string) => {
-  try {
-    // Check if it's a commission description format
-    if (!description.startsWith("Commission:")) {
-      return { isCommission: false, assetType: null, clientName: null, vatAmount: null, balance: null };
-    }
-
-    // Remove "Commission: " prefix
-    const cleanDescription = description.substring("Commission: ".length);
-
-    // Initialize variables with default values
-    let assetType: string | null = "flex"; // Default asset type is "flex"
-    let clientName: string | null = null;
-    let vatAmount: string | null = null;
-    let balance: string | null = null;
-
-    // Check if description contains "by" to extract client name
-    if (cleanDescription.includes(" by ")) {
-      // Extract asset type and client name
-      assetType = cleanDescription.split(" by ")[0].trim();
-
-      // Extract client name
-      if (cleanDescription.includes(" with VAT: ") || cleanDescription.includes(" with WHT:")) {
-        // Format: "asset type by client name with VAT: amount & Balance at Transaction: amount"
-        clientName = cleanDescription.split(" by ")[1].split(" with ")[0].trim();
-
-        // Extract VAT amount if available
-        const vatMatch = description.match(/VAT: (\d+\.?\d*)/);
-        const whtMatch = description.match(/WHT: (\d+\.?\d*)/);
-        vatAmount = vatMatch ? vatMatch[1] : whtMatch ? whtMatch[1] : null;
-
-        // Extract balance if available
-        const balanceMatch = description.match(/Balance at Transaction: (\d+\.?\d*)/);
-        balance = balanceMatch ? balanceMatch[1] : null;
-      } else {
-        // Format: "asset type by client name" (without VAT and Balance)
-        clientName = cleanDescription.split(" by ")[1].trim();
-      }
-    }
-
-    return {
-      isCommission: true,
-      assetType,
-      clientName,
-      vatAmount,
-      balance,
-    };
-  } catch (error) {
-    console.error("Error parsing commission description:", error);
-    // Return default values if parsing fails
-    return {
-      isCommission: true,
-      assetType: "flex",
-      clientName: null,
-      vatAmount: null,
-      balance: null,
-    };
+const sourceLabel = (sourceType: string | null) => {
+  if (!sourceType) return "—";
+  if (sourceType in COMMISSION_SOURCE_TYPE_LABELS) {
+    return COMMISSION_SOURCE_TYPE_LABELS[sourceType as CommissionSourceType];
   }
+  return sourceType;
 };
 
 interface CommissionTransactionsTableProps {
-  data: (FragmentType<typeof CommissionTransactionsFragment> | null)[] | null | undefined;
+  data?: CommissionTransactionRow[] | null;
   isLoading?: boolean;
 }
 
-export function CommissionTransactionsTable({ data, isLoading }: CommissionTransactionsTableProps) {
-  const [sortField, setSortField] = useState("time_of_transaction");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
-
-  const sortableFields = ["time_of_transaction", "amount"];
-
-  const transactionsRaw = data || [];
-  const transactions = transactionsRaw.map((t) => getFragmentData(CommissionTransactionsFragment, t));
-  const validTransactions = transactions.filter((t): t is CommissionTransactionsTable_DataFragment => t !== null && t !== undefined);
-
-
+export function CommissionTransactionsTable({
+  data,
+  isLoading,
+}: CommissionTransactionsTableProps) {
   if (isLoading) {
     return <div className="p-8 text-center text-gray-500">Loading transactions...</div>;
   }
 
-  if (!data || validTransactions.length === 0) {
+  const rows = data ?? [];
+
+  if (rows.length === 0) {
     return (
       <Card className="border border-gray-200">
         <CardContent className="flex flex-col items-center justify-center py-12">
-          <TrendingUp className="h-12 w-12 text-gray-400 mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">No commission data found</h3>
-          <p className="text-gray-600 text-center max-w-md">
+          <TrendingUp className="mb-4 h-12 w-12 text-gray-400" />
+          <h3 className="mb-2 text-lg font-semibold text-gray-900">No commission data found</h3>
+          <p className="max-w-md text-center text-gray-600">
             There are no commission transactions to display at this time.
           </p>
         </CardContent>
@@ -164,233 +77,136 @@ export function CommissionTransactionsTable({ data, isLoading }: CommissionTrans
     );
   }
 
-  // Process and sort data
-  const processedData = validTransactions.map((c) => {
-    const parsed = parseCommissionDescription(c.description || "");
-    return {
-      ...c,
-      whtAmount: parsed.vatAmount,
-      balance: parsed.balance,
-      clientName: parsed.clientName || `${c.user?.firstName || ""} ${c.user?.lastName || ""}`,
-      parsedAssetType: parsed.assetType || c.asset_type || "N/A",
-      amount: Number(c.amount ?? 0),
-      time_of_transaction: c.time_of_transaction || new Date().toISOString()
-    };
-  });
-
-  const sortedData = [...processedData].sort((a, b) => {
-    if (sortField === "time_of_transaction") {
-      return sortDirection === "asc"
-        ? new Date(a.time_of_transaction).getTime() - new Date(b.time_of_transaction).getTime()
-        : new Date(b.time_of_transaction).getTime() - new Date(a.time_of_transaction).getTime();
-    } else if (sortField === "amount") {
-      return sortDirection === "asc" ? a.amount - b.amount : b.amount - a.amount;
-    }
-    return 0;
-  });
-
-  const handleSort = (field: string) => {
-    if (!sortableFields.includes(field)) return;
-    if (sortField === field) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
-    } else {
-      setSortField(field);
-      setSortDirection("asc");
-    }
-  };
-
-  const renderSortIndicator = (field: string) => {
-    if (!sortableFields.includes(field)) return null;
-    if (sortField === field) {
-      return sortDirection === "asc" ? (
-        <ArrowUpIcon className="inline ml-1 h-4 w-4" />
-      ) : (
-        <ArrowDownIcon className="inline ml-1 h-4 w-4" />
-      );
-    }
-    return null;
-  };
-
   return (
     <div className="min-w-0 w-full space-y-3">
       <AdminMobileStack>
-        {sortedData.map((commission) => {
-          const formattedDate = formatDate(new Date(commission.time_of_transaction));
+        {rows.map((row) => {
+          const formatted = formatDateTime(row.created_at);
           return (
             <AdminMobileCard
-              key={commission._id}
+              key={row.id}
               title={
-                <Link href={`/users/${commission.user?._id ?? ""}`} className="text-primary hover:underline">
-                  {commission.clientName}
-                </Link>
+                row.referrer_id ? (
+                  <Link
+                    href={`/users/${row.referrer_id}`}
+                    className="text-primary hover:underline"
+                  >
+                    {row.referrer_name || "—"}
+                  </Link>
+                ) : (
+                  row.referrer_name || "—"
+                )
               }
-              subtitle={`${formattedDate.date} ${formattedDate.time}`}
+              subtitle={`${formatted.date} ${formatted.time}`}
             >
-              <AdminMobileField
-                label="Transaction amount"
-                value={
-                  commission.whtAmount
-                    ? `₦${formatNumber(Number(commission.whtAmount) + Number(commission.amount))}`
-                    : "N/A"
-                }
-              />
-              <AdminMobileField label="TIN" value={commission.user?.tin || "N/A"} />
-              <AdminMobileField label="Asset type" value={commission.parsedAssetType} />
-              <AdminMobileField
-                label="Associate"
-                value={`${commission.user?.firstName} ${commission.user?.lastName}`}
-              />
-              <AdminMobileField label="Referrer" value={commission.user?.referrer || "N/A"} />
-              <AdminMobileField label="Associate status" value={commission.user?.referral_status ?? "N/A"} />
-              <AdminMobileField
-                label="% earned"
-                value={
-                  commission.whtAmount
-                    ? `${(
-                        100 *
-                        (Number(commission.amount) /
-                          ((Number(commission.whtAmount) + Number(commission.amount)) * 0.95))
-                      ).toFixed(2)}%`
-                    : "N/A"
-                }
-              />
-              <AdminMobileField label="Commission" value={`₦${formatNumber(commission.amount)}`} />
-              <AdminMobileField label="Txn status" value={commission.status || "N/A"} />
-              <AdminMobileField
-                label="Balance"
-                value={commission.balance ? `₦${formatNumber(commission.balance)}` : "N/A"}
-              />
+              <AdminMobileField label="Buyer" value={row.source_user_name || "—"} />
+              <AdminMobileField label="Asset" value={row.asset_name || "—"} />
+              <AdminMobileField label="Source" value={sourceLabel(row.source_type)} />
+              <AdminMobileField label="TIN" value={row.referrer_tin || "—"} />
+              <AdminMobileField label="Gross" value={formatNaira(row.gross_commission)} />
+              <AdminMobileField label="WHT" value={formatNaira(row.wht_deducted)} />
+              <AdminMobileField label="Net" value={formatNaira(row.net_commission)} />
+              <AdminMobileField label="Rate" value={formatPercent(row.rate_applied)} />
+              <AdminMobileField label="Tier" value={row.tier_at_creation || "—"} />
+              <AdminMobileField label="Status" value={row.status || "—"} />
             </AdminMobileCard>
           );
         })}
       </AdminMobileStack>
 
       <AdminDesktopTableWrap>
-      <div className="min-w-0 overflow-x-auto">
-      <Table className="min-w-[1200px]">
-        <TableHeader className="bg-[#F9FAFB] border-b border-[#E5EAEF]">
-          <TableRow className="text-xs font-medium text-[#5D6679]">
-            <TableHead
-              className="cursor-pointer py-4 px-4 font-medium"
-              onClick={() => handleSort("time_of_transaction")}
-            >
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                Time
-                {renderSortIndicator("time_of_transaction")}
-              </div>
-            </TableHead>
-            <TableHead className="py-4 px-4 font-medium">
-              <div className="flex items-center gap-2">
-                <User className="h-4 w-4" />
-                Client Name
-              </div>
-            </TableHead>
-            <TableHead className="py-4 px-4 font-medium">
-              <div className="flex items-center gap-2">
-                <DollarSign className="h-4 w-4" />
-                Transaction Amount
-              </div>
-            </TableHead>
-            <TableHead className="py-4 px-4 font-medium">TIN</TableHead>
-            <TableHead className="py-4 px-4 font-medium">
-              <div className="flex items-center gap-2">
-                <Building className="h-4 w-4" />
-                Asset Type
-              </div>
-            </TableHead>
-            <TableHead className="py-4 px-4 font-medium">
-              <div className="flex items-center gap-2">
-                <UserCheck className="h-4 w-4" />
-                Associate Name
-              </div>
-            </TableHead>
-            <TableHead className="py-4 px-4 font-medium">Referrer</TableHead>
-            <TableHead className="py-4 px-4 font-medium">Associate Status</TableHead>
-            <TableHead className="py-4 px-4 font-medium">Percentage Earned</TableHead>
-            <TableHead className="cursor-pointer py-4 px-4 font-medium" onClick={() => handleSort("amount")}>
-              <div className="flex items-center gap-2">
-                <Wallet className="h-4 w-4" />
-                Commission Amount
-                {renderSortIndicator("amount")}
-              </div>
-            </TableHead>
-            <TableHead className="py-4 px-4 font-medium">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4" />
-                Transaction Status
-              </div>
-            </TableHead>
-            <TableHead className="py-4 px-4 font-medium">
-              <div className="flex items-center gap-2">
-                <Wallet className="h-4 w-4" />
-                Balance
-              </div>
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {sortedData.map((commission, idx) => {
-            const formattedDate = formatDate(new Date(commission.time_of_transaction));
-            return (
-              <TableRow
-                key={commission._id}
-                className={`hover:bg-gray-50 transition-colors border-b border-[#E5EAEF] ${idx % 2 === 0 ? "bg-white" : "bg-white"
-                  }`}
-              >
-                <TableCell className="py-5 px-4 text-sm text-[#333333]">
-                  <div className="flex flex-col">
-                    <span>{formattedDate.date}</span>
-                    <span className="text-[#667085]">{formattedDate.time}</span>
-                  </div>
-                </TableCell>
-                <TableCell className="max-w-[180px] whitespace-normal wrap-break-word py-5 px-4 text-sm font-medium text-[#333333] sm:max-w-none">
-                  {commission.clientName}
-                </TableCell>
-                <TableCell className="py-5 px-4 text-sm font-semibold text-[#333333]">
-                  {commission.whtAmount
-                    ? `₦${formatNumber(Number(commission.whtAmount) + Number(commission.amount))}`
-                    : "N/A"}
-                </TableCell>
-                <TableCell className="py-5 px-4 text-sm text-[#667085]">{commission.user?.tin || "N/A"}</TableCell>
-                <TableCell className="py-5 px-4">
-                  <Badge variant="outline" className="bg-[#F0F1F3] text-[#333333] border-[#E0E2E7] text-xs font-medium">
-                    {commission.parsedAssetType}
-                  </Badge>
-                </TableCell>
-                <TableCell className="max-w-[160px] whitespace-normal wrap-break-word py-5 px-4 text-sm font-medium text-[#333333] sm:max-w-none">
-                  {commission.user?.firstName} {commission.user?.lastName}
-                </TableCell>
-                <TableCell className="max-w-[140px] whitespace-normal wrap-break-word py-5 px-4 text-sm text-[#667085] sm:max-w-none">
-                  {commission.user?.referrer || "N/A"}
-                </TableCell>
-                <TableCell className="py-5 px-4">
-                  <Badge variant="outline" className="bg-[#F0F1F3] text-[#333333] border-[#E0E2E7] text-xs font-medium">
-                    {commission.user?.referral_status ?? "N/A"}
-                  </Badge>
-                </TableCell>
-                <TableCell className="py-5 px-4 text-sm text-[#667085]">
-                  {commission.whtAmount
-                    ? `${(
-                      100 *
-                      (Number(commission.amount) /
-                        ((Number(commission.whtAmount) + Number(commission.amount)) * 0.95))
-                    ).toFixed(2)}%`
-                    : "N/A"}
-                </TableCell>
-                <TableCell className="py-5 px-4 text-sm font-semibold text-[#333333]">₦{formatNumber(commission.amount)}</TableCell>
-                <TableCell className="py-5 px-4">
-                  <Badge className="bg-[#1A1A1A] text-white border-0 text-xs font-medium hover:bg-[#333333]">
-                    {commission.status || "N/A"}
-                  </Badge>
-                </TableCell>
-                <TableCell className="py-5 px-4 text-sm font-semibold text-[#333333]">{commission.balance ? `₦${formatNumber(commission.balance)}` : "N/A"}</TableCell>
+        <div className="min-w-0 overflow-x-auto">
+          <Table className="min-w-[1200px]">
+            <TableHeader className="border-b border-[#E5EAEF] bg-[#F9FAFB]">
+              <TableRow className="text-xs font-medium text-[#5D6679]">
+                <TableHead className="px-4 py-4 font-medium">Time</TableHead>
+                <TableHead className="px-4 py-4 font-medium">Associate</TableHead>
+                <TableHead className="px-4 py-4 font-medium">Buyer</TableHead>
+                <TableHead className="px-4 py-4 font-medium">Asset</TableHead>
+                <TableHead className="px-4 py-4 font-medium">Source</TableHead>
+                <TableHead className="px-4 py-4 font-medium">TIN</TableHead>
+                <TableHead className="px-4 py-4 font-medium">Gross</TableHead>
+                <TableHead className="px-4 py-4 font-medium">WHT</TableHead>
+                <TableHead className="px-4 py-4 font-medium">Net</TableHead>
+                <TableHead className="px-4 py-4 font-medium">Rate</TableHead>
+                <TableHead className="px-4 py-4 font-medium">Tier</TableHead>
+                <TableHead className="px-4 py-4 font-medium">Status</TableHead>
               </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
-      </div>
+            </TableHeader>
+            <TableBody>
+              {rows.map((row) => {
+                const formatted = formatDateTime(row.created_at);
+                return (
+                  <TableRow
+                    key={row.id}
+                    className="border-b border-[#E5EAEF] transition-colors hover:bg-gray-50"
+                  >
+                    <TableCell className="px-4 py-5 text-sm text-[#333333]">
+                      <div className="flex flex-col">
+                        <span>{formatted.date}</span>
+                        <span className="text-[#667085]">{formatted.time}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="max-w-[160px] whitespace-normal wrap-break-word px-4 py-5 text-sm font-medium text-[#333333] sm:max-w-none">
+                      {row.referrer_id ? (
+                        <Link
+                          href={`/users/${row.referrer_id}`}
+                          className="text-primary hover:underline"
+                        >
+                          {row.referrer_name || "—"}
+                        </Link>
+                      ) : (
+                        row.referrer_name || "—"
+                      )}
+                    </TableCell>
+                    <TableCell className="max-w-[160px] whitespace-normal wrap-break-word px-4 py-5 text-sm text-[#333333] sm:max-w-none">
+                      {row.source_user_name || "—"}
+                    </TableCell>
+                    <TableCell className="max-w-[160px] whitespace-normal wrap-break-word px-4 py-5 text-sm text-[#667085] sm:max-w-none">
+                      {row.asset_name || "—"}
+                    </TableCell>
+                    <TableCell className="px-4 py-5">
+                      <Badge
+                        variant="outline"
+                        className="border-[#E0E2E7] bg-[#F0F1F3] text-xs font-medium text-[#333333]"
+                      >
+                        {sourceLabel(row.source_type)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="px-4 py-5 text-sm text-[#667085]">
+                      {row.referrer_tin || "—"}
+                    </TableCell>
+                    <TableCell className="px-4 py-5 text-sm tabular-nums text-[#333333]">
+                      {formatNaira(row.gross_commission)}
+                    </TableCell>
+                    <TableCell className="px-4 py-5 text-sm tabular-nums text-[#667085]">
+                      {formatNaira(row.wht_deducted)}
+                    </TableCell>
+                    <TableCell className="px-4 py-5 text-sm font-semibold tabular-nums text-[#333333]">
+                      {formatNaira(row.net_commission)}
+                    </TableCell>
+                    <TableCell className="px-4 py-5 text-sm text-[#667085]">
+                      {formatPercent(row.rate_applied)}
+                    </TableCell>
+                    <TableCell className="px-4 py-5">
+                      <Badge
+                        variant="outline"
+                        className="border-[#E0E2E7] bg-[#F0F1F3] text-xs font-medium text-[#333333]"
+                      >
+                        {row.tier_at_creation || "—"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="px-4 py-5">
+                      <Badge className="border-0 bg-[#1A1A1A] text-xs font-medium text-white hover:bg-[#333333]">
+                        {row.status || "—"}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
       </AdminDesktopTableWrap>
     </div>
   );

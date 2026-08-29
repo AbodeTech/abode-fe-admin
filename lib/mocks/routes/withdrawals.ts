@@ -1,4 +1,5 @@
 import { MockHttpError, type MockRoutes } from '../router';
+import { findPerson, matchesPersonSearch } from './people';
 import { body, paged } from './util';
 
 /* ============================================================
@@ -6,8 +7,22 @@ import { body, paged } from './util';
  *
  * Rows are wallet Transaction documents with type 'withdrawal'. Fixtures
  * cover every admin_status, both providers, and a rail_attempts history —
- * the states the queue exists to render. Refs are bare ObjectIds, exactly
- * as the BE serves them today (⛔ ticket 13: no populate here).
+ * the states the queue exists to render.
+ *
+ * Fixtures store `user`, `bank_details_id` and `reviewed_by` as ids; the queue
+ * route resolves them on the way out, mirroring
+ * `findTransactionsPaginated(filter, page, limit, true)` — which populates as of
+ * 2026-08-13 (ticket 13). Each is populated with **exactly** the fields the BE's
+ * projection selects, no more: `user` → `firstName lastName email`,
+ * `bank_details_id` → `bank_name account_number account_name`, `reviewed_by` →
+ * `firstName lastName`.
+ *
+ * Note `user` here carries **no `phoneNumber`** even though the shared fixture
+ * has one, because this endpoint's projection doesn't select it. Being more
+ * generous than the backend is how a column gets built that works in mock mode
+ * and renders blank in production.
+ *
+ * The single-row and action responses stay unpopulated, as the BE returns them.
  *
  * One special fixture: approving WD_RAIL_REFUSER always has the rail refuse
  * the transfer, so the "200 but no money moved" path — the one worth
@@ -21,6 +36,34 @@ const USER_B = '665fcccc00000000000000c2';
 const USER_C = '665fcccc00000000000000c9';
 const BANK_A = '665fbbbb000000000000ba01';
 const BANK_B = '665fbbbb000000000000ba02';
+
+/**
+ * What `.populate('bank_details_id', 'bank_name account_number account_name')`
+ * resolves to. snake_case, matching the BE's projection — the schema also
+ * accepts the camelCase spelling some BankDetails models use, but this endpoint
+ * returns these names.
+ */
+const BANK_DETAILS: Record<string, object> = {
+  [BANK_A]: {
+    _id: BANK_A,
+    bank_name: 'Guaranty Trust Bank',
+    account_number: '0123456789',
+    account_name: 'Okafor John Chukwuemeka',
+  },
+  [BANK_B]: {
+    _id: BANK_B,
+    bank_name: 'Zenith Bank',
+    account_number: '2098765432',
+    account_name: 'Eze Uche Daniel',
+  },
+};
+
+/** The admin who reviewed a row — `.populate('reviewed_by', 'firstName lastName')`. */
+const ADMIN_REF = {
+  _id: '665fbbbb00000000000000bb',
+  firstName: 'Tolu',
+  lastName: 'Adeyemi',
+};
 
 const daysAgo = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString();
 
@@ -217,6 +260,37 @@ const withdrawals: MockWithdrawal[] = [
   },
 ];
 
+/**
+ * Resolve the queue row's three refs, each with exactly its own BE projection.
+ * An id with no fixture stays bare — how a ref to a deleted record behaves.
+ */
+function populate(row: MockWithdrawal) {
+  const requester = findPerson(row.user);
+
+  return {
+    ...row,
+    user: requester
+      ? {
+          _id: requester._id,
+          firstName: requester.firstName,
+          lastName: requester.lastName,
+          email: requester.email,
+          // No phoneNumber — this endpoint's projection doesn't select it.
+          //
+          // The TIN arrives through a nested hop (ticket 23): the BE keeps `kyc`
+          // in the user projection so it can populate `kyc` with
+          // `tin.value tin.state`. A person with no TIN on file gets an empty
+          // artifact rather than a missing `kyc`, which is what an unsubmitted
+          // KYC document looks like.
+          kyc: { tin: requester.tin ?? { value: null, state: 'not_started' } },
+        }
+      : row.user,
+    bank_details_id: BANK_DETAILS[row.bank_details_id] ?? row.bank_details_id,
+    reviewed_by:
+      row.reviewed_by && row.reviewed_by === ADMIN_REF._id ? ADMIN_REF : row.reviewed_by,
+  };
+}
+
 function requireWithdrawal(id: string): MockWithdrawal {
   const row = withdrawals.find((candidate) => candidate._id === id);
   if (!row) throw new MockHttpError(404, 'Transaction not found', 'TRANSACTION_NOT_FOUND');
@@ -265,13 +339,23 @@ function runRail(row: MockWithdrawal, overrideProvider?: 'paystack' | 'paga'): M
 
 export const withdrawalRoutes: MockRoutes = {
   'GET /admin/withdrawals': ({ query }) => {
-    let rows = withdrawals;
+    let rows: MockWithdrawal[] = withdrawals;
     const adminStatus = String(query.admin_status ?? '');
     const provider = String(query.payment_provider ?? '');
+    const search = typeof query.search === 'string' ? query.search : '';
     if (adminStatus) rows = rows.filter((row) => row.admin_status === adminStatus);
     if (provider) rows = rows.filter((row) => row.payment_provider === provider);
+    if (search) {
+      // Requester only, matching `userRepo.findIdsBySearch`. The destination
+      // account name is deliberately not searched — it isn't on the BE either,
+      // so a mock that matched it would invent a capability.
+      rows = rows.filter((row) => {
+        const requester = findPerson(row.user);
+        return requester ? matchesPersonSearch(requester, search) : false;
+      });
+    }
 
-    return paged(rows, query, 20);
+    return paged(rows.map(populate), query, 20);
   },
 
   'PATCH /admin/withdrawals/:id/approve': ({ params, body: raw }) => {

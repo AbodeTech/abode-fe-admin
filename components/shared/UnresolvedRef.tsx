@@ -1,23 +1,26 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 /* ============================================================
- * A value the backend cannot supply yet.
+ * A reference that may or may not be resolved.
  *
- * Several admin list endpoints return references without populating them, so
- * the frontend holds an ObjectId where a name belongs (tickets 9a and 13).
+ * Admin list endpoints return references either populated or as a bare
+ * ObjectId, depending on the endpoint (tickets 9a and 13). This renders both
+ * states from the same call site, so a screen doesn't need rewriting when the
+ * backend starts populating — `name` simply stops being null.
  *
- * The house rule for that state: render an em-dash rather than an invented
- * value or a raw hex string, and keep the id one hover away so nothing is
- * discarded — an admin chasing something in a support ticket still has an
- * identifier.
+ * Unresolved: an em-dash rather than an invented value or a raw hex string,
+ * with the id one hover away so nothing is discarded — an admin chasing
+ * something in a support ticket still has an identifier.
  *
- * Delete the usages, not this component, when the backend populates: the
- * `name` prop simply stops being null.
+ * Resolved: the name, linked when `href` is given. An unresolved ref is never
+ * linked, because a link whose only label is "—" is not a target anyone can
+ * aim at.
  * ============================================================ */
 
 interface UnresolvedRefProps {
@@ -27,13 +30,28 @@ interface UnresolvedRefProps {
   id?: string | null;
   /** What kind of thing it is, for the tooltip: "referrer", "buyer", "admin". */
   kind?: string;
+  /** Where the resolved name links to. Ignored while the ref is unresolved. */
+  href?: string | null;
   className?: string;
 }
 
-export function UnresolvedRef({ name, id, kind = "record", className }: UnresolvedRefProps) {
+export function UnresolvedRef({ name, id, kind = "record", href, className }: UnresolvedRefProps) {
   const [copied, setCopied] = useState(false);
 
   if (name) {
+    if (href) {
+      return (
+        <Link
+          href={href}
+          className={cn(
+            "wrap-break-word font-medium text-foreground transition-colors hover:text-primary hover:underline",
+            className
+          )}
+        >
+          {name}
+        </Link>
+      );
+    }
     return <span className={cn("wrap-break-word", className)}>{name}</span>;
   }
 

@@ -4,8 +4,10 @@ import type {
   UserTier,
 } from '../schemas/upgrade.schema';
 
-/** Mirrors `UpgradeQueryDto`. No `search` — see ticket 14. */
+/** Mirrors `UpgradeQueryDto`. */
 export type UpgradeListFilters = {
+  /** Matches the **applicant's** name, email or username — not the referrer's. */
+  search?: string;
   status?: UpgradeStatus;
   payment_method?: UpgradePaymentMethod;
   to_tier?: UserTier;

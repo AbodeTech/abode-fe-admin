@@ -1,17 +1,21 @@
 "use client";
 
 import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+
 import {
-  useAdminDashboard,
+  useDashboardKpis,
+  useDashboardTopProducts,
+  useDashboardTopAssociates,
   DashboardQuickOverview,
   TopSellingProducts,
   TopAssociates,
   InviteAdminDialog,
+  DEFAULT_TOP_LIST_LIMIT,
 } from "@/features/dashboard";
 import { useAuthStore } from "@/store/auth-store";
 import { SuspensePageFallback, PageContentLoader } from "@/components/shared/page-content-loader";
 import { DateFilter } from "@/components/shared/DateFilter";
-import { useSearchParams } from "next/navigation";
 
 function DashboardContent() {
   const { user } = useAuthStore();
@@ -19,12 +23,13 @@ function DashboardContent() {
   const startDate = searchParams.get("start_date");
   const endDate = searchParams.get("end_date");
 
-  const { data, isLoading, error } = useAdminDashboard({
-    startDate,
-    endDate,
-  });
+  const kpis = useDashboardKpis({ from: startDate, to: endDate });
+  const topProducts = useDashboardTopProducts(DEFAULT_TOP_LIST_LIMIT);
+  const topAssociates = useDashboardTopAssociates(DEFAULT_TOP_LIST_LIMIT);
 
   const isAdmin = user?.role === "admin";
+  const isLoading = kpis.isLoading || topProducts.isLoading || topAssociates.isLoading;
+  const error = kpis.error ?? topProducts.error ?? topAssociates.error;
 
   if (isLoading) {
     return <PageContentLoader label="Loading dashboard…" />;
@@ -32,7 +37,7 @@ function DashboardContent() {
 
   if (error) {
     return (
-      <div className="p-4 rounded-md bg-red-50 text-red-500 border border-red-200">
+      <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-500">
         <h3 className="font-bold">Error loading dashboard</h3>
         <p>{(error as Error).message || "An unexpected error occurred."}</p>
       </div>
@@ -60,16 +65,12 @@ function DashboardContent() {
         </div>
       </div>
 
-      {data && (
-        <>
-          <DashboardQuickOverview data={data} />
+      {kpis.data ? <DashboardQuickOverview data={kpis.data} /> : null}
 
-          <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
-            <TopSellingProducts data={data.top_selling_prop} />
-            <TopAssociates data={data.top_associates} />
-          </div>
-        </>
-      )}
+      <div className="grid grid-cols-1 items-start gap-4 sm:gap-6 lg:grid-cols-2">
+        <TopSellingProducts data={topProducts.data} />
+        <TopAssociates data={topAssociates.data} />
+      </div>
     </div>
   );
 }

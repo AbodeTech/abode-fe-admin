@@ -2,10 +2,14 @@
 export {
   useTopupTransactions,
   useDocumentTransactions,
-  useCommissionTransactions,
   useTransactionDataPoints,
 } from './hooks/use-transactions';
 
+export {
+  useCommissionTransactions,
+  DEFAULT_COMMISSION_TRANSACTIONS_LIMIT,
+} from './hooks/use-commission-transactions';
+export type { CommissionTransactionsData } from './hooks/use-commission-transactions';
 
 export {
   useApproveTopupTransaction,

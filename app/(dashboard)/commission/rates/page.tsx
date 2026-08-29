@@ -3,6 +3,7 @@
 import { PageContentLoader } from "@/components/shared/page-content-loader";
 import {
   ConfigHistory,
+  DeveloperPlotCard,
   EditRatesDialog,
   RatesCard,
   useCommissionConfig,
@@ -48,6 +49,7 @@ export default function CommissionRatesPage() {
       </div>
 
       <RatesCard config={data.active} />
+      <DeveloperPlotCard />
       <ConfigHistory history={data.history} />
     </div>
   );
