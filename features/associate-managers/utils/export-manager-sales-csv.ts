@@ -3,7 +3,7 @@ import { exportToCsv } from "@/features/users/utils/export-csv";
 import {
   derivePaymentStatus,
   outstandingBalance,
-} from "@/features/sales/lib/payment-status";
+} from "../lib/payment-status";
 
 type SalesExportRow = {
   user_firstName?: string | null;

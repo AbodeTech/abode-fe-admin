@@ -6,6 +6,7 @@ import { commissionRoutes } from './commission';
 import { upgradeRoutes } from './upgrades';
 import { withdrawalRoutes } from './withdrawals';
 import { assetTransactionRoutes } from './asset-transactions';
+import { salesRoutes } from './sales';
 
 /* ============================================================
  * Route registration. Importing this module (via lib/mocks/index.ts)
@@ -41,6 +42,13 @@ import { assetTransactionRoutes } from './asset-transactions';
  *               .../deallocate, .../reassign, .../send-email,
  *               GET .../history. Only the assets dropdown and CSV export
  *               are still GraphQL — see lib/mocks/handlers/allocation.ts.
+ * sales       — GET /admin/sales, GET /admin/sales/dashboard,
+ *               GET /admin/sales/analytics/{kpis,by-asset,timeline}. The two
+ *               streaming CSV exports (GET /admin/sales/export[/full]) are
+ *               NOT mocked — the admin FE builds its export client-side off
+ *               the list endpoint instead (see
+ *               features/sales/components/SalesExport.tsx), so nothing in
+ *               this app calls those two BE routes.
  * ============================================================ */
 
 let registered = false;
@@ -56,5 +64,6 @@ export function ensureRoutesRegistered(): void {
   registerRoutes(withdrawalRoutes);
   registerRoutes(assetTransactionRoutes);
   registerRoutes(allocationRoutes);
+  registerRoutes(salesRoutes);
   // ...added per feature as it migrates
 }

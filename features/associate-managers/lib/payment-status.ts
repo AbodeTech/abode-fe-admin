@@ -1,3 +1,13 @@
+/* ============================================================
+ * Scoped to this feature: the manager-scoped sales views
+ * (getManagerSalesRecord / adminGetManagerSalesRecord) are explicitly
+ * deferred from the Sales v2 REST migration — see that design doc's
+ * "Explicit Non-Ownership" section — so they still return the old GraphQL
+ * row shape, which this derivation logic matches. features/sales moved to
+ * a REST row with a real server-computed `plan_status` field and no longer
+ * needs this heuristic.
+ * ============================================================ */
+
 export type PaymentStatus = 'Paid' | 'Still Paying' | 'Unpaid';
 
 export interface PaymentStatusSource {

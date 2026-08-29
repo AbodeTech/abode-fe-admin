@@ -1,117 +1,60 @@
-import { useQuery } from "@tanstack/react-query";
-import { execute } from "@/lib/graphql-client";
-import { graphql } from "@/lib/gql";
-import { salesAnalyticsKeys } from "./query-keys";
+import { useQuery } from '@tanstack/react-query';
 
-const GET_SALES_ANALYTICS_KPIS_QUERY = graphql(`
-  query GetSalesAnalyticsKpis($startDate: String, $endDate: String, $assetType: String, $location: String) {
-    getSalesAnalyticsKpis(startDate: $startDate, endDate: $endDate, assetType: $assetType, location: $location) {
-      success
-      data {
-        totalSalesValue
-        expectedAmount
-        totalReceived
-        outstandingBalance
-        sqmSold
-        uniqueBuyers
-        uniqueSalesPersons
-        completedPayments
-        paymentHealth {
-          completed
-          defaulted
-          terminated
-        }
-        activeTransactions
-      }
-    }
-  }
-`);
+import { apiGet, apiGetPaged } from '@/lib/api-client';
 
-const GET_SALES_ASSET_BREAKDOWN_QUERY = graphql(`
-  query GetSalesAssetBreakdown($startDate: String, $endDate: String, $assetType: String, $location: String) {
-    getSalesAssetBreakdown(startDate: $startDate, endDate: $endDate, assetType: $assetType, location: $location) {
-      success
-      data {
-        location
-        assetType
-        assetName
-        expectedAmount
-        totalReceived
-        outstandingBalance
-        sqmSold
-        totalBuyers
-        paymentHealth {
-          completed
-          defaulted
-          terminated
-        }
-      }
-    }
-  }
-`);
-
-const GET_SALES_MONTHLY_TIMELINE_QUERY = graphql(`
-  query GetSalesMonthlyTimeline($startDate: String, $endDate: String, $assetType: String, $location: String) {
-    getSalesMonthlyTimeline(startDate: $startDate, endDate: $endDate, assetType: $assetType, location: $location) {
-      success
-      data {
-        month
-        expectedRevenue
-        totalDue
-        totalReceived
-        activeTransactions
-        missedPaymentCount
-        defaultedCount
-      }
-    }
-  }
-`);
+import { SalesByAssetRowSchema, SalesKpisSchema, SalesTimelineBucketSchema } from '../schemas/sales-analytics.schema';
+import { salesAnalyticsKeys } from './query-keys';
 
 export interface SalesAnalyticsFilters {
   startDate?: string | null;
   endDate?: string | null;
   assetType?: string | null;
+  /** Maps to the BE's `asset_location` param. */
   location?: string | null;
+  sourceType?: string | null;
 }
 
 const toOptional = (value?: string | null) => {
-  if (!value || value === "all") return undefined;
+  if (!value || value === 'all') return undefined;
   return value;
 };
 
-const normalizeFilters = (filters?: SalesAnalyticsFilters) => ({
-  startDate: toOptional(filters?.startDate),
-  endDate: toOptional(filters?.endDate),
-  assetType: toOptional(filters?.assetType),
-  location: toOptional(filters?.location),
+const buildParams = (filters?: SalesAnalyticsFilters) => ({
+  start_date: toOptional(filters?.startDate),
+  end_date: toOptional(filters?.endDate),
+  asset_type: toOptional(filters?.assetType),
+  asset_location: toOptional(filters?.location),
+  source_type: toOptional(filters?.sourceType),
 });
 
+/**
+ * GET /admin/sales/analytics/kpis — top-level KPI strip. `view_sales_analytics`.
+ * Server-cached 15 minutes per (start_date × end_date × asset_type ×
+ * asset_location × source_type).
+ */
 export const useSalesAnalyticsKpis = (filters?: SalesAnalyticsFilters) => {
-  const variables = normalizeFilters(filters);
-
   return useQuery({
-    queryKey: salesAnalyticsKeys.kpis(variables),
-    queryFn: () => execute(GET_SALES_ANALYTICS_KPIS_QUERY, variables),
-    select: (data) => data.getSalesAnalyticsKpis?.data,
+    queryKey: salesAnalyticsKeys.kpis(filters),
+    queryFn: () => apiGet('/admin/sales/analytics/kpis', SalesKpisSchema, { params: buildParams(filters) }),
   });
 };
 
+/** GET /admin/sales/analytics/by-asset — ranked by expected amount desc, capped at 500 rows. */
 export const useSalesAssetBreakdown = (filters?: SalesAnalyticsFilters) => {
-  const variables = normalizeFilters(filters);
-
   return useQuery({
-    queryKey: salesAnalyticsKeys.assetBreakdown(variables),
-    queryFn: () => execute(GET_SALES_ASSET_BREAKDOWN_QUERY, variables),
-    select: (data) => data.getSalesAssetBreakdown?.data,
+    queryKey: salesAnalyticsKeys.assetBreakdown(filters),
+    queryFn: () =>
+      apiGetPaged('/admin/sales/analytics/by-asset', SalesByAssetRowSchema, { params: buildParams(filters) }),
+    select: (data) => data.items,
   });
 };
 
+/** GET /admin/sales/analytics/timeline — rolling 12-month (or explicit range) chart. */
 export const useSalesMonthlyTimeline = (filters?: SalesAnalyticsFilters) => {
-  const variables = normalizeFilters(filters);
-
   return useQuery({
-    queryKey: salesAnalyticsKeys.monthlyTimeline(variables),
-    queryFn: () => execute(GET_SALES_MONTHLY_TIMELINE_QUERY, variables),
-    select: (data) => data.getSalesMonthlyTimeline?.data,
+    queryKey: salesAnalyticsKeys.monthlyTimeline(filters),
+    queryFn: () =>
+      apiGetPaged('/admin/sales/analytics/timeline', SalesTimelineBucketSchema, { params: buildParams(filters) }),
+    select: (data) => data.items,
   });
 };
