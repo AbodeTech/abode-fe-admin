@@ -1,9 +1,5 @@
 "use client";
 
-import type { TypedDocumentNode } from "@graphql-typed-document-node/core";
-import { graphql } from "@/lib/gql";
-import { FragmentType, useFragment } from "@/lib/gql";
-import { UsersTableFragmentFragment as UsersTableFragmentType } from "@/lib/gql/graphql";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,33 +12,23 @@ import {
   ShoppingCart,
   DollarSign,
   Eye,
-  Radio,
   Phone,
+  ShieldCheck,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { AdminDesktopTableWrap, AdminMobileCard, AdminMobileField, AdminMobileStack } from "@/components/shared/admin-responsive-table";
 
-// Cast required for Vercel/stricter TS builds — see commit 16038d7 for context.
-export const UsersTableFragment = graphql(`
-  fragment UsersTableFragment on UserAdmin {
-    _id
-    firstName
-    lastName
-    email
-    phoneNumber
-    createdAt
-    referral_status
-    referrer
-    howYouHearAboutUs
-    virtual_subscriptions
-    virtual_networth
-  }
-`) as unknown as TypedDocumentNode<UsersTableFragmentType, unknown>;
+import {
+  referrerDisplayName,
+  userDisplayName,
+  type AdminUserRow,
+} from "../../schemas/user.schema";
 
 interface UsersTableProps {
-  data: FragmentType<typeof UsersTableFragment>[] | null | undefined;
+  data: AdminUserRow[] | null | undefined;
   isLoading?: boolean;
+  errorMessage?: string | null;
 }
 
 const formatCurrency = (amount: number) => {
@@ -53,9 +39,11 @@ const formatCurrency = (amount: number) => {
   }).format(amount);
 };
 
-const formatDate = (dateString: string) => {
+const formatDate = (dateString: string | null | undefined) => {
+  if (!dateString) return "N/A";
   try {
     const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return "N/A";
     return format(date, "dd MMM yyyy");
   } catch {
     return "N/A";
@@ -64,9 +52,11 @@ const formatDate = (dateString: string) => {
 
 const getStatusStyle = (status: string | null | undefined) => {
   switch (status?.toLowerCase()) {
-    case "active":
+    case "associate-pro":
+    case "premium":
+    case "founder":
       return "bg-[#ECFDF3] text-[#027A48] border-[#ABEFC6]";
-    case "pending":
+    case "associate":
       return "bg-[#FFFAEB] text-[#B54708] border-[#FEDF89]";
     case "suspended":
       return "bg-[#FEF3F2] text-[#B42318] border-[#FECDCA]";
@@ -75,41 +65,41 @@ const getStatusStyle = (status: string | null | undefined) => {
   }
 };
 
-function UsersTableRow({ row }: { row: FragmentType<typeof UsersTableFragment> }) {
-  const user = useFragment(UsersTableFragment, row);
+function UsersTableRow({ user }: { user: AdminUserRow }) {
   const router = useRouter();
-
-  if (!user) return null;
 
   return (
     <TableRow
       className="cursor-pointer border-b border-[#E5EAEF] bg-white transition-colors hover:bg-gray-50"
-      onClick={() => router.push(`/users/${user._id}`)}
+      onClick={() => router.push(`/users/${user.id}`)}
     >
       <TableCell className="px-3 py-4 text-sm font-medium text-[#333333]">
-        {user.firstName} {user.lastName}
+        {userDisplayName(user)}
       </TableCell>
       <TableCell className="max-w-[200px] whitespace-normal wrap-break-word px-3 py-4 text-sm text-[#667085]">
-        {user.email}
+        {user.email || "—"}
       </TableCell>
-      <TableCell className="px-3 py-4 text-sm text-[#333333]">{user.phoneNumber || "—"}</TableCell>
-      <TableCell className="px-3 py-4 text-sm text-[#333333]">{formatDate(user.createdAt)}</TableCell>
+      <TableCell className="px-3 py-4 text-sm text-[#333333]">{user.phone_number || "—"}</TableCell>
+      <TableCell className="px-3 py-4 text-sm text-[#333333]">{formatDate(user.created_at)}</TableCell>
       <TableCell className="px-3 py-4">
-        <Badge variant="outline" className={`${getStatusStyle(user.referral_status)} border font-medium`}>
-          {user.referral_status}
+        <Badge variant="outline" className={`${getStatusStyle(user.tier)} border font-medium`}>
+          {user.tier || "—"}
         </Badge>
       </TableCell>
       <TableCell className="max-w-[160px] whitespace-normal wrap-break-word px-3 py-4 text-sm text-[#667085]">
-        {user.referrer || "No Referrer"}
+        {referrerDisplayName(user.referrer) || "No Referrer"}
       </TableCell>
       <TableCell className="max-w-[180px] whitespace-normal wrap-break-word px-3 py-4 text-sm text-[#667085]">
-        {user.howYouHearAboutUs || "N/A"}
+        {user.how_you_heard || "N/A"}
+      </TableCell>
+      <TableCell className="px-3 py-4 text-sm text-[#333333]">
+        {user.verified ? "Yes" : "No"}
       </TableCell>
       <TableCell className="px-3 py-4 text-center text-sm font-medium text-[#333333]">
-        {user.virtual_subscriptions || 0}
+        {user.subscriptions || 0}
       </TableCell>
       <TableCell className="max-w-[140px] whitespace-normal wrap-break-word px-3 py-4 text-sm font-semibold text-[#333333]">
-        {formatCurrency(user.virtual_networth || 0)}
+        {formatCurrency(user.networth || 0)}
       </TableCell>
       <TableCell className="px-3 py-4">
         <Button
@@ -118,7 +108,7 @@ function UsersTableRow({ row }: { row: FragmentType<typeof UsersTableFragment> }
           className="h-8 w-8 text-gray-500 hover:text-gray-900"
           onClick={(event) => {
             event.stopPropagation();
-            router.push(`/users/${user._id}`);
+            router.push(`/users/${user.id}`);
           }}
         >
           <Eye className="h-4 w-4" />
@@ -128,39 +118,38 @@ function UsersTableRow({ row }: { row: FragmentType<typeof UsersTableFragment> }
   );
 }
 
-function UsersMobileCard({ row }: { row: FragmentType<typeof UsersTableFragment> }) {
-  const user = useFragment(UsersTableFragment, row);
+function UsersMobileCard({ user }: { user: AdminUserRow }) {
   const router = useRouter();
-  if (!user) return null;
 
   return (
     <AdminMobileCard
       title={
         <span className="flex items-center gap-2">
           <UserIcon className="h-4 w-4 shrink-0" />
-          {user.firstName} {user.lastName}
+          {userDisplayName(user)}
         </span>
       }
       subtitle={
         <span className="flex items-center gap-2">
           <Mail className="h-3 w-3 shrink-0" />
-          {user.email}
+          {user.email || "—"}
         </span>
       }
-      onClick={() => router.push(`/users/${user._id}`)}
+      onClick={() => router.push(`/users/${user.id}`)}
     >
       <div className="flex items-center justify-between gap-2 border-b border-[#E5EAEF] pb-2">
         <span className="text-xs text-muted-foreground">Status</span>
-        <Badge variant="outline" className={`${getStatusStyle(user.referral_status)} border font-medium`}>
-          {user.referral_status}
+        <Badge variant="outline" className={`${getStatusStyle(user.tier)} border font-medium`}>
+          {user.tier || "—"}
         </Badge>
       </div>
-      <AdminMobileField label="Phone" value={user.phoneNumber || "—"} />
-      <AdminMobileField label="Joined" value={formatDate(user.createdAt)} />
-      <AdminMobileField label="Referrer" value={user.referrer || "No Referrer"} />
-      <AdminMobileField label="How you heard" value={user.howYouHearAboutUs || "N/A"} />
-      <AdminMobileField label="Products" value={user.virtual_subscriptions || 0} />
-      <AdminMobileField label="Net worth (virtual)" value={formatCurrency(user.virtual_networth || 0)} />
+      <AdminMobileField label="Phone" value={user.phone_number || "—"} />
+      <AdminMobileField label="Joined" value={formatDate(user.created_at)} />
+      <AdminMobileField label="Referrer" value={referrerDisplayName(user.referrer) || "No Referrer"} />
+      <AdminMobileField label="How you heard" value={user.how_you_heard || "N/A"} />
+      <AdminMobileField label="Verified" value={user.verified ? "Yes" : "No"} />
+      <AdminMobileField label="Products" value={user.subscriptions || 0} />
+      <AdminMobileField label="Net worth" value={formatCurrency(user.networth || 0)} />
       <div className="flex justify-end border-t border-[#E5EAEF] pt-2">
         <Button
           variant="ghost"
@@ -168,7 +157,7 @@ function UsersMobileCard({ row }: { row: FragmentType<typeof UsersTableFragment>
           className="gap-1"
           onClick={(e) => {
             e.stopPropagation();
-            router.push(`/users/${user._id}`);
+            router.push(`/users/${user.id}`);
           }}
         >
           <Eye className="h-4 w-4" />
@@ -179,14 +168,24 @@ function UsersMobileCard({ row }: { row: FragmentType<typeof UsersTableFragment>
   );
 }
 
-export function UsersTable({ data, isLoading }: UsersTableProps) {
-  const usersRaw = data || [];
+export function UsersTable({ data, isLoading, errorMessage }: UsersTableProps) {
+  const rows = data ?? [];
 
   if (isLoading) {
     return <div className="p-8 text-center text-gray-500">Loading users...</div>;
   }
 
-  if (!data || data.length === 0) {
+  if (errorMessage) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 px-4">
+        <UserIcon className="mb-4 h-12 w-12 text-gray-400" />
+        <h3 className="mb-2 text-lg font-semibold text-gray-900">Could not load users</h3>
+        <p className="max-w-md text-center text-gray-600">{errorMessage}</p>
+      </div>
+    );
+  }
+
+  if (rows.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
         <UserIcon className="mb-4 h-12 w-12 text-gray-400" />
@@ -196,15 +195,12 @@ export function UsersTable({ data, isLoading }: UsersTableProps) {
     );
   }
 
-  const rows = usersRaw.filter((u): u is NonNullable<typeof u> => u !== null && u !== undefined);
-
   return (
     <div className="w-full min-w-0">
       <AdminMobileStack>
-        {rows.map((row) => {
-          const rowId = (row as unknown as UsersTableFragmentType)._id;
-          return <UsersMobileCard key={rowId} row={row} />;
-        })}
+        {rows.map((row) => (
+          <UsersMobileCard key={row.id} user={row} />
+        ))}
       </AdminMobileStack>
 
       <AdminDesktopTableWrap>
@@ -249,9 +245,12 @@ export function UsersTable({ data, isLoading }: UsersTableProps) {
                   </div>
                 </TableHead>
                 <TableHead className="px-3 py-4 font-medium">
+                  How You Heard
+                </TableHead>
+                <TableHead className="px-3 py-4 font-medium">
                   <div className="flex items-center gap-2">
-                    <Radio className="h-4 w-4" />
-                    How You Heard
+                    <ShieldCheck className="h-4 w-4" />
+                    Verified
                   </div>
                 </TableHead>
                 <TableHead className="px-3 py-4 text-center font-medium">
@@ -263,7 +262,7 @@ export function UsersTable({ data, isLoading }: UsersTableProps) {
                 <TableHead className="px-3 py-4 font-medium">
                   <div className="flex items-center gap-2">
                     <DollarSign className="h-4 w-4" />
-                    NetWorth (Virtual)
+                    NetWorth
                   </div>
                 </TableHead>
                 <TableHead className="px-3 py-4 font-medium">
@@ -272,10 +271,9 @@ export function UsersTable({ data, isLoading }: UsersTableProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.map((row) => {
-                const rowId = (row as unknown as UsersTableFragmentType)._id;
-                return <UsersTableRow key={rowId} row={row} />;
-              })}
+              {rows.map((row) => (
+                <UsersTableRow key={row.id} user={row} />
+              ))}
             </TableBody>
           </Table>
         </div>

@@ -14,7 +14,7 @@ import { body } from './util';
  * ============================================================ */
 
 const ALL_PERMISSIONS = [
-  'view_user', 'edit_user', 'delete_user', 'suspend_user', 'unsuspend_user',
+  'view_user', 'view_users', 'view_user_analytics', 'edit_user', 'delete_user', 'suspend_user', 'unsuspend_user',
   'view_admin', 'manage_admins', 'manage_roles',
   'view_assets', 'manage_assets', 'delete_assets', 'buy_asset', 'delete_user_asset',
   'update_asset_question', 'send_contract',

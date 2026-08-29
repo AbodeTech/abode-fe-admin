@@ -1,188 +1,58 @@
-import { useMutation } from "@tanstack/react-query";
+'use client';
 
-import { executeRaw } from "@/lib/graphql-client";
+import { useMutation } from '@tanstack/react-query';
 
-const EXPORT_USERS_BY_FILTER_QUERY = `
-  query ExportUsersByFilter(
-    $page: Int!
-    $limit: Int!
-    $hasReferral: Boolean
-    $hasAsset: Boolean
-    $referralStatus: String
-    $hasTin: Boolean
-  ) {
-    getAllUsersWithFilters(
-      page: $page
-      limit: $limit
-      hasReferral: $hasReferral
-      hasAsset: $hasAsset
-      referralStatus: $referralStatus
-      hasTin: $hasTin
-    ) {
-      data {
-        _id
-        firstName
-        lastName
-        last_login
-        email
-        tin
-        gender
-        occupation
-        phoneNumber
-        address
-        country
-        createdAt
-        last_login
-        referral {
-          firstName
-          lastName
-          email
-        }
-      }
-    }
-  }
-`;
+import { apiClient } from '@/lib/api-client';
+import { isMockApiEnabled } from '@/lib/mocks/config';
+import { boolQuery, bothOrNeitherDates } from '../utils/admin-users-query';
 
-const EXPORT_USERS_WITH_ASSET_QUERY = `
-  query ExportUsersWithAsset(
-    $page: Int
-    $limit: Int
-    $assetType: String
-  ) {
-    usersWithAsset(page: $page, limit: $limit, assetType: $assetType) {
-      data {
-        id
-        firstName
-        lastName
-        email
-        gender
-        occupation
-        dateOfBirth
-        phone
-        referral {
-          name
-          email
-        }
-        customer_assets {
-          asset_name
-          asset_type
-          balance
-          document_price
-          land_price
-          month_subscription
-          months_remaining
-          next_date_of_payment
-          no_of_units
-          size
-          start_date
-          land_amount_paid
-          document_amount_paid
-        }
-      }
-    }
-  }
-`;
-
-const EXPORT_LIMIT = 50_000;
-
-export interface ExportUsersByFilterInput {
-  referralStatus?: string;
+export type ExportUsersParams = {
+  search?: string;
+  tier?: string;
+  howYouHeard?: string;
   hasAsset?: boolean;
   hasReferral?: boolean;
-  hasTin?: boolean;
-}
-
-interface ExportUsersByFilterResponse {
-  getAllUsersWithFilters?: {
-    data?: Array<{
-      _id?: string | null;
-      firstName?: string | null;
-      lastName?: string | null;
-      email?: string | null;
-      tin?: string | null;
-      gender?: string | null;
-      occupation?: string | null;
-      phoneNumber?: string | null;
-      address?: string | null;
-      country?: string | null;
-      createdAt?: string | null;
-      last_login?: string | null;
-      referral?: {
-        firstName?: string | null;
-        lastName?: string | null;
-        email?: string | null;
-      } | null;
-    } | null> | null;
-  } | null;
-}
-
-export type ExportFilteredUserRow = NonNullable<
-  NonNullable<NonNullable<ExportUsersByFilterResponse["getAllUsersWithFilters"]>["data"]>[number]
->;
-
-export interface ExportUsersWithAssetInput {
-  assetType?: string;
-}
-
-interface ExportUsersWithAssetResponse {
-  usersWithAsset?: {
-    data?: Array<{
-      id?: string | null;
-      firstName?: string | null;
-      lastName?: string | null;
-      email?: string | null;
-      gender?: string | null;
-      occupation?: string | null;
-      dateOfBirth?: string | null;
-      phone?: string | null;
-      referral?: {
-        name?: string | null;
-        email?: string | null;
-      } | null;
-      customer_assets?: Array<{
-        asset_name?: string | null;
-        asset_type?: string | null;
-        balance?: number | null;
-        document_price?: number | null;
-        land_price?: number | null;
-        month_subscription?: number | null;
-        months_remaining?: number | null;
-        next_date_of_payment?: string | null;
-        no_of_units?: number | null;
-        size?: number | null;
-        start_date?: string | null;
-        land_amount_paid?: number | null;
-        document_amount_paid?: number | null;
-      } | null> | null;
-    } | null> | null;
-  } | null;
-}
-
-export type ExportUserWithAssetRow = NonNullable<
-  NonNullable<NonNullable<ExportUsersWithAssetResponse["usersWithAsset"]>["data"]>[number]
->;
-
-export const useExportUsersByFilter = () => {
-  return useMutation({
-    mutationFn: (input: ExportUsersByFilterInput) =>
-      executeRaw<ExportUsersByFilterResponse>(EXPORT_USERS_BY_FILTER_QUERY, {
-        page: 1,
-        limit: EXPORT_LIMIT,
-        referralStatus: input.referralStatus,
-        hasAsset: input.hasAsset,
-        hasReferral: input.hasReferral,
-        hasTin: input.hasTin,
-      }),
-  });
+  dateFrom?: string;
+  dateTo?: string;
 };
 
-export const useExportUsersWithAsset = () => {
-  return useMutation({
-    mutationFn: (input: ExportUsersWithAssetInput) =>
-      executeRaw<ExportUsersWithAssetResponse>(EXPORT_USERS_WITH_ASSET_QUERY, {
-        page: 1,
-        limit: EXPORT_LIMIT,
-        assetType: input.assetType,
-      }),
+/**
+ * GET /admin/users?export=csv — streamed CSV (not JSON-enveloped).
+ * Same pattern as flex-leads: bypass apiGet, refuse in mock mode.
+ */
+export const useExportUsersByFilter = () =>
+  useMutation({
+    mutationFn: async (filters: ExportUsersParams) => {
+      if (isMockApiEnabled()) {
+        throw new Error('Export is unavailable in mock mode — point the app at a real backend.');
+      }
+
+      const response = await apiClient.get('/admin/users', {
+        params: {
+          export: 'csv',
+          search: filters.search?.trim() || undefined,
+          tier: filters.tier || undefined,
+          how_you_hear_about_us: filters.howYouHeard || undefined,
+          has_asset: boolQuery(filters.hasAsset),
+          has_referral: boolQuery(filters.hasReferral),
+          ...bothOrNeitherDates(filters.dateFrom, filters.dateTo),
+        },
+        responseType: 'blob',
+      });
+
+      const disposition = String(response.headers['content-disposition'] ?? '');
+      const filename = /filename="([^"]+)"/.exec(disposition)?.[1] ?? 'users.csv';
+
+      const url = URL.createObjectURL(response.data as Blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = filename;
+      anchor.click();
+      URL.revokeObjectURL(url);
+
+      return { filename };
+    },
   });
-};
+
+/** Kept for the old modal's flex/FO branch — those filters are not on GET /admin/users. */
+export const useExportUsersWithAsset = useExportUsersByFilter;

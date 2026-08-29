@@ -50,9 +50,8 @@ import { commercialPlotRoutes } from './commercial-plots';
  *               upgrade queue is where that UI lives). The remaining admin
  *               referral routes (referral-status, referrer, downlines) are
  *               unclaimed; they belong on a user detail page.
- * users       — GET /admin/users, added for the shared UserPicker. The users
- *               feature extends this table when it migrates rather than
- *               re-registering the path.
+ * users       — GET /admin/users, /overview, /analytics. List is the shared
+ *               UserPicker source AND the users table.
  * people.ts   — not a domain: the shared person fixtures every route populates
  *               refs from, so one id means one person across all of them.
  * dashboard   — GET /admin/dashboard/kpis, top-products, top-associates.

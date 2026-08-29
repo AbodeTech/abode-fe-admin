@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { ArrowRight, Search } from "lucide-react";
 import Link from "next/link";
 import { SuspensePageFallback } from "@/components/shared/page-content-loader";
+import { getErrorMessage } from "@/features/users/utils/error-message";
 
 function UsersPageContent() {
   const searchParams = useSearchParams();
@@ -65,20 +66,20 @@ function UsersPageContent() {
   const startDate = searchParams.get("start_date") || undefined;
   const endDate = searchParams.get("end_date") || undefined;
 
-  const { data, isLoading } = useUsers({
+  const { data, isLoading, isError, error } = useUsers({
     page,
     limit,
-    searchQuery,
+    search: searchQuery,
     hasReferral,
     hasAsset,
-    referralStatus,
-    howDidYouHearAboutUs,
-    startDate,
-    endDate,
+    tier: referralStatus,
+    howYouHeard: howDidYouHearAboutUs,
+    dateFrom: startDate,
+    dateTo: endDate,
   });
 
-  const users = (data?.data || []).filter((u) => u !== null && u !== undefined);
-  const totalCount = data?.count || 0;
+  const users = data?.items ?? [];
+  const totalCount = data?.meta.total ?? 0;
 
   return (
     <div className="mx-auto mt-4 w-full min-w-0 max-w-[1600px] space-y-4 px-3 pb-20 sm:px-4">
@@ -164,7 +165,11 @@ function UsersPageContent() {
 
       <div className="overflow-hidden rounded-lg border border-[#E5EAEF] bg-white">
         <div className="overflow-x-auto">
-          <UsersTable data={users} isLoading={isLoading || isSearchPending} />
+          <UsersTable
+            data={users}
+            isLoading={isLoading || isSearchPending}
+            errorMessage={isError ? getErrorMessage(error, "Could not load users") : null}
+          />
         </div>
 
         {!isLoading && totalCount > 0 && (

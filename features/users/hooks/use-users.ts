@@ -1,19 +1,77 @@
 import { useQuery } from '@tanstack/react-query';
 import { execute } from '@/lib/graphql-client';
 import { graphql } from '@/lib/gql';
-import { userKeys } from './query-keys';
-import { UsersTableFragment } from '../components/all/UsersTable';
 
-const GET_ALL_USERS_QUERY = graphql(`
-  query GetAllUsers($page: Int!, $searchQuery: String, $limit: Int!, $hasReferral: Boolean, $hasAsset: Boolean, $referralStatus: String, $howDidYouHearAboutUs: String, $startDate: String, $endDate: String) {
-    getAllUsers(page: $page, searchQuery: $searchQuery, limit: $limit, hasReferral: $hasReferral, hasAsset: $hasAsset, referralStatus: $referralStatus, howDidYouHearAboutUs: $howDidYouHearAboutUs, startDate: $startDate, endDate: $endDate) {
-      count
-      data {
-        ...UsersTableFragment
-      }
-    }
-  }
-`);
+import { apiGet, apiGetPaged } from '@/lib/api-client';
+
+import {
+  AdminUserRowSchema,
+  UserOverviewSchema,
+  normalizeAdminUserRow,
+} from '../schemas/user.schema';
+import { boolQuery, bothOrNeitherDates } from '../utils/admin-users-query';
+import { userKeys } from './query-keys';
+
+export const DEFAULT_USERS_LIMIT = 10;
+
+export type UsersListFilters = {
+  page?: number;
+  limit?: number;
+  search?: string;
+  tier?: string;
+  howYouHeard?: string;
+  hasAsset?: boolean;
+  hasReferral?: boolean;
+  dateFrom?: string;
+  dateTo?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+};
+
+/**
+ * GET /admin/users — admin-users module (search, tier, how_you_hear_about_us,
+ * has_asset, has_referral, date_from/date_to, sort_by/sort_order, page, limit).
+ */
+export const useUsers = (filters?: UsersListFilters) => {
+  const page = filters?.page ?? 1;
+  const limit = filters?.limit ?? DEFAULT_USERS_LIMIT;
+  const dateRange = bothOrNeitherDates(filters?.dateFrom, filters?.dateTo);
+
+  return useQuery({
+    queryKey: userKeys.list({
+      page,
+      limit,
+      search: filters?.search,
+      tier: filters?.tier,
+      howYouHeard: filters?.howYouHeard,
+      hasAsset: filters?.hasAsset,
+      hasReferral: filters?.hasReferral,
+      dateFrom: dateRange.date_from,
+      dateTo: dateRange.date_to,
+      sortBy: filters?.sortBy,
+      sortOrder: filters?.sortOrder,
+    }),
+    queryFn: () =>
+      apiGetPaged('/admin/users', AdminUserRowSchema, {
+        params: {
+          page,
+          limit,
+          search: filters?.search?.trim() || undefined,
+          tier: filters?.tier || undefined,
+          how_you_hear_about_us: filters?.howYouHeard || undefined,
+          has_asset: boolQuery(filters?.hasAsset),
+          has_referral: boolQuery(filters?.hasReferral),
+          ...dateRange,
+          sort_by: filters?.sortBy || undefined,
+          sort_order: filters?.sortOrder || undefined,
+        },
+      }),
+    select: (data) => ({
+      items: data.items.map(normalizeAdminUserRow),
+      meta: data.meta,
+    }),
+  });
+};
 
 const GET_USER_DETAILS_QUERY = graphql(`
   query GetUserDetailsByAdmin($getUserDetailsByAdminId: ID!) {
@@ -81,55 +139,6 @@ const GET_USER_DETAILS_QUERY = graphql(`
   }
 `);
 
-const GET_SYSTEM_USERS_OVERVIEW_QUERY = graphql(`
-  query Metrics($startDate: String, $endDate: String) {
-    getSystemUsersOverview(startDate: $startDate, endDate: $endDate) {
-      metrics {
-        totalUsers
-        referralStatusCounts {
-          user
-          associate
-          associatePro
-        }
-        noReferralUsers
-        users_with_assets
-        flexSubscribers
-        fullOwnershipSubscribers
-        defaultUsers
-        overdueUsers
-        active_associate
-        active_associate_pro
-      }
-    }
-  }
-`);
-
-// Keep fragment import referenced for codegen fragment registration.
-void UsersTableFragment;
-
-interface UseUsersParams {
-  page?: number;
-  limit?: number;
-  searchQuery?: string;
-  hasReferral?: boolean;
-  hasAsset?: boolean;
-  referralStatus?: string;
-  howDidYouHearAboutUs?: string;
-  startDate?: string;
-  endDate?: string;
-}
-
-export const useUsers = (params?: UseUsersParams) => {
-  const { page = 1, limit = 10, ...filters } = params ?? {};
-
-  return useQuery({
-    queryKey: userKeys.list({ page, limit, ...filters }),
-    queryFn: () =>
-      execute(GET_ALL_USERS_QUERY, { page, limit, ...filters }),
-    select: (data) => data.getAllUsers,
-  });
-};
-
 export const useUserDetails = (id: string) => {
   return useQuery({
     queryKey: userKeys.detail(id),
@@ -141,39 +150,43 @@ export const useUserDetails = (id: string) => {
 
       const transactions = (user.transaction || [])
         .filter((t): t is NonNullable<typeof t> => t !== null)
-        .map(t => ({
+        .map((t) => ({
           ...t,
-          amount: t.amount ? parseFloat(String(t.amount).replace(/[^0-9.-]+/g, "")) : 0
+          amount: t.amount ? parseFloat(String(t.amount).replace(/[^0-9.-]+/g, '')) : 0,
         }));
 
-      const wallet = user.wallet ? {
-        ...user.wallet,
-        balance: user.wallet.balance ? parseFloat(String(user.wallet.balance).replace(/[^0-9.-]+/g, "")) : 0
-      } : undefined;
+      const wallet = user.wallet
+        ? {
+            ...user.wallet,
+            balance: user.wallet.balance
+              ? parseFloat(String(user.wallet.balance).replace(/[^0-9.-]+/g, ''))
+              : 0,
+          }
+        : undefined;
 
       return {
         ...user,
         transaction: transactions,
-        wallet
+        wallet,
       };
     },
     enabled: !!id,
   });
 };
 
-interface UseSystemUsersOverviewParams {
-  startDate?: string;
-  endDate?: string;
-}
-
-export const useSystemUsersOverview = (params?: UseSystemUsersOverviewParams) => {
-  const { startDate, endDate } = params ?? {};
+/**
+ * GET /admin/users/overview — 14 period-aware tiles.
+ * date_from / date_to are both-or-neither.
+ */
+export const useSystemUsersOverview = (params?: { startDate?: string; endDate?: string }) => {
+  const dateRange = bothOrNeitherDates(params?.startDate, params?.endDate);
 
   return useQuery({
-    queryKey: [...userKeys.overview(), { startDate, endDate }],
+    queryKey: [...userKeys.overview(), dateRange],
     queryFn: () =>
-      execute(GET_SYSTEM_USERS_OVERVIEW_QUERY, { startDate, endDate }),
-    select: (data) => data.getSystemUsersOverview?.metrics,
+      apiGet('/admin/users/overview', UserOverviewSchema, {
+        params: dateRange,
+      }),
   });
 };
 

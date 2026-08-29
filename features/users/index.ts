@@ -3,6 +3,7 @@ export { useUsers, useUserDetails, useSystemUsersOverview } from './hooks/use-us
 export { useUserAnalytics } from './hooks/use-user-analytics';
 export type { UserAnalyticsData, AnalyticsDataPoint, RegistrationTrendPoint, HowYouHeardPoint } from './hooks/use-user-analytics';
 export type { UsersData, UserDetailsData, SystemUsersOverviewData } from './hooks/use-users';
+export type { AdminUserRow, UserOverview, UserAnalytics, UserTier } from './schemas/user.schema';
 export { useUserReferrals, useDeleteUserReferral } from './hooks/use-user-referrals';
 export type { UserReferralData } from './hooks/use-user-referrals';
 export { useEditUserProfile, useEditUserWallet, useModifyReferralStatus } from './hooks/use-user-mutations';

@@ -20,6 +20,8 @@ import { useAuthStore } from '@/store/auth-store';
 
 export const ADMIN_PERMISSIONS = [
   'view_user',
+  'view_users',
+  'view_user_analytics',
   'edit_user',
   'delete_user',
   'suspend_user',

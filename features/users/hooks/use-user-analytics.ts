@@ -1,42 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
-import { executeRaw } from '@/lib/graphql-client';
 
-const GET_USER_ANALYTICS_QUERY = `
-  query GetUserAnalytics($startDate: String, $endDate: String, $userStatus: String) {
-    getUserAnalytics(startDate: $startDate, endDate: $endDate, userStatus: $userStatus) {
-      totalUsers
-      referredCount
-      notReferredCount
-      referredPercentage
-      notReferredPercentage
-      acquisition {
-        registrationTrend {
-          month
-          count
-        }
-        howYouHeard {
-          source
-          count
-        }
-      }
-      demographics {
-        gender { label count }
-        ageGroups { label count }
-        maritalStatus { label count }
-        locations { label count }
-        employmentStatus { label count }
-        educationLevel { label count }
-        experienceLevel { label count }
-        topOccupations { label count }
-      }
-    }
-  }
-`;
+import { apiGet } from '@/lib/api-client';
 
-export interface AnalyticsDataPoint {
-  label: string;
-  count: number;
-}
+import { UserAnalyticsSchema, type LabelCount } from '../schemas/user.schema';
+import { bothOrNeitherDates } from '../utils/admin-users-query';
+import { userKeys } from './query-keys';
+
+export type AnalyticsDataPoint = LabelCount;
 
 export interface RegistrationTrendPoint {
   month: string;
@@ -48,6 +18,7 @@ export interface HowYouHeardPoint {
   count: number;
 }
 
+/** UI shape — mapped from UserAnalyticsDto so charts keep camelCase keys. */
 export interface UserAnalyticsData {
   totalUsers: number;
   referredCount: number;
@@ -70,10 +41,6 @@ export interface UserAnalyticsData {
   };
 }
 
-interface UserAnalyticsResponse {
-  getUserAnalytics: UserAnalyticsData;
-}
-
 interface UseUserAnalyticsParams {
   startDate?: string | null;
   endDate?: string | null;
@@ -85,19 +52,47 @@ const toOptional = (value?: string | null) => {
   return value;
 };
 
+/**
+ * GET /admin/users/analytics — requires `view_user_analytics`.
+ * Query: date_from, date_to, user_status (tier).
+ */
 export const useUserAnalytics = (params?: UseUserAnalyticsParams) => {
-  const startDate = toOptional(params?.startDate);
-  const endDate = toOptional(params?.endDate);
+  const dateRange = bothOrNeitherDates(params?.startDate, params?.endDate);
   const userStatus = toOptional(params?.userStatus);
 
   return useQuery({
-    queryKey: ['users', 'analytics', { startDate, endDate, userStatus }],
+    queryKey: userKeys.analytics({
+      dateFrom: dateRange.date_from,
+      dateTo: dateRange.date_to,
+      userStatus,
+    }),
     queryFn: () =>
-      executeRaw<UserAnalyticsResponse>(GET_USER_ANALYTICS_QUERY, {
-        startDate,
-        endDate,
-        userStatus,
+      apiGet('/admin/users/analytics', UserAnalyticsSchema, {
+        params: {
+          ...dateRange,
+          user_status: userStatus,
+        },
       }),
-    select: (data) => data.getUserAnalytics,
+    select: (data): UserAnalyticsData => ({
+      totalUsers: data.totals.total_users,
+      referredCount: data.totals.referred,
+      notReferredCount: data.totals.not_referred,
+      referredPercentage: data.totals.referred_percentage,
+      notReferredPercentage: data.totals.not_referred_percentage,
+      acquisition: {
+        registrationTrend: data.registration_trend,
+        howYouHeard: data.acquisition.sources,
+      },
+      demographics: {
+        gender: data.demographics.gender,
+        ageGroups: data.demographics.age_buckets,
+        maritalStatus: data.demographics.marital_status,
+        locations: data.demographics.location,
+        employmentStatus: data.demographics.employment_status,
+        educationLevel: data.demographics.education_level,
+        experienceLevel: data.demographics.experience_level,
+        topOccupations: data.demographics.occupations,
+      },
+    }),
   });
 };
