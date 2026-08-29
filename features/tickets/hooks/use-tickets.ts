@@ -9,10 +9,15 @@ import { ticketKeys } from "./query-keys";
 /**
  * Ticket reads.
  *
- * The complaint log is deliberately NOT a threaded conversation — one
- * inbound message is one ticket. `duplicates` on the detail response is
- * the cheap stand-in for threading (recent open tickets from the same
- * source address).
+ * A ticket IS a threaded conversation now — `messages` carries it, oldest
+ * first, and a ticket opened before threading simply has one. `body` stays
+ * as the denormalised text of the message that opened it: it is what the
+ * text index searches and what the classifier reads, so it is not a second
+ * source of truth for the conversation.
+ *
+ * `duplicates` outlived its original job (the stand-in for threading) and is
+ * now only what it says — recent open tickets from the same source address,
+ * i.e. merge candidates.
  *
  * BE contract: adminTypeDefs.ts §"Tickets".
  */
@@ -118,11 +123,11 @@ const GET_TICKET = graphql(`
         attachments { url filename mime size }
         resolved_by { _id userName email }
       }
+      messages {
+        ...TicketTimeline_message
+      }
       notes {
-        _id
-        body
-        createdAt
-        admin { _id userName email }
+        ...TicketTimeline_note
       }
       duplicates {
         _id
