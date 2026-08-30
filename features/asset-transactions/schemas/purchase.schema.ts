@@ -272,15 +272,23 @@ function inferTransactionKind(record: Record<string, unknown>): string {
   const purchaseKind = String(record.purchase_kind ?? '').toLowerCase();
   const snap = asRecord(record.purchase_snapshot);
   const isFlex = assetType === 'flex';
-  const isFo = assetType === 'full-ownership' || assetType.includes('full');
+  // Commercial belongs here: the BE routes `commercial` through the same
+  // full-ownership settle/approve service, so its rows carry the FO kinds.
+  const isFo =
+    assetType === 'full-ownership' || assetType === 'commercial' || assetType.includes('full');
 
   if (isFlex) {
     return purchaseKind === 'recurring' ? 'recurring_flex_payment' : 'initial_flex_purchase';
   }
   if (isFo) {
     if (purchaseKind === 'recurring') return 'fo_recurring_land';
-    if (purchaseKind === 'doc' || purchaseKind === 'document') {
-      return snap?.is_full_payment === true ? 'fo_outright_doc' : 'fo_doc_payment';
+    // `dev_levy` is what the BE actually stores for a document fee; the other
+    // two spellings are older rows. `is_outright_doc` is the flag the approve
+    // guard itself reads, so it decides which of the two doc kinds this is.
+    if (purchaseKind === 'dev_levy' || purchaseKind === 'doc' || purchaseKind === 'document') {
+      return snap?.is_outright_doc === true || snap?.is_full_payment === true
+        ? 'fo_outright_doc'
+        : 'fo_doc_payment';
     }
     if (purchaseKind === 'initial') {
       if (snap?.is_full_payment === true || snap?.tenor_months === 0) {
@@ -506,18 +514,23 @@ export function shortenPurchaseDescription(value: string): string {
 }
 
 /**
- * Production's Property Name column: `{asset_type} - {description}({plot}sqm)`.
- * Falls back to source asset name when description is absent.
+ * Production's Property Name column: `{asset_type} - {property}({plot}sqm)`.
+ *
+ * The property is the **populated `source_asset`**, and description is only a
+ * fallback. v1 got away with reading description because its BE wrote the
+ * estate name into it ("DP: Empire Park"); v2 writes one of a handful of fixed
+ * literals ("DP: FO document payment (transfer)"), so preferring it printed the
+ * same non-answer on every row — the exact mistake ⛔ ticket 24c names.
  */
 export function propertyNameDisplay(row: Purchase): string {
   const assetType = purchaseAssetTypeLabel(row);
   const plot = plotSizeSqm(row);
   const plotSuffix = plot != null ? `(${plot}sqm)` : '';
-  const description =
-    row.description?.trim() ||
+  const property =
     assetName(row.source_asset) ||
+    row.description?.trim() ||
     kindLabel(purchaseKind(row));
-  const core = shortenPurchaseDescription(`${description}${plotSuffix}`);
+  const core = shortenPurchaseDescription(`${property}${plotSuffix}`);
   return assetType ? `${assetType} - ${core}` : core;
 }
 

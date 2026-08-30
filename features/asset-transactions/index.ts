@@ -7,6 +7,10 @@
  * 2026-08-13 (tickets 24a/b/d). Review is
  * POST /admin/acquisitions/transactions/:txId/approve|decline for both families.
  * Full-ownership rows open GET /admin/fo/purchase/transactions/:id.
+ *
+ * Document fees are the same row shape on their own ledger:
+ * GET /admin/transactions/documents (`purchase_kind: 'dev_levy'`), reviewed
+ * through that same approve/decline pair.
  * Land plans after approval:
  * POST /admin/acquisitions/plans/:planId/suspend|unsuspend|allocate.
  * `fo_outright_doc` has no Review action — approve the parent land row.
@@ -22,8 +26,14 @@ export { PurchaseStatusBadge } from './components/PurchaseStatusBadge';
 export { FoTransactionDetail } from './components/FoTransactionDetail';
 export { FoPlanActions } from './components/FoPlanActions';
 export { ReviewPurchaseDialog } from './components/ReviewPurchaseDialog';
+export { DocumentPurchaseExport } from './components/DocumentPurchaseExport';
 
 export { usePurchases, DEFAULT_PURCHASE_LIMIT } from './hooks/use-purchases';
+export {
+  useDocumentPurchases,
+  DEFAULT_DOCUMENT_PURCHASE_LIMIT,
+} from './hooks/use-document-purchases';
+export { useDocumentPurchaseExport } from './hooks/use-document-purchase-export';
 export { useFoTransaction } from './hooks/use-fo-transaction';
 export {
   useFoLandPlan,
@@ -32,7 +42,7 @@ export {
   useAllocateFoPlan,
 } from './hooks/use-fo-plan';
 export { useApprovePurchase, useDeclinePurchase } from './hooks/use-purchase-review';
-export type { PurchaseListFilters } from './hooks/query-keys';
+export type { PurchaseListFilters, DocumentPurchaseListFilters } from './hooks/query-keys';
 
 export {
   ASSET_TYPES,

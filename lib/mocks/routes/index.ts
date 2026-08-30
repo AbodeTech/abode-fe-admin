@@ -39,6 +39,7 @@ import { commercialPlotRoutes } from './commercial-plots';
  * withdrawals — /admin/withdrawals/*.
  * asset-transactions — GET /admin/transactions (serves purchase rows; other
  *               types return empty pages until their screens migrate),
+ *               GET /admin/transactions/documents (the document-fee ledger),
  *               POST /admin/acquisitions/transactions/:txId/approve|decline,
  *               GET /admin/fo/purchase/transactions/:txId, FO land-plan
  *               GET /admin/fo/purchase/payment-plans/:id, and plan actions
