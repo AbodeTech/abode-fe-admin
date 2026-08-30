@@ -5,10 +5,7 @@ import { ChevronLeft, ChevronRight, Download, Loader2, Search } from "lucide-rea
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-// Cross-feature import: reusing the canonical sales table avoids duplicating
-// 200+ lines of formatting, status logic, and responsive markup. The hook
-// behind this section also pulls SalesRowFragment from the same place.
-import { SalesTable } from "@/features/sales/components/SalesTable";
+import { TeamSalesTable } from "./TeamSalesTable";
 import { useDebounce } from "@/hooks/use-debounce";
 import {
   useAdminManagerTeamSales,
@@ -138,7 +135,7 @@ export function TeamSalesSection({
           </div>
         ) : (
           <>
-            <SalesTable records={records} />
+            <TeamSalesTable records={records} />
             {count > DEFAULT_TEAM_SALES_LIMIT && (
               <TeamSalesPager
                 count={count}

@@ -1,64 +1,53 @@
+import { useMutation } from '@tanstack/react-query';
 
-import { execute } from '@/lib/graphql-client';
-import { graphql } from '@/lib/gql';
-// @ts-ignore
-import { Parser } from 'json2csv';
-import * as XLSX from 'xlsx';
-import { saveAs } from 'file-saver';
-import { SalesFilters } from './use-sales';
+import { apiGetPaged } from '@/lib/api-client';
 
-const EXPORT_SALES_QUERY = graphql(`
-  query ExportSales($filters: SalesRecordFilters, $limit: Int!, $page: Int!) {
-    getSalesRecord(filters: $filters, limit: $limit, page: $page) {
-      data {
-        user_firstName
-        user_lastName
-        email
-        user_phone
-        referrer_name
-        referrer_email
-        referrer_phone
-        asset_name
-        asset_type
-        no_of_units
-        size
-        price
-        amount_paid
-        fullownerhsip_documentprice
-        document_amount_paid
-        month_subscription
-        start_date
-        next_date
-        default_amount
-        is_suspended
-        amount_payable
-        balance
-        payment_plan_id
-        unique_asset_id
-        months_covered
-        month_remaining
-        allocation_status
-        payment_plan_created_at
-        payment_plan_updated_at
-      }
-    }
+import { SalesRowSchema, type SalesRow } from '../schemas/sales.schema';
+import { salesKeys } from './query-keys';
+import { buildSalesListParams, type SalesListFilters } from './use-sales';
+
+/* ============================================================
+ * The custom column-picker/format export UI (SalesExport.tsx) is kept
+ * per product decision, rather than switching to the BE's own two fixed-
+ * column CSV streams (GET /admin/sales/export[/full]). Those BE endpoints
+ * enforce a 50k-row cap, rate limits and an audit log — this client-side
+ * path has none of that, so EXPORT_ROW_CAP below is this feature's own
+ * (much smaller) safeguard against paging the list endpoint unbounded.
+ *
+ * The BE caps a single page at 100 rows (`Math.min(limit, 100)` in
+ * sales.service.ts), so building an export set means looping pages rather
+ * than requesting one huge page like the old GraphQL query did.
+ * ============================================================ */
+
+export const EXPORT_ROW_CAP = 1_000;
+const EXPORT_PAGE_SIZE = 100;
+
+export interface SalesExportResult {
+  rows: SalesRow[];
+  truncated: boolean;
+}
+
+export const fetchSalesExportRows = async (filters: SalesListFilters): Promise<SalesExportResult> => {
+  const rows: SalesRow[] = [];
+  let page = 1;
+  let total = Infinity;
+
+  while (rows.length < total && rows.length < EXPORT_ROW_CAP) {
+    const { items, meta } = await apiGetPaged('/admin/sales', SalesRowSchema, {
+      params: buildSalesListParams({ ...filters, page, limit: EXPORT_PAGE_SIZE }),
+    });
+    total = meta.total ?? items.length;
+    rows.push(...items);
+    if (items.length < EXPORT_PAGE_SIZE) break;
+    page += 1;
   }
-`);
 
-export type SalesExportFormat = 'csv' | 'xlsx';
+  return { rows, truncated: rows.length < total };
+};
 
-// Kept for backward compatibility if needed, though we seem to only use raw fetching now
-export const downloadSalesData = async ({ payload }: { payload: SalesFilters }) => {
-  const { search, startDate, endDate, assetType } = payload;
-  const res = await execute(EXPORT_SALES_QUERY, {
-    page: 1,
-    limit: 1_000_000,
-    filters: {
-      search,
-      startDate,
-      endDate,
-      assetType,
-    },
+export const useSalesExportData = () => {
+  return useMutation({
+    mutationKey: salesKeys.export(),
+    mutationFn: (filters: SalesListFilters) => fetchSalesExportRows(filters),
   });
-  return res;
 };
