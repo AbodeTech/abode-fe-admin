@@ -1,38 +1,48 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { execute } from "@/lib/graphql-client";
-import { graphql } from "@/lib/gql";
-import type { AssignManagerTargetInput } from "@/lib/gql/graphql";
-import { managerKeys } from "./query-keys";
+'use client';
 
-const ASSIGN_ASSOCIATE_MANAGER_TARGET_MUTATION = graphql(`
-  mutation AssignAssociateManagerTarget($input: AssignManagerTargetInput!) {
-    assignAssociateManagerTarget(input: $input) {
-      _id
-      manager
-      month
-      year
-      associate_pro_recruited_target
-      selling_associate_pro_target
-      performance_score_target
-      createdAt
-      updatedAt
-    }
-  }
-`);
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
+import { apiPut } from '@/lib/api-client';
+
+import {
+  ManagerTargetSchema,
+  type AssignTargetPayload,
+} from '../schemas/associate-manager.schema';
+import { managerKeys } from './query-keys';
+
+/**
+ * PUT /admin/managers/:manager_id/targets/:year/:month — set or replace.
+ *
+ * The month and year are PATH segments, not body fields: the BE runs with
+ * `forbidNonWhitelisted`, so an unexpected key is a hard 400 rather than an
+ * ignored one.
+ *
+ * Every target is optional and an omitted one is LEFT ALONE, not reset — so a
+ * partial save is a real partial save. Send a number only for the fields the
+ * admin actually filled in; see `AssignTargetPayload`.
+ */
 export const useAssignManagerTarget = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (input: AssignManagerTargetInput) =>
-      execute(ASSIGN_ASSOCIATE_MANAGER_TARGET_MUTATION, { input }),
-    onSuccess: (data) => {
-      const managerId = data.assignAssociateManagerTarget.manager;
-      // Target list/lookup for that manager is stale
-      queryClient.invalidateQueries({
-        queryKey: managerKeys.targetsAll(managerId),
-      });
-      // Dashboard target sub-block reads from the target → stale across dashboards
+    mutationFn: ({
+      managerId,
+      year,
+      month,
+      values,
+    }: {
+      managerId: string;
+      year: number;
+      month: number;
+      values: AssignTargetPayload;
+    }) =>
+      apiPut(
+        `/admin/managers/${managerId}/targets/${year}/${month}`,
+        values,
+        ManagerTargetSchema
+      ),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: managerKeys.targetsAll(variables.managerId) });
       queryClient.invalidateQueries({ queryKey: managerKeys.dashboards() });
     },
   });

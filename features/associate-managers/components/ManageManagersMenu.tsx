@@ -17,33 +17,26 @@ import {
   type ManagerDisplay,
 } from "./dialogs/RemoveManagerDialog";
 import { ChangeManagerDialog } from "./dialogs/ChangeManagerDialog";
-import type { AssociateManagerListItem } from "@/lib/gql/graphql";
+import {
+  managerDisplayName,
+  managerInitials,
+  type ManagerListItem,
+} from "../schemas/associate-manager.schema";
 
 interface Props {
   /** The currently-selected manager from the page dropdown. Drives Remove/Change. */
-  activeManager: AssociateManagerListItem | null;
+  activeManager: ManagerListItem | null;
 }
 
-const fullName = (m?: AssociateManagerListItem["manager"] | null) =>
-  `${m?.firstName ?? ""} ${m?.lastName ?? ""}`.trim() ||
-  m?.userName ||
-  m?.email ||
-  "Manager";
-
-const initialsOf = (m?: AssociateManagerListItem["manager"] | null) =>
-  ((m?.firstName?.[0] ?? "") + (m?.lastName?.[0] ?? "")).toUpperCase() || "?";
-
-const toManagerDisplay = (
-  item: AssociateManagerListItem | null
-): ManagerDisplay | undefined => {
-  const id = item?.manager?._id;
-  if (!id) return undefined;
+const toManagerDisplay = (item: ManagerListItem | null): ManagerDisplay | undefined => {
+  if (!item) return undefined;
   return {
-    id,
-    name: fullName(item.manager),
-    email: item.manager?.email ?? "",
-    avatarInitials: initialsOf(item.manager),
-    assignedProsCount: item.associate_pros_count ?? 0,
+    id: item.manager_id,
+    name: managerDisplayName(item),
+    // The payload carries no admin email — see `managerDisplayName`.
+    email: "",
+    avatarInitials: managerInitials(item),
+    assignedProsCount: item.roster_size,
   };
 };
 
@@ -53,7 +46,7 @@ export function ManageManagersMenu({ activeManager }: Props) {
   >(null);
 
   const display = toManagerDisplay(activeManager);
-  const activeManagerId = activeManager?.manager?._id ?? null;
+  const activeManagerId = activeManager?.manager_id ?? null;
 
   return (
     <>

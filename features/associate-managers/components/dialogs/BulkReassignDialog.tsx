@@ -24,6 +24,7 @@ import {
 import { useAssociateManagers } from "../../hooks/use-associate-managers";
 import { useBulkAssignPros } from "../../hooks/use-bulk-assign-pros";
 import type { AssociatePro } from "../../mock-data";
+import { managerDisplayName } from "../../schemas/associate-manager.schema";
 
 interface Props {
   open: boolean;
@@ -33,16 +34,6 @@ interface Props {
   sourceManagerId: string | null;
 }
 
-const fullName = (m?: {
-  firstName?: string | null;
-  lastName?: string | null;
-  userName?: string | null;
-  email?: string | null;
-} | null) =>
-  `${m?.firstName ?? ""} ${m?.lastName ?? ""}`.trim() ||
-  m?.userName ||
-  m?.email ||
-  "Manager";
 
 export function BulkReassignDialog({
   open,
@@ -58,23 +49,23 @@ export function BulkReassignDialog({
     if (open) setTargetManagerId("");
   }, [open]);
 
-  const allManagers = managersList?.results ?? [];
+  const allManagers = managersList?.items ?? [];
 
   const sourceManager = useMemo(
-    () => allManagers.find((m) => m.manager?._id === sourceManagerId) ?? null,
+    () => allManagers.find((m) => m.manager_id === sourceManagerId) ?? null,
     [allManagers, sourceManagerId]
   );
 
   const availableManagers = useMemo(
     () =>
       sourceManagerId
-        ? allManagers.filter((m) => m.manager?._id !== sourceManagerId)
+        ? allManagers.filter((m) => m.manager_id !== sourceManagerId)
         : allManagers,
     [allManagers, sourceManagerId]
   );
 
   const target = useMemo(
-    () => allManagers.find((m) => m.manager?._id === targetManagerId) ?? null,
+    () => allManagers.find((m) => m.manager_id === targetManagerId) ?? null,
     [allManagers, targetManagerId]
   );
 
@@ -85,7 +76,7 @@ export function BulkReassignDialog({
     try {
       await mutateAsync({
         managerId: targetManagerId,
-        associateProIds: pros.map((p) => p.id),
+        proIds: pros.map((p) => p.id),
       });
       toast.success(
         `Reassigned ${pros.length} ${pros.length === 1 ? "Pro" : "Pros"}`
@@ -119,10 +110,10 @@ export function BulkReassignDialog({
               {sourceManager ? (
                 <>
                   <p className="text-sm font-medium text-gray-900">
-                    {fullName(sourceManager.manager)}
+                    {managerDisplayName(sourceManager)}
                   </p>
                   <p className="text-xs text-gray-500">
-                    {sourceManager.manager?.email}
+                    {sourceManager.roster_size} Pros
                   </p>
                 </>
               ) : (
@@ -150,11 +141,10 @@ export function BulkReassignDialog({
                     </div>
                   ) : (
                     availableManagers.map((m) => {
-                      const id = m.manager?._id;
-                      if (!id) return null;
+                      const id = m.manager_id;
                       return (
                         <SelectItem key={id} value={id}>
-                          {fullName(m.manager)} · {m.associate_pros_count ?? 0}{" "}
+                          {managerDisplayName(m)} · {m.roster_size}{" "}
                           Pros
                         </SelectItem>
                       );
@@ -194,10 +184,10 @@ export function BulkReassignDialog({
           {target && (
             <p className="text-xs text-gray-500">
               <span className="font-medium text-gray-700">
-                {fullName(target.manager)}
+                {managerDisplayName(target)}
               </span>{" "}
-              will go from {target.associate_pros_count ?? 0} to{" "}
-              {(target.associate_pros_count ?? 0) + pros.length} Pros assigned.
+              will go from {target.roster_size} to{" "}
+              {(target.roster_size) + pros.length} Pros assigned.
             </p>
           )}
         </div>

@@ -16,11 +16,15 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { FilterSelect } from "@/components/shared/FilterSelect";
 import { cn } from "@/lib/utils";
-import type { ManagerDashboardProRow } from "@/lib/gql/graphql";
-import { PRO_GROUP_OPTIONS, PRO_SORT_OPTIONS } from "../lib/roster-filter-options";
+import type { RosterRow } from "../schemas/manager-dashboard.schema";
+import {
+  PRO_GROUP_OPTIONS,
+  PRO_SORT_OPTIONS,
+  proGroupOptionsForScope,
+} from "../lib/roster-filter-options";
 
 interface Props {
-  rows: ManagerDashboardProRow[];
+  rows: RosterRow[];
   /** Total count from the server (for pagination). When the BE already
    * paginates, pass the server count; we paginate via callback only. */
   totalCount?: number;
@@ -85,8 +89,8 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-const fullName = (p: ManagerDashboardProRow) =>
-  `${p.firstName ?? ""} ${p.lastName ?? ""}`.trim() || p.email || "Associate";
+const fullName = (p: RosterRow) =>
+  `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim() || p.email || "Associate";
 
 export function SystemAssociatesTable({
   rows,
@@ -112,7 +116,7 @@ export function SystemAssociatesTable({
       return (
         name.includes(term) ||
         (p.email?.toLowerCase().includes(term) ?? false) ||
-        (p.phoneNumber?.toLowerCase().includes(term) ?? false)
+        (p.phone_number?.toLowerCase().includes(term) ?? false)
       );
     });
   }, [rows, search]);
@@ -150,7 +154,7 @@ export function SystemAssociatesTable({
             />
           </div>
           <FilterSelect
-            data={[...PRO_GROUP_OPTIONS]}
+            data={[...proGroupOptionsForScope("system")]}
             queryKey="pro_group"
             placeholder="Roster group"
           />
@@ -198,10 +202,10 @@ export function SystemAssociatesTable({
                       <div className="flex flex-col gap-0.5">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-medium text-gray-900">{fullName(pro)}</span>
-                          {pro.onboardedAt && (
+                          {pro.onboarded_at && (
                             <span
                               className="inline-flex items-center gap-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-medium px-1.5 py-0.5 border border-emerald-100"
-                              title={`Onboarded ${formatDate(pro.onboardedAt)}`}
+                              title={`Onboarded ${formatDate(pro.onboarded_at)}`}
                             >
                               <CheckCircle2 className="h-3 w-3" />
                               Onboarded
@@ -210,7 +214,7 @@ export function SystemAssociatesTable({
                         </div>
                         <span className="text-xs text-gray-500">
                           {pro.email}
-                          {pro.phoneNumber ? ` · ${pro.phoneNumber}` : ""}
+                          {pro.phone_number ? ` · ${pro.phone_number}` : ""}
                         </span>
                       </div>
                     </TableCell>
@@ -218,16 +222,16 @@ export function SystemAssociatesTable({
                       <StatusBadge status={pro.status} />
                     </TableCell>
                     <TableCell className="text-gray-700">
-                      {formatDate(pro.dateRecruited)}
+                      {formatDate(pro.date_recruited)}
                     </TableCell>
                     <TableCell className="text-right tabular-nums text-gray-900">
-                      {pro.totalSales}
+                      {pro.total_sales}
                     </TableCell>
                     <TableCell className="text-right tabular-nums text-gray-900">
-                      {formatCurrency(pro.revenueGenerated)}
+                      {formatCurrency(pro.revenue_generated)}
                     </TableCell>
                     <TableCell className="text-gray-600">
-                      {formatRelativeOrDate(pro.lastLogin)}
+                      {formatRelativeOrDate(pro.last_login)}
                     </TableCell>
                   </TableRow>
                 ))

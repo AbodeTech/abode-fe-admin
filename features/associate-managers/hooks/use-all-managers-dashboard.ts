@@ -1,116 +1,34 @@
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { execute } from "@/lib/graphql-client";
-import { graphql } from "@/lib/gql";
-import type { ManagerDashboardFilterInput } from "@/lib/gql/graphql";
-import { managerKeys } from "./query-keys";
+'use client';
 
-const GET_ALL_MANAGERS_DASHBOARD_QUERY = graphql(`
-  query GetAllManagersDashboard(
-    $filter: ManagerDashboardFilterInput
-    $page: Int
-    $limit: Int
-  ) {
-    getAllManagersDashboard(filter: $filter, page: $page, limit: $limit) {
-      period {
-        periodType
-        month
-        year
-        start
-        end
-      }
-      target {
-        recruitedTarget
-        recruitedSoFar
-        sellingTarget
-        sellingSoFar
-        performanceScoreTarget
-        performanceScoreSoFar
-      }
-      recruitment {
-        newSignupsInPeriod
-        upgradesInPeriod
-        onboardedInPeriod
-        totalAssigned
-        onboardingQueueCount
-      }
-      salesAndRevenue {
-        sellingPros
-        sellingProsTarget
-        totalRevenue
-        initialSalesRevenue
-        recurringRevenue
-        revenuePerSellingPro
-      }
-      activity {
-        activeCount
-        activePct
-        recentLoginCount
-        recentSaleCount
-        recentRecruitCount
-        inactiveCount
-        inactivePct
-        abandonedCount
-        abandonedPct
-      }
-      milestones {
-        earlySellers
-        lateFirstSellers
-      }
-      performanceScore {
-        target
-        actual
-      }
-      associatePros {
-        id
-        firstName
-        lastName
-        email
-        phoneNumber
-        status
-        dateRecruited
-        totalSales
-        revenueGenerated
-        lastLogin
-        onboardedAt
-      }
-      associateProsGroupTotal
-    }
-  }
-`);
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 
-interface UseAllManagersDashboardParams {
-  filter?: ManagerDashboardFilterInput | null;
-  page?: number;
-  limit?: number;
-  enabled?: boolean;
-  keepPreviousData?: boolean;
-}
+import { apiGet } from '@/lib/api-client';
+
+import {
+  ManagerDashboardSchema,
+  type ManagerDashboardParams,
+} from '../schemas/manager-dashboard.schema';
+import { managerKeys } from './query-keys';
 
 export const DEFAULT_ALL_MANAGERS_LIMIT = 25;
 
-/** Super-admin only — combined view across every manager's roster.
- * Targets are summed across all managers for the period. */
+/**
+ * GET /admin/managers/dashboard/all — every managed pro, as one roster.
+ *
+ * Targets are SUMMED across managers for the period (the org's goal), and the
+ * per-pro contributor lists are empty by design: org-wide scopes get source
+ * attribution instead.
+ */
 export const useAllManagersDashboard = (
-  params: UseAllManagersDashboardParams = {}
-) => {
-  const {
-    filter = null,
-    page,
-    limit = DEFAULT_ALL_MANAGERS_LIMIT,
-    enabled = true,
-    keepPreviousData: keepPrevious = false,
-  } = params;
-
-  return useQuery({
-    queryKey: managerKeys.allManagersDashboard(filter, page ?? null, limit),
+  params?: ManagerDashboardParams | null,
+  options?: { enabled?: boolean; keepPreviousData?: boolean }
+) =>
+  useQuery({
+    queryKey: managerKeys.allManagersDashboard(params),
     queryFn: () =>
-      execute(GET_ALL_MANAGERS_DASHBOARD_QUERY, {
-        filter,
-        page: page ?? null,
-        limit,
+      apiGet('/admin/managers/dashboard/all', ManagerDashboardSchema, {
+        params: { limit: DEFAULT_ALL_MANAGERS_LIMIT, ...(params ?? {}) },
       }),
-    enabled,
-    select: (data) => data.getAllManagersDashboard,
-    placeholderData: keepPrevious ? keepPreviousData : undefined,
+    enabled: options?.enabled !== false,
+    placeholderData: options?.keepPreviousData ? keepPreviousData : undefined,
   });
-};

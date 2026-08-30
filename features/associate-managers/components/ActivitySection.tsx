@@ -1,28 +1,31 @@
 import { CheckCircle2, Clock, AlertOctagon } from "lucide-react";
 import { StatCard } from "./StatCard";
-import { ProRosterGroup, type ManagerDashboardActivity } from "@/lib/gql/graphql";
+import type {
+  ManagerDashboard,
+  ProGroup,
+} from "../schemas/manager-dashboard.schema";
 
 interface Props {
-  data: ManagerDashboardActivity;
+  data: ManagerDashboard["activity"];
   /** Switches the noun used in labels between "Associate Pros" and "Associates". */
   roster?: "associate-pro" | "associate";
   /** When provided, the activity cards become drill-down triggers. */
-  onOpenGroup?: (group: ProRosterGroup) => void;
+  onOpenGroup?: (group: ProGroup) => void;
 }
 
 export function ActivitySection({ data, roster = "associate-pro", onOpenGroup }: Props) {
   const {
-    activeCount,
-    activePct,
-    recentLoginCount,
-    recentSaleCount,
-    recentRecruitCount,
-    inactiveCount,
-    inactivePct,
-    abandonedCount,
-    abandonedPct,
+    active_count,
+    active_pct,
+    recent_login_count,
+    recent_sale_count,
+    recent_recruit_count,
+    inactive_count,
+    inactive_pct,
+    abandoned_count,
+    abandoned_pct,
   } = data;
-  const total = activeCount + inactiveCount + abandonedCount;
+  const total = active_count + inactive_count + abandoned_count;
   const isAssociate = roster === "associate";
   const noun = isAssociate ? "Associates" : "Associate Pros";
 
@@ -43,32 +46,32 @@ export function ActivitySection({ data, roster = "associate-pro", onOpenGroup }:
         <div className="flex h-3 w-full overflow-hidden rounded-full bg-gray-100">
           <div
             className="bg-[#00695C]"
-            style={{ width: `${activePct}%` }}
-            title={`Active: ${activeCount}`}
+            style={{ width: `${active_pct}%` }}
+            title={`Active: ${active_count}`}
           />
           <div
             className="bg-amber-500"
-            style={{ width: `${inactivePct}%` }}
-            title={`Inactive: ${inactiveCount}`}
+            style={{ width: `${inactive_pct}%` }}
+            title={`Inactive: ${inactive_count}`}
           />
           <div
             className="bg-[#AD1F2A]"
-            style={{ width: `${abandonedPct}%` }}
-            title={`Abandoned: ${abandonedCount}`}
+            style={{ width: `${abandoned_pct}%` }}
+            title={`Abandoned: ${abandoned_count}`}
           />
         </div>
         <div className="flex flex-wrap items-center gap-4 mt-3 text-xs text-gray-600">
           <span className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full bg-[#00695C]" />
-            Active ({activePct.toFixed(0)}%)
+            Active ({active_pct.toFixed(0)}%)
           </span>
           <span className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full bg-amber-500" />
-            Inactive ({inactivePct.toFixed(0)}%)
+            Inactive ({inactive_pct.toFixed(0)}%)
           </span>
           <span className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full bg-[#AD1F2A]" />
-            Abandoned ({abandonedPct.toFixed(0)}%)
+            Abandoned ({abandoned_pct.toFixed(0)}%)
           </span>
         </div>
       </div>
@@ -79,27 +82,27 @@ export function ActivitySection({ data, roster = "associate-pro", onOpenGroup }:
           iconColor="text-[#00695C]"
           iconBg="bg-[#E0F2F1]"
           label={`Active ${noun}`}
-          value={activeCount}
-          hint={`${recentLoginCount.toLocaleString()} logged in · ${recentSaleCount.toLocaleString()} sold · ${recentRecruitCount.toLocaleString()} recruited (last 90 days)`}
-          onClick={onOpenGroup ? () => onOpenGroup(ProRosterGroup.Active) : undefined}
+          value={active_count}
+          hint={`${recent_login_count.toLocaleString()} logged in · ${recent_sale_count.toLocaleString()} sold · ${recent_recruit_count.toLocaleString()} recruited (last 30 days)`}
+          onClick={onOpenGroup ? () => onOpenGroup("active") : undefined}
         />
         <StatCard
           icon={Clock}
           iconColor="text-amber-600"
           iconBg="bg-amber-50"
           label={`Inactive ${noun}`}
-          value={inactiveCount}
-          hint="No activity in last 90 days"
-          onClick={onOpenGroup ? () => onOpenGroup(ProRosterGroup.Inactive) : undefined}
+          value={inactive_count}
+          hint="Last login, sale or recruit was 30-60 days ago"
+          onClick={onOpenGroup ? () => onOpenGroup("inactive") : undefined}
         />
         <StatCard
           icon={AlertOctagon}
           iconColor="text-[#AD1F2A]"
           iconBg="bg-red-50"
           label={`Abandoned ${noun}`}
-          value={abandonedCount}
-          hint="No login in last 6 months"
-          onClick={onOpenGroup ? () => onOpenGroup(ProRosterGroup.Abandoned) : undefined}
+          value={abandoned_count}
+          hint="No login, sale or recruit in over 60 days"
+          onClick={onOpenGroup ? () => onOpenGroup("abandoned") : undefined}
         />
       </div>
     </section>

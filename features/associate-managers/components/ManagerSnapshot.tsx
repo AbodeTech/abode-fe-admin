@@ -18,16 +18,18 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { ManageTargetsDialog } from "./dialogs/ManageTargetsDialog";
-import type {
-  AssociateManagerListItem,
-  ManagerDashboardResponse,
-} from "@/lib/gql/graphql";
+import {
+  managerDisplayName,
+  managerInitials,
+  type ManagerListItem,
+} from "../schemas/associate-manager.schema";
+import type { ManagerDashboard } from "../schemas/manager-dashboard.schema";
 
 interface Props {
   viewAs: "super-admin" | "manager";
   /** Active manager (from the managers list lookup). Null for manager view. */
-  manager: AssociateManagerListItem | null;
-  dashboard: ManagerDashboardResponse;
+  manager: ManagerListItem | null;
+  dashboard: ManagerDashboard;
 }
 
 type Tone = "exceeded" | "on-track" | "approaching" | "behind";
@@ -74,14 +76,16 @@ const MONTHS = [
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
 
-const formatPeriod = (period: ManagerDashboardResponse["period"]) => {
-  if (period.periodType === "MONTH" && period.month && period.year) {
+const formatPeriod = (period: ManagerDashboard["period"]) => {
+  // `resolvePeriod` lowercases whatever it was sent, so the v1 spellings this
+  // FE sends come back as "month" / "week" / "year", not "MONTH".
+  if (period.period_type.toLowerCase() === "month" && period.month && period.year) {
     return `${MONTHS[period.month - 1]} ${period.year}`;
   }
-  if (period.periodType === "YEAR" && period.year) {
+  if (period.period_type.toLowerCase() === "year" && period.year) {
     return `${period.year}`;
   }
-  if (period.periodType === "WEEK") {
+  if (period.period_type.toLowerCase() === "week") {
     return "Last 7 days";
   }
   // CUSTOM
@@ -98,10 +102,10 @@ const daysRemaining = (periodEnd: Date | string) => {
   return Math.max(0, Math.ceil(ms / (1000 * 60 * 60 * 24)));
 };
 
-const hasActiveTarget = (target: ManagerDashboardResponse["target"]) =>
-  target.recruitedTarget > 0 ||
-  target.sellingTarget > 0 ||
-  target.performanceScoreTarget > 0;
+const hasActiveTarget = (target: ManagerDashboard["target"]) =>
+  target.recruited_target > 0 ||
+  target.selling_target > 0 ||
+  target.performance_score_target > 0;
 
 interface KpiTileProps {
   icon: React.ElementType;
@@ -256,35 +260,26 @@ function NoActiveTargetBanner({
   );
 }
 
-const initialsOf = (m?: AssociateManagerListItem["manager"] | null) =>
-  ((m?.firstName?.[0] ?? "") + (m?.lastName?.[0] ?? "")).toUpperCase() || "?";
-
-const fullName = (m?: AssociateManagerListItem["manager"] | null) =>
-  `${m?.firstName ?? ""} ${m?.lastName ?? ""}`.trim() ||
-  m?.userName ||
-  m?.email ||
-  "Manager";
-
 export function ManagerSnapshot({ viewAs, manager, dashboard }: Props) {
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const target = dashboard.target;
   const period = dashboard.period;
-  const score = dashboard.performanceScore;
+  const score = dashboard.performance_score;
   const active = hasActiveTarget(target);
   const periodLabel = formatPeriod(period);
   const remaining = daysRemaining(period.end);
 
   const recruitedPct =
-    target.recruitedTarget > 0
-      ? (target.recruitedSoFar / target.recruitedTarget) * 100
+    target.recruited_target > 0
+      ? (target.recruited_so_far / target.recruited_target) * 100
       : undefined;
   const sellingPct =
-    target.sellingTarget > 0
-      ? (target.sellingSoFar / target.sellingTarget) * 100
+    target.selling_target > 0
+      ? (target.selling_so_far / target.selling_target) * 100
       : undefined;
   // Rating scale is fixed at 1-5, so the ceiling for the performance score is
-  // always 5.00. `performanceScoreTarget` from the manager's monthly config is
+  // always 5.00. `performance_score_target` from the manager's monthly config is
   // stale (came from the pre-rating scoring era where scores were 0-100), so
   // ignore it for the denominator here — the tile always renders X.XX / 5.00
   // and the progress bar is computed against 5.
@@ -292,7 +287,7 @@ export function ManagerSnapshot({ viewAs, manager, dashboard }: Props) {
   const scorePct =
     score.actual > 0 ? (score.actual / RATING_MAX) * 100 : undefined;
 
-  const managerAdminId = manager?.manager?._id ?? null;
+  const managerAdminId = manager?.manager_id ?? null;
 
   return (
     <>
@@ -300,16 +295,14 @@ export function ManagerSnapshot({ viewAs, manager, dashboard }: Props) {
         {viewAs === "super-admin" && manager && (
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-full bg-[#E0F2F1] text-[#00695C] flex items-center justify-center font-semibold text-sm">
-              {initialsOf(manager.manager)}
+              {managerInitials(manager)}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900 truncate">
-                {fullName(manager.manager)}
+                {managerDisplayName(manager)}
               </p>
               <p className="text-xs text-gray-500 truncate">
-                {manager.manager?.email}
-                {" · "}
-                {manager.associate_pros_count ?? 0} Pros assigned
+                {manager.roster_size} Pros assigned
               </p>
             </div>
           </div>
@@ -351,10 +344,10 @@ export function ManagerSnapshot({ viewAs, manager, dashboard }: Props) {
             iconColor="text-[#00695C]"
             iconBg="bg-[#E0F2F1]"
             label="Associate Pros Recruited"
-            actualDisplay={target.recruitedSoFar.toLocaleString()}
+            actualDisplay={target.recruited_so_far.toLocaleString()}
             targetDisplay={
-              target.recruitedTarget > 0
-                ? target.recruitedTarget.toLocaleString()
+              target.recruited_target > 0
+                ? target.recruited_target.toLocaleString()
                 : undefined
             }
             percent={recruitedPct}
@@ -366,10 +359,10 @@ export function ManagerSnapshot({ viewAs, manager, dashboard }: Props) {
             iconColor="text-blue-600"
             iconBg="bg-blue-50"
             label="Selling Associate Pros"
-            actualDisplay={target.sellingSoFar.toLocaleString()}
+            actualDisplay={target.selling_so_far.toLocaleString()}
             targetDisplay={
-              target.sellingTarget > 0
-                ? target.sellingTarget.toLocaleString()
+              target.selling_target > 0
+                ? target.selling_target.toLocaleString()
                 : undefined
             }
             percent={sellingPct}
@@ -397,7 +390,7 @@ export function ManagerSnapshot({ viewAs, manager, dashboard }: Props) {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         managerId={managerAdminId}
-        managerName={fullName(manager?.manager)}
+        managerName={managerDisplayName(manager)}
       />
     </>
   );

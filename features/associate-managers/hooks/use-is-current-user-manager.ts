@@ -1,37 +1,31 @@
-import { useAuthStore } from "@/store/auth-store";
-import { useAssociateManagers } from "./use-associate-managers";
+'use client';
+
+import { useManagerMe } from './use-manager-me';
 
 /**
- * Returns true when the logged-in admin is also an Associate Manager.
+ * Whether the logged-in admin is also an Associate Manager, and if so their
+ * own manager id (the value every `:manager_id` route takes).
  *
- * **Matched by email**, not by id. The reason: the `signinAdmin` mutation
- * (`actions/auth.ts`) doesn't currently return the admin's `_id`, only
- * `{ authToken, role, permissions }`. So `useAuthStore().user.id` is
- * effectively undefined and can't be matched against `manager._id`.
- *
- * Email-matching works because:
- *   - the auth store always has the email the admin signed in with
- *   - the managers list response includes `manager.email`
- *
- * Swap this implementation when one of these lands:
- *   - BE adds `_id` to the signin response (cleanest single-line fix), OR
- *   - BE adds a dedicated `getMyAssociateManager` query (avoids the list
- *     fetch entirely for non-managers).
+ * Backed by `GET /admin/managers/me`. This used to page the whole manager list
+ * and match on EMAIL, because `POST /auth/admin/login` doesn't return the
+ * admin's `_id` and the manager list was the only place an id could be found.
+ * The `me` route answers directly, so neither the list fetch nor the email
+ * match is needed.
  */
 export const useIsCurrentUserManager = (): {
   isManager: boolean;
+  managerId: string | null;
   isLoading: boolean;
 } => {
-  const { user } = useAuthStore();
-  const { data, isLoading } = useAssociateManagers({ page: 1, limit: 200 });
+  const { data, isLoading } = useManagerMe();
 
-  if (isLoading || !user?.email || !data?.results) {
-    return { isManager: false, isLoading };
+  if (isLoading || !data) {
+    return { isManager: false, managerId: null, isLoading };
   }
 
-  const email = user.email.toLowerCase();
-  const isManager = data.results.some(
-    (m) => m.manager?.email?.toLowerCase() === email
-  );
-  return { isManager, isLoading: false };
+  return {
+    isManager: data.is_manager,
+    managerId: data.manager?.manager_id ?? null,
+    isLoading: false,
+  };
 };

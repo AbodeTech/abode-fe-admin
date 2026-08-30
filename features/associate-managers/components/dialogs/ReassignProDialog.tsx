@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { useAssociateManagers } from "../../hooks/use-associate-managers";
 import { useReassignPro } from "../../hooks/use-reassign-pro";
+import { managerDisplayName } from "../../schemas/associate-manager.schema";
 
 interface Props {
   open: boolean;
@@ -31,16 +32,6 @@ interface Props {
   currentManagerId: string | null;
 }
 
-const fullName = (m?: {
-  firstName?: string | null;
-  lastName?: string | null;
-  userName?: string | null;
-  email?: string | null;
-} | null) =>
-  `${m?.firstName ?? ""} ${m?.lastName ?? ""}`.trim() ||
-  m?.userName ||
-  m?.email ||
-  "Manager";
 
 export function ReassignProDialog({
   open,
@@ -56,17 +47,17 @@ export function ReassignProDialog({
     if (open) setTargetManagerId("");
   }, [open]);
 
-  const allManagers = managersList?.results ?? [];
+  const allManagers = managersList?.items ?? [];
 
   const currentManager = useMemo(
-    () => allManagers.find((m) => m.manager?._id === currentManagerId) ?? null,
+    () => allManagers.find((m) => m.manager_id === currentManagerId) ?? null,
     [allManagers, currentManagerId]
   );
 
   const availableManagers = useMemo(
     () =>
       currentManagerId
-        ? allManagers.filter((m) => m.manager?._id !== currentManagerId)
+        ? allManagers.filter((m) => m.manager_id !== currentManagerId)
         : allManagers,
     [allManagers, currentManagerId]
   );
@@ -85,8 +76,8 @@ export function ReassignProDialog({
     if (!targetManagerId) return;
     try {
       await mutateAsync({
-        associateProId: pro.id,
-        newManagerId: targetManagerId,
+        proId: pro.id,
+        toManagerId: targetManagerId,
       });
       toast.success(
         isAssign ? `${pro.name} assigned` : `${pro.name} reassigned`
@@ -131,10 +122,10 @@ export function ReassignProDialog({
               {currentManager ? (
                 <>
                   <p className="text-sm font-medium text-gray-900">
-                    {fullName(currentManager.manager)}
+                    {managerDisplayName(currentManager)}
                   </p>
                   <p className="text-xs text-gray-500">
-                    {currentManager.manager?.email}
+                    {currentManager.roster_size} Pros
                   </p>
                 </>
               ) : (
@@ -160,11 +151,10 @@ export function ReassignProDialog({
                     </div>
                   ) : (
                     availableManagers.map((m) => {
-                      const id = m.manager?._id;
-                      if (!id) return null;
+                      const id = m.manager_id;
                       return (
                         <SelectItem key={id} value={id}>
-                          {fullName(m.manager)} · {m.associate_pros_count ?? 0}{" "}
+                          {managerDisplayName(m)} · {m.roster_size}{" "}
                           Pros
                         </SelectItem>
                       );

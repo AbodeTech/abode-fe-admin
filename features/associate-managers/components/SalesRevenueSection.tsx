@@ -1,14 +1,17 @@
 import { Briefcase, CircleDollarSign, BarChart3 } from "lucide-react";
 import { StatCard } from "./StatCard";
-import { ProRosterGroup, type ManagerDashboardSalesRevenue } from "@/lib/gql/graphql";
+import type {
+  ManagerDashboard,
+  ProGroup,
+} from "../schemas/manager-dashboard.schema";
 
 interface Props {
-  data: ManagerDashboardSalesRevenue;
+  data: ManagerDashboard["sales_and_revenue"];
   /** Which tier of users the roster represents. Switches labels between
    * "Selling Pros" (manager dashboard) and "Selling Associates" (system view). */
   roster?: "associate-pro" | "associate";
   /** When provided, the Selling Pros card becomes a drill-down trigger. */
-  onOpenGroup?: (group: ProRosterGroup) => void;
+  onOpenGroup?: (group: ProGroup) => void;
 }
 
 const formatCurrency = (n: number) =>
@@ -23,19 +26,19 @@ const formatCurrencyShort = (n: number) => {
 
 export function SalesRevenueSection({ data, roster = "associate-pro", onOpenGroup }: Props) {
   const {
-    sellingPros,
-    sellingProsTarget,
-    totalRevenue,
-    initialSalesRevenue,
-    recurringRevenue,
-    revenuePerSellingPro,
+    selling_pros,
+    selling_pros_target,
+    total_revenue,
+    initial_sales_revenue,
+    recurring_revenue,
+    revenue_per_selling_pro,
   } = data;
   const isAssociate = roster === "associate";
 
   const sellingDisplay =
-    sellingProsTarget > 0
-      ? `${sellingPros} / ${sellingProsTarget}`
-      : sellingPros.toLocaleString();
+    selling_pros_target > 0
+      ? `${selling_pros} / ${selling_pros_target}`
+      : selling_pros.toLocaleString();
 
   return (
     <section className="space-y-3">
@@ -51,21 +54,21 @@ export function SalesRevenueSection({ data, roster = "associate-pro", onOpenGrou
               ? "Associates who closed a new sale this period"
               : "Pros who closed a new sale this period"
           }
-          onClick={onOpenGroup ? () => onOpenGroup(ProRosterGroup.SellingInPeriod) : undefined}
+          onClick={onOpenGroup ? () => onOpenGroup("selling_in_period") : undefined}
         />
         <StatCard
           icon={CircleDollarSign}
           iconColor="text-green-600"
           label="Total Revenue from Associate Sales"
-          value={formatCurrencyShort(totalRevenue)}
-          hint={`${formatCurrencyShort(initialSalesRevenue)} initial · ${formatCurrencyShort(recurringRevenue)} recurring`}
+          value={formatCurrencyShort(total_revenue)}
+          hint={`${formatCurrencyShort(initial_sales_revenue)} initial · ${formatCurrencyShort(recurring_revenue)} recurring`}
         />
         <StatCard
           icon={BarChart3}
           iconColor="text-orange-600"
           label={isAssociate ? "Revenue per Selling Associate" : "Revenue per Selling Pro"}
-          value={formatCurrencyShort(revenuePerSellingPro)}
-          hint={formatCurrency(revenuePerSellingPro)}
+          value={formatCurrencyShort(revenue_per_selling_pro)}
+          hint={formatCurrency(revenue_per_selling_pro)}
         />
       </div>
     </section>

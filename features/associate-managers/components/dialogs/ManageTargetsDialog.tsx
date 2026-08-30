@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { SetTargetForm } from "./SetTargetForm";
 import { useManagerTargets } from "../../hooks/use-manager-targets";
-import type { AssociateManagerTargetType } from "@/lib/gql/graphql";
+import type { ManagerTarget } from "../../schemas/associate-manager.schema";
 
 interface Props {
   open: boolean;
@@ -32,14 +32,14 @@ interface Props {
 type FormState =
   | { mode: "closed" }
   | { mode: "create" }
-  | { mode: "edit"; target: AssociateManagerTargetType };
+  | { mode: "edit"; target: ManagerTarget };
 
 const MONTHS = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
 
-const formatPeriodLabel = (t: AssociateManagerTargetType) =>
+const formatPeriodLabel = (t: ManagerTarget) =>
   `${MONTHS[t.month - 1]} ${t.year}`;
 
 const daysRemainingThisMonth = () => {
@@ -59,7 +59,7 @@ const daysRemainingThisMonth = () => {
 
 type Bucket = "active" | "upcoming" | "past";
 
-const bucketOf = (t: AssociateManagerTargetType): Bucket => {
+const bucketOf = (t: ManagerTarget): Bucket => {
   const now = new Date();
   const currentMonth = now.getMonth() + 1;
   const currentYear = now.getFullYear();
@@ -149,7 +149,7 @@ export function ManageTargetsDialog({
                     <div className="space-y-2">
                       {upcoming.map((t) => (
                         <UpcomingTargetRow
-                          key={t._id}
+                          key={`${t.year}-${t.month}`}
                           target={t}
                           onEdit={() => setForm({ mode: "edit", target: t })}
                         />
@@ -180,7 +180,7 @@ export function ManageTargetsDialog({
                     </div>
                     <div className="rounded-lg border border-gray-200 bg-white divide-y divide-gray-100">
                       {(showAllHistory ? past : past.slice(0, 3)).map((t) => (
-                        <PastTargetRow key={t._id} target={t} />
+                        <PastTargetRow key={`${t.year}-${t.month}`} target={t} />
                       ))}
                     </div>
                   </section>
@@ -222,7 +222,7 @@ function ActiveTargetCard({
   target,
   onEdit,
 }: {
-  target: AssociateManagerTargetType;
+  target: ManagerTarget;
   onEdit: () => void;
 }) {
   const remaining = daysRemainingThisMonth();
@@ -277,7 +277,7 @@ function UpcomingTargetRow({
   target,
   onEdit,
 }: {
-  target: AssociateManagerTargetType;
+  target: ManagerTarget;
   onEdit: () => void;
 }) {
   return (
@@ -304,7 +304,7 @@ function UpcomingTargetRow({
   );
 }
 
-function PastTargetRow({ target }: { target: AssociateManagerTargetType }) {
+function PastTargetRow({ target }: { target: ManagerTarget }) {
   // Per-period historical actuals aren't exposed by BE yet — display the
   // target numbers only.
   return (

@@ -1,180 +1,67 @@
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { execute } from "@/lib/graphql-client";
-import { graphql } from "@/lib/gql";
-import type {
-  ManagerDashboardFilterInput,
-  ProRosterSort,
-} from "@/lib/gql/graphql";
-import { ProRosterGroup, ProRosterSort as ProRosterSortEnum } from "@/lib/gql/graphql";
-import { managerKeys } from "./query-keys";
+'use client';
 
-const ADMIN_PROS_GROUP_QUERY = graphql(`
-  query AdminDashboardProsGroup(
-    $managerId: ID!
-    $filter: ManagerDashboardFilterInput
-  ) {
-    adminGetManagerDashboard(managerId: $managerId, filter: $filter) {
-      associateProsGroupTotal
-      period {
-        periodType
-        month
-        year
-        start
-        end
-      }
-      associatePros {
-        id
-        firstName
-        lastName
-        email
-        phoneNumber
-        status
-        dateRecruited
-        totalSales
-        revenueGenerated
-        lastLogin
-        onboardedAt
-      }
-    }
-  }
-`);
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 
-const SELF_PROS_GROUP_QUERY = graphql(`
-  query SelfDashboardProsGroup($filter: ManagerDashboardFilterInput) {
-    managerDashboard(filter: $filter) {
-      associateProsGroupTotal
-      period {
-        periodType
-        month
-        year
-        start
-        end
-      }
-      associatePros {
-        id
-        firstName
-        lastName
-        email
-        phoneNumber
-        status
-        dateRecruited
-        totalSales
-        revenueGenerated
-        lastLogin
-        onboardedAt
-      }
-    }
-  }
-`);
+import { apiGet } from '@/lib/api-client';
 
-const ALL_MANAGERS_PROS_GROUP_QUERY = graphql(`
-  query AllManagersDashboardProsGroup(
-    $filter: ManagerDashboardFilterInput
-    $page: Int
-    $limit: Int
-  ) {
-    getAllManagersDashboard(filter: $filter, page: $page, limit: $limit) {
-      associateProsGroupTotal
-      period {
-        periodType
-        month
-        year
-        start
-        end
-      }
-      associatePros {
-        id
-        firstName
-        lastName
-        email
-        phoneNumber
-        status
-        dateRecruited
-        totalSales
-        revenueGenerated
-        lastLogin
-        onboardedAt
-      }
-    }
-  }
-`);
+import {
+  ManagerDashboardSchema,
+  type ManagerDashboardParams,
+  type ProGroup,
+  type ProSort,
+} from '../schemas/manager-dashboard.schema';
+import { managerKeys } from './query-keys';
 
-const SYSTEM_PROS_GROUP_QUERY = graphql(`
-  query SystemDashboardProsGroup(
-    $filter: ManagerDashboardFilterInput
-    $page: Int
-    $limit: Int
-  ) {
-    getSystemAssociatesDashboard(filter: $filter, page: $page, limit: $limit) {
-      associateProsGroupTotal
-      period {
-        periodType
-        month
-        year
-        start
-        end
-      }
-      associatePros {
-        id
-        firstName
-        lastName
-        email
-        phoneNumber
-        status
-        dateRecruited
-        totalSales
-        revenueGenerated
-        lastLogin
-        onboardedAt
-      }
-    }
-  }
-`);
-
-export type DashboardProsViewMode =
-  | "self"
-  | "admin"
-  | "all-managers"
-  | "system-associates";
+export type DashboardProsViewMode = 'self' | 'admin' | 'all-managers' | 'system-associates';
 
 export const DRAWER_PAGE_SIZE = 25;
 
 export interface UseDashboardProsGroupParams {
   viewMode: DashboardProsViewMode;
   managerId: string | null;
-  periodFilter: ManagerDashboardFilterInput;
-  group: ProRosterGroup;
-  sort?: ProRosterSort | null;
+  periodFilter: ManagerDashboardParams;
+  group: ProGroup;
+  sort?: ProSort | null;
   page?: number;
   enabled?: boolean;
 }
 
-function defaultSortForGroup(group: ProRosterGroup): ProRosterSort | undefined {
+/** The sort that makes a group readable when the caller hasn't chosen one. */
+function defaultSortForGroup(group: ProGroup): ProSort | undefined {
   switch (group) {
-    case ProRosterGroup.RecruitedInPeriod:
-    case ProRosterGroup.UpgradedInPeriod:
-    case ProRosterGroup.RecruitedNotOnboarded:
-      return ProRosterSortEnum.DateRecruitedDesc;
-    case ProRosterGroup.SellingInPeriod:
-      return ProRosterSortEnum.TotalSalesDesc;
+    case 'recruited_in_period':
+    case 'upgraded_in_period':
+    case 'recruited_not_onboarded':
+      return 'recruited_desc';
+    case 'onboarded_in_period':
+      return 'onboarded_at_desc';
+    case 'selling_in_period':
+    case 'selling':
+      return 'sales_desc';
+    case 'active_recruiter':
+    case 'recruiting':
+      return 'last_recruit_desc';
+    case 'active_revenue_generator':
+      return 'revenue_desc';
     default:
       return undefined;
   }
 }
 
-function buildGroupFilter(
-  periodFilter: ManagerDashboardFilterInput,
-  group: ProRosterGroup,
-  sort?: ProRosterSort | null
-): ManagerDashboardFilterInput {
-  const proSort = sort ?? defaultSortForGroup(group);
-  return {
-    ...periodFilter,
-    proGroup: group,
-    ...(proSort ? { proSort } : {}),
-  };
-}
+const PATH_BY_VIEW: Record<Exclude<DashboardProsViewMode, 'admin'>, string> = {
+  self: '/admin/managers/dashboard',
+  'all-managers': '/admin/managers/dashboard/all',
+  'system-associates': '/admin/managers/dashboard/system',
+};
 
+/**
+ * One page of the roster, grouped and sorted — the drawer behind each
+ * dashboard stat.
+ *
+ * Every scope paginates SERVER-side: `DashboardQueryDto` takes `page`/`limit`
+ * on all four routes, so unlike the GraphQL version this no longer slices a
+ * full roster in the browser.
+ */
 export const useDashboardProsGroup = ({
   viewMode,
   managerId,
@@ -184,59 +71,27 @@ export const useDashboardProsGroup = ({
   page = 1,
   enabled = true,
 }: UseDashboardProsGroupParams) => {
-  const filter = buildGroupFilter(periodFilter, group, sort);
-  const needsServerPagination =
-    viewMode === "all-managers" || viewMode === "system-associates";
+  const proSort = sort ?? defaultSortForGroup(group);
+  const params: ManagerDashboardParams = {
+    ...periodFilter,
+    pro_group: group,
+    ...(proSort ? { pro_sort: proSort } : {}),
+    page,
+    limit: DRAWER_PAGE_SIZE,
+  };
 
   return useQuery({
-    queryKey: managerKeys.prosGroup(
-      viewMode,
-      managerId,
-      filter,
-      needsServerPagination ? page : null,
-      needsServerPagination ? DRAWER_PAGE_SIZE : null
-    ),
-    queryFn: async () => {
-      if (viewMode === "admin") {
-        if (!managerId) throw new Error("Manager id is required");
-        const data = await execute(ADMIN_PROS_GROUP_QUERY, {
-          managerId,
-          filter,
+    queryKey: managerKeys.prosGroup(viewMode, managerId, params),
+    queryFn: () => {
+      if (viewMode === 'admin') {
+        if (!managerId) throw new Error('Manager id is required');
+        return apiGet(`/admin/managers/${managerId}/dashboard`, ManagerDashboardSchema, {
+          params,
         });
-        return data.adminGetManagerDashboard;
       }
-      if (viewMode === "self") {
-        const data = await execute(SELF_PROS_GROUP_QUERY, { filter });
-        return data.managerDashboard;
-      }
-      if (viewMode === "all-managers") {
-        const data = await execute(ALL_MANAGERS_PROS_GROUP_QUERY, {
-          filter,
-          page,
-          limit: DRAWER_PAGE_SIZE,
-        });
-        return data.getAllManagersDashboard;
-      }
-      const data = await execute(SYSTEM_PROS_GROUP_QUERY, {
-        filter,
-        page,
-        limit: DRAWER_PAGE_SIZE,
-      });
-      return data.getSystemAssociatesDashboard;
+      return apiGet(PATH_BY_VIEW[viewMode], ManagerDashboardSchema, { params });
     },
-    enabled: enabled && (viewMode !== "admin" || !!managerId),
+    enabled: enabled && (viewMode !== 'admin' || !!managerId),
     placeholderData: keepPreviousData,
-    select: (data) => {
-      if (!needsServerPagination) {
-        const allRows = data.associatePros ?? [];
-        const start = (page - 1) * DRAWER_PAGE_SIZE;
-        return {
-          ...data,
-          associatePros: allRows.slice(start, start + DRAWER_PAGE_SIZE),
-          associateProsGroupTotal: data.associateProsGroupTotal ?? allRows.length,
-        };
-      }
-      return data;
-    },
   });
 };

@@ -27,14 +27,8 @@ import { useAddManager } from "../../hooks/use-add-manager";
 import { useAssociateManagers } from "../../hooks/use-associate-managers";
 import { useBulkAssignPros } from "../../hooks/use-bulk-assign-pros";
 import { useUnassignedPros } from "../../hooks/use-unassigned-pros";
-// Cross-feature import: roles-permissions already exposes the admin list
-// (powers the Roles & Permissions page). Reusing it here is cleaner than
-// re-querying the same data.
-import {
-  useAdminsWithRoles,
-  AdminRowFragment,
-} from "@/features/roles-permissions";
-import { useFragment as getFragmentData } from "@/lib/gql";
+import { useAdminPicker } from "../../hooks/use-admin-picker";
+import { adminPickerName } from "../../schemas/associate-manager.schema";
 
 interface Props {
   open: boolean;
@@ -47,29 +41,22 @@ export function AddManagerDialog({ open, onOpenChange }: Props) {
   const [search, setSearch] = useState("");
 
   // Admin pool to pick from (live).
-  const { data: adminsData, isLoading: adminsLoading } = useAdminsWithRoles();
-  const allAdmins = (adminsData ?? [])
-    .filter((row): row is NonNullable<typeof row> => row !== null)
-    .map((row) => getFragmentData(AdminRowFragment, row));
+  const { data: allAdmins = [], isLoading: adminsLoading } = useAdminPicker();
 
   // Filter out admins already designated as managers (BE rejects duplicates
   // anyway, hiding them is just a nicer UX).
   const { data: managersData } = useAssociateManagers({ page: 1, limit: 200 });
   const existingManagerAdminIds = new Set(
-    (managersData?.results ?? [])
-      .map((m) => m.manager?._id)
-      .filter((id): id is string => !!id)
+    (managersData?.items ?? []).map((m) => m.manager_id)
   );
-  const eligibleAdmins = allAdmins.filter(
-    (a) => a.adminId && !existingManagerAdminIds.has(a.adminId)
-  );
+  const eligibleAdmins = allAdmins.filter((a) => !existingManagerAdminIds.has(a._id));
 
   const { data: unassignedData } = useUnassignedPros({
     page: 1,
     limit: 200,
-    searchQuery: search || null,
+    q: search || null,
   });
-  const unassignedPros = unassignedData?.results ?? [];
+  const unassignedPros = unassignedData?.items ?? [];
 
   const { mutateAsync: addManager, isPending: adding } = useAddManager();
   const { mutateAsync: bulkAssign, isPending: assigning } = useBulkAssignPros();
@@ -96,11 +83,11 @@ export function AddManagerDialog({ open, onOpenChange }: Props) {
   const handleSubmit = async () => {
     if (!selectedAdmin) return;
     try {
-      await addManager({ managerId: selectedAdmin });
+      await addManager({ admin_id: selectedAdmin });
       if (selectedPros.size > 0) {
         await bulkAssign({
           managerId: selectedAdmin,
-          associateProIds: Array.from(selectedPros),
+          proIds: Array.from(selectedPros),
         });
       }
       toast.success("Associate Manager added");
@@ -148,11 +135,11 @@ export function AddManagerDialog({ open, onOpenChange }: Props) {
                   </div>
                 ) : (
                   eligibleAdmins.map((a) => (
-                    <SelectItem key={a.adminId!} value={a.adminId!}>
+                    <SelectItem key={a._id} value={a._id}>
                       <div className="flex flex-col">
-                        <span>{a.adminName || a.adminEmail}</span>
+                        <span>{adminPickerName(a)}</span>
                         <span className="text-xs text-gray-500">
-                          {a.adminEmail} {a.role ? `· ${a.role}` : ""}
+                          {a.email} {a.role ? `· ${a.role}` : ""}
                         </span>
                       </div>
                     </SelectItem>
@@ -191,16 +178,16 @@ export function AddManagerDialog({ open, onOpenChange }: Props) {
                 ) : (
                   unassignedPros.map((pro) => (
                     <label
-                      key={pro._id}
+                      key={pro.pro_id}
                       className="flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 cursor-pointer"
                     >
                       <Checkbox
-                        checked={selectedPros.has(pro._id)}
-                        onCheckedChange={() => togglePro(pro._id)}
+                        checked={selectedPros.has(pro.pro_id)}
+                        onCheckedChange={() => togglePro(pro.pro_id)}
                       />
                       <div className="flex-1">
                         <p className="text-sm font-medium text-gray-900">
-                          {`${pro.firstName ?? ""} ${pro.lastName ?? ""}`.trim() ||
+                          {`${pro.first_name ?? ""} ${pro.last_name ?? ""}`.trim() ||
                             pro.email}
                         </p>
                         <p className="text-xs text-gray-500">{pro.email}</p>

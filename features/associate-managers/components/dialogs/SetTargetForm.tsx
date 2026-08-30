@@ -14,11 +14,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAssignManagerTarget } from "../../hooks/use-assign-manager-target";
-import type { AssociateManagerTargetType } from "@/lib/gql/graphql";
+import type { ManagerTarget } from "../../schemas/associate-manager.schema";
 
 interface Props {
   managerId: string | null;
-  existing?: AssociateManagerTargetType | null;
+  existing?: ManagerTarget | null;
   onSaved: () => void;
   onCancel: () => void;
 }
@@ -68,6 +68,12 @@ export function SetTargetForm({
   const [score, setScore] = useState<string>(
     existing ? String(existing.performance_score_target) : ""
   );
+  // The retired GraphQL input had no revenue field, so the form never
+  // collected one — but the dashboard scores a revenue component and shows the
+  // target, so leaving it unsettable meant a number nobody could ever set.
+  const [revenue, setRevenue] = useState<string>(
+    existing ? String(existing.revenue_target) : ""
+  );
 
   const { mutateAsync, isPending } = useAssignManagerTarget();
 
@@ -77,8 +83,9 @@ export function SetTargetForm({
     setRecruited(existing ? String(existing.associate_pro_recruited_target) : "");
     setSelling(existing ? String(existing.selling_associate_pro_target) : "");
     setScore(existing ? String(existing.performance_score_target) : "");
+    setRevenue(existing ? String(existing.revenue_target) : "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [existing?._id]);
+  }, [existing?.year, existing?.month]);
 
   const canSave =
     !!managerId && recruited !== "" && selling !== "" && score !== "" && !isPending;
@@ -97,13 +104,26 @@ export function SetTargetForm({
     }
 
     try {
+      // A blank input is OMITTED, never sent as 0: the BE leaves an omitted
+      // target untouched, and a zero would be a real target of zero — which
+      // for revenue silently costs 30 points of the performance score.
+      const num = (raw: string) => {
+        const trimmed = raw.trim();
+        if (!trimmed) return undefined;
+        const n = Number(trimmed);
+        return Number.isFinite(n) ? n : undefined;
+      };
+
       await mutateAsync({
         managerId,
-        month,
         year,
-        associate_pro_recruited_target: Number(recruited),
-        selling_associate_pro_target: Number(selling),
-        performance_score_target: Number(score),
+        month,
+        values: {
+          associate_pro_recruited_target: num(recruited),
+          selling_associate_pro_target: num(selling),
+          revenue_target: num(revenue),
+          performance_score_target: num(score),
+        },
       });
       toast.success(existing ? "Target updated" : "Target saved");
       onSaved();
@@ -144,7 +164,7 @@ export function SetTargetForm({
         )}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <Label htmlFor="recruited">Ass. Pros Recruited</Label>
           <Input
@@ -166,6 +186,18 @@ export function SetTargetForm({
             value={selling}
             onChange={(e) => setSelling(e.target.value)}
             placeholder="e.g. 12"
+            className="bg-white"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="revenue">Revenue Target (₦)</Label>
+          <Input
+            id="revenue"
+            type="number"
+            min={0}
+            value={revenue}
+            onChange={(e) => setRevenue(e.target.value)}
+            placeholder="e.g. 25000000"
             className="bg-white"
           />
         </div>

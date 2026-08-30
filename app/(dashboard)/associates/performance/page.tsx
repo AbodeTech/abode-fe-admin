@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Lock, Loader2 } from "lucide-react";
-import { ProRosterGroup } from "@/lib/gql/graphql";
+import type { ProGroup } from "@/features/associate-managers/schemas/manager-dashboard.schema";
 import {
   RecruitmentSection,
   SalesRevenueSection,
@@ -41,7 +41,7 @@ function AssociatePerformanceContent() {
   const router = useRouter();
   const { user } = useAuthStore();
 
-  const openGroup = (group: ProRosterGroup) => {
+  const openGroup = (group: ProGroup) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("open_group", group);
     params.set("group_page", "1");
@@ -81,17 +81,11 @@ function AssociatePerformanceContent() {
     setPage(1);
   }, [period, startDate, endDate, month, year, proGroup, proSort]);
 
-  const kpiQuery = useSystemAssociatesDashboard({
-    filter: periodFilter,
-    enabled: isSuperAdmin,
-  });
-  const tableQuery = useSystemAssociatesDashboard({
-    filter,
-    page,
-    limit: DEFAULT_SYSTEM_ASSOCIATES_LIMIT,
-    enabled: isSuperAdmin,
-    keepPreviousData: true,
-  });
+  const kpiQuery = useSystemAssociatesDashboard(periodFilter, { enabled: isSuperAdmin });
+  const tableQuery = useSystemAssociatesDashboard(
+    { ...filter, page, limit: DEFAULT_SYSTEM_ASSOCIATES_LIMIT },
+    { enabled: isSuperAdmin, keepPreviousData: true }
+  );
 
   if (!isSuperAdmin) return <NotAuthorized />;
 
@@ -138,8 +132,8 @@ function AssociatePerformanceContent() {
           </h1>
           <p className="text-sm text-gray-500">
             System-wide view of every associate-tier user
-            {dashboard.recruitment.totalAssigned > 0
-              ? ` · ${dashboard.recruitment.totalAssigned.toLocaleString()} associates`
+            {dashboard.recruitment.total_assigned > 0
+              ? ` · ${dashboard.recruitment.total_assigned.toLocaleString()} associates`
               : ""}
           </p>
         </div>
@@ -147,7 +141,7 @@ function AssociatePerformanceContent() {
       </div>
 
       <RecruitmentSection data={dashboard.recruitment} roster="associate" onOpenGroup={openGroup} />
-      <SalesRevenueSection data={dashboard.salesAndRevenue} roster="associate" onOpenGroup={openGroup} />
+      <SalesRevenueSection data={dashboard.sales_and_revenue} roster="associate" onOpenGroup={openGroup} />
       <ActivitySection data={dashboard.activity} roster="associate" onOpenGroup={openGroup} />
       <MilestonesSection data={dashboard.milestones} roster="associate" onOpenGroup={openGroup} />
 
@@ -156,13 +150,12 @@ function AssociatePerformanceContent() {
         managerId={null}
         periodFilter={periodFilter}
         roster="associate"
-        exportFilenamePrefix="system-associates"
       />
 
       <SystemAssociatesTable
-          rows={tableData?.associatePros ?? dashboard.associatePros}
+          rows={tableData?.associate_pros ?? dashboard.associate_pros}
           totalCount={
-            tableData?.associateProsGroupTotal ?? dashboard.associateProsGroupTotal
+            tableData?.associate_pros_group_total ?? dashboard.associate_pros_group_total
           }
           page={page}
           limit={DEFAULT_SYSTEM_ASSOCIATES_LIMIT}

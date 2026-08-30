@@ -28,6 +28,7 @@ import { useAssociateManagers } from "../../hooks/use-associate-managers";
 import { useAssociateManager } from "../../hooks/use-associate-managers";
 import { useBulkAssignPros } from "../../hooks/use-bulk-assign-pros";
 import { useUnassignedPros } from "../../hooks/use-unassigned-pros";
+import { managerDisplayName } from "../../schemas/associate-manager.schema";
 
 const UNASSIGNED_POOL_ID = "__unassigned__";
 
@@ -40,16 +41,6 @@ interface Props {
   startFromUnassigned?: boolean;
 }
 
-const fullName = (m?: {
-  firstName?: string | null;
-  lastName?: string | null;
-  userName?: string | null;
-  email?: string | null;
-} | null) =>
-  `${m?.firstName ?? ""} ${m?.lastName ?? ""}`.trim() ||
-  m?.userName ||
-  m?.email ||
-  "Manager";
 
 export function ChangeManagerDialog({
   open,
@@ -67,7 +58,7 @@ export function ChangeManagerDialog({
   const [search, setSearch] = useState("");
 
   const { data: managersList } = useAssociateManagers({ page: 1, limit: 200 });
-  const allManagers = managersList?.results ?? [];
+  const allManagers = managersList?.items ?? [];
 
   const isUnassignedSource = sourceId === UNASSIGNED_POOL_ID;
 
@@ -77,7 +68,7 @@ export function ChangeManagerDialog({
   const { data: unassignedData } = useUnassignedPros({
     page: 1,
     limit: 200,
-    searchQuery: isUnassignedSource ? search || null : null,
+    q: isUnassignedSource ? search || null : null,
   });
 
   const { mutateAsync, isPending } = useBulkAssignPros();
@@ -95,23 +86,23 @@ export function ChangeManagerDialog({
 
   const sourcePros = useMemo(() => {
     if (isUnassignedSource) {
-      return (unassignedData?.results ?? []).map((p) => ({
-        id: p._id,
-        firstName: p.firstName ?? "",
-        lastName: p.lastName ?? "",
+      return (unassignedData?.items ?? []).map((p) => ({
+        id: p.pro_id,
+        firstName: p.first_name ?? "",
+        lastName: p.last_name ?? "",
         email: p.email ?? "",
       }));
     }
     if (managerDoc?.associate_pros) {
       return managerDoc.associate_pros.map((p) => ({
-        id: p._id,
-        firstName: p.firstName ?? "",
-        lastName: p.lastName ?? "",
+        id: p.pro_id,
+        firstName: p.first_name ?? "",
+        lastName: p.last_name ?? "",
         email: p.email ?? "",
       }));
     }
     return [];
-  }, [isUnassignedSource, unassignedData?.results, managerDoc?.associate_pros]);
+  }, [isUnassignedSource, unassignedData?.items, managerDoc?.associate_pros]);
 
   const filteredPros = sourcePros.filter((p) => {
     const term = search.toLowerCase();
@@ -139,7 +130,7 @@ export function ChangeManagerDialog({
   };
 
   const otherManagers = allManagers.filter(
-    (m) => m.manager?._id !== sourceId
+    (m) => m.manager_id !== sourceId
   );
 
   const canSubmit =
@@ -150,7 +141,7 @@ export function ChangeManagerDialog({
     try {
       await mutateAsync({
         managerId: targetManagerId,
-        associateProIds: Array.from(selectedPros),
+        proIds: Array.from(selectedPros),
       });
       toast.success(
         `Moved ${selectedPros.size} ${selectedPros.size === 1 ? "Pro" : "Pros"}`
@@ -194,11 +185,11 @@ export function ChangeManagerDialog({
                 </SelectItem>
                 <SelectSeparator />
                 {allManagers.map((m) => {
-                  const id = m.manager?._id;
+                  const id = m.manager_id;
                   if (!id) return null;
                   return (
                     <SelectItem key={id} value={id}>
-                      {fullName(m.manager)} · {m.associate_pros_count ?? 0} Pros
+                      {managerDisplayName(m)} · {m.roster_size} Pros
                     </SelectItem>
                   );
                 })}
@@ -219,11 +210,11 @@ export function ChangeManagerDialog({
                   </div>
                 ) : (
                   otherManagers.map((m) => {
-                    const id = m.manager?._id;
+                    const id = m.manager_id;
                     if (!id) return null;
                     return (
                       <SelectItem key={id} value={id}>
-                        {fullName(m.manager)} · {m.associate_pros_count ?? 0}{" "}
+                        {managerDisplayName(m)} · {m.roster_size}{" "}
                         Pros
                       </SelectItem>
                     );

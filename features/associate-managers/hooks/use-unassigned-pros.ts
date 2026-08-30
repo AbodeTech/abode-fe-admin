@@ -1,67 +1,47 @@
-import { useQuery } from "@tanstack/react-query";
-import { execute } from "@/lib/graphql-client";
-import { graphql } from "@/lib/gql";
-import { managerKeys } from "./query-keys";
+'use client';
 
-const GET_UNASSIGNED_PROS_QUERY = graphql(`
-  query GetUnassignedAssociatePros(
-    $page: Int!
-    $limit: Int!
-    $searchQuery: String
-  ) {
-    getUnassignedAssociatePros(
-      page: $page
-      limit: $limit
-      searchQuery: $searchQuery
-    ) {
-      count
-      page
-      limit
-      results {
-        _id
-        firstName
-        lastName
-        email
-        phoneNumber
-        last_login
-        createdAt
-      }
-    }
-  }
-`);
+import { useQuery } from '@tanstack/react-query';
+
+import { apiGetPaged } from '@/lib/api-client';
+
+import { ProSummarySchema } from '../schemas/associate-manager.schema';
+import { managerKeys } from './query-keys';
+
+export const DEFAULT_UNASSIGNED_LIMIT = 20;
 
 interface UseUnassignedProsParams {
   page?: number;
   limit?: number;
-  searchQuery?: string | null;
+  q?: string | null;
 }
 
+/** GET /admin/managers/unassigned-pros — associate pros on no manager's roster. */
 export const useUnassignedPros = (params?: UseUnassignedProsParams) => {
   const page = params?.page ?? 1;
-  const limit = params?.limit ?? 20;
-  const searchQuery = params?.searchQuery ?? null;
+  const limit = params?.limit ?? DEFAULT_UNASSIGNED_LIMIT;
+  const q = params?.q ?? null;
 
   return useQuery({
-    queryKey: managerKeys.unassignedList({ page, limit, searchQuery }),
+    queryKey: managerKeys.unassignedList({ page, limit, q }),
     queryFn: () =>
-      execute(GET_UNASSIGNED_PROS_QUERY, { page, limit, searchQuery }),
-    select: (data) => data.getUnassignedAssociatePros,
-  });
-};
-
-const GET_UNASSIGNED_PROS_COUNT_QUERY = graphql(`
-  query GetUnassignedAssociateProsCount($searchQuery: String) {
-    getUnassignedAssociateProsCount(searchQuery: $searchQuery)
-  }
-`);
-
-export const useUnassignedProsCount = (searchQuery?: string | null) => {
-  return useQuery({
-    queryKey: managerKeys.unassignedCount(searchQuery),
-    queryFn: () =>
-      execute(GET_UNASSIGNED_PROS_COUNT_QUERY, {
-        searchQuery: searchQuery ?? null,
+      apiGetPaged('/admin/managers/unassigned-pros', ProSummarySchema, {
+        params: { page, limit, ...(q ? { q } : {}) },
       }),
-    select: (data) => data.getUnassignedAssociateProsCount,
   });
 };
+
+/**
+ * Just the size of the unassigned pool, for the "N pros need a manager" badge.
+ *
+ * There is no count-only endpoint; the paged route's `meta.total` is the count,
+ * so this asks for a single row and reads the meta.
+ */
+export const useUnassignedProsCount = (q?: string | null) =>
+  useQuery({
+    queryKey: managerKeys.unassignedList({ page: 1, limit: 1, q: q ?? null }),
+    queryFn: () =>
+      apiGetPaged('/admin/managers/unassigned-pros', ProSummarySchema, {
+        params: { page: 1, limit: 1, ...(q ? { q } : {}) },
+      }),
+    select: (result) => result.meta.total ?? 0,
+  });

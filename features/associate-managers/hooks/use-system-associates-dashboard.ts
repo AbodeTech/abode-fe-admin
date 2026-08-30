@@ -1,109 +1,34 @@
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { execute } from "@/lib/graphql-client";
-import { graphql } from "@/lib/gql";
-import type { ManagerDashboardFilterInput } from "@/lib/gql/graphql";
-import { managerKeys } from "./query-keys";
+'use client';
 
-const GET_SYSTEM_ASSOCIATES_DASHBOARD_QUERY = graphql(`
-  query GetSystemAssociatesDashboard(
-    $filter: ManagerDashboardFilterInput
-    $page: Int
-    $limit: Int
-  ) {
-    getSystemAssociatesDashboard(filter: $filter, page: $page, limit: $limit) {
-      period {
-        periodType
-        month
-        year
-        start
-        end
-      }
-      recruitment {
-        newSignupsInPeriod
-        upgradesInPeriod
-        onboardedInPeriod
-        totalAssigned
-        onboardingQueueCount
-      }
-      salesAndRevenue {
-        sellingPros
-        sellingProsTarget
-        totalRevenue
-        initialSalesRevenue
-        recurringRevenue
-        revenuePerSellingPro
-      }
-      activity {
-        activeCount
-        activePct
-        recentLoginCount
-        recentSaleCount
-        recentRecruitCount
-        inactiveCount
-        inactivePct
-        abandonedCount
-        abandonedPct
-      }
-      milestones {
-        earlySellers
-        lateFirstSellers
-      }
-      performanceScore {
-        target
-        actual
-      }
-      associatePros {
-        id
-        firstName
-        lastName
-        email
-        phoneNumber
-        status
-        dateRecruited
-        totalSales
-        revenueGenerated
-        lastLogin
-        onboardedAt
-      }
-      associateProsGroupTotal
-    }
-  }
-`);
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 
-interface UseSystemAssociatesDashboardParams {
-  filter?: ManagerDashboardFilterInput | null;
-  page?: number;
-  limit?: number;
-  enabled?: boolean;
-  keepPreviousData?: boolean;
-}
+import { apiGet } from '@/lib/api-client';
+
+import {
+  ManagerDashboardSchema,
+  type ManagerDashboardParams,
+} from '../schemas/manager-dashboard.schema';
+import { managerKeys } from './query-keys';
 
 export const DEFAULT_SYSTEM_ASSOCIATES_LIMIT = 25;
 
-/** Super-admin only — system-wide performance dashboard for all associate-tier
- * users. Same shape as a per-manager dashboard, sourced from every associate
- * regardless of who recruited them. Targets aren't set (system isn't a manager). */
+/**
+ * GET /admin/managers/dashboard/system — the whole associate tier as a single
+ * virtual roster.
+ *
+ * No human manager owns this tier, so nobody set a goal: every target comes
+ * back as 0, and the peer rating is 0/0. Don't render those as missed targets.
+ */
 export const useSystemAssociatesDashboard = (
-  params: UseSystemAssociatesDashboardParams = {}
-) => {
-  const {
-    filter = null,
-    page,
-    limit = DEFAULT_SYSTEM_ASSOCIATES_LIMIT,
-    enabled = true,
-    keepPreviousData: keepPrevious = false,
-  } = params;
-
-  return useQuery({
-    queryKey: managerKeys.systemAssociatesDashboard(filter, page ?? null, limit),
+  params?: ManagerDashboardParams | null,
+  options?: { enabled?: boolean; keepPreviousData?: boolean }
+) =>
+  useQuery({
+    queryKey: managerKeys.systemDashboard(params),
     queryFn: () =>
-      execute(GET_SYSTEM_ASSOCIATES_DASHBOARD_QUERY, {
-        filter,
-        page: page ?? null,
-        limit,
+      apiGet('/admin/managers/dashboard/system', ManagerDashboardSchema, {
+        params: { limit: DEFAULT_SYSTEM_ASSOCIATES_LIMIT, ...(params ?? {}) },
       }),
-    enabled,
-    select: (data) => data.getSystemAssociatesDashboard,
-    placeholderData: keepPrevious ? keepPreviousData : undefined,
+    enabled: options?.enabled !== false,
+    placeholderData: options?.keepPreviousData ? keepPreviousData : undefined,
   });
-};

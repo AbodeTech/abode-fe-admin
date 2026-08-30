@@ -27,11 +27,11 @@ export const formatProRelativeOrDate = (iso: Date | string | null | undefined) =
 };
 
 export const formatProFullName = (pro: {
-  firstName?: string | null;
-  lastName?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
   email?: string | null;
 }) => {
-  const name = `${pro.firstName ?? ""} ${pro.lastName ?? ""}`.trim();
+  const name = `${pro.first_name ?? ""} ${pro.last_name ?? ""}`.trim();
   return name || pro.email || "Unknown";
 };
 
@@ -40,7 +40,7 @@ export const formatPeriodRange = (period?: {
   end?: unknown;
   month?: number | null;
   year?: number | null;
-  periodType?: string | null;
+  period_type?: string | null;
 } | null) => {
   if (!period?.start || !period?.end) return "selected period";
   const start = new Date(period.start as string);
