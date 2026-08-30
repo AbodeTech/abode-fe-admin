@@ -1,7 +1,8 @@
 /* Assets — on REST against the Asset → Offer → Size → Plan model.
  *
  * The v1 flex / full-ownership split is gone: one list, one create form, one
- * detail shell with sub-routes. Analytics is the only part still unbacked —
+ * detail shell with sub-routes (overview · offers · blocks & plots ·
+ * performance · customers). Analytics is the only part still unbacked —
  * it runs on fixtures behind a banner (⛔ ticket 17).
  *
  * See docs/ASSETS-ADMIN-DESIGN.md.
@@ -25,7 +26,16 @@ export { SampleDataBanner } from './components/detail/SampleDataBanner';
 export { EditablePanel } from './components/detail/EditablePanel';
 export { OfferEditDialogs } from './components/detail/OfferEditDialogs';
 
+export { BlocksManager } from './components/detail/BlocksManager';
+
 export { useAssetDetail, useUpdateAsset } from './hooks/use-asset-detail';
+export { useAssetBlocks, useCreateBlock, useUpdateBlock, useDeleteBlock } from './hooks/use-blocks';
+export {
+  useBlockPlots,
+  useBulkCreatePlots,
+  useUpdatePlot,
+  useDeletePlot,
+} from './hooks/use-plots';
 export {
   useUpdateOffer,
   useAddSize,
@@ -35,6 +45,14 @@ export {
   useDeletePlan,
 } from './hooks/use-offer-mutations';
 export type { AssetDetail, Offer, Size, Plan } from './schemas/asset-detail.schema';
+export {
+  PLOT_STATUSES,
+  blockStats,
+  expandPlotRanges,
+  isAllocated,
+  plotName,
+} from './schemas/block-plot.schema';
+export type { Block, Plot, PlotRange, PlotStatus } from './schemas/block-plot.schema';
 
 // ── create ───────────────────────────────────────────────────────────────
 export { CreateAssetForm } from './components/create/CreateAssetForm';

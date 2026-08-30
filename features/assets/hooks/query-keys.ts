@@ -18,6 +18,9 @@ export const assetKeys = {
   details: () => [...assetKeys.all, 'detail'] as const,
   detail: (id: string) => [...assetKeys.details(), id] as const,
   inventory: () => [...assetKeys.all, 'inventory'] as const,
+  /** Land inventory. Plots hang off the block, not the asset — that is the id the BE takes. */
+  blocks: (assetId: string) => [...assetKeys.detail(assetId), 'blocks'] as const,
+  plots: (blockId: string) => [...assetKeys.all, 'plots', blockId] as const,
   byName: (assetName: string, assetType: string) =>
     [...assetKeys.all, 'byName', assetName, assetType] as const,
   optionsByName: (assetName: string, assetType: string) =>
