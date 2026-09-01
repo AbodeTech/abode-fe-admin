@@ -1,6 +1,5 @@
 import { MockHttpError, type MockRoutes } from '../router';
 import { findPerson, matchesPersonSearch } from './people';
-import { findCommercialPlan } from './commercial-plots';
 import { body, paged } from './util';
 
 /* ============================================================
@@ -452,6 +451,11 @@ const ASSET_TYPE_KINDS: Record<string, string[]> = {
     'fo_outright_doc',
     'fo_doc_payment',
   ],
+  // Empty ON PURPOSE, not an oversight: these fixtures carry no commercial
+  // purchases, so filtering to Commercial returns nothing here. The real BE
+  // filters on the transaction's own `asset_type` field rather than on
+  // transaction kind, so it has no such gap.
+  commercial: [],
 };
 
 function resolveKindFilter(salesType: string, assetType: string): string[] | null {
@@ -596,13 +600,109 @@ function findOutrightSibling(row: MockPurchase): MockPurchase | null {
   );
 }
 
-function requireFoPlan(id: string): MockFoPlan | NonNullable<ReturnType<typeof findCommercialPlan>> {
-  const plan = foPlans[id] ?? findCommercialPlan(id);
+function requireFoPlan(id: string): MockFoPlan {
+  const plan = foPlans[id];
   if (!plan) throw new MockHttpError(404, 'Payment plan not found', 'PAYMENT_PLAN_NOT_FOUND');
   return plan;
 }
 
+/**
+ * The BE folds `auto-approved` into approved and `failed` into declined, and
+ * treats a null `admin_status` as pending — so the three buckets are total and
+ * always sum to `total_count`. Mirrored here or the mocked cards would not add
+ * up the way the real ones do.
+ */
+const APPROVAL_BUCKET: Record<string, 'approved' | 'pending' | 'declined'> = {
+  approved: 'approved',
+  'auto-approved': 'approved',
+  pending: 'pending',
+  'approved-retry-needed': 'pending',
+  declined: 'declined',
+  failed: 'declined',
+};
+
+/** GET /admin/transactions/stats — filter-aware, over the same rows the list serves. */
+function assetTransactionStats(query: Record<string, unknown>) {
+  const kinds = resolveKindFilter(String(query.sales_type ?? ''), String(query.asset_type ?? ''));
+  const rows = applyCommonFilters(kinds ? byKind(purchases, kinds) : purchases, query);
+
+  const approval = { approved: 0, pending: 0, declined: 0 };
+  const approvalAmount = { approved: 0, pending: 0, declined: 0 };
+  for (const row of rows) {
+    const bucket = APPROVAL_BUCKET[row.admin_status ?? ''] ?? 'pending';
+    approval[bucket] += 1;
+    approvalAmount[bucket] += row.amount ?? 0;
+  }
+
+  const inKinds = (list: string[]) =>
+    rows.filter((row) => list.includes(row.purchase_details?.transaction_kind ?? ''));
+  const newSales = inKinds(SALES_TYPE_KINDS.ap);
+  const recurring = inKinds(SALES_TYPE_KINDS.rap);
+  const sum = (list: MockPurchase[]) => list.reduce((total, row) => total + (row.amount ?? 0), 0);
+
+  return {
+    approved_count: approval.approved,
+    approved_amount: approvalAmount.approved,
+    pending_count: approval.pending,
+    pending_amount: approvalAmount.pending,
+    declined_count: approval.declined,
+    declined_amount: approvalAmount.declined,
+    total_count: rows.length,
+    total_amount: sum(rows),
+    new_sales_count: newSales.length,
+    new_sales_amount: sum(newSales),
+    recurring_payments_count: recurring.length,
+    recurring_payments_amount: sum(recurring),
+    // Enumerated from the offer-type list, never from what the rows happened to
+    // contain: a type with no transactions still gets a card at zero. The BE
+    // also serves `commercial`, which these fixtures have no rows for.
+    by_offer_type: ['flex', 'full-ownership', 'commercial'].map((offerType) => {
+      const slice = inKinds(ASSET_TYPE_KINDS[offerType] ?? []);
+      // The offer type crossed with the sales cycle — the same intersection the
+      // BE groups on, so the mocked cards read like the real ones.
+      const newSlice = slice.filter((row) =>
+        SALES_TYPE_KINDS.ap.includes(row.purchase_details?.transaction_kind ?? ''),
+      );
+      const recurringSlice = slice.filter((row) =>
+        SALES_TYPE_KINDS.rap.includes(row.purchase_details?.transaction_kind ?? ''),
+      );
+      return {
+        offer_type: offerType,
+        count: slice.length,
+        amount: sum(slice),
+        new_count: newSlice.length,
+        new_amount: sum(newSlice),
+        recurring_count: recurringSlice.length,
+        recurring_amount: sum(recurringSlice),
+      };
+    }),
+  };
+}
+
+/** GET /admin/transactions/documents/stats — global, like the withdrawal cards. */
+function documentTransactionStats() {
+  const rows = byKind(purchases, DOCUMENT_KINDS);
+  const countBy = (status: string) => rows.filter((row) => row.admin_status === status).length;
+  const pending = rows.filter(
+    (row) => (APPROVAL_BUCKET[row.admin_status ?? ''] ?? 'pending') === 'pending',
+  );
+
+  return {
+    pending_review_count: pending.length,
+    pending_review_amount: pending.reduce((total, row) => total + (row.amount ?? 0), 0),
+    approved_count: countBy('approved') + countBy('auto-approved'),
+    rejected_count: countBy('declined'),
+    auto_approved_count: countBy('auto-approved'),
+    // Document payments have no manual rail, so every failure is a system one.
+    auto_failed_count: countBy('failed'),
+  };
+}
+
 export const assetTransactionRoutes: MockRoutes = {
+  'GET /admin/transactions/stats': ({ query }) => assetTransactionStats(query),
+
+  'GET /admin/transactions/documents/stats': () => documentTransactionStats(),
+
   /**
    * The all-transactions list. Only `type=purchase` rows live in this file —
    * withdrawals have their own fixtures; a request for another type returns

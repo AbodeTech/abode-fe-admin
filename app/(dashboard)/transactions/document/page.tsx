@@ -10,6 +10,7 @@ import {
   ASSET_TYPES,
   DEFAULT_DOCUMENT_PURCHASE_LIMIT,
   DocumentPurchaseExport,
+  DocumentStatCards,
   PURCHASE_STATUSES,
   PurchaseFilters,
   PurchasesTable,
@@ -78,6 +79,10 @@ function DocumentTransactionsContent() {
 
   return (
     <>
+      {/* Global figures — the endpoint takes a date range only, so these do
+          NOT follow the filters below. */}
+      <DocumentStatCards />
+
       <PurchaseFilters
         showSalesType={false}
         searchPlaceholder="Search for a payer or an asset by name, location..."

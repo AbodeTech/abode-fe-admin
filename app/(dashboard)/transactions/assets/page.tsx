@@ -37,8 +37,10 @@ function AssetTransactionsContent() {
   const endDate = searchParams.get("end_date") ?? undefined;
   const user = searchParams.get("user") ?? undefined;
 
-  const { data, isLoading, error } = usePurchases({
-    page,
+  // One filter object for both the table and its stat cards: the stats
+  // endpoint accepts the same set and applies it identically, so the numbers
+  // always describe the rows below them.
+  const filters = {
     search,
     status,
     sales_type: salesType,
@@ -47,7 +49,9 @@ function AssetTransactionsContent() {
     start_date: startDate,
     end_date: endDate,
     user,
-  });
+  };
+
+  const { data, isLoading, error } = usePurchases({ page, ...filters });
 
   const { mutateAsync: approvePurchase } = useApprovePurchase();
   const { mutateAsync: declinePurchase } = useDeclinePurchase();
@@ -75,7 +79,7 @@ function AssetTransactionsContent() {
         </div>
       ) : (
         <div className="space-y-4">
-          <PurchaseStatCards />
+          <PurchaseStatCards filters={filters} />
 
           <PurchaseFilters />
 

@@ -22,6 +22,7 @@
 export { PurchasesTable } from './components/PurchasesTable';
 export { PurchaseFilters } from './components/PurchaseFilters';
 export { PurchaseStatCards } from './components/PurchaseStatCards';
+export { DocumentStatCards } from './components/DocumentStatCards';
 export { PurchaseStatusBadge } from './components/PurchaseStatusBadge';
 export { FoTransactionDetail } from './components/FoTransactionDetail';
 export { FoPlanActions } from './components/FoPlanActions';
@@ -62,3 +63,21 @@ export type {
   PurchaseStatus,
   SalesType,
 } from './schemas/purchase.schema';
+
+// Stat cards — GET /admin/transactions/stats (filter-aware) and
+// GET /admin/transactions/documents/stats (global, date range only).
+export {
+  usePurchaseStats,
+  useDocumentPurchaseStats,
+} from "./hooks/use-purchase-stats";
+export {
+  offerTypeLabel,
+  type AssetTransactionStats,
+  type DocumentStatsFilters,
+  type DocumentTransactionStats,
+  type OfferTypeBreakdown,
+} from "./schemas/purchase.schema";
+
+// Wallet balance KPI — GET /admin/wallets/stats, for the document ledger's card.
+export { useWalletStats } from "./hooks/use-wallet-stats";
+export type { WalletStats } from "./schemas/purchase.schema";

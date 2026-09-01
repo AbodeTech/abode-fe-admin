@@ -337,7 +337,47 @@ function runRail(row: MockWithdrawal, overrideProvider?: 'paystack' | 'paga'): M
   return row;
 }
 
+/**
+ * GET /admin/withdrawals/stats — derived from the same fixtures the queue
+ * serves, so the cards and the rows below them always agree.
+ *
+ * Global on the real BE too: it takes a date range and ignores the queue's
+ * filters, so this deliberately does not read `query`'s other params.
+ */
+function withdrawalStats() {
+  const countBy = (predicate: (row: MockWithdrawal) => boolean) =>
+    withdrawals.filter(predicate).length;
+
+  const pending = withdrawals.filter((row) => row.admin_status === 'pending');
+
+  return {
+    pending_review_count: pending.length,
+    pending_review_amount: pending.reduce((sum, row) => sum + (row.amount ?? 0), 0),
+    approved_count: countBy((row) => row.admin_status === 'approved'),
+    rejected_count: countBy((row) => row.admin_status === 'declined'),
+    // The auto rail stamps `processing_type` when the transfer is initiated and
+    // it survives a later failure — which is what separates these two.
+    auto_approved_count: countBy(
+      (row) => row.admin_status === 'approved' && row.processing_type === 'auto',
+    ),
+    auto_failed_count: countBy(
+      (row) => row.admin_status === 'failed' && row.processing_type === 'auto',
+    ),
+  };
+}
+
 export const withdrawalRoutes: MockRoutes = {
+  'GET /admin/withdrawals/stats': () => withdrawalStats(),
+
+  /**
+   * GET /admin/wallets/stats — the users' wallet balance KPI.
+   *
+   * A FLAT FIXTURE, unlike every other number in this file: the mock layer has
+   * no wallet documents to sum, so there is nothing to derive it from. It lives
+   * here because the wallet and withdrawal routes are one BE module.
+   */
+  'GET /admin/wallets/stats': () => ({ users_wallet_balance: 84_200_000 }),
+
   'GET /admin/withdrawals': ({ query }) => {
     let rows: MockWithdrawal[] = withdrawals;
     const adminStatus = String(query.admin_status ?? '');

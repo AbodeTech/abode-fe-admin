@@ -6,38 +6,35 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatNaira } from "@/lib/utils/format";
 
-import { useWithdrawalStats } from "../hooks/use-withdrawal-stats";
+import { useDocumentPurchaseStats } from "../hooks/use-purchase-stats";
 import { useWalletStats } from "../hooks/use-wallet-stats";
-import type { WithdrawalStatsFilters } from "../schemas/withdrawal.schema";
+import type { DocumentStatsFilters } from "../schemas/purchase.schema";
 
 /* ============================================================
- * The withdrawal queue's summary cards, live on
- * GET /admin/withdrawals/stats.
+ * The document ledger's summary cards, live on
+ * GET /admin/transactions/documents/stats.
  *
- * These figures are GLOBAL — the endpoint accepts a date range and nothing
- * else, so they describe the whole queue, not the filtered table below them.
- * That is deliberate on the BE's side; don't wire the table's filters in
- * expecting the numbers to follow.
+ * GLOBAL, like the withdrawal cards and unlike the asset ones: a date range is
+ * the only filter the endpoint takes, so these describe every document payment
+ * rather than the filtered table below.
  *
- * The wallet balance card is the one figure here that is NOT from this
- * endpoint — it comes from GET /admin/wallets/stats, a live sum over wallets
- * rather than a transaction rollup, so it does not move with the date range.
- * It is also the one card allowed to be absent: if that call fails the other
- * five still render.
+ * Document payments have no manual transfer rail, so `auto_failed_count` is
+ * always a system failure — there is no admin-approved path for it to be
+ * confused with.
  * ============================================================ */
 
 interface Props {
   /** Optional date range. Omitted means all-time. */
-  filters?: WithdrawalStatsFilters;
+  filters?: DocumentStatsFilters;
 }
 
-export function WithdrawalStatCards({ filters }: Props) {
-  const { data, isLoading, isError } = useWithdrawalStats(filters);
+export function DocumentStatCards({ filters }: Props) {
+  const { data, isLoading, isError } = useDocumentPurchaseStats(filters);
+  // From GET /admin/wallets/stats, not this endpoint — a live sum over wallets,
+  // so it does not move with the date range. Absent if that call fails.
   const { data: wallet } = useWalletStats();
   const walletBalance = wallet?.users_wallet_balance ?? null;
 
-  // A failed aggregation hides the strip rather than pushing an error banner
-  // above the queue: the table is the page's real content and still works.
   if (isError) return null;
 
   if (isLoading || !data) {
