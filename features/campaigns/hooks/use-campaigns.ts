@@ -3,7 +3,6 @@ import { execute } from '@/lib/graphql-client';
 import { graphql } from '@/lib/gql';
 import type { TicketTypeFilter } from '@/lib/gql/graphql';
 
-
 const GET_RAFFLE_CAMPAIGN = graphql(`
   query ViewAssetRaffledrawPerformance {
     viewAssetRaffledrawPerformance {
@@ -48,28 +47,6 @@ const GET_HAMPER_CAMPAIGN = graphql(`
   }
 `);
 
-const GET_ASSOCIATE_PRO_CAMPAIGN = graphql(`
-  query Campaign2000Dashboard {
-    getCampaignDashboard {
-      ...AssociateProMetricsSection_dashboard
-    }
-    getAssociateProUpgrades {
-      total
-      upgrades {
-        ...AssociateProUpgradeDetail
-      }
-    }
-    getReferralAnalytics {
-      ...AssociateProReferralAnalytics
-      ticketHolders {
-        tickets {
-          ...AssociateProTicketHolder
-        }
-      }
-    }
-  }
-`);
-
 export const useRaffleCampaign = () =>
   useQuery({
     queryKey: ['campaigns', 'raffle'],
@@ -82,45 +59,6 @@ export const useHamperCampaign = () =>
     queryKey: ['campaigns', 'hamper'],
     queryFn: () => execute(GET_HAMPER_CAMPAIGN, {}),
     select: (data) => data.viewAssetHamperPerformance,
-  });
-
-const GET_ASSOCIATE_RECRUITMENT = graphql(`
-  query GetAssociateRecruitmentAnalytics($page: Int!, $limit: Int!, $hasReferral: Boolean, $referralStatus: String, $searchQuery: String) {
-    getAllUsersWithFilters(page: $page, limit: $limit, hasReferral: $hasReferral, referralStatus: $referralStatus, searchQuery: $searchQuery) {
-      count
-      data {
-        ...AssociateProRecruitmentUser
-      }
-    }
-  }
-`);
-
-export const useAssociateProCampaign = () =>
-  useQuery({
-    queryKey: ['campaigns', 'associate-pro'],
-    queryFn: () => execute(GET_ASSOCIATE_PRO_CAMPAIGN, {}),
-  });
-
-interface AssociateRecruitmentParams {
-  page: number;
-  limit: number;
-  hasReferral?: boolean;
-  referralStatus?: string;
-  searchQuery?: string;
-}
-
-export const useAssociateRecruitmentAnalytics = (params: AssociateRecruitmentParams) =>
-  useQuery({
-    queryKey: ['campaigns', 'associate-pro', 'recruitment', params],
-    queryFn: () =>
-      execute(GET_ASSOCIATE_RECRUITMENT, {
-        page: params.page,
-        limit: params.limit,
-        hasReferral: params.hasReferral,
-        referralStatus: params.referralStatus ?? null,
-        searchQuery: params.searchQuery ?? null,
-      }),
-    select: (data) => data.getAllUsersWithFilters,
   });
 
 const GET_CAMPAIGN_PAYMENT_PLANS = graphql(`
