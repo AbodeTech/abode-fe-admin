@@ -6,6 +6,7 @@ import { commissionRoutes } from './commission';
 import { upgradeRoutes } from './upgrades';
 import { userRoutes } from './users';
 import { withdrawalRoutes } from './withdrawals';
+import { associateRoutes } from './associates';
 import { assetTransactionRoutes } from './asset-transactions';
 import { salesRoutes } from './sales';
 import { requestRoutes } from './requests';
@@ -108,6 +109,7 @@ export function ensureRoutesRegistered(): void {
   registerRoutes(upgradeRoutes);
   registerRoutes(userRoutes);
   registerRoutes(withdrawalRoutes);
+  registerRoutes(associateRoutes);
   registerRoutes(assetTransactionRoutes);
   registerRoutes(allocationRoutes);
   registerRoutes(salesRoutes);
