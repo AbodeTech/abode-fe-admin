@@ -19,7 +19,6 @@ import { marketplaceRoutes } from './marketplace';
 import { meetingRoutes } from './meetings';
 import { csManagerRoutes } from './cs-managers';
 import { purchaseConfirmationRoutes } from './purchase-confirmations';
-import { commercialPlotRoutes } from './commercial-plots';
 
 /* ============================================================
  * Route registration. Importing this module (via lib/mocks/index.ts)
@@ -93,9 +92,6 @@ import { commercialPlotRoutes } from './commercial-plots';
  *               resolve-dispute, resend). No export route — the real
  *               endpoint streams CSV with @SkipTransform; the FE hook
  *               refuses in mock mode instead (matches flex-leads).
- * commercial-plots — GET /admin/commercial/purchase/plans and /plans/:id.
- *               Suspend / unsuspend / allocate stay on asset-transactions
- *               (shared POST /admin/acquisitions/plans/:planId/*).
  * ============================================================ */
 
 let registered = false;
@@ -124,6 +120,5 @@ export function ensureRoutesRegistered(): void {
   registerRoutes(meetingRoutes);
   registerRoutes(csManagerRoutes);
   registerRoutes(purchaseConfirmationRoutes);
-  registerRoutes(commercialPlotRoutes);
   // ...added per feature as it migrates
 }
