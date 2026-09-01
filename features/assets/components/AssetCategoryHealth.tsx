@@ -3,8 +3,10 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-import { SampleDataChip } from "./analytics/SampleDataChip";
-import type { CategoryStats } from "./analytics/sample-data";
+import {
+  ANALYTICS_CATEGORY_LABELS,
+  type AssetCategoryMetrics,
+} from "../schemas/portfolio-analytics.schema";
 
 function formatNaira(value: number | null | undefined): string {
   if (value == null || value === 0) return "₦0";
@@ -26,6 +28,7 @@ function formatSqm(value: number | null | undefined): string {
 interface CategoryProps {
   title: string;
   count: number;
+  excludedFromRollup: boolean;
   sqm: string;
   revenue: string;
   efficiency: number;
@@ -54,6 +57,7 @@ function StatRow({ label, value, valueClassName }: { label: string; value: strin
 function CategoryCard({
   title,
   count,
+  excludedFromRollup,
   sqm,
   revenue,
   efficiency,
@@ -76,9 +80,19 @@ function CategoryCard({
             <h4 className="text-base font-bold tracking-tight wrap-break-word sm:text-lg">{title}</h4>
             <span className="text-xs text-muted-foreground font-medium">{count} Active Assets</span>
           </div>
-          <Badge variant="secondary" className="shrink-0 bg-muted/50 text-[10px] font-bold uppercase tracking-wider">
-            Category View
-          </Badge>
+          {excludedFromRollup ? (
+            <Badge
+              variant="secondary"
+              className="shrink-0 bg-amber-100 text-[10px] font-bold uppercase tracking-wider text-amber-800"
+              title="Admin-priced plots — excluded from the portfolio totals above"
+            >
+              Excluded from totals
+            </Badge>
+          ) : (
+            <Badge variant="secondary" className="shrink-0 bg-muted/50 text-[10px] font-bold uppercase tracking-wider">
+              Category View
+            </Badge>
+          )}
         </div>
 
         {/* Performance bars */}
@@ -147,40 +161,37 @@ function CategoryCard({
 }
 
 interface Props {
-  /** ⛔ ticket 17 — no analytics endpoint exists; this is `SAMPLE_CATEGORIES`. */
-  data: CategoryStats[];
+  data: AssetCategoryMetrics[];
 }
 
-const ACCENTS = ["oklch(var(--primary))", "rgb(59 130 246)", "rgb(147 51 234)"];
+const ACCENTS = ["oklch(var(--primary))", "rgb(59 130 246)", "rgb(147 51 234)", "rgb(217 119 6)"];
 
 export function AssetCategoryHealth({ data }: Props) {
   return (
     <div className="mb-8 min-w-0 space-y-3 lg:mb-12">
-      <div className="flex flex-wrap items-center gap-2">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-          Category health
-        </p>
-        <SampleDataChip />
-      </div>
+      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+        Category health
+      </p>
 
       <div className="flex min-w-0 flex-col gap-6 lg:flex-row lg:items-stretch">
         {data.map((category, index) => (
           <CategoryCard
-            key={category.title}
-            title={category.title}
-            count={category.count}
-            sqm={formatSqm(category.sqm)}
-            revenue={formatNaira(category.revenue)}
-            efficiency={category.efficiency}
-            occupancy={category.occupancy}
+            key={category.category}
+            title={ANALYTICS_CATEGORY_LABELS[category.category]}
+            count={category.active_assets}
+            excludedFromRollup={category.excluded_from_rollup}
+            sqm={formatSqm(category.total_capacity_sqm)}
+            revenue={formatNaira(category.gross_revenue)}
+            efficiency={category.collection_efficiency}
+            occupancy={category.occupancy_rate}
             accentColor={ACCENTS[index % ACCENTS.length]}
-            valueSold={formatNaira(category.valueSold)}
-            sqmSold={formatSqm(category.sqmSold)}
-            moneyReceived={formatNaira(category.moneyReceived)}
-            totalBalance={formatNaira(category.totalBalance)}
-            defaultedAssetValue={formatNaira(category.defaulting.defaultedAssetValue)}
-            defaultersPaid={formatNaira(category.defaulting.defaultersPaid)}
-            defaultersOwing={formatNaira(category.defaulting.defaultersOwing)}
+            valueSold={formatNaira(category.value_sold)}
+            sqmSold={formatSqm(category.sqm_sold)}
+            moneyReceived={formatNaira(category.money_received)}
+            totalBalance={formatNaira(category.balance_owed)}
+            defaultedAssetValue={formatNaira(category.defaulting.value_of_defaulted_assets)}
+            defaultersPaid={formatNaira(category.defaulting.amount_paid_by_defaulters)}
+            defaultersOwing={formatNaira(category.defaulting.amount_still_owing)}
           />
         ))}
       </div>

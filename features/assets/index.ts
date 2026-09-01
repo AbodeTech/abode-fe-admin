@@ -2,8 +2,9 @@
  *
  * The v1 flex / full-ownership split is gone: one list, one create form, one
  * detail shell with sub-routes (overview · offers · blocks & plots ·
- * performance · customers). Analytics is the only part still unbacked —
- * it runs on fixtures behind a banner (⛔ ticket 17).
+ * performance · customers). Portfolio analytics (ticket 17) is real, backed
+ * by GET /admin/assets/analytics/portfolio; per-asset Performance analytics
+ * still runs on fixtures (⛔ ticket 17b) — no per-asset endpoint yet.
  *
  * See docs/ASSETS-ADMIN-DESIGN.md.
  */
@@ -76,24 +77,34 @@ export {
 } from './schemas/asset.schema';
 export type { Asset, OfferSummary, OfferType, Visibility } from './schemas/asset.schema';
 
-// ── analytics: fixtures, no backend (⛔ ticket 17) ────────────────────────
-// Portfolio-wide, on the list page:
+// ── analytics: portfolio-wide is real (ticket 17); per-asset still fixtures ──
+// Portfolio-wide, on the list page — GET /admin/assets/analytics/portfolio:
 export { InventoryHealthBar } from './components/InventoryHealthBar';
 export { AssetCategoryHealth } from './components/AssetCategoryHealth';
-// Per-asset, on the detail Performance tab:
+export { usePortfolioAnalytics } from './hooks/use-portfolio-analytics';
+export {
+  ANALYTICS_CATEGORIES,
+  ANALYTICS_CATEGORY_LABELS,
+} from './schemas/portfolio-analytics.schema';
+export type {
+  AnalyticsCategory,
+  PortfolioMetrics,
+  AssetCategoryMetrics,
+  AssetInventorySummary,
+  AssetInventoryDetail,
+  PortfolioAnalyticsResponse,
+} from './schemas/portfolio-analytics.schema';
+
+// Per-asset, on the detail Performance tab (⛔ still ticket 17b — no endpoint):
 export { AssetHealthBar } from './components/detail/AssetHealthBar';
 export { PaymentPlanMatrix } from './components/detail/PaymentPlanMatrix';
 
 export { SampleDataChip } from './components/analytics/SampleDataChip';
 export {
-  SAMPLE_PORTFOLIO,
-  SAMPLE_CATEGORIES,
   SAMPLE_ASSET_HEALTH,
   SAMPLE_SIZE_PLANS,
 } from './components/analytics/sample-data';
 export type {
-  PortfolioStats,
-  CategoryStats,
   AssetHealthStats,
   PlanPerformance,
   SizePlanBreakdown,
