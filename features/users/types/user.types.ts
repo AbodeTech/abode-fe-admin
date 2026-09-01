@@ -63,6 +63,13 @@ export type UserDetail = {
   kyc: {
     tin: string;
   } | null;
+  associate_manager?: {
+    _id: string;
+    firstName?: string | null;
+    lastName?: string | null;
+    userName?: string | null;
+    email?: string | null;
+  } | null;
   subscriptions: number;
   transaction: UserTransaction[];
   wallet: {

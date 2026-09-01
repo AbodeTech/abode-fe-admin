@@ -3,6 +3,7 @@ import { TypedDocumentNode } from "@graphql-typed-document-node/core";
 import { print } from "graphql";
 
 const API_URL =
+  process.env.NEXT_PUBLIC_GRAPHQL_API_URL ||
   process.env.API_BASE_URL ||
   process.env.NEXT_PUBLIC_API_BASE_URL ||
   process.env.NEXT_API_BASE_URL ||

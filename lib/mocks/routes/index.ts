@@ -16,6 +16,7 @@ import { meetingRoutes } from './meetings';
 import { csManagerRoutes } from './cs-managers';
 import { purchaseConfirmationRoutes } from './purchase-confirmations';
 import { commercialPlotRoutes } from './commercial-plots';
+import { campaignEngineRoutes } from './campaigns-engine';
 
 /* ============================================================
  * Route registration. Importing this module (via lib/mocks/index.ts)
@@ -50,8 +51,9 @@ import { commercialPlotRoutes } from './commercial-plots';
  *               upgrade queue is where that UI lives). The remaining admin
  *               referral routes (referral-status, referrer, downlines) are
  *               unclaimed; they belong on a user detail page.
- * users       — GET /admin/users, /overview, /analytics. List is the shared
- *               UserPicker source AND the users table.
+ * users       — GET /admin/users, /users/:id, /overview, /analytics. List is
+ *               the shared UserPicker source AND the users table; :id is the
+ *               profile page (view_user).
  * people.ts   — not a domain: the shared person fixtures every route populates
  *               refs from, so one id means one person across all of them.
  * dashboard   — GET /admin/dashboard/kpis, top-products, top-associates.
@@ -102,5 +104,6 @@ export function ensureRoutesRegistered(): void {
   registerRoutes(csManagerRoutes);
   registerRoutes(purchaseConfirmationRoutes);
   registerRoutes(commercialPlotRoutes);
+  registerRoutes(campaignEngineRoutes);
   // ...added per feature as it migrates
 }

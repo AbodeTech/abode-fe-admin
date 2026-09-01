@@ -79,6 +79,46 @@ export const userRoutes: MockRoutes = {
     return paged(matched, query);
   },
 
+  'GET /admin/users/:id': ({ params }) => {
+    const index = PEOPLE.findIndex((person) => person._id === params.id);
+    const person = index >= 0 ? PEOPLE[index] : PEOPLE[0];
+    const referrer = index > 0 ? PEOPLE[index - 1] : null;
+    return {
+      _id: person._id,
+      id: person._id,
+      firstName: person.firstName,
+      lastName: person.lastName,
+      userName: person.userName,
+      email: person.email,
+      phoneNumber: person.phoneNumber,
+      referral_status: person.referral_status === 'default' ? 'user' : person.referral_status,
+      verified: person.tin?.state === 'approved',
+      is_suspended: false,
+      country: 'Nigeria',
+      address: `${20 + Math.max(index, 0)} Admiralty Way, Lekki`,
+      gender: index % 2 === 0 ? 'female' : 'male',
+      occupation: 'Professional',
+      employment_status: 'Employed',
+      marital_status: index % 2 === 0 ? 'Married' : 'Single',
+      date_of_birth: '1992-04-12T00:00:00.000Z',
+      last_login: '2026-08-28T10:00:00.000Z',
+      profile_pic: null,
+      referred_by: referrer
+        ? {
+            _id: referrer._id,
+            firstName: referrer.firstName,
+            lastName: referrer.lastName,
+            email: referrer.email,
+          }
+        : null,
+      kyc: person.tin
+        ? { tin: { value: person.tin.value, state: person.tin.state } }
+        : null,
+      wallet: { balance: (index + 1) * 150000, available_balance: (index + 1) * 150000 },
+      createdAt: '2025-01-15T10:00:00.000Z',
+    };
+  },
+
   'GET /admin/users/overview': () => ({
     new_users: period(12, 8.5),
     new_associates: period(4, -2),

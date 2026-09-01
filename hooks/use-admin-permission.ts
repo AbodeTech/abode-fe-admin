@@ -69,6 +69,10 @@ export const ADMIN_PERMISSIONS = [
 
   'view_meetings',
   'manage_meetings',
+
+  'view_campaigns',
+  'manage_campaigns',
+  'export_campaigns',
 ] as const;
 
 export type AdminPermission = (typeof ADMIN_PERMISSIONS)[number];
@@ -80,4 +84,17 @@ export function useHasPermission(permission: AdminPermission): boolean {
   if (user.role === 'admin') return true;
 
   return (user.permissions ?? []).includes(permission);
+}
+
+/** MD §4 uses `useAdminPermissions().has('manage_campaigns')`. */
+export function useAdminPermissions() {
+  const user = useAuthStore((state) => state.user);
+
+  return {
+    has: (permission: AdminPermission) => {
+      if (!user) return false;
+      if (user.role === 'admin') return true;
+      return (user.permissions ?? []).includes(permission);
+    },
+  };
 }

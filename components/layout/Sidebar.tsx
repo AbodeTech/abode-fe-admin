@@ -118,9 +118,8 @@ const navGroups = [
     isCollapsible: true,
     icon: <Gift />,
     items: [
-      { name: "1000 Plots Project", link: "/campaigns/1000plotsproject", icon: <LandPlot /> },
-      { name: "2000 Associate Pro", link: "/campaigns/2000associateprocampaign", icon: <TrendingUp /> },
-      { name: "Hamper Campaign", link: "/campaigns/hampercampaign", icon: <Gift /> },
+      { name: "Campaigns", link: "/campaigns", icon: <Gift /> },
+      { name: "Associate Pro Tracker", link: "/campaigns/2000associateprocampaign", icon: <TrendingUp /> },
     ]
   },
   {
