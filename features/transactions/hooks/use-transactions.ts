@@ -4,6 +4,10 @@ import { graphql } from '@/lib/gql';
 import { transactionKeys } from './query-keys';
 type TransactionType = "credit" | "debit" | "asset" | "commission" | "document";
 
+/* The document ledger moved to REST: GET /admin/transactions/documents, in
+ * `features/asset-transactions` (`useDocumentPurchases`), where the row schema
+ * and the approve/decline pair it shares with asset purchases already live. */
+
 // --- Queries ---
 
 const GET_TOPUP_TRANSACTION_QUERY = graphql(`
@@ -13,17 +17,6 @@ const GET_TOPUP_TRANSACTION_QUERY = graphql(`
       data {
         ...TopupTransactionsTable_data
       }
-    }
-  }
-`);
-
-const GET_DOCUMENT_TRANSACTION_QUERY = graphql(`
-  query GetDocumentTransaction($page: Int!, $limit: Int!, $status: String, $startDate: Date, $endDate: Date, $search: String) {
-    getDocumentTransaction(page: $page, limit: $limit, status: $status, startDate: $startDate, endDate: $endDate, search: $search) {
-      data {
-        ...DocumentTransactionsTable_data
-      }
-      count
     }
   }
 `);
@@ -60,26 +53,6 @@ export const useTopupTransactions = (params?: UseTopupTransactionsParams) => {
   });
 };
 
-interface UseDocumentTransactionsParams {
-  page?: number;
-  limit?: number;
-  status?: string | null;
-  startDate?: string | null;
-  endDate?: string | null;
-  search?: string | null;
-}
-
-export const useDocumentTransactions = (params?: UseDocumentTransactionsParams) => {
-  const { page = 1, limit = 10, status = null, startDate = null, endDate = null, search = null } = params ?? {};
-
-  return useQuery({
-    queryKey: transactionKeys.documentList({ page, limit, status, startDate, endDate, search }),
-    queryFn: () =>
-      execute(GET_DOCUMENT_TRANSACTION_QUERY, { page, limit, status, startDate, endDate, search }),
-    select: (data) => data.getDocumentTransaction,
-  });
-};
-
 export const useTransactionDataPoints = (type: TransactionType) => {
   return useQuery({
     queryKey: transactionKeys.dataPoints(type),
@@ -91,4 +64,3 @@ export const useTransactionDataPoints = (type: TransactionType) => {
 
 // Export types for consumers
 export type TopupTransactionsData = NonNullable<ReturnType<typeof useTopupTransactions>['data']>;
-export type DocumentTransactionsData = NonNullable<ReturnType<typeof useDocumentTransactions>['data']>;

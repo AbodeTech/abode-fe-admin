@@ -151,7 +151,7 @@ interface Props {
   data: CategoryStats[];
 }
 
-const ACCENTS = ["oklch(var(--primary))", "rgb(59 130 246)"];
+const ACCENTS = ["oklch(var(--primary))", "rgb(59 130 246)", "rgb(147 51 234)"];
 
 export function AssetCategoryHealth({ data }: Props) {
   return (

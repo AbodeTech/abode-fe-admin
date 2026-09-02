@@ -11,10 +11,8 @@ export const transactionKeys = {
   withdrawalList: (filters?: { page?: number; limit?: number; status?: string | null; search?: string | null }) =>
     [...transactionKeys.withdrawal(), 'list', filters] as const,
 
-  // Document transactions
-  document: () => [...transactionKeys.all, 'document'] as const,
-  documentList: (filters?: { page?: number; limit?: number; status?: string | null; startDate?: string | null; endDate?: string | null; search?: string | null }) =>
-    [...transactionKeys.document(), 'list', filters] as const,
+  // Document transactions live under `purchaseKeys` in features/asset-transactions,
+  // on GET /admin/transactions/documents.
 
   // Commission transactions — GET /admin/commission/transactions
   commission: () => [...transactionKeys.all, 'commission'] as const,

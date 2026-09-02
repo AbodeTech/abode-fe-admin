@@ -1,68 +1,45 @@
-import { useQuery } from "@tanstack/react-query";
-import type { TypedDocumentNode } from "@graphql-typed-document-node/core";
-import { parse } from "graphql";
-import { execute } from "@/lib/graphql-client";
-import { managerKeys } from "./query-keys";
+'use client';
 
-/** Server-shaped rating series point. Missing months arrive server-filled
- * as `{ average: 0, count: 0 }` so charts render every bar. */
-export interface ManagerRatingSeriesPoint {
-  month: number;
-  year: number;
-  average: number;
-  count: number;
-}
+import { useQuery } from '@tanstack/react-query';
+import { z } from 'zod';
 
-interface GetManagerRatingSeriesResult {
-  getManagerRatingSeries: ManagerRatingSeriesPoint[];
-}
+import { apiGet } from '@/lib/api-client';
 
-interface GetManagerRatingSeriesVars {
-  managerId: string | null;
-  monthsBack: number;
-}
+import { RatingSeriesPointSchema } from '../schemas/associate-manager.schema';
+import { managerKeys } from './query-keys';
 
-// NOTE: this file is excluded from codegen (see codegen.ts) until the BE
-// deploys. The codegen `graphql()` helper returns `{}` at runtime for
-// unknown operations, which crashes execute() with "Invalid AST Node: {}."
-// Parse manually with `graphql`'s `parse` — same pattern as
-// features/associates/hooks/use-top-associates.ts.
-const GET_MANAGER_RATING_SERIES_QUERY = parse(`
-  query GetManagerRatingSeries($managerId: ID, $monthsBack: Int) {
-    getManagerRatingSeries(managerId: $managerId, monthsBack: $monthsBack) {
-      month
-      year
-      average
-      count
-    }
-  }
-`) as unknown as TypedDocumentNode<GetManagerRatingSeriesResult, GetManagerRatingSeriesVars>;
+export const DEFAULT_RATING_SERIES_MONTHS = 6;
 
 export interface UseManagerRatingSeriesParams {
-  /** Super admins pass a target manager id; managers pass null → self. */
+  /**
+   * The manager whose trend to plot. There is no "self" route — a manager
+   * viewing their own trend resolves their id from `useIsCurrentUserManager`
+   * (backed by `GET /admin/managers/me`) and passes it here.
+   */
   managerId: string | null;
   monthsBack?: number;
   enabled?: boolean;
 }
 
-export const DEFAULT_RATING_SERIES_MONTHS = 6;
-
-/** Fetches a monthly rating trend for a manager. Missing months arrive
- * server-filled as `{ average: 0, count: 0 }` so charts render every bar. */
+/**
+ * GET /admin/managers/:manager_id/rating-series — monthly peer-rating averages,
+ * oldest first, with unrated months server-filled as `{ average: 0, count: 0 }`
+ * so a chart renders every bar.
+ *
+ * `count` is the only thing separating "nobody rated" from "everyone rated
+ * badly" — plot the average, but never present a `count: 0` point as a score.
+ */
 export const useManagerRatingSeries = ({
   managerId,
   monthsBack = DEFAULT_RATING_SERIES_MONTHS,
   enabled = true,
-}: UseManagerRatingSeriesParams) => {
-  return useQuery({
-    queryKey: managerKeys.ratingSeries(managerId ?? "self", monthsBack),
+}: UseManagerRatingSeriesParams) =>
+  useQuery({
+    queryKey: managerKeys.ratingSeries(managerId ?? '', monthsBack),
     queryFn: () =>
-      execute(GET_MANAGER_RATING_SERIES_QUERY, {
-        managerId,
-        monthsBack,
+      apiGet(`/admin/managers/${managerId}/rating-series`, z.array(RatingSeriesPointSchema), {
+        params: { months_back: monthsBack },
       }),
-    enabled,
-    select: (data) => data.getManagerRatingSeries,
+    enabled: enabled && !!managerId,
     staleTime: 5 * 60 * 1000,
   });
-};

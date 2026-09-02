@@ -7,14 +7,10 @@ import { z } from 'zod';
  *
  *   Asset → AssetOffer (flex | full-ownership | commercial) → Size → Plan
  *
- * `AssetOffer` is unique on (asset_id, offer_type), so one asset can sell all
- * three at once. That is why there is one assets table rather than the two v1
- * had — offer type is a property of a row, not a separate screen.
- *
- * Commercial is not a third model. The backend writes it to the
- * full-ownership collections and runs it through the full-ownership
- * validators (`usesFoModel` below) — it is a full-ownership offer with its own
- * label and its own place in the offer-type filter.
+ * `AssetOffer` is unique on (asset_id, offer_type), so one asset can sell
+ * flex, full-ownership and commercial at once. That is why there is one
+ * assets table rather than the per-type screens v1 had — offer type is a
+ * property of a row, not a separate screen.
  *
  * Money is decimal naira. See docs/ASSETS-ADMIN-DESIGN.md.
  * ============================================================ */
@@ -30,14 +26,9 @@ export const OFFER_TYPE_LABELS: Record<OfferType, string> = {
 };
 
 /**
- * Mirrors the backend's `usesFoModel()` in
- * `src/modules/asset/schemas/asset-offer.schema.ts`.
- *
- * Commercial sizes are stored in the full-ownership collection and validated
- * by the full-ownership rules, so everything the API documents as
- * "full-ownership only" — `document_fee`, `payment_type`, `is_promo`, tenor 0
- * — covers commercial too. Branch on this rather than on `!== 'flex'`, so a
- * fourth offer type can't silently inherit full-ownership semantics.
+ * Mirrors the backend's `usesFoModel()` (`asset-offer.schema.ts`): commercial
+ * offers reuse the full-ownership shape — `payment_type` required, sizes
+ * carry `document_fee`, tenor 0 is a valid outright plan. Only flex is exempt.
  */
 export function usesFoModel(offerType: OfferType): boolean {
   return offerType === 'full-ownership' || offerType === 'commercial';

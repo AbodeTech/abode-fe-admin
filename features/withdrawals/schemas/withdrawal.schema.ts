@@ -321,3 +321,52 @@ export const withdrawalReasonSchema = z
   .trim()
   .min(WITHDRAWAL_REASON_MIN, `Explain in at least ${WITHDRAWAL_REASON_MIN} characters`)
   .max(WITHDRAWAL_REASON_MAX, `Keep it under ${WITHDRAWAL_REASON_MAX} characters`);
+
+/* ============================================================
+ * Queue stats — GET /admin/withdrawals/stats
+ * ============================================================ */
+
+/**
+ * The withdrawal queue's stat cards.
+ *
+ * DELIBERATELY GLOBAL: the endpoint ignores the table's filters entirely and
+ * accepts only a date range, because the queue never offered filtered stats
+ * and adding it now would surprise ops. So the cards do NOT describe the rows
+ * underneath them — unlike the asset transaction stats, which are filter-aware.
+ *
+ * `auto_approved_count` / `auto_failed_count` isolate the automatic transfer
+ * rail from what an admin actioned by hand: a withdrawal's `processing_type`
+ * is stamped when the transfer is initiated and survives a later webhook
+ * failure.
+ */
+export const WithdrawalStatsSchema = z.object({
+  pending_review_count: z.number(),
+  /** Naira value awaiting review — what an admin clearing the queue plans around. */
+  pending_review_amount: z.number(),
+  approved_count: z.number(),
+  rejected_count: z.number(),
+  auto_approved_count: z.number(),
+  auto_failed_count: z.number(),
+});
+
+export type WithdrawalStats = z.infer<typeof WithdrawalStatsSchema>;
+
+/** The only filter the stats endpoint accepts. Omitted means all-time. */
+export type WithdrawalStatsFilters = {
+  start_date?: string;
+  end_date?: string;
+};
+
+/**
+ * GET /admin/wallets/stats — the users' wallet balance KPI.
+ *
+ * Its own endpoint rather than a field on the queue stats: it is a live sum
+ * over the wallets collection, not a transaction rollup, so it shares neither
+ * their date range nor their cache key. That also means it does NOT move when
+ * the queue's date filter does.
+ */
+export const WalletStatsSchema = z.object({
+  users_wallet_balance: z.number(),
+});
+
+export type WalletStats = z.infer<typeof WalletStatsSchema>;

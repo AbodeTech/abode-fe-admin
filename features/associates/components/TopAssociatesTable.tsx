@@ -1,8 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import { graphql } from "@/lib/gql";
-import { FragmentType, useFragment } from "@/lib/gql";
 import {
   Table,
   TableBody,
@@ -21,30 +19,13 @@ import {
   AdminMobileField,
   AdminMobileStack,
 } from "@/components/shared/admin-responsive-table";
-
-export const TopAssociatesTableRowFragment = graphql(`
-  fragment TopAssociatesTableRowFragment on Associate {
-    name
-    status
-    email
-    sales_person
-    no_of_clients
-    referred_user_count
-    referred_associate_count
-    referred_associate_pro_count
-    units_sold
-    size_sold
-    expected_revenue
-    received_revenue
-    balance
-    collection_rate
-    commission
-  }
-`);
+import type { TopAssociate } from "../schemas/top-associate.schema";
 
 interface TopAssociatesTableProps {
-  data?: (FragmentType<typeof TopAssociatesTableRowFragment> | null)[] | null;
+  data?: TopAssociate[] | null;
   isLoading?: boolean;
+  /** Rank continues across pages, so page 2 starts at 26, not 1. */
+  rankOffset?: number;
 }
 
 const formatCurrency = (amount?: number | null) =>
@@ -146,7 +127,11 @@ function EfficiencyBar({ rate }: { rate: number }) {
   );
 }
 
-export function TopAssociatesTable({ data, isLoading }: TopAssociatesTableProps) {
+export function TopAssociatesTable({
+  data,
+  isLoading,
+  rankOffset = 0,
+}: TopAssociatesTableProps) {
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
 
   const toggle = (idx: number) =>
@@ -160,10 +145,7 @@ export function TopAssociatesTable({ data, isLoading }: TopAssociatesTableProps)
       return next;
     });
 
-  const safeRows = (data ?? []).filter(
-    (item): item is NonNullable<typeof item> => item !== null
-  );
-  const associates = useFragment(TopAssociatesTableRowFragment, safeRows);
+  const associates = data ?? [];
 
   if (isLoading) {
     return (
@@ -197,16 +179,11 @@ export function TopAssociatesTable({ data, isLoading }: TopAssociatesTableProps)
     <>
       <AdminMobileStack className="space-y-3">
         {associates.map((associate, idx) => {
-          const rank = idx + 1;
-          const balance =
-            associate.balance ?? (associate.expected_revenue ?? 0) - (associate.received_revenue ?? 0);
-          const rate =
-            associate.collection_rate ??
-            (associate.expected_revenue
-              ? Math.round(((associate.received_revenue ?? 0) / associate.expected_revenue) * 100)
-              : 0);
+          const rank = rankOffset + idx + 1;
+          const balance = associate.balance;
+          const rate = associate.collection_rate;
           return (
-            <AdminMobileCard key={`${associate.email}-m-${idx}`} title={associate.name} subtitle={associate.email || undefined}>
+            <AdminMobileCard key={associate.user_id} title={associate.name} subtitle={associate.email || undefined}>
               <div className="flex items-center justify-between gap-2 border-b border-border pb-2">
                 <div className="flex items-center gap-2">{rankLabel(rank)}</div>
                 <StatusBadge status={associate.status} />
@@ -220,8 +197,8 @@ export function TopAssociatesTable({ data, isLoading }: TopAssociatesTableProps)
                   associatePros={associate.referred_associate_pro_count ?? 0}
                 />
               </div>
-              <AdminMobileField label="Expected" value={formatCurrency(associate.expected_revenue)} />
-              <AdminMobileField label="Received" value={formatCurrency(associate.received_revenue)} />
+              <AdminMobileField label="Expected" value={formatCurrency(associate.expected)} />
+              <AdminMobileField label="Received" value={formatCurrency(associate.received)} />
               <AdminMobileField label="Balance" value={formatCurrency(balance)} />
               <div className="flex items-center justify-between gap-2">
                 <span className="text-sm text-muted-foreground">Collection</span>
@@ -254,18 +231,14 @@ export function TopAssociatesTable({ data, isLoading }: TopAssociatesTableProps)
         </TableHeader>
         <TableBody>
           {associates.map((associate, idx) => {
-            const rank = idx + 1;
+            const rank = rankOffset + idx + 1;
             const { border, bg } = rankStyle(rank);
             const isOpen = expanded.has(idx);
-            const balance = associate.balance
-              ?? (associate.expected_revenue ?? 0) - (associate.received_revenue ?? 0);
-            const rate = associate.collection_rate
-              ?? (associate.expected_revenue
-                ? Math.round(((associate.received_revenue ?? 0) / associate.expected_revenue) * 100)
-                : 0);
+            const balance = associate.balance;
+            const rate = associate.collection_rate;
 
             return (
-              <React.Fragment key={`${associate.email}-${idx}`}>
+              <React.Fragment key={associate.user_id}>
                 {/* Primary row */}
                 <TableRow
                   className={cn(
@@ -306,14 +279,14 @@ export function TopAssociatesTable({ data, isLoading }: TopAssociatesTableProps)
                   {/* Expected */}
                   <TableCell className="text-right">
                     <span className="text-sm tabular-nums text-muted-foreground font-medium">
-                      {formatCurrency(associate.expected_revenue)}
+                      {formatCurrency(associate.expected)}
                     </span>
                   </TableCell>
 
                   {/* Received */}
                   <TableCell className="text-right">
                     <span className="text-sm font-bold tabular-nums text-emerald-600">
-                      {formatCurrency(associate.received_revenue)}
+                      {formatCurrency(associate.received)}
                     </span>
                   </TableCell>
 

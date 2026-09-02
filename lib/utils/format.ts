@@ -28,3 +28,19 @@ export function formatPercent(rate: number | null | undefined, fractionDigits = 
   if (rate == null || Number.isNaN(rate)) return '—';
   return `${(rate * 100).toFixed(fractionDigits)}%`;
 }
+
+/**
+ * Money at a glance: `41250000` → `"₦41.3M"`.
+ *
+ * For stat cards and sub-lines where the exact figure would crowd the layout —
+ * never for a table cell or a receipt, where the full `formatNaira` belongs.
+ * Same decimal-naira assumption as everything else here.
+ */
+export function formatNairaCompact(amount: number | null | undefined): string {
+  if (amount == null || Number.isNaN(amount)) return '—';
+  const abs = Math.abs(amount);
+  if (abs >= 1_000_000_000) return `₦${(amount / 1_000_000_000).toFixed(1)}B`;
+  if (abs >= 1_000_000) return `₦${(amount / 1_000_000).toFixed(1)}M`;
+  if (abs >= 1_000) return `₦${(amount / 1_000).toFixed(1)}K`;
+  return formatNaira(amount);
+}

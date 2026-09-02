@@ -32,7 +32,6 @@ function useFoPlanMutation<TVariables, TData>(
     mutationFn,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: purchaseKeys.all });
-      queryClient.invalidateQueries({ queryKey: ['commercial-plots'] });
     },
   });
 }

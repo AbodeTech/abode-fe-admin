@@ -62,9 +62,25 @@ interface Props {
   isLoading: boolean;
   onApprove: (id: string) => Promise<unknown>;
   onDecline: (id: string, message: string) => Promise<unknown>;
+  /** The document ledger renders the same row shape under its own name. */
+  emptyTitle?: string;
+  emptyDescription?: string;
+  /**
+   * Hides the Action column outright. The document screen gates it on the
+   * `asset_transactions` permission, as its own table always did.
+   */
+  canReview?: boolean;
 }
 
-export function PurchasesTable({ rows, isLoading, onApprove, onDecline }: Props) {
+export function PurchasesTable({
+  rows,
+  isLoading,
+  onApprove,
+  onDecline,
+  emptyTitle = "No asset transactions found",
+  emptyDescription = "There are no asset transactions to display at this time.",
+  canReview = true,
+}: Props) {
   if (isLoading) {
     return <div className="p-8 text-center text-gray-500">Loading transactions...</div>;
   }
@@ -74,10 +90,8 @@ export function PurchasesTable({ rows, isLoading, onApprove, onDecline }: Props)
       <Card className="border border-gray-200">
         <CardContent className="flex flex-col items-center justify-center py-12">
           <TrendingUp className="mb-4 h-12 w-12 text-gray-400" />
-          <h3 className="mb-2 text-lg font-semibold text-gray-900">No asset transactions found</h3>
-          <p className="max-w-md text-center text-gray-600">
-            There are no asset transactions to display at this time.
-          </p>
+          <h3 className="mb-2 text-lg font-semibold text-gray-900">{emptyTitle}</h3>
+          <p className="max-w-md text-center text-gray-600">{emptyDescription}</p>
         </CardContent>
       </Card>
     );
@@ -90,6 +104,7 @@ export function PurchasesTable({ rows, isLoading, onApprove, onDecline }: Props)
           <MobileTransactionCard
             key={row._id}
             row={row}
+            canReview={canReview}
             onApprove={onApprove}
             onDecline={onDecline}
           />
@@ -150,7 +165,9 @@ export function PurchasesTable({ rows, isLoading, onApprove, onDecline }: Props)
                       Status
                     </div>
                   </TableHead>
-                  <TableHead className="py-4 font-semibold">Action</TableHead>
+                  {canReview ? (
+                    <TableHead className="py-4 font-semibold">Action</TableHead>
+                  ) : null}
                   <TableHead className="py-4 font-semibold">
                     <div className="flex items-center gap-2">
                       <Eye className="h-4 w-4" />
@@ -196,23 +213,25 @@ export function PurchasesTable({ rows, isLoading, onApprove, onDecline }: Props)
                       <TableCell className="py-4">
                         <TransactionStatus status={adminStatusForBadge(row)} />
                       </TableCell>
-                      <TableCell className="py-4">
-                        {reviewable ? (
-                          <AssetTransactionAction
-                            status="pending"
-                            assetId={row._id}
-                            onApprove={onApprove}
-                            onDecline={onDecline}
-                          />
-                        ) : adminStatus.toLowerCase() !== "pending" ? (
-                          <AssetTransactionAction
-                            status={adminStatus}
-                            assetId={row._id}
-                            onApprove={onApprove}
-                            onDecline={onDecline}
-                          />
-                        ) : null}
-                      </TableCell>
+                      {canReview ? (
+                        <TableCell className="py-4">
+                          {reviewable ? (
+                            <AssetTransactionAction
+                              status="pending"
+                              assetId={row._id}
+                              onApprove={onApprove}
+                              onDecline={onDecline}
+                            />
+                          ) : adminStatus.toLowerCase() !== "pending" ? (
+                            <AssetTransactionAction
+                              status={adminStatus}
+                              assetId={row._id}
+                              onApprove={onApprove}
+                              onDecline={onDecline}
+                            />
+                          ) : null}
+                        </TableCell>
+                      ) : null}
                       <TableCell className="py-4">
                         {receipt ? (
                           <ViewTransactionEvidence
@@ -264,10 +283,12 @@ function PayerLink({ row }: { row: Purchase }) {
 
 function MobileTransactionCard({
   row,
+  canReview,
   onApprove,
   onDecline,
 }: {
   row: Purchase;
+  canReview: boolean;
   onApprove: (id: string) => Promise<unknown>;
   onDecline: (id: string, message: string) => Promise<unknown>;
 }) {
@@ -360,14 +381,14 @@ function MobileTransactionCard({
           ) : (
             <span />
           )}
-          {reviewable ? (
+          {canReview && reviewable ? (
             <AssetTransactionAction
               status="pending"
               assetId={row._id}
               onApprove={onApprove}
               onDecline={onDecline}
             />
-          ) : adminStatus.toLowerCase() !== "pending" ? (
+          ) : canReview && adminStatus.toLowerCase() !== "pending" ? (
             <AssetTransactionAction
               status={adminStatus}
               assetId={row._id}

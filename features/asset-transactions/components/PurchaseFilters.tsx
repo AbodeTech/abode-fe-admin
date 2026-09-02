@@ -49,7 +49,19 @@ const PAYMENT_METHOD_OPTIONS = [
   { label: "Paystack", value: "paystack" },
 ];
 
-export function PurchaseFilters() {
+interface PurchaseFiltersProps {
+  /**
+   * The document ledger hides it: `AdminDocumentTransactionQueryDto` omits
+   * `sales_type` because every row on that endpoint is already a document fee.
+   */
+  showSalesType?: boolean;
+  searchPlaceholder?: string;
+}
+
+export function PurchaseFilters({
+  showSalesType = true,
+  searchPlaceholder = "Search for asset by name, location...",
+}: PurchaseFiltersProps = {}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const urlSearch = searchParams.get("search") ?? "";
@@ -75,7 +87,7 @@ export function PurchaseFilters() {
       <div className="relative min-w-0 max-w-2xl bg-white">
         <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="Search for asset by name, location..."
+          placeholder={searchPlaceholder}
           className="h-11 bg-white pl-8"
           value={value}
           onChange={(event) => setValue(event.target.value)}
@@ -84,7 +96,13 @@ export function PurchaseFilters() {
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
-        <FilterSelect data={SALES_TYPE_OPTIONS} queryKey="sales_type" placeholder="All Sales Type" />
+        {showSalesType ? (
+          <FilterSelect
+            data={SALES_TYPE_OPTIONS}
+            queryKey="sales_type"
+            placeholder="All Sales Type"
+          />
+        ) : null}
         <FilterSelect data={STATUS_OPTIONS} queryKey="status" placeholder="All Transactions Status" />
         <FilterSelect
           data={PAYMENT_METHOD_OPTIONS}

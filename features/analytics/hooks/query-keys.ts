@@ -3,6 +3,7 @@ export interface SalesAnalyticsFiltersKey {
   endDate?: string | null;
   assetType?: string | null;
   location?: string | null;
+  sourceType?: string | null;
 }
 
 export const salesAnalyticsKeys = {

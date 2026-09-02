@@ -11,10 +11,8 @@ import {
   YAxis,
   Cell,
 } from "recharts";
-import {
-  useManagerRatingSeries,
-  type ManagerRatingSeriesPoint,
-} from "../hooks/use-manager-rating-series";
+import { useManagerRatingSeries } from "../hooks/use-manager-rating-series";
+import type { RatingSeriesPoint as ManagerRatingSeriesPoint } from "../schemas/associate-manager.schema";
 
 interface Props {
   managerId: string | null;

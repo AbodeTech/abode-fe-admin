@@ -1,11 +1,15 @@
 import { registerRoutes } from '../router';
+import { allocationRoutes } from './allocation';
 import { assetRoutes } from './assets';
 import { authRoutes } from './auth';
 import { commissionRoutes } from './commission';
 import { upgradeRoutes } from './upgrades';
 import { userRoutes } from './users';
 import { withdrawalRoutes } from './withdrawals';
+import { associateRoutes } from './associates';
+import { associateProTrackerRoutes } from './associate-pro-tracker';
 import { assetTransactionRoutes } from './asset-transactions';
+import { salesRoutes } from './sales';
 import { requestRoutes } from './requests';
 import { amarisRoutes } from './amaris';
 import { flexLeadRoutes } from './flex-leads';
@@ -15,7 +19,6 @@ import { marketplaceRoutes } from './marketplace';
 import { meetingRoutes } from './meetings';
 import { csManagerRoutes } from './cs-managers';
 import { purchaseConfirmationRoutes } from './purchase-confirmations';
-import { commercialPlotRoutes } from './commercial-plots';
 import { campaignEngineRoutes } from './campaigns-engine';
 
 /* ============================================================
@@ -40,17 +43,32 @@ import { campaignEngineRoutes } from './campaigns-engine';
  * withdrawals — /admin/withdrawals/*.
  * asset-transactions — GET /admin/transactions (serves purchase rows; other
  *               types return empty pages until their screens migrate),
- *               POST /admin/acquisitions/transactions/:txId/approve|decline,
- *               GET /admin/fo/purchase/transactions/:txId, FO land-plan
- *               GET /admin/fo/purchase/payment-plans/:id, and plan actions
- *               POST /admin/acquisitions/plans/:planId/suspend|unsuspend|allocate.
- *               The wallet
- *               family (/admin/wallets/*) is unclaimed.
+ *               GET /admin/transactions/documents (the document-fee ledger),
+ *               /admin/acquisitions/flex/*, POST
+ *               /admin/acquisitions/transactions/:txId/approve|decline, GET
+ *               /admin/fo/purchase/transactions/:txId, FO land-plan
+ *               GET/PATCH/POST under /admin/fo/purchase/payment-plans/:id, and
+ *               plan actions POST
+ *               /admin/acquisitions/plans/:planId/suspend|unsuspend|allocate.
+ *               The wallet family (/admin/wallets/*) is unclaimed.
  * upgrades    — /admin/referrals/upgrades/* and POST
  *               /admin/users/:id/manual-upgrade (claimed 2026-08-13 — the
  *               upgrade queue is where that UI lives). The remaining admin
  *               referral routes (referral-status, referrer, downlines) are
  *               unclaimed; they belong on a user detail page.
+ * allocation  — GET /admin/allocation/eligible-clients,
+ *               GET /admin/allocation/assets/:asset_id/available-plots,
+ *               POST /admin/allocation/payment-plans/:plan_id/allocate,
+ *               .../deallocate, .../reassign, .../send-email,
+ *               GET .../history. Only the assets dropdown and CSV export
+ *               are still GraphQL — see lib/mocks/handlers/allocation.ts.
+ * sales       — GET /admin/sales, GET /admin/sales/dashboard,
+ *               GET /admin/sales/analytics/{kpis,by-asset,timeline}. The two
+ *               streaming CSV exports (GET /admin/sales/export[/full]) are
+ *               NOT mocked — the admin FE builds its export client-side off
+ *               the list endpoint instead (see
+ *               features/sales/components/SalesExport.tsx), so nothing in
+ *               this app calls those two BE routes.
  * users       — GET /admin/users, /users/:id, /overview, /analytics. List is
  *               the shared UserPicker source AND the users table; :id is the
  *               profile page (view_user).
@@ -76,9 +94,6 @@ import { campaignEngineRoutes } from './campaigns-engine';
  *               resolve-dispute, resend). No export route — the real
  *               endpoint streams CSV with @SkipTransform; the FE hook
  *               refuses in mock mode instead (matches flex-leads).
- * commercial-plots — GET /admin/commercial/purchase/plans and /plans/:id.
- *               Suspend / unsuspend / allocate stay on asset-transactions
- *               (shared POST /admin/acquisitions/plans/:planId/*).
  * ============================================================ */
 
 let registered = false;
@@ -93,7 +108,11 @@ export function ensureRoutesRegistered(): void {
   registerRoutes(upgradeRoutes);
   registerRoutes(userRoutes);
   registerRoutes(withdrawalRoutes);
+  registerRoutes(associateRoutes);
+  registerRoutes(associateProTrackerRoutes);
   registerRoutes(assetTransactionRoutes);
+  registerRoutes(allocationRoutes);
+  registerRoutes(salesRoutes);
   registerRoutes(requestRoutes);
   registerRoutes(amarisRoutes);
   registerRoutes(flexLeadRoutes);
@@ -103,7 +122,6 @@ export function ensureRoutesRegistered(): void {
   registerRoutes(meetingRoutes);
   registerRoutes(csManagerRoutes);
   registerRoutes(purchaseConfirmationRoutes);
-  registerRoutes(commercialPlotRoutes);
   registerRoutes(campaignEngineRoutes);
   // ...added per feature as it migrates
 }

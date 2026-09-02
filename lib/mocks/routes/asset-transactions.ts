@@ -1,10 +1,10 @@
 import { MockHttpError, type MockRoutes } from '../router';
 import { findPerson, matchesPersonSearch } from './people';
-import { findCommercialPlan } from './commercial-plots';
 import { body, paged } from './util';
 
 /* ============================================================
  * Asset transactions mocks — GET /admin/transactions (purchase rows),
+ * GET /admin/transactions/documents (the document-fee ledger),
  * the unified review pair under /admin/acquisitions/transactions/:txId,
  * FO transaction detail, GET FO land-plan, and unified plan
  * suspend / unsuspend / allocate under /admin/acquisitions/plans/:planId.
@@ -326,6 +326,37 @@ const purchases: MockPurchase[] = [
     createdAt: daysAgo(21),
     updatedAt: daysAgo(18),
   },
+
+  // Transfer-paid document instalment awaiting review — the document ledger's
+  // main case, and the only doc kind the BE lets an admin action on its own.
+  {
+    ...base,
+    _id: '665fpp0000000000000000t9',
+    user: USER_A,
+    wallet: '665fdddd000000000000wa01',
+    amount: 125_000,
+    status: 'pending',
+    admin_status: 'pending',
+    payment_method: 'transfer',
+    source_asset: ASSET_HARMONY,
+    number_of_units: 1,
+    purchase_details: {
+      transaction_kind: 'fo_doc_payment',
+      payment_plan_id: FO_DOC_PLAN_ID,
+      offer_id: `${ASSET_HARMONY}-offer-2`,
+      size_sqm: 450,
+      tenor_months: 6,
+      no_of_units: '1',
+      total_asset_price: 750_000,
+      monthly_installment: 125_000,
+      is_full_payment: false,
+      transfer_bank_name: 'Zenith Bank',
+      transfer_reference_no: 'ZEN-2026-0826-70118',
+      transfer_receipt_url: 'https://res.cloudinary.com/demo/image/upload/receipt-70118.jpg',
+    },
+    createdAt: daysAgo(2),
+    updatedAt: daysAgo(2),
+  },
 ];
 
 type MockFoPlan = {
@@ -420,6 +451,11 @@ const ASSET_TYPE_KINDS: Record<string, string[]> = {
     'fo_outright_doc',
     'fo_doc_payment',
   ],
+  // Empty ON PURPOSE, not an oversight: these fixtures carry no commercial
+  // purchases, so filtering to Commercial returns nothing here. The real BE
+  // filters on the transaction's own `asset_type` field rather than on
+  // transaction kind, so it has no such gap.
+  commercial: [],
 };
 
 function resolveKindFilter(salesType: string, assetType: string): string[] | null {
@@ -429,6 +465,55 @@ function resolveKindFilter(salesType: string, assetType: string): string[] | nul
   if (!bySales) return byAsset;
   if (!byAsset) return bySales;
   return bySales.filter((kind) => byAsset.includes(kind));
+}
+
+/** The two `purchase_kind: 'dev_levy'` kinds, i.e. GET /admin/transactions/documents. */
+const DOCUMENT_KINDS = SALES_TYPE_KINDS.dp;
+
+function byKind(rows: MockPurchase[], kinds: string[]): MockPurchase[] {
+  return rows.filter((row) => kinds.includes(row.purchase_details?.transaction_kind ?? ''));
+}
+
+/**
+ * Everything both transaction lists filter on. The kind narrowing differs
+ * between them and stays at the call site.
+ */
+function applyCommonFilters(
+  input: MockPurchase[],
+  query: Record<string, unknown>
+): MockPurchase[] {
+  let rows = input;
+  const status = String(query.status ?? '');
+  const user = String(query.user ?? '');
+  const paymentMethod = String(query.payment_method ?? '');
+  const startDate = String(query.start_date ?? '');
+  const endDate = String(query.end_date ?? '');
+  const search = typeof query.search === 'string' ? query.search : '';
+
+  if (status) rows = rows.filter((row) => row.status === status);
+  if (user) rows = rows.filter((row) => row.user === user);
+  if (paymentMethod) rows = rows.filter((row) => row.payment_method === paymentMethod);
+  if (startDate) rows = rows.filter((row) => row.createdAt >= dayStart(startDate));
+  if (endDate) rows = rows.filter((row) => row.createdAt <= dayEnd(endDate));
+
+  if (search) {
+    // The asset's name or location, OR the payer — the BE ORs both sides.
+    const needle = search.trim().toLowerCase();
+    rows = rows.filter((row) => {
+      const asset = ASSETS[row.source_asset];
+      const assetHit =
+        !!asset &&
+        (asset.name.toLowerCase().includes(needle) ||
+          asset.asset_location.toLowerCase().includes(needle));
+
+      const buyer = findPerson(row.user);
+      const buyerHit = !!buyer && matchesPersonSearch(buyer, needle);
+
+      return assetHit || buyerHit;
+    });
+  }
+
+  return rows;
 }
 
 /** Both bounds are inclusive; a date-only value covers the whole day. */
@@ -515,13 +600,109 @@ function findOutrightSibling(row: MockPurchase): MockPurchase | null {
   );
 }
 
-function requireFoPlan(id: string): MockFoPlan | NonNullable<ReturnType<typeof findCommercialPlan>> {
-  const plan = foPlans[id] ?? findCommercialPlan(id);
+function requireFoPlan(id: string): MockFoPlan {
+  const plan = foPlans[id];
   if (!plan) throw new MockHttpError(404, 'Payment plan not found', 'PAYMENT_PLAN_NOT_FOUND');
   return plan;
 }
 
+/**
+ * The BE folds `auto-approved` into approved and `failed` into declined, and
+ * treats a null `admin_status` as pending — so the three buckets are total and
+ * always sum to `total_count`. Mirrored here or the mocked cards would not add
+ * up the way the real ones do.
+ */
+const APPROVAL_BUCKET: Record<string, 'approved' | 'pending' | 'declined'> = {
+  approved: 'approved',
+  'auto-approved': 'approved',
+  pending: 'pending',
+  'approved-retry-needed': 'pending',
+  declined: 'declined',
+  failed: 'declined',
+};
+
+/** GET /admin/transactions/stats — filter-aware, over the same rows the list serves. */
+function assetTransactionStats(query: Record<string, unknown>) {
+  const kinds = resolveKindFilter(String(query.sales_type ?? ''), String(query.asset_type ?? ''));
+  const rows = applyCommonFilters(kinds ? byKind(purchases, kinds) : purchases, query);
+
+  const approval = { approved: 0, pending: 0, declined: 0 };
+  const approvalAmount = { approved: 0, pending: 0, declined: 0 };
+  for (const row of rows) {
+    const bucket = APPROVAL_BUCKET[row.admin_status ?? ''] ?? 'pending';
+    approval[bucket] += 1;
+    approvalAmount[bucket] += row.amount ?? 0;
+  }
+
+  const inKinds = (list: string[]) =>
+    rows.filter((row) => list.includes(row.purchase_details?.transaction_kind ?? ''));
+  const newSales = inKinds(SALES_TYPE_KINDS.ap);
+  const recurring = inKinds(SALES_TYPE_KINDS.rap);
+  const sum = (list: MockPurchase[]) => list.reduce((total, row) => total + (row.amount ?? 0), 0);
+
+  return {
+    approved_count: approval.approved,
+    approved_amount: approvalAmount.approved,
+    pending_count: approval.pending,
+    pending_amount: approvalAmount.pending,
+    declined_count: approval.declined,
+    declined_amount: approvalAmount.declined,
+    total_count: rows.length,
+    total_amount: sum(rows),
+    new_sales_count: newSales.length,
+    new_sales_amount: sum(newSales),
+    recurring_payments_count: recurring.length,
+    recurring_payments_amount: sum(recurring),
+    // Enumerated from the offer-type list, never from what the rows happened to
+    // contain: a type with no transactions still gets a card at zero. The BE
+    // also serves `commercial`, which these fixtures have no rows for.
+    by_offer_type: ['flex', 'full-ownership', 'commercial'].map((offerType) => {
+      const slice = inKinds(ASSET_TYPE_KINDS[offerType] ?? []);
+      // The offer type crossed with the sales cycle — the same intersection the
+      // BE groups on, so the mocked cards read like the real ones.
+      const newSlice = slice.filter((row) =>
+        SALES_TYPE_KINDS.ap.includes(row.purchase_details?.transaction_kind ?? ''),
+      );
+      const recurringSlice = slice.filter((row) =>
+        SALES_TYPE_KINDS.rap.includes(row.purchase_details?.transaction_kind ?? ''),
+      );
+      return {
+        offer_type: offerType,
+        count: slice.length,
+        amount: sum(slice),
+        new_count: newSlice.length,
+        new_amount: sum(newSlice),
+        recurring_count: recurringSlice.length,
+        recurring_amount: sum(recurringSlice),
+      };
+    }),
+  };
+}
+
+/** GET /admin/transactions/documents/stats — global, like the withdrawal cards. */
+function documentTransactionStats() {
+  const rows = byKind(purchases, DOCUMENT_KINDS);
+  const countBy = (status: string) => rows.filter((row) => row.admin_status === status).length;
+  const pending = rows.filter(
+    (row) => (APPROVAL_BUCKET[row.admin_status ?? ''] ?? 'pending') === 'pending',
+  );
+
+  return {
+    pending_review_count: pending.length,
+    pending_review_amount: pending.reduce((total, row) => total + (row.amount ?? 0), 0),
+    approved_count: countBy('approved') + countBy('auto-approved'),
+    rejected_count: countBy('declined'),
+    auto_approved_count: countBy('auto-approved'),
+    // Document payments have no manual rail, so every failure is a system one.
+    auto_failed_count: countBy('failed'),
+  };
+}
+
 export const assetTransactionRoutes: MockRoutes = {
+  'GET /admin/transactions/stats': ({ query }) => assetTransactionStats(query),
+
+  'GET /admin/transactions/documents/stats': () => documentTransactionStats(),
+
   /**
    * The all-transactions list. Only `type=purchase` rows live in this file —
    * withdrawals have their own fixtures; a request for another type returns
@@ -531,48 +712,25 @@ export const assetTransactionRoutes: MockRoutes = {
     const type = String(query.type ?? '');
     if (type && type !== 'purchase') return paged([], query, 20);
 
-    let rows: MockPurchase[] = purchases;
-    const status = String(query.status ?? '');
-    const user = String(query.user ?? '');
-    const paymentMethod = String(query.payment_method ?? '');
-    const salesType = String(query.sales_type ?? '');
-    const assetType = String(query.asset_type ?? '');
-    const startDate = String(query.start_date ?? '');
-    const endDate = String(query.end_date ?? '');
-    const search = typeof query.search === 'string' ? query.search : '';
-
-    if (status) rows = rows.filter((row) => row.status === status);
-    if (user) rows = rows.filter((row) => row.user === user);
-    if (paymentMethod) rows = rows.filter((row) => row.payment_method === paymentMethod);
-
     // Sales type and asset type narrow the same field; both given = intersection,
     // and an empty result is a legitimate combination (dp + flex).
-    const kinds = resolveKindFilter(salesType, assetType);
-    if (kinds) {
-      rows = rows.filter((row) =>
-        kinds.includes(row.purchase_details?.transaction_kind ?? '')
-      );
-    }
+    const kinds = resolveKindFilter(String(query.sales_type ?? ''), String(query.asset_type ?? ''));
+    const rows = applyCommonFilters(kinds ? byKind(purchases, kinds) : purchases, query);
 
-    if (startDate) rows = rows.filter((row) => row.createdAt >= dayStart(startDate));
-    if (endDate) rows = rows.filter((row) => row.createdAt <= dayEnd(endDate));
+    return paged(rows.map(populate), query, 20);
+  },
 
-    if (search) {
-      // The asset's name or location, OR the payer — the BE ORs both sides.
-      const needle = search.trim().toLowerCase();
-      rows = rows.filter((row) => {
-        const asset = ASSETS[row.source_asset];
-        const assetHit =
-          !!asset &&
-          (asset.name.toLowerCase().includes(needle) ||
-            asset.asset_location.toLowerCase().includes(needle));
-
-        const buyer = findPerson(row.user);
-        const buyerHit = !!buyer && matchesPersonSearch(buyer, needle);
-
-        return assetHit || buyerHit;
-      });
-    }
+  /**
+   * The document ledger. `AdminDocumentTransactionQueryDto` is the asset query
+   * minus `sales_type` — the endpoint has already pinned the kind — so a
+   * `sales_type` in the query string is ignored here rather than honoured.
+   */
+  'GET /admin/transactions/documents': ({ query }) => {
+    const byAsset = resolveKindFilter('', String(query.asset_type ?? ''));
+    const kinds = byAsset
+      ? DOCUMENT_KINDS.filter((kind) => byAsset.includes(kind))
+      : DOCUMENT_KINDS;
+    const rows = applyCommonFilters(byKind(purchases, kinds), query);
 
     return paged(rows.map(populate), query, 20);
   },

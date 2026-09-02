@@ -4,8 +4,8 @@ import {
   OfferTypeSchema,
   PaymentTypeSchema,
   TopographySchema,
-  usesFoModel,
   VisibilitySchema,
+  usesFoModel,
 } from './asset.schema';
 
 /* ============================================================
@@ -20,11 +20,12 @@ import {
  *   1. tenor 0 (outright)  → monthly must be 0, initial must equal land_price
  *   2. tenor ≥ 1           → |initial + monthly × (tenor−1) − land_price| ≤ max(1, tenor)
  *   3. tenors unique within a size
- *   4. flex sizes may NOT contain a tenor-0 plan — only the full-ownership
- *      model (full-ownership + commercial) sells outright
- *   5. full-ownership and commercial sizes MUST supply document_fee (0 is fine,
- *      absent is not)
- *   6. payment_type is required on full-ownership and commercial offers
+ *   4. flex sizes may NOT contain a tenor-0 plan — outright is FO-model only
+ *   5. FO-model sizes MUST supply document_fee (0 is fine, absent is not)
+ *   6. payment_type is required on FO-model offers
+ *
+ * "FO-model" = full-ownership or commercial — the backend's `usesFoModel()`
+ * treats both the same; only flex is exempt from rules 4–6.
  *
  * Money is whole naira. The backend's `@IsInt()` forbids decimals, and its
  * tolerance (rule 2) exists precisely to absorb the rounding that causes —
@@ -100,7 +101,7 @@ export const sizeFormSchema = z.object({
     .number({ message: 'Enter a unit count' })
     .int('Whole units only')
     .min(0, 'Cannot be negative'),
-  /** Rule 5 — required on the full-ownership model, enforced at the offer level below. */
+  /** Rule 5 — required for full-ownership, enforced at the offer level below. */
   document_fee: naira.optional(),
   plans: z.array(planFormSchema).min(1, 'Add at least one plan'),
 });
@@ -119,25 +120,25 @@ export const offerFormSchema = z
     payment_type: PaymentTypeSchema.optional(),
     sizes: z.array(sizeFormSchema).min(1, 'Add at least one size'),
   })
-  // Rule 6 — payment type is required on the full-ownership model.
+  // Rule 6 — payment type is required on FO-model offers.
   .refine(
     (offer) => !usesFoModel(offer.offer_type) || offer.payment_type !== undefined,
     { message: 'Choose a payment type', path: ['payment_type'] }
   )
-  // Rule 5 — document fee required on every full-ownership and commercial size.
+  // Rule 5 — document fee required on every FO-model size.
   .refine(
     (offer) =>
       !usesFoModel(offer.offer_type) ||
       offer.sizes.every((size) => typeof size.document_fee === 'number'),
-    { message: 'Every size on this offer needs a document fee', path: ['sizes'] }
+    { message: 'Every full-ownership or commercial size needs a document fee', path: ['sizes'] }
   )
-  // Rule 4 — outright belongs to the full-ownership model.
+  // Rule 4 — outright is full-ownership only.
   .refine(
     (offer) =>
       offer.offer_type !== 'flex' ||
       offer.sizes.every((size) => size.plans.every((plan) => plan.tenor_months >= 1)),
     {
-      message: 'Flex plans run for at least one month — only full-ownership and commercial sell outright',
+      message: 'Flex plans run for at least one month — outright is full-ownership only',
       path: ['sizes'],
     }
   )
@@ -229,7 +230,7 @@ export function createAssetFormToPayload(values: CreateAssetFormOutput) {
         offer_type: offer.offer_type,
         is_active: offer.is_active ?? true,
         allocation_qualification_pct: offer.allocation_qualification_pct,
-        // Only the full-ownership model carries this; sending it on flex would 400.
+        // Only FO-model offers carry this; sending it on flex would 400.
         payment_type: usesFoModel(offer.offer_type) ? offer.payment_type : undefined,
         sizes: offer.sizes.map((size) =>
           omitBlank({

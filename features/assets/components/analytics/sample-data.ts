@@ -98,19 +98,19 @@ export type SizePlanBreakdown = {
 /* -------------------- fixtures -------------------- */
 
 export const SAMPLE_PORTFOLIO: PortfolioStats = {
-  totalPortfolioValue: 4_820_000_000,
-  totalCapacitySqm: 186_400,
-  activeCustomers: 1_284,
-  overallEfficiency: 68.4,
-  totalValueSold: 3_297_500_000,
-  totalSqmSold: 127_500,
-  totalMoneyReceived: 2_141_300_000,
-  totalBalanceOwed: 1_156_200_000,
+  totalPortfolioValue: 5_970_000_000,
+  totalCapacitySqm: 228_400,
+  activeCustomers: 1_591,
+  overallEfficiency: 71.1,
+  totalValueSold: 4_261_500_000,
+  totalSqmSold: 158_900,
+  totalMoneyReceived: 2_953_300_000,
+  totalBalanceOwed: 1_308_200_000,
   defaulting: {
-    defaultingCustomers: 47,
-    defaultedAssetValue: 188_400_000,
-    amountPaidByDefaulters: 61_900_000,
-    amountStillOwing: 126_500_000,
+    defaultingCustomers: 52,
+    defaultedAssetValue: 207_000_000,
+    amountPaidByDefaulters: 71_000_000,
+    amountStillOwing: 136_000_000,
   },
 };
 
@@ -147,6 +147,23 @@ export const SAMPLE_CATEGORIES: CategoryStats[] = [
       defaultedAssetValue: 75_700_000,
       defaultersPaid: 23_500_000,
       defaultersOwing: 52_200_000,
+    },
+  },
+  {
+    title: 'Commercial',
+    count: 5,
+    sqm: 42_000,
+    revenue: 1_150_000_000,
+    efficiency: 82.5,
+    occupancy: 88.0,
+    valueSold: 964_000_000,
+    sqmSold: 31_400,
+    moneyReceived: 812_000_000,
+    totalBalance: 152_000_000,
+    defaulting: {
+      defaultedAssetValue: 18_600_000,
+      defaultersPaid: 9_100_000,
+      defaultersOwing: 9_500_000,
     },
   },
 ];

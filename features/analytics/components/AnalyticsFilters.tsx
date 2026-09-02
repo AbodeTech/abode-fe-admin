@@ -14,6 +14,8 @@ const ASSET_TYPE_OPTIONS = [
   { label: "All Types", value: "all" },
   { label: "Flex", value: "flex" },
   { label: "Full Ownership", value: "full-ownership" },
+  { label: "Commercial", value: "commercial" },
+  { label: "Developer Plot", value: "developer_plot" },
 ];
 
 export function AnalyticsFilters({ filters }: AnalyticsFiltersProps) {
@@ -32,7 +34,7 @@ export function AnalyticsFilters({ filters }: AnalyticsFiltersProps) {
     const set = new Set<string>();
 
     (data || []).forEach((entry) => {
-      if (entry?.location) set.add(entry.location);
+      if (entry?.asset_location) set.add(entry.asset_location);
     });
 
     return [

@@ -1,34 +1,26 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { execute } from "@/lib/graphql-client";
-import { graphql } from "@/lib/gql";
-import type { BulkAssignAssociateProsInput } from "@/lib/gql/graphql";
-import { managerKeys } from "./query-keys";
+'use client';
 
-const BULK_ASSIGN_ASSOCIATE_PROS_MUTATION = graphql(`
-  mutation BulkAssignAssociateProsToManager(
-    $input: BulkAssignAssociateProsInput!
-  ) {
-    bulkAssignAssociateProsToManager(input: $input) {
-      _id
-      manager {
-        _id
-      }
-      associate_pros {
-        _id
-      }
-      updatedAt
-    }
-  }
-`);
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
+import { apiPost } from '@/lib/api-client';
+
+import { BulkAssignResultSchema } from '../schemas/associate-manager.schema';
+import { managerKeys } from './query-keys';
+
+/**
+ * POST /admin/managers/:manager_id/pros — put pros on a roster.
+ *
+ * Transactional and idempotent: a pro already on the target roster is accepted
+ * as a no-op, and pros held by other managers are pulled across. The BE caps a
+ * single call at 200 ids (`BULK_ASSIGN_MAX`) — chunk above that.
+ */
 export const useBulkAssignPros = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (input: BulkAssignAssociateProsInput) =>
-      execute(BULK_ASSIGN_ASSOCIATE_PROS_MUTATION, { input }),
+    mutationFn: ({ managerId, proIds }: { managerId: string; proIds: string[] }) =>
+      apiPost(`/admin/managers/${managerId}/pros`, { pro_ids: proIds }, BulkAssignResultSchema),
     onSuccess: () => {
-      // Multiple pros moved across managers → invalidate the whole feature
       queryClient.invalidateQueries({ queryKey: managerKeys.all });
     },
   });

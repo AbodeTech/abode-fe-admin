@@ -1,69 +1,40 @@
-import { useQuery } from "@tanstack/react-query";
-import { execute } from "@/lib/graphql-client";
-import { graphql } from "@/lib/gql";
-import { managerKeys } from "./query-keys";
+'use client';
 
-const LIST_MANAGER_TARGETS_QUERY = graphql(`
-  query ListAssociateManagerTargets($managerId: ID!) {
-    listAssociateManagerTargets(managerId: $managerId) {
-      _id
-      manager
-      month
-      year
-      associate_pro_recruited_target
-      selling_associate_pro_target
-      performance_score_target
-      createdAt
-      updatedAt
-    }
-  }
-`);
+import { useQuery } from '@tanstack/react-query';
+import { z } from 'zod';
 
-export const useManagerTargets = (managerId: string | null | undefined) => {
-  return useQuery({
-    queryKey: managerKeys.targetsAll(managerId ?? ""),
+import { apiGet } from '@/lib/api-client';
+
+import { ManagerTargetSchema } from '../schemas/associate-manager.schema';
+import { managerKeys } from './query-keys';
+
+/** GET /admin/managers/:manager_id/targets — every month's target, for the history table. */
+export const useManagerTargets = (managerId: string | null | undefined) =>
+  useQuery({
+    queryKey: managerKeys.targetsAll(managerId ?? ''),
     queryFn: () =>
-      execute(LIST_MANAGER_TARGETS_QUERY, { managerId: managerId as string }),
-    select: (data) => data.listAssociateManagerTargets,
+      apiGet(`/admin/managers/${managerId}/targets`, z.array(ManagerTargetSchema)),
     enabled: !!managerId,
   });
-};
 
-const GET_MANAGER_TARGET_QUERY = graphql(`
-  query GetAssociateManagerTarget($managerId: ID!, $month: Int, $year: Int) {
-    getAssociateManagerTarget(
-      managerId: $managerId
-      month: $month
-      year: $year
-    ) {
-      _id
-      manager
-      month
-      year
-      associate_pro_recruited_target
-      selling_associate_pro_target
-      performance_score_target
-      createdAt
-      updatedAt
-    }
-  }
-`);
-
-/** Lookup a single target by (manager, month, year). Useful for the "active" target. */
+/**
+ * GET /admin/managers/:manager_id/targets/:year/:month — one month.
+ *
+ * `null` means no target was set for that month, which is NOT the same as a
+ * target of zero: the dashboard scores an unset target as 0 components rather
+ * than as a met goal.
+ */
 export const useManagerTarget = (
   managerId: string | null | undefined,
-  month?: number | null,
-  year?: number | null
-) => {
-  return useQuery({
-    queryKey: managerKeys.target(managerId ?? "", month, year),
+  year?: number | null,
+  month?: number | null
+) =>
+  useQuery({
+    queryKey: managerKeys.target(managerId ?? '', year, month),
     queryFn: () =>
-      execute(GET_MANAGER_TARGET_QUERY, {
-        managerId: managerId as string,
-        month: month ?? null,
-        year: year ?? null,
-      }),
-    select: (data) => data.getAssociateManagerTarget,
-    enabled: !!managerId,
+      apiGet(
+        `/admin/managers/${managerId}/targets/${year}/${month}`,
+        ManagerTargetSchema.nullable()
+      ),
+    enabled: !!managerId && !!year && !!month,
   });
-};

@@ -11,22 +11,21 @@ import {
   AllocationModal,
   AllocationModalMode,
   AllocationTable,
-  AllocationTableRowFragment,
+  type AllocationTableRow,
+  type AllocationStatus,
   DEFAULT_ALLOCATION_LIMIT,
   useAllocationAssets,
   useAllocationClients,
   useAllocationExport,
 } from "@/features/allocation";
-import { FragmentType, useFragment as getFragmentData } from "@/lib/gql";
 // @ts-expect-error - json2csv does not ship complete ESM typings in this setup.
 import { Parser } from "json2csv";
 import { saveAs } from "file-saver";
 import { toast } from "sonner";
 
-const parsePercentage = (value?: string | null) => {
+const toNumberOrNull = (value?: string | null) => {
   if (!value) return null;
-  const firstPart = value.split("-")[0];
-  const parsed = Number(firstPart);
+  const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
 };
 
@@ -35,7 +34,8 @@ function AllocationContent() {
   const router = useRouter();
 
   const page = Number(searchParams.get("page")) || 1;
-  const assetNameParam = searchParams.get("assetname");
+  const assetIdParam = searchParams.get("assetid");
+  const statusParam = searchParams.get("status") as AllocationStatus | null;
   const percentageParam = searchParams.get("percentage");
   const searchParam = searchParams.get("search") || "";
   const startDateParam = searchParams.get("startDate");
@@ -44,16 +44,17 @@ function AllocationContent() {
   const [searchTerm, setSearchTerm] = useState(searchParam);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<AllocationModalMode>("send");
-  const [modalClient, setModalClient] = useState<FragmentType<typeof AllocationTableRowFragment> | null>(null);
+  const [modalClient, setModalClient] = useState<AllocationTableRow | null>(null);
 
   const filters = {
     page,
     limit: DEFAULT_ALLOCATION_LIMIT,
-    assetName: assetNameParam,
-    percentage: parsePercentage(percentageParam),
+    assetId: assetIdParam,
+    allocationStatus: statusParam,
+    paymentPercentageMin: toNumberOrNull(percentageParam),
     search: searchParam || null,
-    startDate: startDateParam,
-    endDate: endDateParam,
+    dateFrom: startDateParam,
+    dateTo: endDateParam,
   };
 
   const { data, isLoading, error } = useAllocationClients(filters);
@@ -96,20 +97,24 @@ function AllocationContent() {
   }, [searchTerm, searchParam, updateParams]);
 
   const handleAssetChange = (value: string | null) => {
-    updateParams({ assetname: value, page: 1 });
+    updateParams({ assetid: value, page: 1 });
+  };
+
+  const handleAllocationStatusChange = (value: AllocationStatus | "all") => {
+    updateParams({ status: value === "all" ? null : value, page: 1 });
   };
 
   const handlePercentageChange = (value: string) => {
     updateParams({ percentage: value === "all" ? null : value, page: 1 });
   };
 
-  const handleSend = (client: FragmentType<typeof AllocationTableRowFragment>) => {
+  const handleSend = (client: AllocationTableRow) => {
     setModalMode("send");
     setModalClient(client);
     setModalOpen(true);
   };
 
-  const handleResend = (client: FragmentType<typeof AllocationTableRowFragment>) => {
+  const handleResend = (client: AllocationTableRow) => {
     setModalMode("resend");
     setModalClient(client);
     setModalOpen(true);
@@ -117,9 +122,16 @@ function AllocationContent() {
 
   const handleDownload = async () => {
     try {
+      // The export path is still GraphQL and filters by asset *name*
+      // (features/allocation/hooks/use-allocation-export.ts) — resolve the
+      // selected id back to a name rather than changing that hook's contract.
+      const selectedAssetName = assetIdParam
+        ? (assets ?? []).find((asset) => asset._id === assetIdParam)?.name ?? null
+        : null;
+
       const result = await exportAlloc({
-        assetName: assetNameParam,
-        percentage: parsePercentage(percentageParam),
+        assetName: selectedAssetName,
+        percentage: toNumberOrNull(percentageParam),
         search: searchParam || null,
         startDate: startDateParam,
         endDate: endDateParam,
@@ -129,8 +141,7 @@ function AllocationContent() {
         toast.info("No data to export");
         return;
       }
-      const parsed = exportRows.map((row) => {
-        const client = getFragmentData(AllocationTableRowFragment, row);
+      const parsed = exportRows.map((client) => {
         return {
           clientName: `${client.firstName ?? ""} ${client.lastName ?? ""}`.trim(),
           referrer: client.referral || "not added yet",
@@ -199,21 +210,23 @@ function AllocationContent() {
         assets={assets}
         search={searchTerm}
         percentage={percentageParam || "all"}
-        assetName={assetNameParam}
+        assetId={assetIdParam}
+        allocationStatus={statusParam ?? "all"}
         onSearchChange={setSearchTerm}
         onPercentageChange={handlePercentageChange}
-        onAssetNameChange={handleAssetChange}
+        onAssetIdChange={handleAssetChange}
+        onAllocationStatusChange={handleAllocationStatusChange}
       />
 
       <AllocationTable
-        rows={data?.data}
+        rows={data?.items}
         isLoading={isLoading}
         onSend={handleSend}
         onResend={handleResend}
       />
 
       <Pagination
-        count={data?.count ?? 0}
+        count={data?.meta.total ?? 0}
         currentIdx={page}
         limit={DEFAULT_ALLOCATION_LIMIT}
       />

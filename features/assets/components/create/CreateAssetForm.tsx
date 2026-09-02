@@ -417,8 +417,7 @@ export function CreateAssetForm() {
             <div>
               <h2 className="font-medium">Offers</h2>
               <p className="text-sm text-muted-foreground">
-                An asset needs at least one. It can sell flex, full ownership, commercial,
-                or any combination.
+                An asset needs at least one. It can sell flex, full ownership, commercial, or a mix.
               </p>
             </div>
 

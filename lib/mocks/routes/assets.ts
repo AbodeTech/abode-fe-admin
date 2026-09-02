@@ -292,6 +292,116 @@ function offerTree(row: MockAsset): MockOffer[] {
   return trees[row._id];
 }
 
+/* -------------------- land inventory (blocks + plots) --------------------
+ *
+ * abode-be-v2's BlockPlotController. Kept here rather than in a routes file of
+ * its own because the screen is a tab on the asset, and the fixtures are keyed
+ * by the same asset ids this file already owns.
+ *
+ * Seeded so every state the tab renders is reachable: a block with free plots,
+ * a block holding an allocated plot (so both "locked" and the refused block
+ * delete are exercisable), and an empty asset with no blocks at all.
+ */
+type MockBlock = {
+  _id: string;
+  asset: string;
+  label: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type MockPlot = {
+  _id: string;
+  block: string;
+  block_label: string;
+  plot_number: number;
+  size: number;
+  status: 'available' | 'allocated';
+  payment_plan?: string | null;
+  allocated_date?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+const BLOCK_A = '665fbb0000000000000000b1';
+const BLOCK_B = '665fbb0000000000000000b2';
+
+const nowIso = () => new Date().toISOString();
+
+const blocks: MockBlock[] = [
+  {
+    _id: BLOCK_A,
+    asset: '665faaaa00000000000000a1',
+    label: 'A',
+    description: 'West-side blocks adjacent to the access road',
+    createdAt: nowIso(),
+    updatedAt: nowIso(),
+  },
+  {
+    _id: BLOCK_B,
+    asset: '665faaaa00000000000000a1',
+    label: 'B',
+    description: undefined,
+    createdAt: nowIso(),
+    updatedAt: nowIso(),
+  },
+];
+
+const plots: MockPlot[] = [
+  ...Array.from({ length: 6 }, (_, index) => ({
+    _id: `665fcp000000000000000a${index + 1}`,
+    block: BLOCK_A,
+    block_label: 'A',
+    plot_number: index + 1,
+    size: 500,
+    // One allocated plot: freezes its row and blocks the delete on block A.
+    status: (index === 0 ? 'allocated' : 'available') as MockPlot['status'],
+    payment_plan: index === 0 ? '665fpl00000000000000fo01' : null,
+    allocated_date: index === 0 ? nowIso() : null,
+    createdAt: nowIso(),
+    updatedAt: nowIso(),
+  })),
+  ...Array.from({ length: 3 }, (_, index) => ({
+    _id: `665fcp000000000000000b${index + 1}`,
+    block: BLOCK_B,
+    block_label: 'B',
+    plot_number: index + 1,
+    size: 300,
+    status: 'available' as MockPlot['status'],
+    payment_plan: null,
+    allocated_date: null,
+    createdAt: nowIso(),
+    updatedAt: nowIso(),
+  })),
+];
+
+let blockSeq = 0;
+let plotSeq = 0;
+
+function requireBlock(blockId: string): MockBlock {
+  const block = blocks.find((candidate) => candidate._id === blockId);
+  if (!block) throw new MockHttpError(404, 'Payment plan not found', 'PLAN_NOT_FOUND');
+  return block;
+}
+
+function requirePlot(plotId: string): MockPlot {
+  const plot = plots.find((candidate) => candidate._id === plotId);
+  if (!plot) throw new MockHttpError(404, 'One or more requested plots do not exist', 'PLOT_NOT_FOUND');
+  return plot;
+}
+
+/** Mirrors the BE: allocated plots are frozen, and so are the blocks holding them. */
+function refuseIfAllocated(plot: MockPlot): void {
+  if (plot.status === 'allocated') {
+    throw new MockHttpError(
+      400,
+      'This plot is allocated and cannot be modified or deleted',
+      'PLOT_ALLOCATED'
+    );
+  }
+}
+
 export const assetRoutes: MockRoutes = {
   'GET /admin/assets': ({ query }) => {
     const search = String(query.search ?? '').trim().toLowerCase();
@@ -626,6 +736,141 @@ export const assetRoutes: MockRoutes = {
     size.plans = size.plans.filter((candidate) => candidate.tenor_months !== tenor);
     syncCounts(params.assetId, params.offerType);
     return { message: 'Plan deleted' };
+  },
+
+  /* -------------------- blocks -------------------- */
+
+  'GET /admin/assets/:assetId/blocks': ({ params }) =>
+    blocks.filter((block) => block.asset === params.assetId),
+
+  'POST /admin/assets/:assetId/blocks': ({ params, body: raw }) => {
+    const dto = body<{ label?: string; description?: string }>(raw);
+    const label = String(dto.label ?? '').trim().toUpperCase();
+    if (!label) throw new MockHttpError(400, 'label must be at least 1 character', 'VALIDATION_FAILED');
+
+    const clash = blocks.some(
+      (block) => block.asset === params.assetId && block.label.toUpperCase() === label
+    );
+    if (clash) {
+      throw new MockHttpError(409, `Block "${label}" already exists on this asset`, 'DUPLICATE_BLOCK');
+    }
+
+    blockSeq += 1;
+    const block: MockBlock = {
+      _id: `665fbb0000000000000n${String(blockSeq).padStart(2, '0')}`,
+      asset: params.assetId,
+      label,
+      description: dto.description,
+      createdAt: nowIso(),
+      updatedAt: nowIso(),
+    };
+    blocks.push(block);
+    return block;
+  },
+
+  'PATCH /admin/blocks/:blockId': ({ params, body: raw }) => {
+    const block = requireBlock(params.blockId);
+    const dto = body<{ label?: string; description?: string }>(raw);
+    if (dto.label !== undefined) block.label = String(dto.label).trim().toUpperCase();
+    if (dto.description !== undefined) block.description = dto.description;
+    block.updatedAt = nowIso();
+    return block;
+  },
+
+  'DELETE /admin/blocks/:blockId': ({ params }) => {
+    const block = requireBlock(params.blockId);
+    const held = plots.filter((plot) => plot.block === block._id);
+    if (held.some((plot) => plot.status === 'allocated')) {
+      throw new MockHttpError(
+        400,
+        'This block has allocated plots and cannot be modified or deleted',
+        'BLOCK_HAS_ALLOCATED_PLOTS'
+      );
+    }
+
+    for (const plot of held) plots.splice(plots.indexOf(plot), 1);
+    blocks.splice(blocks.indexOf(block), 1);
+    return block;
+  },
+
+  /* -------------------- plots -------------------- */
+
+  'GET /admin/blocks/:blockId/plots': ({ params }) =>
+    plots
+      .filter((plot) => plot.block === params.blockId)
+      .sort((a, b) => a.plot_number - b.plot_number),
+
+  'POST /admin/blocks/:blockId/plots/bulk': ({ params, body: raw }) => {
+    const block = requireBlock(params.blockId);
+    const dto = body<{ plots?: Array<{ plot_number?: number; size?: number }> }>(raw);
+    const incoming = dto.plots ?? [];
+    if (incoming.length === 0) {
+      throw new MockHttpError(400, 'plots should not be empty', 'VALIDATION_FAILED');
+    }
+
+    const taken = new Set(
+      plots.filter((plot) => plot.block === block._id).map((plot) => plot.plot_number)
+    );
+
+    const created = incoming.map((draft) => {
+      const plotNumber = Number(draft.plot_number);
+      const size = Number(draft.size);
+      if (!Number.isInteger(plotNumber) || plotNumber < 1 || !Number.isInteger(size) || size < 1) {
+        throw new MockHttpError(400, 'plot_number and size must be integers of at least 1', 'VALIDATION_FAILED');
+      }
+      if (taken.has(plotNumber)) {
+        throw new MockHttpError(409, `Plot ${plotNumber} already exists in this block`, 'DUPLICATE_PLOT');
+      }
+      taken.add(plotNumber);
+
+      plotSeq += 1;
+      const plot: MockPlot = {
+        _id: `665fcp00000000000000n${String(plotSeq).padStart(2, '0')}`,
+        block: block._id,
+        block_label: block.label,
+        plot_number: plotNumber,
+        size,
+        status: 'available',
+        payment_plan: null,
+        allocated_date: null,
+        createdAt: nowIso(),
+        updatedAt: nowIso(),
+      };
+      plots.push(plot);
+      return plot;
+    });
+
+    return created;
+  },
+
+  'PATCH /admin/plots/:plotId': ({ params, body: raw }) => {
+    const plot = requirePlot(params.plotId);
+    refuseIfAllocated(plot);
+
+    const dto = body<{ plot_number?: number; size?: number }>(raw);
+    if (dto.plot_number !== undefined) {
+      const next = Number(dto.plot_number);
+      const clash = plots.some(
+        (candidate) =>
+          candidate.block === plot.block &&
+          candidate._id !== plot._id &&
+          candidate.plot_number === next
+      );
+      if (clash) {
+        throw new MockHttpError(409, `Plot ${next} already exists in this block`, 'DUPLICATE_PLOT');
+      }
+      plot.plot_number = next;
+    }
+    if (dto.size !== undefined) plot.size = Number(dto.size);
+    plot.updatedAt = nowIso();
+    return plot;
+  },
+
+  'DELETE /admin/plots/:plotId': ({ params }) => {
+    const plot = requirePlot(params.plotId);
+    refuseIfAllocated(plot);
+    plots.splice(plots.indexOf(plot), 1);
+    return plot;
   },
 
   /** Soft delete — sets `deleted_at`, keeps the row. */

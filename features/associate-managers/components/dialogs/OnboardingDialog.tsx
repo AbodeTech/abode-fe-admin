@@ -46,13 +46,9 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import type {
-  LogOnboardingAttemptInput,
+  LogOnboardingAttemptPayload,
   OnboardingOutcome,
-  OnboardingSupport,
-  OnboardingTimeOfDay,
-  OnboardingYesNo,
-  OnboardingYesNoUncertain,
-} from "@/lib/gql/graphql";
+} from "../../schemas/associate-manager.schema";
 import {
   onboardingSchema,
   SUPPORT_OPTIONS,
@@ -123,7 +119,7 @@ const readDocsLabel = (v?: string | null) =>
 const yesNoLabel = (v?: string | null) =>
   v === "yes" ? "Yes" : v === "no" ? "No" : "—";
 
-const managerName = (m: OnboardingAttemptData["manager"]) => {
+const managerName = (m: OnboardingAttemptData["admin_id"]) => {
   if (!m) return "—";
   const full = `${m.firstName ?? ""} ${m.lastName ?? ""}`.trim();
   return full || m.userName || m.email || "—";
@@ -157,31 +153,32 @@ export function OnboardingDialog({ open, onOpenChange, pro }: Props) {
   const nextAttemptNumber = attempts.length + 1;
 
   const onSubmit = async (values: OnboardingFormValues) => {
-    const input: LogOnboardingAttemptInput = {
-      proId: pro.id,
+    // `pro_id` is a path segment now; the BE runs `forbidNonWhitelisted`, so
+    // anything outside the DTO — an id in the body included — is a hard 400.
+    const payload: LogOnboardingAttemptPayload = {
       outcome: values.outcome as OnboardingOutcome,
     };
 
     if (values.outcome === "picked") {
-      input.motivation = values.motivation?.trim() || undefined;
-      input.experience = (values.experience as OnboardingYesNo | undefined) ?? undefined;
-      input.experienceLength = values.experienceLength?.trim() || undefined;
-      input.prospects = values.prospects?.trim() || undefined;
-      input.incomeGoal = values.incomeGoal?.trim() || undefined;
-      input.support = (values.support as OnboardingSupport | undefined) ?? undefined;
-      input.supportOther = values.supportOther?.trim() || undefined;
-      input.readDocs =
-        (values.readDocs as OnboardingYesNoUncertain | undefined) ?? undefined;
-      input.gotGuide = (values.gotGuide as OnboardingYesNo | undefined) ?? undefined;
+      payload.motivation = values.motivation?.trim() || undefined;
+      payload.experience = values.experience as LogOnboardingAttemptPayload["experience"];
+      payload.experience_length = values.experienceLength?.trim() || undefined;
+      payload.prospects = values.prospects?.trim() || undefined;
+      payload.income_goal = values.incomeGoal?.trim() || undefined;
+      payload.support = values.support as LogOnboardingAttemptPayload["support"];
+      payload.support_other = values.supportOther?.trim() || undefined;
+      payload.read_docs = values.readDocs as LogOnboardingAttemptPayload["read_docs"];
+      payload.got_guide = values.gotGuide as LogOnboardingAttemptPayload["got_guide"];
     } else if (values.outcome === "rescheduled") {
-      input.rescheduleDate = values.rescheduleDate;
-      input.rescheduleTimeOfDay =
-        (values.rescheduleTimeOfDay as OnboardingTimeOfDay | undefined) ?? undefined;
-      input.rescheduleNote = values.rescheduleNote?.trim() || undefined;
+      // The BE requires a date for a reschedule (RESCHEDULE_DATE_REQUIRED).
+      payload.reschedule_date = values.rescheduleDate?.toISOString();
+      payload.reschedule_time_of_day =
+        values.rescheduleTimeOfDay as LogOnboardingAttemptPayload["reschedule_time_of_day"];
+      payload.reschedule_note = values.rescheduleNote?.trim() || undefined;
     }
 
     try {
-      await logAttempt.mutateAsync(input);
+      await logAttempt.mutateAsync({ proId: pro.id, values: payload });
       if (values.outcome === "picked") toast.success(`${pro.name} onboarded`);
       else if (values.outcome === "not_available")
         toast.success(`Attempt ${nextAttemptNumber} logged for ${pro.name}`);
@@ -701,11 +698,11 @@ function AttemptCard({ attempt }: { attempt: OnboardingAttemptData }) {
   const when = attempt.createdAt
     ? formatDistanceToNow(new Date(attempt.createdAt), { addSuffix: true })
     : "—";
-  const mgr = managerName(attempt.manager);
+  const mgr = managerName(attempt.admin_id);
 
   if (attempt.outcome === "rescheduled") {
-    const date = attempt.rescheduleDate
-      ? format(new Date(attempt.rescheduleDate), "EEE d MMM yyyy")
+    const date = attempt.reschedule_date
+      ? format(new Date(attempt.reschedule_date), "EEE d MMM yyyy")
       : "—";
     return (
       <div className="rounded-lg border border-blue-100 bg-blue-50/40 p-3">
@@ -714,21 +711,21 @@ function AttemptCard({ attempt }: { attempt: OnboardingAttemptData }) {
             <CalendarClock className="h-4 w-4 text-blue-600" />
             <span className="text-sm font-medium text-gray-900">
               Rescheduled to {date}
-              {attempt.rescheduleTimeOfDay
-                ? ` (${timeOfDayLabel(attempt.rescheduleTimeOfDay)})`
+              {attempt.reschedule_time_of_day
+                ? ` (${timeOfDayLabel(attempt.reschedule_time_of_day)})`
                 : ""}
             </span>
           </div>
-          {attempt.isOverdue && (
+          {attempt.is_overdue && (
             <span className="inline-flex items-center gap-1 text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded-full px-2 py-0.5">
               <AlertCircle className="h-3 w-3" />
               Overdue
             </span>
           )}
         </div>
-        {attempt.rescheduleNote && (
+        {attempt.reschedule_note && (
           <p className="text-sm text-gray-700 mt-1.5 whitespace-pre-wrap">
-            “{attempt.rescheduleNote}”
+            “{attempt.reschedule_note}”
           </p>
         )}
         <p className="text-xs text-gray-500 mt-1.5">
@@ -744,7 +741,7 @@ function AttemptCard({ attempt }: { attempt: OnboardingAttemptData }) {
         <div className="flex items-center gap-2">
           <PhoneOff className="h-4 w-4 text-amber-600" />
           <span className="text-sm font-medium text-gray-900">
-            Attempt {attempt.attemptNumber ?? "—"} · couldn&apos;t reach
+            Attempt {attempt.attempt_number ?? "—"} · couldn&apos;t reach
           </span>
         </div>
         <p className="text-xs text-gray-500 mt-1.5">
@@ -806,7 +803,7 @@ function OnboardedView({
             </span>
           </div>
           <p className="text-xs text-gray-600 mt-1">
-            by {managerName(picked.manager)}
+            by {managerName(picked.admin_id)}
           </p>
         </div>
 
@@ -819,22 +816,22 @@ function OnboardedView({
             label="Prior experience"
             value={
               picked.experience === "yes"
-                ? `Yes${picked.experienceLength ? ` · ${picked.experienceLength}` : ""}`
+                ? `Yes${picked.experience_length ? ` · ${picked.experience_length}` : ""}`
                 : yesNoLabel(picked.experience)
             }
           />
           <AnswerRow label="Prospects" value={picked.prospects || "—"} />
-          <AnswerRow label="Income goal (6m)" value={picked.incomeGoal || "—"} />
+          <AnswerRow label="Income goal (6m)" value={picked.income_goal || "—"} />
           <AnswerRow
             label="Support needed"
             value={
               picked.support === "others"
-                ? `Others${picked.supportOther ? ` · ${picked.supportOther}` : ""}`
+                ? `Others${picked.support_other ? ` · ${picked.support_other}` : ""}`
                 : supportLabel(picked.support)
             }
           />
-          <AnswerRow label="Read onboarding docs" value={readDocsLabel(picked.readDocs)} />
-          <AnswerRow label="Got 30-day sales guide" value={yesNoLabel(picked.gotGuide)} />
+          <AnswerRow label="Read onboarding docs" value={readDocsLabel(picked.read_docs)} />
+          <AnswerRow label="Got 30-day sales guide" value={yesNoLabel(picked.got_guide)} />
         </div>
 
         {otherAttempts.length > 0 && (

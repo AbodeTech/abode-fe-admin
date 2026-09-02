@@ -2,10 +2,11 @@ import { useQuery } from "@tanstack/react-query";
 import { execute } from "@/lib/graphql-client";
 import { graphql } from "@/lib/gql";
 import type { SalesRecordFilters } from "@/lib/gql/graphql";
-// Cross-feature: TeamSalesSection reuses the canonical sales row UI + fragment
-// rather than duplicating 200+ lines. Sales table imports stay scoped to this
-// hook + the section component.
-import { SalesRowFragment } from "@/features/sales/components/SalesTable";
+// Feature-local fragment (see TeamSalesTable.tsx) — no longer borrowed from
+// features/sales, which moved to a REST row shape this still-GraphQL query
+// doesn't return. Keeps the original `SalesRowFragment` name — see the note
+// in TeamSalesTable.tsx on why it can't be renamed.
+import { SalesRowFragment } from "../components/TeamSalesTable";
 import { managerKeys } from "./query-keys";
 
 // Keep the fragment referenced so codegen picks it up under our document.

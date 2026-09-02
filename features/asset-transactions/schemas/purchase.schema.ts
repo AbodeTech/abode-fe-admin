@@ -80,12 +80,19 @@ export const SALES_TYPE_LABELS: Record<SalesType, string> = {
   dp: 'Document fee',
 };
 
-export const ASSET_TYPES = ['flex', 'full-ownership'] as const;
+/**
+ * Mirrors the BE's `ASSET_TYPES`. `commercial` is a first-class purchase asset
+ * type on the transaction schema — and on `features/assets` (`OFFER_TYPES`),
+ * `features/sales` and the dashboard KPIs. It was missing here alone, so these
+ * lists could SHOW commercial rows but never filter to them.
+ */
+export const ASSET_TYPES = ['flex', 'full-ownership', 'commercial'] as const;
 export type AssetType = (typeof ASSET_TYPES)[number];
 
 export const ASSET_TYPE_LABELS: Record<AssetType, string> = {
   flex: 'Flex',
   'full-ownership': 'Full ownership',
+  commercial: 'Commercial',
 };
 
 export const PURCHASE_STATUSES = [
@@ -272,15 +279,23 @@ function inferTransactionKind(record: Record<string, unknown>): string {
   const purchaseKind = String(record.purchase_kind ?? '').toLowerCase();
   const snap = asRecord(record.purchase_snapshot);
   const isFlex = assetType === 'flex';
-  const isFo = assetType === 'full-ownership' || assetType.includes('full');
+  // Commercial belongs here: the BE routes `commercial` through the same
+  // full-ownership settle/approve service, so its rows carry the FO kinds.
+  const isFo =
+    assetType === 'full-ownership' || assetType === 'commercial' || assetType.includes('full');
 
   if (isFlex) {
     return purchaseKind === 'recurring' ? 'recurring_flex_payment' : 'initial_flex_purchase';
   }
   if (isFo) {
     if (purchaseKind === 'recurring') return 'fo_recurring_land';
-    if (purchaseKind === 'doc' || purchaseKind === 'document') {
-      return snap?.is_full_payment === true ? 'fo_outright_doc' : 'fo_doc_payment';
+    // `dev_levy` is what the BE actually stores for a document fee; the other
+    // two spellings are older rows. `is_outright_doc` is the flag the approve
+    // guard itself reads, so it decides which of the two doc kinds this is.
+    if (purchaseKind === 'dev_levy' || purchaseKind === 'doc' || purchaseKind === 'document') {
+      return snap?.is_outright_doc === true || snap?.is_full_payment === true
+        ? 'fo_outright_doc'
+        : 'fo_doc_payment';
     }
     if (purchaseKind === 'initial') {
       if (snap?.is_full_payment === true || snap?.tenor_months === 0) {
@@ -506,18 +521,23 @@ export function shortenPurchaseDescription(value: string): string {
 }
 
 /**
- * Production's Property Name column: `{asset_type} - {description}({plot}sqm)`.
- * Falls back to source asset name when description is absent.
+ * Production's Property Name column: `{asset_type} - {property}({plot}sqm)`.
+ *
+ * The property is the **populated `source_asset`**, and description is only a
+ * fallback. v1 got away with reading description because its BE wrote the
+ * estate name into it ("DP: Empire Park"); v2 writes one of a handful of fixed
+ * literals ("DP: FO document payment (transfer)"), so preferring it printed the
+ * same non-answer on every row — the exact mistake ⛔ ticket 24c names.
  */
 export function propertyNameDisplay(row: Purchase): string {
   const assetType = purchaseAssetTypeLabel(row);
   const plot = plotSizeSqm(row);
   const plotSuffix = plot != null ? `(${plot}sqm)` : '';
-  const description =
-    row.description?.trim() ||
+  const property =
     assetName(row.source_asset) ||
+    row.description?.trim() ||
     kindLabel(purchaseKind(row));
-  const core = shortenPurchaseDescription(`${description}${plotSuffix}`);
+  const core = shortenPurchaseDescription(`${property}${plotSuffix}`);
   return assetType ? `${assetType} - ${core}` : core;
 }
 
@@ -548,3 +568,121 @@ export function payerDisplayName(row: Purchase): string {
   const parts = [user.lastName, user.firstName].filter(Boolean);
   return parts.length ? parts.join(' ') : (buyerName(user) ?? '—');
 }
+
+/* ============================================================
+ * Stat cards — GET /admin/transactions/stats
+ *              GET /admin/transactions/documents/stats
+ * ============================================================ */
+
+/**
+ * One offer type's slice of the asset transaction totals.
+ *
+ * The BE enumerates these from its own shared offer-type list, never from what
+ * the aggregation returned — so a type with no transactions still arrives at
+ * zero rather than going missing. `offer_type` is the public hyphenated form
+ * (`full-ownership`), the same vocabulary the table's `asset_type` filter uses.
+ *
+ * NOTE: the BE's list includes `commercial`, which this feature's
+ * `ASSET_TYPES` does not — so a breakdown row can arrive whose value the table
+ * cannot filter to. Kept as a plain string for that reason; label lookups fall
+ * back to the raw value.
+ */
+export const OfferTypeBreakdownSchema = z.object({
+  offer_type: z.string(),
+  count: z.number(),
+  amount: z.number(),
+  /**
+   * The offer type crossed with the sales cycle — the figure the marginals
+   * can't give you ("flex RECURRING was ₦22m", not "flex was ₦41m" and
+   * "recurring was ₦22m"). `new_*` folds in both `initial` and `outright`.
+   */
+  new_count: z.number(),
+  new_amount: z.number(),
+  recurring_count: z.number(),
+  recurring_amount: z.number(),
+});
+
+export type OfferTypeBreakdown = z.infer<typeof OfferTypeBreakdownSchema>;
+
+/**
+ * Asset transaction stat cards. FILTER-AWARE: the endpoint accepts exactly the
+ * filters `GET /admin/transactions` accepts (minus pagination) and applies them
+ * identically, so these numbers always describe the rows underneath them.
+ *
+ * Two mappings worth knowing, because they are not what the labels imply:
+ *  - `approved_*` folds in `auto-approved`, which is the DOMINANT status for
+ *    asset purchases — excluding it would show a near-zero approved card;
+ *  - `declined_*` folds in `failed`, hence the "Declined / failed" label.
+ * The three approval buckets are total, so they sum to `total_count`.
+ */
+export const AssetTransactionStatsSchema = z.object({
+  approved_count: z.number(),
+  approved_amount: z.number(),
+  pending_count: z.number(),
+  pending_amount: z.number(),
+  declined_count: z.number(),
+  declined_amount: z.number(),
+  total_count: z.number(),
+  total_amount: z.number(),
+  new_sales_count: z.number(),
+  new_sales_amount: z.number(),
+  recurring_payments_count: z.number(),
+  recurring_payments_amount: z.number(),
+  by_offer_type: z.array(OfferTypeBreakdownSchema),
+});
+
+export type AssetTransactionStats = z.infer<typeof AssetTransactionStatsSchema>;
+
+/**
+ * The document ledger's stat cards — the same six-field shape as the
+ * withdrawal queue, over dev-levy rows.
+ *
+ * GLOBAL, unlike the asset stats above: it accepts a date range and nothing
+ * else, so it does NOT follow the table's filters. Document payments have no
+ * manual rail, so they carry no `processing_type` and every failure here is a
+ * system failure.
+ */
+export const DocumentTransactionStatsSchema = z.object({
+  pending_review_count: z.number(),
+  pending_review_amount: z.number(),
+  approved_count: z.number(),
+  rejected_count: z.number(),
+  auto_approved_count: z.number(),
+  auto_failed_count: z.number(),
+});
+
+export type DocumentTransactionStats = z.infer<typeof DocumentTransactionStatsSchema>;
+
+/** The only filters the document stats endpoint accepts. */
+export type DocumentStatsFilters = {
+  start_date?: string;
+  end_date?: string;
+};
+
+/**
+ * Human label for a breakdown row's offer type.
+ *
+ * Falls back to the raw value rather than assuming the BE's offer-type list
+ * matches `ASSET_TYPES`: the stats endpoint enumerates from its own list, so a
+ * type added there before it lands here still renders a readable card.
+ */
+export function offerTypeLabel(offerType: string): string {
+  return ASSET_TYPE_LABELS[offerType as AssetType] ?? offerType;
+}
+
+/**
+ * GET /admin/wallets/stats — the users' wallet balance KPI.
+ *
+ * Duplicated from `features/withdrawals` rather than shared: both queue screens
+ * carry this card, features stay self-contained, and there is no
+ * `features/wallets` to own it. Fold them together if one appears.
+ *
+ * Its own endpoint rather than a field on the queue stats, because it is a live
+ * sum over wallets rather than a transaction rollup — so it does NOT move when
+ * the queue's date filter does.
+ */
+export const WalletStatsSchema = z.object({
+  users_wallet_balance: z.number(),
+});
+
+export type WalletStats = z.infer<typeof WalletStatsSchema>;

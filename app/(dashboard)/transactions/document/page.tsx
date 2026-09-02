@@ -1,121 +1,137 @@
 "use client";
 
-import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense } from "react";
-import { useDocumentTransactions, DocumentTransactionsTable, DocumentExport } from "@/features/transactions";
-import { TransactionDataPoints } from "@/components/shared/TransactionDataPoints";
+import { useSearchParams } from "next/navigation";
+
 import { Pagination } from "@/components/shared/Pagination";
-import { FilterSelect } from "@/components/shared/FilterSelect";
-import { DateFilter } from "@/components/shared/DateFilter";
-import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
-import { useState, useEffect } from "react";
-import { SuspensePageFallback } from "@/components/shared/page-content-loader";
+import { PageContentLoader } from "@/components/shared/page-content-loader";
+import { useAuthStore } from "@/store/auth-store";
+import {
+  ASSET_TYPES,
+  DEFAULT_DOCUMENT_PURCHASE_LIMIT,
+  DocumentPurchaseExport,
+  DocumentStatCards,
+  PURCHASE_STATUSES,
+  PurchaseFilters,
+  PurchasesTable,
+  useApprovePurchase,
+  useDeclinePurchase,
+  useDocumentPurchases,
+  type AssetType,
+  type PurchaseStatus,
+} from "@/features/asset-transactions";
+
+/* ============================================================
+ * Document / development-levy transactions — GET /admin/transactions/documents.
+ *
+ * Its own BE endpoint rather than a filter on the asset list: v2 keeps document
+ * fees in a separate ledger (`purchase_kind: 'dev_levy'`), which is why this
+ * page exists at all. The rows are ordinary purchase Transactions, so they use
+ * the same table and the same review pair as asset transactions.
+ *
+ * `fo_outright_doc` rows — the document half of an outright purchase — show no
+ * Review action: the BE answers OUTRIGHT_SIBLING_REQUIRED there, because
+ * approving the parent land row settles both.
+ *
+ * The old summary cards are gone with the GraphQL query behind them; v2 has no
+ * transaction stats endpoint (the same gap the asset screen carries).
+ * ============================================================ */
+
+function parseEnum<T extends string>(value: string | null, allowed: readonly T[]): T | undefined {
+  return value && (allowed as readonly string[]).includes(value) ? (value as T) : undefined;
+}
 
 function DocumentTransactionsContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const page = Number(searchParams.get("page")) || 1;
-  const limit = 10;
 
-  const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "");
-  const status = searchParams.get("transactionstatus") || null;
-  const startDate = searchParams.get("start_date") || null;
-  const endDate = searchParams.get("end_date") || null;
+  // The gate this screen has always had. It is the only FE permission check in
+  // the transactions area — the BE's own RBAC is what actually enforces it.
+  const { user } = useAuthStore();
+  const canReview =
+    (user?.permissions ?? []).includes("asset_transactions") || user?.role === "admin";
 
-  // Debounce search update to URL
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const params = new URLSearchParams(searchParams.toString());
-      const currentSearch = searchParams.get("search") || "";
+  const filters = {
+    search: searchParams.get("search") ?? undefined,
+    status: parseEnum<PurchaseStatus>(searchParams.get("status"), PURCHASE_STATUSES),
+    asset_type: parseEnum<AssetType>(searchParams.get("asset_type"), ASSET_TYPES),
+    payment_method: searchParams.get("payment_method") ?? undefined,
+    start_date: searchParams.get("start_date") ?? undefined,
+    end_date: searchParams.get("end_date") ?? undefined,
+    user: searchParams.get("user") ?? undefined,
+  };
 
-      if (searchTerm !== currentSearch) {
-        if (searchTerm) {
-          params.set("search", searchTerm);
-        } else {
-          params.delete("search");
-        }
-        params.set("page", "1");
-        router.push(`?${params.toString()}`, { scroll: false });
-      }
-    }, 500);
+  const { data, isLoading, error } = useDocumentPurchases({ page, ...filters });
 
-    return () => clearTimeout(timer);
-  }, [searchTerm, router, searchParams]);
+  const { mutateAsync: approvePurchase } = useApprovePurchase();
+  const { mutateAsync: declinePurchase } = useDeclinePurchase();
 
-  const { data, isLoading, error } = useDocumentTransactions({
-    page,
-    limit,
-    status,
-    startDate,
-    endDate,
-    search: searchTerm || null,
-  });
-  const totalCount = data?.count || 0;
+  const rows = data?.items ?? [];
+  const total = data?.meta.total ?? 0;
+
+  const handleApprove = async (id: string) => {
+    await approvePurchase({ id });
+  };
+
+  const handleDecline = async (id: string, message: string) => {
+    await declinePurchase({ id, reason: message });
+  };
 
   return (
-    <div className="mx-auto mt-4 w-full min-w-0 max-w-[1600px] space-y-4 px-3 pb-16 sm:px-4 sm:pb-20">
-      {/* Search Bar */}
-      <div className="relative min-w-0 max-w-2xl bg-white">
-        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Search for user by firstname, lastname or email"
-          className="h-11 bg-white pl-8"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-      </div>
+    <>
+      {/* Global figures — the endpoint takes a date range only, so these do
+          NOT follow the filters below. */}
+      <DocumentStatCards />
 
-      {/* Filters */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
-        <FilterSelect
-          data={[
-            { label: "All Transactions Status", value: "all" },
-            { label: "Approved", value: "completed" },
-            { label: "Rejected", value: "failed" },
-            { label: "Pending", value: "pending" },
-          ]}
-          queryKey="transactionstatus"
-          placeholder="Status"
-        />
-        <DateFilter />
-      </div>
+      <PurchaseFilters
+        showSalesType={false}
+        searchPlaceholder="Search for a payer or an asset by name, location..."
+      />
 
-      {/* Title */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
         <h3 className="font-sans text-xl font-semibold uppercase text-[#333333]">
           Document / Development Transactions
         </h3>
-        <DocumentExport />
+        <DocumentPurchaseExport filters={filters} />
       </div>
 
-      {error && (
-        <div className="p-3 rounded-md border border-red-200 bg-red-50 text-sm text-red-600">
-          {(error as Error).message ?? "Unable to load document transactions"}
+      {error ? (
+        <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-600">
+          {error.message ?? "Unable to load document transactions"}
+        </div>
+      ) : (
+        <div className="min-w-0 overflow-hidden rounded-md border border-[#E5EAEF] bg-white pb-10">
+          <PurchasesTable
+            rows={rows}
+            isLoading={isLoading}
+            onApprove={handleApprove}
+            onDecline={handleDecline}
+            canReview={canReview}
+            emptyTitle="No document transactions found"
+            emptyDescription="There are no document transactions to display at this time."
+          />
+
+          {!isLoading && total > 0 ? (
+            <div className="mt-6 px-4">
+              <Pagination
+                count={total}
+                currentIdx={page}
+                limit={DEFAULT_DOCUMENT_PURCHASE_LIMIT}
+              />
+            </div>
+          ) : null}
         </div>
       )}
-
-      {/* Statistics Cards */}
-      <TransactionDataPoints type="document" />
-
-      {/* Transaction Table */}
-      <div className="min-w-0 overflow-hidden rounded-md border border-[#E5EAEF] bg-white pb-10">
-        <DocumentTransactionsTable data={data?.data} isLoading={isLoading} />
-
-        {!isLoading && totalCount > 0 && (
-          <div className="mt-6 px-4">
-            <Pagination count={totalCount} currentIdx={page} limit={limit} />
-          </div>
-        )}
-      </div>
-    </div>
+    </>
   );
 }
 
 export default function DocumentTransactionsPage() {
   return (
-    <Suspense fallback={<SuspensePageFallback />}>
-      <DocumentTransactionsContent />
-    </Suspense>
+    <div className="mx-auto mt-4 w-full min-w-0 max-w-[1600px] space-y-4 px-3 pb-16 sm:px-4 sm:pb-20">
+      <Suspense fallback={<PageContentLoader label="Loading document transactions…" />}>
+        <DocumentTransactionsContent />
+      </Suspense>
+    </div>
   );
 }

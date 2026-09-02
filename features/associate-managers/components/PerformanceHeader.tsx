@@ -14,23 +14,20 @@ import { DashboardPeriodFilter } from "./DashboardPeriodFilter";
 import { ManageManagersMenu } from "./ManageManagersMenu";
 import { ChangeManagerDialog } from "./dialogs/ChangeManagerDialog";
 import { useUnassignedProsCount } from "../hooks/use-unassigned-pros";
-import type { AssociateManagerListItem } from "@/lib/gql/graphql";
+import {
+  managerDisplayName,
+  type ManagerListItem,
+} from "../schemas/associate-manager.schema";
 
 interface Props {
   viewAs: "super-admin" | "manager";
-  managers: AssociateManagerListItem[];
+  managers: ManagerListItem[];
   activeManagerId: string | null;
   /** True when the combined "all managers" view is active. */
   isAllManagers?: boolean;
-  /** From the dashboard payload: totalAssigned. Drives the manager-view subtitle. */
+  /** From the dashboard payload: total_assigned. Drives the manager-view subtitle. */
   assignedProsCount: number;
 }
-
-const fullName = (m?: AssociateManagerListItem["manager"] | null) =>
-  `${m?.firstName ?? ""} ${m?.lastName ?? ""}`.trim() ||
-  m?.userName ||
-  m?.email ||
-  "Manager";
 
 export function PerformanceHeader({
   viewAs,
@@ -47,7 +44,7 @@ export function PerformanceHeader({
   const unassignedCount = unassignedCountQuery.data ?? 0;
 
   const activeManager =
-    managers.find((m) => m.manager?._id === activeManagerId) ?? null;
+    managers.find((m) => m.manager_id === activeManagerId) ?? null;
 
   const handleManagerChange = (managerId: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -87,15 +84,11 @@ export function PerformanceHeader({
                 ) : (
                   <>
                     <SelectItem value="all">All managers (combined)</SelectItem>
-                    {managers.map((m) => {
-                      const id = m.manager?._id;
-                      if (!id) return null;
-                      return (
-                        <SelectItem key={id} value={id}>
-                          {fullName(m.manager)}
-                        </SelectItem>
-                      );
-                    })}
+                    {managers.map((m) => (
+                      <SelectItem key={m.manager_id} value={m.manager_id}>
+                        {managerDisplayName(m)}
+                      </SelectItem>
+                    ))}
                   </>
                 )}
               </SelectContent>

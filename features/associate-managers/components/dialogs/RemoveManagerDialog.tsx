@@ -25,6 +25,7 @@ import { useAssociateManagers } from "../../hooks/use-associate-managers";
 import { useAssociateManager } from "../../hooks/use-associate-managers";
 import { useBulkAssignPros } from "../../hooks/use-bulk-assign-pros";
 import { useRemoveManager } from "../../hooks/use-remove-manager";
+import { managerDisplayName } from "../../schemas/associate-manager.schema";
 
 export interface ManagerDisplay {
   id: string;
@@ -42,16 +43,6 @@ interface Props {
 
 type ReassignMode = "transfer" | "unassign";
 
-const fullName = (m?: {
-  firstName?: string | null;
-  lastName?: string | null;
-  userName?: string | null;
-  email?: string | null;
-} | null) =>
-  `${m?.firstName ?? ""} ${m?.lastName ?? ""}`.trim() ||
-  m?.userName ||
-  m?.email ||
-  "Manager";
 
 export function RemoveManagerDialog({ open, onOpenChange, manager }: Props) {
   const [mode, setMode] = useState<ReassignMode>("transfer");
@@ -73,8 +64,8 @@ export function RemoveManagerDialog({ open, onOpenChange, manager }: Props) {
 
   if (!manager) return null;
 
-  const otherManagers = (managersList?.results ?? []).filter(
-    (m) => m.manager?._id !== manager.id
+  const otherManagers = (managersList?.items ?? []).filter(
+    (m) => m.manager_id !== manager.id
   );
 
   const isWorking = assigning || removing;
@@ -87,16 +78,16 @@ export function RemoveManagerDialog({ open, onOpenChange, manager }: Props) {
       // Transfer flow: move all Pros to the target manager first.
       if (mode === "transfer" && targetManager) {
         const proIds =
-          sourceDoc?.associate_pros?.map((p) => p._id).filter(Boolean) ?? [];
+          sourceDoc?.associate_pros?.map((p) => p.pro_id).filter(Boolean) ?? [];
         if (proIds.length > 0) {
           await bulkAssign({
             managerId: targetManager,
-            associateProIds: proIds as string[],
+            proIds: proIds as string[],
           });
         }
       }
       // Then remove the manager designation.
-      await remove({ managerId: manager.id });
+      await remove(manager.id);
       toast.success("Associate Manager removed");
       onOpenChange(false);
     } catch (err: unknown) {
@@ -170,12 +161,12 @@ export function RemoveManagerDialog({ open, onOpenChange, manager }: Props) {
                             </div>
                           ) : (
                             otherManagers.map((m) => {
-                              const id = m.manager?._id;
+                              const id = m.manager_id;
                               if (!id) return null;
                               return (
                                 <SelectItem key={id} value={id}>
-                                  {fullName(m.manager)} ·{" "}
-                                  {m.associate_pros_count ?? 0} Pros
+                                  {managerDisplayName(m)} ·{" "}
+                                  {m.roster_size} Pros
                                 </SelectItem>
                               );
                             })

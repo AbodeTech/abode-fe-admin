@@ -14,6 +14,9 @@ import { cn } from "@/lib/utils";
 const TABS = [
   { segment: "", label: "Overview" },
   { segment: "offers", label: "Offers" },
+  // The land itself — blocks and plots. Named for what it manages, because the
+  // sidebar's "Allocation" is the other half: handing these plots to a buyer.
+  { segment: "blocks", label: "Blocks & Plots" },
   { segment: "performance", label: "Performance", sample: true },
   { segment: "customers", label: "Customers", sample: true },
 ] as const;

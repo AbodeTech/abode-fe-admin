@@ -1,19 +1,84 @@
 import { useMutation } from '@tanstack/react-query';
+import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
+import { parse } from 'graphql';
 import { execute } from '@/lib/graphql-client';
-import { graphql } from '@/lib/gql';
 import { allocationKeys } from './query-keys';
-import { FiltersInput } from '@/lib/gql/graphql';
+import type { FiltersInput } from '@/lib/gql/graphql';
 
-const EXPORT_ALLOCATION_QUERY = graphql(`
+/* ============================================================
+ * Still GraphQL — this calls the old `eligibleClientsForLand` resolver, a
+ * different backend path from the REST `GET /admin/allocation/eligible-clients`
+ * the table now reads (use-allocation-clients.ts). Its row shape is the old
+ * GraphQL `EligibleClient` type (camelCase), NOT `AllocationClient` from
+ * schemas/allocation.schema.ts — the two are unrelated until export migrates
+ * too, so don't reuse that type here.
+ *
+ * Fields inlined rather than spreading the table's fragment: the fragment
+ * used to live in AllocationTable.tsx, which is REST now and no longer
+ * defines it.
+ *
+ * Hand-parsed like use-allocate-land.ts, not `graphql()`: codegen can't reach
+ * the GraphQL schema from this environment (the endpoint 404s on introspect —
+ * the backend it pointed at is being retired as part of this migration), so
+ * this file is excluded from codegen (see codegen.ts) and types are declared
+ * by hand instead of generated.
+ * ============================================================ */
+
+export interface AllocationExportRow {
+  allocation: string | null;
+  allocationStatus: string | null;
+  allocationDate: string | null;
+  amountPaid: number | null;
+  assetName: string | null;
+  assetSize: number | null;
+  assetType: string | null;
+  duration: number | null;
+  email: string;
+  end_date: string | null;
+  firstName: string;
+  lastName: string;
+  location: string | null;
+  paymentPlan: string | null;
+  paymentPercentage: string | number | null;
+  phoneNumber: string | null;
+  referral: string | null;
+  referralStatus: string | null;
+  totalPrice: number | null;
+  unit: number | null;
+}
+
+const EXPORT_ALLOCATION_QUERY = parse(`
   query ExportEligibleClientsForLand($limit: Int!, $filters: FiltersInput) {
     eligibleClientsForLand(page: 1, limit: $limit, filters: $filters) {
       data {
-        ...AllocationTableRowFragment
+        allocation
+        allocationStatus
+        allocationDate
+        amountPaid
+        assetName
+        assetSize
+        assetType
+        duration
+        email
+        end_date
+        firstName
+        lastName
+        location
+        paymentPlan
+        paymentPercentage
+        phoneNumber
+        referral
+        referralStatus
+        totalPrice
+        unit
       }
       count
     }
   }
-`);
+`) as unknown as TypedDocumentNode<
+  { eligibleClientsForLand: { data: AllocationExportRow[]; count: number } },
+  { limit: number; filters?: FiltersInput & { startDate?: string; endDate?: string } }
+>;
 
 interface AllocationExportParams {
   limit?: number;

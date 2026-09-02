@@ -18,18 +18,6 @@ const DECLINE_TRANSACTION_MUTATION = graphql(`
   }
 `);
 
-const APPROVE_ASSET_TRANSACTION_MUTATION = graphql(`
-  mutation ApproveAssetTransaction($approveAssetTransactionId: ID!) {
-    approveAssetTransaction(id: $approveAssetTransactionId)
-  }
-`);
-
-const DECLINE_DOCUMENT_MUTATION = graphql(`
-  mutation DeclineDocumentTransaction($declineTransactionInput: DeclineTransactionInput!) {
-    declineDocumentTransaction(declineTransactionInput: $declineTransactionInput)
-  }
-`);
-
 const PROCESS_COMMISSION_MUTATION = graphql(`
   mutation ProcessCommission($processCommissionInput: ProcessCommissionInput!) {
     processCommission(processCommissionInput: $processCommissionInput)
@@ -77,30 +65,9 @@ export const useDeclineTopupTransaction = () => {
 // --- Withdrawal Transaction Mutations ---
 
 // --- Document Transaction Mutations ---
-
-export const useApproveDocumentTransaction = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (id: string) =>
-      execute(APPROVE_ASSET_TRANSACTION_MUTATION, { approveAssetTransactionId: id }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: transactionKeys.document() });
-    },
-  });
-};
-
-export const useDeclineDocumentTransaction = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ transactionId, message }: DeclineTransactionInput) =>
-      execute(DECLINE_DOCUMENT_MUTATION, { declineTransactionInput: { transactionId, message } }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: transactionKeys.document() });
-    },
-  });
-};
+// Gone with the GraphQL document list: document fees are reviewed through the
+// unified REST pair, POST /admin/acquisitions/transactions/:txId/approve|decline
+// (`useApprovePurchase` / `useDeclinePurchase` in features/asset-transactions).
 
 // --- Commission Transaction Mutations ---
 

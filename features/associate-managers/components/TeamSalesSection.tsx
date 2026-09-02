@@ -5,10 +5,7 @@ import { ChevronLeft, ChevronRight, Download, Loader2, Search } from "lucide-rea
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-// Cross-feature import: reusing the canonical sales table avoids duplicating
-// 200+ lines of formatting, status logic, and responsive markup. The hook
-// behind this section also pulls SalesRowFragment from the same place.
-import { SalesTable } from "@/features/sales/components/SalesTable";
+import { TeamSalesTable } from "./TeamSalesTable";
 import { useDebounce } from "@/hooks/use-debounce";
 import {
   useAdminManagerTeamSales,
@@ -20,6 +17,12 @@ import { useExportManagerSalesRecord } from "../hooks/use-export-manager-sales";
 interface Props {
   viewAs: "super-admin" | "manager";
   activeManagerId: string | null;
+  /**
+   * The signed-in manager's own id, from `useIsCurrentUserManager`. The sales
+   * CSV route is `/:manager_id/exports/sales-record` — there is no self-scoped
+   * export — so the manager view has to name itself.
+   */
+  selfManagerId?: string | null;
   /** Date range from the URL filter, shared with the dashboard panels above. */
   startDate?: string | null;
   endDate?: string | null;
@@ -28,6 +31,7 @@ interface Props {
 export function TeamSalesSection({
   viewAs,
   activeManagerId,
+  selfManagerId = null,
   startDate,
   endDate,
 }: Props) {
@@ -63,17 +67,19 @@ export function TeamSalesSection({
   const { mutateAsync: exportSales, isPending: isExportingSales } =
     useExportManagerSalesRecord();
 
+  const exportManagerId = viewAs === "manager" ? selfManagerId : activeManagerId;
+
   const handleExportSales = async () => {
+    if (!exportManagerId) {
+      toast.error("No manager selected to export for.");
+      return;
+    }
     try {
-      await exportSales({
-        managerId: viewAs === "manager" ? null : activeManagerId,
-        filters,
-        filenamePrefix: "team-sales",
-      });
+      await exportSales({ managerId: exportManagerId, params: filters });
       toast.success("Team sales exported successfully.");
     } catch (err) {
       const message = (err as Error).message || "";
-      if (/Export limit exceeded|EXPORT_LIMIT_EXCEEDED/i.test(message)) {
+      if (/EXPORT_TOO_LARGE|too many rows/i.test(message)) {
         toast.error("Too many rows to export — narrow your date range or search.");
       } else {
         toast.error(message || "Failed to export team sales.");
@@ -129,7 +135,7 @@ export function TeamSalesSection({
           </div>
         ) : (
           <>
-            <SalesTable records={records} />
+            <TeamSalesTable records={records} />
             {count > DEFAULT_TEAM_SALES_LIMIT && (
               <TeamSalesPager
                 count={count}

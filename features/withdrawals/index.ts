@@ -36,3 +36,12 @@ export {
   withdrawalActions,
 } from './schemas/withdrawal.schema';
 export type { AdminStatus, PaymentProvider, Withdrawal } from './schemas/withdrawal.schema';
+
+// Stat cards — GET /admin/withdrawals/stats (global, date range only).
+export { useWithdrawalStats } from "./hooks/use-withdrawal-stats";
+export type { WithdrawalStats, WithdrawalStatsFilters } from "./schemas/withdrawal.schema";
+
+// Wallet balance KPI — GET /admin/wallets/stats. Its own endpoint, not part of
+// the queue payload, so it does not move with the date range.
+export { useWalletStats } from "./hooks/use-wallet-stats";
+export type { WalletStats } from "./schemas/withdrawal.schema";

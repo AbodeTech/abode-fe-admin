@@ -28,18 +28,28 @@ import { cn } from "@/lib/utils";
 import { ReassignProDialog } from "./dialogs/ReassignProDialog";
 import { BulkReassignDialog } from "./dialogs/BulkReassignDialog";
 import { OnboardingDialog } from "./dialogs/OnboardingDialog";
-import type { ManagerDashboardProRow } from "@/lib/gql/graphql";
-import { PRO_GROUP_OPTIONS, PRO_SORT_OPTIONS } from "../lib/roster-filter-options";
+import type { RosterRow } from "../schemas/manager-dashboard.schema";
+import {
+  PRO_GROUP_OPTIONS,
+  PRO_SORT_OPTIONS,
+  proGroupOptionsForScope,
+} from "../lib/roster-filter-options";
 
 const PAGE_SIZE = 25;
 
 import type { AssociatePro, ProStatus } from "../mock-data";
 
 interface Props {
-  pros: ManagerDashboardProRow[];
+  pros: RosterRow[];
   /** The Admin id of the manager whose roster is being viewed. */
   sourceManagerId: string | null;
-  /** Filtered roster count from the server (`associateProsGroupTotal`). */
+  /**
+   * Which dashboard scope the roster came from. Drives the group dropdown:
+   * the contributor groups credit an individual pro, which the BE answers
+   * with an empty roster on the combined scope.
+   */
+  scope?: "single" | "combined";
+  /** Filtered roster count from the server (`associate_pros_group_total`). */
   groupTotal?: number;
   isLoading?: boolean;
   onExport?: () => void;
@@ -120,33 +130,34 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-const fullName = (p: ManagerDashboardProRow) =>
-  `${p.firstName ?? ""} ${p.lastName ?? ""}`.trim() || p.email || "Pro";
+const fullName = (p: RosterRow) =>
+  `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim() || p.email || "Pro";
 
-/** Adapter: live ManagerDashboardProRow → legacy AssociatePro shape that the
+/** Adapter: live RosterRow → legacy AssociatePro shape that the
  * Reassign/Bulk dialogs still consume. Removed once those dialogs are refactored. */
-const toLegacyPro = (p: ManagerDashboardProRow): AssociatePro => ({
+const toLegacyPro = (p: RosterRow): AssociatePro => ({
   id: p.id,
   name: fullName(p),
   email: p.email ?? "",
-  phone: p.phoneNumber ?? null,
+  phone: p.phone_number ?? null,
   status: normalizeStatus(p.status),
-  recruitedAt: p.dateRecruited
-    ? new Date(p.dateRecruited).toISOString().slice(0, 10)
+  recruitedAt: p.date_recruited
+    ? new Date(p.date_recruited).toISOString().slice(0, 10)
     : "",
-  onboardedAt: p.onboardedAt
-    ? new Date(p.onboardedAt).toISOString().slice(0, 10)
+  onboardedAt: p.onboarded_at
+    ? new Date(p.onboarded_at).toISOString().slice(0, 10)
     : null,
-  totalSales: p.totalSales,
-  totalRevenue: p.revenueGenerated,
-  lastLogin: p.lastLogin
-    ? formatRelativeOrDate(p.lastLogin)
+  totalSales: p.total_sales,
+  totalRevenue: p.revenue_generated,
+  lastLogin: p.last_login
+    ? formatRelativeOrDate(p.last_login)
     : "Never",
 });
 
 export function AssociateProsTable({
   pros,
   sourceManagerId,
+  scope = "single",
   groupTotal,
   isLoading = false,
   onExport,
@@ -159,10 +170,10 @@ export function AssociateProsTable({
   const [search, setSearch] = useState(searchParam);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [singleReassign, setSingleReassign] =
-    useState<ManagerDashboardProRow | null>(null);
+    useState<RosterRow | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [onboardingFor, setOnboardingFor] =
-    useState<ManagerDashboardProRow | null>(null);
+    useState<RosterRow | null>(null);
 
   const filtered = useMemo(() => {
     let rows = pros;
@@ -174,7 +185,7 @@ export function AssociateProsTable({
         return (
           name.includes(term) ||
           (p.email?.toLowerCase().includes(term) ?? false) ||
-          (p.phoneNumber?.toLowerCase().includes(term) ?? false)
+          (p.phone_number?.toLowerCase().includes(term) ?? false)
         );
       });
     }
@@ -247,7 +258,7 @@ export function AssociateProsTable({
             />
           </div>
           <FilterSelect
-            data={[...PRO_GROUP_OPTIONS]}
+            data={[...proGroupOptionsForScope(scope)]}
             queryKey="pro_group"
             placeholder="Roster group"
           />
@@ -338,10 +349,10 @@ export function AssociateProsTable({
                             <span className="font-medium text-gray-900">
                               {fullName(pro)}
                             </span>
-                            {pro.onboardedAt && (
+                            {pro.onboarded_at && (
                               <span
                                 className="inline-flex items-center gap-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-medium px-1.5 py-0.5 border border-emerald-100"
-                                title={`Onboarded ${formatDate(pro.onboardedAt)}`}
+                                title={`Onboarded ${formatDate(pro.onboarded_at)}`}
                               >
                                 <CheckCircle2 className="h-3 w-3" />
                                 Onboarded
@@ -350,7 +361,7 @@ export function AssociateProsTable({
                           </div>
                           <span className="text-xs text-gray-500">
                             {pro.email}
-                            {pro.phoneNumber ? ` · ${pro.phoneNumber}` : ""}
+                            {pro.phone_number ? ` · ${pro.phone_number}` : ""}
                           </span>
                         </div>
                       </TableCell>
@@ -358,16 +369,16 @@ export function AssociateProsTable({
                         <StatusBadge status={pro.status} />
                       </TableCell>
                       <TableCell className="text-gray-700">
-                        {formatDate(pro.dateRecruited)}
+                        {formatDate(pro.date_recruited)}
                       </TableCell>
                       <TableCell className="text-right tabular-nums text-gray-900">
-                        {pro.totalSales}
+                        {pro.total_sales}
                       </TableCell>
                       <TableCell className="text-right tabular-nums text-gray-900">
-                        {formatCurrency(pro.revenueGenerated)}
+                        {formatCurrency(pro.revenue_generated)}
                       </TableCell>
                       <TableCell className="text-gray-600">
-                        {formatRelativeOrDate(pro.lastLogin)}
+                        {formatRelativeOrDate(pro.last_login)}
                       </TableCell>
                       <TableCell>
                         <DropdownMenu>
@@ -385,7 +396,7 @@ export function AssociateProsTable({
                             <DropdownMenuItem
                               onSelect={() => setOnboardingFor(pro)}
                             >
-                              {pro.onboardedAt
+                              {pro.onboarded_at
                                 ? "View onboarding"
                                 : "Onboard Associate Pro"}
                             </DropdownMenuItem>
@@ -480,7 +491,7 @@ export function AssociateProsTable({
                 id: onboardingFor.id,
                 name: fullName(onboardingFor),
                 email: onboardingFor.email ?? "",
-                phone: onboardingFor.phoneNumber ?? null,
+                phone: onboardingFor.phone_number ?? null,
               }
             : null
         }

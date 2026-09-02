@@ -1,50 +1,30 @@
-import { useQuery } from "@tanstack/react-query";
-import { execute } from "@/lib/graphql-client";
-import { graphql } from "@/lib/gql";
-import { managerKeys } from "./query-keys";
+'use client';
 
-const GET_ONBOARDING_ATTEMPTS_QUERY = graphql(`
-  query GetOnboardingAttempts($proId: ID!) {
-    getOnboardingAttempts(proId: $proId) {
-      _id
-      pro
-      outcome
-      attemptNumber
-      isOverdue
-      manager {
-        _id
-        userName
-        firstName
-        lastName
-        email
-        role
-      }
-      motivation
-      experience
-      experienceLength
-      prospects
-      incomeGoal
-      support
-      supportOther
-      readDocs
-      gotGuide
-      rescheduleDate
-      rescheduleTimeOfDay
-      rescheduleNote
-      createdAt
-    }
-  }
-`);
+import { useQuery } from '@tanstack/react-query';
+import { z } from 'zod';
 
-export const useOnboardingAttempts = (proId: string | null | undefined) => {
-  return useQuery({
-    queryKey: managerKeys.onboardingAttempts(proId || ""),
-    queryFn: () => execute(GET_ONBOARDING_ATTEMPTS_QUERY, { proId: proId as string }),
+import { apiGet } from '@/lib/api-client';
+
+import {
+  OnboardingAttemptSchema,
+  type OnboardingAttempt,
+} from '../schemas/associate-manager.schema';
+import { managerKeys } from './query-keys';
+
+/**
+ * GET /admin/pros/:pro_id/onboarding-attempts — a pro's call history,
+ * newest first.
+ *
+ * PRO-scoped, not manager-scoped: the history belongs to the pro and survives
+ * every reassignment. `attempt_number` and `is_overdue` are computed on read,
+ * never stored.
+ */
+export const useOnboardingAttempts = (proId: string | null | undefined) =>
+  useQuery({
+    queryKey: managerKeys.onboardingAttempts(proId || ''),
+    queryFn: () =>
+      apiGet(`/admin/pros/${proId}/onboarding-attempts`, z.array(OnboardingAttemptSchema)),
     enabled: Boolean(proId),
-    select: (data) => data.getOnboardingAttempts,
   });
-};
 
-export type OnboardingAttemptData = NonNullable<
-  ReturnType<typeof useOnboardingAttempts>["data"]
->[number];
+export type OnboardingAttemptData = OnboardingAttempt;
