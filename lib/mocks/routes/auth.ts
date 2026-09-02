@@ -29,6 +29,7 @@ const ALL_PERMISSIONS = [
   'view_reports', 'generate_reports', 'view_audit_logs',
   'view_meetings', 'manage_meetings',
   'view_campaigns', 'manage_campaigns', 'export_campaigns',
+  'view_payment_plans', 'export_payment_plans',
 ];
 
 /** Email that exercises the temporary-password lock. */

@@ -20,6 +20,7 @@ import { meetingRoutes } from './meetings';
 import { csManagerRoutes } from './cs-managers';
 import { purchaseConfirmationRoutes } from './purchase-confirmations';
 import { campaignEngineRoutes } from './campaigns-engine';
+import { paymentPlanRoutes } from './payment-plans';
 
 /* ============================================================
  * Route registration. Importing this module (via lib/mocks/index.ts)
@@ -90,6 +91,9 @@ import { campaignEngineRoutes } from './campaigns-engine';
  *               — ticket in docs/BACKEND-REQUESTS.md) and no onboarding-
  *               attempts / mark-deed-delivered routes (nothing in this
  *               scoped UI reaches a plan_id to call them with).
+ * payment-plans — GET /admin/payment-plans, /summary, /export. Distinct from
+ *               CS-manager plan actions under
+ *               GET/POST /admin/payment-plans/:plan_id/*.
  * purchase-confirmations — /admin/purchase-confirmations/* (list, counts,
  *               resolve-dispute, resend). No export route — the real
  *               endpoint streams CSV with @SkipTransform; the FE hook
@@ -123,5 +127,6 @@ export function ensureRoutesRegistered(): void {
   registerRoutes(csManagerRoutes);
   registerRoutes(purchaseConfirmationRoutes);
   registerRoutes(campaignEngineRoutes);
+  registerRoutes(paymentPlanRoutes);
   // ...added per feature as it migrates
 }

@@ -73,6 +73,9 @@ export const ADMIN_PERMISSIONS = [
   'view_campaigns',
   'manage_campaigns',
   'export_campaigns',
+
+  'view_payment_plans',
+  'export_payment_plans',
 ] as const;
 
 export type AdminPermission = (typeof ADMIN_PERMISSIONS)[number];

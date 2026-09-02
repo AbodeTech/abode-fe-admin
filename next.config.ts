@@ -13,6 +13,16 @@ const nextConfig: NextConfig = {
         destination: "/associate-pros/tracker",
         permanent: true,
       },
+      {
+        source: "/users/defaults",
+        destination: "/admin/payment-plans?has_defaults=true",
+        permanent: true,
+      },
+      {
+        source: "/users/suspended-payment-plans",
+        destination: "/admin/payment-plans?status=suspended",
+        permanent: true,
+      },
     ];
   },
 };

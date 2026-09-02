@@ -23,8 +23,6 @@ export const userKeys = {
   }) => [...userKeys.lists(), filters] as const,
   details: () => [...userKeys.all, 'detail'] as const,
   detail: (id: string) => [...userKeys.details(), id] as const,
-  suspendedPaymentPlansSummary: (filters?: Record<string, unknown>) =>
-    [...userKeys.all, 'suspended-payment-plans-summary', filters] as const,
   overview: () => [...userKeys.all, 'overview'] as const,
   analytics: (filters?: Record<string, unknown>) =>
     [...userKeys.all, 'analytics', filters] as const,
