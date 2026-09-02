@@ -21,7 +21,7 @@ const ALL_PERMISSIONS = [
   'asset_transactions', 'approve_payments', 'withdrawals', 'manage_commission',
   'update_payment_plan',
   'add_referral', 'remove_referral', 'modify_referral_status',
-  'view_kyc', 'approve_kyc',
+  'view_kyc', 'view_user_bank_details', 'approve_kyc',
   'view_marketplace', 'manage_marketplace',
   'view_agency', 'manage_agency',
   'manage_promotions',

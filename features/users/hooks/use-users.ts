@@ -3,10 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { apiGet, apiGetPaged } from '@/lib/api-client';
 
 import {
-  AdminUserDetailSchema,
   AdminUserRowSchema,
   UserOverviewSchema,
-  normalizeAdminUserDetail,
   normalizeAdminUserRow,
 } from '../schemas/user.schema';
 import { boolQuery, bothOrNeitherDates } from '../utils/admin-users-query';
@@ -74,20 +72,6 @@ export const useUsers = (filters?: UsersListFilters) => {
 };
 
 /**
- * GET /admin/users/:id — populated kyc / next-of-kin / wallet (`view_user`).
- * GraphQL-only aggregates (plan totals, transaction list) are not on this
- * document; missing ones render as empty/zero.
- */
-export const useUserDetails = (id: string) => {
-  return useQuery({
-    queryKey: userKeys.detail(id),
-    queryFn: () => apiGet(`/admin/users/${id}`, AdminUserDetailSchema),
-    select: (raw) => normalizeAdminUserDetail(raw),
-    enabled: !!id,
-  });
-};
-
-/**
  * GET /admin/users/overview — 14 period-aware tiles.
  * date_from / date_to are both-or-neither.
  */
@@ -104,5 +88,4 @@ export const useSystemUsersOverview = (params?: { startDate?: string; endDate?: 
 };
 
 export type UsersData = NonNullable<ReturnType<typeof useUsers>['data']>;
-export type UserDetailsData = NonNullable<ReturnType<typeof useUserDetails>['data']>;
 export type SystemUsersOverviewData = NonNullable<ReturnType<typeof useSystemUsersOverview>['data']>;

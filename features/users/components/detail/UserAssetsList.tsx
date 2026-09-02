@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import {
   Plus,
@@ -31,7 +30,7 @@ import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 
-import { getUserAssetsByAdmin } from "@/lib/api/admin/user-assets.client";
+import { useUserDetailAssets } from "../../hooks/use-user-detail";
 import { AddFlexAssetModal } from "../modals/AddFlexAssetModal";
 import { AddFullOwnershipAssetModal } from "../modals/AddFullOwnershipAssetModal";
 import { UserAssetActions } from "./UserAssetActions";
@@ -58,13 +57,14 @@ export function UserAssetsList({ userId, userEmail, readOnly = false }: UserAsse
   const [isFlexModalOpen, setIsFlexModalOpen] = useState(false);
   const [isFullOwnershipModalOpen, setIsFullOwnershipModalOpen] = useState(false);
 
-  const { data: assets, isLoading } = useQuery({
-    queryKey: ["userAssets", userId],
-    queryFn: () => getUserAssetsByAdmin(userId),
-  });
+  const { data: assets, isLoading } = useUserDetailAssets(userId);
 
   const flexAssets = assets?.filter((asset) => asset.payment_details?.asset_type === "flex") || [];
   const fullOwnershipAssets = assets?.filter((asset) => asset.payment_details?.asset_type === "full-ownership") || [];
+  const otherAssets = assets?.filter((asset) => {
+    const type = asset.payment_details?.asset_type;
+    return type !== "flex" && type !== "full-ownership";
+  }) || [];
 
   const getDaysUntilNextPayment = (nextPaymentDate: Date | string): number => {
     const today = new Date();
@@ -500,6 +500,33 @@ export function UserAssetsList({ userId, userEmail, readOnly = false }: UserAsse
           </div>
         </CardContent>
       </Card>
+
+      {otherAssets.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-2xl font-bold">Other assets</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            {otherAssets.map((asset) => {
+              const pd = asset.payment_details!;
+              return (
+                <Card key={asset._id}>
+                  <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+                    <div>
+                      <h3 className="font-bold">{asset.asset_name || "Untitled"}</h3>
+                      <p className="text-sm text-muted-foreground">{pd.asset_type.replace(/_/g, " ")}</p>
+                    </div>
+                    <p className="text-sm">
+                      {formatCurrency(pd.amount_paid)} paid · {formatCurrency(pd.balance)} outstanding
+                    </p>
+                    {!readOnly && <UserAssetActions userId={userId} asset={asset} email={userEmail} />}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

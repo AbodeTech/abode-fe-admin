@@ -33,6 +33,7 @@ import { SendCompletionCertificateModal } from "../modals/SendCompletionCertific
 import { SendHamperModal } from "../modals/SendHamperModal";
 import { SendFlexTermsAndConditionModal } from "../modals/SendFlexTermsAndConditionModal";
 import { getErrorMessage } from "../../utils/error-message";
+import { userKeys } from "../../hooks/query-keys";
 import { useAuthStore } from "@/store/auth-store";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -102,7 +103,7 @@ export function UserAssetActions({
     try {
       await deleteMutation.mutateAsync({ userId, assetId: asset._id, unique_asset_id: uniqueAssetId });
       toast.success("Asset deleted successfully");
-      queryClient.invalidateQueries({ queryKey: ["userAssets", userId] });
+      queryClient.invalidateQueries({ queryKey: userKeys.details() });
       setShowDeleteDialog(false);
     } catch (error: unknown) {
       toast.error(getErrorMessage(error, "Failed to delete asset"));

@@ -144,7 +144,7 @@ export function UserEditActions({ user }: UserEditActionsProps) {
       />
 
       <EditUserTinModal
-        currentTin={user.kyc?.tin || ""}
+        currentTin={user.kyc?.tin?.startsWith("****") ? "" : user.kyc?.tin || ""}
         open={activeModal === "tin"}
         onOpenChange={(open) => {
           if (!open) setModalParam(null)

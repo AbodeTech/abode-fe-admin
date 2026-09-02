@@ -6,13 +6,17 @@ import { CommissionTransactionsTable } from "./tables/CommissionTransactionsTabl
 import { OtherTransactionsTable } from "./tables/OtherTransactionsTable"
 
 interface UserTransactionsProps {
-  transactions: TransactionListResponse[]
+  transactions?: TransactionListResponse[]
+  commission?: TransactionListResponse[]
+  other?: TransactionListResponse[]
 }
 
-export function UserTransactions({ transactions }: UserTransactionsProps) {
+export function UserTransactions({ transactions, commission, other }: UserTransactionsProps) {
   const safeTransactions = transactions || []
-  const commissionTransactions = safeTransactions.filter((t) => String(t.type).toLowerCase() === "commission")
-  const otherTransactions = safeTransactions.filter((t) => String(t.type).toLowerCase() !== "commission")
+  const commissionTransactions =
+    commission ?? safeTransactions.filter((t) => String(t.type).toLowerCase() === "commission")
+  const otherTransactions =
+    other ?? safeTransactions.filter((t) => String(t.type).toLowerCase() !== "commission")
 
   return (
     <div className="space-y-8 mt-16">

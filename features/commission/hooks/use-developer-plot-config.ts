@@ -57,6 +57,8 @@ const AdminUserViewSchema = z.looseObject({
   id: z.string().optional(),
   firstName: z.string().nullable().optional(),
   lastName: z.string().nullable().optional(),
+  first_name: z.string().nullable().optional(),
+  last_name: z.string().nullable().optional(),
   email: z.string().nullable().optional(),
 });
 
@@ -65,7 +67,13 @@ export const useUserDisplayName = (userId: string | null | undefined) =>
     queryKey: ['users', 'display-name', userId ?? ''] as const,
     queryFn: async () => {
       const user = await apiGet(`/admin/users/${userId}`, AdminUserViewSchema);
-      const name = [user.lastName, user.firstName].filter(Boolean).join(' ').trim();
+      const name = [
+        user.last_name ?? user.lastName,
+        user.first_name ?? user.firstName,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .trim();
       return name || user.email || null;
     },
     enabled: Boolean(userId),

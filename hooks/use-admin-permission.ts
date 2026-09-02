@@ -50,6 +50,7 @@ export const ADMIN_PERMISSIONS = [
   'modify_referral_status',
 
   'view_kyc',
+  'view_user_bank_details',
   'approve_kyc',
 
   'view_marketplace',

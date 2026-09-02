@@ -70,9 +70,9 @@ import { paymentPlanRoutes } from './payment-plans';
  *               the list endpoint instead (see
  *               features/sales/components/SalesExport.tsx), so nothing in
  *               this app calls those two BE routes.
- * users       — GET /admin/users, /users/:id, /overview, /analytics. List is
- *               the shared UserPicker source AND the users table; :id is the
- *               profile page (view_user).
+ * users       — GET /admin/users, /users/:id, /:id/stats|kyc|bank-details|assets|
+ *               transactions|referrals|associate-pro|campaign-standings,
+ *               /overview, /analytics.
  * people.ts   — not a domain: the shared person fixtures every route populates
  *               refs from, so one id means one person across all of them.
  * dashboard   — GET /admin/dashboard/kpis, top-products, top-associates.

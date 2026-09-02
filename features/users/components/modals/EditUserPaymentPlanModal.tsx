@@ -23,6 +23,7 @@ import { editUserPaymentPlanByAdmin } from "@/lib/api/admin/user-assets.client";
 import { EditUserPaymentPlanFormValues, editUserPaymentPlanSchema } from "@/lib/schemas/admin/user-assets.schema";
 import { UserAsset } from "@/lib/api/admin/user-assets.types";
 import { getErrorMessage } from "../../utils/error-message";
+import { userKeys } from "../../hooks/query-keys";
 
 interface EditUserPaymentPlanModalProps {
   isOpen: boolean;
@@ -101,7 +102,7 @@ export function EditUserPaymentPlanModal({ isOpen, onClose, asset, userId }: Edi
         create_transaction: Boolean(data.create_transaction),
       });
       toast.success("Payment plan updated successfully");
-      queryClient.invalidateQueries({ queryKey: ["userAssets", userId] });
+      queryClient.invalidateQueries({ queryKey: userKeys.details() });
       onClose();
     } catch (error: unknown) {
       toast.error(getErrorMessage(error, "Failed to update payment plan"));

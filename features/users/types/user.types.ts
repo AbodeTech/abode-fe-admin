@@ -78,6 +78,23 @@ export type UserDetail = {
   units_purchased: number;
   userName: string;
   next_date_of_payment: string;
+  created_at?: string;
+  unsigned_contracts?: number;
+  verified?: boolean;
+  state?: string;
+  lga?: string;
+  education_level?: string;
+  experience_level?: string;
+  acquisition_source?: string;
+  wallet_available?: number;
+  referrer_chain?: Array<{
+    level: number;
+    id: string;
+    first_name?: string | null;
+    last_name?: string | null;
+    email?: string | null;
+    tier?: string | null;
+  }>;
 };
 
 export type SystemUsersMetrics = {

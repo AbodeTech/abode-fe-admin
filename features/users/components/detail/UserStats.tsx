@@ -127,8 +127,8 @@ export function UserStats({ user }: UserStatsProps) {
       isEven: false,
     },
     {
-      title: "Last Login",
-      value: user.last_login ? formatDateWord(user.last_login) : "N/A",
+      title: "Unsigned contracts",
+      value: (user.unsigned_contracts ?? 0).toString(),
       icon: <Clock className="h-4 w-4 text-muted-foreground" />,
       isEven: true,
     },

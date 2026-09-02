@@ -28,6 +28,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { addUserFullOwnershipAssetByAdmin, getAllWebsiteAssets } from "@/lib/api/admin/user-assets.client";
 import { AddFullOwnershipAssetFormInput, AddFullOwnershipAssetFormValues, addFullOwnershipAssetSchema } from "@/lib/schemas/admin/user-assets.schema";
 import { getErrorMessage } from "../../utils/error-message";
+import { userKeys } from "../../hooks/query-keys";
 
 interface AddFullOwnershipAssetModalProps {
   userId: string;
@@ -93,7 +94,7 @@ export function AddFullOwnershipAssetModal({ userId, isOpen, onClose }: AddFullO
         send_receipt_email: data.sendReceiptEmail === "yes",
       });
       toast.success("Asset added successfully");
-      queryClient.invalidateQueries({ queryKey: ["user", userId] });
+      queryClient.invalidateQueries({ queryKey: userKeys.details() });
       onClose();
     } catch (error: unknown) {
       toast.error(getErrorMessage(error, "Something went wrong, please try again"));
