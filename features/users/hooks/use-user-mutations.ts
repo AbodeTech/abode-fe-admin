@@ -1,9 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { apiDelete, apiPatch, apiPost } from '@/lib/api-client';
-import { execute } from '@/lib/graphql-client';
-import { graphql } from '@/lib/gql';
-import type { AdminWalletCommissionInput } from '@/lib/gql/graphql';
 
 import { userKeys } from './query-keys';
 import type {
@@ -23,12 +20,6 @@ import {
   ReassignReferrerResultSchema,
   WalletAdjustResultSchema,
 } from '../schemas/user-actions.schema';
-
-const EDIT_WALLET_COMMISSION_MUTATION = graphql(`
-  mutation EditWalletCommission($adminWalletCommissionInput: AdminWalletCommissionInput!) {
-    editWalletCommission(adminWalletCommissionInput: $adminWalletCommissionInput)
-  }
-`);
 
 function invalidateUser(queryClient: ReturnType<typeof useQueryClient>, userId?: string) {
   queryClient.invalidateQueries({ queryKey: userKeys.lists() });
@@ -105,16 +96,6 @@ export const useDeleteUserReferral = () => {
         body: payload,
       }),
     onSuccess: (_data, { userId }) => invalidateUser(queryClient, userId),
-  });
-};
-
-export const useEditWalletCommission = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (input: AdminWalletCommissionInput) =>
-      execute(EDIT_WALLET_COMMISSION_MUTATION, { adminWalletCommissionInput: input }),
-    onSuccess: () => invalidateUser(queryClient),
   });
 };
 

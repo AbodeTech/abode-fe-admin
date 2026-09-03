@@ -14,7 +14,13 @@ import { body } from './util';
  * ============================================================ */
 
 const ALL_PERMISSIONS = [
-  'view_user', 'view_users', 'view_user_analytics', 'edit_user', 'delete_user', 'suspend_user', 'unsuspend_user',
+  'view_user', 'view_users', 'view_user_analytics', 'edit_user', 'edit_user_profile', 'delete_user', 'suspend_user', 'unsuspend_user',
+  'force_password_reset', 'edit_user_tin', 'adjust_wallet', 'suspend_wallet', 'unsuspend_wallet',
+  'modify_tier', 'reassign_referrer',
+  'create_user_plan', 'create_developer_plot', 'delete_user_plan',
+  'edit_user_asset_question', 'adjust_plan_balance', 'override_next_payment_date',
+  'update_plan_spec', 'suspend_plan', 'unsuspend_plan', 'close_plan',
+  'edit_plan_commission_config', 'edit_plan_commission_recipients', 'send_user_email',
   'view_admin', 'manage_admins', 'manage_roles',
   'view_assets', 'manage_assets', 'delete_assets', 'buy_asset', 'delete_user_asset',
   'update_asset_question', 'send_contract',

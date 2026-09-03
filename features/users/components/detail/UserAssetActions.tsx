@@ -1,9 +1,10 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { MoreHorizontal, Loader2 } from "lucide-react";
+import { useState } from 'react';
+import { MoreHorizontal } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,108 +12,104 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu';
+import { useHasPermission } from '@/hooks/use-admin-permission';
+import type { UserAsset } from '@/lib/api/admin/user-assets.types';
+
+import { EditUserAssetQuestionModal } from '../modals/EditUserAssetQuestionModal';
+import { EditUserPaymentPlanModal } from '../modals/EditUserPaymentPlanModal';
 import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
-import { deleteUserFlexAsset, deleteUserFullOwnershipAsset } from "@/lib/api/admin/user-assets.client";
-import { UserPaymentPlanUnSuspend } from "../modals/UserPaymentPlanUnSuspend";
-import { UserPaymentPlanSuspend } from "../modals/UserPaymentPlanSuspend";
-import { UserAsset } from "@/lib/api/admin/user-assets.types";
-import { EditUserPaymentPlanModal } from "../modals/EditUserPaymentPlanModal";
-import { EditUserAssetQuestionModal } from "../modals/EditUserAssetQuestionModal";
-import { SendContractOfSalesModal } from "../modals/SendContractOfSalesModal";
-import { SendCompletionCertificateModal } from "../modals/SendCompletionCertificateModal";
-import { SendHamperModal } from "../modals/SendHamperModal";
-import { SendFlexTermsAndConditionModal } from "../modals/SendFlexTermsAndConditionModal";
-import { getErrorMessage } from "../../utils/error-message";
-import { userKeys } from "../../hooks/query-keys";
-import { useAuthStore } from "@/store/auth-store";
-import { useRouter, useSearchParams } from "next/navigation";
+  CloseAndRelocatePlanModal,
+  EditPlanCommissionModal,
+} from '../modals/AdvancedPlanActionModals';
+import {
+  ClosePlanModal,
+  DeletePlanModal,
+  PlanBalanceAdjustmentModal,
+  PlanPaymentDateModal,
+  SignatureReminderModal,
+} from '../modals/PlanActionModals';
+import { SendCompletionCertificateModal } from '../modals/SendCompletionCertificateModal';
+import { SendContractOfSalesModal } from '../modals/SendContractOfSalesModal';
+import { SendFlexTermsAndConditionModal } from '../modals/SendFlexTermsAndConditionModal';
+import { UserPaymentPlanSuspend } from '../modals/UserPaymentPlanSuspend';
+import { UserPaymentPlanUnSuspend } from '../modals/UserPaymentPlanUnSuspend';
 
 interface UserAssetActionsProps {
   userId: string;
   asset: UserAsset;
-  email?: string; // Need email for sending certs etc.
+  email?: string;
 }
 
-export function UserAssetActions({
-  userId,
-  asset,
-  email,
-}: UserAssetActionsProps) {
-  const queryClient = useQueryClient();
-  const currentUser = useAuthStore((state) => state.user);
-  const permissions = currentUser?.permissions ?? [];
-  const canEditPaymentPlan = permissions.includes("update-payment-plan");
-  const canEditAssetQuestion = permissions.includes("update-asset-question");
-  const canDeleteAsset = permissions.includes("delete-user-asset");
-  const canSendContract = permissions.includes("send-contract");
+export function UserAssetActions({ userId, asset, email }: UserAssetActionsProps) {
+  const canEditSpec = useHasPermission('update_plan_spec');
+  const canEditQuestion = useHasPermission('edit_user_asset_question');
+  const canAdjustBalance = useHasPermission('adjust_plan_balance');
+  const canOverrideDate = useHasPermission('override_next_payment_date');
+  const canSuspend = useHasPermission('suspend_plan');
+  const canUnsuspend = useHasPermission('unsuspend_plan');
+  const canClose = useHasPermission('close_plan');
+  const canEditCommissionConfig = useHasPermission('edit_plan_commission_config');
+  const canEditCommissionRecipients = useHasPermission('edit_plan_commission_recipients');
+  const canDelete = useHasPermission('delete_user_plan');
+  const canSendEmail = useHasPermission('send_user_email');
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-
-  // Modal states
-  const [showSendContract, setShowSendContract] = useState(false);
-  const [showSendCert, setShowSendCert] = useState(false);
-  const [showSendHamper, setShowSendHamper] = useState(false);
-  const [showSendTerms, setShowSendTerms] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
+  const [showBalance, setShowBalance] = useState(false);
+  const [showDate, setShowDate] = useState(false);
+  const [showClose, setShowClose] = useState(false);
+  const [showRelocate, setShowRelocate] = useState(false);
+  const [showCommissionConfig, setShowCommissionConfig] = useState(false);
+  const [showCommissionRecipients, setShowCommissionRecipients] = useState(false);
+  const [showContract, setShowContract] = useState(false);
+  const [showCertificate, setShowCertificate] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
+  const [showSignatureReminder, setShowSignatureReminder] = useState(false);
 
   const pd = asset.payment_details!;
-  const question = asset.asset_questions?.find(q => q.unique_asset_id === pd.unique_asset_id);
-  const isSuspended = pd.is_suspended;
-  const uniqueAssetId = pd.unique_asset_id;
-  const assetType = pd.asset_type === "flex" ? "flex" : "full-ownership";
+  const question = asset.asset_questions?.find(
+    (item) => item.unique_asset_id === pd.unique_asset_id,
+  );
+  const isSuspended = asset.status === 'suspended';
 
-  const setModalParam = (value: string | null, withAssetId = false) => {
-    const params = new URLSearchParams(searchParams?.toString() || "");
+  const setModalParam = (value: string | null) => {
+    const params = new URLSearchParams(searchParams?.toString() || '');
     if (value) {
-      params.set("modal", value);
-      if (withAssetId) {
-        params.set("uniqueAssetId", uniqueAssetId);
-      }
+      params.set('modal', value);
+      params.set('planId', asset._id);
     } else {
-      params.delete("modal");
-      params.delete("uniqueAssetId");
+      params.delete('modal');
+      params.delete('planId');
     }
     const next = params.toString();
-    router.push(next ? `?${next}` : "?");
+    router.push(next ? `?${next}` : '?');
   };
 
-  // Keep parity with legacy behavior: modal query alone can open, and
-  // uniqueAssetId (if provided) should only scope to the matching asset row.
-  const modal = searchParams?.get("modal");
-  const paramAssetId = searchParams?.get("uniqueAssetId");
-  const isMatchingAsset = !paramAssetId || paramAssetId === uniqueAssetId;
-  const showEditPlan = canEditPaymentPlan && modal === "updatepaymentplan" && isMatchingAsset;
-  const showEditQuestion = canEditAssetQuestion && modal === "edituserassetquestion" && isMatchingAsset;
+  const modal = searchParams?.get('modal');
+  const paramPlanId = searchParams?.get('planId') ?? searchParams?.get('uniqueAssetId');
+  const isMatchingPlan =
+    !paramPlanId || paramPlanId === asset._id || paramPlanId === pd.unique_asset_id;
+  const showEditPlan = canEditSpec && modal === 'updatepaymentplan' && isMatchingPlan;
+  const showEditQuestion =
+    canEditQuestion && modal === 'edituserassetquestion' && isMatchingPlan;
 
-  const deleteMutation = useMutation({
-    mutationFn: assetType === "flex" ? deleteUserFlexAsset : deleteUserFullOwnershipAsset,
-  });
+  const hasAnyAction =
+    canEditSpec ||
+    canEditQuestion ||
+    canAdjustBalance ||
+    canOverrideDate ||
+    canSuspend ||
+    canUnsuspend ||
+    canClose ||
+    canEditCommissionConfig ||
+    canEditCommissionRecipients ||
+    canDelete ||
+    canSendEmail;
+  if (!hasAnyAction) return null;
 
-  const handleDelete = async () => {
-    try {
-      await deleteMutation.mutateAsync({ userId, assetId: asset._id, unique_asset_id: uniqueAssetId });
-      toast.success("Asset deleted successfully");
-      queryClient.invalidateQueries({ queryKey: userKeys.details() });
-      setShowDeleteDialog(false);
-    } catch (error: unknown) {
-      toast.error(getErrorMessage(error, "Failed to delete asset"));
-    }
-  };
-
-  if (!canEditPaymentPlan && !canEditAssetQuestion && !canDeleteAsset && !canSendContract) {
-    return null;
-  }
+  const target = { userId, planId: asset._id, expectedUpdatedAt: asset.updated_at };
 
   return (
     <>
@@ -123,159 +120,154 @@ export function UserAssetActions({
             <MoreHorizontal className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-        <DropdownMenuSeparator />
+        <DropdownMenuContent align="end">
+          <DropdownMenuLabel>Plan actions</DropdownMenuLabel>
+          <DropdownMenuSeparator />
 
-        {canEditPaymentPlan && (
-          <DropdownMenuItem
-            onSelect={(event) => {
-              event.preventDefault();
-              setModalParam("updatepaymentplan", true);
-            }}
-          >
-            Edit Payment Plan
-          </DropdownMenuItem>
-        )}
-
-        {canEditAssetQuestion && (
-          <DropdownMenuItem
-            onSelect={(event) => {
-              event.preventDefault();
-              setModalParam("edituserassetquestion", true);
-            }}
-          >
-            Edit Asset Question
-          </DropdownMenuItem>
-        )}
-
-        {canSendContract && (
-          <DropdownMenuItem onClick={() => setShowSendContract(true)}>
-            Send Contract of Sale
-          </DropdownMenuItem>
-        )}
-
-        {email && (
-          <>
-              <DropdownMenuItem onClick={() => setShowSendCert(true)}>
-                Send Completion Certificate
-              </DropdownMenuItem>
-
-              {assetType === "full-ownership" && (
-                <DropdownMenuItem onClick={() => setShowSendHamper(true)}>
-                  Send Hamper
-                </DropdownMenuItem>
-              )}
-
-              {assetType === "flex" && (
-                <DropdownMenuItem onClick={() => setShowSendTerms(true)}>
-                  Send Flex Terms & Conditions
-                </DropdownMenuItem>
-              )}
-            </>
+          {canEditSpec && (
+            <DropdownMenuItem onSelect={() => setModalParam('updatepaymentplan')}>
+              Edit Plan Specification
+            </DropdownMenuItem>
+          )}
+          {canEditQuestion && (
+            <DropdownMenuItem onSelect={() => setModalParam('edituserassetquestion')}>
+              Edit Legal Details
+            </DropdownMenuItem>
+          )}
+          {canAdjustBalance && (
+            <DropdownMenuItem onSelect={() => setShowBalance(true)}>
+              Adjust Recorded Payment
+            </DropdownMenuItem>
+          )}
+          {canOverrideDate && (
+            <DropdownMenuItem onSelect={() => setShowDate(true)}>
+              Change Next Payment Date
+            </DropdownMenuItem>
+          )}
+          {canEditCommissionConfig && (
+            <DropdownMenuItem onSelect={() => setShowCommissionConfig(true)}>
+              Edit Commission Rates
+            </DropdownMenuItem>
+          )}
+          {canEditCommissionRecipients && (
+            <DropdownMenuItem onSelect={() => setShowCommissionRecipients(true)}>
+              Edit Commission Recipients
+            </DropdownMenuItem>
           )}
 
-          <DropdownMenuItem
-            className="pr-8"
-            onSelect={(event) => event.preventDefault()}
-          >
-            {isSuspended ? (
-              <UserPaymentPlanUnSuspend uniqueAssetId={uniqueAssetId} userId={userId} />
-            ) : (
-              <UserPaymentPlanSuspend uniqueAssetId={uniqueAssetId} userId={userId} />
-            )}
-          </DropdownMenuItem>
+          {canSendEmail && <DropdownMenuSeparator />}
+          {canSendEmail && (
+            <DropdownMenuItem onSelect={() => setShowContract(true)}>
+              Send Contract of Sale
+            </DropdownMenuItem>
+          )}
+          {canSendEmail && email && (
+            <DropdownMenuItem onSelect={() => setShowCertificate(true)}>
+              Send Completion Certificate
+            </DropdownMenuItem>
+          )}
+          {canSendEmail && email && pd.asset_type === 'flex' && (
+            <DropdownMenuItem onSelect={() => setShowTerms(true)}>
+              Send Flex Terms &amp; Conditions
+            </DropdownMenuItem>
+          )}
+          {canSendEmail && (
+            <DropdownMenuItem onSelect={() => setShowSignatureReminder(true)}>
+              Send Signature Reminder
+            </DropdownMenuItem>
+          )}
 
-          {canDeleteAsset && (
-            <DropdownMenuItem onClick={() => setShowDeleteDialog(true)} className="text-red-600 focus:text-red-600">
-              Delete Asset
+          <DropdownMenuSeparator />
+          {(isSuspended ? canUnsuspend : canSuspend) && (
+            <DropdownMenuItem onSelect={(event) => event.preventDefault()}>
+              {isSuspended ? (
+                <UserPaymentPlanUnSuspend planId={asset._id} userId={userId} />
+              ) : (
+                <UserPaymentPlanSuspend planId={asset._id} userId={userId} />
+              )}
+            </DropdownMenuItem>
+          )}
+          {canClose && asset.status !== 'closed' && asset.status !== 'cancelled' && (
+            <>
+              <DropdownMenuItem className="text-amber-700" onSelect={() => setShowClose(true)}>
+                Close Plan
+              </DropdownMenuItem>
+              <DropdownMenuItem className="text-amber-700" onSelect={() => setShowRelocate(true)}>
+                Close and Relocate
+              </DropdownMenuItem>
+            </>
+          )}
+          {canDelete && (
+            <DropdownMenuItem
+              className="text-red-600 focus:text-red-600"
+              onSelect={() => setShowDelete(true)}
+            >
+              Delete Plan
             </DropdownMenuItem>
           )}
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* Modals */}
-      {canEditPaymentPlan && (
+      {canEditSpec && (
         <EditUserPaymentPlanModal
           isOpen={showEditPlan}
-          onClose={() => {
-            setModalParam(null);
-          }}
+          onClose={() => setModalParam(null)}
           asset={asset}
           userId={userId}
         />
       )}
-
-      {canEditAssetQuestion && (
+      {canEditQuestion && (
         <EditUserAssetQuestionModal
           isOpen={showEditQuestion}
-          onClose={() => {
-            setModalParam(null);
-          }}
-          uniqueAssetId={uniqueAssetId}
-          currentName={question?.name_of_property || ""}
-          currentAddress={question?.address || ""}
+          onClose={() => setModalParam(null)}
+          planId={asset._id}
+          expectedUpdatedAt={asset.updated_at}
+          currentName={question?.name_of_property || ''}
+          currentAddress={question?.address || ''}
           userId={userId}
         />
       )}
 
-      {canSendContract && (
+      {canSendEmail && (
         <SendContractOfSalesModal
-          isOpen={showSendContract}
-          onClose={() => setShowSendContract(false)}
-          uniqueAssetId={uniqueAssetId}
+          isOpen={showContract}
+          onClose={() => setShowContract(false)}
+          userId={userId}
+          planId={asset._id}
         />
       )}
-
-      {email && (
+      {canSendEmail && email && (
         <>
           <SendCompletionCertificateModal
-            isOpen={showSendCert}
-            onClose={() => setShowSendCert(false)}
-            uniqueAssetId={uniqueAssetId}
-            email={email}
-          />
-          <SendHamperModal
-            isOpen={showSendHamper}
-            onClose={() => setShowSendHamper(false)}
-            uniqueAssetId={uniqueAssetId}
+            isOpen={showCertificate}
+            onClose={() => setShowCertificate(false)}
+            userId={userId}
+            planId={asset._id}
             email={email}
           />
           <SendFlexTermsAndConditionModal
-            isOpen={showSendTerms}
-            onClose={() => setShowSendTerms(false)}
-            uniqueAssetId={uniqueAssetId}
+            isOpen={showTerms}
+            onClose={() => setShowTerms(false)}
+            userId={userId}
+            planId={asset._id}
             email={email}
           />
         </>
       )}
 
-      {/* Delete Dialog */}
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure you want to delete this asset?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Deleting this user asset will remove the asset transaction history from our database. This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <Button
-              variant="destructive"
-              disabled={deleteMutation.isPending}
-              onClick={(e) => {
-                e.preventDefault();
-                handleDelete();
-              }}
-            >
-              {deleteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Delete
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
+      <PlanBalanceAdjustmentModal open={showBalance} onOpenChange={setShowBalance} {...target} />
+      <PlanPaymentDateModal open={showDate} onOpenChange={setShowDate} {...target} />
+      <ClosePlanModal open={showClose} onOpenChange={setShowClose} {...target} />
+      <CloseAndRelocatePlanModal open={showRelocate} onOpenChange={setShowRelocate} {...target} />
+      <EditPlanCommissionModal mode="config" open={showCommissionConfig} onOpenChange={setShowCommissionConfig} {...target} />
+      <EditPlanCommissionModal mode="recipients" open={showCommissionRecipients} onOpenChange={setShowCommissionRecipients} {...target} />
+      <DeletePlanModal open={showDelete} onOpenChange={setShowDelete} {...target} />
+      <SignatureReminderModal
+        open={showSignatureReminder}
+        onOpenChange={setShowSignatureReminder}
+        userId={userId}
+        planId={asset._id}
+      />
     </>
   );
 }

@@ -1,10 +1,13 @@
-"use client";
+'use client';
 
-import { useEffect } from "react";
-import { useForm, Controller } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { useEffect } from 'react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Loader2 } from 'lucide-react';
+import { useForm, useWatch } from 'react-hook-form';
+import { toast } from 'sonner';
+
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -12,18 +15,26 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Checkbox } from "@/components/ui/checkbox";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { editUserPaymentPlanByAdmin } from "@/lib/api/admin/user-assets.client";
-import { EditUserPaymentPlanFormValues, editUserPaymentPlanSchema } from "@/lib/schemas/admin/user-assets.schema";
-import { UserAsset } from "@/lib/api/admin/user-assets.types";
-import { getErrorMessage } from "../../utils/error-message";
-import { userKeys } from "../../hooks/query-keys";
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import type { UserAsset } from '@/lib/api/admin/user-assets.types';
+
+import { useUpdateUserPlanSpec } from '../../hooks/use-user-plan-mutations';
+import {
+  AdminUpdatePlanSpecPayloadSchema,
+  type AdminUpdatePlanSpecPayload,
+} from '../../schemas/user-plan-actions.schema';
+import { getErrorMessage } from '../../utils/error-message';
 
 interface EditUserPaymentPlanModalProps {
   isOpen: boolean;
@@ -32,198 +43,139 @@ interface EditUserPaymentPlanModalProps {
   userId: string;
 }
 
-export function EditUserPaymentPlanModal({ isOpen, onClose, asset, userId }: EditUserPaymentPlanModalProps) {
-  const queryClient = useQueryClient();
-  const pd = asset.payment_details;
-  const doc = asset.document_plan;
-
-  const {
-    handleSubmit,
-    control,
-    reset,
-    formState: { errors },
-  } = useForm<EditUserPaymentPlanFormValues>({
-    resolver: zodResolver(editUserPaymentPlanSchema),
+export function EditUserPaymentPlanModal({
+  isOpen,
+  onClose,
+  asset,
+  userId,
+}: EditUserPaymentPlanModalProps) {
+  const pd = asset.payment_details!;
+  const isFlex = pd.asset_type === 'flex';
+  const mutation = useUpdateUserPlanSpec();
+  const form = useForm<AdminUpdatePlanSpecPayload>({
+    resolver: zodResolver(AdminUpdatePlanSpecPayloadSchema),
   });
-
-  const assetType = pd?.asset_type;
+  const paymentType = useWatch({ control: form.control, name: 'new_payment_type' });
+  const notifyUser = useWatch({ control: form.control, name: 'notify_user' });
 
   useEffect(() => {
-    if (isOpen && pd) {
-      reset({
-        userId: userId,
-        uniqueAssetId: pd.unique_asset_id,
-        amount_paid: pd.amount_paid,
-        balance: pd.balance,
-        asset_price: pd.asset_price,
-        next_date_of_payment: pd.next_date_of_payment ? new Date(pd.next_date_of_payment) : new Date(),
-        start_date: pd.start_date ? new Date(pd.start_date) : new Date(),
-        no_of_units: pd.no_of_units,
-        fullownerhsip_landprice: pd.fullownerhsip_landprice ?? undefined,
-        fullownerhsip_documentprice: pd.fullownerhsip_documentprice ?? undefined,
-        months_covered: pd.months_covered,
-        month_subscription: pd.month_subscription,
-        size: Number(pd.size),
-        default_amount: pd.default_amount,
-        amount_payable: pd.amount_payable,
-        document_amount_paid: doc?.amount_paid ?? undefined,
-        document_balance: doc?.balance ?? undefined,
-        create_transaction: false,
-      });
-    }
-  }, [isOpen, pd, doc, userId, reset]);
+    if (!isOpen) return;
+    form.reset({
+      reason: '',
+      notify_user: false,
+      expected_updated_at: asset.updated_at,
+      new_size_sqm: pd.size,
+      new_number_of_units: pd.no_of_units,
+      new_asset_price: isFlex ? pd.asset_price : undefined,
+      new_land_price: isFlex ? undefined : pd.fullownerhsip_landprice,
+      new_document_price: isFlex ? undefined : pd.fullownerhsip_documentprice,
+      new_initial_payment: pd.initial_payment,
+      new_monthly_payment: pd.amount_payable,
+      new_tenor_months: pd.month_subscription,
+      new_payment_type:
+        pd.payment_type === 'all-inclusive' || pd.payment_type === 'partially-inclusive'
+          ? pd.payment_type
+          : undefined,
+    });
+  }, [asset.updated_at, form, isFlex, isOpen, pd]);
 
-  const mutation = useMutation({
-    mutationFn: editUserPaymentPlanByAdmin,
-  });
-
-  const onSubmit = async (data: EditUserPaymentPlanFormValues) => {
-    const monthsRemaining = (data.month_subscription || 0) - (data.months_covered || 0);
+  const submit = async (payload: AdminUpdatePlanSpecPayload) => {
     try {
-      await mutation.mutateAsync({
-        userId: data.userId,
-        uniqueAssetId: data.uniqueAssetId,
-        amount_paid: data.amount_paid,
-        balance: data.balance,
-        asset_price: data.fullownerhsip_landprice || data.asset_price,
-        next_date_of_payment: data.next_date_of_payment,
-        start_date: data.start_date,
-        no_of_units: data.no_of_units,
-        fullownerhsip_landprice: data.fullownerhsip_landprice ? data.fullownerhsip_landprice : null,
-        fullownerhsip_documentprice: data.fullownerhsip_documentprice ? data.fullownerhsip_documentprice : null,
-        months_covered: data.months_covered,
-        month_remaining: monthsRemaining,
-        month_subscription: data.month_subscription,
-        size: data.size,
-        default_amount: data.default_amount,
-        amount_payable: data.amount_payable,
-        document_amount_paid: data.document_amount_paid ? data.document_amount_paid : null,
-        document_balance: data.document_balance ? data.document_balance : null,
-        create_transaction: Boolean(data.create_transaction),
-      });
-      toast.success("Payment plan updated successfully");
-      queryClient.invalidateQueries({ queryKey: userKeys.details() });
+      await mutation.mutateAsync({ userId, planId: asset._id, payload });
+      toast.success('Payment plan specification updated');
       onClose();
-    } catch (error: unknown) {
-      toast.error(getErrorMessage(error, "Failed to update payment plan"));
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Unable to update payment plan'));
     }
   };
 
-  const formatNumber = (value: number | string | undefined) => {
-    if (value === undefined || value === null) return "";
-    return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  };
-
-  const renderNumberInput = (name: keyof EditUserPaymentPlanFormValues, label: string) => (
+  const numberField = (name: keyof AdminUpdatePlanSpecPayload, label: string) => (
     <div className="space-y-2" key={name}>
       <Label htmlFor={name}>{label}</Label>
-      <Controller
-        name={name}
-        control={control}
-        render={({ field }) => (
-          <Input
-            id={name}
-            value={formatNumber(field.value as number | string | undefined)}
-            onChange={(e) => {
-              const raw = e.target.value.replace(/,/g, "");
-              const num = Number(raw);
-              field.onChange(isNaN(num) ? undefined : num);
-            }}
-          />
-        )}
+      <Input
+        id={name}
+        type="number"
+        min="0"
+        step="any"
+        {...form.register(name, { valueAsNumber: true })}
       />
-      {errors[name] && <p className="text-red-500 text-sm">{errors[name]?.message}</p>}
+      {form.formState.errors[name] && (
+        <p className="text-sm text-red-500">{form.formState.errors[name]?.message}</p>
+      )}
     </div>
   );
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl">
+      <DialogContent className="max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Edit Payment Plan</DialogTitle>
-          <DialogDescription>Edit the payment plan details for this asset</DialogDescription>
+          <DialogTitle>Edit payment plan specification</DialogTitle>
+          <DialogDescription>
+            Pricing and schedule changes are recalculated by the backend. Recorded payments are changed through “Adjust Recorded Payment”.
+          </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <ScrollArea className="max-h-[70vh] pr-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-1">
-              {renderNumberInput("amount_paid", "Amount Paid")}
-              {renderNumberInput("balance", "Balance")}
-
-              {assetType === "flex" && renderNumberInput("asset_price", "Asset Price")}
-
-              <div className="space-y-2">
-                <Label htmlFor="next_date_of_payment">Next Date of Payment</Label>
-                <Controller
-                  name="next_date_of_payment"
-                  control={control}
-                  render={({ field }) => (
-                    <Input
-                      type="date"
-                      className="block"
-                      value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
-                      onChange={(e) => field.onChange(new Date(e.target.value))}
-                    />
-                  )}
-                />
-                {errors.next_date_of_payment && <p className="text-red-500 text-sm">{errors.next_date_of_payment.message}</p>}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="start_date">Start Date</Label>
-                <Controller
-                  name="start_date"
-                  control={control}
-                  render={({ field }) => (
-                    <Input
-                      type="date"
-                      className="block"
-                      value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
-                      onChange={(e) => field.onChange(new Date(e.target.value))}
-                    />
-                  )}
-                />
-                {errors.start_date && <p className="text-red-500 text-sm">{errors.start_date.message}</p>}
-              </div>
-
-              {renderNumberInput("no_of_units", "Number of Units")}
-
-              {assetType === "full-ownership" && (
-                <>
-                  {renderNumberInput("fullownerhsip_landprice", "Full Ownership Land Price")}
-                  {renderNumberInput("fullownerhsip_documentprice", "Full Ownership Document Price")}
-                  {renderNumberInput("document_amount_paid", "Document Amount Paid")}
-                  {renderNumberInput("document_balance", "Document Balance")}
-                </>
+        <form onSubmit={form.handleSubmit(submit)}>
+          <ScrollArea className="max-h-[65vh] pr-4">
+            <div className="grid grid-cols-1 gap-4 p-1 md:grid-cols-2 lg:grid-cols-3">
+              {numberField('new_size_sqm', 'Size (sqm)')}
+              {numberField('new_number_of_units', 'Number of units')}
+              {isFlex
+                ? numberField('new_asset_price', 'Total asset price')
+                : numberField('new_land_price', 'Land price')}
+              {!isFlex && numberField('new_document_price', 'Document price')}
+              {numberField('new_initial_payment', 'Initial payment')}
+              {numberField('new_monthly_payment', 'Monthly payment')}
+              {numberField('new_tenor_months', 'Land tenor (months)')}
+              {!isFlex && numberField('new_document_monthly_payment', 'Document monthly payment')}
+              {!isFlex && numberField('new_document_tenor_months', 'Document tenor (months)')}
+              {!isFlex && (
+                <div className="space-y-2">
+                  <Label>Payment type</Label>
+                  <Select
+                    value={paymentType}
+                    onValueChange={(value) =>
+                      form.setValue(
+                        'new_payment_type',
+                        value as 'all-inclusive' | 'partially-inclusive',
+                      )
+                    }
+                  >
+                    <SelectTrigger><SelectValue placeholder="Select payment type" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all-inclusive">All-inclusive</SelectItem>
+                      <SelectItem value="partially-inclusive">Partially-inclusive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               )}
-
-              {renderNumberInput("months_covered", "Months Covered")}
-              {renderNumberInput("month_subscription", "Month Subscription")}
-              {renderNumberInput("size", "Size")}
-              {renderNumberInput("default_amount", "Default Amount")}
-              {renderNumberInput("amount_payable", "Amount Payable")}
             </div>
-            <div className="mt-4 flex items-center gap-2 px-1">
-              <Controller
-                name="create_transaction"
-                control={control}
-                render={({ field }) => (
-                  <Checkbox
-                    id="create_transaction"
-                    checked={Boolean(field.value)}
-                    onCheckedChange={(checked) => field.onChange(checked === true)}
-                  />
+            <div className="space-y-4 px-1 pt-4">
+              <div className="space-y-2">
+                <Label htmlFor="plan-spec-reason">Reason</Label>
+                <Textarea
+                  id="plan-spec-reason"
+                  {...form.register('reason')}
+                  placeholder="Explain why the plan contract is changing"
+                />
+                <p className="text-xs text-muted-foreground">Minimum 30 characters.</p>
+                {form.formState.errors.reason && (
+                  <p className="text-sm text-red-500">{form.formState.errors.reason.message}</p>
                 )}
-              />
-              <Label htmlFor="create_transaction" className="cursor-pointer">
-                Create transaction for amount paid change
-              </Label>
+              </div>
+              <label className="flex items-center gap-2 text-sm">
+                <Checkbox
+                  checked={Boolean(notifyUser)}
+                  onCheckedChange={(checked) => form.setValue('notify_user', checked === true)}
+                />
+                Notify user by email
+              </label>
             </div>
           </ScrollArea>
           <DialogFooter className="mt-4">
             <Button variant="outline" onClick={onClose} type="button">Cancel</Button>
             <Button type="submit" disabled={mutation.isPending}>
               {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Update Asset
+              Update plan
             </Button>
           </DialogFooter>
         </form>

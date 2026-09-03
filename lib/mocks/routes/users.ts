@@ -188,12 +188,14 @@ export const userRoutes: MockRoutes = {
     const rows = [
       {
         _id: `plan-flex-${person._id}`,
+        updatedAt: '2026-08-20T10:00:00.000Z',
         status: 'active',
         asset_type: 'flex',
         unique_asset_id: `UA-F-${person._id.slice(-4)}`,
         size: 300,
         no_of_units: 1,
         amount_paid: 400_000,
+        initial_payment: 25_000,
         balance: 200_000,
         month_subscription: 24,
         month_remaining: 8,
@@ -202,7 +204,7 @@ export const userRoutes: MockRoutes = {
         asset_price: 600_000,
         months_covered: 16,
         start_date: '2025-01-15T00:00:00.000Z',
-        amount_payable: 600_000,
+        amount_payable: 25_000,
         land_price: 0,
         document_price: 0,
         asset: { name: 'Abode Flex Lekki', asset_type: 'flex' },
@@ -214,12 +216,14 @@ export const userRoutes: MockRoutes = {
       },
       {
         _id: `plan-fo-${person._id}`,
+        updatedAt: '2026-08-20T10:00:00.000Z',
         status: 'active',
         asset_type: 'full-ownership',
         unique_asset_id: `UA-O-${person._id.slice(-4)}`,
         size: 500,
         no_of_units: 1,
         amount_paid: 1_000_000,
+        initial_payment: 250_000,
         balance: 2_000_000,
         month_subscription: 36,
         month_remaining: 24,
@@ -228,9 +232,10 @@ export const userRoutes: MockRoutes = {
         asset_price: 3_000_000,
         months_covered: 12,
         start_date: '2025-03-01T00:00:00.000Z',
-        amount_payable: 3_000_000,
+        amount_payable: 83_333.33,
         land_price: 2_500_000,
         document_price: 500_000,
+        payment_type_snapshot: 'all-inclusive',
         asset: { name: 'Abode Gardens', asset_type: 'full-ownership' },
         document_plan: { amount_paid: 100_000, balance: 400_000, asset_price: 500_000 },
         acquisition: {
@@ -341,6 +346,86 @@ export const userRoutes: MockRoutes = {
       total_payable: 1_200_000,
     },
   ],
+
+  'PATCH /admin/users/:id/profile': () => ({ message: 'User profile updated' }),
+  'POST /admin/users/:id/suspend': () => ({ message: 'User suspended' }),
+  'POST /admin/users/:id/unsuspend': () => ({ message: 'User unsuspended' }),
+  'POST /admin/users/:id/force-password-reset': () => ({ message: 'Password reset queued' }),
+  'PATCH /admin/users/:id/kyc/tin': () => ({ message: 'TIN updated' }),
+  'DELETE /admin/users/:id/kyc/tin': () => ({ message: 'TIN cleared' }),
+  'POST /admin/users/:id/wallet/adjust': () => ({
+    message: 'Wallet adjusted',
+    transaction_id: 'mock-wallet-adjustment',
+    new_balance: 250_000,
+  }),
+  'POST /admin/users/:id/wallet/suspend': () => ({ message: 'Wallet suspended' }),
+  'POST /admin/users/:id/wallet/unsuspend': () => ({ message: 'Wallet unsuspended' }),
+  'PATCH /admin/users/:id/tier': ({ params }) => ({
+    message: 'Tier updated',
+    user_id: params.id,
+    referral_status: 'associate',
+  }),
+  'PATCH /admin/users/:id/referrer': ({ params }) => ({
+    message: 'Referrer updated',
+    user_id: params.id,
+    new_referrer: PEOPLE[0]._id,
+  }),
+  'POST /admin/users/:id/referrals': () => ({
+    message: 'Referral added',
+    referral_id: 'mock-referral',
+    referee_id: PEOPLE[1]._id,
+  }),
+  'DELETE /admin/users/:id/referrals/:referralId': () => ({ message: 'Referral removed' }),
+
+  'POST /admin/users/:id/assets/flex': () => ({
+    message: 'Payment plan created successfully',
+    payment_plan_id: 'mock-created-flex-plan',
+  }),
+  'POST /admin/users/:id/assets/full-ownership': () => ({
+    message: 'Payment plan created successfully',
+    payment_plan_id: 'mock-created-fo-plan',
+  }),
+  'POST /admin/users/:id/assets/commercial': () => ({
+    message: 'Payment plan created successfully',
+    payment_plan_id: 'mock-created-commercial-plan',
+  }),
+  'POST /admin/users/:id/assets/developer-plot': () => ({
+    message: 'Payment plan created successfully',
+    payment_plan_id: 'mock-created-developer-plan',
+  }),
+  'DELETE /admin/users/:id/assets/:planId': () => ({ message: 'Payment plan deleted' }),
+  'PATCH /admin/users/:id/assets/:planId/asset-question': () => ({
+    message: 'Asset question updated',
+  }),
+  'POST /admin/users/:id/assets/:planId/balance/adjust': () => ({
+    message: 'Plan balance adjusted',
+    transaction_id: 'mock-plan-adjustment',
+    new_amount_paid: 500_000,
+    new_balance: 100_000,
+    new_status: 'active',
+  }),
+  'PATCH /admin/users/:id/assets/:planId/next-payment-date': () => ({
+    message: 'Next payment date updated',
+  }),
+  'PATCH /admin/users/:id/assets/:planId/spec': () => ({
+    message: 'Payment plan specification updated',
+  }),
+  'POST /admin/users/:id/assets/:planId/suspend': () => ({ message: 'Plan suspended' }),
+  'POST /admin/users/:id/assets/:planId/unsuspend': () => ({ message: 'Plan unsuspended' }),
+  'POST /admin/users/:id/assets/:planId/close': () => ({ message: 'Plan closed' }),
+  'POST /admin/users/:id/assets/:planId/close-and-relocate': () => ({
+    message: 'Old plan closed and payment carried to replacement plan',
+  }),
+  'PATCH /admin/users/:id/assets/:planId/commission-config': () => ({
+    message: 'Frozen commission configuration updated',
+  }),
+  'PATCH /admin/users/:id/assets/:planId/commission-recipients': () => ({
+    message: 'Frozen commission recipients updated',
+  }),
+  'POST /admin/users/:id/assets/:planId/emails/contract': () => ({ message: 'Email queued for delivery' }),
+  'POST /admin/users/:id/assets/:planId/emails/completion-certificate': () => ({ message: 'Email queued for delivery' }),
+  'POST /admin/users/:id/assets/:planId/emails/flex-terms': () => ({ message: 'Email queued for delivery' }),
+  'POST /admin/users/:id/assets/:planId/emails/signature-reminder': () => ({ message: 'Signature reminder queued for delivery' }),
 
   'GET /admin/users/overview': () => ({
     new_users: period(12, 8.5),

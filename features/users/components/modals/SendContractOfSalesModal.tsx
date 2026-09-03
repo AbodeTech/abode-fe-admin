@@ -1,6 +1,5 @@
 "use client";
 
-import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import {
@@ -13,23 +12,22 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { sendUserContractOfSale } from "@/lib/api/admin/user-assets.client";
+import { useSendUserPlanContract } from "../../hooks/use-user-plan-mutations";
 import { getErrorMessage } from "../../utils/error-message";
 
 interface SendContractOfSalesModalProps {
   isOpen: boolean;
   onClose: () => void;
-  uniqueAssetId: string;
+  userId: string;
+  planId: string;
 }
 
-export function SendContractOfSalesModal({ isOpen, onClose, uniqueAssetId }: SendContractOfSalesModalProps) {
-  const mutation = useMutation({
-    mutationFn: () => sendUserContractOfSale(uniqueAssetId),
-  });
+export function SendContractOfSalesModal({ isOpen, onClose, userId, planId }: SendContractOfSalesModalProps) {
+  const mutation = useSendUserPlanContract();
 
   const handleSend = async () => {
     try {
-      await mutation.mutateAsync();
+      await mutation.mutateAsync({ userId, planId, payload: {} });
       toast.success("Contract of Sale sent successfully");
       onClose();
     } catch (error: unknown) {

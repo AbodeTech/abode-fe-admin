@@ -47,12 +47,15 @@ export interface SuspendUserAssetInput {
 
 export interface UserAsset {
   _id: string;
+  updated_at?: string;
+  status?: string;
   asset_name: string;
   asset_size: string;
   asset_type: "flex" | "full-ownership" | string;
   asset_unit: string;
   payment_details?: {
     amount_paid: number;
+    initial_payment: number;
     balance: number;
     month_subscription: number;
     month_remaining: number;
@@ -69,6 +72,8 @@ export interface UserAsset {
     fullownerhsip_documentprice: number;
     asset_type: string;
     no_of_units: number;
+    payment_type?: string;
+    plan_completed_at?: string;
   };
   document_plan?: {
     amount_paid: number;

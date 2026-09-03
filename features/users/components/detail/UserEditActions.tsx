@@ -15,7 +15,6 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { EditUserProfileModal } from "../modals/EditUserProfileModal"
 import { ChangeReferralStatusModal } from "../modals/ChangeReferralStatusModal"
 import { EditUserWalletModal } from "../modals/EditUserWalletModal"
-import { EditUserCommissionBalanceModal } from "../modals/EditUserCommissionBalanceModal"
 import { EditUserTinModal } from "../modals/EditUserTinModal"
 import { ClearUserTinModal } from "../modals/ClearUserTinModal"
 import { ReassignReferrerModal } from "../modals/ReassignReferrerModal"
@@ -23,7 +22,7 @@ import { ReassignReferrerModal } from "../modals/ReassignReferrerModal"
 import { UserDetail } from "../../types/user.types"
 import { useHasPermission } from "@/hooks/use-admin-permission"
 
-type ModalKey = "profile" | "refStatus" | "wallet" | "commission" | "tin" | "clearTin" | "reassignReferrer" | null
+type ModalKey = "profile" | "refStatus" | "wallet" | "tin" | "clearTin" | "reassignReferrer" | null
 
 interface UserEditActionsProps {
   user: UserDetail
@@ -51,8 +50,6 @@ export function UserEditActions({ user }: UserEditActionsProps) {
         return "refStatus"
       case "edituserbalance":
         return "wallet"
-      case "editusercommissionbalance":
-        return "commission"
       case "editusertin":
         return "tin"
       case "clearusertin":
@@ -105,11 +102,6 @@ export function UserEditActions({ user }: UserEditActionsProps) {
               Adjust Wallet Balance
             </DropdownMenuItem>
           )}
-          {canEditUser && (
-            <DropdownMenuItem onSelect={() => setModalParam("editusercommissionbalance")}>
-              Edit Commission Balance
-            </DropdownMenuItem>
-          )}
           {(canEditUser || canEditTin) && (
             <>
               <DropdownMenuSeparator />
@@ -154,13 +146,6 @@ export function UserEditActions({ user }: UserEditActionsProps) {
       <EditUserWalletModal
         currentBalance={user.wallet?.balance?.toString() || "0"}
         open={activeModal === "wallet"}
-        onOpenChange={(open) => {
-          if (!open) setModalParam(null)
-        }}
-      />
-
-      <EditUserCommissionBalanceModal
-        open={activeModal === "commission"}
         onOpenChange={(open) => {
           if (!open) setModalParam(null)
         }}

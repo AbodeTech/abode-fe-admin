@@ -108,12 +108,15 @@ export function toUserAsset(raw: Record<string, unknown>): UserAsset {
 
   return {
     _id: asString(raw._id || raw.id),
+    updated_at: asDateString(raw.updatedAt ?? raw.updated_at),
+    status,
     asset_name: asString(asset.name || asset.asset_name || raw.asset_name_denormalized),
     asset_size: asString(raw.size),
     asset_type: assetType,
     asset_unit: asString(raw.no_of_units),
     payment_details: {
       amount_paid: asNumber(raw.amount_paid),
+      initial_payment: asNumber(raw.initial_payment),
       balance: asNumber(raw.balance),
       month_subscription: asNumber(raw.month_subscription),
       month_remaining: asNumber(raw.month_remaining),
@@ -130,6 +133,8 @@ export function toUserAsset(raw: Record<string, unknown>): UserAsset {
       fullownerhsip_documentprice: asNumber(raw.document_price),
       asset_type: assetType,
       no_of_units: asNumber(raw.no_of_units),
+      payment_type: asString(raw.payment_type_snapshot) || undefined,
+      plan_completed_at: asDateString(raw.plan_completed_at) || undefined,
     },
     document_plan: documentPlan
       ? {

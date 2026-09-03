@@ -1,6 +1,5 @@
 "use client";
 
-import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import {
@@ -13,24 +12,23 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { sendCertificateByEmail } from "@/lib/api/admin/user-assets.client";
+import { useSendUserPlanCompletionCertificate } from "../../hooks/use-user-plan-mutations";
 import { getErrorMessage } from "../../utils/error-message";
 
 interface SendCompletionCertificateModalProps {
   isOpen: boolean;
   onClose: () => void;
-  uniqueAssetId: string;
+  userId: string;
+  planId: string;
   email: string;
 }
 
-export function SendCompletionCertificateModal({ isOpen, onClose, uniqueAssetId, email }: SendCompletionCertificateModalProps) {
-  const mutation = useMutation({
-    mutationFn: () => sendCertificateByEmail(email, uniqueAssetId),
-  });
+export function SendCompletionCertificateModal({ isOpen, onClose, userId, planId, email }: SendCompletionCertificateModalProps) {
+  const mutation = useSendUserPlanCompletionCertificate();
 
   const handleSend = async () => {
     try {
-      await mutation.mutateAsync();
+      await mutation.mutateAsync({ userId, planId, payload: {} });
       toast.success("Completion certificate sent successfully");
       onClose();
     } catch (error: unknown) {

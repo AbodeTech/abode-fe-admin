@@ -1,6 +1,5 @@
 "use client";
 
-import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import {
@@ -13,24 +12,23 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { sendFlexTermsAndConditionEmail } from "@/lib/api/admin/user-assets.client";
+import { useSendUserPlanFlexTerms } from "../../hooks/use-user-plan-mutations";
 import { getErrorMessage } from "../../utils/error-message";
 
 interface SendFlexTermsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  uniqueAssetId: string;
+  userId: string;
+  planId: string;
   email: string;
 }
 
-export function SendFlexTermsAndConditionModal({ isOpen, onClose, uniqueAssetId, email }: SendFlexTermsModalProps) {
-  const mutation = useMutation({
-    mutationFn: () => sendFlexTermsAndConditionEmail(email, uniqueAssetId),
-  });
+export function SendFlexTermsAndConditionModal({ isOpen, onClose, userId, planId, email }: SendFlexTermsModalProps) {
+  const mutation = useSendUserPlanFlexTerms();
 
   const handleSend = async () => {
     try {
-      await mutation.mutateAsync();
+      await mutation.mutateAsync({ userId, planId, payload: {} });
       toast.success("Flex Terms and Conditions sent successfully");
       onClose();
     } catch (error: unknown) {
