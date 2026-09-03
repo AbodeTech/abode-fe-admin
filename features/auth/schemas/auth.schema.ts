@@ -12,18 +12,30 @@ import { z } from 'zod';
  * Types are derived with z.infer — never hand-write a response interface.
  * ============================================================ */
 
-/** ADMIN_ROLES in the BE's common/types. Inlined: no generated enums. */
-export const ADMIN_ROLES = ['viewer', 'moderator', 'subadmin', 'admin'] as const;
+/**
+ * Roles are DB-backed records now, not a fixed enum — ops can create custom
+ * ones ("finance_team") through the roles UI without a deploy. A closed
+ * `z.enum` would turn every such role into a SCHEMA_MISMATCH at login, so the
+ * name is an open string.
+ *
+ * `is_super_admin` is the governance flag. Do NOT gate on `name === 'admin'`:
+ * `admin` is an ordinary, ops-editable role now, and the real escape hatch is
+ * `super_admin`. The flag is what the BE's own SuperAdminGuard checks.
+ */
+export const AdminRoleSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  is_super_admin: z.boolean().default(false),
+});
 
-export const AdminRoleSchema = z.enum(ADMIN_ROLES);
 export type AdminRole = z.infer<typeof AdminRoleSchema>;
 
 /**
  * The admin record the BE returns from every auth endpoint (`AuthAdminView`).
  *
- * `permissions` is derived server-side from `role` — it is not stored per
- * admin. Kept as `string[]` rather than an enum so a new BE permission does
- * not turn every login into a SCHEMA_MISMATCH.
+ * `permissions` is resolved server-side from the admin's role document — it is
+ * not stored per admin. Kept as `string[]` rather than an enum so a new BE
+ * permission does not turn every login into a SCHEMA_MISMATCH.
  */
 export const AdminSchema = z.object({
   id: z.string(),
@@ -31,7 +43,7 @@ export const AdminSchema = z.object({
   lastName: z.string().nullable().optional(),
   userName: z.string().nullable().optional(),
   email: z.string().nullable().optional(),
-  role: AdminRoleSchema,
+  role: AdminRoleSchema.nullable(),
   permissions: z.array(z.string()).default([]),
   /**
    * True while the admin is still on a temporary password. The BE's

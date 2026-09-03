@@ -27,7 +27,7 @@ function DashboardContent() {
   const topProducts = useDashboardTopProducts(DEFAULT_TOP_LIST_LIMIT);
   const topAssociates = useDashboardTopAssociates(DEFAULT_TOP_LIST_LIMIT);
 
-  const isAdmin = user?.role === "admin";
+  const isAdmin = Boolean(user?.role?.is_super_admin);
   const isLoading = kpis.isLoading || topProducts.isLoading || topAssociates.isLoading;
   const error = kpis.error ?? topProducts.error ?? topAssociates.error;
 

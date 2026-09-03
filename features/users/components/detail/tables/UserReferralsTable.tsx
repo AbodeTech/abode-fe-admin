@@ -74,7 +74,8 @@ export function UserReferralsTable({ referrals }: UserReferralsTableProps) {
   const params = useParams<{ id: string }>()
   const userId = params.id
   const user = useAuthStore((state) => state.user)
-  const canAddReferral = user?.role === "admin" || (user?.permissions ?? []).includes("add-referral")
+  const canAddReferral =
+    Boolean(user?.role?.is_super_admin) || (user?.permissions ?? []).includes("add-referral")
   const queryClient = useQueryClient()
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [isAddOpen, setIsAddOpen] = useState(false)

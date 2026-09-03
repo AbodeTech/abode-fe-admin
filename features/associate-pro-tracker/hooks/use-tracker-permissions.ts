@@ -20,7 +20,7 @@ export const useTrackerPermissions = () => {
   const { user } = useAuthStore();
   const permissions = user?.permissions ?? [];
   // A super admin is not enumerated permission-by-permission on the FE.
-  const isSuperAdmin = user?.role === 'admin';
+  const isSuperAdmin = Boolean(user?.role?.is_super_admin);
 
   const has = (permission: string) => isSuperAdmin || permissions.includes(permission);
 

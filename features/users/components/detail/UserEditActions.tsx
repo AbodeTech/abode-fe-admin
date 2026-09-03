@@ -28,7 +28,7 @@ interface UserEditActionsProps {
 export function UserEditActions({ user }: UserEditActionsProps) {
   const currentUser = useAuthStore((state) => state.user)
   const permissions = currentUser?.permissions ?? []
-  const isAdmin = currentUser?.role === "admin"
+  const isAdmin = Boolean(currentUser?.role?.is_super_admin)
   const canEditUser = permissions.includes("edit_user")
   const canModifyRefStatus = permissions.includes("modify-referral-status")
   const searchParams = useSearchParams()

@@ -49,7 +49,8 @@ function DocumentTransactionsContent() {
   // the transactions area — the BE's own RBAC is what actually enforces it.
   const { user } = useAuthStore();
   const canReview =
-    (user?.permissions ?? []).includes("asset_transactions") || user?.role === "admin";
+    (user?.permissions ?? []).includes("asset_transactions") ||
+    Boolean(user?.role?.is_super_admin);
 
   const filters = {
     search: searchParams.get("search") ?? undefined,

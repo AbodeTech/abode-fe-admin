@@ -85,7 +85,9 @@ export function useHasPermission(permission: AdminPermission): boolean {
   const user = useAuthStore((state) => state.user);
 
   if (!user) return false;
-  if (user.role === 'admin') return true;
+  // The super-admin bypass. Was `role === 'admin'`, which no longer means
+  // unrestricted: `admin` is an ops-editable role now (RP-7).
+  if (user.role?.is_super_admin) return true;
 
   return (user.permissions ?? []).includes(permission);
 }
@@ -97,7 +99,7 @@ export function useAdminPermissions() {
   return {
     has: (permission: AdminPermission) => {
       if (!user) return false;
-      if (user.role === 'admin') return true;
+      if (user.role?.is_super_admin) return true;
       return (user.permissions ?? []).includes(permission);
     },
   };

@@ -345,7 +345,7 @@ const SortableItem = ({ id, label, category, color, onRemove, index }: any) => {
 
 export function SalesExport({ filters }: { filters: SalesListFilters }) {
   const { user } = useAuthStore()
-  const role = user?.role
+  const isSuperAdmin = Boolean(user?.role?.is_super_admin)
 
   const [open, setOpen] = useState(false)
   const [format, setFormat] = useState<ExportFormat>('csv')
@@ -619,7 +619,7 @@ export function SalesExport({ filters }: { filters: SalesListFilters }) {
     })
   }
 
-  if (role !== 'admin') return null
+  if (!isSuperAdmin) return null
 
   return (
     <div className="mb-0 mt-0 flex w-full min-w-0 flex-col gap-2 sm:mb-3 sm:mt-5 sm:flex-row sm:flex-wrap sm:justify-end sm:gap-2">

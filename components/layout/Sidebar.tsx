@@ -189,7 +189,7 @@ const Sidebar = () => {
     closeMobileNav();
   }, [pathname, closeMobileNav]);
 
-  const isSuperAdmin = user?.role === "admin";
+  const isSuperAdmin = Boolean(user?.role?.is_super_admin);
   const permissions = useAdminPermissions();
 
   // Strip out items the current user shouldn't see. Each gate is a small
@@ -214,7 +214,8 @@ const Sidebar = () => {
           return isSuperAdmin || isManager;
         }
         if (flags.restrictedToRoles) {
-          return !!user?.role && flags.restrictedToRoles.includes(user.role);
+          // Matches on the role NAME — roles are records now, not strings.
+          return !!user?.role && flags.restrictedToRoles.includes(user.role.name);
         }
         return true;
       }),
