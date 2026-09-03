@@ -42,7 +42,7 @@ export function BulkReassignDialog({
   sourceManagerId,
 }: Props) {
   const [targetManagerId, setTargetManagerId] = useState<string>("");
-  const { data: managersList } = useAssociateManagers({ page: 1, limit: 200 });
+  const { data: managersList } = useAssociateManagers({ page: 1, limit: 100 });
   const { mutateAsync, isPending } = useBulkAssignPros();
 
   useEffect(() => {

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { z } from "zod"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -35,12 +35,20 @@ import {
 } from "@/components/ui/select"
 import { useModifyReferralStatus } from "../../hooks/use-user-mutations"
 import { getErrorMessage } from "../../utils/error-message"
+import { AdminReasonFields } from "./AdminReasonFields"
+import { ADMIN_REFERRAL_TIERS, ChangeTierPayloadSchema } from "../../schemas/user-actions.schema"
 
-const formSchema = z.object({
-  status: z.string().min(1, "Please select a referral status"),
-})
+type FormSchemaType = z.infer<typeof ChangeTierPayloadSchema>
 
-type FormSchemaType = z.infer<typeof formSchema>
+const TIER_LABELS: Record<(typeof ADMIN_REFERRAL_TIERS)[number], string> = {
+  guest: "Guest",
+  user: "User",
+  associate: "Associate",
+  "associate-pro": "Associate Pro",
+  founder: "Founder",
+  management: "Management",
+  premium: "Premium",
+}
 
 interface ChangeReferralStatusModalProps {
   currentStatus: string
@@ -59,22 +67,34 @@ export function ChangeReferralStatusModal({ currentStatus, trigger, open, onOpen
   const setIsOpen = onOpenChange || setInternalOpen
 
   const form = useForm<FormSchemaType>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(ChangeTierPayloadSchema),
     defaultValues: {
-      status: currentStatus || "",
+      new_tier: ADMIN_REFERRAL_TIERS.includes(currentStatus as (typeof ADMIN_REFERRAL_TIERS)[number])
+        ? (currentStatus as FormSchemaType["new_tier"])
+        : "user",
+      reason: "",
+      notify_user: false,
     },
   })
 
+  useEffect(() => {
+    if (!isOpen) return
+    form.reset({
+      new_tier: ADMIN_REFERRAL_TIERS.includes(currentStatus as (typeof ADMIN_REFERRAL_TIERS)[number])
+        ? (currentStatus as FormSchemaType["new_tier"])
+        : "user",
+      reason: "",
+      notify_user: false,
+    })
+  }, [isOpen, currentStatus, form])
+
   const onSubmit = async (data: FormSchemaType) => {
     try {
-      await modifyStatus.mutateAsync({
-        userId: userId,
-        referral_status: data.status,
-      })
-      toast.success("Referral status updated successfully")
+      await modifyStatus.mutateAsync({ userId, payload: data })
+      toast.success("Tier updated successfully")
       setIsOpen(false)
     } catch (error: unknown) {
-      toast.error(getErrorMessage(error, "Failed to update status"))
+      toast.error(getErrorMessage(error, "Failed to update tier"))
     }
   }
 
@@ -83,35 +103,38 @@ export function ChangeReferralStatusModal({ currentStatus, trigger, open, onOpen
       {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Change Referral Status</DialogTitle>
+          <DialogTitle>Change tier</DialogTitle>
           <DialogDescription>
-            Select the new referral status for this user.
+            Updates the user&apos;s referral tier without rerating existing plans.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
-              name="status"
+              name="new_tier"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Referral Status</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormLabel>Tier</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select status" />
+                        <SelectValue placeholder="Select tier" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="user">User</SelectItem>
-                      <SelectItem value="associate">Associates</SelectItem>
-                      <SelectItem value="associate-pro">Associate Pro</SelectItem>
+                      {ADMIN_REFERRAL_TIERS.map((tier) => (
+                        <SelectItem key={tier} value={tier}>
+                          {TIER_LABELS[tier]}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <FormMessage />
                 </FormItem>
               )}
             />
+            <AdminReasonFields reasonPlaceholder="Reason for this tier change…" />
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
@@ -119,7 +142,7 @@ export function ChangeReferralStatusModal({ currentStatus, trigger, open, onOpen
               </Button>
               <Button type="submit" disabled={form.formState.isSubmitting}>
                 {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Update Status
+                Update tier
               </Button>
             </DialogFooter>
           </form>

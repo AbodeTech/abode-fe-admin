@@ -343,6 +343,12 @@ type RequestConfig = {
    * using it are excluded from the refresh-and-retry path.
    */
   token?: string;
+  /**
+   * JSON body. POST/PATCH/PUT take this via the dedicated `body` argument;
+   * DELETE uses `config.body` because Nest still validates a DTO on several
+   * admin deletes (TIN, referrals).
+   */
+  body?: unknown;
 };
 
 async function request<T extends z.ZodTypeAny>(
@@ -357,7 +363,7 @@ async function request<T extends z.ZodTypeAny>(
         method,
         path,
         query: opts?.config?.params ?? {},
-        body: opts?.body,
+        body: opts?.body ?? opts?.config?.body,
       });
       return schema.parse(payload);
     }
@@ -365,7 +371,7 @@ async function request<T extends z.ZodTypeAny>(
     const res = await apiClient.request({
       method,
       url: path,
-      data: opts?.body,
+      data: opts?.body ?? opts?.config?.body,
       params: opts?.config?.params,
       ...(token && {
         headers: { Authorization: `Bearer ${token}` },

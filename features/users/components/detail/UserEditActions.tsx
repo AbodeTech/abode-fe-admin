@@ -6,6 +6,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Plus } from "lucide-react"
@@ -17,28 +18,31 @@ import { EditUserWalletModal } from "../modals/EditUserWalletModal"
 import { EditUserCommissionBalanceModal } from "../modals/EditUserCommissionBalanceModal"
 import { EditUserTinModal } from "../modals/EditUserTinModal"
 import { ClearUserTinModal } from "../modals/ClearUserTinModal"
+import { ReassignReferrerModal } from "../modals/ReassignReferrerModal"
 
 import { UserDetail } from "../../types/user.types"
-import { useAuthStore } from "@/store/auth-store"
+import { useHasPermission } from "@/hooks/use-admin-permission"
+
+type ModalKey = "profile" | "refStatus" | "wallet" | "commission" | "tin" | "clearTin" | "reassignReferrer" | null
 
 interface UserEditActionsProps {
   user: UserDetail
 }
 
 export function UserEditActions({ user }: UserEditActionsProps) {
-  const currentUser = useAuthStore((state) => state.user)
-  const permissions = currentUser?.permissions ?? []
-  const isAdmin = Boolean(currentUser?.role?.is_super_admin)
-  const canEditUser = permissions.includes("edit_user")
-  const canModifyRefStatus = permissions.includes("modify-referral-status")
+  const canEditUser = useHasPermission("edit_user")
+  const canEditProfile = useHasPermission("edit_user_profile")
+  const canModifyTier = useHasPermission("modify_tier")
+  const canAdjustWallet = useHasPermission("adjust_wallet")
+  const canEditTin = useHasPermission("edit_user_tin")
+  const canReassignReferrer = useHasPermission("reassign_referrer")
+
   const searchParams = useSearchParams()
   const router = useRouter()
 
   const modalParam = searchParams?.get("modal")
 
-  const activeModal = useMemo<
-    "profile" | "refStatus" | "wallet" | "commission" | "tin" | "clearTin" | null
-  >(() => {
+  const activeModal = useMemo<ModalKey>(() => {
     if (!modalParam) return null
     switch (modalParam) {
       case "edituserprofile":
@@ -53,6 +57,8 @@ export function UserEditActions({ user }: UserEditActionsProps) {
         return "tin"
       case "clearusertin":
         return "clearTin"
+      case "reassignreferrer":
+        return "reassignReferrer"
       default:
         return null
     }
@@ -69,9 +75,10 @@ export function UserEditActions({ user }: UserEditActionsProps) {
     router.push(next ? `?${next}` : "?", { scroll: false })
   }
 
-  if (!isAdmin || (!canEditUser && !canModifyRefStatus)) {
-    return null
-  }
+  const hasAny =
+    canEditUser || canEditProfile || canModifyTier || canAdjustWallet || canEditTin || canReassignReferrer
+
+  if (!hasAny) return null
 
   return (
     <>
@@ -82,30 +89,46 @@ export function UserEditActions({ user }: UserEditActionsProps) {
             <Plus className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-[200px]">
-          {canEditUser && (
+        <DropdownMenuContent align="end" className="w-[220px]">
+          {(canEditUser || canEditProfile) && (
             <DropdownMenuItem onSelect={() => setModalParam("edituserprofile")}>
               Edit User Profile
             </DropdownMenuItem>
           )}
-          {canModifyRefStatus && (
+          {(canEditUser || canModifyTier) && (
             <DropdownMenuItem onSelect={() => setModalParam("changeRef")}>
-              Edit Ref Status
+              Edit Ref Status / Tier
+            </DropdownMenuItem>
+          )}
+          {(canEditUser || canAdjustWallet) && (
+            <DropdownMenuItem onSelect={() => setModalParam("edituserbalance")}>
+              Adjust Wallet Balance
             </DropdownMenuItem>
           )}
           {canEditUser && (
+            <DropdownMenuItem onSelect={() => setModalParam("editusercommissionbalance")}>
+              Edit Commission Balance
+            </DropdownMenuItem>
+          )}
+          {(canEditUser || canEditTin) && (
             <>
-              <DropdownMenuItem onSelect={() => setModalParam("edituserbalance")}>
-                Edit User Wallet Balance
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setModalParam("editusercommissionbalance")}>
-                Edit User Commission Balance
-              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={() => setModalParam("editusertin")}>
                 Edit User TIN
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setModalParam("clearusertin")} className="text-red-600 focus:text-red-600">
+              <DropdownMenuItem
+                onSelect={() => setModalParam("clearusertin")}
+                className="text-red-600 focus:text-red-600"
+              >
                 Clear User TIN
+              </DropdownMenuItem>
+            </>
+          )}
+          {(canEditUser || canReassignReferrer) && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => setModalParam("reassignreferrer")}>
+                Reassign Referrer
               </DropdownMenuItem>
             </>
           )}
@@ -153,6 +176,13 @@ export function UserEditActions({ user }: UserEditActionsProps) {
 
       <ClearUserTinModal
         open={activeModal === "clearTin"}
+        onOpenChange={(open) => {
+          if (!open) setModalParam(null)
+        }}
+      />
+
+      <ReassignReferrerModal
+        open={activeModal === "reassignReferrer"}
         onOpenChange={(open) => {
           if (!open) setModalParam(null)
         }}

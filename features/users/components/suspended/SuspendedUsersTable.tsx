@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   Table,
   TableBody,
@@ -8,17 +9,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import Link from "next/link";
 import { format } from "date-fns";
 import { graphql, useFragment as getFragmentData, FragmentType } from "@/lib/gql";
@@ -33,14 +23,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MoreVertical } from "lucide-react";
 import { toast } from "sonner";
-import { useUnsuspendUser } from "../../hooks/use-suspended-users";
+import { useUnsuspendUser } from "../../hooks/use-user-mutations";
 import { getErrorMessage } from "../../utils/error-message";
 import {
   AdminDesktopTableWrap,
   AdminMobileCard,
   AdminMobileField,
   AdminMobileStack,
-} from "@/components/shared/admin-responsive-table";
+} from "@/components/shared/admin-responsive-table"
+import { ReasonActionModal } from "../modals/ReasonActionModal";
 
 export const SuspendedUsersRowFragment = graphql(`
   fragment SuspendedUsersRow_user on UserAdmin {
@@ -66,44 +57,14 @@ interface SuspendedUsersTableProps {
   users: (SuspendedUserRow | null)[] | null | undefined;
 }
 
-function UnsuspendMenuItem({ userId, disabled, onConfirm }: { userId: string; disabled?: boolean; onConfirm: (id: string) => void }) {
-  return (
-    <AlertDialog>
-      <AlertDialogTrigger asChild>
-        <DropdownMenuItem onSelect={(event) => event.preventDefault()} disabled={disabled}>
-          Unsuspend User
-        </DropdownMenuItem>
-      </AlertDialogTrigger>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-          <AlertDialogDescription>
-            This will unsuspend the user and allow them to access the platform again.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={() => onConfirm(userId)}>Unsuspend</AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  );
-}
-
 export function SuspendedUsersTable({ users }: SuspendedUsersTableProps) {
   const usersRaw = users || [];
   const rows = usersRaw.map((user) => getFragmentData(SuspendedUsersRowFragment, user));
   const validRows = rows.filter((user): user is NonNullable<typeof user> => user !== null && user !== undefined);
 
-  const { mutateAsync, isPending } = useUnsuspendUser();
-
-  const handleUnsuspend = async (id: string) => {
-    try {
-      await mutateAsync(id);
-    } catch (err: unknown) {
-      toast.error(getErrorMessage(err, "Unable to unsuspend user"));
-    }
-  };
+  const unsuspendUser = useUnsuspendUser();
+  const isPending = unsuspendUser.isPending;
+  const [unsuspendTarget, setUnsuspendTarget] = useState<string | null>(null);
 
   return (
     <div className="w-full min-w-0 space-y-3">
@@ -142,7 +103,9 @@ export function SuspendedUsersTable({ users }: SuspendedUsersTableProps) {
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel>Actions</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <UnsuspendMenuItem userId={user._id} disabled={isPending} onConfirm={handleUnsuspend} />
+                  <DropdownMenuItem onSelect={() => setUnsuspendTarget(user._id)} disabled={isPending}>
+                    Unsuspend User
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -192,7 +155,9 @@ export function SuspendedUsersTable({ users }: SuspendedUsersTableProps) {
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        <UnsuspendMenuItem userId={user._id} disabled={isPending} onConfirm={handleUnsuspend} />
+                        <DropdownMenuItem onSelect={() => setUnsuspendTarget(user._id)} disabled={isPending}>
+                          Unsuspend User
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -202,6 +167,20 @@ export function SuspendedUsersTable({ users }: SuspendedUsersTableProps) {
           </Table>
         </div>
       </AdminDesktopTableWrap>
+
+      {unsuspendTarget && (
+        <ReasonActionModal
+          open={!!unsuspendTarget}
+          onOpenChange={(open) => { if (!open) setUnsuspendTarget(null) }}
+          title="Unsuspend user"
+          description="This will unsuspend the user and allow them to access the platform again."
+          confirmLabel="Unsuspend"
+          successMessage="User unsuspended"
+          onSubmit={(_userId, payload) =>
+            unsuspendUser.mutateAsync({ userId: unsuspendTarget, payload })
+          }
+        />
+      )}
     </div>
   );
 }

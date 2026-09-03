@@ -1,17 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { AlertCircle, Pencil, UserPlus, UserCog } from "lucide-react";
+import { AlertCircle, Loader2, Pencil, UserPlus, UserCog } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ReassignProDialog } from "./dialogs/ReassignProDialog";
-
-interface AssignedManager {
-  _id: string;
-  firstName?: string | null;
-  lastName?: string | null;
-  userName?: string | null;
-  email?: string | null;
-}
+import { useProManager } from "../hooks/use-pro-manager";
+import { managerDisplayName } from "../schemas/associate-manager.schema";
 
 interface Props {
   user: {
@@ -20,27 +14,25 @@ interface Props {
     lastName?: string | null;
     email?: string | null;
     referral_status?: string | null;
-    associate_manager?: AssignedManager | null;
   };
 }
-
-const managerDisplayName = (m: AssignedManager) => {
-  const full = `${m.firstName ?? ""} ${m.lastName ?? ""}`.trim();
-  return full || m.userName || m.email || "Associate Manager";
-};
 
 /**
  * Shown on the User Details page when the user is an Associate Pro.
  * Surfaces the user's assigned manager + a single-click reassign / assign action.
+ *
+ * Manager assignment is NOT on `GET /admin/users/:id` — it lives on the
+ * associate-manager roster — so this card looks it up via `useProManager`.
  */
 export function ManagerAssignmentCard({ user }: Props) {
   const [dialogOpen, setDialogOpen] = useState(false);
+  const { data: currentManager, isLoading } = useProManager(user._id);
 
   // Only render for Associate Pros.
   if (user.referral_status !== "associate-pro") return null;
 
-  const currentManager = user.associate_manager ?? null;
-  const proFullName = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || "Associate Pro";
+  const proFullName =
+    `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || "Associate Pro";
 
   return (
     <>
@@ -52,10 +44,19 @@ export function ManagerAssignmentCard({ user }: Props) {
             </div>
             <div>
               <p className="text-xs uppercase tracking-wide text-gray-500">Assigned Manager</p>
-              {currentManager ? (
+              {isLoading ? (
+                <div className="mt-0.5 flex items-center gap-1.5 text-gray-500">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <p className="text-sm">Loading…</p>
+                </div>
+              ) : currentManager ? (
                 <div className="mt-0.5">
-                  <p className="text-base font-semibold text-gray-900">{managerDisplayName(currentManager)}</p>
-                  <p className="text-xs text-gray-500">{currentManager.email}</p>
+                  <p className="text-base font-semibold text-gray-900">
+                    {managerDisplayName(currentManager)}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {currentManager.roster_size} Pros on roster
+                  </p>
                 </div>
               ) : (
                 <div className="mt-0.5 flex items-center gap-1.5 text-amber-700">
@@ -90,7 +91,7 @@ export function ManagerAssignmentCard({ user }: Props) {
           name: proFullName,
           email: user.email ?? "",
         }}
-        currentManagerId={currentManager?._id ?? null}
+        currentManagerId={currentManager?.manager_id ?? null}
       />
     </>
   );

@@ -6,13 +6,26 @@ export { useUserDetails, useUserCore, useUserStats } from './hooks/use-user-deta
 export type { UsersData, SystemUsersOverviewData } from './hooks/use-users';
 export type { UserDetailsData } from './hooks/use-user-detail';
 export type { AdminUserRow, UserOverview, UserAnalytics, UserTier } from './schemas/user.schema';
-export { useUserReferrals, useDeleteUserReferral } from './hooks/use-user-referrals';
+export { useUserReferrals } from './hooks/use-user-referrals';
 export type { UserReferralData } from './hooks/use-user-referrals';
-export { useEditUserProfile, useEditUserWallet, useModifyReferralStatus } from './hooks/use-user-mutations';
+export {
+  useEditUserProfile,
+  useEditUserWallet,
+  useModifyReferralStatus,
+  useReassignReferrer,
+  useAddUserReferral,
+  useDeleteUserReferral,
+  useUpdateUserTin,
+  useClearUserTin,
+  useSuspendUser,
+  useUnsuspendUser,
+  useForcePasswordReset,
+  useSuspendWallet,
+  useUnsuspendWallet,
+} from './hooks/use-user-mutations';
 export {
   useSuspendedUsers,
   useExportSuspendedUsers,
-  useUnsuspendUser,
 } from './hooks/use-suspended-users';
 export { useExportUsersByFilter, useExportUsersWithAsset } from './hooks/use-export-users';
 export { useRegisterUser } from './hooks/use-register-user';
@@ -29,7 +42,6 @@ export type {
   ModifyReferralStatusInput,
 } from './types/user.types';
 
-// Components
 // Components
 export { UsersTable } from './components/all/UsersTable';
 export { UserProfile } from './components/detail/UserProfile';
@@ -50,6 +62,8 @@ export { RegisterUserModal } from './components/modals/RegisterUserModal';
 export { SuspendedUsersTable } from './components/suspended/SuspendedUsersTable';
 export { UserPaymentPlanUnSuspend } from './components/modals/UserPaymentPlanUnSuspend';
 export { UserPaymentPlanSuspend } from './components/modals/UserPaymentPlanSuspend';
+export { ReasonActionModal } from './components/modals/ReasonActionModal';
+export { ReassignReferrerModal } from './components/modals/ReassignReferrerModal';
 
 // Table components
 export { UserReferralsTable } from './components/detail/tables/UserReferralsTable';

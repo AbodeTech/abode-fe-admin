@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,23 +18,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Textarea } from "@/components/ui/textarea";
+import { Form } from "@/components/ui/form";
 import { useClearUserTin } from "../../hooks/use-user-mutations";
 import { getErrorMessage } from "../../utils/error-message";
+import { AdminReasonFields } from "./AdminReasonFields";
+import { AdminReasonSchema } from "../../schemas/user-actions.schema";
 
-const formSchema = z.object({
-  reason: z.string().trim().min(1, "Reason is required"),
-});
-
-type FormSchemaType = z.infer<typeof formSchema>;
+type FormSchemaType = z.infer<typeof AdminReasonSchema>;
 
 interface ClearUserTinModalProps {
   trigger?: React.ReactNode;
@@ -52,18 +42,20 @@ export function ClearUserTinModal({ trigger, open, onOpenChange }: ClearUserTinM
   const setIsOpen = onOpenChange || setInternalOpen;
 
   const form = useForm<FormSchemaType>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(AdminReasonSchema),
     defaultValues: {
       reason: "",
+      notify_user: false,
     },
   });
 
+  useEffect(() => {
+    if (isOpen) form.reset({ reason: "", notify_user: false });
+  }, [isOpen, form]);
+
   const onSubmit = async (data: FormSchemaType) => {
     try {
-      await clearTin.mutateAsync({
-        userId,
-        reason: data.reason.trim(),
-      });
+      await clearTin.mutateAsync({ userId, payload: data });
       toast.success("TIN cleared successfully");
       setIsOpen(false);
     } catch (error: unknown) {
@@ -78,24 +70,12 @@ export function ClearUserTinModal({ trigger, open, onOpenChange }: ClearUserTinM
         <DialogHeader>
           <DialogTitle>Clear User TIN</DialogTitle>
           <DialogDescription>
-            Provide a reason for clearing this user&apos;s TIN.
+            Clears the TIN and returns it to not started. Provide a reason for the audit log.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="reason"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Reason</FormLabel>
-                  <FormControl>
-                    <Textarea placeholder="Reason for clearing TIN..." {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <AdminReasonFields reasonPlaceholder="Reason for clearing TIN…" />
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>

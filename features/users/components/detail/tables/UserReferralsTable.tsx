@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import { useParams } from "next/navigation"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { useAuthStore } from "@/store/auth-store"
 import {
@@ -30,6 +29,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import {
   Dialog,
   DialogContent,
@@ -41,9 +41,9 @@ import {
 import { formatAmount, formatDate, getStatusColor, } from "@/lib/utils/transaction-utils"
 import { UserReferralResponse } from "@/lib/api/admin/referrals.types"
 import { UserReferralActions } from "../UserReferralActions"
-import { addUserReferralByAdmin } from "@/lib/api/admin/referrals.client"
-import { userKeys } from "../../../hooks/query-keys"
+import { useAddUserReferral } from "../../../hooks/use-user-mutations"
 import { getErrorMessage } from "../../../utils/error-message"
+import { ADMIN_REASON_MIN } from "../../../schemas/user-actions.schema"
 import {
   AdminDesktopTableWrap,
   AdminMobileCard,
@@ -76,32 +76,29 @@ export function UserReferralsTable({ referrals }: UserReferralsTableProps) {
   const user = useAuthStore((state) => state.user)
   const canAddReferral =
     Boolean(user?.role?.is_super_admin) || (user?.permissions ?? []).includes("add-referral")
-  const queryClient = useQueryClient()
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [referralEmail, setReferralEmail] = useState("")
+  const [addReason, setAddReason] = useState("")
 
   const filteredData =
     statusFilter === "all"
       ? referrals
       : referrals.filter((referral) => referral.userReferralStatus === statusFilter)
 
-  const addReferral = useMutation({
-    mutationFn: async () => {
-      if (!userId) throw new Error("User ID is required")
-      if (!referralEmail.trim()) throw new Error("Referral email is required")
-      return addUserReferralByAdmin(userId, referralEmail.trim())
-    },
-  })
+  const addReferral = useAddUserReferral()
 
   const handleAddReferral = async () => {
+    if (!userId || !referralEmail.trim() || addReason.length < ADMIN_REASON_MIN) return
     try {
-      await addReferral.mutateAsync()
+      await addReferral.mutateAsync({
+        userId,
+        payload: { referee_email: referralEmail.trim(), reason: addReason, notify_user: false },
+      })
       toast.success("Referral added successfully")
       setIsAddOpen(false)
       setReferralEmail("")
-      queryClient.invalidateQueries({ queryKey: userKeys.referrals(userId) })
-      queryClient.invalidateQueries({ queryKey: userKeys.detail(userId) })
+      setAddReason("")
     } catch (error: unknown) {
       toast.error(getErrorMessage(error, "Unable to add referral"))
     }
@@ -234,19 +231,27 @@ export function UserReferralsTable({ referrals }: UserReferralsTableProps) {
             <DialogTitle>Add Referral</DialogTitle>
             <DialogDescription>Enter the referral email to add to this user.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-2">
+          <div className="space-y-3">
             <Input
               type="email"
               value={referralEmail}
               onChange={(event) => setReferralEmail(event.target.value)}
               placeholder="name@example.com"
             />
+            <Textarea
+              placeholder={`Reason (min ${ADMIN_REASON_MIN} chars)…`}
+              value={addReason}
+              onChange={(event) => setAddReason(event.target.value)}
+            />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsAddOpen(false)} disabled={addReferral.isPending}>
               Cancel
             </Button>
-            <Button onClick={handleAddReferral} disabled={addReferral.isPending || !referralEmail.trim()}>
+            <Button
+              onClick={handleAddReferral}
+              disabled={addReferral.isPending || !referralEmail.trim() || addReason.length < ADMIN_REASON_MIN}
+            >
               Add Referral
             </Button>
           </DialogFooter>
