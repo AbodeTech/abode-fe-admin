@@ -14,7 +14,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { MapPin, RotateCcw, Send } from "lucide-react";
+import { MailCheck, MailWarning, MapPin, Send, Settings2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   AdminDesktopTableWrap,
@@ -52,7 +52,7 @@ interface AllocationTableProps {
   rows?: (FragmentType<typeof AllocationTableRowFragment> | null)[] | null;
   isLoading?: boolean;
   onSend: (client: FragmentType<typeof AllocationTableRowFragment>) => void;
-  onResend: (client: FragmentType<typeof AllocationTableRowFragment>) => void;
+  onManage: (client: FragmentType<typeof AllocationTableRowFragment>) => void;
 }
 
 const formatAmount = (value?: number | null) =>
@@ -79,7 +79,37 @@ const formatDate = (value?: string | null) => {
   return date.toLocaleDateString();
 };
 
-export function AllocationTable({ rows, isLoading, onSend, onResend }: AllocationTableProps) {
+/* allocation_status is set by the BE to one of pending | allocated | email_sent.
+ * Reassigning drops it back to "allocated", so a client whose plots changed
+ * correctly reads as un-notified until the email is sent again. */
+const EmailStatusBadge = ({ status }: { status?: string | null }) => {
+  const normalized = (status ?? "pending").toLowerCase();
+
+  if (normalized === "email_sent") {
+    return (
+      <Badge className="inline-flex items-center gap-1.5 whitespace-normal bg-green-100 px-2.5 py-1 text-left text-sm font-normal leading-snug text-green-800 hover:bg-green-100">
+        <MailCheck className="h-3.5 w-3.5 shrink-0" />
+        Email sent
+      </Badge>
+    );
+  }
+
+  if (normalized === "allocated") {
+    return (
+      <Badge
+        variant="secondary"
+        className="inline-flex items-center gap-1.5 whitespace-normal bg-amber-100 px-2.5 py-1 text-left text-sm font-normal leading-snug text-amber-800"
+      >
+        <MailWarning className="h-3.5 w-3.5 shrink-0" />
+        Not notified
+      </Badge>
+    );
+  }
+
+  return <span className="text-sm text-muted-foreground">—</span>;
+};
+
+export function AllocationTable({ rows, isLoading, onSend, onManage }: AllocationTableProps) {
   if (isLoading) {
     return (
       <Card className="min-w-0 border-none shadow-sm">
@@ -135,11 +165,18 @@ export function AllocationTable({ rows, isLoading, onSend, onResend }: Allocatio
                       )
                     }
                   />
+                  <AdminMobileField
+                    label="Email status"
+                    value={<EmailStatusBadge status={client.allocationStatus} />}
+                  />
+                  {hasAllocation && (
+                    <AdminMobileField label="Allocated on" value={formatDate(client.allocationDate)} />
+                  )}
                   <div className="border-t border-border pt-2">
                     {hasAllocation ? (
-                      <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => onResend(row)}>
-                        <RotateCcw className="h-4 w-4" />
-                        Resend
+                      <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => onManage(row)}>
+                        <Settings2 className="h-4 w-4" />
+                        Manage
                       </Button>
                     ) : (
                       <Button size="sm" className="w-full gap-2" onClick={() => onSend(row)}>
@@ -194,6 +231,9 @@ export function AllocationTable({ rows, isLoading, onSend, onResend }: Allocatio
               <TableHead className="min-w-40 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Allocation #
               </TableHead>
+              <TableHead className="min-w-36 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Email Status
+              </TableHead>
               <TableHead className="min-w-38 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Action
               </TableHead>
@@ -203,7 +243,7 @@ export function AllocationTable({ rows, isLoading, onSend, onResend }: Allocatio
             {safeRows.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={13}
+                  colSpan={14}
                   className="whitespace-normal px-4 py-12 text-center text-sm text-muted-foreground"
                 >
                   No eligible clients found.
@@ -258,9 +298,16 @@ export function AllocationTable({ rows, isLoading, onSend, onResend }: Allocatio
                     </TableCell>
                     <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed">
                       {hasAllocation ? (
-                        <Badge className="inline-block max-w-full wrap-break-word bg-green-100 px-2.5 py-1 text-left text-sm font-normal leading-snug text-green-800 hover:bg-green-100">
-                          {client.allocation}
-                        </Badge>
+                        <div className="space-y-1">
+                          <Badge className="inline-block max-w-full wrap-break-word bg-green-100 px-2.5 py-1 text-left text-sm font-normal leading-snug text-green-800 hover:bg-green-100">
+                            {client.allocation}
+                          </Badge>
+                          {client.allocationDate && (
+                            <p className="text-xs text-muted-foreground">
+                              Allocated {formatDate(client.allocationDate)}
+                            </p>
+                          )}
+                        </div>
                       ) : (
                         <Badge
                           variant="secondary"
@@ -270,16 +317,19 @@ export function AllocationTable({ rows, isLoading, onSend, onResend }: Allocatio
                         </Badge>
                       )}
                     </TableCell>
+                    <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed">
+                      <EmailStatusBadge status={client.allocationStatus} />
+                    </TableCell>
                     <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4">
                       {hasAllocation ? (
                         <Button
                           variant="outline"
                           size="sm"
                           className="flex h-auto min-h-10 w-full flex-col gap-1.5 whitespace-normal px-3 py-2.5 text-center text-sm leading-snug sm:h-9 sm:min-h-0 sm:w-auto sm:flex-row sm:items-center sm:justify-center sm:gap-2"
-                          onClick={() => onResend(row)}
+                          onClick={() => onManage(row)}
                         >
-                          <RotateCcw className="h-4 w-4 shrink-0" />
-                          Resend
+                          <Settings2 className="h-4 w-4 shrink-0" />
+                          Manage
                         </Button>
                       ) : (
                         <Button

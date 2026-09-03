@@ -114,7 +114,7 @@ function AllocationContent() {
     setModalOpen(true);
   };
 
-  const handleResend = (client: FragmentType<typeof AllocationTableRowFragment>) => {
+  const handleManage = (client: FragmentType<typeof AllocationTableRowFragment>) => {
     setModalMode("resend");
     setModalClient(client);
     setModalOpen(true);
@@ -150,6 +150,13 @@ function AllocationContent() {
           location: client.location,
           boughtDate: client.end_date,
           allocationNumber: client.allocation || "Not assigned yet",
+          allocationDate: client.allocationDate || "",
+          emailStatus:
+            client.allocationStatus === "email_sent"
+              ? "Email sent"
+              : client.allocationStatus === "allocated"
+              ? "Not notified"
+              : "—",
         };
       });
       const parser = new Parser();
@@ -217,7 +224,7 @@ function AllocationContent() {
         rows={data?.data}
         isLoading={isLoading}
         onSend={handleSend}
-        onResend={handleResend}
+        onManage={handleManage}
       />
 
       <Pagination

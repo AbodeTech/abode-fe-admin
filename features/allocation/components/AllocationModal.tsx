@@ -71,6 +71,7 @@ export function AllocationModal({
   const assetType = allocationClient?.assetType ?? "";
   const paymentPlanId = allocationClient?.paymentPlan ?? "";
   const hasExistingAllocation = Boolean(allocationClient?.allocation);
+  const emailAlreadySent = allocationClient?.allocationStatus === "email_sent";
 
   const { data: assetId, isLoading: isResolvingAssetId } = useAssetIdByName(
     assetName,
@@ -300,9 +301,20 @@ export function AllocationModal({
                     </span>
                   </p>
                   {hasExistingAllocation && (
-                    <p className="text-amber-600">
-                      Current allocation: {allocationClient.allocation}
-                    </p>
+                    <>
+                      <p className="text-amber-600">
+                        Current allocation: {allocationClient.allocation}
+                      </p>
+                      <p
+                        className={
+                          emailAlreadySent ? "text-green-700" : "text-amber-600"
+                        }
+                      >
+                        {emailAlreadySent
+                          ? "Client has been notified by email."
+                          : "Client has not been notified yet."}
+                      </p>
+                    </>
                   )}
                 </div>
               </div>
