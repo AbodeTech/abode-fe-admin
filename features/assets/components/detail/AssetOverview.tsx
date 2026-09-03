@@ -26,13 +26,21 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="min-w-0 space-y-0.5">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <div className="text-sm wrap-break-word">{value || <span className="text-muted-foreground">—</span>}</div>
+      <div className="text-sm wrap-break-word">
+        {value || <span className="text-muted-foreground">—</span>}
+      </div>
     </div>
   );
 }
 
 /** Read-only panel — used for value history, which has no edit endpoint. */
-function Panel({ title, children }: { title: string; children: React.ReactNode }) {
+function Panel({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <section className="rounded-lg border">
       <div className="flex items-center justify-between gap-3 border-b px-4 py-3">
@@ -51,11 +59,13 @@ const DOCUMENT_LABELS = {
 } as const;
 
 function documentStatus(asset: AssetDetail) {
-  return (Object.keys(DOCUMENT_LABELS) as (keyof typeof DOCUMENT_LABELS)[]).map((key) => ({
-    key,
-    label: DOCUMENT_LABELS[key],
-    url: asset.documents?.[key] ?? null,
-  }));
+  return (Object.keys(DOCUMENT_LABELS) as (keyof typeof DOCUMENT_LABELS)[]).map(
+    (key) => ({
+      key,
+      label: DOCUMENT_LABELS[key],
+      url: asset.documents?.[key] ?? null,
+    }),
+  );
 }
 
 export function AssetOverview() {
@@ -70,7 +80,8 @@ export function AssetOverview() {
 
   if (!asset) return null;
 
-  const topography = asset.topography as (typeof TOPOGRAPHIES)[number] | null | undefined;
+  const topography = asset.topography as
+    (typeof TOPOGRAPHIES)[number] | null | undefined;
 
   return (
     <div className="space-y-4">
@@ -86,7 +97,11 @@ export function AssetOverview() {
           <Field label="Purpose" value={asset.asset_purpose} />
           <Field
             label="Topography"
-            value={topography ? <span className="capitalize">{topography}</span> : null}
+            value={
+              topography ? (
+                <span className="capitalize">{topography}</span>
+              ) : null
+            }
           />
           <Field
             label="Amenities"
@@ -126,13 +141,21 @@ export function AssetOverview() {
         description="Sold and reserved counts are derived — they can't be edited."
         isSaving={availability.isSaving}
         onSave={availability.submit}
-        form={<AssetAvailabilityFields form={availability.form} asset={asset} />}
+        form={
+          <AssetAvailabilityFields form={availability.form} asset={asset} />
+        }
       >
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Field label="Sales cap" value={asset.sales_cap.toLocaleString()} />
-          <Field label="Visibility" value={VISIBILITY_LABELS[asset.visibility as Visibility]} />
+          <Field
+            label="Visibility"
+            value={VISIBILITY_LABELS[asset.visibility as Visibility]}
+          />
           <Field label="Sold" value={asset.sold_units.toLocaleString()} />
-          <Field label="Reserved" value={asset.reserved_units.toLocaleString()} />
+          <Field
+            label="Reserved"
+            value={asset.reserved_units.toLocaleString()}
+          />
         </div>
       </EditablePanel>
 
@@ -195,7 +218,11 @@ export function AssetOverview() {
         <Panel title="Value history">
           <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
             {asset.asset_history.map((entry) => (
-              <Field key={entry.year} label={String(entry.year)} value={formatNaira(entry.value)} />
+              <Field
+                key={entry.year}
+                label={String(entry.year)}
+                value={formatNaira(entry.value)}
+              />
             ))}
           </div>
         </Panel>
@@ -207,7 +234,7 @@ export function AssetOverview() {
         form: an admin creating blocks that vanish on reload is worse than a
         blank space.
       */}
-      <section className="rounded-lg border border-dashed">
+      {/*<section className="rounded-lg border border-dashed">
         <div className="flex items-start gap-2.5 p-4">
           <Ban className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
           <div className="min-w-0">
@@ -218,7 +245,7 @@ export function AssetOverview() {
             </p>
           </div>
         </div>
-      </section>
+      </section>*/}
     </div>
   );
 }

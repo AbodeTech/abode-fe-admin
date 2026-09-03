@@ -15,9 +15,8 @@ import {
   DeleteAssetDialog,
   DEFAULT_ASSET_LIMIT,
   InventoryHealthBar,
-  SAMPLE_CATEGORIES,
-  SAMPLE_PORTFOLIO,
   useAssetList,
+  usePortfolioAnalytics,
   type Asset,
   type OfferType,
   type Visibility,
@@ -100,6 +99,31 @@ function AssetsPageContent() {
   );
 }
 
+function PortfolioAnalyticsPanels() {
+  const { data, isLoading, error } = usePortfolioAnalytics();
+
+  if (isLoading) {
+    return (
+      <div className="mb-6 h-40 w-full animate-pulse rounded-xl border bg-muted/30 sm:mb-8" />
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="mb-6 rounded-md border border-dashed p-4 text-sm text-muted-foreground sm:mb-8">
+        Portfolio analytics are unavailable right now.
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <InventoryHealthBar data={data.portfolio} />
+      <AssetCategoryHealth data={data.categories} />
+    </>
+  );
+}
+
 export default function AssetsPage() {
   return (
     <div className="mx-auto mt-4 w-full min-w-0 max-w-[1600px] space-y-6 px-3 pb-16 sm:px-4 sm:pb-20">
@@ -121,13 +145,7 @@ export default function AssetsPage() {
         </div>
       </div>
 
-      {/*
-        ⛔ ticket 17 — no asset analytics endpoint exists. These panels run on
-        `sample-data.ts` and each carries a "Sample data" chip so the figures
-        aren't mistaken for real ones.
-      */}
-      <InventoryHealthBar data={SAMPLE_PORTFOLIO} />
-      <AssetCategoryHealth data={SAMPLE_CATEGORIES} />
+      <PortfolioAnalyticsPanels />
 
       <Suspense fallback={<PageContentLoader label="Loading assets…" />}>
         <AssetsPageContent />

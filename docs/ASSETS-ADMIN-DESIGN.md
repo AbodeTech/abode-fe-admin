@@ -143,15 +143,17 @@ catalogue that grows. ⛔ ticket 16.
 
 ---
 
-## 4. Analytics are sample data, and say so
+## 4. Analytics: portfolio is real, per-asset is still sample data
 
-Four panels have **no backend**. There is no asset analytics endpoint, no
-subscriber endpoint, and no statements endpoint.
+Portfolio-wide analytics (`InventoryHealthBar`, `AssetCategoryHealth` on
+`/assets`) is now real, backed by `GET /admin/assets/analytics/portfolio`
+via `usePortfolioAnalytics` — no more fixtures, no more chip on those two
+panels.
+
+The other two panels have **no backend yet**:
 
 | Panel | Scope | Fixture |
 |---|---|---|
-| `InventoryHealthBar` | Portfolio, on `/assets` | `SAMPLE_PORTFOLIO` |
-| `AssetCategoryHealth` | Portfolio, on `/assets` | `SAMPLE_CATEGORIES` |
 | `AssetHealthBar` | One asset, on the Performance tab | `SAMPLE_ASSET_HEALTH` |
 | `PaymentPlanMatrix` | One asset, on the Performance tab | `SAMPLE_SIZE_PLANS` |
 
