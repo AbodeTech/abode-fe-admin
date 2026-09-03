@@ -22,6 +22,7 @@ import { csManagerRoutes } from './cs-managers';
 import { purchaseConfirmationRoutes } from './purchase-confirmations';
 import { campaignEngineRoutes } from './campaigns-engine';
 import { paymentPlanRoutes } from './payment-plans';
+import { agencyRoutes } from './agency';
 
 /* ============================================================
  * Route registration. Importing this module (via lib/mocks/index.ts)
@@ -95,6 +96,13 @@ import { paymentPlanRoutes } from './payment-plans';
  * payment-plans — GET /admin/payment-plans, /summary, /export. Distinct from
  *               CS-manager plan actions under
  *               GET/POST /admin/payment-plans/:plan_id/*.
+ * agency      — /admin/agencies/* (list, detail, create, update, suspend,
+ *               reactivate, delete, change-owner, members, commissions) and
+ *               PATCH /admin/users/:user_id/org, claimed here rather than by
+ *               users: it is the agency membership controller on the BE, and
+ *               the only screens calling it are the agency ones. No
+ *               commissions/export route — the real one streams CSV with
+ *               @SkipTransform (matches flex-leads).
  * purchase-confirmations — /admin/purchase-confirmations/* (list, counts,
  *               resolve-dispute, resend). No export route — the real
  *               endpoint streams CSV with @SkipTransform; the FE hook
@@ -130,5 +138,6 @@ export function ensureRoutesRegistered(): void {
   registerRoutes(purchaseConfirmationRoutes);
   registerRoutes(campaignEngineRoutes);
   registerRoutes(paymentPlanRoutes);
+  registerRoutes(agencyRoutes);
   // ...added per feature as it migrates
 }

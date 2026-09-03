@@ -64,8 +64,9 @@ export const ADMIN_PERMISSIONS = [
   'view_marketplace',
   'manage_marketplace',
 
-  'view_agency',
-  'manage_agency',
+  'view_agencies',
+  'manage_agencies',
+  'export_agencies',
 
   'manage_promotions',
 

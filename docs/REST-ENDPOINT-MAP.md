@@ -35,7 +35,7 @@ everything analytical or campaign-related.
 | `commission-config` | ✅ Complete — config + overrides + audit |
 | `associate-upgrade` | ✅ Complete — queue (populated + searchable), approve/decline, manual upgrade with fee + commission |
 | `requests` | ✅ Complete — admin list + status change |
-| `agency` | ⚠️ Partial — list/detail/activate/suspend only; no create, no dashboard, no transactions |
+| `agency` | ✅ Complete — full CRUD + members + commission ledger/export. No dashboard aggregate exists (v1's sales-volume tiles are gone) |
 | `auth` | ✅ Admin login/me/change-password |
 | `marketplace` | ⚠️ Partial — public list/detail/cancel; **no admin moderation** |
 | `associates` (managers) | 🚧 **None** — 26 operations, zero BE |
@@ -160,18 +160,36 @@ BE also exposes `GET /admin/commission/audit/:paymentPlanId` and
 | `SystemApproveLocationChangeRequest`, `SystemApproveDocumentChangeRequest`, `SystemApproveAssetUpdateRequest` | `PATCH /client-services/admin/requests/:id/status` | ⚠️ adapt — three ops collapse into the one status endpoint; the per-type side effects (actually applying the change) are BE-side and may not exist |
 | `GetRequestStatistics` | — | 🚧 `GET /client-services/admin/requests/statistics` |
 
-## Agency — `features/agency` (8 ops, all raw-string GraphQL today)
+## Agency — `features/agency` — ✅ **ported** (2026-09-03)
 
-| Operation | REST | Status |
+Ported against `AgencyAdminController` / `AgencyMembershipController` in
+abode-be-v2. Note the real paths are under **`/admin/agencies`**, not the
+`/agencies` this table previously guessed, and suspend/reactivate are `POST`,
+not `PATCH`.
+
+| v1 operation | REST | Status |
 |---|---|---|
-| `GetAgencies` | `GET /agencies` | ✅ real |
-| `GetAgencyById` | `GET /agencies/:id` | ✅ real |
-| `SuspendAgency` | `PATCH /agencies/:id/suspend` | ✅ real |
-| `ReactivateAgency` | `PATCH /agencies/:id/activate` | ✅ real |
-| `CreateAgency` | — | 🚧 `POST /agencies` |
-| `GetAgencyDashboard` | — | 🚧 `GET /agencies/:id/dashboard` |
-| `GetAgencyTransactions` | — | 🚧 `GET /agencies/:id/transactions` |
-| `UpdateAgencyCommission` | — | 🚧 `PATCH /agencies/:id/commission` (or via commission overrides) |
+| `GetAgencies` | `GET /admin/agencies` | ✅ `useAgencies` — `page`, `limit` (≤100), `q` (name or code), `status`, `sort`, `order` |
+| `GetAgencyById` | `GET /admin/agencies/:agency_id` | ✅ `useAgency` — adds `owner`, `member_count`, `total_commission_to_date` |
+| `CreateAgency` | `POST /admin/agencies` | ✅ `useCreateAgency` — `owner_mode: 'existing' \| 'new'`; no `credentials` come back, the BE emails the temp password |
+| `UpdateAgencyCommission` | `PATCH /admin/agencies/:agency_id` | ✅ `useUpdateAgency` — also name and both contacts (nullable: `null` clears) |
+| `SuspendAgency` | `POST /admin/agencies/:agency_id/suspend` | ✅ `useSuspendAgency` — `suspension_reason`, 20–500 chars, checked trimmed |
+| `ReactivateAgency` | `POST /admin/agencies/:agency_id/reactivate` | ✅ `useReactivateAgency` — 400s if not suspended |
+| — | `DELETE /admin/agencies/:agency_id` | ✅ `useDeleteAgency` — new; refused unless `member_count` is 0 |
+| — | `POST /admin/agencies/:agency_id/change-owner` | ✅ `useChangeAgencyOwner` — new; **super admin** on top of `manage_agencies` |
+| — | `GET /admin/agencies/:agency_id/members` | ✅ `useAgencyMembers` — new; `q`, `include_owner` |
+| — | `PATCH /admin/users/:user_id/org` | ✅ `useSetUserOrg` — new; `agency_id: string \| null` |
+| — | `GET /admin/agencies/:agency_id/commissions` | ✅ `useAgencyCommissions` — new; the v2 stand-in for the v1 wallet feed |
+| — | `GET /admin/agencies/:agency_id/commissions/export` | ✅ `useExportAgencyCommissions` — new; CSV, `export_agencies`, 10/hour, 50k rows |
+| `GetAgencyDashboard` | — | ❌ **no v2 equivalent.** No agency aggregate endpoint exists: no clients-recruited, land-value-sold, outstanding-balance or top-selling-lands. Hook and panels deleted; `/agency` and `/agency/top-performing` redirect into the list. |
+| `GetAgencyTransactions` | — | ❌ **no v2 equivalent.** v1's agency wallet (debits, balances, payout rows) has no v2 counterpart; the commission ledger is earnings-only. `/agency/transactions` redirects into the list. |
+
+Permissions are `view_agencies` / `manage_agencies` / `export_agencies` —
+plural. The FE previously declared `view_agency` / `manage_agency`, names the
+BE has never had; corrected in `hooks/use-admin-permission.ts`.
+
+Headline counts on the list screen come from three `limit=1` calls reading
+`meta.total` (`useAgencyStats`), since there is no aggregate to ask.
 
 ## Marketplace — `features/marketplace` (7 ops)
 
@@ -260,4 +278,4 @@ at once. Worth proposing as one design rather than ten tickets.
 - ~~`PATCH /admin/referrals/upgrades/:id/approve` — is the target tier in the body, or should approve be tier-specific?~~ **Answered 2026-08-13: neither.** The handler is `approve(@Param('id'), @CurrentUser())` — no body at all. `to_tier` is already on the upgrade row, set when the applicant submitted. One endpoint, empty body.
 - ~~`GET /admin/users` — which filters does `AdminUserFilterDto` actually accept?~~ **Answered 2026-08-13** against the deployed spec: exactly `search`, `referral_status`, `is_suspended`, `page`, `limit`. Anything else is a hard 400 under `forbidNonWhitelisted`. Handler is wired (ticket 2).
 - Are BE admin roles fixed (`admin|subadmin|moderator|viewer`), or can the FE create custom roles as `CreateRole` implies?
-- Should `/agencies` gain create + dashboard + transactions, or is agency management out of scope for v2?
+- ~~Should `/agencies` gain create + dashboard + transactions, or is agency management out of scope for v2?~~ **Answered 2026-09-03:** agency management is fully in scope and lives at `/admin/agencies` with create, delete, change-owner, members and a commission ledger. A **dashboard aggregate was not built** — no endpoint returns agency sales volume, commission-paid totals or top-selling lands, so v1's dashboard and wallet screens have no port. Open question for the BE: are those aggregates wanted, or is the per-agency commission ledger the intended replacement?

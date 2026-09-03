@@ -23,7 +23,7 @@ const ALL_PERMISSIONS = [
   'add_referral', 'remove_referral', 'modify_referral_status',
   'view_kyc', 'view_user_bank_details', 'approve_kyc',
   'view_marketplace', 'manage_marketplace',
-  'view_agency', 'manage_agency',
+  'view_agencies', 'manage_agencies', 'export_agencies',
   'manage_promotions',
   'view_requests', 'manage_requests',
   'view_reports', 'generate_reports', 'view_audit_logs',
