@@ -1,8 +1,6 @@
 "use client";
 
 import React from "react";
-import { graphql } from "@/lib/gql";
-import { FragmentType, useFragment as getFragmentData } from "@/lib/gql";
 import { Card } from "@/components/ui/card";
 import {
   Table,
@@ -24,20 +22,10 @@ import {
   AdminMobileField,
   AdminMobileStack,
 } from "@/components/shared/admin-responsive-table";
-
-export const AdminRowFragment = graphql(`
-  fragment AdminRowFragment on AdminRoles {
-    adminEmail
-    adminId
-    adminName
-    permissions
-    role
-    roleId
-  }
-`);
+import type { AdminWithRole } from "../schemas/role.schema";
 
 interface AdminsTableProps {
-  admins?: (FragmentType<typeof AdminRowFragment> | null)[] | null;
+  admins?: AdminWithRole[] | null;
   isLoading?: boolean;
 }
 
@@ -61,9 +49,7 @@ export function AdminsTable({ admins, isLoading }: AdminsTableProps) {
     );
   }
 
-  const rows = (admins ?? []).filter(
-    (item): item is NonNullable<typeof item> => item !== null
-  );
+  const rows = admins ?? [];
 
   return (
     <section className="min-w-0 space-y-3">
@@ -78,21 +64,20 @@ export function AdminsTable({ admins, isLoading }: AdminsTableProps) {
         </div>
       </div>
       <AdminMobileStack>
-        {rows.map((row, idx) => {
-          const admin = getFragmentData(AdminRowFragment, row);
+        {rows.map((admin, idx) => {
           return (
-            <AdminMobileCard key={admin.adminId || idx} title={admin.adminName} subtitle={admin.adminEmail}>
-              <AdminMobileField label="Role" value={<Badge className="bg-primary/10 text-primary hover:bg-primary/20 border-primary/20">{admin.role}</Badge>} />
+            <AdminMobileCard key={admin.id || idx} title={admin.name} subtitle={admin.email}>
+              <AdminMobileField label="Role" value={<Badge className="bg-primary/10 text-primary hover:bg-primary/20 border-primary/20">{admin.role_name}</Badge>} />
               <div className="text-xs text-muted-foreground">
-                {(admin.permissions || []).length} permission{(admin.permissions || []).length === 1 ? "" : "s"}
+                {admin.permissions.length} permission{admin.permissions.length === 1 ? "" : "s"}
               </div>
               <div className="flex min-w-0 flex-wrap gap-1 pt-1">
-                {(admin.permissions || []).slice(0, 6).map((perm, i) => (
-                  <Badge key={`${admin.adminId}-${i}`} variant="outline" className="text-xs bg-muted/30 border-border">
+                {admin.permissions.slice(0, 6).map((perm, i) => (
+                  <Badge key={`${admin.id}-${i}`} variant="outline" className="text-xs bg-muted/30 border-border">
                     {perm}
                   </Badge>
                 ))}
-                {admin.permissions && admin.permissions.length > 6 && (
+                {admin.permissions.length > 6 && (
                   <Badge variant="outline" className="text-xs bg-muted/30 border-border">
                     +{admin.permissions.length - 6} more
                   </Badge>
@@ -101,7 +86,7 @@ export function AdminsTable({ admins, isLoading }: AdminsTableProps) {
               <div className="flex flex-wrap gap-2 border-t border-border pt-3">
                 <ChangeRoleDialog admin={admin} />
                 <Button variant="outline" size="sm" asChild>
-                  <Link href={`/security/roles/${admin.adminId}`}>View</Link>
+                  <Link href={`/security/roles/${admin.id}`}>View</Link>
                 </Button>
               </div>
             </AdminMobileCard>
@@ -129,25 +114,24 @@ export function AdminsTable({ admins, isLoading }: AdminsTableProps) {
                 </TableCell>
               </TableRow>
             ) : (
-              rows.map((row, idx) => {
-                const admin = getFragmentData(AdminRowFragment, row);
+              rows.map((admin, idx) => {
                 return (
-                  <TableRow key={admin.adminId || idx}>
+                  <TableRow key={admin.id || idx}>
                     <TableCell className="max-w-[220px] align-top">
-                      <div className="font-medium">{admin.adminName}</div>
-                      <div className="break-all text-xs text-muted-foreground">{admin.adminEmail}</div>
+                      <div className="font-medium">{admin.name}</div>
+                      <div className="break-all text-xs text-muted-foreground">{admin.email}</div>
                     </TableCell>
                     <TableCell>
-                      <Badge className="bg-primary/10 text-primary hover:bg-primary/20 border-primary/20">{admin.role}</Badge>
+                      <Badge className="bg-primary/10 text-primary hover:bg-primary/20 border-primary/20">{admin.role_name}</Badge>
                     </TableCell>
                     <TableCell>
                       <div className="flex min-w-0 flex-wrap gap-1">
-                        {(admin.permissions || []).slice(0, 3).map((perm, i) => (
-                          <Badge key={`${admin.adminId}-${i}`} variant="outline" className="text-xs bg-muted/30 border-border">
+                        {admin.permissions.slice(0, 3).map((perm, i) => (
+                          <Badge key={`${admin.id}-${i}`} variant="outline" className="text-xs bg-muted/30 border-border">
                             {perm}
                           </Badge>
                         ))}
-                        {admin.permissions && admin.permissions.length > 3 && (
+                        {admin.permissions.length > 3 && (
                           <Badge variant="outline" className="text-xs bg-muted/30 border-border">
                             +{admin.permissions.length - 3} more
                           </Badge>
@@ -158,7 +142,7 @@ export function AdminsTable({ admins, isLoading }: AdminsTableProps) {
                       <div className="flex min-w-0 flex-wrap items-center gap-2">
                         <ChangeRoleDialog admin={admin} />
                         <Button variant="outline" size="sm" asChild>
-                          <Link href={`/security/roles/${admin.adminId}`}>View</Link>
+                          <Link href={`/security/roles/${admin.id}`}>View</Link>
                         </Button>
                       </div>
                     </TableCell>

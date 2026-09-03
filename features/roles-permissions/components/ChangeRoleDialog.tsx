@@ -17,26 +17,24 @@ import {
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Edit, Loader2 } from "lucide-react";
-import { AdminRowFragmentFragment } from "@/lib/gql/graphql";
 import { useRoles } from "../hooks/use-roles";
 import { useUpdateAdminRole } from "../hooks/use-update-admin-role";
-import { FragmentType, useFragment as getFragmentData } from "@/lib/gql";
-import { RoleCardFragment } from "@/features/roles-permissions/components/RolesGrid";
+import type { AdminWithRole } from "../schemas/role.schema";
 import { toast } from "sonner";
 
 interface ChangeRoleDialogProps {
-  admin: AdminRowFragmentFragment;
+  admin: AdminWithRole;
 }
 
 export function ChangeRoleDialog({ admin }: ChangeRoleDialogProps) {
   const [open, setOpen] = useState(false);
-  const [selectedRoleId, setSelectedRoleId] = useState(admin.roleId || "");
+  const [selectedRoleId, setSelectedRoleId] = useState(admin.role_id);
 
   const { data: rolesData, isLoading: rolesLoading } = useRoles();
   const { mutate: updateAdminRole, isPending } = useUpdateAdminRole();
 
-  const roles = (rolesData || []).map(r => getFragmentData(RoleCardFragment, r));
-  const selectedRole = roles.find((role) => role?._id === selectedRoleId);
+  const roles = rolesData ?? [];
+  const selectedRole = roles.find((role) => role.id === selectedRoleId);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,19 +44,14 @@ export function ChangeRoleDialog({ admin }: ChangeRoleDialogProps) {
       return;
     }
 
-    if (selectedRoleId === admin.roleId) {
+    if (selectedRoleId === admin.role_id) {
       toast.info("No changes made - same role selected");
       setOpen(false);
       return;
     }
 
-    if (!admin.adminId) {
-      toast.error("Cannot change role. Admin ID is missing");
-      return;
-    }
-
     updateAdminRole(
-      { id: admin.adminId, role: selectedRoleId },
+      { adminId: admin.id, roleId: selectedRoleId },
       {
         onSuccess: () => {
           setOpen(false);
@@ -73,7 +66,7 @@ export function ChangeRoleDialog({ admin }: ChangeRoleDialogProps) {
       setOpen(newOpen);
       if (!newOpen) {
         // Reset selected role when dialog closes
-        setSelectedRoleId(admin.roleId || "");
+        setSelectedRoleId(admin.role_id);
       }
     }
   };
@@ -105,9 +98,9 @@ export function ChangeRoleDialog({ admin }: ChangeRoleDialogProps) {
                 Admin
               </Label>
               <div className="mt-1 p-3 bg-muted/30 rounded-md border border-border">
-                <p className="font-medium text-foreground">{admin.adminName}</p>
+                <p className="font-medium text-foreground">{admin.name}</p>
                 <p className="text-sm text-muted-foreground">
-                  {admin.adminEmail}
+                  {admin.email}
                 </p>
               </div>
             </div>
@@ -119,7 +112,7 @@ export function ChangeRoleDialog({ admin }: ChangeRoleDialogProps) {
               </Label>
               <div className="mt-1 p-3 bg-muted/30 rounded-md border border-border">
                 <Badge className="bg-primary/10 text-primary border-primary/20 hover:bg-primary/20">
-                  {admin.role}
+                  {admin.role_name}
                 </Badge>
               </div>
             </div>
@@ -144,14 +137,14 @@ export function ChangeRoleDialog({ admin }: ChangeRoleDialogProps) {
                 <SelectContent className="bg-card border-border">
                   {roles.map((role) => (
                     <SelectItem
-                      key={role?._id}
-                      value={role?._id || ""}
+                      key={role.id}
+                      value={role.id}
                       className="hover:bg-muted/50 focus:bg-muted"
                     >
                       <div className="flex flex-col text-left">
-                        <span className="font-medium">{role?.name}</span>
+                        <span className="font-medium">{role.name}</span>
                         <span className="text-xs text-muted-foreground">
-                          {role?.description}
+                          {role.description}
                         </span>
                       </div>
                     </SelectItem>
@@ -161,16 +154,15 @@ export function ChangeRoleDialog({ admin }: ChangeRoleDialogProps) {
             </div>
 
             {/* Preview New Permissions */}
-            {selectedRole && selectedRole._id !== admin.roleId && (
+            {selectedRole && selectedRole.id !== admin.role_id && (
               <div>
                 <Label className="text-sm font-medium text-muted-foreground">
                   New Permissions
                 </Label>
                 <div className="mt-2 p-3 bg-primary/5 rounded-md border border-primary/10">
-                  {selectedRole.permissions &&
-                    selectedRole.permissions.length > 0 ? (
+                  {selectedRole.permissions.length > 0 ? (
                     <div className="flex flex-wrap gap-1">
-                      {selectedRole.permissions.map((permission: any, index: number) => (
+                      {selectedRole.permissions.map((permission: string, index: number) => (
                         <Badge
                           key={index}
                           variant="outline"
@@ -190,7 +182,7 @@ export function ChangeRoleDialog({ admin }: ChangeRoleDialogProps) {
             )}
 
             {/* Warning for same role */}
-            {selectedRoleId === admin.roleId && selectedRoleId && (
+            {selectedRoleId === admin.role_id && selectedRoleId && (
               <div className="p-3 bg-amber-500/10 rounded-md border border-amber-500/20">
                 <p className="text-sm text-amber-600 dark:text-amber-400">
                   This admin already has the selected role.
@@ -213,7 +205,7 @@ export function ChangeRoleDialog({ admin }: ChangeRoleDialogProps) {
             <Button
               type="submit"
               disabled={
-                isPending || !selectedRoleId || selectedRoleId === admin.roleId
+                isPending || !selectedRoleId || selectedRoleId === admin.role_id
               }
             >
               {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

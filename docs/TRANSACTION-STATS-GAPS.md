@@ -15,6 +15,7 @@ was found while wiring the associate leaderboard and is added below.
 | 03 | A stats surface for top-ups — the only transaction screen with nothing to port onto | **Still open** |
 | 04 | `GET /admin/associates/top` loses its row count to the response envelope | **Still open** |
 | 05 | Associate Pro Tracker — no recruitment / upgrades / payment-plan / export routes | **Still open** |
+| 06 | Admin audit logs — filter is by admin id, the FE filters by email; no export route | **Still open** |
 | — | Commercial as an asset type — already complete end-to-end | No action |
 
 ---
@@ -195,5 +196,27 @@ The four backed sections are built and shipping at `/associate-pros/tracker`. Th
 tables and the Export button are simply absent from the page rather than stubbed, so
 nothing on screen is unbacked.
 
-**Remaining:** asks 03, 04 and 05. `QueueStatsDto` is unchanged, which is consistent with the wallet
+### 06 — Admin audit logs: filter mismatch, and no export
+
+`GET /admin/audit-logs?page&limit&adminId&action` covers the list, and roles &
+permissions is now fully wired against `/admin/roles`, `/admin/permissions` and
+`/admin/admins`. Two things block finishing `features/admin-logs`:
+
+**The filter takes an admin id; the screen filters by email.** `AdminLogFilters`
+drives a `query` search param the operator types an email into, and the retired
+GraphQL query took `$adminEmail`. The service does
+`filter.adminId = new Types.ObjectId(adminId)`, so an email would throw a cast
+error rather than return an empty page. Either the endpoint accepts an email (or
+a general `search`), or the FE resolves email → id against `GET /admin/admins`
+first — workable, but it makes a type-ahead search two round trips.
+
+The admin DETAIL page is unaffected: it already has the id, and `?adminId=` is
+exactly right there.
+
+**There is no export route.** `use-admin-logs-export` currently pulls rows and
+builds CSV/XLSX/PDF in the browser with `json2csv`. That can stay client-side,
+but every other export in this admin streams from the BE under `@SkipTransform`
+— worth deciding which convention audit logs should follow before it is wired.
+
+**Remaining:** asks 03, 04, 05 and 06. `QueueStatsDto` is unchanged, which is consistent with the wallet
 balance landing on its own endpoint rather than as a field on the queue payloads.

@@ -1,24 +1,12 @@
 "use client";
 
 import React from "react";
-import { graphql } from "@/lib/gql";
-import { FragmentType, useFragment as getFragmentData } from "@/lib/gql";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, User, Shield, Activity, Loader2 } from "lucide-react";
 import Link from "next/link";
-
-export const AdminDetailFragment = graphql(`
-  fragment AdminDetailFragment on AdminRoles {
-    adminEmail
-    adminId
-    adminName
-    permissions
-    role
-    roleId
-  }
-`);
+import type { AdminWithRole } from "../schemas/role.schema";
 
 export interface AdminLogLike {
   action?: string | null;
@@ -26,13 +14,13 @@ export interface AdminLogLike {
 }
 
 interface AdminDetailHeaderProps {
-  admin?: FragmentType<typeof AdminDetailFragment> | null;
+  admin?: AdminWithRole | null;
   logs?: AdminLogLike[];
   isLoadingLogs?: boolean;
 }
 
 export function AdminDetailHeader({ admin, logs = [], isLoadingLogs = false }: AdminDetailHeaderProps) {
-  const data = getFragmentData(AdminDetailFragment, admin);
+  const data = admin;
 
   if (!data) return null;
 
@@ -66,14 +54,14 @@ export function AdminDetailHeader({ admin, logs = [], isLoadingLogs = false }: A
           </CardHeader>
           <CardContent className="space-y-4 pt-1">
             <div>
-              <div className="font-semibold text-xl text-foreground">{data.adminName}</div>
-              <div className="text-[15px] break-all text-muted-foreground">{data.adminEmail}</div>
+              <div className="font-semibold text-xl text-foreground">{data.name}</div>
+              <div className="text-[15px] break-all text-muted-foreground">{data.email}</div>
             </div>
             <div className="space-y-2 border-t border-border/50 pt-4">
               <div className="flex flex-col gap-2 rounded-md bg-muted/20 p-2 sm:flex-row sm:items-center sm:justify-between">
                 <span className="shrink-0 text-sm font-medium text-muted-foreground">Admin ID</span>
                 <span className="break-all rounded py-0.5 text-right font-mono text-[13px] font-medium text-foreground sm:bg-muted sm:px-2">
-                  {data.adminId}
+                  {data.id}
                 </span>
               </div>
             </div>
@@ -96,17 +84,17 @@ export function AdminDetailHeader({ admin, logs = [], isLoadingLogs = false }: A
             <div className="flex items-center justify-between gap-2">
               <span className="shrink-0 text-sm font-medium text-muted-foreground">Current Role</span>
               <Badge className="min-w-0 max-w-[min(100%,14rem)] whitespace-normal break-words bg-primary/10 px-3 text-center font-semibold text-primary hover:bg-primary/20 border-primary/20 sm:max-w-[55%]">
-                {data.role}
+                {data.role_name}
               </Badge>
             </div>
             <div className="flex flex-col gap-2 rounded-md bg-muted/20 p-2 sm:flex-row sm:items-center sm:justify-between">
               <span className="shrink-0 text-sm font-medium text-muted-foreground">Role ID</span>
-              <span className="break-all font-mono text-[13px] text-foreground sm:text-right">{data.roleId}</span>
+              <span className="break-all font-mono text-[13px] text-foreground sm:text-right">{data.role_id}</span>
             </div>
             <div className="pt-3 border-t border-border/50">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Permissions ({data.permissions?.length || 0})</p>
               <div className="flex flex-wrap gap-2">
-                {(data.permissions || []).map((perm, idx) => (
+                {data.permissions.map((perm, idx) => (
                   <Badge key={idx} variant="outline" className="text-xs bg-muted/30 border-border/80 text-foreground font-medium">
                     {perm}
                   </Badge>
