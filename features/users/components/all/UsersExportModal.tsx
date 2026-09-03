@@ -58,7 +58,8 @@ export function UsersExportModal() {
 
   const user = useAuthStore((state) => state.user);
   const canGenerateReport =
-    user?.role === "admin" || (user?.permissions ?? []).includes("generate_reports");
+    Boolean(user?.role?.is_super_admin) ||
+    (user?.permissions ?? []).includes("generate_reports");
 
   const { mutateAsync: exportUsers, isPending: isExporting } = useExportUsersByFilter();
 

@@ -10,6 +10,7 @@ import {
  *
  * Paths (base /api/v1):
  *   GET /admin/users              list + ?export=csv  (view_users)
+ *   GET /admin/users/:id          profile document    (view_user)
  *   GET /admin/users/overview     14 KPI tiles        (view_users)
  *   GET /admin/users/analytics    demographics        (view_user_analytics)
  *
@@ -156,6 +157,108 @@ export function normalizeAdminUserRow(raw: AdminUserListItem): AdminUserRow {
       raw.how_you_heard ?? raw.how_you_hear_about_us ?? raw.howYouHearAboutUs
     ),
     referrer,
+  };
+}
+
+/** GET /admin/users/:id — raw Mongoose User with kyc / nextofKin / wallet populated. */
+export const AdminUserDetailSchema = z.record(z.string(), z.unknown());
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  return null;
+}
+
+function asTin(kyc: unknown): string {
+  const doc = asRecord(kyc);
+  if (!doc) return '';
+  const tin = doc.tin;
+  if (typeof tin === 'string') return tin;
+  const nested = asRecord(tin);
+  return nested ? asString(nested.value) : '';
+}
+
+function asReferral(raw: AdminUserListItem) {
+  const populated = asRecord(raw.referral) ?? asRecord(raw.referred_by);
+  if (!populated) return null;
+  const firstName = asString(populated.firstName ?? populated.first_name);
+  const lastName = asString(populated.lastName ?? populated.last_name);
+  const email = asString(populated.email);
+  if (!firstName && !lastName && !email) return null;
+  return { firstName, lastName, email };
+}
+
+function asManager(raw: unknown) {
+  const doc = asRecord(raw);
+  if (!doc) return null;
+  const id = asString(doc._id ?? doc.id);
+  if (!id && !doc.firstName && !doc.email) return null;
+  return {
+    _id: id,
+    firstName: asString(doc.firstName ?? doc.first_name) || null,
+    lastName: asString(doc.lastName ?? doc.last_name) || null,
+    userName: asString(doc.userName ?? doc.user_name) || null,
+    email: asString(doc.email) || null,
+  };
+}
+
+function asTransactions(raw: unknown) {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((row, index) => {
+    const item = asRecord(row) ?? {};
+    const file = asRecord(item.transfer_file);
+    return {
+      _id: asString(item._id ?? item.id) || `tx-${index}`,
+      time_of_transaction: asString(item.time_of_transaction ?? item.createdAt ?? item.created_at),
+      amount: asNumber(item.amount),
+      type: asString(item.type),
+      status: asString(item.status),
+      description: asString(item.description),
+      transaction_type: asString(item.transaction_type),
+      paystack_reference: asString(item.paystack_reference),
+      transfer_reference: asString(item.transfer_reference),
+      transfer_file: file ? { file: asString(file.file) } : null,
+    };
+  });
+}
+
+/** Shape the user-detail page already renders. */
+export function normalizeAdminUserDetail(raw: AdminUserListItem) {
+  const wallet = asRecord(raw.wallet);
+  return {
+    Networth: asNumber(raw.Networth ?? raw.networth),
+    virtual_networth: asNumber(raw.virtual_networth ?? raw.networth),
+    virtual_subscriptions: asNumber(raw.virtual_subscriptions ?? raw.subscriptions),
+    _id: asString(raw.id || raw._id),
+    address: asString(raw.address),
+    amount_paid: asNumber(raw.amount_paid),
+    amount_payable: asNumber(raw.amount_payable),
+    balance_payable: asNumber(raw.balance_payable),
+    referral_status: asString(raw.referral_status ?? raw.tier),
+    country: asString(raw.country),
+    date_of_birth: asString(raw.date_of_birth),
+    email: asString(raw.email),
+    last_login: asString(raw.last_login),
+    default_status: asString(raw.default_status),
+    employment_status: asString(raw.employment_status),
+    firstName: asString(raw.firstName ?? raw.first_name),
+    gender: asString(raw.gender),
+    lastName: asString(raw.lastName ?? raw.last_name),
+    marital_status: asString(raw.marital_status),
+    occupation: asString(raw.occupation),
+    phoneNumber: asString(raw.phoneNumber ?? raw.phone_number),
+    is_suspended: asBool(raw.is_suspended),
+    profile_pic: asString(raw.profile_pic),
+    referral: asReferral(raw),
+    associate_manager: asManager(raw.associate_manager),
+    kyc: { tin: asTin(raw.kyc) },
+    subscriptions: asNumber(raw.subscriptions ?? raw.virtual_subscriptions),
+    transaction: asTransactions(raw.transaction),
+    wallet: { balance: asNumber(wallet?.balance ?? wallet?.available_balance) },
+    units_purchased: asNumber(raw.units_purchased),
+    userName: asString(raw.userName ?? raw.user_name),
+    next_date_of_payment: asString(raw.next_date_of_payment),
   };
 }
 

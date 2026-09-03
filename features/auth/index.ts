@@ -15,4 +15,4 @@ export { authKeys } from './hooks/query-keys';
 
 // Types — other features legitimately need the admin identity type.
 export type { Admin, AdminRole } from './schemas/auth.schema';
-export { ADMIN_ROLES, AdminSchema } from './schemas/auth.schema';
+export { AdminRoleSchema, AdminSchema } from './schemas/auth.schema';

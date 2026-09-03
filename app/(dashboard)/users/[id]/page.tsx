@@ -10,18 +10,38 @@ import {
   UserAssetsList,
   UserReferralsTable,
 } from "@/features/users";
+import {
+  useUserAssociatePro,
+  useUserBankDetails,
+  useUserCampaignStandings,
+  useUserDetailTransactions,
+  useUserKyc,
+} from "@/features/users/hooks/use-user-detail";
+import { UserKycSection } from "@/features/users/components/detail/UserKycSection";
+import { UserBankDetailsSection } from "@/features/users/components/detail/UserBankDetailsSection";
+import { UserAssociateProCard } from "@/features/users/components/detail/UserAssociateProCard";
+import { UserCampaignStandings } from "@/features/users/components/detail/UserCampaignStandings";
 import { ViewClientAssetModal } from "@/features/users/components/modals/ViewClientAssetModal";
 import { ManagerAssignmentCard } from "@/features/associate-managers/components/ManagerAssignmentCard";
-import type { UserDetail } from "@/features/users";
-import type { UserReferralResponse } from "@/lib/api/admin/referrals.types";
-import type { TransactionListResponse } from "@/lib/api/admin/transactions.types";
+import { useAdminPermissions } from "@/hooks/use-admin-permission";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useParams } from "next/navigation";
 
 export default function UserDetailsPage() {
   const params = useParams<{ id: string }>();
-  const { data: user, isLoading, error } = useUserDetails(params.id);
-  const { data: referrals } = useUserReferrals(params.id);
+  const id = params.id;
+  const permissions = useAdminPermissions();
+  const canViewKyc = permissions.has("view_kyc");
+  const canViewBank = permissions.has("view_user_bank_details");
+
+  const { data: user, isLoading, error } = useUserDetails(id);
+  const { data: referrals } = useUserReferrals(id);
+  const { data: commissionTx } = useUserDetailTransactions(id, "commission");
+  const { data: otherTx } = useUserDetailTransactions(id, "other");
+  const { data: kyc, isLoading: kycLoading } = useUserKyc(id, canViewKyc);
+  const { data: bank, isLoading: bankLoading } = useUserBankDetails(id, canViewBank);
+  const { data: associatePro, isLoading: associateProLoading } = useUserAssociatePro(id);
+  const { data: campaigns, isLoading: campaignsLoading } = useUserCampaignStandings(id);
 
   if (isLoading) {
     return (
@@ -47,22 +67,6 @@ export default function UserDetailsPage() {
     );
   }
 
-  const userData = user as UserDetail;
-  const referralRows: UserReferralResponse[] = (referrals || [])
-    .filter((item): item is NonNullable<typeof item> => item !== null)
-    .map((item) => ({
-      ...item,
-      commission: item.commission ?? 0,
-      amount: 0,
-    })) as unknown as UserReferralResponse[];
-
-  const transactionRows: TransactionListResponse[] = ((userData.transaction || []).filter(
-    (item): item is NonNullable<typeof item> => item !== null
-  ).map(t => ({
-    ...t,
-    amount: t.amount ? parseFloat(t.amount.toString().replace(/[^0-9.-]+/g, "")) : 0
-  })) as unknown) as TransactionListResponse[];
-
   return (
     <main className="mx-auto mt-4 w-full min-w-0 max-w-[1600px] space-y-6 px-3 pb-20 sm:mt-6 sm:space-y-8 sm:px-4">
       <div>
@@ -70,20 +74,26 @@ export default function UserDetailsPage() {
         <h3 className="text-sm text-[#8A8B9F] ml-1">User &gt; <span className="text-[#7F56D9]">Details</span></h3>
       </div>
 
-      <UserProfile user={userData} />
+      <UserProfile user={user} />
 
-      <UserInfo user={userData} />
+      <UserInfo user={user} />
 
-      <ManagerAssignmentCard user={userData} />
+      <ManagerAssignmentCard user={user} />
 
-      <UserStats user={userData} />
+      <UserAssociateProCard data={associatePro} isLoading={associateProLoading} />
 
-      {/* Assets List Component - To be fully implemented with data logic */}
-      <UserAssetsList userId={params.id} userEmail={userData.email} />
+      <UserStats user={user} />
 
-      <UserTransactions transactions={transactionRows} />
+      {canViewKyc ? <UserKycSection kyc={kyc} isLoading={kycLoading} /> : null}
+      {canViewBank ? <UserBankDetailsSection accounts={bank} isLoading={bankLoading} /> : null}
 
-      <UserReferralsTable referrals={referralRows} />
+      <UserAssetsList userId={id} userEmail={user.email} />
+
+      <UserTransactions commission={commissionTx} other={otherTx} />
+
+      <UserReferralsTable referrals={referrals ?? []} />
+
+      <UserCampaignStandings standings={campaigns} isLoading={campaignsLoading} />
 
       <ViewClientAssetModal />
     </main>

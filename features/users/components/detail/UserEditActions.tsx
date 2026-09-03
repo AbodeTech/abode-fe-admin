@@ -28,7 +28,7 @@ interface UserEditActionsProps {
 export function UserEditActions({ user }: UserEditActionsProps) {
   const currentUser = useAuthStore((state) => state.user)
   const permissions = currentUser?.permissions ?? []
-  const isAdmin = currentUser?.role === "admin"
+  const isAdmin = Boolean(currentUser?.role?.is_super_admin)
   const canEditUser = permissions.includes("edit_user")
   const canModifyRefStatus = permissions.includes("modify-referral-status")
   const searchParams = useSearchParams()
@@ -144,7 +144,7 @@ export function UserEditActions({ user }: UserEditActionsProps) {
       />
 
       <EditUserTinModal
-        currentTin={user.kyc?.tin || ""}
+        currentTin={user.kyc?.tin?.startsWith("****") ? "" : user.kyc?.tin || ""}
         open={activeModal === "tin"}
         onOpenChange={(open) => {
           if (!open) setModalParam(null)

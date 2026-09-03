@@ -7,6 +7,7 @@ import { upgradeRoutes } from './upgrades';
 import { userRoutes } from './users';
 import { withdrawalRoutes } from './withdrawals';
 import { associateRoutes } from './associates';
+import { roleRoutes } from './roles';
 import { associateProTrackerRoutes } from './associate-pro-tracker';
 import { assetTransactionRoutes } from './asset-transactions';
 import { salesRoutes } from './sales';
@@ -19,6 +20,8 @@ import { marketplaceRoutes } from './marketplace';
 import { meetingRoutes } from './meetings';
 import { csManagerRoutes } from './cs-managers';
 import { purchaseConfirmationRoutes } from './purchase-confirmations';
+import { campaignEngineRoutes } from './campaigns-engine';
+import { paymentPlanRoutes } from './payment-plans';
 
 /* ============================================================
  * Route registration. Importing this module (via lib/mocks/index.ts)
@@ -68,8 +71,9 @@ import { purchaseConfirmationRoutes } from './purchase-confirmations';
  *               the list endpoint instead (see
  *               features/sales/components/SalesExport.tsx), so nothing in
  *               this app calls those two BE routes.
- * users       — GET /admin/users, /overview, /analytics. List is the shared
- *               UserPicker source AND the users table.
+ * users       — GET /admin/users, /users/:id, /:id/stats|kyc|bank-details|assets|
+ *               transactions|referrals|associate-pro|campaign-standings,
+ *               /overview, /analytics.
  * people.ts   — not a domain: the shared person fixtures every route populates
  *               refs from, so one id means one person across all of them.
  * dashboard   — GET /admin/dashboard/kpis, top-products, top-associates.
@@ -88,6 +92,9 @@ import { purchaseConfirmationRoutes } from './purchase-confirmations';
  *               — ticket in docs/BACKEND-REQUESTS.md) and no onboarding-
  *               attempts / mark-deed-delivered routes (nothing in this
  *               scoped UI reaches a plan_id to call them with).
+ * payment-plans — GET /admin/payment-plans, /summary, /export. Distinct from
+ *               CS-manager plan actions under
+ *               GET/POST /admin/payment-plans/:plan_id/*.
  * purchase-confirmations — /admin/purchase-confirmations/* (list, counts,
  *               resolve-dispute, resend). No export route — the real
  *               endpoint streams CSV with @SkipTransform; the FE hook
@@ -107,6 +114,7 @@ export function ensureRoutesRegistered(): void {
   registerRoutes(userRoutes);
   registerRoutes(withdrawalRoutes);
   registerRoutes(associateRoutes);
+  registerRoutes(roleRoutes);
   registerRoutes(associateProTrackerRoutes);
   registerRoutes(assetTransactionRoutes);
   registerRoutes(allocationRoutes);
@@ -120,5 +128,7 @@ export function ensureRoutesRegistered(): void {
   registerRoutes(meetingRoutes);
   registerRoutes(csManagerRoutes);
   registerRoutes(purchaseConfirmationRoutes);
+  registerRoutes(campaignEngineRoutes);
+  registerRoutes(paymentPlanRoutes);
   // ...added per feature as it migrates
 }

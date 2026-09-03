@@ -23,15 +23,33 @@ export function UserInfo({ user }: UserInfoProps) {
     { label: "First Name", value: user.firstName },
     { label: "Phone Number", value: user.phoneNumber },
     { label: "Country", value: user.country },
+    { label: "State", value: user.state },
+    { label: "LGA", value: user.lga },
     { label: "Gender", value: user.gender },
     { label: "Occupation", value: user.occupation },
+    { label: "Education", value: user.education_level },
+    { label: "Experience", value: user.experience_level },
     { label: "Marital Status", value: user.marital_status },
     { label: "Address", value: user.address },
     { label: "Employment Status", value: user.employment_status },
     { label: "Status", value: user.referral_status },
+    { label: "Verified", value: user.verified ? "Yes" : "No" },
+    { label: "How they heard", value: user.acquisition_source },
     { label: "Email", value: user.email },
     { label: "Date of Birth", value: user.date_of_birth ? formatDateWord(user.date_of_birth) : "N/A" },
-    { label: "Referrer", value: user.referral ? `${user.referral.firstName} ${user.referral.lastName}` : "No Referrer" },
+    {
+      label: "Referrer chain",
+      value: user.referrer_chain?.length
+        ? user.referrer_chain
+            .map((entry) => {
+              const name = [entry.first_name, entry.last_name].filter(Boolean).join(" ").trim();
+              return `L${entry.level}: ${name || entry.email || entry.id}${entry.tier ? ` (${entry.tier})` : ""}`;
+            })
+            .join(" → ")
+        : user.referral
+          ? `${user.referral.firstName} ${user.referral.lastName}`
+          : "No Referrer",
+    },
     { label: "TIN", value: user.kyc?.tin || "Nil" },
   ];
 

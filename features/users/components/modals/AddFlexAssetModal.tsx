@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, Controller, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
@@ -28,6 +28,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { addUserFlexAssetByAdmin, getAllWebsiteAssets } from "@/lib/api/admin/user-assets.client";
 import { AddFlexAssetFormValues, addFlexAssetSchema } from "@/lib/schemas/admin/user-assets.schema";
 import { getErrorMessage } from "../../utils/error-message";
+import { userKeys } from "../../hooks/query-keys";
 
 interface AddFlexAssetModalProps {
   userId: string;
@@ -51,7 +52,7 @@ export function AddFlexAssetModal({ userId, isOpen, onClose }: AddFlexAssetModal
     handleSubmit,
     formState: { errors },
   } = useForm<AddFlexAssetFormValues>({
-    resolver: zodResolver(addFlexAssetSchema) as any,
+    resolver: zodResolver(addFlexAssetSchema) as Resolver<AddFlexAssetFormValues>,
     defaultValues: {
       commissionAmount: "0",
       sendContractOfSales: "no",
@@ -91,7 +92,7 @@ export function AddFlexAssetModal({ userId, isOpen, onClose }: AddFlexAssetModal
         send_receipt_email: data.sendReceiptEmail === "yes",
       });
       toast.success("Asset added successfully");
-      queryClient.invalidateQueries({ queryKey: ["user", userId] });
+      queryClient.invalidateQueries({ queryKey: userKeys.details() });
       onClose();
     } catch (error: unknown) {
       toast.error(getErrorMessage(error, "Something went wrong, please try again"));

@@ -47,10 +47,10 @@ function CustomerManagersContent() {
   const [targetsDialogOpen, setTargetsDialogOpen] = useState(false);
 
   // Role gating, mirroring the Associate Manager dashboard: Super Admins
-  // (role === "admin") get the picker across every manager. Any other admin
+  // (the `is_super_admin` role flag) get the picker across every manager. Any other admin
   // who is also a CS Manager sees only their own book. `?view=manager` lets
   // a super admin preview the manager layout.
-  const isSuperAdmin = user?.role === "admin";
+  const isSuperAdmin = Boolean(user?.role?.is_super_admin);
   const { isCSManager, csManagerId, isLoading: csmCheckLoading } = useIsCurrentCSManager();
   const wantsManagerView = searchParams.get("view") === "manager";
   const isAuthorized = isSuperAdmin || isCSManager || wantsManagerView;

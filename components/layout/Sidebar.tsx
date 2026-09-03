@@ -37,6 +37,7 @@ import {
 
 import LogOutModal from "@/components/settings/LogOutModal";
 import { useAuthStore } from "@/store/auth-store";
+import { useAdminPermissions, type AdminPermission } from "@/hooks/use-admin-permission";
 import { useIsCurrentUserManager } from "@/features/associate-managers";
 
 // Grouped Navigation Items
@@ -47,6 +48,7 @@ const navGroups = [
       { name: "Dashboard", link: "/", icon: <LayoutDashboard /> },
       { name: "Assets", link: "/assets", icon: <CircleDollarSign /> },
       { name: "Sales", link: "/sales", icon: <ShoppingCart /> },
+      { name: "Payment Plans", link: "/admin/payment-plans", icon: <ScrollText />, requiresPermission: "view_payment_plans" },
       { name: "Agency", link: "/agency", icon: <Building2 /> },
       { name: "Allocation", link: "/allocation", icon: <Building2 /> },
       { name: "Purchase Confirmations", link: "/purchase-confirmations", icon: <CheckCircle /> },
@@ -64,9 +66,7 @@ const navGroups = [
     icon: <Users />,
     items: [
       { name: "All Users", link: "/users", icon: <Users /> },
-      { name: "Default Users", link: "/users/defaults", icon: <ShieldCheck /> },
       { name: "Suspended Users", link: "/users/suspended", icon: <ShieldCheck /> },
-      { name: "Termination Payment Plans", link: "/users/suspended-payment-plans", icon: <ScrollText /> },
       { name: "Completed Asset Payments", link: "/users/completed-asset-payments", icon: <CheckCircle /> },
     ]
   },
@@ -117,9 +117,8 @@ const navGroups = [
     isCollapsible: true,
     icon: <Gift />,
     items: [
-      { name: "1000 Plots Project", link: "/campaigns/1000plotsproject", icon: <LandPlot /> },
+      { name: "Campaigns", link: "/campaigns", icon: <Gift /> },
       { name: "Associate Pro Tracker", link: "/associate-pros/tracker", icon: <TrendingUp /> },
-      { name: "Hamper Campaign", link: "/campaigns/hampercampaign", icon: <Gift /> },
     ]
   },
   {
@@ -190,7 +189,8 @@ const Sidebar = () => {
     closeMobileNav();
   }, [pathname, closeMobileNav]);
 
-  const isSuperAdmin = user?.role === "admin";
+  const isSuperAdmin = Boolean(user?.role?.is_super_admin);
+  const permissions = useAdminPermissions();
 
   // Strip out items the current user shouldn't see. Each gate is a small
   // predicate keyed off a flag on the item.
@@ -202,7 +202,11 @@ const Sidebar = () => {
           restrictedToRoles?: string[];
           requiresAdminOrManager?: boolean;
           requiresSuperAdmin?: boolean;
+          requiresPermission?: AdminPermission;
         };
+        if (flags.requiresPermission) {
+          return permissions.has(flags.requiresPermission);
+        }
         if (flags.requiresSuperAdmin) {
           return isSuperAdmin;
         }
@@ -210,7 +214,8 @@ const Sidebar = () => {
           return isSuperAdmin || isManager;
         }
         if (flags.restrictedToRoles) {
-          return !!user?.role && flags.restrictedToRoles.includes(user.role);
+          // Matches on the role NAME — roles are records now, not strings.
+          return !!user?.role && flags.restrictedToRoles.includes(user.role.name);
         }
         return true;
       }),

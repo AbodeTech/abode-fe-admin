@@ -1,27 +1,27 @@
+'use client';
+
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { execute } from '@/lib/graphql-client';
-import { graphql } from '@/lib/gql';
+
+import { apiPatch } from '@/lib/api-client';
+import { AdminAccountSchema } from '../schemas/role.schema';
 import { rolesKeys } from './query-keys';
-import { UpdateAdminRoleInput } from '@/lib/gql/graphql';
-import { toast } from 'sonner';
 
-const UPDATE_ADMIN_ROLE = graphql(`
-  mutation UpdateAdminRole($input: UpdateAdminRoleInput!) {
-    updateAdminRole(updateAdminRoleInput: $input)
-  }
-`);
-
+/**
+ * PATCH /admin/admins/:id/role — reassign an admin. Takes `manage_roles`.
+ *
+ * The BE refuses to let you change your OWN role, and bumps the target's
+ * session so the new permissions take effect immediately rather than at their
+ * next login. Invalidating the whole feature keeps the roles' `admin_count`
+ * honest as well as the row itself.
+ */
 export const useUpdateAdminRole = () => {
-  const client = useQueryClient();
+  const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (input: UpdateAdminRoleInput) =>
-      execute(UPDATE_ADMIN_ROLE, { input }),
+    mutationFn: ({ adminId, roleId }: { adminId: string; roleId: string }) =>
+      apiPatch(`/admin/admins/${adminId}/role`, { role_id: roleId }, AdminAccountSchema),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: rolesKeys.admins() });
-    },
-    onError: (error: any) => {
-      toast.error(error?.response?.errors?.[0]?.message || 'Failed to update admin role. Please try again.');
+      queryClient.invalidateQueries({ queryKey: rolesKeys.all });
     },
   });
 };

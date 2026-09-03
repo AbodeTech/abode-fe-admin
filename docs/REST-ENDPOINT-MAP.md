@@ -42,7 +42,7 @@ everything analytical or campaign-related.
 | `transactions` | ✅ Partial — `GET /admin/transactions` + unified transfer approve/decline; no stats/export |
 | `dashboard` | 🚧 None |
 | `analytics` | 🚧 None |
-| `campaigns` | 🚧 None |
+| `campaigns` | 🚧 Engine REST mocked (`/admin/campaigns*`); Associate Pro tracker still GraphQL |
 | `allocation` | 🚧 None |
 | `sales` | 🚧 None |
 
@@ -221,7 +221,7 @@ Because this feature is large and entirely unbacked, consider migrating it
 | `dashboard` | `GetAdminDashboardDetails` | `GET /admin/dashboard` |
 | `analytics` | `GetSalesAnalytics` (+2) | `GET /admin/analytics/sales` |
 | `sales` | `GetSalesRecord`, `GetSalesStatusCounts`, `GetSalesDashboard`, `ExportSales` | `GET /admin/sales[...]` |
-| `campaigns` | 8 ops (raffle, hamper, Campaign2000, recruitment analytics, leaderboards) | `GET /admin/campaigns/*` |
+| `campaigns` | Engine: list/create/detail/dashboard/rewards/transition/invalidate/export/PDF. Tracker: GraphQL Campaign2000 | `GET/POST/PATCH /admin/campaigns*` |
 | `allocation` | 7 ops (eligible clients, allocate/deallocate/reassign land, allocation email) | `/admin/allocation/*` — FO assign/reassign is `POST /admin/acquisitions/plans/:planId/allocate` |
 
 None of these exist on the BE as GraphQL domains. Campaigns remain unbacked.

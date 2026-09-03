@@ -152,7 +152,7 @@ export const useSuspendUser = () => {
       queryClient.invalidateQueries({ queryKey: userKeys.lists() });
       queryClient.invalidateQueries({ queryKey: userKeys.details() });
       queryClient.invalidateQueries({ queryKey: userKeys.list({ list: 'suspended' }) });
-      queryClient.invalidateQueries({ queryKey: userKeys.list({ list: 'suspended-payment-plans' }) });
+      queryClient.invalidateQueries({ queryKey: ['payment-plans'] });
     },
   });
 };
@@ -166,7 +166,7 @@ export const useUnsuspendUser = () => {
       queryClient.invalidateQueries({ queryKey: userKeys.lists() });
       queryClient.invalidateQueries({ queryKey: userKeys.details() });
       queryClient.invalidateQueries({ queryKey: userKeys.list({ list: 'suspended' }) });
-      queryClient.invalidateQueries({ queryKey: userKeys.list({ list: 'suspended-payment-plans' }) });
+      queryClient.invalidateQueries({ queryKey: ['payment-plans'] });
     },
   });
 };

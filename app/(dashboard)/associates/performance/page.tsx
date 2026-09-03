@@ -48,7 +48,7 @@ function AssociatePerformanceContent() {
     router.push(`?${params.toString()}`, { scroll: false });
   };
 
-  const isSuperAdmin = user?.role === "admin";
+  const isSuperAdmin = Boolean(user?.role?.is_super_admin);
 
   const period = searchParams.get("period");
   const startDate = searchParams.get("start_date");

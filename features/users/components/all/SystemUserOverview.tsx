@@ -144,7 +144,7 @@ export function SystemUserOverview({ startDate, endDate }: SystemUserOverviewPro
     life("active-associates", "Active Associates", metrics.active_associates, Activity),
     life("active-associates-pro", "Active Associates Pro", metrics.active_associate_pros, Activity),
     life("with-assets", "With Assets", metrics.users_with_assets, Box),
-    life("default-users", "Default Users", metrics.default_users, UserCheck, "/users/defaults"),
+    life("default-users", "Default Users", metrics.default_users, UserCheck, "/admin/payment-plans?has_defaults=true"),
     life("overdue-plans", "Overdue Plans", overdue, UserX),
     life("suspended", "Suspended", metrics.suspended_users, Ban, "/users/suspended"),
     life("founders", "Founders", metrics.founders, Crown),

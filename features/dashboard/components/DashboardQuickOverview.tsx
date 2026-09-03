@@ -152,7 +152,7 @@ export default function DashboardQuickOverview({ data }: DashboardQuickOverviewP
       value: data.suspended_payment_plans.value,
       description: "Click to view details",
       icon: <UsersIcon className="h-4 w-4 shrink-0 text-destructive" />,
-      href: "/users/suspended-payment-plans",
+      href: "/admin/payment-plans?status=suspended",
     },
     {
       id: "default-users",
@@ -160,7 +160,7 @@ export default function DashboardQuickOverview({ data }: DashboardQuickOverviewP
       value: data.default_users.value,
       description: "Click to view details",
       icon: <UsersIcon className="h-4 w-4 shrink-0 text-destructive" />,
-      href: "/users/defaults",
+      href: "/admin/payment-plans?has_defaults=true",
     },
     {
       id: "payment-plans",
@@ -173,6 +173,7 @@ export default function DashboardQuickOverview({ data }: DashboardQuickOverviewP
         </>
       ),
       icon: <CreditCardIcon className="h-4 w-4 shrink-0 text-muted-foreground" />,
+      href: "/admin/payment-plans",
     },
     {
       id: "new-plans",

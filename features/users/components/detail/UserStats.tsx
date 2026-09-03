@@ -61,7 +61,7 @@ export function UserStats({ user }: UserStatsProps) {
   const isSuspended = user.is_suspended;
   const currentUser = useAuthStore((state) => state.user);
   const permissions = currentUser?.permissions ?? [];
-  const isAdmin = currentUser?.role === "admin";
+  const isAdmin = Boolean(currentUser?.role?.is_super_admin);
   const canSuspendUser = permissions.includes("suspend-user");
   const canUnsuspendUser = permissions.includes("unsuspend-user");
   const canToggleStatus = isAdmin && (isSuspended ? canUnsuspendUser : canSuspendUser);
@@ -127,8 +127,8 @@ export function UserStats({ user }: UserStatsProps) {
       isEven: false,
     },
     {
-      title: "Last Login",
-      value: user.last_login ? formatDateWord(user.last_login) : "N/A",
+      title: "Unsigned contracts",
+      value: (user.unsigned_contracts ?? 0).toString(),
       icon: <Clock className="h-4 w-4 text-muted-foreground" />,
       isEven: true,
     },

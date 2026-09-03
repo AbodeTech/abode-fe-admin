@@ -32,9 +32,9 @@ export function UserPaymentPlanUnSuspend({ uniqueAssetId, userId }: UserPaymentP
     mutationFn: () => unSuspendPaymentPlan({ uniqueAssetId }),
     onSuccess: () => {
       if (userId) {
-        queryClient.invalidateQueries({ queryKey: ["userAssets", userId] });
+        queryClient.invalidateQueries({ queryKey: userKeys.details() });
       }
-      queryClient.invalidateQueries({ queryKey: userKeys.list({ list: "suspended-payment-plans" }) });
+      queryClient.invalidateQueries({ queryKey: ['payment-plans'] });
       toast.success("Asset transactions resumed");
       setIsOpen(false);
     },

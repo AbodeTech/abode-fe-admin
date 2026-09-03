@@ -1,32 +1,25 @@
+'use client';
+
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { execute } from '@/lib/graphql-client';
-import { graphql } from '@/lib/gql';
+
+import { apiPost } from '@/lib/api-client';
+
+import { RoleSchema, type CreateRolePayload } from '../schemas/role.schema';
 import { rolesKeys } from './query-keys';
 
-const CREATE_ROLE = graphql(`
-  mutation CreateRole($input: CreateRoleInput!) {
-    createRole(createRoleInput: $input) {
-      _id
-      name
-      description
-      permissions
-    }
-  }
-`);
-
-interface CreateRoleInput {
-  name: string;
-  description?: string;
-  permissions: string[];
-}
-
+/**
+ * POST /admin/roles — a custom role. Takes `manage_roles`.
+ *
+ * `name` is lowercase snake_case and immutable once created, so it is worth
+ * getting right at this step: there is no rename, by design.
+ */
 export const useCreateRole = () => {
-  const client = useQueryClient();
+  const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: (input: CreateRoleInput) =>
-      execute(CREATE_ROLE, { input }),
+    mutationFn: (payload: CreateRolePayload) => apiPost('/admin/roles', payload, RoleSchema),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: rolesKeys.roles });
+      queryClient.invalidateQueries({ queryKey: rolesKeys.roles });
     },
   });
 };

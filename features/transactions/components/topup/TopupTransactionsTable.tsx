@@ -67,7 +67,7 @@ const DECLINE_REASONS = [
 
 export function TopupTransactionsTable({ data, isLoading, onApprove, onDecline, filterQuery = "" }: TopupTransactionsTableProps) {
   const { user } = useAuthStore();
-  const canManageTopup = user?.role === "admin";
+  const canManageTopup = Boolean(user?.role?.is_super_admin);
   const nonNullData = (data || []).filter((t): t is FragmentType<typeof TopupTransactionsFragment> => t !== null);
   const validTransactions = useFragment(TopupTransactionsFragment, nonNullData).filter((tx) => {
       if (!filterQuery) return true;

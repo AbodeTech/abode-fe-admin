@@ -50,6 +50,7 @@ export const ADMIN_PERMISSIONS = [
   'modify_referral_status',
 
   'view_kyc',
+  'view_user_bank_details',
   'approve_kyc',
 
   'view_marketplace',
@@ -69,6 +70,13 @@ export const ADMIN_PERMISSIONS = [
 
   'view_meetings',
   'manage_meetings',
+
+  'view_campaigns',
+  'manage_campaigns',
+  'export_campaigns',
+
+  'view_payment_plans',
+  'export_payment_plans',
 ] as const;
 
 export type AdminPermission = (typeof ADMIN_PERMISSIONS)[number];
@@ -77,7 +85,22 @@ export function useHasPermission(permission: AdminPermission): boolean {
   const user = useAuthStore((state) => state.user);
 
   if (!user) return false;
-  if (user.role === 'admin') return true;
+  // The super-admin bypass. Was `role === 'admin'`, which no longer means
+  // unrestricted: `admin` is an ops-editable role now (RP-7).
+  if (user.role?.is_super_admin) return true;
 
   return (user.permissions ?? []).includes(permission);
+}
+
+/** MD §4 uses `useAdminPermissions().has('manage_campaigns')`. */
+export function useAdminPermissions() {
+  const user = useAuthStore((state) => state.user);
+
+  return {
+    has: (permission: AdminPermission) => {
+      if (!user) return false;
+      if (user.role?.is_super_admin) return true;
+      return (user.permissions ?? []).includes(permission);
+    },
+  };
 }

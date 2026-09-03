@@ -1,27 +1,19 @@
 // Hooks
-export { useUsers, useUserDetails, useSystemUsersOverview } from './hooks/use-users';
+export { useUsers, useSystemUsersOverview } from './hooks/use-users';
 export { useUserAnalytics } from './hooks/use-user-analytics';
 export type { UserAnalyticsData, AnalyticsDataPoint, RegistrationTrendPoint, HowYouHeardPoint } from './hooks/use-user-analytics';
-export type { UsersData, UserDetailsData, SystemUsersOverviewData } from './hooks/use-users';
+export { useUserDetails, useUserCore, useUserStats } from './hooks/use-user-detail';
+export type { UsersData, SystemUsersOverviewData } from './hooks/use-users';
+export type { UserDetailsData } from './hooks/use-user-detail';
 export type { AdminUserRow, UserOverview, UserAnalytics, UserTier } from './schemas/user.schema';
 export { useUserReferrals, useDeleteUserReferral } from './hooks/use-user-referrals';
 export type { UserReferralData } from './hooks/use-user-referrals';
 export { useEditUserProfile, useEditUserWallet, useModifyReferralStatus } from './hooks/use-user-mutations';
 export {
-  useDefaultUsers,
-  useExportDefaultUsers,
-} from './hooks/use-default-users';
-export {
   useSuspendedUsers,
   useExportSuspendedUsers,
   useUnsuspendUser,
 } from './hooks/use-suspended-users';
-export {
-  useSuspendedPaymentPlans,
-  useSuspendedPaymentPlansSummary,
-  useExportSuspendedPaymentPlans,
-  SUSPENDED_PAYMENT_PLANS_PAGE_SIZE,
-} from './hooks/use-suspended-payment-plans';
 export { useExportUsersByFilter, useExportUsersWithAsset } from './hooks/use-export-users';
 export { useRegisterUser } from './hooks/use-register-user';
 
@@ -55,11 +47,7 @@ export { SystemUserOverview } from './components/all/SystemUserOverview';
 export { UsersPageActions } from './components/all/UsersPageActions';
 export { UsersExportModal } from './components/all/UsersExportModal';
 export { RegisterUserModal } from './components/modals/RegisterUserModal';
-export { DefaultUsersTable } from './components/defaults/DefaultUsersTable';
 export { SuspendedUsersTable } from './components/suspended/SuspendedUsersTable';
-export { SuspendedPaymentPlansTable } from './components/suspended-payment-plans/SuspendedPaymentPlansTable';
-export { TerminationPaymentPlansSummary } from './components/suspended-payment-plans/TerminationPaymentPlansSummary';
-export { PaymentPlanTerminationStatusSelect } from './components/suspended-payment-plans/PaymentPlanTerminationStatusSelect';
 export { UserPaymentPlanUnSuspend } from './components/modals/UserPaymentPlanUnSuspend';
 export { UserPaymentPlanSuspend } from './components/modals/UserPaymentPlanSuspend';
 

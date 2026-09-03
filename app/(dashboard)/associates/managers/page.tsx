@@ -60,11 +60,11 @@ function AssociateManagersContent() {
     router.push(`?${params.toString()}`, { scroll: false });
   };
 
-  // Real role gating: Super Admins (admin.role === "admin") get the Super
+  // Real role gating: super admins (the `is_super_admin` role flag) get the Super
   // Admin view. Any other admin who is also an Associate Manager (regardless
   // of their base role — subadmin / moderator / viewer) gets the Manager
   // view. `?view=manager` lets super admins preview the Manager layout.
-  const isSuperAdmin = user?.role === "admin";
+  const isSuperAdmin = Boolean(user?.role?.is_super_admin);
   const {
     isManager,
     managerId: selfManagerId,

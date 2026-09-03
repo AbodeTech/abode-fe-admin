@@ -37,7 +37,8 @@ export function UserReferralActions({ referralId, referralName }: UserReferralAc
   const searchParams = useSearchParams()
   const userId = params.id
   const user = useAuthStore((state) => state.user)
-  const canDeleteReferral = user?.role === "admin" || (user?.permissions ?? []).includes("remove-referral")
+  const canDeleteReferral =
+    Boolean(user?.role?.is_super_admin) || (user?.permissions ?? []).includes("remove-referral")
   const { setClient } = useSelectedClientStore()
 
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)

@@ -6,10 +6,13 @@ import { getAccessToken, clearAuthCookies } from '@/lib/utils/cookies';
  * not yet migrated to REST. Deleted with lib/gql/ at teardown. Do not add to
  * it; new code uses lib/api-client.ts. */
 
-const API_ENDPOINT = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+const API_ENDPOINT =
+  process.env.NEXT_PUBLIC_GRAPHQL_API_URL ||
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  '';
 
 if (!API_ENDPOINT) {
-  console.error('NEXT_PUBLIC_API_BASE_URL is not defined');
+  console.error('NEXT_PUBLIC_GRAPHQL_API_URL is not defined');
 }
 
 export const apiClient = axios.create({

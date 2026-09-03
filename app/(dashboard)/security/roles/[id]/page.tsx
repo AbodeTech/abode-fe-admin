@@ -2,9 +2,8 @@
 
 import { useParams } from "next/navigation";
 import { useAdminWithRole } from "@/features/roles-permissions";
-import { AdminDetailHeader, AdminDetailFragment, type AdminLogLike } from "@/features/roles-permissions/components/AdminDetailHeader";
+import { AdminDetailHeader, type AdminLogLike } from "@/features/roles-permissions/components/AdminDetailHeader";
 import { AdminLogsTable, DEFAULT_ADMIN_LOGS_LIMIT, useAdminLogs } from "@/features/admin-logs";
-import { useFragment } from "@/lib/gql";
 import { Pagination } from "@/components/shared/Pagination";
 import { PageContentLoader } from "@/components/shared/page-content-loader";
 
@@ -12,13 +11,12 @@ export default function AdminDetailPage() {
   const params = useParams();
   const adminId = params?.id as string;
 
-  const { data: adminData, isLoading: loadingAdmin, error: adminError } = useAdminWithRole(adminId);
-  const admin = useFragment(AdminDetailFragment, adminData);
+  const { data: admin, isLoading: loadingAdmin, error: adminError } = useAdminWithRole(adminId);
 
   const { data: logsData, isLoading: loadingLogs, error: logsError } = useAdminLogs({
     page: 1,
     limit: DEFAULT_ADMIN_LOGS_LIMIT,
-    adminEmail: admin?.adminEmail || undefined,
+    adminEmail: admin?.email || undefined,
   });
 
   if (adminError) {
@@ -43,7 +41,7 @@ export default function AdminDetailPage() {
   return (
     <div className="mx-auto mt-4 w-full min-w-0 max-w-[1600px] space-y-6 px-3 pb-16 sm:px-4 sm:pb-20">
       <AdminDetailHeader
-        admin={adminData}
+        admin={admin}
         logs={
           (logsData?.data?.filter((log): log is NonNullable<typeof log> => log !== null) ||
             []) as AdminLogLike[]

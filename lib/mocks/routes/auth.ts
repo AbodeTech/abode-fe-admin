@@ -21,13 +21,15 @@ const ALL_PERMISSIONS = [
   'asset_transactions', 'approve_payments', 'withdrawals', 'manage_commission',
   'update_payment_plan',
   'add_referral', 'remove_referral', 'modify_referral_status',
-  'view_kyc', 'approve_kyc',
+  'view_kyc', 'view_user_bank_details', 'approve_kyc',
   'view_marketplace', 'manage_marketplace',
   'view_agency', 'manage_agency',
   'manage_promotions',
   'view_requests', 'manage_requests',
   'view_reports', 'generate_reports', 'view_audit_logs',
   'view_meetings', 'manage_meetings',
+  'view_campaigns', 'manage_campaigns', 'export_campaigns',
+  'view_payment_plans', 'export_payment_plans',
 ];
 
 /** Email that exercises the temporary-password lock. */

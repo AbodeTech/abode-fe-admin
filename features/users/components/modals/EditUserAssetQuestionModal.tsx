@@ -20,6 +20,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { updateUserAssetQuestion } from "@/lib/api/admin/user-assets.client";
 import { EditUserAssetQuestionFormValues, editUserAssetQuestionSchema } from "@/lib/schemas/admin/user-assets.schema";
 import { getErrorMessage } from "../../utils/error-message";
+import { userKeys } from "../../hooks/query-keys";
 
 interface EditUserAssetQuestionModalProps {
   isOpen: boolean;
@@ -72,7 +73,7 @@ export function EditUserAssetQuestionModal({
         address: data.address,
       });
       toast.success("Asset Question updated successfully");
-      queryClient.invalidateQueries({ queryKey: ["userAssets", userId] });
+      queryClient.invalidateQueries({ queryKey: userKeys.details() });
       onClose();
     } catch (error: unknown) {
       toast.error(getErrorMessage(error, "Failed to update asset question"));
