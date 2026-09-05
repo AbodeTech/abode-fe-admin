@@ -22,6 +22,7 @@ export const PRESETS: Preset[] = [
   { key: 'suspended', label: 'Suspended', filter: { status: ['suspended'] } },
   { key: 'terminated', label: 'Terminated', filter: { status: ['cancelled'] } },
   { key: 'completed', label: 'Completed', filter: { status: ['completed'] } },
+  { key: 'closed', label: 'Closed', filter: { status: ['closed'] } },
   { key: 'defaulted', label: 'Defaulted', filter: { has_defaults: true } },
   {
     key: 'upcoming',

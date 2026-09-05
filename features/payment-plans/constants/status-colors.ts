@@ -6,6 +6,7 @@ export const STATUS_LABELS: Record<PaymentPlanStatus, string> = {
   suspended: 'Suspended',
   cancelled: 'Terminated',
   completed: 'Completed',
+  closed: 'Closed',
 };
 
 export const STATUS_BADGE_CLASSES: Record<PaymentPlanStatus, string> = {
@@ -14,4 +15,5 @@ export const STATUS_BADGE_CLASSES: Record<PaymentPlanStatus, string> = {
   suspended: 'bg-gray-200 text-gray-700',
   cancelled: 'bg-red-100 text-red-800',
   completed: 'bg-green-100 text-green-800',
+  closed: 'bg-slate-200 text-slate-800',
 };

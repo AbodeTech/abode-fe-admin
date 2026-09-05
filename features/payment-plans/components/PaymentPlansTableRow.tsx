@@ -63,10 +63,14 @@ function renderCell(col: ColumnDef, row: PaymentPlanRow) {
       return formatDate(row.suspended_at);
     case 'cancelled_at':
       return formatDate(row.cancelled_at);
+    case 'closed_at':
+      return formatDate(row.closed_at);
     case 'suspension_reason':
       return row.suspension_reason || '—';
     case 'cancellation_reason':
       return row.cancellation_reason || '—';
+    case 'closure_reason':
+      return row.closure_reason || '—';
     case 'contract_signed':
       return row.contract_signed ? 'Yes' : 'No';
     case 'created':
