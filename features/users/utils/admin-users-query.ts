@@ -8,6 +8,13 @@ export function boolQuery(value: boolean | undefined): string | undefined {
   return value ? 'true' : 'false';
 }
 
+/** Inverse of `boolQuery` — reads a tri-state boolean back off the URL. */
+export function boolFromParam(value: string | null | undefined): boolean | undefined {
+  if (value === 'true') return true;
+  if (value === 'false') return false;
+  return undefined;
+}
+
 export function bothOrNeitherDates(
   from?: string | null,
   to?: string | null

@@ -20,6 +20,8 @@ export type UsersListFilters = {
   howYouHeard?: string;
   hasAsset?: boolean;
   hasReferral?: boolean;
+  isSuspended?: boolean;
+  walletSuspended?: boolean;
   dateFrom?: string;
   dateTo?: string;
   sortBy?: string;
@@ -28,7 +30,12 @@ export type UsersListFilters = {
 
 /**
  * GET /admin/users — admin-users module (search, tier, how_you_hear_about_us,
- * has_asset, has_referral, date_from/date_to, sort_by/sort_order, page, limit).
+ * has_asset, has_referral, is_suspended, wallet_suspended, date_from/date_to,
+ * sort_by/sort_order, page, limit).
+ *
+ * `is_suspended` is account suspension; `wallet_suspended` is wallet-only
+ * suspension — they are independent, so an account can be live with a frozen
+ * wallet and vice versa.
  */
 export const useUsers = (filters?: UsersListFilters) => {
   const page = filters?.page ?? 1;
@@ -44,6 +51,8 @@ export const useUsers = (filters?: UsersListFilters) => {
       howYouHeard: filters?.howYouHeard,
       hasAsset: filters?.hasAsset,
       hasReferral: filters?.hasReferral,
+      isSuspended: filters?.isSuspended,
+      walletSuspended: filters?.walletSuspended,
       dateFrom: dateRange.date_from,
       dateTo: dateRange.date_to,
       sortBy: filters?.sortBy,
@@ -59,6 +68,8 @@ export const useUsers = (filters?: UsersListFilters) => {
           how_you_hear_about_us: filters?.howYouHeard || undefined,
           has_asset: boolQuery(filters?.hasAsset),
           has_referral: boolQuery(filters?.hasReferral),
+          is_suspended: boolQuery(filters?.isSuspended),
+          wallet_suspended: boolQuery(filters?.walletSuspended),
           ...dateRange,
           sort_by: filters?.sortBy || undefined,
           sort_order: filters?.sortOrder || undefined,

@@ -12,6 +12,8 @@ export type ExportUsersParams = {
   howYouHeard?: string;
   hasAsset?: boolean;
   hasReferral?: boolean;
+  isSuspended?: boolean;
+  walletSuspended?: boolean;
   dateFrom?: string;
   dateTo?: string;
 };
@@ -35,6 +37,8 @@ export const useExportUsersByFilter = () =>
           how_you_hear_about_us: filters.howYouHeard || undefined,
           has_asset: boolQuery(filters.hasAsset),
           has_referral: boolQuery(filters.hasReferral),
+          is_suspended: boolQuery(filters.isSuspended),
+          wallet_suspended: boolQuery(filters.walletSuspended),
           ...bothOrNeitherDates(filters.dateFrom, filters.dateTo),
         },
         responseType: 'blob',
