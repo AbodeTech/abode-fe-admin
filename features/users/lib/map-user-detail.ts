@@ -105,11 +105,41 @@ export function toUserAsset(raw: Record<string, unknown>): UserAsset {
   const uniqueId = asString(raw.unique_asset_id || acquisition?.unique_asset_id);
   const status = asString(raw.status);
   const assetType = asString(raw.asset_type || asset.asset_type || asset.type);
+  const commissionRecipients = Array.isArray(raw.commission_recipients)
+    ? raw.commission_recipients.flatMap((value) => {
+        const recipient = asRecord(value);
+        const commissionType = asString(recipient?.commission_type);
+        if (
+          !recipient ||
+          !['direct', 'upline', 'topline', 'agency', 'founder'].includes(commissionType)
+        ) {
+          return [];
+        }
+        return [
+          {
+            commission_type: commissionType as
+              | 'direct'
+              | 'upline'
+              | 'topline'
+              | 'agency'
+              | 'founder',
+            user_id: asString(recipient.user_id) || null,
+            agency_id: asString(recipient.agency_id) || null,
+            rate: asNumber(recipient.rate),
+            tier_at_creation: asString(recipient.tier_at_creation) || null,
+            override_source: asString(recipient.override_source) || null,
+          },
+        ];
+      })
+    : [];
 
   return {
     _id: asString(raw._id || raw.id),
     updated_at: asDateString(raw.updatedAt ?? raw.updated_at),
     status,
+    commission_config_version:
+      raw.commission_config_version == null ? null : asNumber(raw.commission_config_version),
+    commission_recipients: commissionRecipients,
     asset_name: asString(asset.name || asset.asset_name || raw.asset_name_denormalized),
     asset_size: asString(raw.size),
     asset_type: assetType,

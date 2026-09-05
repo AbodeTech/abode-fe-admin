@@ -258,9 +258,32 @@ export function UserAssetActions({ userId, asset, email }: UserAssetActionsProps
       <PlanBalanceAdjustmentModal open={showBalance} onOpenChange={setShowBalance} {...target} />
       <PlanPaymentDateModal open={showDate} onOpenChange={setShowDate} {...target} />
       <ClosePlanModal open={showClose} onOpenChange={setShowClose} {...target} />
-      <CloseAndRelocatePlanModal open={showRelocate} onOpenChange={setShowRelocate} {...target} />
-      <EditPlanCommissionModal mode="config" open={showCommissionConfig} onOpenChange={setShowCommissionConfig} {...target} />
-      <EditPlanCommissionModal mode="recipients" open={showCommissionRecipients} onOpenChange={setShowCommissionRecipients} {...target} />
+      <CloseAndRelocatePlanModal
+        open={showRelocate}
+        onOpenChange={setShowRelocate}
+        carryOverAmount={pd.amount_paid + (asset.document_plan?.amount_paid ?? 0)}
+        {...target}
+      />
+      {showCommissionConfig && (
+        <EditPlanCommissionModal
+          mode="config"
+          open
+          onOpenChange={setShowCommissionConfig}
+          commissionConfigVersion={asset.commission_config_version}
+          recipients={asset.commission_recipients ?? []}
+          {...target}
+        />
+      )}
+      {showCommissionRecipients && (
+        <EditPlanCommissionModal
+          mode="recipients"
+          open
+          onOpenChange={setShowCommissionRecipients}
+          commissionConfigVersion={asset.commission_config_version}
+          recipients={asset.commission_recipients ?? []}
+          {...target}
+        />
+      )}
       <DeletePlanModal open={showDelete} onOpenChange={setShowDelete} {...target} />
       <SignatureReminderModal
         open={showSignatureReminder}

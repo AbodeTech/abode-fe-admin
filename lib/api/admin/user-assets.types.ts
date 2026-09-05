@@ -45,10 +45,21 @@ export interface SuspendUserAssetInput {
   uniqueAssetId: string;
 }
 
+export interface UserAssetCommissionRecipient {
+  commission_type: "direct" | "upline" | "topline" | "agency" | "founder";
+  user_id?: string | null;
+  agency_id?: string | null;
+  rate: number;
+  tier_at_creation?: string | null;
+  override_source?: string | null;
+}
+
 export interface UserAsset {
   _id: string;
   updated_at?: string;
   status?: string;
+  commission_config_version?: number | null;
+  commission_recipients?: UserAssetCommissionRecipient[];
   asset_name: string;
   asset_size: string;
   asset_type: "flex" | "full-ownership" | string;
