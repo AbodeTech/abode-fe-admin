@@ -34,19 +34,34 @@ const determineInitialOption = (from: Date | null, to: Date | null): DateOption 
   return "custom";
 };
 
-export function AllocationBoughtDateFilter() {
+interface AllocationDateRangeFilterProps {
+  label: string;
+  /** URL param names this instance owns. Two ranges are on this page — plan
+   *  createdAt ("Bought date") and payment completion — so they cannot share. */
+  fromParam: string;
+  toParam: string;
+  /** Rendered under the control when a range is set. */
+  hint?: string;
+}
+
+export function AllocationDateRangeFilter({
+  label,
+  fromParam,
+  toParam,
+  hint,
+}: AllocationDateRangeFilterProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const dateRange = useMemo(() => {
-    const start = searchParams.get("startDate");
-    const end = searchParams.get("endDate");
+    const start = searchParams.get(fromParam);
+    const end = searchParams.get(toParam);
     return {
       from: start ? new Date(start) : null,
       to: end ? new Date(end) : null,
     };
-  }, [searchParams]);
+  }, [searchParams, fromParam, toParam]);
 
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [isNarrowScreen, setIsNarrowScreen] = useState(false);
@@ -84,22 +99,22 @@ export function AllocationBoughtDateFilter() {
       case "7days":
         setIsCalendarOpen(false);
         updateParams({
-          startDate: subDays(today, 7).toISOString(),
-          endDate: today.toISOString(),
+          [fromParam]: subDays(today, 7).toISOString(),
+          [toParam]: today.toISOString(),
         });
         break;
       case "2weeks":
         setIsCalendarOpen(false);
         updateParams({
-          startDate: subWeeks(today, 2).toISOString(),
-          endDate: today.toISOString(),
+          [fromParam]: subWeeks(today, 2).toISOString(),
+          [toParam]: today.toISOString(),
         });
         break;
       case "4weeks":
         setIsCalendarOpen(false);
         updateParams({
-          startDate: subWeeks(today, 4).toISOString(),
-          endDate: today.toISOString(),
+          [fromParam]: subWeeks(today, 4).toISOString(),
+          [toParam]: today.toISOString(),
         });
         break;
       case "custom":
@@ -107,15 +122,15 @@ export function AllocationBoughtDateFilter() {
         break;
       default:
         setIsCalendarOpen(false);
-        updateParams({ startDate: null, endDate: null });
+        updateParams({ [fromParam]: null, [toParam]: null });
     }
   };
 
   const handleCalendarSelect = (range: { from?: Date; to?: Date } | undefined) => {
     if (range?.from && range?.to) {
       updateParams({
-        startDate: range.from.toISOString(),
-        endDate: range.to.toISOString(),
+        [fromParam]: range.from.toISOString(),
+        [toParam]: range.to.toISOString(),
       });
       setIsCalendarOpen(false);
     }
@@ -129,7 +144,7 @@ export function AllocationBoughtDateFilter() {
 
   return (
     <div className="min-w-0 space-y-2">
-      <Label className="text-sm text-muted-foreground">Bought date</Label>
+      <Label className="text-sm text-muted-foreground">{label}</Label>
       <Select value={selectedOption} onValueChange={handleOptionChange}>
         <SelectTrigger className="h-10 w-full min-w-0 sm:h-9">
           <SelectValue placeholder="Select time range" />
@@ -175,6 +190,10 @@ export function AllocationBoughtDateFilter() {
             />
           </PopoverContent>
         </Popover>
+      )}
+
+      {hint && dateRange.from && dateRange.to && (
+        <p className="text-xs text-muted-foreground">{hint}</p>
       )}
     </div>
   );

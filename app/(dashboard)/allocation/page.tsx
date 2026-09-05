@@ -18,9 +18,7 @@ import {
   useAllocationClients,
   useAllocationExport,
 } from "@/features/allocation";
-// @ts-expect-error - json2csv does not ship complete ESM typings in this setup.
-import { Parser } from "json2csv";
-import { saveAs } from "file-saver";
+import { useAdminPermissions } from "@/hooks/use-admin-permission";
 import { toast } from "sonner";
 
 const toNumberOrNull = (value?: string | null) => {
@@ -40,6 +38,10 @@ function AllocationContent() {
   const searchParam = searchParams.get("search") || "";
   const startDateParam = searchParams.get("startDate");
   const endDateParam = searchParams.get("endDate");
+  // Independent of startDate/endDate (which filter the plan's createdAt) —
+  // the two ranges combine.
+  const completedFromParam = searchParams.get("completedFrom");
+  const completedToParam = searchParams.get("completedTo");
 
   const [searchTerm, setSearchTerm] = useState(searchParam);
   const [modalOpen, setModalOpen] = useState(false);
@@ -55,11 +57,16 @@ function AllocationContent() {
     search: searchParam || null,
     dateFrom: startDateParam,
     dateTo: endDateParam,
+    completedFrom: completedFromParam,
+    completedTo: completedToParam,
   };
 
   const { data, isLoading, error } = useAllocationClients(filters);
   const { data: assets } = useAllocationAssets();
   const { mutateAsync: exportAlloc, isPending: isExporting } = useAllocationExport();
+
+  const permissions = useAdminPermissions();
+  const canExport = permissions.has("export_allocation_list");
 
   const handleModalOpenChange = (open: boolean) => {
     setModalOpen(open);
@@ -122,45 +129,10 @@ function AllocationContent() {
 
   const handleDownload = async () => {
     try {
-      // The export path is still GraphQL and filters by asset *name*
-      // (features/allocation/hooks/use-allocation-export.ts) — resolve the
-      // selected id back to a name rather than changing that hook's contract.
-      const selectedAssetName = assetIdParam
-        ? (assets ?? []).find((asset) => asset._id === assetIdParam)?.name ?? null
-        : null;
-
-      const result = await exportAlloc({
-        assetName: selectedAssetName,
-        percentage: toNumberOrNull(percentageParam),
-        search: searchParam || null,
-        startDate: startDateParam,
-        endDate: endDateParam,
-      });
-      const exportRows = result?.eligibleClientsForLand?.data ?? [];
-      if (!exportRows.length) {
-        toast.info("No data to export");
-        return;
-      }
-      const parsed = exportRows.map((client) => {
-        return {
-          clientName: `${client.firstName ?? ""} ${client.lastName ?? ""}`.trim(),
-          referrer: client.referral || "not added yet",
-          assetName: client.assetType ? `${client.assetName} (${client.assetType})` : client.assetName,
-          landSize: client.assetSize,
-          units: client.unit,
-          paymentPercentage: client.paymentPercentage,
-          amountPaid: client.amountPaid,
-          totalPrice: client.totalPrice,
-          durationMonths: client.duration,
-          location: client.location,
-          boughtDate: client.end_date,
-          allocationNumber: client.allocation || "Not assigned yet",
-        };
-      });
-      const parser = new Parser();
-      const csv = parser.parse(parsed);
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-      saveAs(blob, "allocation-clients.csv");
+      // The BE streams the CSV over the same filtered pipeline the table reads,
+      // so the whole filter set — including the completed-date range — carries
+      // over without restating any of it here.
+      await exportAlloc(filters);
       toast.success("Export ready");
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Failed to export");
@@ -185,6 +157,7 @@ function AllocationContent() {
             Manage and track allocations for eligible clients.
           </p>
         </div>
+        {canExport && (
         <Button
           variant="outline"
           size="sm"
@@ -204,6 +177,7 @@ function AllocationContent() {
             </>
           )}
         </Button>
+        )}
       </div>
 
       <AllocationFilters

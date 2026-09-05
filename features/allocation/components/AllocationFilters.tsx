@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { AllocationBoughtDateFilter } from "./AllocationBoughtDateFilter";
+import { AllocationDateRangeFilter } from "./AllocationDateRangeFilter";
 import type { AllocationAssetOption, AllocationStatus } from "../schemas/allocation.schema";
 
 interface AllocationFiltersProps {
@@ -59,7 +59,7 @@ export function AllocationFilters({
   const safeAssets = assets ?? [];
 
   return (
-    <section className="mt-2 grid min-w-0 grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-6">
+    <section className="mt-2 grid min-w-0 grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-7">
       <div className="min-w-0 space-y-2">
         <Label className="text-sm text-muted-foreground">Filter by asset</Label>
         <Select
@@ -126,7 +126,18 @@ export function AllocationFilters({
       </div>
 
       <div className="min-w-0">
-        <AllocationBoughtDateFilter />
+        <AllocationDateRangeFilter label="Bought date" fromParam="startDate" toParam="endDate" />
+      </div>
+
+      <div className="min-w-0">
+        <AllocationDateRangeFilter
+          label="Payment completed"
+          fromParam="completedFrom"
+          toParam="completedTo"
+          // Setting either bound drops every plan still paying, because their
+          // payment_completed_date is null and a range never matches null.
+          hint="Only clients who have finished paying"
+        />
       </div>
     </section>
   );
