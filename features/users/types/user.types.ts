@@ -74,6 +74,8 @@ export type UserDetail = {
   transaction: UserTransaction[];
   wallet: {
     balance: number;
+    /** `false` means the wallet is suspended — the user cannot transact. */
+    is_active: boolean;
   };
   units_purchased: number;
   userName: string;

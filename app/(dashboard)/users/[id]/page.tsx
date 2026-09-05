@@ -76,16 +76,25 @@ export default function UserDetailsPage() {
 
       <UserProfile user={user} />
 
-      <UserInfo user={user} />
+      {/*
+        The reference cards sit in Personal Info's second column, which the
+        grid had always reserved and left empty — rather than as a row of their
+        own pushing the assets list further down.
+      */}
+      <UserInfo
+        user={user}
+        aside={
+          <>
+            <UserAssociateProCard data={associatePro} isLoading={associateProLoading} />
+            {canViewKyc ? <UserKycSection kyc={kyc} isLoading={kycLoading} /> : null}
+            {canViewBank ? <UserBankDetailsSection accounts={bank} isLoading={bankLoading} /> : null}
+          </>
+        }
+      />
 
       <ManagerAssignmentCard user={user} />
 
-      <UserAssociateProCard data={associatePro} isLoading={associateProLoading} />
-
       <UserStats user={user} />
-
-      {canViewKyc ? <UserKycSection kyc={kyc} isLoading={kycLoading} /> : null}
-      {canViewBank ? <UserBankDetailsSection accounts={bank} isLoading={bankLoading} /> : null}
 
       <UserAssetsList userId={id} userEmail={user.email} />
 

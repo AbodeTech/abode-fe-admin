@@ -81,7 +81,12 @@ export function toUserDetail(core: AdminUserCore, stats?: AdminUserStats | null)
     associate_manager: null,
     subscriptions: stats?.subscriptions ?? 0,
     transaction: [],
-    wallet: { balance: stats?.wallet.balance ?? 0 },
+    // A user with no wallet counts as not suspended, matching the BE's own
+    // reading of wallet_suspended.
+    wallet: {
+      balance: stats?.wallet.balance ?? 0,
+      is_active: stats?.wallet.is_active ?? true,
+    },
     units_purchased: stats?.total_units ?? 0,
     userName: core.user_name ?? '',
     next_date_of_payment: asDateString(stats?.next_payment),
