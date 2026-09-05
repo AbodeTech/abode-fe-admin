@@ -173,7 +173,7 @@ export function AssetCategoryHealth({ data }: Props) {
         Category health
       </p>
 
-      <div className="flex min-w-0 flex-col gap-6 lg:flex-row lg:items-stretch">
+      <div className="flex min-w-0 flex-col gap-6 lg:grid lg:grid-cols-2">
         {data.map((category, index) => (
           <CategoryCard
             key={category.category}
