@@ -11,10 +11,7 @@ import { DEFAULT_PAYMENT_PLANS_LIMIT } from '../hooks/query-keys';
 import { usePaymentPlans } from '../hooks/use-payment-plans';
 import { usePaymentPlansSummary } from '../hooks/use-payment-plans-summary';
 import { parseColumns, parseFilter } from '../lib/url-state';
-import { PaymentPlansColumnChooser } from './PaymentPlansColumnChooser';
-import { PaymentPlansFilterDrawer } from './PaymentPlansFilterDrawer';
 import { PaymentPlansHeader } from './PaymentPlansHeader';
-import { PaymentPlansPresetChips } from './PaymentPlansPresetChips';
 import { PaymentPlansSummaryCards } from './PaymentPlansSummaryCards';
 import { PaymentPlansTable } from './PaymentPlansTable';
 
@@ -67,14 +64,8 @@ export function PaymentPlansPage() {
         totalCount={data?.meta?.total ?? 0}
         canExport={canExport}
         filter={filter}
+        visibleColumns={columns}
       />
-
-      <PaymentPlansPresetChips activeFilter={filter} />
-
-      <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-        <PaymentPlansFilterDrawer filter={filter} />
-        <PaymentPlansColumnChooser visibleColumns={columns} />
-      </div>
 
       <PaymentPlansSummaryCards summary={summary} isLoading={!summary || summaryLoading} />
 

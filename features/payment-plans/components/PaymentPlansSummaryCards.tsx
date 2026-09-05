@@ -43,8 +43,10 @@ export function PaymentPlansSummaryCards({
     { label: 'Active', kind: 'count' as const, value: summary?.active_count },
   ];
 
+  // Seven cards across a single row left every figure cramped; wrapping at
+  // four gives the Naira amounts room to render in full rather than compacted.
   return (
-    <div className="mb-4 grid min-w-0 grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-7">
+    <div className="mb-4 grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
       {cards.map((card) => (
         <Card key={card.label} className="min-w-0 overflow-hidden gap-3 py-4">
           <CardHeader className="px-3 pb-0 sm:px-4">

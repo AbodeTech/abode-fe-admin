@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { formatNaira } from '@/lib/utils/format';
 
+import { assetTypeLabel } from '../constants/asset-type-labels';
 import type { ColumnDef } from '../constants/columns';
 import { buyerLabel, hasReferrer, referrerLabel } from '../lib/display';
 import type { PaymentPlanRow } from '../schemas/payment-plan-row.schema';
@@ -20,11 +21,6 @@ function formatDate(value: string | null | undefined): string {
   return format(date, 'dd MMM yyyy');
 }
 
-function formatAssetType(value: string | null | undefined): string {
-  if (!value) return '—';
-  return value.replace(/_/g, ' ');
-}
-
 function renderCell(col: ColumnDef, row: PaymentPlanRow) {
   switch (col.key) {
     case 'user':
@@ -34,7 +30,7 @@ function renderCell(col: ColumnDef, row: PaymentPlanRow) {
     case 'asset':
       return row.asset.asset_name || '—';
     case 'asset_type':
-      return formatAssetType(row.asset.asset_type);
+      return assetTypeLabel(row.asset.asset_type);
     case 'status':
       return <PaymentPlansStatusBadge status={row.status} />;
     case 'no_of_units':

@@ -129,6 +129,28 @@ export function serializeFilterToParams(
   return params;
 }
 
+/**
+ * How many filters are currently narrowing the list. Drives the count on the
+ * Filters button — with the preset chip row gone, that badge is the only
+ * on-page signal that a filter is active. `sort` and `default_condition` are
+ * excluded: neither narrows the list on its own.
+ */
+export function countActiveFilters(filter: FilterFormValues): number {
+  let count = 0;
+  if (filter.status?.length) count += 1;
+  if (filter.asset_type?.length) count += 1;
+  if (filter.has_defaults != null) count += 1;
+  if (filter.has_referrer != null) count += 1;
+  if (filter.start_date) count += 1;
+  if (filter.end_date) count += 1;
+  if (filter.next_payment_due_before) count += 1;
+  if (filter.next_payment_due_after) count += 1;
+  if (filter.min_outstanding != null) count += 1;
+  if (filter.max_outstanding != null) count += 1;
+  if (filter.search) count += 1;
+  return count;
+}
+
 export function buildPaymentPlansQueryParams(
   filter: FilterFormValues,
   page: number,
