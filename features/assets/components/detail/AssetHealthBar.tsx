@@ -2,8 +2,7 @@
 
 import { cn } from "@/lib/utils";
 
-import { SampleDataChip } from "../analytics/SampleDataChip";
-import type { AssetHealthStats } from "../analytics/sample-data";
+import type { AssetAnalyticsResponse } from "../../schemas/asset-analytics.schema";
 
 function formatNaira(value: number | null | undefined): string {
   if (value == null || value === 0) return "₦0";
@@ -56,24 +55,45 @@ function Metric({ label, value, subValue, subValueVariant = "neutral" }: MetricP
   );
 }
 
+/**
+ * The slice of `GET /admin/assets/:id/analytics` this bar reads. A contract,
+ * not a fetch shape — the tab passes the response straight through.
+ */
+type AssetHealth = Pick<
+  AssetAnalyticsResponse,
+  | "total_inventory_value"
+  | "total_realised"
+  | "remaining_value"
+  | "sqm_sold"
+  | "sqm_remaining"
+  | "efficiency_rate"
+  | "occupancy_rate"
+  | "active_customers"
+  | "total_customers"
+  | "defaulting"
+  | "terminated"
+>;
+
 interface Props {
-  /** ⛔ ticket 17 — no per-asset analytics endpoint; this is `SAMPLE_ASSET_HEALTH`. */
-  data: AssetHealthStats;
+  data: AssetHealth;
 }
 
 export function AssetHealthBar({ data }: Props) {
   const { defaulting, terminated } = data;
 
-  const totalCustomers = data.activeCustomers + defaulting.customers + terminated.customers;
+  // `total_customers` is the BE's own all-time figure, not active + defaulted +
+  // terminated: a customer can sit in more than one bucket across plans, so
+  // summing the three would over-count and push the bar past 100%.
+  const totalCustomers = data.total_customers;
   const pct = (n: number) => (totalCustomers > 0 ? (n / totalCustomers) * 100 : 0);
 
-  const activePct = pct(data.activeCustomers);
+  const activePct = pct(data.active_customers);
   const defaultedPct = pct(defaulting.customers);
   const terminatedPct = pct(terminated.customers);
 
   const soldPct =
-    data.startingInventory > 0
-      ? `${((data.totalRealised / data.startingInventory) * 100).toFixed(1)}% sold`
+    data.total_inventory_value > 0
+      ? `${((data.total_realised / data.total_inventory_value) * 100).toFixed(1)}% sold`
       : undefined;
 
   return (
@@ -84,23 +104,22 @@ export function AssetHealthBar({ data }: Props) {
           <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
             Asset Overview
           </p>
-          <SampleDataChip />
         </div>
         <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-6">
-          <Metric label="Starting Inventory" value={formatNaira(data.startingInventory)} />
+          <Metric label="Starting Inventory" value={formatNaira(data.total_inventory_value)} />
           <Metric
             label="Total Realized"
-            value={formatNaira(data.totalRealised)}
+            value={formatNaira(data.total_realised)}
             subValue={soldPct}
             subValueVariant="positive"
           />
-          <Metric label="Remaining Value" value={formatNaira(data.remainingValue)} />
-          <Metric label="Total SQM Sold" value={formatSqm(data.sqmSold)} />
-          <Metric label="SQM Remaining" value={formatSqm(data.sqmRemaining)} />
+          <Metric label="Remaining Value" value={formatNaira(data.remaining_value)} />
+          <Metric label="Total SQM Sold" value={formatSqm(data.sqm_sold)} />
+          <Metric label="SQM Remaining" value={formatSqm(data.sqm_remaining)} />
           <Metric
             label="Collection Efficiency"
-            value={`${data.efficiencyRate.toFixed(1)}%`}
-            subValue="Collected"
+            value={`${data.efficiency_rate.toFixed(1)}%`}
+            subValue={`${data.occupancy_rate.toFixed(1)}% occupied`}
             subValueVariant="neutral"
           />
         </div>
@@ -116,10 +135,10 @@ export function AssetHealthBar({ data }: Props) {
             </span>
           </p>
           <div className="grid grid-cols-2 gap-x-4 gap-y-6">
-            <Metric label="Defaulted Asset Value" value={formatNaira(defaulting.assetValue)} />
+            <Metric label="Defaulted Asset Value" value={formatNaira(defaulting.value)} />
             <Metric
               label="Outstanding Balance"
-              value={formatNaira(defaulting.outstanding)}
+              value={formatNaira(defaulting.amount_owing)}
               subValue="Unrecovered"
               subValueVariant="danger"
             />
@@ -134,10 +153,10 @@ export function AssetHealthBar({ data }: Props) {
             </span>
           </p>
           <div className="grid grid-cols-2 gap-x-4 gap-y-6">
-            <Metric label="Terminated Asset Value" value={formatNaira(terminated.assetValue)} />
+            <Metric label="Terminated Asset Value" value={formatNaira(terminated.value)} />
             <Metric
               label="Outstanding Balance"
-              value={formatNaira(terminated.outstanding)}
+              value={formatNaira(terminated.amount_owing)}
               subValue="Unrecovered"
               subValueVariant="warning"
             />
@@ -152,7 +171,7 @@ export function AssetHealthBar({ data }: Props) {
         </p>
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs font-bold">
-            <span className="text-emerald-600">Active: {data.activeCustomers}</span>
+            <span className="text-emerald-600">Active: {data.active_customers}</span>
             <span className="text-rose-600">Defaulted: {defaulting.customers}</span>
             <span className="text-amber-600">Terminated: {terminated.customers}</span>
           </div>

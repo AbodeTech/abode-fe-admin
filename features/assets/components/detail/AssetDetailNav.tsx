@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FlaskConical } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -17,8 +16,8 @@ const TABS = [
   // The land itself — blocks and plots. Named for what it manages, because the
   // sidebar's "Allocation" is the other half: handing these plots to a buyer.
   { segment: "blocks", label: "Blocks & Plots" },
-  { segment: "performance", label: "Performance", sample: true },
-  { segment: "customers", label: "Customers", sample: true },
+  { segment: "performance", label: "Performance" },
+  { segment: "customers", label: "Customers" },
 ] as const;
 
 export function AssetDetailNav({ assetId }: { assetId: string }) {
@@ -46,10 +45,6 @@ export function AssetDetailNav({ assetId }: { assetId: string }) {
             )}
           >
             {tab.label}
-            {/* Marks tabs whose data is fabricated or absent — see tickets 17b/17c. */}
-            {"sample" in tab && tab.sample ? (
-              <FlaskConical className="h-3 w-3 opacity-60" aria-label="Sample data" />
-            ) : null}
           </Link>
         );
       })}
