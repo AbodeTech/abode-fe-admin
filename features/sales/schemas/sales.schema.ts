@@ -75,13 +75,21 @@ export const SalesRowSchema = z.object({
   plan_status: SalesPlanStatusSchema,
   is_defaulted: z.boolean(),
   has_defaulted_ever: z.boolean(),
-  is_suspended: z.boolean(),
+  /**
+   * Not always present on the live `SalesListRowDto` — the suspension state is
+   * already carried by `plan_status`, so derive it when the BE omits it rather
+   * than failing the whole page on a missing boolean.
+   */
+  is_suspended: z.boolean().optional(),
   source_type: SalesSourceTypeSchema,
   created_by_admin: z.boolean(),
   admin_creation_subtype: z.string().nullable().optional(),
   originated_from_close_relocate: z.boolean(),
   created_at: z.string(),
-});
+}).transform((row) => ({
+  ...row,
+  is_suspended: row.is_suspended ?? row.plan_status === 'suspended',
+}));
 
 export type SalesRow = z.infer<typeof SalesRowSchema>;
 
