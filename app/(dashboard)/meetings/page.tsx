@@ -10,16 +10,32 @@ import { useHasPermission } from "@/hooks/use-admin-permission";
 import {
   CreateMeetingDialog,
   DEFAULT_MEETINGS_LIMIT,
+  MEETING_ACCESS_TYPES,
   MEETING_AUDIENCE_TYPES,
+  MEETING_SESSION_KINDS,
   MeetingsFilters,
   MeetingsTable,
   useMeetings,
+  type MeetingAccessType,
   type MeetingAudienceType,
+  type MeetingSessionKind,
 } from "@/features/meetings";
 
 function parseAudience(value: string | null): MeetingAudienceType | undefined {
   return value && (MEETING_AUDIENCE_TYPES as readonly string[]).includes(value)
     ? (value as MeetingAudienceType)
+    : undefined;
+}
+
+function parseSessionKind(value: string | null): MeetingSessionKind | undefined {
+  return value && (MEETING_SESSION_KINDS as readonly string[]).includes(value)
+    ? (value as MeetingSessionKind)
+    : undefined;
+}
+
+function parseAccessType(value: string | null): MeetingAccessType | undefined {
+  return value && (MEETING_ACCESS_TYPES as readonly string[]).includes(value)
+    ? (value as MeetingAccessType)
     : undefined;
 }
 
@@ -31,6 +47,8 @@ function MeetingsContent() {
 
   const page = Number(searchParams.get("page")) || 1;
   const audienceType = parseAudience(searchParams.get("audience_type"));
+  const sessionKind = parseSessionKind(searchParams.get("session_kind"));
+  const accessType = parseAccessType(searchParams.get("access_type"));
   const activeParam = searchParams.get("is_active");
   const isActive = activeParam === "true" ? true : activeParam === "false" ? false : undefined;
   const search = searchParams.get("q") || "";
@@ -49,6 +67,8 @@ function MeetingsContent() {
     page,
     limit: DEFAULT_MEETINGS_LIMIT,
     audience_type: audienceType,
+    session_kind: sessionKind,
+    access_type: accessType,
     is_active: isActive,
     q: debouncedSearch.trim() || undefined,
   });
@@ -72,7 +92,7 @@ function MeetingsContent() {
         <div className="min-w-0">
           <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Meetings</h1>
           <p className="text-sm text-muted-foreground sm:text-base">
-            Create Google Meet sessions and share join links with associates.
+            Standalone and series sessions — online or physical, tier or cohort audience.
           </p>
         </div>
         {canManage ? (
@@ -85,6 +105,10 @@ function MeetingsContent() {
       <MeetingsFilters
         audienceType={audienceType ?? null}
         onAudienceTypeChange={(value) => setParam("audience_type", value)}
+        sessionKind={sessionKind ?? null}
+        onSessionKindChange={(value) => setParam("session_kind", value)}
+        accessType={accessType ?? null}
+        onAccessTypeChange={(value) => setParam("access_type", value)}
         isActive={isActive ?? null}
         onIsActiveChange={(value) => setParam("is_active", value === null ? null : String(value))}
         search={search}

@@ -23,6 +23,8 @@ import { purchaseConfirmationRoutes } from './purchase-confirmations';
 import { campaignEngineRoutes } from './campaigns-engine';
 import { paymentPlanRoutes } from './payment-plans';
 import { agencyRoutes } from './agency';
+import { academyRoutes } from './academy';
+import { checkinRoutes } from './checkin';
 
 /* ============================================================
  * Route registration. Importing this module (via lib/mocks/index.ts)
@@ -113,7 +115,6 @@ let registered = false;
 
 export function ensureRoutesRegistered(): void {
   if (registered) return;
-  registered = true;
 
   registerRoutes(authRoutes);
   registerRoutes(commissionRoutes);
@@ -139,5 +140,9 @@ export function ensureRoutesRegistered(): void {
   registerRoutes(campaignEngineRoutes);
   registerRoutes(paymentPlanRoutes);
   registerRoutes(agencyRoutes);
-  // ...added per feature as it migrates
+  registerRoutes(academyRoutes);
+  registerRoutes(checkinRoutes);
+
+  // Only mark done after every domain registered — a throw mid-way must allow retry.
+  registered = true;
 }

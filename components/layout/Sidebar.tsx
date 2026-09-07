@@ -17,10 +17,14 @@ import {
   ClipboardList,
   FileText,
   Gift,
+  CalendarDays,
+  GraduationCap,
   LandPlot,
   LayoutDashboard,
   LogOut,
+  Mail,
   Percent,
+  QrCode,
   ScrollText,
   ShieldCheck,
   ShoppingCart,
@@ -53,11 +57,23 @@ const navGroups = [
       { name: "Allocation", link: "/allocation", icon: <Building2 /> },
       { name: "Purchase Confirmations", link: "/purchase-confirmations", icon: <CheckCircle /> },
       { name: "Marketplace", link: "/marketplace", icon: <Store /> },
-      { name: "Meetings", link: "/meetings", icon: <Video /> },
       { name: "Requests", link: "/requests", icon: <ClipboardList /> },
       { name: "Amaris", link: "/amaris", icon: <Bot /> },
       { name: "Flex Leads", link: "/flex-leads", icon: <UserPlus /> },
       { name: "Upgrade Coupons", link: "/associate-upgrade/coupons", icon: <Gift /> },
+    ]
+  },
+  {
+    // ABO-5 — Meetings / Recruitment / Company Events as one Events group.
+    title: "Events",
+    isCollapsible: true,
+    icon: <CalendarDays />,
+    items: [
+      { name: "Meetings", link: "/meetings", icon: <Video />, requiresPermission: "view_meetings" },
+      { name: "Recruitment", link: "/recruitment", icon: <GraduationCap />, requiresPermission: "view_academy" },
+      { name: "Check-in", link: "/checkin", icon: <QrCode />, requiresPermission: "view_academy" },
+      { name: "Email designs", link: "/email-designs", icon: <Mail />, requiresPermission: "view_academy" },
+      { name: "Company Events", link: "/company-events", icon: <LandPlot />, requiresPermission: "view_academy" },
     ]
   },
   {

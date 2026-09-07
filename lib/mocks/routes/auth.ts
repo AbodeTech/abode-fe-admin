@@ -36,6 +36,7 @@ const ALL_PERMISSIONS = [
   'view_meetings', 'manage_meetings',
   'view_campaigns', 'manage_campaigns', 'export_campaigns',
   'view_payment_plans', 'export_payment_plans',
+  'view_academy', 'manage_academy', 'export_academy',
 ];
 
 /** Email that exercises the temporary-password lock. */

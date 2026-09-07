@@ -99,6 +99,11 @@ export const ADMIN_PERMISSIONS = [
 
   'view_payment_plans',
   'export_payment_plans',
+
+  // In-house recruitment / Academy Admin (ABO-5–28 FE). BE keys land with ABO-82.
+  'view_academy',
+  'manage_academy',
+  'export_academy',
 ] as const;
 
 export type AdminPermission = (typeof ADMIN_PERMISSIONS)[number];

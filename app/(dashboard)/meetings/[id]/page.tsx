@@ -17,6 +17,10 @@ import {
   DEFAULT_MEETINGS_LIMIT,
   EditMeetingDialog,
   formatMeetingWhen,
+  MEETING_ACCESS_TYPE_LABELS,
+  MEETING_SESSION_KIND_LABELS,
+  meetingAudienceDisplay,
+  meetingSeriesPositionLabel,
   useMeeting,
   useMeetingVerifications,
   useToggleMeetingActive,
@@ -100,7 +104,13 @@ function MeetingDetailContent() {
           </div>
           {meeting ? (
             <p className="text-sm text-muted-foreground">
-              {meeting.audience_label} · {formatMeetingWhen(meeting.starts_at)} WAT
+              {meeting.session_kind
+                ? `${MEETING_SESSION_KIND_LABELS[meeting.session_kind]} · `
+                : ""}
+              {meeting.access_type
+                ? `${MEETING_ACCESS_TYPE_LABELS[meeting.access_type]} · `
+                : ""}
+              {meetingAudienceDisplay(meeting)} · {formatMeetingWhen(meeting.starts_at)} WAT
             </p>
           ) : null}
         </div>
@@ -133,6 +143,21 @@ function MeetingDetailContent() {
                 <p className="font-medium">{meeting.slug}</p>
               </div>
               <div>
+                <p className="text-muted-foreground">Series</p>
+                <p className="font-medium">
+                  {meeting.series_id ? (
+                    <Link
+                      href={`/meetings/series/${meeting.series_id}`}
+                      className="text-primary underline-offset-4 hover:underline"
+                    >
+                      {meeting.series_name ?? "Series"} ({meetingSeriesPositionLabel(meeting)})
+                    </Link>
+                  ) : (
+                    meetingSeriesPositionLabel(meeting)
+                  )}
+                </p>
+              </div>
+              <div>
                 <p className="text-muted-foreground">Duration</p>
                 <p className="font-medium">
                   {meeting.duration_minutes ?? DEFAULT_DURATION_MINUTES} minutes
@@ -148,6 +173,12 @@ function MeetingDetailContent() {
                 <p className="text-muted-foreground">Verification opens</p>
                 <p className="font-medium">{meeting.verification_lead_minutes} minutes before start</p>
               </div>
+              {meeting.access_type === "physical" && meeting.venue ? (
+                <div>
+                  <p className="text-muted-foreground">Venue</p>
+                  <p className="font-medium">{meeting.venue}</p>
+                </div>
+              ) : null}
               <div className="min-w-0 overflow-hidden sm:col-span-2">
                 <p className="text-muted-foreground">Share URL</p>
                 <div className="mt-1 flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start">
@@ -159,12 +190,14 @@ function MeetingDetailContent() {
                       <Copy className="h-4 w-4" />
                       Copy
                     </Button>
-                    <Button variant="outline" size="sm" className="gap-2" asChild>
-                      <a href={meeting.google_meet_url} target="_blank" rel="noreferrer">
-                        <ExternalLink className="h-4 w-4" />
-                        Meet
-                      </a>
-                    </Button>
+                    {meeting.google_meet_url ? (
+                      <Button variant="outline" size="sm" className="gap-2" asChild>
+                        <a href={meeting.google_meet_url} target="_blank" rel="noreferrer">
+                          <ExternalLink className="h-4 w-4" />
+                          Meet
+                        </a>
+                      </Button>
+                    ) : null}
                   </div>
                 </div>
               </div>

@@ -7,6 +7,7 @@ import { apiGet, apiGetPaged, apiPatch, apiPost } from '@/lib/api-client';
 import {
   MeetingDetailSchema,
   MeetingSchema,
+  MeetingSeriesSchema,
   MeetingVerificationSchema,
   type CreateMeetingInput,
   type UpdateMeetingInput,
@@ -18,7 +19,8 @@ export const DEFAULT_MEETINGS_LIMIT = 20;
 
 /**
  * GET /admin/meetings — paginated, filterable list.
- * Query: page, limit, audience_type, is_active, starts_after, starts_before, q.
+ * Query: page, limit, audience_type, is_active, starts_after, starts_before, q,
+ *        session_kind, access_type, cohort_id (provisional until ABO-47).
  */
 export const useMeetings = (filters?: MeetingListFilters) => {
   const { page = 1, limit = DEFAULT_MEETINGS_LIMIT, ...rest } = filters ?? {};
@@ -35,6 +37,9 @@ export const useMeetings = (filters?: MeetingListFilters) => {
           starts_after: rest.starts_after,
           starts_before: rest.starts_before,
           q: rest.q?.trim() || undefined,
+          session_kind: rest.session_kind,
+          access_type: rest.access_type,
+          cohort_id: rest.cohort_id,
         },
       }),
   });
@@ -45,6 +50,14 @@ export const useMeeting = (id: string | undefined) =>
   useQuery({
     queryKey: meetingKeys.detail(id ?? ''),
     queryFn: () => apiGet(`/admin/meetings/${id}`, MeetingDetailSchema),
+    enabled: Boolean(id),
+  });
+
+/** GET /admin/meetings/series/:id — series detail (ABO-8 / BE ABO-52). */
+export const useMeetingSeries = (id: string | undefined) =>
+  useQuery({
+    queryKey: meetingKeys.seriesDetail(id ?? ''),
+    queryFn: () => apiGet(`/admin/meetings/series/${id}`, MeetingSeriesSchema),
     enabled: Boolean(id),
   });
 
@@ -72,6 +85,7 @@ export const useMeetingVerifications = (
 
 function invalidateMeetings(queryClient: ReturnType<typeof useQueryClient>, id?: string) {
   void queryClient.invalidateQueries({ queryKey: meetingKeys.lists() });
+  void queryClient.invalidateQueries({ queryKey: meetingKeys.series() });
   if (id) {
     void queryClient.invalidateQueries({ queryKey: meetingKeys.detail(id) });
   } else {
@@ -79,7 +93,7 @@ function invalidateMeetings(queryClient: ReturnType<typeof useQueryClient>, id?:
   }
 }
 
-/** POST /admin/meetings */
+/** POST /admin/meetings — creates one session or a series when recurrence.count > 1. */
 export const useCreateMeeting = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -96,7 +110,14 @@ export const useUpdateMeeting = () => {
       const { id, ...body } = args;
       return apiPatch(`/admin/meetings/${id}`, body, MeetingSchema);
     },
-    onSuccess: (meeting) => invalidateMeetings(queryClient, meeting.id),
+    onSuccess: (meeting) => {
+      invalidateMeetings(queryClient, meeting.id);
+      if (meeting.series_id) {
+        void queryClient.invalidateQueries({
+          queryKey: meetingKeys.seriesDetail(meeting.series_id),
+        });
+      }
+    },
   });
 };
 
@@ -106,6 +127,43 @@ export const useToggleMeetingActive = () => {
   return useMutation({
     mutationFn: (args: { id: string; is_active: boolean }) =>
       apiPost(`/admin/meetings/${args.id}/toggle-active`, { is_active: args.is_active }, MeetingSchema),
-    onSuccess: (meeting) => invalidateMeetings(queryClient, meeting.id),
+    onSuccess: (meeting) => {
+      invalidateMeetings(queryClient, meeting.id);
+      if (meeting.series_id) {
+        void queryClient.invalidateQueries({
+          queryKey: meetingKeys.seriesDetail(meeting.series_id),
+        });
+      }
+    },
+  });
+};
+
+/** POST /admin/meetings/series/:id/cancel — cancels remaining upcoming sessions. */
+export const useCancelMeetingSeries = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (seriesId: string) =>
+      apiPost(`/admin/meetings/series/${seriesId}/cancel`, {}, MeetingSeriesSchema),
+    onSuccess: (series) => {
+      invalidateMeetings(queryClient);
+      void queryClient.invalidateQueries({ queryKey: meetingKeys.seriesDetail(series.id) });
+    },
+  });
+};
+
+/** POST /admin/meetings/:id/cancel — cancel a single session in a series (or standalone). */
+export const useCancelMeetingSession = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (meetingId: string) =>
+      apiPost(`/admin/meetings/${meetingId}/cancel`, {}, MeetingSchema),
+    onSuccess: (meeting) => {
+      invalidateMeetings(queryClient, meeting.id);
+      if (meeting.series_id) {
+        void queryClient.invalidateQueries({
+          queryKey: meetingKeys.seriesDetail(meeting.series_id),
+        });
+      }
+    },
   });
 };

@@ -1,6 +1,10 @@
-import type { MeetingAudienceType } from '../schemas/meeting.schema';
+import type {
+  MeetingAccessType,
+  MeetingAudienceType,
+  MeetingSessionKind,
+} from '../schemas/meeting.schema';
 
-/** Mirrors `ListMeetingsQueryDto`. */
+/** Mirrors `ListMeetingsQueryDto` (+ provisional Academy filters). */
 export type MeetingListFilters = {
   page?: number;
   limit?: number;
@@ -9,6 +13,10 @@ export type MeetingListFilters = {
   starts_after?: string;
   starts_before?: string;
   q?: string;
+  session_kind?: MeetingSessionKind;
+  access_type?: MeetingAccessType;
+  /** Provisional until ABO-47 — filter sessions scoped to a recruitment cohort. */
+  cohort_id?: string;
 };
 
 export const meetingKeys = {
@@ -19,4 +27,6 @@ export const meetingKeys = {
   detail: (id: string) => [...meetingKeys.details(), id] as const,
   verifications: (id: string, page?: number, limit?: number) =>
     [...meetingKeys.detail(id), 'verifications', { page, limit }] as const,
+  series: () => [...meetingKeys.all, 'series'] as const,
+  seriesDetail: (id: string) => [...meetingKeys.series(), id] as const,
 };
