@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/shared/Pagination";
 import { useDebounce } from "@/hooks/use-debounce";
+import { useAdminSession } from "@/hooks/use-admin-session";
 import { IssueStatus } from "@/lib/gql/graphql";
 import {
   useIssues,
@@ -20,6 +21,11 @@ import {
  * Root-cause issue list. Group ticket clusters here so a single fix
  * closes the whole batch (resolveIssue on the detail page).
  * URL-driven filter state (status, q, page).
+ *
+ * Readable by anyone with an admin login — a specialist working a ticket
+ * blocked on an issue needs to see what they are blocked on. Raising, editing
+ * and closing one is a CS Manager act and the BE refuses it otherwise, so the
+ * control is dropped rather than left to fail on click.
  */
 
 const parseStatus = (v: string | null): IssueStatus | null => {
@@ -31,6 +37,7 @@ const parseStatus = (v: string | null): IssueStatus | null => {
 function IssuesContent() {
   const router = useRouter();
   const search = useSearchParams();
+  const { isCSManager } = useAdminSession();
 
   const status = parseStatus(search.get("status"));
   const page = Math.max(1, Number(search.get("page") ?? "1") || 1);
@@ -69,10 +76,12 @@ function IssuesContent() {
             and every linked ticket closes with it in one deliberate act.
           </p>
         </div>
-        <Button onClick={() => setCreateOpen(true)}>
-          <Plus className="h-4 w-4 mr-1.5" />
-          New issue
-        </Button>
+        {isCSManager && (
+          <Button onClick={() => setCreateOpen(true)}>
+            <Plus className="h-4 w-4 mr-1.5" />
+            New issue
+          </Button>
+        )}
       </div>
 
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
@@ -109,11 +118,13 @@ function IssuesContent() {
         />
       )}
 
-      <CreateIssueDialog
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        onCreated={(issue) => router.push(`/issues/${issue._id}`)}
-      />
+      {isCSManager && (
+        <CreateIssueDialog
+          open={createOpen}
+          onOpenChange={setCreateOpen}
+          onCreated={(issue) => router.push(`/issues/${issue._id}`)}
+        />
+      )}
     </div>
   );
 }

@@ -185,6 +185,27 @@ const TICKET_CATEGORIES = graphql(`
   }
 `);
 
+/**
+ * The numbers above the table.
+ *
+ * Scoped by the BE exactly as the table beneath it is — a CS Manager reads the
+ * book, everyone else reads their own work — so the strip can never advertise a
+ * backlog the reader has no way to open.
+ */
+const TICKET_QUEUE_STATS = graphql(`
+  query TicketQueueStats {
+    ticketQueueStats {
+      open
+      inProgress
+      waitingCustomer
+      blockedOnIssue
+      breaching
+      oldestOpenHours
+      resolvedLast7Days
+    }
+  }
+`);
+
 /** Candidate issues by keyword overlap. Suggestion only — nothing is linked. */
 const SUGGEST_ISSUES_FOR_TICKET = graphql(`
   query SuggestIssuesForTicket($ticketId: ID!) {
@@ -255,6 +276,13 @@ export const useSimilarTickets = (search: string, enabled = true) => {
 // individual queries above spell fields out so codegen infers narrower
 // operation types.
 void TICKET_ROW_FIELDS;
+
+export const useTicketQueueStats = () =>
+  useQuery({
+    queryKey: ticketKeys.queueStats(),
+    queryFn: () => execute(TICKET_QUEUE_STATS, {}),
+    select: (data) => data.ticketQueueStats,
+  });
 
 export const useTicketCategories = (enabled = true) =>
   useQuery({

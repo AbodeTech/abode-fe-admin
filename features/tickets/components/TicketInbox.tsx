@@ -6,49 +6,70 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Pagination } from "@/components/shared/Pagination";
-import { cn } from "@/lib/utils";
 import { useDebounce } from "@/hooks/use-debounce";
-import { TicketChannel, TicketFilter, TicketSort } from "@/lib/gql/graphql";
+import { useAdminSession } from "@/hooks/use-admin-session";
+import {
+  TicketChannel,
+  TicketFilter,
+  TicketSort,
+  TicketType,
+} from "@/lib/gql/graphql";
 import { useTickets, DEFAULT_TICKETS_LIMIT } from "../hooks/use-tickets";
 import { TicketFilterChips } from "./TicketFilterChips";
+import { TicketQueueStrip } from "./TicketQueueStrip";
 import { TicketsToolbar } from "./TicketsToolbar";
-import { TicketList } from "./TicketList";
-import { TicketThread } from "./TicketThread";
+import { TicketsTable } from "./TicketsTable";
+import { TicketMailView } from "./TicketMailView";
 import { CreateTicketDialog } from "./CreateTicketDialog";
 
 /**
- * The support queue as an inbox.
+ * The support queue, in two views over one list.
  *
- * Filter state stays in the url (`filter`, `sort`, `channel`, `q`, `page`,
- * `ticket`) so a view is shareable — support hands these round — and so the
- * `?ticket=` deep links from an issue's linked-ticket table keep working.
+ * The table is where you decide what to work on; the mail view is where you
+ * work it. `?ticket=` is the whole difference between them, which keeps every
+ * deep link that already existed working and means the mail view's rail is the
+ * same query the table just ran — switching tickets costs nothing.
+ *
+ * Filter state stays in the url (`filter`, `sort`, `channel`, `type`,
+ * `category`, `q`, `page`, `ticket`) so a view is shareable; support hands
+ * these round.
+ *
+ * Nobody sees the whole book. Everyone reads the tickets they are party to;
+ * the router — a CS Manager whose role is "admin" — also reads the unassigned
+ * pool, because handing it out is their job. What is narrowed here is narrowed
+ * for legibility only: the BE applies the same scope to the list, the counts
+ * and the stats, and refuses every routing mutation regardless of what the
+ * client renders. See viewerScope and requireCsManager in
+ * services/admin/ticket/access.ts.
  */
 
-const parseFilter = (v: string | null): TicketFilter => {
-  if (!v) return TicketFilter.All;
-  const values = Object.values(TicketFilter) as string[];
-  return (values.includes(v) ? v : TicketFilter.All) as TicketFilter;
-};
+const parseEnum = <T extends string>(
+  v: string | null,
+  values: readonly string[]
+): T | null => (v && values.includes(v) ? (v as T) : null);
 
-const parseSort = (v: string | null): TicketSort => {
-  if (!v) return TicketSort.OldestFirst;
-  const values = Object.values(TicketSort) as string[];
-  return (values.includes(v) ? v : TicketSort.OldestFirst) as TicketSort;
-};
+const parseFilter = (v: string | null): TicketFilter =>
+  parseEnum<TicketFilter>(v, Object.values(TicketFilter)) ?? TicketFilter.All;
 
-const parseChannel = (v: string | null): TicketChannel | null => {
-  if (!v) return null;
-  const values = Object.values(TicketChannel) as string[];
-  return values.includes(v) ? (v as TicketChannel) : null;
-};
+const parseSort = (v: string | null): TicketSort =>
+  parseEnum<TicketSort>(v, Object.values(TicketSort)) ?? TicketSort.OldestFirst;
 
 export function TicketInbox() {
   const router = useRouter();
   const search = useSearchParams();
+  const { canRouteTickets } = useAdminSession();
 
   const filter = parseFilter(search.get("filter"));
   const sort = parseSort(search.get("sort"));
-  const channel = parseChannel(search.get("channel"));
+  const channel = parseEnum<TicketChannel>(
+    search.get("channel"),
+    Object.values(TicketChannel)
+  );
+  const type = parseEnum<TicketType>(
+    search.get("type"),
+    Object.values(TicketType)
+  );
+  const category = search.get("category");
   const page = Math.max(1, Number(search.get("page") ?? "1") || 1);
   const activeTicketId = search.get("ticket");
 
@@ -74,91 +95,102 @@ export function TicketInbox() {
       filter,
       sort,
       channel,
+      type,
+      category,
       search: debouncedQ || null,
     },
   });
 
   const rows = data?.results ?? [];
   const totalCount = data?.count ?? 0;
+  const errorMessage = error instanceof Error ? error.message : undefined;
 
   return (
     <div className="space-y-4 py-2">
-      <div className="flex items-start justify-between gap-3 flex-wrap">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-gray-900">Tickets</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Every complaint, and the conversation on it.
+          <p className="mt-1 text-sm text-gray-500">
+            {canRouteTickets
+              ? "Your tickets, and everything still waiting to be assigned."
+              : "Tickets assigned to you, and the ones you've been pulled onto."}
           </p>
         </div>
         <Button onClick={() => setCreateOpen(true)}>
-          <Plus className="h-4 w-4 mr-1.5" />
+          <Plus className="mr-1.5 h-4 w-4" />
           New ticket
         </Button>
       </div>
 
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
-        <TicketFilterChips
-          active={filter}
-          onChange={(v) =>
-            updateParams({ filter: v === TicketFilter.All ? null : v })
-          }
-          counts={data?.filterCounts}
+      {activeTicketId ? (
+        <TicketMailView
+          rows={rows}
+          activeTicketId={activeTicketId}
+          onSelect={(row) => updateParams({ ticket: row._id })}
+          onBackToTable={() => updateParams({ ticket: null })}
+          search={q}
+          onSearchChange={(v) => {
+            setQ(v);
+            updateParams({ q: v || null });
+          }}
+          isLoading={isLoading}
+          isFetching={isFetching}
+          isError={isError}
+          errorMessage={errorMessage}
         />
-        <TicketsToolbar
-          sort={sort}
-          onSortChange={(v) =>
-            updateParams({ sort: v === TicketSort.OldestFirst ? null : v })
-          }
-          channel={channel}
-          onChannelChange={(v) => updateParams({ channel: v })}
-        />
-      </div>
+      ) : (
+        <>
+          <TicketQueueStrip />
 
-      <Card className="overflow-hidden p-0">
-        <div className="grid h-[calc(100vh-19rem)] min-h-[30rem] grid-cols-1 grid-rows-[minmax(0,1fr)] lg:grid-cols-[22rem_1fr]">
-          {/* On mobile the panes share the space — an open ticket hides the list. */}
-          <div
-            className={cn(
-              "min-h-0 overflow-hidden border-r border-gray-200",
-              activeTicketId && "hidden lg:block"
-            )}
-          >
-            <TicketList
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <TicketFilterChips
+              active={filter}
+              onChange={(v) =>
+                updateParams({ filter: v === TicketFilter.All ? null : v })
+              }
+              counts={data?.filterCounts}
+              canRoute={canRouteTickets}
+            />
+          </div>
+
+          <TicketsToolbar
+            sort={sort}
+            onSortChange={(v) =>
+              updateParams({ sort: v === TicketSort.OldestFirst ? null : v })
+            }
+            channel={channel}
+            onChannelChange={(v) => updateParams({ channel: v })}
+            search={q}
+            onSearchChange={(v) => {
+              setQ(v);
+              updateParams({ q: v || null });
+            }}
+            type={type}
+            onTypeChange={(v) => updateParams({ type: v })}
+            category={category}
+            onCategoryChange={(v) => updateParams({ category: v })}
+            isFetching={isFetching}
+          />
+
+          <Card className="overflow-hidden p-0">
+            <TicketsTable
               rows={rows}
-              activeTicketId={activeTicketId}
-              onSelect={(row) => updateParams({ ticket: row._id })}
-              search={q}
-              onSearchChange={(v) => {
-                setQ(v);
-                updateParams({ q: v || null });
-              }}
+              onOpen={(row) => updateParams({ ticket: row._id })}
               isLoading={isLoading}
-              isFetching={isFetching}
               isError={isError}
-              errorMessage={error instanceof Error ? error.message : undefined}
+              errorMessage={errorMessage}
+              canRoute={canRouteTickets}
             />
-          </div>
+          </Card>
 
-          <div
-            className={cn(
-              "min-h-0 min-w-0 overflow-hidden",
-              !activeTicketId && "hidden lg:block"
-            )}
-          >
-            <TicketThread
-              ticketId={activeTicketId}
-              onBack={() => updateParams({ ticket: null })}
+          {totalCount > DEFAULT_TICKETS_LIMIT && (
+            <Pagination
+              count={totalCount}
+              currentIdx={page}
+              limit={DEFAULT_TICKETS_LIMIT}
             />
-          </div>
-        </div>
-      </Card>
-
-      {totalCount > DEFAULT_TICKETS_LIMIT && (
-        <Pagination
-          count={totalCount}
-          currentIdx={page}
-          limit={DEFAULT_TICKETS_LIMIT}
-        />
+          )}
+        </>
       )}
 
       <CreateTicketDialog

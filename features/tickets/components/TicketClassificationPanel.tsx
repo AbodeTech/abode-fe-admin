@@ -8,6 +8,7 @@ import {
   TicketType,
   type GetTicketQuery,
 } from "@/lib/gql/graphql";
+import { useAdminSession } from "@/hooks/use-admin-session";
 import { useTicketCategories } from "../hooks/use-tickets";
 import {
   useClassifyTicket,
@@ -47,9 +48,16 @@ const formatWhen = (iso: string) => {
  *
  * Editing either field stamps it `human` BE-side, which also protects it from
  * being overwritten by a later re-classify.
+ *
+ * Read by everyone, written by CS Managers. Type and category route the ticket
+ * and are the two fields every number about the queue is cut by, so a
+ * specialist pulled in for one fix sees the classification without being able
+ * to move it — and the panel says so rather than silently going flat, because
+ * a control that just stops working reads as a bug.
  */
 export function TicketClassificationPanel({ ticket }: Props) {
-  const { data: categories = [] } = useTicketCategories();
+  const { isCSManager } = useAdminSession();
+  const { data: categories = [] } = useTicketCategories(isCSManager);
   const update = useUpdateTicket();
   const classify = useClassifyTicket();
 
@@ -94,61 +102,81 @@ export function TicketClassificationPanel({ ticket }: Props) {
         <h3 className="text-xs font-semibold text-gray-900 uppercase tracking-wide">
           Classification
         </h3>
-        <button
-          type="button"
-          onClick={handleReclassify}
-          disabled={classify.isPending}
-          className="inline-flex items-center gap-1 text-[11px] text-[#00695C] hover:text-[#004D40] font-medium disabled:opacity-50"
-        >
-          {classify.isPending ? (
-            <Loader2 className="h-3 w-3 animate-spin" />
-          ) : (
-            <RefreshCw className="h-3 w-3" />
-          )}
-          Re-run
-        </button>
+        {isCSManager && (
+          <button
+            type="button"
+            onClick={handleReclassify}
+            disabled={classify.isPending}
+            className="inline-flex items-center gap-1 text-[11px] text-[#00695C] hover:text-[#004D40] font-medium disabled:opacity-50"
+          >
+            {classify.isPending ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <RefreshCw className="h-3 w-3" />
+            )}
+            Re-run
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-2">
         <Field label="Type" source={ticket.type_source}>
-          <select
-            value={ticket.type ?? ""}
-            onChange={(e) => handleType(e.target.value)}
-            disabled={update.isPending}
-            className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 bg-white"
-          >
-            <option value="">Unclassified</option>
-            {TYPE_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
+          {isCSManager ? (
+            <select
+              value={ticket.type ?? ""}
+              onChange={(e) => handleType(e.target.value)}
+              disabled={update.isPending}
+              className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 bg-white"
+            >
+              <option value="">Unclassified</option>
+              {TYPE_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <ReadOnlyValue
+              value={ticket.type ? TYPE_LABELS[ticket.type] : null}
+            />
+          )}
         </Field>
 
         <Field label="Category" source={ticket.category_source}>
-          <select
-            value={ticket.category ?? ""}
-            onChange={(e) => handleCategory(e.target.value)}
-            disabled={update.isPending}
-            className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 bg-white"
-          >
-            <option value="">Unclassified</option>
-            {categories.map((c) => (
-              <option key={c} value={c}>
-                {categoryLabel(c)}
-              </option>
-            ))}
-          </select>
+          {isCSManager ? (
+            <select
+              value={ticket.category ?? ""}
+              onChange={(e) => handleCategory(e.target.value)}
+              disabled={update.isPending}
+              className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 bg-white"
+            >
+              <option value="">Unclassified</option>
+              {categories.map((c) => (
+                <option key={c} value={c}>
+                  {categoryLabel(c)}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <ReadOnlyValue value={categoryLabel(ticket.category)} />
+          )}
         </Field>
       </div>
 
-      {/* Only faults are meant to group under a root-cause Issue. The BE
-          documents this but doesn't enforce it, so this advises. */}
+      {!isCSManager && (
+        <p className="text-[11px] text-gray-500">
+          Classification is set by the CS Manager. Add an internal note if you
+          think it&apos;s wrong.
+        </p>
+      )}
+
+      {/* Only issues (`fault` on the wire) are meant to group under a
+          root-cause Issue. The BE documents this but doesn't enforce it, so
+          this advises. */}
       {ticket.type === TicketType.Fault && !ticket.issue && (
         <p className="text-[11px] text-gray-500">
-          Faults can be grouped under a root-cause issue — link one if this is
-          part of something wider.
+          Issues can be grouped under a root cause — link one if this is part of
+          something wider.
         </p>
       )}
 
@@ -222,6 +250,24 @@ export function TicketClassificationPanel({ ticket }: Props) {
 
 /** Labelled control with a provenance marker. Human-set values carry no badge:
  *  the machine is what warrants one, and badging everything is just noise. */
+/**
+ * The same value the select would have shown, without the affordance. Renders
+ * as text rather than a disabled select: a greyed-out dropdown invites a click
+ * that will not do anything.
+ */
+function ReadOnlyValue({ value }: { value: string | null }) {
+  return (
+    <p
+      className={cn(
+        "px-0.5 py-1.5 text-xs",
+        value ? "text-gray-900" : "italic text-gray-400"
+      )}
+    >
+      {value ?? "Unclassified"}
+    </p>
+  );
+}
+
 function Field({
   label,
   source,

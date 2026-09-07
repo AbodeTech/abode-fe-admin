@@ -31,6 +31,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { useAdminSession } from "@/hooks/use-admin-session";
 import { TicketChannel, TicketStatus } from "@/lib/gql/graphql";
 import { useTicket } from "../hooks/use-tickets";
 import {
@@ -67,6 +68,10 @@ const CHANNEL_ICON: Record<TicketChannel, React.ElementType> = {
  */
 export function TicketThread({ ticketId, onBack }: Props) {
   const { data, isLoading, isError, error } = useTicket(ticketId);
+  // Moving a ticket you are working is part of working it; deciding it is done
+  // — and writing the resolution the next person reads instead of the thread —
+  // is the owner's call. Both are re-checked in the BE service.
+  const { isCSManager } = useAdminSession();
   const [resolveOpen, setResolveOpen] = useState(false);
   const [resolutionText, setResolutionText] = useState("");
   const [contextOpen, setContextOpen] = useState(false);
@@ -204,12 +209,16 @@ export function TicketThread({ ticketId, onBack }: Props) {
                       {opt.label}
                     </option>
                   ))}
-                  <option value={TicketStatus.Resolved}>Resolved…</option>
+                  {isCSManager && (
+                    <option value={TicketStatus.Resolved}>Resolved…</option>
+                  )}
                 </select>
-                <Button size="sm" onClick={() => setResolveOpen(true)}>
-                  <CheckCircle2 className="h-3.5 w-3.5 sm:mr-1.5" />
-                  <span className="hidden sm:inline">Resolve</span>
-                </Button>
+                {isCSManager && (
+                  <Button size="sm" onClick={() => setResolveOpen(true)}>
+                    <CheckCircle2 className="h-3.5 w-3.5 sm:mr-1.5" />
+                    <span className="hidden sm:inline">Resolve</span>
+                  </Button>
+                )}
               </>
             )}
             <Button

@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useAdminSession } from "@/hooks/use-admin-session";
 import type { GetTicketQuery } from "@/lib/gql/graphql";
 import {
   useRemoveTicketCollaborator,
@@ -63,9 +64,17 @@ const displayUser = (
  * Sits beside the thread rather than above it: this is reference material you
  * consult while reading, and stacking it on top pushes the conversation — the
  * thing you opened the ticket for — below the fold.
+ *
+ * Everything here that CHANGES the ticket — who it is about, who owns it, who
+ * is helping, what it is blocked on — belongs to the CS Manager. A specialist
+ * pulled in for one fix still reads all of it, because they need the context to
+ * do the thing they were pulled in for; they just cannot re-route it. Hiding
+ * the controls is legibility, not security: every one of these calls is refused
+ * again server-side.
  */
 export function TicketContextPanel({ detail }: Props) {
   const ticket = detail.ticket;
+  const { isCSManager } = useAdminSession();
   const [assignAdminOpen, setAssignAdminOpen] = useState(false);
   const [addCollaboratorOpen, setAddCollaboratorOpen] = useState(false);
   const [assignUserOpen, setAssignUserOpen] = useState(false);
@@ -107,8 +116,10 @@ export function TicketContextPanel({ detail }: Props) {
           label="Affected"
           user={ticket.user_affected}
           helper="whose account this is about"
-          actionLabel={ticket.user_affected ? "Change" : "Link user"}
-          onAction={() => setAssignUserOpen(true)}
+          actionLabel={
+            isCSManager ? (ticket.user_affected ? "Change" : "Link user") : undefined
+          }
+          onAction={isCSManager ? () => setAssignUserOpen(true) : undefined}
         />
         {ticket.sender && ticket.sender._id !== ticket.user_affected?._id && (
           <IdentityRow
@@ -119,12 +130,12 @@ export function TicketContextPanel({ detail }: Props) {
         )}
         <AssignedAdminRow
           admin={ticket.assigned_admin}
-          onAssign={() => setAssignAdminOpen(true)}
+          onAssign={isCSManager ? () => setAssignAdminOpen(true) : undefined}
         />
         <CollaboratorsRow
           collaborators={ticket.collaborators}
-          onAdd={() => setAddCollaboratorOpen(true)}
-          onRemove={handleRemoveCollaborator}
+          onAdd={isCSManager ? () => setAddCollaboratorOpen(true) : undefined}
+          onRemove={isCSManager ? handleRemoveCollaborator : undefined}
           removingId={removeCollaborator.isPending ? removingAdminId : null}
         />
       </div>
@@ -145,14 +156,16 @@ export function TicketContextPanel({ detail }: Props) {
               <AlertCircle className="h-3.5 w-3.5" />
               Blocked on issue
             </div>
-            <button
-              type="button"
-              onClick={handleUnlinkIssue}
-              disabled={unlinkIssue.isPending}
-              className="text-xs text-gray-500 hover:text-[#AD1F2A]"
-            >
-              {unlinkIssue.isPending ? "Unlinking…" : "Unlink"}
-            </button>
+            {isCSManager && (
+              <button
+                type="button"
+                onClick={handleUnlinkIssue}
+                disabled={unlinkIssue.isPending}
+                className="text-xs text-gray-500 hover:text-[#AD1F2A]"
+              >
+                {unlinkIssue.isPending ? "Unlinking…" : "Unlink"}
+              </button>
+            )}
           </div>
           <Link
             href={`/issues/${ticket.issue._id}`}
@@ -170,7 +183,7 @@ export function TicketContextPanel({ detail }: Props) {
             </span>
           </Link>
         </div>
-      ) : (
+      ) : isCSManager ? (
         <button
           type="button"
           onClick={() => setLinkIssueOpen(true)}
@@ -179,7 +192,7 @@ export function TicketContextPanel({ detail }: Props) {
           <AlertCircle className="h-3.5 w-3.5" />
           Link to issue
         </button>
-      )}
+      ) : null}
 
       {ticket.attachments && ticket.attachments.length > 0 && (
         <section className="space-y-1.5">
@@ -270,6 +283,10 @@ export function TicketContextPanel({ detail }: Props) {
         </section>
       )}
 
+      {/* Mounted only for the role that can open them — a dialog nobody can
+          reach is still a mutation sitting in the bundle. */}
+      {isCSManager && (
+        <>
       <AddCollaboratorDialog
         open={addCollaboratorOpen}
         onOpenChange={setAddCollaboratorOpen}
@@ -296,6 +313,8 @@ export function TicketContextPanel({ detail }: Props) {
         onOpenChange={setLinkIssueOpen}
         ticketId={ticket._id}
       />
+        </>
+      )}
     </div>
   );
 }
@@ -365,7 +384,8 @@ function AssignedAdminRow({
   onAssign,
 }: {
   admin?: { _id: string; userName: string; email?: string | null } | null;
-  onAssign: () => void;
+  /** Absent for a reader who may not reassign — the row still reports who owns it. */
+  onAssign?: () => void;
 }) {
   return (
     <div className="flex items-start gap-3 text-sm px-3 py-2.5">
@@ -388,13 +408,15 @@ function AssignedAdminRow({
           <p className="text-xs text-amber-700 italic">Unassigned</p>
         )}
       </div>
-      <button
-        type="button"
-        onClick={onAssign}
-        className="shrink-0 text-xs text-[#00695C] hover:text-[#004D40] font-medium"
-      >
-        {admin ? "Reassign" : "Assign"}
-      </button>
+      {onAssign && (
+        <button
+          type="button"
+          onClick={onAssign}
+          className="shrink-0 text-xs text-[#00695C] hover:text-[#004D40] font-medium"
+        >
+          {admin ? "Reassign" : "Assign"}
+        </button>
+      )}
     </div>
   );
 }
@@ -415,8 +437,9 @@ function CollaboratorsRow({
     email?: string | null;
     role?: string | null;
   }[];
-  onAdd: () => void;
-  onRemove: (adminId: string) => void;
+  /** Both absent for a reader who may not change who is helping. */
+  onAdd?: () => void;
+  onRemove?: (adminId: string) => void;
   removingId: string | null;
 }) {
   return (
@@ -433,32 +456,36 @@ function CollaboratorsRow({
               <li key={c._id}>
                 <span className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-gray-50 pl-2 pr-1 py-0.5 text-[11px] text-gray-700">
                   <span title={c.email ?? undefined}>{c.userName}</span>
-                  <button
-                    type="button"
-                    onClick={() => onRemove(c._id)}
-                    disabled={removingId === c._id}
-                    aria-label={`Remove ${c.userName}`}
-                    className="rounded-full p-0.5 text-gray-400 hover:text-[#AD1F2A] disabled:opacity-50"
-                  >
-                    {removingId === c._id ? (
-                      <Loader2 className="h-2.5 w-2.5 animate-spin" />
-                    ) : (
-                      <X className="h-2.5 w-2.5" />
-                    )}
-                  </button>
+                  {onRemove && (
+                    <button
+                      type="button"
+                      onClick={() => onRemove(c._id)}
+                      disabled={removingId === c._id}
+                      aria-label={`Remove ${c.userName}`}
+                      className="rounded-full p-0.5 text-gray-400 hover:text-[#AD1F2A] disabled:opacity-50"
+                    >
+                      {removingId === c._id ? (
+                        <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                      ) : (
+                        <X className="h-2.5 w-2.5" />
+                      )}
+                    </button>
+                  )}
                 </span>
               </li>
             ))}
           </ul>
         )}
       </div>
-      <button
-        type="button"
-        onClick={onAdd}
-        className="shrink-0 text-xs text-[#00695C] hover:text-[#004D40] font-medium"
-      >
-        Add
-      </button>
+      {onAdd && (
+        <button
+          type="button"
+          onClick={onAdd}
+          className="shrink-0 text-xs text-[#00695C] hover:text-[#004D40] font-medium"
+        >
+          Add
+        </button>
+      )}
     </div>
   );
 }

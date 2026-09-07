@@ -12,6 +12,7 @@ export const ticketKeys = {
     [...ticketKeys.root(), "issue-suggestions", ticketId] as const,
   similar: (search: string) =>
     [...ticketKeys.root(), "similar", search] as const,
+  queueStats: () => [...ticketKeys.root(), "queue-stats"] as const,
 };
 
 export const issueKeys = {
