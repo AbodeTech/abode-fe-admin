@@ -99,7 +99,7 @@ const ASSIGN_CS_MANAGER_TARGET_MUTATION = graphql(`
       year
       customers_allocated_target
       customers_onboarded_target
-      deeds_delivered_target
+      tickets_resolved_target
       createdAt
       updatedAt
     }

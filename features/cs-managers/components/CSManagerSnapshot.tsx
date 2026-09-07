@@ -3,7 +3,7 @@
 import {
   Home,
   Phone,
-  FileText,
+  LifeBuoy,
   Gauge,
   AlertCircle,
   Target,
@@ -55,7 +55,7 @@ const daysRemaining = (end: string) => {
 const hasActiveTarget = (t: CSManagerTargets) =>
   t.allocatedTarget > 0 ||
   t.onboardedTarget > 0 ||
-  t.deedsDeliveredTarget > 0;
+  t.ticketsResolvedTarget > 0;
 
 // BE ships only `userName` on the base Admin type. Split on whitespace as
 // a best-effort surname/first-name split, then take the first letters.
@@ -93,9 +93,13 @@ export function CSManagerSnapshot({
     target.onboardedTarget > 0
       ? (target.onboardedSoFar / target.onboardedTarget) * 100
       : undefined;
-  const deedsPct =
-    target.deedsDeliveredTarget > 0
-      ? (target.deedsDeliveredSoFar / target.deedsDeliveredTarget) * 100
+  // Both sides are percentages, so attainment is the achieved rate against the
+  // required one — not a count against a count like the two tiles above it.
+  // Undefined rather than 0 when nothing arrived, so the bar reads "no data"
+  // instead of "failed".
+  const ticketsPct =
+    target.ticketsResolvedTarget > 0 && target.ticketResolutionRate != null
+      ? (target.ticketResolutionRate / target.ticketsResolvedTarget) * 100
       : undefined;
 
   const scoreLine = (
@@ -108,10 +112,15 @@ export function CSManagerSnapshot({
       ? `${label}: ${componentScore.toFixed(1)}/${weight}`
       : `${label}: no target set`;
   const scoreTooltip = [
-    `Objective score out of 100. Allocated 40 + Onboarded 30 + DoA 30.`,
+    `Objective score out of 100. Allocated 40 + Onboarded 30 + Tickets 30.`,
     scoreLine("Allocated", 40, score.allocatedComponent, target.allocatedTarget > 0),
     scoreLine("Onboarded", 30, score.onboardedComponent, target.onboardedTarget > 0),
-    scoreLine("DoA", 30, score.deedsComponent, target.deedsDeliveredTarget > 0),
+    scoreLine(
+      "Tickets",
+      30,
+      score.ticketsComponent,
+      target.ticketsResolvedTarget > 0
+    ),
   ].join(" · ");
 
   return (
@@ -199,18 +208,27 @@ export function CSManagerSnapshot({
         />
 
         <KpiTile
-          icon={FileText}
+          icon={LifeBuoy}
           iconColor="text-amber-700"
           iconBg="bg-amber-50"
-          label="Deeds of Assignment Delivered"
-          actualDisplay={target.deedsDeliveredSoFar.toLocaleString()}
+          label="Ticket Resolution Rate"
+          actualDisplay={
+            target.ticketResolutionRate != null
+              ? `${target.ticketResolutionRate}%`
+              : "—"
+          }
           targetDisplay={
-            target.deedsDeliveredTarget > 0
-              ? target.deedsDeliveredTarget.toLocaleString()
+            target.ticketsResolvedTarget > 0
+              ? `${target.ticketsResolvedTarget}%`
               : undefined
           }
-          percent={deedsPct}
-          tooltip="Deeds sent to eligible customers this period. Full-ownership: eligible after payment plan + doc plan. Flex: eligible after completing land payment."
+          percent={ticketsPct}
+          // A rate, not a count: how much of the month's intake got dealt with.
+          // The raw counts go in the tooltip because the rate is the thing being
+          // judged and the counts are how you check it.
+          noData={target.ticketsEntered === 0}
+          noDataLabel="No tickets came in"
+          tooltip={`Of the tickets assigned to this manager that were raised this period, how many are now resolved — ${target.ticketsResolved} of ${target.ticketsEntered}. Measured as of now, not month-end, so a ticket raised on the 30th still counts once it closes.`}
         />
 
         <KpiTile

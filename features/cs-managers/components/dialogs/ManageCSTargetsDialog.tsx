@@ -248,20 +248,31 @@ function ActiveTargetCard({
           value={target.customers_onboarded_target}
         />
         <TargetCell
-          label="Deeds Delivered"
-          value={target.deeds_delivered_target}
+          label="Ticket Resolution"
+          value={target.tickets_resolved_target}
+          suffix="%"
         />
       </div>
     </div>
   );
 }
 
-function TargetCell({ label, value }: { label: string; value: number }) {
+function TargetCell({
+  label,
+  value,
+  suffix,
+}: {
+  label: string;
+  value: number;
+  /** Ticket resolution is a rate, not a count — the other two cells are counts. */
+  suffix?: string;
+}) {
   return (
     <div className="rounded-md bg-white border border-gray-200 px-3 py-2">
       <p className="text-xs text-gray-500 truncate">{label}</p>
       <p className="text-sm font-semibold text-gray-900 tabular-nums">
         {value.toLocaleString()}
+        {suffix}
       </p>
     </div>
   );
@@ -285,7 +296,7 @@ function UpcomingTargetRow({
           <p className="text-xs text-gray-500">
             {target.customers_allocated_target} allocated ·{" "}
             {target.customers_onboarded_target} onboarded ·{" "}
-            {target.deeds_delivered_target} deeds
+            {target.tickets_resolved_target}% tickets resolved
           </p>
         </div>
       </div>
@@ -309,7 +320,7 @@ function PastTargetRow({ target }: { target: CsManagerTargetType }) {
         <span className="text-gray-500 text-xs tabular-nums">
           {target.customers_allocated_target} /{" "}
           {target.customers_onboarded_target} /{" "}
-          {target.deeds_delivered_target}
+          {target.tickets_resolved_target}%
         </span>
       </div>
       <span className="text-xs text-gray-400">target</span>

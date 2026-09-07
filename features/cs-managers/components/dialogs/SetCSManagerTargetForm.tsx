@@ -65,8 +65,8 @@ export function SetCSManagerTargetForm({
   const [onboarded, setOnboarded] = useState<string>(
     existing ? String(existing.customers_onboarded_target) : ""
   );
-  const [deeds, setDeeds] = useState<string>(
-    existing ? String(existing.deeds_delivered_target) : ""
+  const [ticketRate, setTicketRate] = useState<string>(
+    existing ? String(existing.tickets_resolved_target) : ""
   );
 
   const { mutateAsync, isPending } = useAssignCSManagerTarget();
@@ -76,7 +76,7 @@ export function SetCSManagerTargetForm({
     setMonthValue(initialMonthValue);
     setAllocated(existing ? String(existing.customers_allocated_target) : "");
     setOnboarded(existing ? String(existing.customers_onboarded_target) : "");
-    setDeeds(existing ? String(existing.deeds_delivered_target) : "");
+    setTicketRate(existing ? String(existing.tickets_resolved_target) : "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [existing?._id]);
 
@@ -114,7 +114,7 @@ export function SetCSManagerTargetForm({
         year,
         customers_allocated_target: asNumber(allocated),
         customers_onboarded_target: asNumber(onboarded),
-        deeds_delivered_target: asNumber(deeds),
+        tickets_resolved_target: asNumber(ticketRate),
         // Peer rating deferred — omit so BE keeps whatever's there
         // (defaults to 0 on new records). Restore this input when the
         // rating loop lands.
@@ -190,19 +190,26 @@ export function SetCSManagerTargetForm({
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="deeds">
-            Deeds Delivered
+          <Label htmlFor="ticketRate">
+            Ticket Resolution Rate
             <span className="text-xs text-gray-400 ml-1">optional</span>
           </Label>
           <Input
-            id="deeds"
+            id="ticketRate"
             type="number"
             min={0}
-            value={deeds}
-            onChange={(e) => setDeeds(e.target.value)}
-            placeholder="e.g. 15"
+            max={100}
+            value={ticketRate}
+            onChange={(e) => setTicketRate(e.target.value)}
+            placeholder="e.g. 90"
             className="bg-white"
           />
+          {/* A percentage, unlike the two counts above it — the share of the
+              month's intake that should end up resolved. Said here because the
+              field sits next to two counts and would otherwise read as one. */}
+          <p className="text-[11px] text-gray-500">
+            % of the month&apos;s tickets that should be resolved
+          </p>
         </div>
       </div>
 
