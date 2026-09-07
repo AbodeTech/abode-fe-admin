@@ -11,6 +11,7 @@ import {
 import { useAuthStore } from "@/store/auth-store";
 import { SuspensePageFallback, PageContentLoader } from "@/components/shared/page-content-loader";
 import { DateFilter } from "@/components/shared/DateFilter";
+import { isTopLevelAdmin } from "@/lib/admin-roles";
 import { useSearchParams } from "next/navigation";
 
 function DashboardContent() {
@@ -24,7 +25,7 @@ function DashboardContent() {
     endDate,
   });
 
-  const isAdmin = user?.role === "admin";
+  const isAdmin = isTopLevelAdmin(user?.role);
 
   if (isLoading) {
     return <PageContentLoader label="Loading dashboard…" />;

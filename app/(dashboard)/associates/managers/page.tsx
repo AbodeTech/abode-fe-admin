@@ -26,6 +26,7 @@ import {
 } from "@/features/associate-managers";
 import { buildManagerDashboardFilter, buildManagerDashboardPeriodFilter } from "@/features/associate-managers/lib/dashboard-filter";
 import { useAuthStore } from "@/store/auth-store";
+import { isTopLevelAdmin } from "@/lib/admin-roles";
 
 /** Friendly empty state for users who shouldn't be here. */
 function NotAuthorized() {
@@ -64,7 +65,7 @@ function AssociateManagersContent() {
   // Admin view. Any other admin who is also an Associate Manager (regardless
   // of their base role — subadmin / moderator / viewer) gets the Manager
   // view. `?view=manager` lets super admins preview the Manager layout.
-  const isSuperAdmin = user?.role === "admin";
+  const isSuperAdmin = isTopLevelAdmin(user?.role);
   const { isManager, isLoading: managerCheckLoading } = useIsCurrentUserManager();
   const wantsManagerView = searchParams.get("view") === "manager";
   const isAuthorized = isSuperAdmin || isManager || wantsManagerView;

@@ -19,6 +19,7 @@ import {
 import { csManagerName } from "@/features/cs-managers/lib/manager-display";
 import { useAuthStore } from "@/store/auth-store";
 import type { CsPlanFilter, CsPlanSort } from "@/lib/gql/graphql";
+import { isTopLevelAdmin } from "@/lib/admin-roles";
 
 /** Friendly empty state for admins who shouldn't be here. */
 function NotAuthorized() {
@@ -58,7 +59,7 @@ function CustomerManagersContent() {
   // get the picker across every manager. Any other admin who is also a CS
   // Manager sees only their own book. `?view=manager` lets a super admin
   // preview the manager layout.
-  const isSuperAdmin = user?.role === "admin";
+  const isSuperAdmin = isTopLevelAdmin(user?.role);
   const {
     isCSManager,
     csManagerId,

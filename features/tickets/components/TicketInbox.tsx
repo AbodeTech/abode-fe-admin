@@ -34,12 +34,12 @@ import { CreateTicketDialog } from "./CreateTicketDialog";
  * `category`, `q`, `page`, `ticket`) so a view is shareable; support hands
  * these round.
  *
- * Nobody sees the whole book. Everyone reads the tickets they are party to;
- * the router — a CS Manager whose role is "admin" — also reads the unassigned
- * pool, because handing it out is their job. What is narrowed here is narrowed
- * for legibility only: the BE applies the same scope to the list, the counts
- * and the stats, and refuses every routing mutation regardless of what the
- * client renders. See viewerScope and requireCsManager in
+ * Who sees what: everyone reads the tickets they are party to; the router — a
+ * CS Manager whose role is "admin" — also reads the unassigned pool, because
+ * handing it out is their job; a super admin reads and acts on the whole book.
+ * What is narrowed here is narrowed for legibility only: the BE applies the
+ * same scope to the list, the counts and the stats, and re-checks every gate
+ * before it acts. See viewerScope and requireCsManager in
  * services/admin/ticket/access.ts.
  */
 
@@ -57,7 +57,7 @@ const parseSort = (v: string | null): TicketSort =>
 export function TicketInbox() {
   const router = useRouter();
   const search = useSearchParams();
-  const { canRouteTickets } = useAdminSession();
+  const { canRouteTickets, canManageAllTickets } = useAdminSession();
 
   const filter = parseFilter(search.get("filter"));
   const sort = parseSort(search.get("sort"));
@@ -111,9 +111,11 @@ export function TicketInbox() {
         <div>
           <h1 className="text-xl font-semibold text-gray-900">Tickets</h1>
           <p className="mt-1 text-sm text-gray-500">
-            {canRouteTickets
-              ? "Your tickets, and everything still waiting to be assigned."
-              : "Tickets assigned to you, and the ones you've been pulled onto."}
+            {canManageAllTickets
+              ? "Every complaint, and the conversation on it."
+              : canRouteTickets
+                ? "Your tickets, and everything still waiting to be assigned."
+                : "Tickets assigned to you, and the ones you've been pulled onto."}
           </p>
         </div>
         <Button onClick={() => setCreateOpen(true)}>
@@ -180,6 +182,7 @@ export function TicketInbox() {
               isError={isError}
               errorMessage={errorMessage}
               canRoute={canRouteTickets}
+              canManageAll={canManageAllTickets}
             />
           </Card>
 

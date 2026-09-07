@@ -37,7 +37,7 @@ const parseStatus = (v: string | null): IssueStatus | null => {
 function IssuesContent() {
   const router = useRouter();
   const search = useSearchParams();
-  const { isCSManager } = useAdminSession();
+  const { canDecideTicketRouting } = useAdminSession();
 
   const status = parseStatus(search.get("status"));
   const page = Math.max(1, Number(search.get("page") ?? "1") || 1);
@@ -76,7 +76,7 @@ function IssuesContent() {
             and every linked ticket closes with it in one deliberate act.
           </p>
         </div>
-        {isCSManager && (
+        {canDecideTicketRouting && (
           <Button onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4 mr-1.5" />
             New issue
@@ -118,7 +118,7 @@ function IssuesContent() {
         />
       )}
 
-      {isCSManager && (
+      {canDecideTicketRouting && (
         <CreateIssueDialog
           open={createOpen}
           onOpenChange={setCreateOpen}

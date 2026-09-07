@@ -7,16 +7,20 @@ import { graphql } from "@/lib/gql";
 /**
  * Who the signed-in admin is, and what they may be shown.
  *
- * Two separate facts, and they gate different things:
- *   isCSManager      may they decide routing — classification, ownership,
- *                    grouping, collaborators, resolution — on a ticket.
- *   canRouteTickets  do they also SEE the unassigned pool. True only for a CS
- *                    Manager whose role is "admin"; they are the one who hands
- *                    new tickets out.
+ * Four facts, and each one maps to exactly one thing the UI decides:
  *
- * Both come from the server rather than being derived here from role +
- * isCSManager, so the rule has one definition and this cannot drift from what
- * the scoping actually does.
+ *   isCSManager             holds the CS Manager assignment. Informational.
+ *   canDecideTicketRouting  may classify, categorise, assign, group and
+ *                           resolve — a CS Manager, or a super admin.
+ *   canRouteTickets         also SEES the unassigned pool — the CS Manager
+ *                           whose role is "admin", or a super admin. Decides
+ *                           which queue chips are worth drawing.
+ *   canManageAllTickets     super admin: reads and acts on every ticket,
+ *                           whoever it belongs to.
+ *
+ * All four are computed on the server rather than derived here from role +
+ * isCSManager, so each rule has one definition and this cannot drift from what
+ * the scoping and the gate actually do.
  *
  * Read from the server rather than from the login payload in the auth store,
  * because `isCSManager` is an active CSManagerAssignment — it can be granted or
@@ -39,6 +43,8 @@ const ADMIN_SESSION = graphql(`
       role
       isCSManager
       canRouteTickets
+      canManageAllTickets
+      canDecideTicketRouting
       permissions
     }
   }
@@ -62,12 +68,14 @@ export function useAdminSession() {
   return {
     session: query.data ?? null,
     /**
-     * Undefined-safe on purpose: while the session is loading nobody is a CS
-     * Manager, so the restricted controls stay hidden and then appear, rather
-     * than flashing up and being taken away.
+     * Every one of these defaults to false while the session loads, on purpose:
+     * the restricted controls stay hidden and then appear, rather than flashing
+     * up and being taken away.
      */
     isCSManager: query.data?.isCSManager ?? false,
     canRouteTickets: query.data?.canRouteTickets ?? false,
+    canManageAllTickets: query.data?.canManageAllTickets ?? false,
+    canDecideTicketRouting: query.data?.canDecideTicketRouting ?? false,
     isLoading: query.isLoading,
   };
 }
