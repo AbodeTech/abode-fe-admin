@@ -38,8 +38,9 @@ interface Props {
   isLoading: boolean;
   isError: boolean;
   errorMessage?: string;
-  /** Shown in the empty state so "nothing here" reads as scope, not as a bug. */
+  /** Both shown in the empty state so "nothing here" reads as scope, not a bug. */
   canRoute: boolean;
+  canManageAll: boolean;
 }
 
 const CHANNEL_ICON: Record<TicketChannel, React.ElementType> = {
@@ -107,6 +108,7 @@ export function TicketsTable({
   isError,
   errorMessage,
   canRoute,
+  canManageAll,
 }: Props) {
   // One clock for every row, ticking on its own rather than on whatever
   // happens to re-render the table.
@@ -137,9 +139,11 @@ export function TicketsTable({
       <div className="px-6 py-16 text-center">
         <p className="text-sm text-gray-600">No tickets match these filters.</p>
         <p className="mt-1 text-xs text-gray-500">
-          {canRoute
-            ? "You're seeing your own tickets and everything still waiting to be assigned."
-            : "You're seeing tickets assigned to you and ones you've been pulled onto."}
+          {canManageAll
+            ? "Try widening the filters, or clearing the search."
+            : canRoute
+              ? "You're seeing your own tickets and everything still waiting to be assigned."
+              : "You're seeing tickets assigned to you and ones you've been pulled onto."}
         </p>
       </div>
     );

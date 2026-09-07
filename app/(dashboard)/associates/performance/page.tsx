@@ -17,6 +17,7 @@ import {
 import { buildManagerDashboardFilter, buildManagerDashboardPeriodFilter } from "@/features/associate-managers/lib/dashboard-filter";
 import { DashboardPeriodFilter } from "@/features/associate-managers/components/DashboardPeriodFilter";
 import { useAuthStore } from "@/store/auth-store";
+import { isTopLevelAdmin } from "@/lib/admin-roles";
 
 function NotAuthorized() {
   return (
@@ -48,7 +49,7 @@ function AssociatePerformanceContent() {
     router.push(`?${params.toString()}`, { scroll: false });
   };
 
-  const isSuperAdmin = user?.role === "admin";
+  const isSuperAdmin = isTopLevelAdmin(user?.role);
 
   const period = searchParams.get("period");
   const startDate = searchParams.get("start_date");

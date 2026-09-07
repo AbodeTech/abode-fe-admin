@@ -56,8 +56,8 @@ const formatWhen = (iso: string) => {
  * a control that just stops working reads as a bug.
  */
 export function TicketClassificationPanel({ ticket }: Props) {
-  const { isCSManager } = useAdminSession();
-  const { data: categories = [] } = useTicketCategories(isCSManager);
+  const { canDecideTicketRouting } = useAdminSession();
+  const { data: categories = [] } = useTicketCategories(canDecideTicketRouting);
   const update = useUpdateTicket();
   const classify = useClassifyTicket();
 
@@ -102,7 +102,7 @@ export function TicketClassificationPanel({ ticket }: Props) {
         <h3 className="text-xs font-semibold text-gray-900 uppercase tracking-wide">
           Classification
         </h3>
-        {isCSManager && (
+        {canDecideTicketRouting && (
           <button
             type="button"
             onClick={handleReclassify}
@@ -121,7 +121,7 @@ export function TicketClassificationPanel({ ticket }: Props) {
 
       <div className="grid grid-cols-2 gap-2">
         <Field label="Type" source={ticket.type_source}>
-          {isCSManager ? (
+          {canDecideTicketRouting ? (
             <select
               value={ticket.type ?? ""}
               onChange={(e) => handleType(e.target.value)}
@@ -143,7 +143,7 @@ export function TicketClassificationPanel({ ticket }: Props) {
         </Field>
 
         <Field label="Category" source={ticket.category_source}>
-          {isCSManager ? (
+          {canDecideTicketRouting ? (
             <select
               value={ticket.category ?? ""}
               onChange={(e) => handleCategory(e.target.value)}
@@ -163,7 +163,7 @@ export function TicketClassificationPanel({ ticket }: Props) {
         </Field>
       </div>
 
-      {!isCSManager && (
+      {!canDecideTicketRouting && (
         <p className="text-[11px] text-gray-500">
           Classification is set by the CS Manager. Add an internal note if you
           think it&apos;s wrong.

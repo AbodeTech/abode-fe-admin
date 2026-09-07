@@ -74,7 +74,7 @@ const displayUser = (
  */
 export function TicketContextPanel({ detail }: Props) {
   const ticket = detail.ticket;
-  const { isCSManager } = useAdminSession();
+  const { canDecideTicketRouting } = useAdminSession();
   const [assignAdminOpen, setAssignAdminOpen] = useState(false);
   const [addCollaboratorOpen, setAddCollaboratorOpen] = useState(false);
   const [assignUserOpen, setAssignUserOpen] = useState(false);
@@ -117,9 +117,9 @@ export function TicketContextPanel({ detail }: Props) {
           user={ticket.user_affected}
           helper="whose account this is about"
           actionLabel={
-            isCSManager ? (ticket.user_affected ? "Change" : "Link user") : undefined
+            canDecideTicketRouting ? (ticket.user_affected ? "Change" : "Link user") : undefined
           }
-          onAction={isCSManager ? () => setAssignUserOpen(true) : undefined}
+          onAction={canDecideTicketRouting ? () => setAssignUserOpen(true) : undefined}
         />
         {ticket.sender && ticket.sender._id !== ticket.user_affected?._id && (
           <IdentityRow
@@ -130,12 +130,12 @@ export function TicketContextPanel({ detail }: Props) {
         )}
         <AssignedAdminRow
           admin={ticket.assigned_admin}
-          onAssign={isCSManager ? () => setAssignAdminOpen(true) : undefined}
+          onAssign={canDecideTicketRouting ? () => setAssignAdminOpen(true) : undefined}
         />
         <CollaboratorsRow
           collaborators={ticket.collaborators}
-          onAdd={isCSManager ? () => setAddCollaboratorOpen(true) : undefined}
-          onRemove={isCSManager ? handleRemoveCollaborator : undefined}
+          onAdd={canDecideTicketRouting ? () => setAddCollaboratorOpen(true) : undefined}
+          onRemove={canDecideTicketRouting ? handleRemoveCollaborator : undefined}
           removingId={removeCollaborator.isPending ? removingAdminId : null}
         />
       </div>
@@ -156,7 +156,7 @@ export function TicketContextPanel({ detail }: Props) {
               <AlertCircle className="h-3.5 w-3.5" />
               Blocked on issue
             </div>
-            {isCSManager && (
+            {canDecideTicketRouting && (
               <button
                 type="button"
                 onClick={handleUnlinkIssue}
@@ -183,7 +183,7 @@ export function TicketContextPanel({ detail }: Props) {
             </span>
           </Link>
         </div>
-      ) : isCSManager ? (
+      ) : canDecideTicketRouting ? (
         <button
           type="button"
           onClick={() => setLinkIssueOpen(true)}
@@ -285,7 +285,7 @@ export function TicketContextPanel({ detail }: Props) {
 
       {/* Mounted only for the role that can open them — a dialog nobody can
           reach is still a mutation sitting in the bundle. */}
-      {isCSManager && (
+      {canDecideTicketRouting && (
         <>
       <AddCollaboratorDialog
         open={addCollaboratorOpen}
