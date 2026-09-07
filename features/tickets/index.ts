@@ -1,7 +1,14 @@
+export { TicketInbox } from "./components/TicketInbox";
 export { TicketFilterChips } from "./components/TicketFilterChips";
 export { TicketsToolbar } from "./components/TicketsToolbar";
+export { TicketList } from "./components/TicketList";
 export { TicketsTable } from "./components/TicketsTable";
-export { TicketDetailDrawer } from "./components/TicketDetailDrawer";
+export { TicketMailView } from "./components/TicketMailView";
+export { TicketQueueStrip } from "./components/TicketQueueStrip";
+export { TicketThread } from "./components/TicketThread";
+export { TicketTimeline } from "./components/TicketTimeline";
+export { TicketComposer } from "./components/TicketComposer";
+export { TicketContextPanel } from "./components/TicketContextPanel";
 export { CreateTicketDialog } from "./components/CreateTicketDialog";
 export { AssignAdminDialog } from "./components/AssignAdminDialog";
 export { AddCollaboratorDialog } from "./components/AddCollaboratorDialog";
@@ -25,6 +32,7 @@ export {
   useTicketUserSuggestions,
   useTicketIssueSuggestions,
   useTicketCategories,
+  useTicketQueueStats,
   useSimilarTickets,
   DEFAULT_TICKETS_LIMIT,
 } from "./hooks/use-tickets";
@@ -44,6 +52,10 @@ export {
   type LinkTicketToIssueInput,
   type TicketCollaboratorInput,
 } from "./hooks/use-ticket-mutations";
+export {
+  useReplyToTicket,
+  type ReplyToTicketInput,
+} from "./hooks/use-ticket-reply";
 export {
   useIssues,
   useIssue,

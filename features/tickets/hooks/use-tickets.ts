@@ -9,10 +9,15 @@ import { ticketKeys } from "./query-keys";
 /**
  * Ticket reads.
  *
- * The complaint log is deliberately NOT a threaded conversation — one
- * inbound message is one ticket. `duplicates` on the detail response is
- * the cheap stand-in for threading (recent open tickets from the same
- * source address).
+ * A ticket IS a threaded conversation now — `messages` carries it, oldest
+ * first, and a ticket opened before threading simply has one. `body` stays
+ * as the denormalised text of the message that opened it: it is what the
+ * text index searches and what the classifier reads, so it is not a second
+ * source of truth for the conversation.
+ *
+ * `duplicates` outlived its original job (the stand-in for threading) and is
+ * now only what it says — recent open tickets from the same source address,
+ * i.e. merge candidates.
  *
  * BE contract: adminTypeDefs.ts §"Tickets".
  */
@@ -118,11 +123,11 @@ const GET_TICKET = graphql(`
         attachments { url filename mime size }
         resolved_by { _id userName email }
       }
+      messages {
+        ...TicketTimeline_message
+      }
       notes {
-        _id
-        body
-        createdAt
-        admin { _id userName email }
+        ...TicketTimeline_note
       }
       duplicates {
         _id
@@ -177,6 +182,27 @@ const FIND_SIMILAR_TICKETS = graphql(`
 const TICKET_CATEGORIES = graphql(`
   query TicketCategories {
     ticketCategories
+  }
+`);
+
+/**
+ * The numbers above the table.
+ *
+ * Scoped by the BE exactly as the table beneath it is — a CS Manager reads the
+ * book, everyone else reads their own work — so the strip can never advertise a
+ * backlog the reader has no way to open.
+ */
+const TICKET_QUEUE_STATS = graphql(`
+  query TicketQueueStats {
+    ticketQueueStats {
+      open
+      inProgress
+      waitingCustomer
+      blockedOnIssue
+      breaching
+      oldestOpenHours
+      resolvedLast7Days
+    }
   }
 `);
 
@@ -250,6 +276,13 @@ export const useSimilarTickets = (search: string, enabled = true) => {
 // individual queries above spell fields out so codegen infers narrower
 // operation types.
 void TICKET_ROW_FIELDS;
+
+export const useTicketQueueStats = () =>
+  useQuery({
+    queryKey: ticketKeys.queueStats(),
+    queryFn: () => execute(TICKET_QUEUE_STATS, {}),
+    select: (data) => data.ticketQueueStats,
+  });
 
 export const useTicketCategories = (enabled = true) =>
   useQuery({

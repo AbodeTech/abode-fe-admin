@@ -102,14 +102,21 @@ export const recurrencePillClass = (reopenCount: number): string => {
 
 /**
  * What kind of thing a ticket is, independent of what it is about.
- * Only faults are meant to belong to an Issue — grouping an enquiry under a
- * root cause asserts something is broken when it is not. The BE documents that
- * rule on the model but does not enforce it on linkTicketToIssue, so the UI
- * advises rather than blocks.
+ *
+ * Support says "issue" where the wire says `fault`. The value is left alone —
+ * renaming it would need a migration, a classifier change and a re-prompt, and
+ * would collide head-on with the Issue entity these very tickets group under —
+ * so the translation happens once, here, and nowhere else. Anything rendering
+ * a raw `ticket.type` is a bug.
+ *
+ * Only issues are meant to belong to an Issue record — grouping an enquiry
+ * under a root cause asserts something is broken when it is not. The BE
+ * documents that rule on the model but does not enforce it on
+ * linkTicketToIssue, so the UI advises rather than blocks.
  */
 export const TYPE_LABELS: Record<TicketType, string> = {
   enquiry: "Enquiry",
-  fault: "Fault",
+  fault: "Issue",
   request: "Request",
 };
 
@@ -120,7 +127,7 @@ export const TYPE_PILL_CLASS: Record<TicketType, string> = {
 };
 
 export const TYPE_OPTIONS: { value: TicketType; label: string }[] = [
-  { value: TicketType.Fault, label: "Fault — something is broken" },
+  { value: TicketType.Fault, label: "Issue — something is broken" },
   { value: TicketType.Enquiry, label: "Enquiry — a question, nothing broken" },
   { value: TicketType.Request, label: "Request — work needed, nothing broken" },
 ];

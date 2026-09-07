@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, CheckCircle2, RotateCcw, User2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAdminSession } from "@/hooks/use-admin-session";
 import { cn } from "@/lib/utils";
 import { IssueStatus, TicketStatus, type GetIssueQuery } from "@/lib/gql/graphql";
 import {
@@ -37,6 +38,10 @@ const formatUser = (u?: { firstName?: string | null; lastName?: string | null; e
 };
 
 export function IssueDetail({ detail }: Props) {
+  // Closing an issue closes every ticket hanging off it, for customers who may
+  // not have been told anything. That is the CS Manager's call, and the BE
+  // refuses it from anyone else.
+  const { isCSManager } = useAdminSession();
   const [resolveOpen, setResolveOpen] = useState(false);
   const { issue, tickets, ticketCount } = detail;
   const isResolved = issue.status === IssueStatus.Resolved;
@@ -85,7 +90,7 @@ export function IssueDetail({ detail }: Props) {
               </p>
             )}
           </div>
-          {!isResolved && (
+          {!isResolved && isCSManager && (
             <Button size="sm" onClick={() => setResolveOpen(true)}>
               <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
               Resolve
@@ -259,13 +264,15 @@ export function IssueDetail({ detail }: Props) {
         )}
       </section>
 
-      <ResolveIssueDialog
-        open={resolveOpen}
-        onOpenChange={setResolveOpen}
-        issueId={issue._id}
-        issueTitle={issue.title}
-        linkedTickets={tickets}
-      />
+      {isCSManager && (
+        <ResolveIssueDialog
+          open={resolveOpen}
+          onOpenChange={setResolveOpen}
+          issueId={issue._id}
+          issueTitle={issue.title}
+          linkedTickets={tickets}
+        />
+      )}
     </div>
   );
 }

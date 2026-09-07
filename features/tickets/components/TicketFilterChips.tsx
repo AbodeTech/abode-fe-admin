@@ -8,16 +8,32 @@ interface Props {
   active: TicketFilter;
   onChange: (value: TicketFilter) => void;
   counts?: GetTicketsQuery["getTickets"]["filterCounts"];
+  /**
+   * Whether the reader also sees the unassigned pool — the router.
+   *
+   * For everyone else the list is already scoped to their own work, so "All"
+   * and "Mine" are the same list and "Unassigned"/"Unlinked" can only ever read
+   * zero. Dropping those three is presentation only; the scope itself is
+   * enforced server-side, so this is not what stops anyone seeing anything.
+   */
+  canRoute?: boolean;
 }
 
 /** Book-wide filter chips. Counts stay stable regardless of the
  * active chip — that's the BE contract (see filterCounts). */
-export function TicketFilterChips({ active, onChange, counts }: Props) {
-  const chips: {
+export function TicketFilterChips({
+  active,
+  onChange,
+  counts,
+  canRoute = false,
+}: Props) {
+  type Chip = {
     key: TicketFilter;
     count: number | undefined;
     tone: "neutral" | "warn" | "critical";
-  }[] = [
+  };
+
+  const chips: Chip[] = ([
     { key: TicketFilter.All, count: counts?.all, tone: "neutral" },
     // Resolved server-side from the auth context: owned by me, OR I was pulled
     // in as a collaborator. Without it a specialist has no queue of their own.
@@ -36,7 +52,13 @@ export function TicketFilterChips({ active, onChange, counts }: Props) {
       tone: "critical",
     },
     { key: TicketFilter.Resolved, count: counts?.resolved, tone: "neutral" },
-  ];
+  ] as Chip[]).filter(
+    (c) =>
+      canRoute ||
+      ![TicketFilter.Mine, TicketFilter.Unassigned, TicketFilter.Unlinked].includes(
+        c.key
+      )
+  );
 
   const toneCountClass = (tone: "neutral" | "warn" | "critical") => {
     switch (tone) {
