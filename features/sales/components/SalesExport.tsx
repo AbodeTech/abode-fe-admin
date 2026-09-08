@@ -113,6 +113,7 @@ const FIELD_CONFIG = {
       name: { label: 'Customer Name', default: true },
       email: { label: 'Email', default: true },
       phone: { label: 'Phone', default: true },
+      nameOnDocument: { label: 'Name on Document', default: false },
     }
   },
   referrer: {
@@ -133,6 +134,16 @@ const FIELD_CONFIG = {
       unitsBought: { label: 'Units Bought', default: true },
       size: { label: 'Size', default: true },
       total_size: { label: 'Total Size', default: false },
+    }
+  },
+  allocation: {
+    label: 'Block & Plot',
+    color: 'bg-amber-100 text-amber-700',
+    fields: {
+      block: { label: 'Block', default: false },
+      plot: { label: 'Plot', default: false },
+      blockPlotPairs: { label: 'Block/Plot Pairs', default: false },
+      plotCount: { label: 'Plot Count', default: false },
     }
   },
   pricing: {
@@ -170,6 +181,8 @@ const FIELD_CONFIG = {
       month_subscription: { label: 'Subscription Month', default: false },
       startDate: { label: 'Start Date', default: true },
       endDate: { label: 'End Date', default: true },
+      landPaymentCompletedDate: { label: 'Land Payment Completed', default: false },
+      landPaymentCompletedAt: { label: 'Land Payment Completed (ISO)', default: false },
     }
   },
   status: {
@@ -246,6 +259,10 @@ const PRESETS: Record<string, { label: string; fields: string[] }> = {
   referrals: {
     label: 'Referral Report',
     fields: ['id', 'name', 'email', 'referrer_name', 'referrer_email', 'referrer_phone', 'assetName', 'totalPaid']
+  },
+  documentation: {
+    label: 'Documentation & Allocation',
+    fields: ['id', 'paymentPlanId', 'name', 'nameOnDocument', 'email', 'assetName', 'assetType', 'block', 'plot', 'blockPlotPairs', 'plotCount', 'landPaymentCompletedDate', 'landBalance', 'paymentStatus']
   },
 }
 
@@ -414,6 +431,13 @@ export function SalesExport({ filters }: { filters: SalesFilters }) {
     return formatDateFn(date, 'yyyy/MM/dd')
   }
 
+  // block/plot come back as parallel comma-strings on multi-plot plans
+  // (block: "C,C" / plot: "12,13"), not lists. Split them the same way so the
+  // paired column lines up; if the two lengths disagree we emit the raw
+  // strings rather than inventing a pairing.
+  const splitAllocations = (value: any) =>
+    String(value ?? '').split(',').map((part) => part.trim()).filter(Boolean)
+
   const processRecord = (record: any, index: number) => {
     // ... [Same logic as original code for processing fields] ...
     // Keeping logic identical to preserve business rules
@@ -424,6 +448,12 @@ export function SalesExport({ filters }: { filters: SalesFilters }) {
     const documentPrice = Number(record.fullownerhsip_documentprice) || 0
     const documentAmountPaid = Number(record.document_amount_paid) || 0
     const landPrice = Number(record.fullownerhsip_landprice ?? record.price) || 0
+    const blocks = splitAllocations(record.block)
+    const plots = splitAllocations(record.plot)
+    const blockPlotPairs =
+      blocks.length === plots.length
+        ? plots.map((plot, i) => `${blocks[i]}-${plot}`).join(', ')
+        : [record.block, record.plot].filter(Boolean).join(' / ')
 
     const fullRecord: Record<string, any> = {
       id: index + 1,
@@ -461,6 +491,17 @@ export function SalesExport({ filters }: { filters: SalesFilters }) {
       allocationStatus: record.allocation_status || '',
       planCreatedAt: formatDate(record.payment_plan_created_at),
       planUpdatedAt: formatDate(record.payment_plan_updated_at),
+      // Deliberately no fallbacks below. name_on_document is reconciled
+      // against, so falling back to the account name would hide a missing
+      // answer, and a missing land_payment_completed_date is not "unpaid" —
+      // it is an absent completion stamp. Blanks stay blank.
+      nameOnDocument: record.name_on_document || '',
+      block: record.block || '',
+      plot: record.plot || '',
+      blockPlotPairs,
+      plotCount: plots.length,
+      landPaymentCompletedDate: formatDate(record.land_payment_completed_date),
+      landPaymentCompletedAt: record.land_payment_completed_date || '',
     }
 
     const orderedRecord: Record<string, any> = {}

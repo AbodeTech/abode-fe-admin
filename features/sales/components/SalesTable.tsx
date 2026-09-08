@@ -41,6 +41,10 @@ export const SalesRowFragment = graphql(`
     is_suspended
     start_date
     next_date
+    block
+    plot
+    land_payment_completed_date
+    name_on_document
   }
 `);
 
@@ -56,6 +60,17 @@ const formatDate = (dateString: string) => {
   if (!dateString) return "N/A";
   const date = new Date(dateString);
   return isNaN(date.getTime()) ? "N/A" : format(date, "yyyy/MM/dd");
+};
+
+// Fields the API leaves null on purpose render as a dash, never as a fallback
+// value. land_payment_completed_date is stamped on completion, so a missing
+// stamp is not a payment status — don't read it as "unpaid". name_on_document
+// deliberately has no fallback to the account name: this column gets
+// reconciled against, and a fallback would hide a missing answer.
+const formatOptionalDate = (dateString?: string | null) => {
+  if (!dateString) return "—";
+  const date = new Date(dateString);
+  return isNaN(date.getTime()) ? "—" : format(date, "yyyy/MM/dd");
 };
 
 interface SalesTableProps {
@@ -99,6 +114,7 @@ export function SalesTable({ records }: SalesTableProps) {
                     </span>
                   }
                 />
+                <AdminMobileField label="Name on document" value={sale.name_on_document || "—"} />
                 <AdminMobileField label="Buyer phone" value={sale.user_phone || "—"} />
                 <AdminMobileField label="Referrer" value={sale.referrer_name || "No referrer"} />
                 <AdminMobileField label="Referrer email" value={sale.referrer_email || "—"} />
@@ -116,6 +132,8 @@ export function SalesTable({ records }: SalesTableProps) {
                     </span>
                   }
                 />
+                <AdminMobileField label="Block" value={sale.block || "—"} />
+                <AdminMobileField label="Plot" value={sale.plot || "—"} />
                 <AdminMobileField label="Size (total sqm)" value={totalSize} />
                 <AdminMobileField label="Price" value={formatCurrency(Number(sale.price))} />
                 <AdminMobileField label="Amount paid" value={formatCurrency(Number(sale.amount_paid))} />
@@ -126,6 +144,10 @@ export function SalesTable({ records }: SalesTableProps) {
                 <AdminMobileField label="Months subscription" value={sale.month_subscription} />
                 <AdminMobileField label="Start" value={formatDate(sale.start_date)} />
                 <AdminMobileField label="Next" value={formatDate(sale.next_date)} />
+                <AdminMobileField
+                  label="Land payment completed"
+                  value={formatOptionalDate(sale.land_payment_completed_date)}
+                />
               </AdminMobileCard>
             );
           })
@@ -140,6 +162,7 @@ export function SalesTable({ records }: SalesTableProps) {
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
+                <TableHead>Name on Document</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Buyer phone</TableHead>
                 <TableHead>Referrer Name</TableHead>
@@ -147,6 +170,8 @@ export function SalesTable({ records }: SalesTableProps) {
                 <TableHead>Referrer Phone</TableHead>
                 <TableHead>Asset Name</TableHead>
                 <TableHead>Asset Type</TableHead>
+                <TableHead>Block</TableHead>
+                <TableHead>Plot</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Size</TableHead>
                 <TableHead>Price</TableHead>
@@ -158,6 +183,7 @@ export function SalesTable({ records }: SalesTableProps) {
                 <TableHead>Month Subscription</TableHead>
                 <TableHead>Start Date</TableHead>
                 <TableHead>Next Date</TableHead>
+                <TableHead>Land Payment Completed</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -175,6 +201,7 @@ export function SalesTable({ records }: SalesTableProps) {
                       <TableCell className="font-medium">
                         {sale.user_lastName} {sale.user_firstName}
                       </TableCell>
+                      <TableCell>{sale.name_on_document || "—"}</TableCell>
                       <TableCell>{sale.email}</TableCell>
                       <TableCell>{sale.user_phone || "—"}</TableCell>
                       <TableCell>{sale.referrer_name || "No referrer"}</TableCell>
@@ -190,6 +217,8 @@ export function SalesTable({ records }: SalesTableProps) {
                           {sale.asset_type}
                         </span>
                       </TableCell>
+                      <TableCell className="whitespace-nowrap">{sale.block || "—"}</TableCell>
+                      <TableCell className="whitespace-nowrap">{sale.plot || "—"}</TableCell>
                       <TableCell>
                         <span className="flex flex-wrap items-center gap-1">
                           <span className={`whitespace-nowrap rounded-full px-2 py-1 text-xs ${PAYMENT_STATUS_BADGE_CLASSES[status]}`}>
@@ -217,12 +246,13 @@ export function SalesTable({ records }: SalesTableProps) {
                       <TableCell>{sale.month_subscription}</TableCell>
                       <TableCell>{formatDate(sale.start_date)}</TableCell>
                       <TableCell>{formatDate(sale.next_date)}</TableCell>
+                      <TableCell>{formatOptionalDate(sale.land_payment_completed_date)}</TableCell>
                     </TableRow>
                   );
                 })
               ) : (
                 <TableRow>
-                  <TableCell colSpan={19} className="py-4 text-center">
+                  <TableCell colSpan={23} className="py-4 text-center">
                     No sales records found
                   </TableCell>
                 </TableRow>

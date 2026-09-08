@@ -40,6 +40,10 @@ const EXPORT_SALES_QUERY = graphql(`
         allocation_status
         payment_plan_created_at
         payment_plan_updated_at
+        block
+        plot
+        land_payment_completed_date
+        name_on_document
       }
     }
   }
