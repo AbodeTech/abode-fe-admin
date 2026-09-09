@@ -48,7 +48,6 @@ export function CohortSessionsPage({
               preset={{
                 cohortId,
                 cohortLabel: cohort?.label ?? cohort?.name,
-                sessionKind: 'recruitment',
               }}
               triggerLabel="Create session"
               onCreated={() => {

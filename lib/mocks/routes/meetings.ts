@@ -9,7 +9,7 @@ import { body, paged } from './util';
  * ============================================================ */
 
 type Audience = 'all_associates' | 'associate_pro_plus' | 'associate_only';
-type SessionKind = 'general' | 'recruitment' | 'training';
+type AudienceMode = 'tier' | 'cohort';
 type AccessType = 'online' | 'physical';
 
 const AUDIENCE_LABELS: Record<Audience, string> = {
@@ -32,15 +32,17 @@ type MockMeeting = {
   slug: string;
   name: string;
   google_meet_url: string;
-  audience_type: Audience;
+  audience_mode: AudienceMode;
+  audience_type: Audience | null;
   starts_at: string;
   verification_lead_minutes: number;
   duration_minutes: number;
   ends_at: string;
   is_active: boolean;
-  session_kind: SessionKind;
   access_type: AccessType;
   venue: string | null;
+  city: string | null;
+  details_confirmed: boolean;
   cohort_id: string | null;
   cohort_label: string | null;
   series_id: string | null;
@@ -57,7 +59,6 @@ type MockSeries = {
   id: string;
   slug: string;
   name: string;
-  session_kind: SessionKind;
   access_type: AccessType;
   audience_type: Audience | null;
   cohort_id: string | null;
@@ -71,15 +72,17 @@ type MockSeries = {
 type MockVerification = {
   id: string;
   meeting: string;
-  user: string | null;
+  user_id: string | null;
   email: string;
   first_name: string | null;
   last_name: string | null;
   phone: string | null;
-  referral_status: string | null;
+  tier_at_verification: string | null;
+  was_existing: boolean;
   region: string | null;
   verified_at: string;
   source: string;
+  method: string;
   createdAt: string;
 };
 
@@ -111,7 +114,6 @@ const seriesStore: MockSeries[] = [
     id: SEED_SERIES_ID,
     slug: 'rcp-september-2026-sessions',
     name: 'RCP September 2026 — Training series',
-    session_kind: 'recruitment',
     access_type: 'online',
     audience_type: null,
     cohort_id: SEED_COHORT_ID,
@@ -129,15 +131,17 @@ const meetings: MockMeeting[] = [
     slug: 'weekly-associate-call-a1b2c3',
     name: 'Weekly Associate Call',
     google_meet_url: 'https://meet.google.com/abc-defg-hij',
+    audience_mode: 'tier',
     audience_type: 'all_associates',
     starts_at: hoursFromNow(6),
     verification_lead_minutes: 30,
     duration_minutes: 60,
     ends_at: hoursFromNow(7),
     is_active: true,
-    session_kind: 'general',
     access_type: 'online',
     venue: null,
+    city: null,
+    details_confirmed: false,
     cohort_id: null,
     cohort_label: null,
     series_id: null,
@@ -154,15 +158,17 @@ const meetings: MockMeeting[] = [
     slug: 'pro-briefing-f4e5d6',
     name: 'Associate Pro briefing',
     google_meet_url: 'https://meet.google.com/pro-aaaa-bbb',
+    audience_mode: 'tier',
     audience_type: 'associate_pro_plus',
     starts_at: hoursFromNow(48),
     verification_lead_minutes: 45,
     duration_minutes: 90,
     ends_at: hoursFromNow(49.5),
     is_active: true,
-    session_kind: 'training',
     access_type: 'online',
     venue: null,
+    city: null,
+    details_confirmed: false,
     cohort_id: null,
     cohort_label: null,
     series_id: null,
@@ -179,15 +185,17 @@ const meetings: MockMeeting[] = [
     slug: 'archived-townhall-9c8d7e',
     name: 'Archived town hall',
     google_meet_url: 'https://meet.google.com/old-zzzz-yyy',
+    audience_mode: 'tier',
     audience_type: 'associate_only',
     starts_at: hoursFromNow(-72),
     verification_lead_minutes: 30,
     duration_minutes: 60,
     ends_at: hoursFromNow(-71),
     is_active: false,
-    session_kind: 'general',
     access_type: 'online',
     venue: null,
+    city: null,
+    details_confirmed: false,
     cohort_id: null,
     cohort_label: null,
     series_id: null,
@@ -204,15 +212,17 @@ const meetings: MockMeeting[] = [
     slug: 'rcp-sep-session-1',
     name: 'RCP Sep — Session 1',
     google_meet_url: 'https://meet.google.com/rcp-ses-001',
-    audience_type: 'all_associates',
+    audience_mode: 'cohort',
+    audience_type: null,
     starts_at: hoursFromNow(-168),
     verification_lead_minutes: 30,
     duration_minutes: 90,
     ends_at: hoursFromNow(-166.5),
     is_active: true,
-    session_kind: 'recruitment',
     access_type: 'online',
     venue: null,
+    city: null,
+    details_confirmed: false,
     cohort_id: SEED_COHORT_ID,
     cohort_label: SEED_COHORT_LABEL,
     series_id: SEED_SERIES_ID,
@@ -229,15 +239,17 @@ const meetings: MockMeeting[] = [
     slug: 'rcp-sep-session-2',
     name: 'RCP Sep — Session 2',
     google_meet_url: 'https://meet.google.com/rcp-ses-002',
-    audience_type: 'all_associates',
+    audience_mode: 'cohort',
+    audience_type: null,
     starts_at: hoursFromNow(24),
     verification_lead_minutes: 30,
     duration_minutes: 90,
     ends_at: hoursFromNow(25.5),
     is_active: true,
-    session_kind: 'recruitment',
     access_type: 'online',
     venue: null,
+    city: null,
+    details_confirmed: false,
     cohort_id: SEED_COHORT_ID,
     cohort_label: SEED_COHORT_LABEL,
     series_id: SEED_SERIES_ID,
@@ -254,15 +266,17 @@ const meetings: MockMeeting[] = [
     slug: 'rcp-sep-session-3',
     name: 'RCP Sep — Session 3',
     google_meet_url: 'https://meet.google.com/rcp-ses-003',
-    audience_type: 'all_associates',
+    audience_mode: 'cohort',
+    audience_type: null,
     starts_at: hoursFromNow(24 + 168),
     verification_lead_minutes: 30,
     duration_minutes: 90,
     ends_at: hoursFromNow(24 + 168 + 1.5),
     is_active: true,
-    session_kind: 'recruitment',
     access_type: 'online',
     venue: null,
+    city: null,
+    details_confirmed: false,
     cohort_id: SEED_COHORT_ID,
     cohort_label: SEED_COHORT_LABEL,
     series_id: SEED_SERIES_ID,
@@ -279,15 +293,17 @@ const meetings: MockMeeting[] = [
     slug: 'rcp-sep-session-4',
     name: 'RCP Sep — Session 4 (physical)',
     google_meet_url: '',
-    audience_type: 'all_associates',
+    audience_mode: 'cohort',
+    audience_type: null,
     starts_at: hoursFromNow(24 + 336),
     verification_lead_minutes: 60,
     duration_minutes: 180,
     ends_at: hoursFromNow(24 + 336 + 3),
     is_active: true,
-    session_kind: 'recruitment',
     access_type: 'physical',
     venue: 'Abode HQ, Lekki Phase 1',
+    city: 'Lagos',
+    details_confirmed: true,
     cohort_id: SEED_COHORT_ID,
     cohort_label: SEED_COHORT_LABEL,
     series_id: SEED_SERIES_ID,
@@ -305,57 +321,65 @@ const verifications: MockVerification[] = [
   {
     id: '665fmv0000000000000000v1',
     meeting: '665fmt0000000000000000m1',
-    user: '665fuser0000000000000001',
+    user_id: '665fuser0000000000000001',
     email: 'ada.obi@example.com',
     first_name: 'Ada',
     last_name: 'Obi',
     phone: '+2348011111111',
-    referral_status: 'associate-pro',
+    tier_at_verification: 'associate-pro',
+    was_existing: true,
     region: 'Lagos',
     verified_at: hoursFromNow(-1),
     source: 'existing_user',
+    method: 'link',
     createdAt: hoursFromNow(-1),
   },
   {
     id: '665fmv0000000000000000v2',
     meeting: '665fmt0000000000000000m1',
-    user: '665fuser0000000000000002',
+    user_id: '665fuser0000000000000002',
     email: 'chidi.oka@example.com',
     first_name: 'Chidi',
     last_name: 'Oka',
     phone: '+2348022222222',
-    referral_status: 'associate',
+    tier_at_verification: 'associate',
+    was_existing: true,
     region: 'Abuja',
     verified_at: hoursFromNow(-0.5),
     source: 'existing_user',
+    method: 'link',
     createdAt: hoursFromNow(-0.5),
   },
   {
     id: '665fmv0000000000000000v3',
     meeting: '665fmt0000000000000000s1',
-    user: '665fuser0000000000000003',
+    user_id: '665fuser0000000000000003',
     email: 'ada@example.com',
     first_name: 'Ada',
     last_name: 'Okafor',
     phone: '+2348011111111',
-    referral_status: null,
+    tier_at_verification: null,
+    was_existing: false,
     region: 'Lagos',
     verified_at: hoursFromNow(-167),
     source: 'walk_in',
+    method: 'manual',
     createdAt: hoursFromNow(-167),
   },
   {
     id: '665fmv0000000000000000v4',
     meeting: '665fmt0000000000000000s1',
-    user: '665fuser0000000000000004',
+    user_id: '665fuser0000000000000004',
     email: 'bola@example.com',
     first_name: 'Bola',
     last_name: 'Ade',
     phone: '+2348033333333',
-    referral_status: null,
+    tier_at_verification: null,
+    was_existing: false,
     region: 'Ibadan',
     verified_at: hoursFromNow(-166.8),
     source: 'walk_in',
+    method: 'manual',
     createdAt: hoursFromNow(-166.8),
   },
 ];
@@ -365,11 +389,14 @@ function publicMeeting(m: MockMeeting) {
     id: m.id,
     slug: m.slug,
     name: m.name,
-    google_meet_url: m.google_meet_url,
+    google_meet_url: m.google_meet_url || null,
+    audience_mode: m.audience_mode,
     audience_type: m.audience_type,
     audience_label: m.cohort_label
       ? m.cohort_label
-      : AUDIENCE_LABELS[m.audience_type],
+      : m.audience_type
+        ? AUDIENCE_LABELS[m.audience_type]
+        : AUDIENCE_LABELS.all_associates,
     share_url: shareUrl(m.slug),
     starts_at: m.starts_at,
     verification_lead_minutes: m.verification_lead_minutes,
@@ -377,9 +404,10 @@ function publicMeeting(m: MockMeeting) {
     ends_at: m.ends_at,
     is_active: m.is_active,
     verification_count: verifications.filter((v) => v.meeting === m.id).length,
-    session_kind: m.session_kind,
     access_type: m.access_type,
     venue: m.venue,
+    city: m.city,
+    details_confirmed: m.details_confirmed,
     cohort_id: m.cohort_id,
     cohort_label: m.cohort_label,
     series_id: m.series_id,
@@ -397,7 +425,7 @@ function leanStats(meetingId: string) {
   const rows = verifications.filter((v) => v.meeting === meetingId);
   const byStatus = new Map<string | null, number>();
   for (const row of rows) {
-    const key = row.referral_status;
+    const key = row.tier_at_verification;
     byStatus.set(key, (byStatus.get(key) ?? 0) + 1);
   }
   return {
@@ -453,7 +481,6 @@ function publicSeries(series: MockSeries) {
     slug: series.slug,
     name: series.name,
     share_url: seriesShareUrl(series.slug),
-    session_kind: series.session_kind,
     access_type: series.access_type,
     audience_type: series.audience_type,
     audience_label: series.cohort_label
@@ -494,18 +521,163 @@ function resolveAudienceLabel(input: {
   return AUDIENCE_LABELS.all_associates;
 }
 
+/**
+ * DC-02 — build a cohort's sessions from its create-time Schedule in one call:
+ * N online days (a series once there's more than one) plus an optional
+ * physical day. Called from the academy mock inside cohort creation so a
+ * cohort never lands with only half its sessions.
+ */
+export function seedSessionsForCohort(input: {
+  cohortId: string;
+  cohortLabel: string;
+  schedule: {
+    online?: {
+      days: number;
+      starts_at: string;
+      duration_minutes?: number;
+      verification_lead_minutes?: number;
+      meet_url?: string;
+      frequency?: 'daily' | 'weekdays' | 'weekly';
+    };
+    physical?: { date: string; venue: string; city: string; details_confirmed?: boolean };
+  };
+}): { sessionIds: string[]; seriesId: string | null } {
+  const { cohortId, cohortLabel, schedule } = input;
+  const sessionIds: string[] = [];
+  let seriesId: string | null = null;
+
+  const online = schedule.online;
+  const onlineDays = online ? Math.max(0, Math.floor(online.days || 0)) : 0;
+  if (online && onlineDays > 0) {
+    const firstStarts = new Date(online.starts_at);
+    if (Number.isNaN(firstStarts.getTime())) {
+      throw new MockHttpError(400, 'schedule.online.starts_at is invalid', 'VALIDATION_ERROR');
+    }
+    const duration = online.duration_minutes ?? DEFAULT_DURATION_MINUTES;
+    const lead = online.verification_lead_minutes ?? 30;
+    const frequency = online.frequency ?? 'daily';
+    const meetUrl = (online.meet_url ?? '').trim();
+    const stepDays = frequency === 'weekly' ? 7 : 1;
+
+    let series: MockSeries | null = null;
+    if (onlineDays > 1) {
+      series = {
+        id: `series_${Math.random().toString(36).slice(2, 10)}`,
+        slug: `${slugify(cohortLabel) || 'series'}-${Math.random().toString(16).slice(2, 8)}`,
+        name: `${cohortLabel} — Online sessions`,
+        access_type: 'online',
+        audience_type: null,
+        cohort_id: cohortId,
+        cohort_label: cohortLabel,
+        is_active: true,
+        cancelled_at: null,
+        createdAt: now(),
+        updatedAt: now(),
+      };
+      seriesStore.unshift(series);
+      seriesId = series.id;
+    }
+
+    let dayIndex = 0;
+    const cursor = new Date(firstStarts);
+    for (let i = 0; i < onlineDays; i++) {
+      while (frequency === 'weekdays' && (cursor.getDay() === 0 || cursor.getDay() === 6)) {
+        cursor.setDate(cursor.getDate() + 1);
+      }
+      const starts_at = cursor.toISOString();
+      dayIndex += 1;
+      const created: MockMeeting = {
+        id: `665fmt000000000000000${String(nextId++).padStart(2, '0')}`,
+        slug: `day-${dayIndex}-${slugify(cohortLabel) || 'cohort'}-${Math.random().toString(16).slice(2, 8)}`,
+        name: `Day ${dayIndex} — ${cohortLabel}`,
+        google_meet_url: meetUrl,
+        audience_mode: 'cohort',
+        audience_type: null,
+        starts_at,
+        verification_lead_minutes: lead,
+        duration_minutes: duration,
+        ends_at: computeEndsAt(starts_at, duration),
+        is_active: true,
+        access_type: 'online',
+        venue: null,
+        city: null,
+        details_confirmed: false,
+        cohort_id: cohortId,
+        cohort_label: cohortLabel,
+        series_id: series?.id ?? null,
+        series_slug: series?.slug ?? null,
+        series_name: series?.name ?? null,
+        series_position: series ? dayIndex : null,
+        series_total: series ? onlineDays : null,
+        cancelled_at: null,
+        createdAt: now(),
+        updatedAt: now(),
+      };
+      meetings.unshift(created);
+      sessionIds.push(created.id);
+      cursor.setDate(cursor.getDate() + stepDays);
+    }
+  }
+
+  if (schedule.physical) {
+    const { date, venue, city, details_confirmed } = schedule.physical;
+    const startsAt = new Date(date);
+    if (Number.isNaN(startsAt.getTime())) {
+      throw new MockHttpError(400, 'schedule.physical.date is invalid', 'VALIDATION_ERROR');
+    }
+    const duration = 180;
+    const created: MockMeeting = {
+      id: `665fmt000000000000000${String(nextId++).padStart(2, '0')}`,
+      slug: `event-day-${slugify(cohortLabel) || 'cohort'}-${Math.random().toString(16).slice(2, 8)}`,
+      name: `Event Day — ${cohortLabel}`,
+      google_meet_url: '',
+      audience_mode: 'cohort',
+      audience_type: null,
+      starts_at: startsAt.toISOString(),
+      verification_lead_minutes: 60,
+      duration_minutes: duration,
+      ends_at: computeEndsAt(startsAt.toISOString(), duration),
+      is_active: true,
+      access_type: 'physical',
+      venue,
+      city,
+      details_confirmed: Boolean(details_confirmed),
+      cohort_id: cohortId,
+      cohort_label: cohortLabel,
+      series_id: null,
+      series_slug: null,
+      series_name: null,
+      series_position: null,
+      series_total: null,
+      cancelled_at: null,
+      createdAt: now(),
+      updatedAt: now(),
+    };
+    meetings.unshift(created);
+    sessionIds.push(created.id);
+  }
+
+  return { sessionIds, seriesId };
+}
+
+/** Whether the cohort has at least one (non-cancelled) physical session — gates dashboard `checked_in`. */
+export function cohortHasPhysicalSession(cohortId: string): boolean {
+  return meetings.some((m) => m.cohort_id === cohortId && m.access_type === 'physical' && !m.cancelled_at);
+}
+
+/** For the academy mock's Cohort response — real BE hardcodes 0 until Phase 2 wires cohort-scoped sessions. */
+export function countSessionsForCohort(cohortId: string): number {
+  return meetings.filter((m) => m.cohort_id === cohortId && !m.cancelled_at).length;
+}
+
 export const meetingRoutes: MockRoutes = {
   'GET /admin/meetings': ({ query }) => {
     let rows = [...meetings];
     if (typeof query.audience_type === 'string') {
       rows = rows.filter((m) => m.audience_type === query.audience_type);
     }
-    if (typeof query.session_kind === 'string') {
-      rows = rows.filter((m) => m.session_kind === query.session_kind);
-    }
-    if (typeof query.access_type === 'string') {
-      rows = rows.filter((m) => m.access_type === query.access_type);
-    }
+    // No session_kind (never existed) or access_type filter here — the real
+    // ListMeetingsQueryDto doesn't accept either; FE no longer sends them.
     if (typeof query.cohort_id === 'string' && query.cohort_id.trim()) {
       rows = rows.filter((m) => m.cohort_id === query.cohort_id);
     }
@@ -541,19 +713,21 @@ export const meetingRoutes: MockRoutes = {
       starts_at?: string;
       verification_lead_minutes?: number;
       duration_minutes?: number;
-      session_kind?: SessionKind;
       access_type?: AccessType;
       venue?: string;
+      city?: string;
+      details_confirmed?: boolean;
       audience_mode?: 'tier' | 'cohort';
       cohort_id?: string;
-      recurrence?: { frequency?: 'none' | 'weekly'; count?: number };
+      recurrence?: { frequency?: 'none' | 'daily' | 'weekdays' | 'weekly' | 'custom'; count?: number };
     }>(raw);
 
     const name = (input.name ?? '').trim();
     const access_type: AccessType = input.access_type ?? 'online';
-    const session_kind: SessionKind = input.session_kind ?? 'general';
     const google_meet_url = (input.google_meet_url ?? '').trim();
     const venue = (input.venue ?? '').trim() || null;
+    const city = (input.city ?? '').trim() || null;
+    const details_confirmed = Boolean(input.details_confirmed);
 
     if (!name) throw new MockHttpError(400, 'name is required', 'VALIDATION_ERROR');
     if (access_type === 'online' && !/^https:\/\/meet\.google\.com\/.+$/.test(google_meet_url)) {
@@ -564,8 +738,8 @@ export const meetingRoutes: MockRoutes = {
     }
     if (!input.starts_at) throw new MockHttpError(400, 'starts_at is required', 'VALIDATION_ERROR');
 
-    const audience_mode = input.audience_mode ?? (input.cohort_id ? 'cohort' : 'tier');
-    let audience_type: Audience = input.audience_type ?? 'all_associates';
+    const audience_mode: AudienceMode = input.audience_mode ?? (input.cohort_id ? 'cohort' : 'tier');
+    let audience_type: Audience | null = input.audience_type ?? 'all_associates';
     let cohort_id: string | null = null;
     let cohort_label: string | null = null;
 
@@ -578,9 +752,9 @@ export const meetingRoutes: MockRoutes = {
         cohort_id === SEED_COHORT_ID
           ? SEED_COHORT_LABEL
           : `Cohort ${cohort_id}`;
-      audience_type = 'all_associates';
+      audience_type = null;
     } else {
-      if (!(audience_type in AUDIENCE_LABELS)) {
+      if (!audience_type || !(audience_type in AUDIENCE_LABELS)) {
         throw new MockHttpError(400, 'audience_type is required', 'VALIDATION_ERROR');
       }
     }
@@ -611,15 +785,17 @@ export const meetingRoutes: MockRoutes = {
         slug: `${slugify(opts.nameOverride ?? name) || 'meeting'}-${Math.random().toString(16).slice(2, 8)}`,
         name: opts.nameOverride ?? name,
         google_meet_url: access_type === 'online' ? google_meet_url : google_meet_url || '',
+        audience_mode,
         audience_type,
         starts_at,
         verification_lead_minutes: lead,
         duration_minutes: duration,
         ends_at: computeEndsAt(starts_at, duration),
         is_active: true,
-        session_kind,
         access_type,
         venue,
+        city,
+        details_confirmed,
         cohort_id,
         cohort_label,
         series_id: opts.series?.id ?? null,
@@ -635,13 +811,12 @@ export const meetingRoutes: MockRoutes = {
       return created;
     };
 
-    if (recurrenceCount > 1 && frequency === 'weekly') {
+    if (recurrenceCount > 1 && frequency !== 'none' && frequency !== 'custom') {
       const seriesSlug = `${slugify(name) || 'series'}-${Math.random().toString(16).slice(2, 8)}`;
       const series: MockSeries = {
         id: `series_${Math.random().toString(36).slice(2, 10)}`,
         slug: seriesSlug,
         name,
-        session_kind,
         access_type,
         audience_type: audience_mode === 'tier' ? audience_type : null,
         cohort_id,
@@ -653,18 +828,24 @@ export const meetingRoutes: MockRoutes = {
       };
       seriesStore.unshift(series);
 
+      const stepDays = frequency === 'weekly' ? 7 : 1;
       let first: MockMeeting | null = null;
-      for (let i = 0; i < recurrenceCount; i++) {
-        const d = new Date(firstStarts);
-        d.setDate(d.getDate() + i * 7);
+      const cursor = new Date(firstStarts);
+      let created = 0;
+      while (created < recurrenceCount) {
+        while (frequency === 'weekdays' && (cursor.getDay() === 0 || cursor.getDay() === 6)) {
+          cursor.setDate(cursor.getDate() + 1);
+        }
+        created += 1;
         const session = createOne({
-          starts_at: d.toISOString(),
-          position: i + 1,
+          starts_at: cursor.toISOString(),
+          position: created,
           total: recurrenceCount,
           series,
-          nameOverride: `${name} — Session ${i + 1}`,
+          nameOverride: `${name} — Session ${created}`,
         });
         if (!first) first = session;
+        cursor.setDate(cursor.getDate() + stepDays);
       }
       return publicMeeting(first!);
     }
@@ -718,9 +899,10 @@ export const meetingRoutes: MockRoutes = {
       starts_at?: string;
       verification_lead_minutes?: number;
       duration_minutes?: number;
-      session_kind?: SessionKind;
       access_type?: AccessType;
       venue?: string;
+      city?: string;
+      details_confirmed?: boolean;
       cohort_id?: string | null;
     }>(raw);
 
@@ -745,9 +927,10 @@ export const meetingRoutes: MockRoutes = {
       }
       meeting.duration_minutes = duration;
     }
-    if (input.session_kind !== undefined) meeting.session_kind = input.session_kind;
     if (input.access_type !== undefined) meeting.access_type = input.access_type;
     if (input.venue !== undefined) meeting.venue = input.venue.trim() || null;
+    if (input.city !== undefined) meeting.city = input.city.trim() || null;
+    if (input.details_confirmed !== undefined) meeting.details_confirmed = input.details_confirmed;
     if (input.cohort_id !== undefined) {
       meeting.cohort_id = input.cohort_id;
       meeting.cohort_label = input.cohort_id

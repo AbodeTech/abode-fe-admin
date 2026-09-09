@@ -6,6 +6,7 @@ import { Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -25,7 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { useProgrammes } from "@/features/recruitment";
+import { useProgrammes, useProgrammesCohorts } from "@/features/recruitment";
 
 import { useCreateMeeting, useUpdateMeeting } from "../hooks/use-meetings";
 import {
@@ -38,8 +39,8 @@ import {
   MEETING_ACCESS_TYPES,
   MEETING_AUDIENCE_LABELS,
   MEETING_AUDIENCE_TYPES,
-  MEETING_SESSION_KIND_LABELS,
-  MEETING_SESSION_KINDS,
+  MEETING_RECURRENCE_FREQUENCIES,
+  MEETING_RECURRENCE_FREQUENCY_LABELS,
   MIN_DURATION_MINUTES,
   previewRecurrenceDates,
   toDatetimeLocalValue,
@@ -47,7 +48,7 @@ import {
   type MeetingAccessType,
   type MeetingAudienceMode,
   type MeetingAudienceType,
-  type MeetingSessionKind,
+  type MeetingRecurrenceFrequency,
 } from "../schemas/meeting.schema";
 
 type FormState = {
@@ -56,20 +57,21 @@ type FormState = {
   audience_mode: MeetingAudienceMode;
   audience_type: MeetingAudienceType;
   cohort_id: string;
-  session_kind: MeetingSessionKind;
   access_type: MeetingAccessType;
   venue: string;
+  city: string;
+  details_confirmed: boolean;
   starts_at: string;
   verification_lead_minutes: string;
   duration_minutes: string;
   recurrence_enabled: boolean;
+  recurrence_frequency: MeetingRecurrenceFrequency;
   recurrence_count: string;
 };
 
 export type CreateMeetingPreset = {
   cohortId: string;
   cohortLabel?: string;
-  sessionKind?: MeetingSessionKind;
 };
 
 const emptyForm = (preset?: CreateMeetingPreset): FormState => ({
@@ -78,30 +80,34 @@ const emptyForm = (preset?: CreateMeetingPreset): FormState => ({
   audience_mode: preset?.cohortId ? "cohort" : "tier",
   audience_type: "all_associates",
   cohort_id: preset?.cohortId ?? "",
-  session_kind: preset?.sessionKind ?? (preset?.cohortId ? "recruitment" : "general"),
   access_type: "online",
   venue: "",
+  city: "",
+  details_confirmed: false,
   starts_at: "",
   verification_lead_minutes: "30",
   duration_minutes: String(DEFAULT_DURATION_MINUTES),
   recurrence_enabled: false,
+  recurrence_frequency: "daily",
   recurrence_count: "4",
 });
 
 function formFromMeeting(meeting: Meeting): FormState {
   return {
     name: meeting.name,
-    google_meet_url: meeting.google_meet_url,
+    google_meet_url: meeting.google_meet_url ?? "",
     audience_mode: meeting.cohort_id ? "cohort" : "tier",
-    audience_type: meeting.audience_type,
+    audience_type: meeting.audience_type ?? "all_associates",
     cohort_id: meeting.cohort_id ?? "",
-    session_kind: meeting.session_kind ?? "general",
     access_type: meeting.access_type ?? "online",
     venue: meeting.venue ?? "",
+    city: meeting.city ?? "",
+    details_confirmed: Boolean(meeting.details_confirmed),
     starts_at: toDatetimeLocalValue(meeting.starts_at),
     verification_lead_minutes: String(meeting.verification_lead_minutes),
     duration_minutes: String(meeting.duration_minutes ?? DEFAULT_DURATION_MINUTES),
     recurrence_enabled: false,
+    recurrence_frequency: "daily",
     recurrence_count: "4",
   };
 }
@@ -113,6 +119,7 @@ function MeetingFormFields({
   allowRecurrence,
   lockCohortAudience,
   lockedCohortLabel,
+  showAccessTypeField = true,
 }: {
   form: FormState;
   setForm: (next: FormState) => void;
@@ -120,11 +127,20 @@ function MeetingFormFields({
   allowRecurrence: boolean;
   lockCohortAudience?: boolean;
   lockedCohortLabel?: string;
+  /** DC-03 — the global, unscoped meeting dialog no longer asks Online/Physical. */
+  showAccessTypeField?: boolean;
 }) {
   const programmesQuery = useProgrammes({ page: 1, limit: 50 });
+  const programmeIds = useMemo(
+    () => (programmesQuery.data?.items ?? []).map((programme) => programme.id),
+    [programmesQuery.data?.items],
+  );
+  // The list endpoint above never embeds each programme's `cohorts` — only the
+  // per-programme detail endpoint does — so fetch those in parallel.
+  const { programmes: programmesWithCohorts, isLoading: cohortsLoading } =
+    useProgrammesCohorts(programmeIds);
   const cohortOptions = useMemo(() => {
-    const items = programmesQuery.data?.items ?? [];
-    const fromProgrammes = items.flatMap((programme) =>
+    const fromProgrammes = programmesWithCohorts.flatMap((programme) =>
       (programme.cohorts ?? []).map((cohort) => ({
         id: cohort.id,
         label: cohort.label || `${programme.name} — ${cohort.name}`,
@@ -145,7 +161,7 @@ function MeetingFormFields({
     }
     return fromProgrammes;
   }, [
-    programmesQuery.data?.items,
+    programmesWithCohorts,
     lockCohortAudience,
     form.cohort_id,
     lockedCohortLabel,
@@ -154,7 +170,7 @@ function MeetingFormFields({
   const recurrenceCount = Math.max(1, Number(form.recurrence_count) || 1);
   const previewDates =
     allowRecurrence && form.recurrence_enabled && form.starts_at
-      ? previewRecurrenceDates(form.starts_at, recurrenceCount, "weekly")
+      ? previewRecurrenceDates(form.starts_at, recurrenceCount, form.recurrence_frequency)
       : [];
 
   return (
@@ -170,28 +186,7 @@ function MeetingFormFields({
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="space-y-2">
-          <Label>Session kind</Label>
-          <Select
-            value={form.session_kind}
-            onValueChange={(value) =>
-              setForm({ ...form, session_kind: value as MeetingSessionKind })
-            }
-            disabled={disabled}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {MEETING_SESSION_KINDS.map((kind) => (
-                <SelectItem key={kind} value={kind}>
-                  {MEETING_SESSION_KIND_LABELS[kind]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      {showAccessTypeField ? (
         <div className="space-y-2">
           <Label>Access type</Label>
           <Select
@@ -213,7 +208,7 @@ function MeetingFormFields({
             </SelectContent>
           </Select>
         </div>
-      </div>
+      ) : null}
 
       {form.access_type === "online" ? (
         <div className="space-y-2">
@@ -229,17 +224,46 @@ function MeetingFormFields({
           />
         </div>
       ) : (
-        <div className="space-y-2">
-          <Label htmlFor="meeting-venue">Venue</Label>
-          <Textarea
-            id="meeting-venue"
-            placeholder="Address or landmark"
-            value={form.venue}
-            onChange={(e) => setForm({ ...form, venue: e.target.value })}
-            required
-            disabled={disabled}
-            rows={2}
-          />
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="meeting-venue">Venue</Label>
+            <Textarea
+              id="meeting-venue"
+              placeholder="Address or landmark"
+              value={form.venue}
+              onChange={(e) => setForm({ ...form, venue: e.target.value })}
+              required
+              disabled={disabled}
+              rows={2}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="meeting-city">City</Label>
+            <Input
+              id="meeting-city"
+              placeholder="Lagos"
+              value={form.city}
+              onChange={(e) => setForm({ ...form, city: e.target.value })}
+              required
+              disabled={disabled}
+            />
+          </div>
+          <div className="flex items-start gap-2">
+            <Checkbox
+              id="meeting-details-confirmed"
+              checked={form.details_confirmed}
+              onCheckedChange={(checked) => setForm({ ...form, details_confirmed: checked === true })}
+              disabled={disabled}
+            />
+            <div className="grid gap-1 leading-none">
+              <Label htmlFor="meeting-details-confirmed" className="font-normal">
+                Date confirmed
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Registrants only get their check-in QR once this is checked.
+              </p>
+            </div>
+          </div>
         </div>
       )}
 
@@ -297,7 +321,7 @@ function MeetingFormFields({
               <Select
                 value={form.cohort_id || undefined}
                 onValueChange={(value) => setForm({ ...form, cohort_id: value })}
-                disabled={disabled || programmesQuery.isLoading}
+                disabled={disabled || programmesQuery.isLoading || cohortsLoading}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select cohort" />
@@ -368,7 +392,7 @@ function MeetingFormFields({
         <div className="space-y-3 rounded-md border border-border/60 p-3">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-sm font-medium">Weekly series</p>
+              <p className="text-sm font-medium">Repeat series</p>
               <p className="text-xs text-muted-foreground">
                 Create multiple sessions from the first start date.
               </p>
@@ -391,17 +415,40 @@ function MeetingFormFields({
           </div>
           {form.recurrence_enabled ? (
             <>
-              <div className="space-y-2">
-                <Label htmlFor="meeting-recurrence-count">Number of sessions</Label>
-                <Input
-                  id="meeting-recurrence-count"
-                  type="number"
-                  min={2}
-                  max={52}
-                  value={form.recurrence_count}
-                  onChange={(e) => setForm({ ...form, recurrence_count: e.target.value })}
-                  disabled={disabled}
-                />
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Frequency</Label>
+                  <Select
+                    value={form.recurrence_frequency}
+                    onValueChange={(value) =>
+                      setForm({ ...form, recurrence_frequency: value as MeetingRecurrenceFrequency })
+                    }
+                    disabled={disabled}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {MEETING_RECURRENCE_FREQUENCIES.map((freq) => (
+                        <SelectItem key={freq} value={freq}>
+                          {MEETING_RECURRENCE_FREQUENCY_LABELS[freq]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="meeting-recurrence-count">Number of sessions</Label>
+                  <Input
+                    id="meeting-recurrence-count"
+                    type="number"
+                    min={2}
+                    max={60}
+                    value={form.recurrence_count}
+                    onChange={(e) => setForm({ ...form, recurrence_count: e.target.value })}
+                    disabled={disabled}
+                  />
+                </div>
               </div>
               {previewDates.length > 0 ? (
                 <div className="space-y-1.5">
@@ -419,7 +466,7 @@ function MeetingFormFields({
                 </div>
               ) : (
                 <p className="text-xs text-muted-foreground">
-                  Pick a start time to preview weekly session dates.
+                  Pick a start time to preview session dates.
                 </p>
               )}
             </>
@@ -437,6 +484,9 @@ function validateForm(form: FormState, opts?: { allowRecurrence?: boolean }): st
   }
   if (form.access_type === "physical" && !form.venue.trim()) {
     return "Venue is required for physical sessions";
+  }
+  if (form.access_type === "physical" && !form.city.trim()) {
+    return "City is required for physical sessions";
   }
   if (form.audience_mode === "cohort" && !form.cohort_id.trim()) {
     return "Select a cohort audience";
@@ -457,8 +507,8 @@ function validateForm(form: FormState, opts?: { allowRecurrence?: boolean }): st
   }
   if (opts?.allowRecurrence && form.recurrence_enabled) {
     const count = Number(form.recurrence_count);
-    if (!Number.isInteger(count) || count < 2 || count > 52) {
-      return "Series must include between 2 and 52 sessions";
+    if (!Number.isInteger(count) || count < 2 || count > 60) {
+      return "Series must include between 2 and 60 sessions";
     }
   }
   return null;
@@ -473,15 +523,16 @@ function toCreatePayload(form: FormState) {
     audience_type: form.audience_mode === "tier" ? form.audience_type : undefined,
     audience_mode: form.audience_mode,
     cohort_id: form.audience_mode === "cohort" ? form.cohort_id : undefined,
-    session_kind: form.session_kind,
     access_type: form.access_type,
     venue: form.access_type === "physical" ? form.venue.trim() : undefined,
+    city: form.access_type === "physical" ? form.city.trim() : undefined,
+    details_confirmed: form.access_type === "physical" ? form.details_confirmed : undefined,
     starts_at: fromDatetimeLocalValue(form.starts_at),
     verification_lead_minutes: Number(form.verification_lead_minutes),
     duration_minutes: Number(form.duration_minutes),
     recurrence:
       form.recurrence_enabled && recurrenceCount > 1
-        ? { frequency: "weekly" as const, count: recurrenceCount }
+        ? { frequency: form.recurrence_frequency, count: recurrenceCount }
         : undefined,
   };
 }
@@ -520,8 +571,13 @@ export function CreateMeetingDialog({
       setOpen(false);
       setForm(emptyForm(preset));
       onCreated?.(meeting);
-      if (meeting.series_id) {
-        router.push(`/meetings/series/${meeting.series_id}`);
+      // No series-detail route on the real BE (no series controller at all —
+      // see docs/ACADEMY-BACKEND-GAPS.md §2), so there's nowhere useful to
+      // send a series's first session. Cohort-scoped creation already stays
+      // on the Sessions tab via `onCreated`'s refetch; the unscoped dialog
+      // lives on /meetings itself, so just land back on the list.
+      if (!lockedToCohort) {
+        router.push("/meetings");
       }
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Failed to create meeting");
@@ -550,8 +606,8 @@ export function CreateMeetingDialog({
           </DialogTitle>
           <DialogDescription>
             {lockedToCohort
-              ? "Audience is locked to this cohort. Choose online or physical, optional weekly series."
-              : "Online or physical sessions, tier or cohort audience, optional weekly series with preview."}
+              ? "Audience is locked to this cohort. Choose online or physical, optional series."
+              : "Tier audience, optional series with preview. For a physical day, add it from inside a cohort's Sessions tab."}
           </DialogDescription>
         </DialogHeader>
         <form className="space-y-4" onSubmit={handleSubmit}>
@@ -562,6 +618,7 @@ export function CreateMeetingDialog({
             allowRecurrence
             lockCohortAudience={lockedToCohort}
             lockedCohortLabel={preset?.cohortLabel}
+            showAccessTypeField={lockedToCohort}
           />
           <DialogFooter>
             <Button type="submit" disabled={isPending}>
@@ -604,9 +661,10 @@ export function EditMeetingDialog({
         starts_at: payload.starts_at,
         verification_lead_minutes: payload.verification_lead_minutes,
         duration_minutes: payload.duration_minutes,
-        session_kind: payload.session_kind,
         access_type: payload.access_type,
         venue: payload.venue,
+        city: payload.city,
+        details_confirmed: payload.details_confirmed,
         cohort_id: payload.cohort_id,
       });
       toast.success("Meeting updated");

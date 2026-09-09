@@ -33,7 +33,6 @@ import {
 import {
   formatMeetingWhen,
   MEETING_ACCESS_TYPE_LABELS,
-  MEETING_SESSION_KIND_LABELS,
   type Meeting,
 } from "../schemas/meeting.schema";
 
@@ -148,7 +147,6 @@ export function SeriesDetailPage() {
             </Badge>
           </div>
           <p className="text-sm text-muted-foreground">
-            {MEETING_SESSION_KIND_LABELS[series.session_kind]} ·{" "}
             {MEETING_ACCESS_TYPE_LABELS[series.access_type]}
             {series.audience_label ? ` · ${series.audience_label}` : ""}
           </p>

@@ -22,9 +22,7 @@ import {
   LandPlot,
   LayoutDashboard,
   LogOut,
-  Mail,
   Percent,
-  QrCode,
   ScrollText,
   ShieldCheck,
   ShoppingCart,
@@ -71,8 +69,6 @@ const navGroups = [
     items: [
       { name: "Meetings", link: "/meetings", icon: <Video />, requiresPermission: "view_meetings" },
       { name: "Recruitment", link: "/recruitment", icon: <GraduationCap />, requiresPermission: "view_academy" },
-      { name: "Check-in", link: "/checkin", icon: <QrCode />, requiresPermission: "view_academy" },
-      { name: "Email designs", link: "/email-designs", icon: <Mail />, requiresPermission: "view_academy" },
       { name: "Company Events", link: "/company-events", icon: <LandPlot />, requiresPermission: "view_academy" },
     ]
   },

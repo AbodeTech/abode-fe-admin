@@ -10,11 +10,7 @@ import { Label } from '@/components/ui/label';
 import { useAdminPermissions } from '@/hooks/use-admin-permission';
 
 import { useCreateProgramme } from '../hooks/use-recruitment';
-import {
-  PROGRAMME_TYPES,
-  PROGRAMME_TYPE_LABELS,
-  type ProgrammeType,
-} from '../schemas/programme.schema';
+import { ScheduleBuilder, type ScheduleBuilderValue } from './ScheduleBuilder';
 
 export function ProgrammeCreatePage() {
   const router = useRouter();
@@ -22,13 +18,12 @@ export function ProgrammeCreatePage() {
   const create = useCreateProgramme();
 
   const [name, setName] = useState('');
-  const [type, setType] = useState<ProgrammeType>('rcp');
   const [description, setDescription] = useState('');
   const [cohortName, setCohortName] = useState('');
   const [goal, setGoal] = useState('5000');
-  const [eventDate, setEventDate] = useState('');
-  const [eventCity, setEventCity] = useState('');
-  const [eventVenue, setEventVenue] = useState('');
+  const [regOpens, setRegOpens] = useState('');
+  const [regCloses, setRegCloses] = useState('');
+  const [scheduleValue, setScheduleValue] = useState<ScheduleBuilderValue | null>(null);
 
   if (!canManage) {
     return (
@@ -40,22 +35,25 @@ export function ProgrammeCreatePage() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!scheduleValue?.isValid) {
+      toast.error('Add at least one online day or a physical day for the schedule');
+      return;
+    }
     try {
       const programme = await create.mutateAsync({
         name,
-        type,
         description: description || undefined,
         cohort: {
           name: cohortName,
           registration_goal: Number(goal) || 5000,
-          event_date: eventDate ? new Date(eventDate).toISOString() : undefined,
-          event_city: eventCity || undefined,
-          event_venue: eventVenue || undefined,
+          registration_opens: regOpens ? new Date(regOpens).toISOString() : undefined,
+          registration_closes: regCloses ? new Date(regCloses).toISOString() : undefined,
           set_as_default: true,
+          schedule: scheduleValue.schedule,
         },
       });
       toast.success('Programme created');
-      const cohortId = programme.cohorts?.[0]?.id ?? programme.latest_cohort?.id;
+      const cohortId = programme.cohorts?.[0]?.id ?? programme.default_cohort?.id;
       if (cohortId) {
         router.push(`/recruitment/${programme.id}/cohorts/${cohortId}/dashboard`);
       } else {
@@ -93,7 +91,7 @@ export function ProgrammeCreatePage() {
         <section className="space-y-4">
           <h2 className="text-sm font-semibold text-slate-900">Programme</h2>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <div className="space-y-2 md:col-span-2 xl:col-span-2">
+            <div className="space-y-2 md:col-span-2 xl:col-span-3">
               <Label htmlFor="name">Programme name</Label>
               <Input
                 id="name"
@@ -102,21 +100,6 @@ export function ProgrammeCreatePage() {
                 placeholder="Realtor Certification Program"
                 required
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="type">Type</Label>
-              <select
-                id="type"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                value={type}
-                onChange={(e) => setType(e.target.value as ProgrammeType)}
-              >
-                {PROGRAMME_TYPES.map((t) => (
-                  <option key={t} value={t}>
-                    {PROGRAMME_TYPE_LABELS[t]}
-                  </option>
-                ))}
-              </select>
             </div>
             <div className="space-y-2 md:col-span-2 xl:col-span-3">
               <Label htmlFor="description">Description (optional)</Label>
@@ -158,33 +141,26 @@ export function ProgrammeCreatePage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="eventDate">Event date</Label>
+              <Label htmlFor="regOpens">Registration opens</Label>
               <Input
-                id="eventDate"
-                type="datetime-local"
-                value={eventDate}
-                onChange={(e) => setEventDate(e.target.value)}
+                id="regOpens"
+                type="date"
+                value={regOpens}
+                onChange={(e) => setRegOpens(e.target.value)}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="eventCity">Event city</Label>
+              <Label htmlFor="regCloses">Registration closes</Label>
               <Input
-                id="eventCity"
-                value={eventCity}
-                onChange={(e) => setEventCity(e.target.value)}
-                placeholder="Lagos"
-              />
-            </div>
-            <div className="space-y-2 md:col-span-2 xl:col-span-3">
-              <Label htmlFor="eventVenue">Event venue</Label>
-              <Input
-                id="eventVenue"
-                value={eventVenue}
-                onChange={(e) => setEventVenue(e.target.value)}
-                placeholder="TBA"
+                id="regCloses"
+                type="date"
+                value={regCloses}
+                onChange={(e) => setRegCloses(e.target.value)}
               />
             </div>
           </div>
+
+          <ScheduleBuilder onChange={setScheduleValue} disabled={create.isPending} />
         </section>
       </form>
     </div>

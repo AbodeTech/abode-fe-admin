@@ -24,13 +24,12 @@ import {
 
 import {
   formatMeetingWhen,
+  isLinkPending,
   MEETING_ACCESS_TYPE_LABELS,
-  MEETING_SESSION_KIND_LABELS,
   meetingAudienceDisplay,
   meetingSeriesPositionLabel,
   type Meeting,
   type MeetingAccessType,
-  type MeetingSessionKind,
 } from "../schemas/meeting.schema";
 
 const HEAD =
@@ -40,10 +39,6 @@ const CELL = "px-4 py-3.5 align-middle";
 interface MeetingsTableProps {
   rows?: Meeting[] | null;
   isLoading?: boolean;
-}
-
-function kindLabel(kind?: MeetingSessionKind) {
-  return kind ? MEETING_SESSION_KIND_LABELS[kind] : "—";
 }
 
 function accessLabel(access?: MeetingAccessType) {
@@ -75,20 +70,12 @@ export function MeetingsTable({ rows, isLoading }: MeetingsTableProps) {
     </Button>
   );
 
-  const seriesCell = (row: Meeting) => {
-    const label = meetingSeriesPositionLabel(row);
-    if (row.series_id) {
-      return (
-        <Link
-          href={`/meetings/series/${row.series_id}`}
-          className="text-sm font-medium text-primary underline-offset-4 hover:underline"
-        >
-          {label}
-        </Link>
-      );
-    }
-    return <span className="text-sm text-muted-foreground">{label}</span>;
-  };
+  // Plain text, not a link: the real BE has no series-detail endpoint (see
+  // docs/ACADEMY-BACKEND-GAPS.md §2), so a link here would 404. Each session
+  // is viewed and managed individually via the row's own View button.
+  const seriesCell = (row: Meeting) => (
+    <span className="text-sm text-muted-foreground">{meetingSeriesPositionLabel(row)}</span>
+  );
 
   return (
     <Card className="min-w-0 border-none shadow-sm">
@@ -105,8 +92,18 @@ export function MeetingsTable({ rows, isLoading }: MeetingsTableProps) {
                 title={row.name}
                 subtitle={formatMeetingWhen(row.starts_at)}
               >
-                <AdminMobileField label="Kind" value={kindLabel(row.session_kind)} />
-                <AdminMobileField label="Access" value={accessLabel(row.access_type)} />
+                <AdminMobileField
+                  label="Access"
+                  value={
+                    isLinkPending(row) ? `${accessLabel(row.access_type)} · Link pending` : accessLabel(row.access_type)
+                  }
+                />
+                {row.access_type === "physical" && row.venue ? (
+                  <AdminMobileField
+                    label="Venue"
+                    value={row.city ? `${row.venue}, ${row.city}` : row.venue}
+                  />
+                ) : null}
                 <AdminMobileField label="Series" value={meetingSeriesPositionLabel(row)} />
                 <AdminMobileField label="Audience" value={meetingAudienceDisplay(row)} />
                 <AdminMobileField
@@ -120,11 +117,6 @@ export function MeetingsTable({ rows, isLoading }: MeetingsTableProps) {
                   }
                 />
                 <AdminMobileField label="Attendance" value={String(row.verification_count)} />
-                {row.series_id ? (
-                  <Button variant="outline" size="sm" className="w-full" asChild>
-                    <Link href={`/meetings/series/${row.series_id}`}>Open series</Link>
-                  </Button>
-                ) : null}
                 {viewButton(row, true)}
               </AdminMobileCard>
             ))
@@ -136,7 +128,6 @@ export function MeetingsTable({ rows, isLoading }: MeetingsTableProps) {
             <TableHeader>
               <TableRow>
                 <TableHead className={HEAD}>Name</TableHead>
-                <TableHead className={HEAD}>Kind</TableHead>
                 <TableHead className={HEAD}>Access</TableHead>
                 <TableHead className={HEAD}>Series</TableHead>
                 <TableHead className={HEAD}>Starts (WAT)</TableHead>
@@ -149,7 +140,7 @@ export function MeetingsTable({ rows, isLoading }: MeetingsTableProps) {
             <TableBody>
               {safeRows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="py-8 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={8} className="py-8 text-center text-sm text-muted-foreground">
                     No meetings match these filters.
                   </TableCell>
                 </TableRow>
@@ -164,8 +155,22 @@ export function MeetingsTable({ rows, isLoading }: MeetingsTableProps) {
                         ) : null}
                       </div>
                     </TableCell>
-                    <TableCell className={CELL}>{kindLabel(row.session_kind)}</TableCell>
-                    <TableCell className={CELL}>{accessLabel(row.access_type)}</TableCell>
+                    <TableCell className={CELL}>
+                      <div className="flex flex-col gap-1">
+                        <span>{accessLabel(row.access_type)}</span>
+                        {row.access_type === "physical" && row.venue ? (
+                          <span className="max-w-[12rem] truncate text-xs text-muted-foreground">
+                            {row.venue}
+                            {row.city ? `, ${row.city}` : ""}
+                          </span>
+                        ) : null}
+                        {isLinkPending(row) ? (
+                          <Badge className="w-fit bg-amber-100 text-amber-800 hover:bg-amber-100">
+                            Link pending
+                          </Badge>
+                        ) : null}
+                      </div>
+                    </TableCell>
                     <TableCell className={CELL}>{seriesCell(row)}</TableCell>
                     <TableCell className={`${CELL} whitespace-nowrap`}>
                       {formatMeetingWhen(row.starts_at)}

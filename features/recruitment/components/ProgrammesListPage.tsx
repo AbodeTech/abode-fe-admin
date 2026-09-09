@@ -1,18 +1,28 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
-import { Plus } from 'lucide-react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { Plus, Search } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Pagination } from '@/components/shared/Pagination';
 import { useAdminPermissions } from '@/hooks/use-admin-permission';
+import { useDebounce } from '@/hooks/use-debounce';
 
 import {
   DEFAULT_PROGRAMMES_LIMIT,
   useProgrammes,
 } from '../hooks/use-recruitment';
-import { PROGRAMME_TYPE_LABELS, type Programme } from '../schemas/programme.schema';
+import { type Programme } from '../schemas/programme.schema';
 
 function StatusPill({ active }: { active: boolean }) {
   return (
@@ -27,7 +37,7 @@ function StatusPill({ active }: { active: boolean }) {
 }
 
 function ProgrammeCard({ programme }: { programme: Programme }) {
-  const latest = programme.latest_cohort;
+  const defaultCohort = programme.default_cohort;
   return (
     <Link
       href={`/recruitment/${programme.id}`}
@@ -38,20 +48,20 @@ function ProgrammeCard({ programme }: { programme: Programme }) {
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-base font-semibold text-slate-900">{programme.name}</h2>
             <StatusPill active={programme.is_active} />
-            <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
-              {PROGRAMME_TYPE_LABELS[programme.type]}
-            </span>
           </div>
           {programme.description ? (
             <p className="mt-1 text-sm text-slate-500">{programme.description}</p>
           ) : null}
         </div>
         <div className="text-right text-sm text-slate-500">
-          <div>{programme.cohort_count} cohort{programme.cohort_count === 1 ? '' : 's'}</div>
-          {latest ? (
+          <div>
+            {programme.cohort_count} cohort{programme.cohort_count === 1 ? '' : 's'}
+            {programme.open_cohort_count > 0 ? ` · ${programme.open_cohort_count} open` : ''}
+          </div>
+          {defaultCohort ? (
             <div className="mt-1 text-slate-700">
-              Latest: {latest.name}
-              <span className="text-slate-400"> · {latest.registrant_count} regs</span>
+              Default: {defaultCohort.name}
+              <span className="text-slate-400"> · {defaultCohort.registrant_count} regs</span>
             </div>
           ) : null}
         </div>
@@ -61,12 +71,45 @@ function ProgrammeCard({ programme }: { programme: Programme }) {
 }
 
 export function ProgrammesListPage() {
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const page = Number(searchParams.get('page')) || 1;
   const q = searchParams.get('q') || undefined;
+  const isActiveParam = searchParams.get('is_active');
+  const isActive = isActiveParam === null ? undefined : isActiveParam === 'true';
   const canManage = useAdminPermissions().has('manage_academy');
 
-  const { data, isLoading, error } = useProgrammes({ page, q });
+  // `q` and `is_active` are both real, BE-supported filters on
+  // GET /admin/academy/programmes — this page just never exposed UI for
+  // either. Same URL-param pattern Pagination already uses on this page.
+  const [search, setSearch] = useState(q ?? '');
+  const debouncedSearch = useDebounce(search);
+  const mounted = useRef(false);
+
+  useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true;
+      return;
+    }
+    const params = new URLSearchParams(searchParams);
+    const trimmed = debouncedSearch.trim();
+    if (trimmed) params.set('q', trimmed);
+    else params.delete('q');
+    params.set('page', '1');
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch]);
+
+  function setStatusFilter(value: string) {
+    const params = new URLSearchParams(searchParams);
+    if (value === 'all') params.delete('is_active');
+    else params.set('is_active', value);
+    params.set('page', '1');
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+  }
+
+  const { data, isLoading, error } = useProgrammes({ page, q, is_active: isActive });
   const rows = data?.items ?? [];
   const total = data?.meta?.total ?? 0;
 
@@ -87,6 +130,33 @@ export function ProgrammesListPage() {
             </Link>
           </Button>
         ) : null}
+      </div>
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative w-full sm:max-w-xs">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Input
+            placeholder="Search name or slug..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <div className="w-full sm:w-40">
+          <Select
+            value={isActiveParam ?? 'all'}
+            onValueChange={setStatusFilter}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="All statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="true">Active</SelectItem>
+              <SelectItem value="false">Paused</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {error ? (

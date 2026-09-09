@@ -15,7 +15,7 @@ import {
   useProgramme,
   useToggleProgrammeActive,
 } from '../hooks/use-recruitment';
-import { PROGRAMME_TYPE_LABELS } from '../schemas/programme.schema';
+import { ScheduleBuilder, type ScheduleBuilderValue } from './ScheduleBuilder';
 
 export function ProgrammeDetailPage({ programmeId }: { programmeId: string }) {
   const router = useRouter();
@@ -27,6 +27,7 @@ export function ProgrammeDetailPage({ programmeId }: { programmeId: string }) {
   const [showNewCohort, setShowNewCohort] = useState(false);
   const [cohortName, setCohortName] = useState('');
   const [goal, setGoal] = useState('5000');
+  const [scheduleValue, setScheduleValue] = useState<ScheduleBuilderValue | null>(null);
 
   if (isLoading) {
     return <div className="p-6 text-sm text-slate-500">Loading programme…</div>;
@@ -47,10 +48,9 @@ export function ProgrammeDetailPage({ programmeId }: { programmeId: string }) {
             ← Recruitment
           </Link>
           <h1 className="mt-1 text-xl font-semibold text-slate-900">{programme.name}</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            {PROGRAMME_TYPE_LABELS[programme.type]}
-            {programme.description ? ` · ${programme.description}` : ''}
-          </p>
+          {programme.description ? (
+            <p className="mt-1 text-sm text-slate-500">{programme.description}</p>
+          ) : null}
         </div>
         {canManage ? (
           <div className="flex flex-wrap gap-2">
@@ -77,14 +77,19 @@ export function ProgrammeDetailPage({ programmeId }: { programmeId: string }) {
 
       {showNewCohort && canManage ? (
         <form
-          className="space-y-3 rounded-xl border bg-white p-4"
+          className="space-y-4 rounded-xl border bg-white p-4"
           onSubmit={async (e) => {
             e.preventDefault();
+            if (!scheduleValue?.isValid) {
+              toast.error('Add at least one online day or a physical day for the schedule');
+              return;
+            }
             try {
               const cohort = await createCohort.mutateAsync({
                 name: cohortName,
                 registration_goal: Number(goal) || 5000,
                 set_as_default: false,
+                schedule: scheduleValue.schedule,
               });
               toast.success('Cohort created');
               setShowNewCohort(false);
@@ -116,6 +121,7 @@ export function ProgrammeDetailPage({ programmeId }: { programmeId: string }) {
               />
             </div>
           </div>
+          <ScheduleBuilder onChange={setScheduleValue} disabled={createCohort.isPending} />
           <Button type="submit" disabled={createCohort.isPending}>
             Create cohort
           </Button>

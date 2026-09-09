@@ -3,7 +3,7 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
-import { ArrowLeft, Copy, ExternalLink } from "lucide-react";
+import { ArrowLeft, Copy, ExternalLink, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -18,9 +18,9 @@ import {
   EditMeetingDialog,
   formatMeetingWhen,
   MEETING_ACCESS_TYPE_LABELS,
-  MEETING_SESSION_KIND_LABELS,
   meetingAudienceDisplay,
   meetingSeriesPositionLabel,
+  useIsMeetingLive,
   useMeeting,
   useMeetingVerifications,
   useToggleMeetingActive,
@@ -36,13 +36,16 @@ function MeetingDetailContent() {
   const [editOpen, setEditOpen] = useState(false);
 
   const meetingQuery = useMeeting(id);
+  const meeting = meetingQuery.data;
+  // Only poll the join log while this session's verification window is
+  // actually open — see docs on useIsMeetingLive/useMeetingVerifications.
+  const live = useIsMeetingLive(meeting);
   const verificationsQuery = useMeetingVerifications(id, {
     page,
     limit: DEFAULT_MEETINGS_LIMIT,
+    live,
   });
   const toggle = useToggleMeetingActive();
-
-  const meeting = meetingQuery.data;
 
   const copyShareUrl = async () => {
     if (!meeting?.share_url) return;
@@ -104,9 +107,6 @@ function MeetingDetailContent() {
           </div>
           {meeting ? (
             <p className="text-sm text-muted-foreground">
-              {meeting.session_kind
-                ? `${MEETING_SESSION_KIND_LABELS[meeting.session_kind]} · `
-                : ""}
               {meeting.access_type
                 ? `${MEETING_ACCESS_TYPE_LABELS[meeting.access_type]} · `
                 : ""}
@@ -145,16 +145,12 @@ function MeetingDetailContent() {
               <div>
                 <p className="text-muted-foreground">Series</p>
                 <p className="font-medium">
-                  {meeting.series_id ? (
-                    <Link
-                      href={`/meetings/series/${meeting.series_id}`}
-                      className="text-primary underline-offset-4 hover:underline"
-                    >
-                      {meeting.series_name ?? "Series"} ({meetingSeriesPositionLabel(meeting)})
-                    </Link>
-                  ) : (
-                    meetingSeriesPositionLabel(meeting)
-                  )}
+                  {/* Not a link: the real BE has no series-detail endpoint
+                      (see docs/ACADEMY-BACKEND-GAPS.md §2) — a link here
+                      would 404. */}
+                  {meeting.series_id && meeting.series_name
+                    ? `${meeting.series_name} (${meetingSeriesPositionLabel(meeting)})`
+                    : meetingSeriesPositionLabel(meeting)}
                 </p>
               </div>
               <div>
@@ -176,7 +172,18 @@ function MeetingDetailContent() {
               {meeting.access_type === "physical" && meeting.venue ? (
                 <div>
                   <p className="text-muted-foreground">Venue</p>
-                  <p className="font-medium">{meeting.venue}</p>
+                  <p className="font-medium">
+                    {meeting.venue}
+                    {meeting.city ? `, ${meeting.city}` : ""}
+                  </p>
+                </div>
+              ) : null}
+              {meeting.access_type === "physical" ? (
+                <div>
+                  <p className="text-muted-foreground">Date confirmed</p>
+                  <p className="font-medium">
+                    {meeting.details_confirmed ? "Yes — QR issued" : "No — QR held"}
+                  </p>
                 </div>
               ) : null}
               <div className="min-w-0 overflow-hidden sm:col-span-2">
@@ -204,15 +211,26 @@ function MeetingDetailContent() {
             </CardContent>
           </Card>
 
-          <Card className="border-none shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-base">
-                Verifications ({meeting.stats.total_verifications})
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-wrap gap-2">
+          {/* Matches the stat-card look from the cohort dashboard (CohortStatCards) —
+              rounded-2xl, soft border, icon chip — instead of the plain shadcn
+              Card the rest of this page uses, since this is a metric, not a form section. */}
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                  Verifications
+                </p>
+                <p className="mt-2 text-3xl font-bold text-slate-900">
+                  {meeting.stats.total_verifications.toLocaleString()}
+                </p>
+              </div>
+              <div className="rounded-xl bg-blue-50 p-2.5">
+                <Users size={18} className="text-blue-600" />
+              </div>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
               {meeting.stats.by_referral_status.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No breakdown yet.</p>
+                <p className="text-sm text-slate-500">No breakdown yet.</p>
               ) : (
                 meeting.stats.by_referral_status.map((row) => (
                   <Badge key={row.referral_status ?? "unknown"} variant="secondary">
@@ -220,16 +238,27 @@ function MeetingDetailContent() {
                   </Badge>
                 ))
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           <div className="space-y-3">
             <h2 className="text-base font-semibold">Join log</h2>
-            <p className="text-sm text-muted-foreground">Refreshes every 5 seconds.</p>
-            <VerificationsTable
-              rows={verificationsQuery.data?.items ?? []}
-              isLoading={verificationsQuery.isLoading}
-            />
+            <p className="text-sm text-muted-foreground">
+              {live
+                ? "Verification is open — refreshes every 5 seconds."
+                : "Verification isn't open for this session, so this isn't polling."}
+            </p>
+            {verificationsQuery.error ? (
+              <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-600">
+                <p className="font-medium">Could not load the join log</p>
+                <p>{verificationsQuery.error.message}</p>
+              </div>
+            ) : (
+              <VerificationsTable
+                rows={verificationsQuery.data?.items ?? []}
+                isLoading={verificationsQuery.isLoading}
+              />
+            )}
             {(verificationsQuery.data?.meta.total ?? 0) > DEFAULT_MEETINGS_LIMIT ? (
               <Pagination
                 count={verificationsQuery.data?.meta.total ?? 0}

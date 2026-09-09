@@ -57,7 +57,7 @@ export function VerificationsTable({ rows, isLoading }: VerificationsTableProps)
           ) : (
             safeRows.map((row) => (
               <AdminMobileCard key={row.id} title={verificationDisplayName(row)} subtitle={row.email}>
-                <AdminMobileField label="Status" value={row.referral_status ?? "—"} />
+                <AdminMobileField label="Tier" value={row.tier_at_verification ?? "—"} />
                 <AdminMobileField label="Verified" value={formatMeetingWhen(row.verified_at)} />
               </AdminMobileCard>
             ))
@@ -70,7 +70,7 @@ export function VerificationsTable({ rows, isLoading }: VerificationsTableProps)
               <TableRow>
                 <TableHead className={HEAD}>Name</TableHead>
                 <TableHead className={HEAD}>Email</TableHead>
-                <TableHead className={HEAD}>Referral status</TableHead>
+                <TableHead className={HEAD}>Tier</TableHead>
                 <TableHead className={HEAD}>Phone</TableHead>
                 <TableHead className={HEAD}>Verified (WAT)</TableHead>
               </TableRow>
@@ -87,7 +87,7 @@ export function VerificationsTable({ rows, isLoading }: VerificationsTableProps)
                   <TableRow key={row.id}>
                     <TableCell className="font-medium">{verificationDisplayName(row)}</TableCell>
                     <TableCell>{row.email}</TableCell>
-                    <TableCell>{row.referral_status ?? "—"}</TableCell>
+                    <TableCell>{row.tier_at_verification ?? "—"}</TableCell>
                     <TableCell>{row.phone ?? "—"}</TableCell>
                     <TableCell className="whitespace-nowrap">
                       {formatMeetingWhen(row.verified_at)}

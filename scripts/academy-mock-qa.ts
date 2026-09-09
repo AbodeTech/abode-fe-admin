@@ -5,11 +5,9 @@
 import { registerRoutes, dispatchMockRoute, MockHttpError } from '../lib/mocks/router';
 import { academyRoutes } from '../lib/mocks/routes/academy';
 import { meetingRoutes } from '../lib/mocks/routes/meetings';
-import { checkinRoutes } from '../lib/mocks/routes/checkin';
 
 registerRoutes(academyRoutes);
 registerRoutes(meetingRoutes);
-registerRoutes(checkinRoutes);
 
 type Case = {
   id: string;
@@ -97,38 +95,19 @@ const cases: Case[] = [
     },
   },
   {
-    id: 'A-checkin-sessions',
-    method: 'GET',
-    path: '/admin/checkin/sessions',
-    expect: (r: any) => {
-      if (!Array.isArray(r) || r.length < 1) throw new Error('no checkin sessions');
-    },
-  },
-  {
-    id: 'A-checkin-search',
-    method: 'GET',
-    path: '/admin/checkin/sessions/665fmt0000000000000000s4/search',
-    query: { q: 'ada' },
-    expect: (r: any) => {
-      if (!Array.isArray(r) || r.length < 1) throw new Error('search empty');
-    },
-  },
-  {
-    id: 'A-checkin-reg1',
+    id: 'A-cohort-schedule-create',
     method: 'POST',
-    path: '/admin/checkin/sessions/665fmt0000000000000000s4/check-in',
-    body: { registration_id: 'reg_1' },
-    expect: (r: any) => {
-      if (r?.outcome !== 'success' && r?.outcome !== 'already') throw new Error('checkin failed');
+    path: '/admin/academy/programmes/prog_rcp/cohorts',
+    body: {
+      name: 'QA schedule cohort',
+      registration_goal: 100,
+      schedule: {
+        online: { days: 2, starts_at: new Date(Date.now() + 86400000).toISOString(), duration_minutes: 90 },
+        physical: { date: new Date(Date.now() + 7 * 86400000).toISOString(), venue: 'QA Venue', city: 'Lagos' },
+      },
     },
-  },
-  {
-    id: 'A-checkin-reg2-dup',
-    method: 'POST',
-    path: '/admin/checkin/sessions/665fmt0000000000000000s4/check-in',
-    body: { registration_id: 'reg_2' },
     expect: (r: any) => {
-      if (r?.outcome !== 'already' && r?.outcome !== 'success') throw new Error('expected already/success');
+      if (!r?.id) throw new Error('cohort not created');
     },
   },
 ];

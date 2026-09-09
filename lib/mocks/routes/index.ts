@@ -24,7 +24,6 @@ import { campaignEngineRoutes } from './campaigns-engine';
 import { paymentPlanRoutes } from './payment-plans';
 import { agencyRoutes } from './agency';
 import { academyRoutes } from './academy';
-import { checkinRoutes } from './checkin';
 
 /* ============================================================
  * Route registration. Importing this module (via lib/mocks/index.ts)
@@ -141,7 +140,6 @@ export function ensureRoutesRegistered(): void {
   registerRoutes(paymentPlanRoutes);
   registerRoutes(agencyRoutes);
   registerRoutes(academyRoutes);
-  registerRoutes(checkinRoutes);
 
   // Only mark done after every domain registered — a throw mid-way must allow retry.
   registered = true;

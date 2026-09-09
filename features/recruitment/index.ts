@@ -11,34 +11,56 @@ export { CohortRegistrantsPage } from './components/CohortRegistrantsPage';
 export { CohortReferralsPage } from './components/CohortReferralsPage';
 export { CohortSessionsPage } from './components/CohortSessionsPage';
 export { CohortTestsPage } from './components/CohortTestsPage';
-export { CohortPlaceholderPage } from './components/CohortPlaceholderPage';
+export { CohortSettingsPage } from './components/CohortSettingsPage';
 export { CohortShell } from './components/CohortShell';
+export { ScheduleBuilder } from './components/ScheduleBuilder';
 
 export {
   useProgrammes,
   useProgramme,
+  useProgrammesCohorts,
   useCreateProgramme,
+  usePatchProgramme,
+  useToggleProgrammeActive,
   useCreateCohort,
   useCohort,
+  usePatchCohort,
+  useToggleCohortRegistration,
+  useSetDefaultCohort,
   useCohortDashboard,
   useCohortRegistrants,
+  usePatchRegistrant,
+  useDeleteRegistrant,
+  useExportRegistrants,
   useCohortReferrals,
+  useExportReferrals,
   useCohortTests,
+  useCohortTest,
   useCreateCohortTest,
+  useUpdateCohortTest,
+  useReplaceTestQuestions,
   useToggleCohortTestActive,
   useCohortTestAttempts,
+  useExportTestAttempts,
   DEFAULT_PROGRAMMES_LIMIT,
   DEFAULT_REGISTRANTS_LIMIT,
 } from './hooks/use-recruitment';
 
-export {
-  PROGRAMME_TYPES,
-  PROGRAMME_TYPE_LABELS,
-} from './schemas/programme.schema';
 export type {
   Programme,
   CohortSummary,
   Registrant,
+  UpdateRegistrantInput,
   ReferralRow,
   CohortDashboard,
+  Outcomes,
+  ScheduleInput,
 } from './schemas/programme.schema';
+export type { RegistrantFilters } from './hooks/use-recruitment';
+export type {
+  CohortTest,
+  TestAttempt,
+  TestEligibilityType,
+  CreateCohortTestInput,
+  UpdateCohortTestInput,
+} from './schemas/test.schema';
