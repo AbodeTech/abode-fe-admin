@@ -2,165 +2,357 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { UserPicker } from "@/components/shared/UserPicker";
 
 import { useCreateAgency } from "../hooks/use-create-agency";
+import {
+  createAgencySchema,
+  toCreateAgencyPayload,
+  type CreateAgencyFormValues,
+} from "../schemas/agency.schema";
+import { getErrorMessage } from "../utils/error-message";
 
+/**
+ * POST /admin/agencies.
+ *
+ * Every agency needs an owner, and the BE offers two ways to supply one:
+ * promote an existing user, or create the account here and let the BE email
+ * them a temporary password. The v1 form's address, city, state, country and
+ * communication-preference fields have no v2 equivalent and are gone — the
+ * v2 agency record holds a name, a rate, an owner and two contact fields.
+ */
 export function AgencyOnboardingForm() {
   const router = useRouter();
   const { mutateAsync: createAgency, isPending } = useCreateAgency();
+  const [ownerLabel, setOwnerLabel] = useState<string | null>(null);
 
-  const [commissionType, setCommissionType] = useState("5");
-  const [communicationPreference, setCommunicationPreference] = useState("agency");
+  const form = useForm<CreateAgencyFormValues>({
+    resolver: zodResolver(createAgencySchema),
+    defaultValues: {
+      name: "",
+      commission_percentage: 5,
+      owner_mode: "existing",
+      owner_user_id: "",
+      new_owner: {
+        firstName: "",
+        lastName: "",
+        email: "",
+        userName: "",
+        phoneNumber: "",
+      },
+      contact_email: "",
+      contact_phone: "",
+    },
+  });
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const ownerMode = form.watch("owner_mode");
 
-    const formData = new FormData(event.currentTarget);
-    const customRate = Number(formData.get("customCommission"));
-    const selectedRate = Number(commissionType);
-    const commission_percentage = commissionType === "custom" ? customRate : selectedRate;
-
-    if (!Number.isFinite(commission_percentage) || commission_percentage <= 0) {
-      toast.error("Enter a valid commission rate");
-      return;
-    }
-
+  const onSubmit = async (values: CreateAgencyFormValues) => {
     try {
-      await createAgency({
-        agency_name: String(formData.get("agency_name") || "").trim(),
-        email: String(formData.get("email") || "").trim(),
-        phoneNumber: String(formData.get("phoneNumber") || "").trim(),
-        address: String(formData.get("address") || "").trim() || undefined,
-        country: String(formData.get("country") || "").trim() || undefined,
-        state: String(formData.get("state") || "").trim() || undefined,
-        city: String(formData.get("city") || "").trim() || undefined,
-        commission_percentage,
-        communication_preference: communicationPreference,
-      });
-      toast.success("Agency created successfully");
-      router.push("/agency/lists");
-    } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Failed to create agency");
+      const agency = await createAgency(toCreateAgencyPayload(values));
+      toast.success(
+        values.owner_mode === "new"
+          ? `${agency.name} created (${agency.code}) — the owner has been emailed their sign-in details.`
+          : `${agency.name} created (${agency.code})`
+      );
+      router.push(`/agency/lists/${agency.id}`);
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Failed to create agency"));
     }
   };
 
   return (
-    <Card className="w-full min-w-0 max-w-3xl border border-gray-200">
-      <CardHeader>
-        <CardTitle>Onboard New Agency</CardTitle>
-        <CardDescription>
-          Add a new agency partner and set their initial commission preferences.
-        </CardDescription>
-      </CardHeader>
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)}>
+        <Card className="w-full min-w-0 max-w-3xl border border-gray-200">
+          <CardHeader>
+            <CardTitle>Onboard New Agency</CardTitle>
+            <CardDescription>
+              The agency code is generated automatically once the agency is created.
+            </CardDescription>
+          </CardHeader>
 
-      <form onSubmit={handleSubmit}>
-        <CardContent className="space-y-5">
-          <div className="space-y-2">
-            <Label htmlFor="agency_name">Agency Name</Label>
-            <Input id="agency_name" name="agency_name" required placeholder="e.g. Lagos Realty Pros" disabled={isPending} />
-          </div>
+          <CardContent className="space-y-6">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Agency name</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="e.g. Lagos Realty Pros"
+                      disabled={isPending}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" name="email" type="email" required placeholder="agency@domain.com" disabled={isPending} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="phoneNumber">Phone Number</Label>
-              <Input id="phoneNumber" name="phoneNumber" required placeholder="+234..." disabled={isPending} />
-            </div>
-          </div>
+            <FormField
+              control={form.control}
+              name="commission_percentage"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Commission percentage</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      step={0.01}
+                      disabled={isPending}
+                      className="sm:max-w-40"
+                      {...field}
+                      onChange={(event) =>
+                        field.onChange(
+                          event.target.value === "" ? undefined : event.target.valueAsNumber
+                        )
+                      }
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Between 0 and 100, up to two decimal places.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <div className="space-y-2">
-            <Label htmlFor="address">Address</Label>
-            <Input id="address" name="address" placeholder="Office address" disabled={isPending} />
-          </div>
+            <FormField
+              control={form.control}
+              name="owner_mode"
+              render={({ field }) => (
+                <FormItem className="space-y-3">
+                  <FormLabel>Agency owner</FormLabel>
+                  <FormControl>
+                    <RadioGroup
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      disabled={isPending}
+                      className="gap-3"
+                    >
+                      <div className="flex items-start gap-2">
+                        <RadioGroupItem value="existing" id="owner-existing" />
+                        <div className="space-y-1">
+                          <Label htmlFor="owner-existing" className="font-normal">
+                            Use an existing user
+                          </Label>
+                          <p className="text-xs text-muted-foreground">
+                            They must not already own another agency.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <RadioGroupItem value="new" id="owner-new" />
+                        <div className="space-y-1">
+                          <Label htmlFor="owner-new" className="font-normal">
+                            Create a new user
+                          </Label>
+                          <p className="text-xs text-muted-foreground">
+                            They are emailed a temporary password to sign in with.
+                          </p>
+                        </div>
+                      </div>
+                    </RadioGroup>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="country">Country</Label>
-              <Input id="country" name="country" placeholder="Nigeria" disabled={isPending} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="state">State</Label>
-              <Input id="state" name="state" placeholder="Lagos" disabled={isPending} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="city">City</Label>
-              <Input id="city" name="city" placeholder="Ikeja" disabled={isPending} />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Communication Preference</Label>
-              <Select value={communicationPreference} onValueChange={setCommunicationPreference}>
-                <SelectTrigger className="h-10 w-full min-w-0 sm:h-9">
-                  <SelectValue placeholder="Select preference" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="agency">Agency</SelectItem>
-                  <SelectItem value="referral">Referral</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Commission Rate</Label>
-              <div className="flex min-w-0 flex-col gap-2 sm:flex-row">
-                <Select value={commissionType} onValueChange={setCommissionType}>
-                  <SelectTrigger className="h-10 w-full min-w-0 sm:h-9">
-                    <SelectValue placeholder="Select rate" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="2.5">2.5%</SelectItem>
-                    <SelectItem value="5">5%</SelectItem>
-                    <SelectItem value="7.5">7.5%</SelectItem>
-                    <SelectItem value="10">10%</SelectItem>
-                    <SelectItem value="custom">Custom</SelectItem>
-                  </SelectContent>
-                </Select>
-                {commissionType === "custom" && (
-                  <Input
-                    name="customCommission"
-                    type="number"
-                    min={0.1}
-                    step={0.1}
-                    placeholder="Rate %"
-                    required
-                    disabled={isPending}
-                    className="h-10 w-full min-w-0 sm:h-9 sm:max-w-32"
-                  />
+            {ownerMode === "existing" ? (
+              <FormField
+                control={form.control}
+                name="owner_user_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Owner</FormLabel>
+                    <FormControl>
+                      <UserPicker
+                        value={field.value ?? ""}
+                        fallbackLabel={ownerLabel}
+                        disabled={isPending}
+                        placeholder="Search for the owner by name or email"
+                        onChange={(id, option) => {
+                          field.onChange(id);
+                          setOwnerLabel(option?.label ?? null);
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )}
+              />
+            ) : (
+              <div className="grid grid-cols-1 gap-4 rounded-md border border-gray-200 p-4 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="new_owner.firstName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>First name</FormLabel>
+                      <FormControl>
+                        <Input disabled={isPending} {...field} value={field.value ?? ""} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="new_owner.lastName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Last name</FormLabel>
+                      <FormControl>
+                        <Input disabled={isPending} {...field} value={field.value ?? ""} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="new_owner.email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="email"
+                          disabled={isPending}
+                          {...field}
+                          value={field.value ?? ""}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="new_owner.userName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Username</FormLabel>
+                      <FormControl>
+                        <Input disabled={isPending} {...field} value={field.value ?? ""} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="new_owner.phoneNumber"
+                  render={({ field }) => (
+                    <FormItem className="md:col-span-2">
+                      <FormLabel>Phone number</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="+234…"
+                          disabled={isPending}
+                          {...field}
+                          value={field.value ?? ""}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
-            </div>
-          </div>
-        </CardContent>
+            )}
 
-        <CardFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full sm:w-auto"
-            onClick={() => router.push("/agency/lists")}
-            disabled={isPending}
-          >
-            Cancel
-          </Button>
-          <Button type="submit" className="w-full sm:w-auto" disabled={isPending}>
-            {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Create Agency
-          </Button>
-        </CardFooter>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="contact_email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Contact email (optional)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="email"
+                        placeholder="agency@domain.com"
+                        disabled={isPending}
+                        {...field}
+                        value={field.value ?? ""}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      The agency&apos;s own contact address, separate from the owner&apos;s.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="contact_phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Contact phone (optional)</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="+234…"
+                        disabled={isPending}
+                        {...field}
+                        value={field.value ?? ""}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </CardContent>
+
+          <CardFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={() => router.push("/agency/lists")}
+              disabled={isPending}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" className="w-full sm:w-auto" disabled={isPending}>
+              {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Create agency
+            </Button>
+          </CardFooter>
+        </Card>
       </form>
-    </Card>
+    </Form>
   );
 }

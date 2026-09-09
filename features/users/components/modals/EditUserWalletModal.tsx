@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { z } from "zod"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -27,14 +27,22 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { useEditUserWallet } from "../../hooks/use-user-mutations"
 import { getErrorMessage } from "../../utils/error-message"
+import { AdminReasonFields } from "./AdminReasonFields"
+import {
+  AdminWalletAdjustPayloadSchema,
+  WALLET_ADJUSTMENT_CATEGORIES,
+} from "../../schemas/user-actions.schema"
 
-const formSchema = z.object({
-  amount: z.string().min(1, "Please enter an amount"),
-  reason: z.string().min(1, "Please enter a reason"),
-})
+const formSchema = AdminWalletAdjustPayloadSchema;
 
 type FormSchemaType = z.infer<typeof formSchema>
 
@@ -57,25 +65,36 @@ export function EditUserWalletModal({ currentBalance, trigger, open, onOpenChang
   const form = useForm<FormSchemaType>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      amount: currentBalance,
+      direction: "credit",
+      amount: undefined as unknown as number,
       reason: "",
+      reason_category: "generic",
+      notify_user: false,
     },
   })
 
+  useEffect(() => {
+    if (isOpen) {
+      form.reset({
+        direction: "credit",
+        amount: undefined as unknown as number,
+        reason: "",
+        reason_category: "generic",
+        notify_user: false,
+      })
+    }
+  }, [isOpen, form])
+
   const onSubmit = async (data: FormSchemaType) => {
     try {
-      // Remove commas before sending
-      const cleanAmount = data.amount.replace(/,/g, "")
-
-      await editWallet.mutateAsync({
-        id: userId,
-        new_amount: cleanAmount,
-        reason: data.reason
+      const result = await editWallet.mutateAsync({
+        userId,
+        payload: data,
       })
-      toast.success("Wallet balance updated successfully")
+      toast.success(`Wallet ${data.direction}ed. New balance: ₦${result.new_balance.toLocaleString()}`)
       setIsOpen(false)
     } catch (error: unknown) {
-      toast.error(getErrorMessage(error, "Failed to update wallet balance"))
+      toast.error(getErrorMessage(error, "Failed to adjust wallet"))
     }
   }
 
@@ -84,25 +103,49 @@ export function EditUserWalletModal({ currentBalance, trigger, open, onOpenChang
       {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Update Wallet Balance</DialogTitle>
+          <DialogTitle>Adjust Wallet</DialogTitle>
           <DialogDescription>
-            Enter the new wallet balance and reason for the update.
+            Current balance ₦{Number(currentBalance || 0).toLocaleString()}. Credit or debit a ledger-backed amount.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
+              name="direction"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Direction</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="credit">Credit</SelectItem>
+                      <SelectItem value="debit">Debit</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
               name="amount"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Amount</FormLabel>
+                  <FormLabel>Amount (NGN)</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="Enter amount (e.g. 1000)"
-                      {...field}
+                      placeholder="5000"
                       type="number"
-                      step="0.01"
+                      step="1"
+                      min="1"
+                      {...field}
+                      value={field.value ?? ""}
+                      onChange={(e) => field.onChange(e.target.value === "" ? undefined : Number(e.target.value))}
                     />
                   </FormControl>
                   <FormMessage />
@@ -111,20 +154,29 @@ export function EditUserWalletModal({ currentBalance, trigger, open, onOpenChang
             />
             <FormField
               control={form.control}
-              name="reason"
+              name="reason_category"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Reason</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Reason for updating..."
-                      {...field}
-                    />
-                  </FormControl>
+                  <FormLabel>Category</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {WALLET_ADJUSTMENT_CATEGORIES.map((category) => (
+                        <SelectItem key={category} value={category}>
+                          {category}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
             />
+            <AdminReasonFields reasonPlaceholder="Reason for this adjustment…" />
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
@@ -132,7 +184,7 @@ export function EditUserWalletModal({ currentBalance, trigger, open, onOpenChang
               </Button>
               <Button type="submit" disabled={form.formState.isSubmitting}>
                 {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Update Balance
+                Apply adjustment
               </Button>
             </DialogFooter>
           </form>

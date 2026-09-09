@@ -109,7 +109,7 @@ function AssociateManagersContent() {
 
   // Super Admin: list managers for the dropdown. Limit 200 covers most orgs;
   // bump to a server-side search if rosters grow beyond that.
-  const managersQuery = useAssociateManagers({ page: 1, limit: 200 });
+  const managersQuery = useAssociateManagers({ page: 1, limit: 100 });
   const managers = managersQuery.data?.items ?? [];
 
   // Resolve the active manager id from URL, fall back to first.

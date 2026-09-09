@@ -1,61 +1,50 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity, Briefcase, DollarSign, Users } from "lucide-react";
+import { Activity, Briefcase, Ban } from "lucide-react";
 
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+
+import type { AgencyStats } from "../hooks/use-agency-stats";
+
+/**
+ * Agency counts, from `meta.total` on three cheap count-only list calls.
+ *
+ * v1's currency tiles (total sales volume, total commission paid) and its
+ * platform-wide member count are gone: v2 exposes no aggregate that backs
+ * them. Rendering them as ₦0 would read as real data, so they're omitted.
+ */
 interface AgencySystemMetricsProps {
-  data?: {
-    total_agencies?: number;
-    active_agencies?: number;
-    total_users_under_agencies?: number;
-    all_agencies_total_sales_volume?: number;
-    total_commission_paid?: number;
-  } | null;
+  data?: AgencyStats | null;
+  isLoading?: boolean;
 }
 
-const formatCurrency = (value?: number | null) =>
-  new Intl.NumberFormat("en-NG", {
-    style: "currency",
-    currency: "NGN",
-    maximumFractionDigits: 0,
-    minimumFractionDigits: 0,
-  }).format(value ?? 0);
-
 const metricItems: {
-  key: keyof NonNullable<AgencySystemMetricsProps["data"]>;
+  key: keyof AgencyStats;
   label: string;
   icon: React.ElementType;
-  currency?: boolean;
 }[] = [
-    { key: "total_agencies", label: "Total Agencies", icon: Briefcase },
-    { key: "active_agencies", label: "Active Agencies", icon: Activity },
-    { key: "all_agencies_total_sales_volume", label: "Total Sales Volume", icon: DollarSign, currency: true },
-    { key: "total_commission_paid", label: "Total Commission Paid", icon: DollarSign, currency: true },
-    { key: "total_users_under_agencies", label: "Users under Agency", icon: Users },
-  ];
+  { key: "total", label: "Total Agencies", icon: Briefcase },
+  { key: "active", label: "Active", icon: Activity },
+  { key: "suspended", label: "Suspended", icon: Ban },
+];
 
-export function AgencySystemMetrics({ data }: AgencySystemMetricsProps) {
+export function AgencySystemMetrics({ data, isLoading }: AgencySystemMetricsProps) {
   return (
-    <div className="grid min-w-0 grid-cols-1 gap-3 min-[380px]:grid-cols-2 sm:gap-4 xl:grid-cols-5">
+    <div className="grid min-w-0 grid-cols-1 gap-3 min-[380px]:grid-cols-3 sm:gap-4">
       {metricItems.map((item) => {
-        const raw = data?.[item.key] ?? 0;
-        const display = item.currency ? formatCurrency(raw as number) : raw;
         const Icon = item.icon;
 
         return (
           <Card key={item.key} className="min-w-0 overflow-hidden border border-gray-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="min-w-0 text-sm font-medium text-muted-foreground">{item.label}</CardTitle>
+              <CardTitle className="min-w-0 text-sm font-medium text-muted-foreground">
+                {item.label}
+              </CardTitle>
               <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
             </CardHeader>
-            <CardContent
-              className={
-                item.currency
-                  ? "text-lg font-semibold tabular-nums wrap-break-word sm:text-xl"
-                  : "text-xl font-semibold tabular-nums sm:text-2xl"
-              }
-            >
-              {display}
+            <CardContent className="text-xl font-semibold tabular-nums sm:text-2xl">
+              {isLoading ? <Skeleton className="h-7 w-12" /> : (data?.[item.key] ?? 0)}
             </CardContent>
           </Card>
         );

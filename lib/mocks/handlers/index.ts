@@ -1,4 +1,3 @@
-import { agencyHandlers } from "./agency";
 import { allocationHandlers } from "./allocation";
 import { assetsHandlers } from "./assets";
 import { associatesHandlers } from "./associates";
@@ -13,7 +12,6 @@ export type MockHandler = (variables?: Record<string, unknown>) => unknown;
 
 export const mockHandlers: Record<string, MockHandler> = {
   ...authHandlers,
-  ...agencyHandlers,
   ...allocationHandlers,
   ...dashboardHandlers,
   ...usersHandlers,

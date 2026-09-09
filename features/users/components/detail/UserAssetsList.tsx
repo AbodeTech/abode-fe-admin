@@ -29,10 +29,10 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useHasPermission } from "@/hooks/use-admin-permission";
 
 import { useUserDetailAssets } from "../../hooks/use-user-detail";
-import { AddFlexAssetModal } from "../modals/AddFlexAssetModal";
-import { AddFullOwnershipAssetModal } from "../modals/AddFullOwnershipAssetModal";
+import { CreateUserPlanModal, type AdminPlanType } from "../modals/CreateUserPlanModal";
 import { UserAssetActions } from "./UserAssetActions";
 
 interface UserAssetsListProps {
@@ -54,8 +54,9 @@ const formatCurrency = (amount: number) => {
 };
 
 export function UserAssetsList({ userId, userEmail, readOnly = false }: UserAssetsListProps) {
-  const [isFlexModalOpen, setIsFlexModalOpen] = useState(false);
-  const [isFullOwnershipModalOpen, setIsFullOwnershipModalOpen] = useState(false);
+  const [createType, setCreateType] = useState<AdminPlanType | null>(null);
+  const canCreatePlan = useHasPermission("create_user_plan");
+  const canCreateDeveloperPlot = useHasPermission("create_developer_plot");
 
   const { data: assets, isLoading } = useUserDetailAssets(userId);
 
@@ -105,25 +106,32 @@ export function UserAssetsList({ userId, userEmail, readOnly = false }: UserAsse
 
   return (
     <div className="space-y-6 mt-6">
-      {!readOnly && (
-        <>
-          <AddFlexAssetModal userId={userId} isOpen={isFlexModalOpen} onClose={() => setIsFlexModalOpen(false)} />
-          <AddFullOwnershipAssetModal
-            userId={userId}
-            isOpen={isFullOwnershipModalOpen}
-            onClose={() => setIsFullOwnershipModalOpen(false)}
-          />
-        </>
+      {!readOnly && createType && (
+        <CreateUserPlanModal
+          userId={userId}
+          type={createType}
+          open
+          onOpenChange={(open) => !open && setCreateType(null)}
+        />
+      )}
+
+      {!readOnly && (canCreatePlan || canCreateDeveloperPlot) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Create payment plan</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            {canCreatePlan && <Button onClick={() => setCreateType("flex")}><Plus className="mr-2 h-4 w-4" />Flex</Button>}
+            {canCreatePlan && <Button variant="outline" onClick={() => setCreateType("full-ownership")}><Plus className="mr-2 h-4 w-4" />Full Ownership</Button>}
+            {canCreatePlan && <Button variant="outline" onClick={() => setCreateType("commercial")}><Plus className="mr-2 h-4 w-4" />Commercial</Button>}
+            {canCreateDeveloperPlot && <Button variant="outline" onClick={() => setCreateType("developer-plot")}><Plus className="mr-2 h-4 w-4" />Developer Plot</Button>}
+          </CardContent>
+        </Card>
       )}
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-2xl font-bold">User Flex Assets</CardTitle>
-          {!readOnly && (
-            <Button onClick={() => setIsFlexModalOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" /> Add Flex Asset
-            </Button>
-          )}
         </CardHeader>
         <CardContent>
           <div className="grid gap-4">
@@ -310,11 +318,6 @@ export function UserAssetsList({ userId, userEmail, readOnly = false }: UserAsse
   
           <div className="flex items-center justify-between gap-2 w-full px-4 ">
             <CardTitle className="text-2xl font-bold">User Full Ownership Assets</CardTitle>
-            {!readOnly && (
-              <Button onClick={() => setIsFullOwnershipModalOpen(true)}>
-                <Plus className=" h-4 w-4" /> Add New Asset
-              </Button>
-            )}
           </div>    
           
         <CardContent>

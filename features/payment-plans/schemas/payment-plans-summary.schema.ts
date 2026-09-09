@@ -21,6 +21,7 @@ export const PaymentPlansSummarySchema = z.looseObject({
   suspended_count: z.number(),
   completed_count: z.number(),
   cancelled_count: z.number(),
+  closed_count: z.number().default(0),
 
   by_asset_type: z.array(AssetTypeBreakdownSchema),
 

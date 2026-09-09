@@ -1,104 +1,123 @@
+'use client';
+
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { executeRaw } from '@/lib/graphql-client';
+
+import { apiDelete, apiPatch, apiPost } from '@/lib/api-client';
+
+import {
+  AgencyDetailSchema,
+  AgencyMessageSchema,
+  AgencySchema,
+  type ChangeOwnerPayload,
+  type SuspendAgencyPayload,
+  type UpdateAgencyPayload,
+} from '../schemas/agency.schema';
 import { agencyKeys } from './query-keys';
 
-const UPDATE_AGENCY_COMMISSION = `
-  mutation UpdateAgencyCommission($updateAgencyCommissionInput: UpdateAgencyCommissionInput!) {
-    updateAgencyCommission(updateAgencyCommissionInput: $updateAgencyCommissionInput) {
-      success
-      message
-      agency {
-        _id
-      }
-    }
-  }
-`;
+/* ============================================================
+ * Agency writes. All take `manage_agencies`; change-owner additionally
+ * requires a super admin.
+ *
+ * Every one of these bumps the BE's list cache generation, so each
+ * invalidates `agencyKeys.all` rather than just the row it touched — a
+ * commission or status change moves the list rows too. Toasts belong at the
+ * call site, not in here.
+ * ============================================================ */
 
-const SUSPEND_AGENCY = `
-  mutation SuspendAgency($suspendAgencyInput: SuspendAgencyInput!) {
-    suspendAgency(suspendAgencyInput: $suspendAgencyInput) {
-      success
-      message
-      agency {
-        _id
-      }
-    }
-  }
-`;
+/** Invalidate the whole feature, plus the one detail row if we know it. */
+function useAgencyInvalidator() {
+  const queryClient = useQueryClient();
 
-const REACTIVATE_AGENCY = `
-  mutation ReactivateAgency($agencyId: ID!) {
-    reactivateAgency(agencyId: $agencyId) {
-      success
-      message
-      agency {
-        _id
-      }
+  return (agencyId?: string) => {
+    queryClient.invalidateQueries({ queryKey: agencyKeys.all });
+    if (agencyId) {
+      queryClient.invalidateQueries({ queryKey: agencyKeys.detail(agencyId) });
     }
-  }
-`;
-
-interface AgencyActionResponse {
-  success?: boolean;
-  message?: string;
+  };
 }
 
-const assertSuccess = (payload: AgencyActionResponse | undefined, fallbackMessage: string) => {
-  if (!payload?.success) {
-    throw new Error(payload?.message || fallbackMessage);
-  }
-};
-
-export const useUpdateAgencyCommission = () => {
-  const queryClient = useQueryClient();
+/**
+ * PATCH /admin/agencies/:id — name, rate and contact details.
+ *
+ * `null` on a contact field clears it and `undefined` leaves it alone, so the
+ * payload is passed through as-is: stripping nulls here would silently turn
+ * "clear this email" into "change nothing".
+ */
+export const useUpdateAgency = () => {
+  const invalidate = useAgencyInvalidator();
 
   return useMutation({
-    mutationFn: async (input: { agencyId: string; commission_percentage: number }) => {
-      const response = await executeRaw<{ updateAgencyCommission?: AgencyActionResponse }>(
-        UPDATE_AGENCY_COMMISSION,
-        { updateAgencyCommissionInput: input }
-      );
-      assertSuccess(response.updateAgencyCommission, 'Failed to update commission');
-      return response;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: agencyKeys.all });
-    },
+    mutationFn: ({ agencyId, payload }: { agencyId: string; payload: UpdateAgencyPayload }) =>
+      apiPatch(`/admin/agencies/${agencyId}`, payload, AgencySchema),
+    onSuccess: (_data, variables) => invalidate(variables.agencyId),
   });
 };
 
+/**
+ * POST /admin/agencies/:id/suspend.
+ *
+ * New commission stops routing to the agency and falls back to the normal
+ * tier chain; commission already earned is untouched. The reason must be at
+ * least 20 characters after trimming — the BE checks the trimmed length a
+ * second time inside the service, so a reason of 20 spaces is a 400.
+ */
 export const useSuspendAgency = () => {
-  const queryClient = useQueryClient();
+  const invalidate = useAgencyInvalidator();
 
   return useMutation({
-    mutationFn: async (input: { agencyId: string; reason: string }) => {
-      const response = await executeRaw<{ suspendAgency?: AgencyActionResponse }>(
-        SUSPEND_AGENCY,
-        { suspendAgencyInput: input }
-      );
-      assertSuccess(response.suspendAgency, 'Failed to suspend agency');
-      return response;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: agencyKeys.all });
-    },
+    mutationFn: ({ agencyId, payload }: { agencyId: string; payload: SuspendAgencyPayload }) =>
+      apiPost(`/admin/agencies/${agencyId}/suspend`, payload, AgencySchema),
+    onSuccess: (_data, variables) => invalidate(variables.agencyId),
   });
 };
 
+/**
+ * POST /admin/agencies/:id/reactivate — no body.
+ *
+ * 400s with `AGENCY_NOT_SUSPENDED` if the agency is already active, so only
+ * offer it on a suspended row.
+ */
 export const useReactivateAgency = () => {
-  const queryClient = useQueryClient();
+  const invalidate = useAgencyInvalidator();
 
   return useMutation({
-    mutationFn: async (agencyId: string) => {
-      const response = await executeRaw<{ reactivateAgency?: AgencyActionResponse }>(
-        REACTIVATE_AGENCY,
-        { agencyId }
-      );
-      assertSuccess(response.reactivateAgency, 'Failed to reactivate agency');
-      return response;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: agencyKeys.all });
-    },
+    mutationFn: (agencyId: string) =>
+      apiPost(`/admin/agencies/${agencyId}/reactivate`, undefined, AgencySchema),
+    onSuccess: (_data, agencyId) => invalidate(agencyId),
+  });
+};
+
+/**
+ * DELETE /admin/agencies/:id — permanent, and only once the roster is empty.
+ *
+ * The BE 400s with `AGENCY_MEMBER_COUNT_NOT_ZERO` while any member remains,
+ * the owner included. Clearing the owner's own membership takes
+ * `useSetUserOrg(ownerId, null)`.
+ */
+export const useDeleteAgency = () => {
+  const invalidate = useAgencyInvalidator();
+
+  return useMutation({
+    mutationFn: (agencyId: string) =>
+      apiDelete(`/admin/agencies/${agencyId}`, AgencyMessageSchema),
+    onSuccess: () => invalidate(),
+  });
+};
+
+/**
+ * POST /admin/agencies/:id/change-owner — super admin only.
+ *
+ * Returns the fresh detail payload rather than the bare agency. The incoming
+ * user must not already own another agency, and is moved into this one as a
+ * side effect. `retain_old_owner_as_member` defaults to true on the BE; when
+ * false, the outgoing owner is removed from the agency entirely.
+ */
+export const useChangeAgencyOwner = () => {
+  const invalidate = useAgencyInvalidator();
+
+  return useMutation({
+    mutationFn: ({ agencyId, payload }: { agencyId: string; payload: ChangeOwnerPayload }) =>
+      apiPost(`/admin/agencies/${agencyId}/change-owner`, payload, AgencyDetailSchema),
+    onSuccess: (_data, variables) => invalidate(variables.agencyId),
   });
 };

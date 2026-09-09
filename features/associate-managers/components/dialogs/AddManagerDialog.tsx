@@ -45,7 +45,7 @@ export function AddManagerDialog({ open, onOpenChange }: Props) {
 
   // Filter out admins already designated as managers (BE rejects duplicates
   // anyway, hiding them is just a nicer UX).
-  const { data: managersData } = useAssociateManagers({ page: 1, limit: 200 });
+  const { data: managersData } = useAssociateManagers({ page: 1, limit: 100 });
   const existingManagerAdminIds = new Set(
     (managersData?.items ?? []).map((m) => m.manager_id)
   );

@@ -18,6 +18,7 @@ export {
   useAssociateManagers,
   useAssociateManager,
 } from "./hooks/use-associate-managers";
+export { useProManager } from "./hooks/use-pro-manager";
 export {
   useAdminManagerDashboard,
   useManagerDashboard,

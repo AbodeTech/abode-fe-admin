@@ -8,14 +8,26 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/shared/Pagination";
 import { SuspensePageFallback } from "@/components/shared/page-content-loader";
+import { useHasPermission } from "@/hooks/use-admin-permission";
 import {
   AgencyListFilters,
   AgencyListTable,
-  AgencySystemMetrics,
   DEFAULT_AGENCY_LIMIT,
   useAgencies,
+  type AgencySortField,
+  type AgencyStatus,
 } from "@/features/agency";
 import { getErrorMessage } from "@/features/agency/utils/error-message";
+
+const SORT_FIELDS: AgencySortField[] = ["created_at", "name", "commission_percentage"];
+
+function isSortField(value: string | null): value is AgencySortField {
+  return !!value && SORT_FIELDS.includes(value as AgencySortField);
+}
+
+function isStatus(value: string | null): value is AgencyStatus {
+  return value === "active" || value === "suspended";
+}
 
 function AgencyListContent() {
   const searchParams = useSearchParams();
@@ -23,16 +35,32 @@ function AgencyListContent() {
 
   const page = Number(searchParams.get("page")) || 1;
   const queryParam = searchParams.get("query") || "";
+  const statusParam = searchParams.get("status");
+  const sortParam = searchParams.get("sort");
+  const orderParam = searchParams.get("order");
+
+  const status = isStatus(statusParam) ? statusParam : null;
+  const sort = isSortField(sortParam) ? sortParam : "created_at";
+  const order = orderParam === "asc" ? "asc" : "desc";
+
   const [query, setQuery] = useState(queryParam);
+
+  const canManage = useHasPermission("manage_agencies");
 
   const { data, isLoading, error } = useAgencies({
     page,
     limit: DEFAULT_AGENCY_LIMIT,
-    searchQuery: queryParam || null,
+    q: queryParam || null,
+    status,
+    sort,
+    order,
   });
 
   const updateParams = useCallback(
-    (next: Record<string, string | number | null | undefined>, options?: { replace?: boolean }) => {
+    (
+      next: Record<string, string | number | null | undefined>,
+      options?: { replace?: boolean }
+    ) => {
       const params = new URLSearchParams(searchParams.toString());
       Object.entries(next).forEach(([key, value]) => {
         if (value === null || value === undefined || value === "") {
@@ -52,6 +80,7 @@ function AgencyListContent() {
     [router, searchParams]
   );
 
+  // Debounce the search box into the URL, resetting to page 1 on a new term.
   useEffect(() => {
     const timer = setTimeout(() => {
       if (query !== queryParam) {
@@ -64,7 +93,7 @@ function AgencyListContent() {
 
   if (error) {
     return (
-      <div className="p-4 rounded-md bg-red-50 text-red-500 border border-red-200">
+      <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-500">
         <h3 className="font-bold">Error loading agencies</h3>
         <p>{getErrorMessage(error, "An unexpected error occurred.")}</p>
       </div>
@@ -77,27 +106,44 @@ function AgencyListContent() {
         <div className="min-w-0">
           <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Agencies</h1>
           <p className="text-sm text-muted-foreground sm:text-base">
-            Manage agency partners and view their performance.
+            Manage agency partners, their rosters and their commission.
           </p>
         </div>
-        <Button className="w-full shrink-0 sm:w-auto" asChild>
-          <Link href="/agency/new">
-            <Plus className="h-4 w-4 mr-2" />
-            Onboard Agency
-          </Link>
-        </Button>
+        {canManage && (
+          <Button className="w-full shrink-0 sm:w-auto" asChild>
+            <Link href="/agency/new">
+              <Plus className="mr-2 h-4 w-4" />
+              Onboard Agency
+            </Link>
+          </Button>
+        )}
       </div>
 
-      <AgencyListFilters search={query} onSearchChange={setQuery} />
+      {/*
+        The headline count tiles (AgencySystemMetrics + useAgencyStats) are
+        deliberately not mounted. They are derived — three count-only list
+        calls reading `meta.total` — rather than a real aggregate, and v2 has
+        no agency dashboard endpoint behind them. Hidden until the BE exposes
+        one; both the hook and the component are still exported, so remounting
+        is a one-line change.
+      */}
+      <AgencyListFilters
+        search={query}
+        onSearchChange={setQuery}
+        status={status}
+        onStatusChange={(value) => updateParams({ status: value, page: 1 })}
+        sort={sort}
+        onSortChange={(value) => updateParams({ sort: value, page: 1 })}
+        order={order}
+        onOrderChange={(value) => updateParams({ order: value, page: 1 })}
+      />
 
-      <AgencySystemMetrics data={data?.dashboard} />
-
-      <AgencyListTable rows={data?.agencies} isLoading={isLoading} />
+      <AgencyListTable rows={data?.items} isLoading={isLoading} />
 
       <Pagination
-        count={data?.count ?? 0}
-        currentIdx={data?.currentPage ?? page}
-        limit={DEFAULT_AGENCY_LIMIT}
+        count={data?.meta.total ?? 0}
+        currentIdx={data?.meta.page ?? page}
+        limit={data?.meta.limit ?? DEFAULT_AGENCY_LIMIT}
       />
     </div>
   );

@@ -1,15 +1,18 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { useParams, useSearchParams } from "next/navigation"
-import { useAuthStore } from "@/store/auth-store"
+import { useRouter, useParams, useSearchParams } from "next/navigation"
+import { useHasPermission } from "@/hooks/use-admin-permission"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Button } from "@/components/ui/button"
+import { MoreVertical, Loader2, Trash2 } from "lucide-react"
+import { toast } from "sonner"
+import { Textarea } from "@/components/ui/textarea"
 import {
   AlertDialog,
   AlertDialogContent,
@@ -18,13 +21,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Button } from "@/components/ui/button"
-import { MoreVertical, Loader2, Trash2 } from "lucide-react"
-import { toast } from "sonner"
-import { removeReferralByAdmin } from "@/lib/api/admin/referrals.client"
-import revalidate from "@/lib/serverActions/admin/revalidate"
+import { useDeleteUserReferral } from "../../hooks/use-user-mutations"
 import { getErrorMessage } from "../../utils/error-message"
 import { useSelectedClientStore } from "@/store/selected-client-store"
+import { ADMIN_REASON_MIN } from "../../schemas/user-actions.schema"
 
 interface UserReferralActionsProps {
   referralId: string
@@ -36,33 +36,33 @@ export function UserReferralActions({ referralId, referralName }: UserReferralAc
   const params = useParams<{ id: string }>()
   const searchParams = useSearchParams()
   const userId = params.id
-  const user = useAuthStore((state) => state.user)
-  const canDeleteReferral =
-    Boolean(user?.role?.is_super_admin) || (user?.permissions ?? []).includes("remove-referral")
+  const canDeleteReferral = useHasPermission("reassign_referrer")
   const { setClient } = useSelectedClientStore()
 
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
+  const [reason, setReason] = useState("")
+  const deleteReferral = useDeleteUserReferral()
 
   const handleViewAssets = () => {
     setClient(referralId, referralName)
-    const params = new URLSearchParams(searchParams?.toString() || "")
-    params.set("modal", "viewclientasset")
-    router.push(params.toString() ? `?${params.toString()}` : "?")
+    const p = new URLSearchParams(searchParams?.toString() || "")
+    p.set("modal", "viewclientasset")
+    router.push(p.toString() ? `?${p.toString()}` : "?")
   }
 
   const handleDelete = async () => {
-    if (!userId) return
-    setIsDeleting(true)
+    if (!userId || reason.length < ADMIN_REASON_MIN) return
     try {
-      await removeReferralByAdmin(userId, referralId)
+      await deleteReferral.mutateAsync({
+        userId,
+        referralId,
+        payload: { reason, notify_user: false },
+      })
       toast.success("Referral deleted successfully")
       setIsDeleteOpen(false)
-      revalidate(userId) // Revalidate parent user page
+      setReason("")
     } catch (error: unknown) {
       toast.error(getErrorMessage(error, "Failed to delete referral"))
-    } finally {
-      setIsDeleting(false)
     }
   }
 
@@ -75,9 +75,7 @@ export function UserReferralActions({ referralId, referralName }: UserReferralAc
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={handleViewAssets}>
-            View Assets
-          </DropdownMenuItem>
+          <DropdownMenuItem onClick={handleViewAssets}>View Assets</DropdownMenuItem>
           {canDeleteReferral && (
             <DropdownMenuItem
               className="text-destructive focus:text-destructive"
@@ -94,15 +92,35 @@ export function UserReferralActions({ referralId, referralName }: UserReferralAc
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Referral?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete <strong>{referralName}</strong> from this user&apos;s referrals? This action cannot be undone.
+              Are you sure you want to delete <strong>{referralName}</strong> from this user&apos;s
+              referrals? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="space-y-2">
+            <Textarea
+              placeholder={`Reason (min ${ADMIN_REASON_MIN} chars)…`}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+            />
+          </div>
           <AlertDialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteOpen(false)} disabled={isDeleting}>
+            <Button
+              variant="outline"
+              onClick={() => { setIsDeleteOpen(false); setReason("") }}
+              disabled={deleteReferral.isPending}
+            >
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
-              {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleteReferral.isPending || reason.length < ADMIN_REASON_MIN}
+            >
+              {deleteReferral.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Trash2 className="h-4 w-4 mr-2" />
+              )}
               Delete
             </Button>
           </AlertDialogFooter>

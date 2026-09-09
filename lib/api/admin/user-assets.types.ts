@@ -45,14 +45,28 @@ export interface SuspendUserAssetInput {
   uniqueAssetId: string;
 }
 
+export interface UserAssetCommissionRecipient {
+  commission_type: "direct" | "upline" | "topline" | "agency" | "founder";
+  user_id?: string | null;
+  agency_id?: string | null;
+  rate: number;
+  tier_at_creation?: string | null;
+  override_source?: string | null;
+}
+
 export interface UserAsset {
   _id: string;
+  updated_at?: string;
+  status?: string;
+  commission_config_version?: number | null;
+  commission_recipients?: UserAssetCommissionRecipient[];
   asset_name: string;
   asset_size: string;
   asset_type: "flex" | "full-ownership" | string;
   asset_unit: string;
   payment_details?: {
     amount_paid: number;
+    initial_payment: number;
     balance: number;
     month_subscription: number;
     month_remaining: number;
@@ -69,6 +83,8 @@ export interface UserAsset {
     fullownerhsip_documentprice: number;
     asset_type: string;
     no_of_units: number;
+    payment_type?: string;
+    plan_completed_at?: string;
   };
   document_plan?: {
     amount_paid: number;

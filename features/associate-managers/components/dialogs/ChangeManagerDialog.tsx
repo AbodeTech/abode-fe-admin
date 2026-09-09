@@ -57,7 +57,7 @@ export function ChangeManagerDialog({
   const [selectedPros, setSelectedPros] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
 
-  const { data: managersList } = useAssociateManagers({ page: 1, limit: 200 });
+  const { data: managersList } = useAssociateManagers({ page: 1, limit: 100 });
   const allManagers = managersList?.items ?? [];
 
   const isUnassignedSource = sourceId === UNASSIGNED_POOL_ID;

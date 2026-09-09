@@ -48,7 +48,7 @@ export function RemoveManagerDialog({ open, onOpenChange, manager }: Props) {
   const [mode, setMode] = useState<ReassignMode>("transfer");
   const [targetManager, setTargetManager] = useState<string>("");
 
-  const { data: managersList } = useAssociateManagers({ page: 1, limit: 200 });
+  const { data: managersList } = useAssociateManagers({ page: 1, limit: 100 });
   // Fetch the full source manager doc (to get pro IDs for the transfer flow).
   const { data: sourceDoc } = useAssociateManager(manager?.id ?? null);
 

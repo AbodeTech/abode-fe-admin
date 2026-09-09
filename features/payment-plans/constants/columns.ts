@@ -31,8 +31,10 @@ export const COLUMNS: ColumnDef[] = [
   { key: 'completed_at', label: 'Completed at', defaultVisible: false },
   { key: 'suspended_at', label: 'Suspended at', defaultVisible: false },
   { key: 'cancelled_at', label: 'Cancelled at', defaultVisible: false },
+  { key: 'closed_at', label: 'Closed at', defaultVisible: false },
   { key: 'suspension_reason', label: 'Suspension reason', defaultVisible: false },
   { key: 'cancellation_reason', label: 'Cancellation reason', defaultVisible: false },
+  { key: 'closure_reason', label: 'Closure reason', defaultVisible: false },
   { key: 'contract_signed', label: 'Contract signed', defaultVisible: false },
   { key: 'created', label: 'Created', defaultVisible: true, sortable: true, sortKey: 'createdAt' },
 ];

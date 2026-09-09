@@ -11,7 +11,7 @@ import {
 import type { PaymentPlansSummary } from '@/features/payment-plans/schemas/payment-plans-summary.schema';
 import { buyerLabel, hasReferrer } from '@/features/payment-plans/lib/display';
 
-const STATUSES = ['active', 'overdue', 'suspended', 'cancelled', 'completed'] as const;
+const STATUSES = ['active', 'overdue', 'suspended', 'cancelled', 'completed', 'closed'] as const;
 
 function csv(value: unknown): string[] {
   if (value == null || value === '') return [];
@@ -34,7 +34,7 @@ const rows: PaymentPlanRow[] = Array.from({ length: 40 }, (_, i) => {
   const size = [300, 450, 500, 600][i % 4];
   const units = 1 + (i % 3);
   const amountPayable = size * units * 45_000;
-  const isClosed = status === 'completed' || status === 'cancelled';
+  const isClosed = status === 'completed' || status === 'cancelled' || status === 'closed';
   const amountPaid = isClosed ? amountPayable : Math.round(amountPayable * (0.2 + (i % 5) * 0.15));
   const balance = isClosed ? 0 : amountPayable - amountPaid;
   const hasDefaults = status === 'overdue' || i % 7 === 0;
@@ -96,11 +96,13 @@ const rows: PaymentPlanRow[] = Array.from({ length: 40 }, (_, i) => {
     plan_completed_at: status === 'completed' ? formatMockDate(5) : null,
     suspended_at: status === 'suspended' ? formatMockDate(12) : null,
     cancelled_at: status === 'cancelled' ? formatMockDate(20) : null,
+    closed_at: status === 'closed' ? formatMockDate(20) : null,
     createdAt: formatMockDate(100 + i),
     updatedAt: formatMockDate(i),
     status,
     suspension_reason: status === 'suspended' ? 'Ops termination' : null,
     cancellation_reason: status === 'cancelled' ? 'Client request' : null,
+    closure_reason: status === 'closed' ? 'Plan closed by operations' : null,
     contract_signed: i % 2 === 0,
     first_statement_sent: false,
     final_statement_sent: false,
@@ -234,6 +236,7 @@ function summarize(filtered: PaymentPlanRow[]): PaymentPlansSummary {
     suspended_count: filtered.filter((row) => row.status === 'suspended').length,
     completed_count: filtered.filter((row) => row.status === 'completed').length,
     cancelled_count: filtered.filter((row) => row.status === 'cancelled').length,
+    closed_count: filtered.filter((row) => row.status === 'closed').length,
     by_asset_type: byType,
     with_referrer_count: filtered.filter((row) => hasReferrer(row.referrer)).length,
     without_referrer_count: filtered.filter((row) => !hasReferrer(row.referrer)).length,

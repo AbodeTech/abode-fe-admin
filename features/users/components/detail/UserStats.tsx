@@ -5,21 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Wallet, TrendingUp, Bookmark, Package, DollarSign, PiggyBank, Calendar, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { useState } from "react";
-import { useSuspendUser, useUnsuspendUser } from "../../hooks/use-user-mutations";
-import { toast } from "sonner";
-import { getErrorMessage } from "../../utils/error-message";
-import { useAuthStore } from "@/store/auth-store";
+import { useHasPermission } from "@/hooks/use-admin-permission";
+import { ReasonActionModal } from "../modals/ReasonActionModal";
+import { useSuspendUser, useUnsuspendUser, useForcePasswordReset, useSuspendWallet, useUnsuspendWallet } from "../../hooks/use-user-mutations";
 
 interface UserStatsProps {
   user: UserDetail;
@@ -54,34 +43,23 @@ const DataPoint = ({ title, value, icon, isEven }: { title: string; value: strin
   </Card>
 );
 
+type ActionModal = "suspend" | "unsuspend" | "forceReset" | "suspendWallet" | "unsuspendWallet" | null;
+
 export function UserStats({ user }: UserStatsProps) {
-  const [showStatusDialog, setShowStatusDialog] = useState(false);
+  const [activeAction, setActiveAction] = useState<ActionModal>(null);
+  const isSuspended = user.is_suspended;
+  const canSuspend = useHasPermission("suspend_user");
+  const canUnsuspend = useHasPermission("unsuspend_user");
+  const canForceReset = useHasPermission("force_password_reset");
+  const canSuspendWallet = useHasPermission("suspend_wallet");
+  const canUnsuspendWallet = useHasPermission("unsuspend_wallet");
+  const canToggleStatus = isSuspended ? canUnsuspend : canSuspend;
+
   const suspendUser = useSuspendUser();
   const unsuspendUser = useUnsuspendUser();
-  const isSuspended = user.is_suspended;
-  const currentUser = useAuthStore((state) => state.user);
-  const permissions = currentUser?.permissions ?? [];
-  const isAdmin = Boolean(currentUser?.role?.is_super_admin);
-  const canSuspendUser = permissions.includes("suspend-user");
-  const canUnsuspendUser = permissions.includes("unsuspend-user");
-  const canToggleStatus = isAdmin && (isSuspended ? canUnsuspendUser : canSuspendUser);
-
-  const handleUserStatusToggle = async () => {
-    try {
-      if (isSuspended) {
-        await unsuspendUser.mutateAsync(user._id);
-        toast.success("User unsuspended");
-      } else {
-        await suspendUser.mutateAsync(user._id);
-        toast.success("User suspended");
-      }
-      setShowStatusDialog(false);
-    } catch (error: unknown) {
-      toast.error(getErrorMessage(error, `Unable to ${isSuspended ? "unsuspend" : "suspend"} user`));
-    }
-  };
-
-  const isUpdatingStatus = suspendUser.isPending || unsuspendUser.isPending;
+  const forceReset = useForcePasswordReset();
+  const suspendWallet = useSuspendWallet();
+  const unsuspendWallet = useUnsuspendWallet();
 
   const stats = [
     {
@@ -138,27 +116,53 @@ export function UserStats({ user }: UserStatsProps) {
     <div className="mt-8 space-y-6 sm:space-y-8">
       <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h3 className="text-2xl font-bold text-[#101828]">User Data Points</h3>
-        {canToggleStatus && (
-          isSuspended ? (
+        <div className="flex flex-wrap gap-2">
+          {canToggleStatus && (
+            isSuspended ? (
+              <Button
+                variant="outline"
+                className="text-green-700 border-green-200 bg-green-50 hover:bg-green-100 hover:text-green-800"
+                onClick={() => setActiveAction("unsuspend")}
+              >
+                Unsuspend User
+              </Button>
+            ) : (
+              <Button
+                variant="destructive"
+                className="bg-[#D92D20] hover:bg-[#B42318]"
+                onClick={() => setActiveAction("suspend")}
+              >
+                Suspend User
+              </Button>
+            )
+          )}
+          {canForceReset && (
             <Button
               variant="outline"
-              className="w-full text-green-700 border-green-200 bg-green-50 hover:bg-green-100 hover:text-green-800 sm:w-auto"
-              onClick={() => setShowStatusDialog(true)}
-              disabled={isUpdatingStatus}
+              onClick={() => setActiveAction("forceReset")}
             >
-              Unsuspend User
+              Force Password Reset
             </Button>
-          ) : (
+          )}
+          {canSuspendWallet && (
             <Button
-              variant="destructive"
-              className="w-full bg-[#D92D20] hover:bg-[#B42318] sm:w-auto"
-              onClick={() => setShowStatusDialog(true)}
-              disabled={isUpdatingStatus}
+              variant="outline"
+              className="text-orange-700 border-orange-200"
+              onClick={() => setActiveAction("suspendWallet")}
             >
-              Suspend User
+              Suspend Wallet
             </Button>
-          )
-        )}
+          )}
+          {canUnsuspendWallet && (
+            <Button
+              variant="outline"
+              className="text-green-700 border-green-200"
+              onClick={() => setActiveAction("unsuspendWallet")}
+            >
+              Unsuspend Wallet
+            </Button>
+          )}
+        </div>
       </div>
       <div className="grid min-w-0 gap-4 min-[380px]:grid-cols-2 md:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat, i) => (
@@ -172,26 +176,55 @@ export function UserStats({ user }: UserStatsProps) {
         ))}
       </div>
 
-      <AlertDialog open={showStatusDialog} onOpenChange={setShowStatusDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {isSuspended ? "Are you sure you want to unsuspend this user?" : "Are you sure you want to suspend this user?"}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {isSuspended
-                ? "Unsuspending this user will restore their access to the platform."
-                : "Suspending this user will revoke their access to the platform."}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isUpdatingStatus}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleUserStatusToggle} disabled={isUpdatingStatus}>
-              {isUpdatingStatus ? "Working..." : "Continue"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ReasonActionModal
+        open={activeAction === "suspend"}
+        onOpenChange={(open) => { if (!open) setActiveAction(null) }}
+        title="Suspend user"
+        description="Suspending this user will revoke their access to the platform."
+        confirmLabel="Suspend"
+        successMessage="User suspended"
+        destructive
+        includeExpiresAt
+        onSubmit={(userId, payload) => suspendUser.mutateAsync({ userId, payload })}
+      />
+      <ReasonActionModal
+        open={activeAction === "unsuspend"}
+        onOpenChange={(open) => { if (!open) setActiveAction(null) }}
+        title="Unsuspend user"
+        description="Unsuspending will restore their access to the platform."
+        confirmLabel="Unsuspend"
+        successMessage="User unsuspended"
+        onSubmit={(userId, payload) => unsuspendUser.mutateAsync({ userId, payload })}
+      />
+      <ReasonActionModal
+        open={activeAction === "forceReset"}
+        onOpenChange={(open) => { if (!open) setActiveAction(null) }}
+        title="Force password reset"
+        description="This will revoke all sessions and send a password-reset code."
+        confirmLabel="Force reset"
+        successMessage="Sessions revoked, reset initiated"
+        destructive
+        onSubmit={(userId, payload) => forceReset.mutateAsync({ userId, payload })}
+      />
+      <ReasonActionModal
+        open={activeAction === "suspendWallet"}
+        onOpenChange={(open) => { if (!open) setActiveAction(null) }}
+        title="Suspend wallet"
+        description="The user will not be able to transact until the wallet is unsuspended."
+        confirmLabel="Suspend wallet"
+        successMessage="Wallet suspended"
+        destructive
+        onSubmit={(userId, payload) => suspendWallet.mutateAsync({ userId, payload })}
+      />
+      <ReasonActionModal
+        open={activeAction === "unsuspendWallet"}
+        onOpenChange={(open) => { if (!open) setActiveAction(null) }}
+        title="Unsuspend wallet"
+        description="Restore the wallet so the user can transact again."
+        confirmLabel="Unsuspend wallet"
+        successMessage="Wallet unsuspended"
+        onSubmit={(userId, payload) => unsuspendWallet.mutateAsync({ userId, payload })}
+      />
     </div>
   );
 }

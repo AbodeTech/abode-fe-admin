@@ -54,6 +54,9 @@ export const managerKeys = {
   unassignedList: (filters?: ListFilters) =>
     [...managerKeys.unassigned(), 'list', filters] as const,
 
+  /** Which manager currently holds a given associate-pro (derived lookup). */
+  proManager: (proId: string) => [...managerKeys.all, 'pro-manager', proId] as const,
+
   // Onboarding attempts per Pro
   onboarding: () => [...managerKeys.all, 'onboarding'] as const,
   onboardingAttempts: (proId: string) => [...managerKeys.onboarding(), 'pro', proId] as const,

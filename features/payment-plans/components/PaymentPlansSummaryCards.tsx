@@ -39,11 +39,12 @@ export function PaymentPlansSummaryCards({
     { label: 'Total paid', kind: 'money' as const, value: summary?.total_amount_paid },
     { label: 'Defaulted', kind: 'count' as const, value: summary?.defaulted_count },
     { label: 'Cancelled', kind: 'count' as const, value: summary?.cancelled_count },
+    { label: 'Closed', kind: 'count' as const, value: summary?.closed_count },
     { label: 'Active', kind: 'count' as const, value: summary?.active_count },
   ];
 
   return (
-    <div className="mb-4 grid min-w-0 grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+    <div className="mb-4 grid min-w-0 grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-7">
       {cards.map((card) => (
         <Card key={card.label} className="min-w-0 overflow-hidden gap-3 py-4">
           <CardHeader className="px-3 pb-0 sm:px-4">

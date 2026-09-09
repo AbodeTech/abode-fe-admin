@@ -6,6 +6,7 @@ export const PAYMENT_PLAN_STATUSES = [
   'suspended',
   'cancelled',
   'completed',
+  'closed',
 ] as const;
 
 export const PaymentPlanStatusSchema = z.enum(PAYMENT_PLAN_STATUSES);
@@ -95,12 +96,14 @@ export const PaymentPlanRowSchema = z.looseObject({
   plan_completed_at: z.string().nullable(),
   suspended_at: z.string().nullable(),
   cancelled_at: z.string().nullable(),
+  closed_at: z.string().nullable().optional(),
   createdAt: z.string().nullable(),
   updatedAt: z.string().nullable(),
 
   status: PaymentPlanStatusSchema,
   suspension_reason: z.string().nullable(),
   cancellation_reason: z.string().nullable(),
+  closure_reason: z.string().nullable().optional(),
   contract_signed: z.boolean(),
 
   first_statement_sent: z.boolean(),
