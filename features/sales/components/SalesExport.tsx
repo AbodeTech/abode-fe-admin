@@ -266,6 +266,40 @@ const PRESETS: Record<string, { label: string; fields: string[] }> = {
   },
 }
 
+// Money columns. processRecord leaves these as raw numbers so the xlsx sheet
+// stays summable; thousands separators are applied per format at download
+// time — as text for csv/tsv/json, as a cell display format for xlsx.
+const CURRENCY_FIELDS = new Set([
+  'price',
+  'amountPaid',
+  'amountPayable',
+  'landBalance',
+  'documentPrice',
+  'documentAmountPaid',
+  'documentBalance',
+  'totalAssetValue',
+  'totalPaid',
+  'totalBalance',
+])
+
+const XLSX_CURRENCY_FORMAT = '#,##0.##'
+
+// No forced decimals: whole-naira amounts stay whole, and a value carrying
+// kobo keeps it rather than being rounded away.
+const groupThousands = (value: any) =>
+  typeof value === 'number' && Number.isFinite(value)
+    ? value.toLocaleString('en-NG', { maximumFractionDigits: 2 })
+    : value
+
+// Rebuilt key-by-key so the column order processRecord established survives.
+const withGroupedCurrency = (row: Record<string, any>) => {
+  const formatted: Record<string, any> = {}
+  Object.entries(row).forEach(([field, value]) => {
+    formatted[field] = CURRENCY_FIELDS.has(field) ? groupThousands(value) : value
+  })
+  return formatted
+}
+
 // --- Storage Helpers ---
 const getStoredTemplates = (): ExportTemplate[] => {
   if (typeof window === 'undefined') return []
@@ -521,6 +555,15 @@ export function SalesExport({ filters }: { filters: SalesFilters }) {
     worksheet['!cols'] = columnOrder.map(field => ({
       wch: Math.max(ALL_FIELDS[field]?.label.length || field.length, 12)
     }))
+    // Money cells keep their numeric type so Excel can still sum and sort
+    // them; the commas come from the display format, not from baked-in text.
+    columnOrder.forEach((field, colIdx) => {
+      if (!CURRENCY_FIELDS.has(field)) return
+      for (let rowIdx = 1; rowIdx <= sheetRows.length; rowIdx += 1) {
+        const cell = worksheet[XLSX.utils.encode_cell({ c: colIdx, r: rowIdx })]
+        if (cell && cell.t === 'n') cell.z = XLSX_CURRENCY_FORMAT
+      }
+    })
     return worksheet
   }
 
@@ -532,11 +575,15 @@ export function SalesExport({ filters }: { filters: SalesFilters }) {
     ].filter(Boolean).join('_')
     const baseFilename = [filename, rangeSuffix, timestamp].filter(Boolean).join('_')
     const allRows = entries.map(e => e.row)
+    // csv/tsv/json have no display layer of their own, so the separators have
+    // to be written into the values. json2csv quotes anything containing the
+    // delimiter, so comma-grouped amounts stay in one csv column.
+    const groupedRows = allRows.map(withGroupedCurrency)
 
     switch (format) {
       case 'csv': {
         const parser = new Parser({ fields: columnOrder })
-        const csv = parser.parse(allRows)
+        const csv = parser.parse(groupedRows)
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
         saveAs(blob, `${baseFilename}.csv`)
         break
@@ -554,13 +601,13 @@ export function SalesExport({ filters }: { filters: SalesFilters }) {
         break
       }
       case 'json': {
-        const blob = new Blob([JSON.stringify(allRows, null, 2)], { type: 'application/json;charset=utf-8;' })
+        const blob = new Blob([JSON.stringify(groupedRows, null, 2)], { type: 'application/json;charset=utf-8;' })
         saveAs(blob, `${baseFilename}.json`)
         break
       }
       case 'tsv': {
         const parser = new Parser({ fields: columnOrder, delimiter: '\t' })
-        const tsv = parser.parse(allRows)
+        const tsv = parser.parse(groupedRows)
         const blob = new Blob([tsv], { type: 'text/tab-separated-values;charset=utf-8;' })
         saveAs(blob, `${baseFilename}.tsv`)
         break

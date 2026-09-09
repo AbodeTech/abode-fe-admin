@@ -13,6 +13,8 @@ import {
   NoCSManagersEmptyState,
   ManageCSTargetsDialog,
   useCSManagerDashboard,
+  useAllCSManagersDashboard,
+  ALL_MANAGERS,
   useCSManagersList,
   useIsCurrentCSManager,
 } from "@/features/cs-managers";
@@ -92,8 +94,16 @@ function CustomerManagersContent() {
   // Manager can't peek at a colleague's book by editing the URL. This is a
   // UX guard, NOT a security boundary: `getCSManagerDashboard` must reject a
   // non-owning caller BE-side.
-  const activeManagerId =
-    viewAs === "manager"
+  // `?manager=all` is the combined view across every book — a sentinel rather
+  // than a separate mode, mirroring the associate-manager dashboard. A CS
+  // Manager can't reach it: they are pinned to their own id, and the BE refuses
+  // the combined query for anyone below top-level admin anyway.
+  const isAllManagers =
+    viewAs === "super-admin" && managerIdParam === ALL_MANAGERS;
+
+  const activeManagerId = isAllManagers
+    ? null
+    : viewAs === "manager"
       ? csManagerId
       : (managerIdParam ?? managers[0]?.manager._id ?? null);
 
@@ -106,12 +116,25 @@ function CustomerManagersContent() {
     filter,
     search,
     sort,
-    enabled: isAuthorized && !!activeManagerId,
+    enabled: isAuthorized && !isAllManagers && !!activeManagerId,
   });
+
+  const allManagersQuery = useAllCSManagersDashboard({
+    month,
+    year,
+    page,
+    limit: PLANS_PER_PAGE,
+    filter,
+    search,
+    sort,
+    enabled: isAuthorized && isAllManagers,
+  });
+
+  const activeQuery = isAllManagers ? allManagersQuery : dashboardQuery;
 
   // Wait for the CS-Manager check before deciding — otherwise a legitimate
   // non-super-admin manager would flash the NotAuthorized state.
-  if (csmCheckLoading || managersQuery.isLoading || dashboardQuery.isLoading) {
+  if (csmCheckLoading || managersQuery.isLoading || activeQuery.isLoading) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-200px)]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -124,7 +147,7 @@ function CustomerManagersContent() {
     return <NotAuthorized />;
   }
 
-  const error = managersQuery.error || dashboardQuery.error;
+  const error = managersQuery.error || activeQuery.error;
   if (error) {
     const message = (error as Error).message ?? "";
     // BE auth errors land here too (e.g. a non-admin forced ?view=manager
@@ -146,12 +169,14 @@ function CustomerManagersContent() {
     return <NoCSManagersEmptyState />;
   }
 
-  const data = dashboardQuery.data;
+  const data = activeQuery.data;
 
   if (!data) {
     return (
       <div className="p-4 rounded-md bg-amber-50 text-amber-700 border border-amber-200">
-        No dashboard data available for this CS Manager.
+        {isAllManagers
+          ? "No dashboard data available across the CS Managers."
+          : "No dashboard data available for this CS Manager."}
       </div>
     );
   }
@@ -159,7 +184,9 @@ function CustomerManagersContent() {
   // BE returns manager: null when the role is unassigned or the admin id in
   // the URL didn't resolve. Keep the header mounted so a super admin still
   // has the picker to switch away from the bad selection.
-  if (!data.manager) {
+  // The combined view returns manager: null BY DESIGN — it names nobody. Only
+  // treat null as an error when a specific manager was asked for.
+  if (!data.manager && !isAllManagers) {
     return (
       <div className="space-y-6">
         <CSPerformanceHeader
@@ -182,6 +209,7 @@ function CustomerManagersContent() {
         viewAs={viewAs}
         managers={managers}
         activeManagerId={activeManagerId}
+        isAllManagers={isAllManagers}
         assignedCustomersCount={data.portfolio.totalAssigned}
       />
 
@@ -190,11 +218,11 @@ function CustomerManagersContent() {
       <div
         className={cn(
           "space-y-6 transition-opacity",
-          dashboardQuery.isFetching && "opacity-60"
+          activeQuery.isFetching && "opacity-60"
         )}
       >
         <CSManagerSnapshot
-          manager={data.manager}
+          manager={data.manager ?? null}
           period={data.period}
           target={data.target}
           score={data.performanceScore}
@@ -224,7 +252,9 @@ function CustomerManagersContent() {
         />
       </div>
 
-      {viewAs === "super-admin" && (
+      {/* Targets are set per manager, so there is nothing to set in the
+          combined view — the snapshot hides its CTA there too. */}
+      {viewAs === "super-admin" && data.manager && (
         <ManageCSTargetsDialog
           open={targetsDialogOpen}
           onOpenChange={setTargetsDialogOpen}

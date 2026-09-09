@@ -21,6 +21,10 @@ export { CreateIssueDialog } from "./components/CreateIssueDialog";
 export { LinkTicketToIssueDialog } from "./components/LinkTicketToIssueDialog";
 export { ResolveIssueDialog } from "./components/ResolveIssueDialog";
 export {
+  useTicketManagerPicker,
+  type TicketManagerOption,
+} from "./hooks/use-ticket-manager-picker";
+export {
   useTicketAdminPicker,
   useTicketUserSearch,
   type TicketAdminOption,

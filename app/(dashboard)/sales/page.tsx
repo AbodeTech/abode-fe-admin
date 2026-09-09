@@ -7,6 +7,7 @@ import {
   SummaryCards,
   SalesTable,
   SalesStatusChips,
+  SalesFilterBar,
   useSalesRecords,
   useSalesSummary,
   DEFAULT_SALES_LIMIT,
@@ -24,6 +25,10 @@ function SalesContent() {
   const startDate = searchParams.get("start_date") || null;
   const endDate = searchParams.get("end_date") || null;
   const assetType = searchParams.get("assettype") || null;
+  // Estate and location are matched loosely BE-side, so the raw name travels
+  // rather than an id.
+  const assetName = searchParams.get("asset_name") || null;
+  const assetLocation = searchParams.get("asset_location") || null;
 
   const { data: summary, isLoading: summaryLoading, error: summaryError } = useSalesSummary({
     startDate,
@@ -40,6 +45,8 @@ function SalesContent() {
     startDate,
     endDate,
     assetType,
+    assetName,
+    assetLocation,
   });
 
   const totalCount = list?.count || 0;
@@ -83,6 +90,8 @@ function SalesContent() {
               startDate,
               endDate,
               assetType,
+              assetName,
+              assetLocation,
             }}
           />
         </div>
@@ -96,7 +105,18 @@ function SalesContent() {
       )}
       {summary && <SummaryCards data={summary} />}
 
-      <SalesStatusChips filters={{ search, startDate, endDate, assetType }} />
+      <SalesFilterBar />
+
+      <SalesStatusChips
+        filters={{
+          search,
+          startDate,
+          endDate,
+          assetType,
+          assetName,
+          assetLocation,
+        }}
+      />
 
       <SalesTable records={list?.data?.filter((item): item is NonNullable<typeof item> => item !== null)} />
 

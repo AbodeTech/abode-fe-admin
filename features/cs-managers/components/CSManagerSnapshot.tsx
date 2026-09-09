@@ -7,6 +7,7 @@ import {
   Gauge,
   AlertCircle,
   Target,
+  Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { KpiTile } from "@/components/shared/KpiTile";
@@ -22,7 +23,11 @@ import type {
 type CSManagerAdmin = Pick<Admin, "_id" | "userName" | "email" | "role">;
 
 interface Props {
-  manager: CSManagerAdmin;
+  /**
+   * Null in the combined "All CS Managers" view — that view deliberately names
+   * nobody rather than inventing a synthetic manager.
+   */
+  manager: CSManagerAdmin | null;
   period: CSManagerPeriod;
   target: CSManagerTargets;
   score: CSManagerPerformanceScore;
@@ -71,6 +76,9 @@ const initialsOf = (m: CSManagerAdmin) => {
 };
 
 const fullName = (m: CSManagerAdmin) => m.userName || m.email;
+
+/** The combined view has no one manager to name. */
+const ALL_MANAGERS_LABEL = "All CS Managers";
 
 export function CSManagerSnapshot({
   manager,
@@ -127,14 +135,16 @@ export function CSManagerSnapshot({
     <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-5">
       <div className="flex items-center gap-3">
         <div className="h-10 w-10 rounded-full bg-[#E0F2F1] text-[#00695C] flex items-center justify-center font-semibold text-sm">
-          {initialsOf(manager)}
+          {manager ? initialsOf(manager) : <Users className="h-5 w-5" />}
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-gray-900 truncate">
-            {fullName(manager)}
+            {manager ? fullName(manager) : ALL_MANAGERS_LABEL}
           </p>
           <p className="text-xs text-gray-500 truncate">
-            {manager.email} · {totalAssigned} customers assigned
+            {manager
+              ? `${manager.email} · ${totalAssigned} customers assigned`
+              : `${totalAssigned} customers assigned across every book`}
           </p>
         </div>
       </div>
@@ -158,7 +168,8 @@ export function CSManagerSnapshot({
           </div>
         )}
 
-        {onManageTargets && (
+        {/* Targets are per manager — nothing to manage with nobody selected. */}
+        {onManageTargets && manager && (
           <Button variant="outline" size="sm" onClick={onManageTargets}>
             <Target className="h-3.5 w-3.5 mr-1.5" />
             Manage targets

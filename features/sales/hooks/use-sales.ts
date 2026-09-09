@@ -28,6 +28,13 @@ export interface SalesFilters {
   startDate?: string | null;
   endDate?: string | null;
   assetType?: string | null;
+  /**
+   * Estate name and location, both matched loosely (case-insensitive substring)
+   * by the BE — "woodgate" catches Woodgate City as well as Woodgate Prime.
+   * That is deliberate, so the pickers send the raw name rather than an id.
+   */
+  assetName?: string | null;
+  assetLocation?: string | null;
   page?: number;
   limit?: number;
   [key: string]: unknown;
@@ -36,7 +43,16 @@ export interface SalesFilters {
 export const DEFAULT_SALES_LIMIT = 25;
 
 export const useSalesRecords = (filters: SalesFilters) => {
-  const { page = 1, limit = DEFAULT_SALES_LIMIT, search, startDate, endDate, assetType } = filters;
+  const {
+    page = 1,
+    limit = DEFAULT_SALES_LIMIT,
+    search,
+    startDate,
+    endDate,
+    assetType,
+    assetName,
+    assetLocation,
+  } = filters;
 
   return useQuery({
     queryKey: salesKeys.list(filters),
@@ -49,6 +65,8 @@ export const useSalesRecords = (filters: SalesFilters) => {
           startDate,
           endDate,
           assetType,
+          assetName,
+          assetLocation,
         },
       }),
     select: (data) => data.getSalesRecord,
@@ -77,12 +95,22 @@ export interface SalesStatusCounts {
 }
 
 export const useSalesStatusCounts = (
-  filters: Pick<SalesFilters, 'search' | 'startDate' | 'endDate' | 'assetType'>
+  filters: Pick<
+    SalesFilters,
+    'search' | 'startDate' | 'endDate' | 'assetType' | 'assetName' | 'assetLocation'
+  >
 ) => {
-  const { search, startDate, endDate, assetType } = filters;
+  const { search, startDate, endDate, assetType, assetName, assetLocation } = filters;
 
   return useQuery({
-    queryKey: salesKeys.statusCounts({ search, startDate, endDate, assetType }),
+    queryKey: salesKeys.statusCounts({
+      search,
+      startDate,
+      endDate,
+      assetType,
+      assetName,
+      assetLocation,
+    }),
     queryFn: () =>
       execute(GET_SALES_STATUS_COUNTS_QUERY, {
         page: 1,
@@ -92,6 +120,8 @@ export const useSalesStatusCounts = (
           startDate,
           endDate,
           assetType,
+          assetName,
+          assetLocation,
         },
       }),
     staleTime: 5 * 60 * 1000,

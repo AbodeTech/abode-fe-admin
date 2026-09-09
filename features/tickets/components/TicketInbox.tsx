@@ -31,8 +31,8 @@ import { CreateTicketDialog } from "./CreateTicketDialog";
  * same query the table just ran — switching tickets costs nothing.
  *
  * Filter state stays in the url (`filter`, `sort`, `channel`, `type`,
- * `category`, `q`, `page`, `ticket`) so a view is shareable; support hands
- * these round.
+ * `category`, `assignedTo`, `csm`, `q`, `page`, `ticket`) so a view is
+ * shareable; support hands these round.
  *
  * Who sees what: everyone reads the tickets they are party to; the router — a
  * CS Manager whose role is "admin" — also reads the unassigned pool, because
@@ -70,6 +70,11 @@ export function TicketInbox() {
     Object.values(TicketType)
   );
   const category = search.get("category");
+  const assignedAdminId = search.get("assignedTo");
+  const csManagerId = search.get("csm");
+  // Both manager filters are only meaningful to someone whose list reaches
+  // past their own work — see the note on TicketsToolbar's props.
+  const canFilterByManager = canRouteTickets || canManageAllTickets;
   const page = Math.max(1, Number(search.get("page") ?? "1") || 1);
   const activeTicketId = search.get("ticket");
 
@@ -97,6 +102,8 @@ export function TicketInbox() {
       channel,
       type,
       category,
+      assignedAdminId,
+      csManagerId,
       search: debouncedQ || null,
     },
   });
@@ -171,6 +178,16 @@ export function TicketInbox() {
             onTypeChange={(v) => updateParams({ type: v })}
             category={category}
             onCategoryChange={(v) => updateParams({ category: v })}
+            assignedAdminId={canFilterByManager ? assignedAdminId : undefined}
+            onAssignedAdminChange={
+              canFilterByManager
+                ? (v) => updateParams({ assignedTo: v })
+                : undefined
+            }
+            csManagerId={canFilterByManager ? csManagerId : undefined}
+            onCsManagerChange={
+              canFilterByManager ? (v) => updateParams({ csm: v }) : undefined
+            }
             isFetching={isFetching}
           />
 

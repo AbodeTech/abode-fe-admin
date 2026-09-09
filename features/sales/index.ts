@@ -3,3 +3,5 @@ export type { SalesFilters, SalesStatusCounts } from './hooks/use-sales';
 export { SummaryCards } from './components/SummaryCards';
 export { SalesTable } from './components/SalesTable';
 export { SalesStatusChips } from './components/SalesStatusChips';
+export { SalesFilterBar } from './components/SalesFilterBar';
+export { useSalesAssetOptions } from './hooks/use-sales-asset-options';

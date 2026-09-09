@@ -16,11 +16,22 @@ import { UnassignedCustomersDialog } from "./dialogs/UnassignedCustomersDialog";
 import { useUnassignedCustomers } from "../hooks/use-cs-managers-list";
 import { csManagerName, type CSManagerSummary } from "../lib/manager-display";
 
+/** URL sentinel for the combined view. Matches the associate-manager dashboard. */
+export const ALL_MANAGERS = "all";
+
 interface Props {
   /** Super admins pick any manager; a CS Manager only ever sees their own. */
   viewAs: "super-admin" | "manager";
   managers: CSManagerSummary[];
   activeManagerId: string | null;
+  /**
+   * The combined view across every manager's book — `?manager=all`.
+   *
+   * A sentinel rather than a separate control, mirroring the associate-manager
+   * dashboard: it is one more thing the picker can be pointed at, not a second
+   * mode the page can be in.
+   */
+  isAllManagers?: boolean;
   /** From the dashboard payload: portfolio.totalAssigned. */
   assignedCustomersCount: number;
 }
@@ -29,6 +40,7 @@ export function CSPerformanceHeader({
   viewAs,
   managers,
   activeManagerId,
+  isAllManagers = false,
   assignedCustomersCount,
 }: Props) {
   const router = useRouter();
@@ -64,16 +76,18 @@ export function CSPerformanceHeader({
           <p className="text-muted-foreground">
             {!isSuperAdmin
               ? `Your dashboard — ${assignedCustomersCount} customer${assignedCustomersCount === 1 ? "" : "s"} assigned.`
-              : activeManager
-                ? `${csManagerName(activeManager.manager)} — ${assignedCustomersCount} customer${assignedCustomersCount === 1 ? "" : "s"} assigned.`
-                : "Onboarding, allocation and Deed of Assignment progress, scoped per manager."}
+              : isAllManagers
+                ? `All ${managers.length} CS Manager${managers.length === 1 ? "" : "s"} combined — ${assignedCustomersCount} customer${assignedCustomersCount === 1 ? "" : "s"} assigned.`
+                : activeManager
+                  ? `${csManagerName(activeManager.manager)} — ${assignedCustomersCount} customer${assignedCustomersCount === 1 ? "" : "s"} assigned.`
+                  : "Onboarding, allocation and ticket resolution progress, scoped per manager."}
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
           {isSuperAdmin && (
             <Select
-              value={activeManagerId ?? ""}
+              value={isAllManagers ? ALL_MANAGERS : activeManagerId ?? ""}
               onValueChange={handleManagerChange}
             >
               <SelectTrigger className="w-fit min-w-55 bg-white">
@@ -85,11 +99,14 @@ export function CSPerformanceHeader({
                     No CS Managers yet
                   </div>
                 ) : (
-                  managers.map((m) => (
-                    <SelectItem key={m.manager._id} value={m.manager._id}>
-                      {csManagerName(m.manager)}
-                    </SelectItem>
-                  ))
+                  <>
+                    <SelectItem value={ALL_MANAGERS}>All CS Managers</SelectItem>
+                    {managers.map((m) => (
+                      <SelectItem key={m.manager._id} value={m.manager._id}>
+                        {csManagerName(m.manager)}
+                      </SelectItem>
+                    ))}
+                  </>
                 )}
               </SelectContent>
             </Select>
@@ -111,7 +128,11 @@ export function CSPerformanceHeader({
                 </button>
               )}
 
-              <ManageCSManagersMenu activeManager={activeManager} />
+              {/* Nobody is selected in the combined view, so there is no
+                  manager to remove — the menu still offers "Add". */}
+              <ManageCSManagersMenu
+                activeManager={isAllManagers ? null : activeManager}
+              />
             </>
           )}
         </div>

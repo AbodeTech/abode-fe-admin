@@ -53,7 +53,7 @@ export type SalesExportFormat = 'csv' | 'xlsx';
 
 // Kept for backward compatibility if needed, though we seem to only use raw fetching now
 export const downloadSalesData = async ({ payload }: { payload: SalesFilters }) => {
-  const { search, startDate, endDate, assetType } = payload;
+  const { search, startDate, endDate, assetType, assetName, assetLocation } = payload;
   const res = await execute(EXPORT_SALES_QUERY, {
     page: 1,
     limit: 1_000_000,
@@ -62,6 +62,8 @@ export const downloadSalesData = async ({ payload }: { payload: SalesFilters }) 
       startDate,
       endDate,
       assetType,
+      assetName,
+      assetLocation,
     },
   });
   return res;

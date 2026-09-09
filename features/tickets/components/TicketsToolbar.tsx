@@ -17,6 +17,7 @@ import {
   categoryLabel,
 } from "../lib/ticket-display";
 import { useTicketCategories } from "../hooks/use-tickets";
+import { useTicketManagerPicker } from "../hooks/use-ticket-manager-picker";
 
 interface Props {
   sort: TicketSort;
@@ -35,6 +36,21 @@ interface Props {
   onTypeChange?: (value: TicketType | null) => void;
   category?: string | null;
   onCategoryChange?: (value: string | null) => void;
+  /**
+   * The two manager filters. Passed only to a reader who can see past their own
+   * work — for anyone else the viewer scope ANDs with these, so every choice
+   * but themselves returns an empty table, and a control that can only ever
+   * return nothing is worse than no control.
+   *
+   * They are separate on purpose. `assignedAdminId` is who is WORKING the
+   * ticket; `csManagerId` is whose book the customer sits in. A payment fault
+   * raised by a manager's customer and handed to a developer answers to the
+   * second and not the first.
+   */
+  assignedAdminId?: string | null;
+  onAssignedAdminChange?: (value: string | null) => void;
+  csManagerId?: string | null;
+  onCsManagerChange?: (value: string | null) => void;
   isFetching?: boolean;
 }
 
@@ -52,14 +68,20 @@ export function TicketsToolbar({
   onTypeChange,
   category,
   onCategoryChange,
+  assignedAdminId,
+  onAssignedAdminChange,
+  csManagerId,
+  onCsManagerChange,
   isFetching,
 }: Props) {
   const showSearch = !!onSearchChange;
   const showType = !!onTypeChange;
   const showCategory = !!onCategoryChange;
+  const showManagers = !!onAssignedAdminChange && !!onCsManagerChange;
 
-  // Only fetched where the dropdown is actually rendered.
+  // Both only fetched where the dropdowns are actually rendered.
   const { data: categories } = useTicketCategories(showCategory);
+  const { options: managers } = useTicketManagerPicker(showManagers);
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -116,6 +138,44 @@ export function TicketsToolbar({
             ))}
           </SelectContent>
         </Select>
+      )}
+
+      {showManagers && (
+        <>
+          <Select
+            value={assignedAdminId ?? ANY}
+            onValueChange={(v) => onAssignedAdminChange!(v === ANY ? null : v)}
+          >
+            <SelectTrigger className="h-9 w-44 bg-white text-sm">
+              <SelectValue placeholder="Anyone assigned" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ANY}>Anyone assigned</SelectItem>
+              {managers.map((m) => (
+                <SelectItem key={m.id} value={m.id}>
+                  Assigned to {m.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={csManagerId ?? ANY}
+            onValueChange={(v) => onCsManagerChange!(v === ANY ? null : v)}
+          >
+            <SelectTrigger className="h-9 w-48 bg-white text-sm">
+              <SelectValue placeholder="Any customer's manager" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ANY}>Any customer&apos;s manager</SelectItem>
+              {managers.map((m) => (
+                <SelectItem key={m.id} value={m.id}>
+                  {m.label}&apos;s customers
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </>
       )}
 
       <Select

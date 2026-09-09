@@ -10,7 +10,15 @@ const formatCount = (count: number) => new Intl.NumberFormat("en-NG").format(cou
 export function SalesStatusChips({
   filters,
 }: {
-  filters: Pick<SalesFilters, "search" | "startDate" | "endDate" | "assetType">;
+  filters: Pick<
+    SalesFilters,
+    | "search"
+    | "startDate"
+    | "endDate"
+    | "assetType"
+    | "assetName"
+    | "assetLocation"
+  >;
 }) {
   const { data: counts, isLoading, isError } = useSalesStatusCounts(filters);
 

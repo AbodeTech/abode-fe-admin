@@ -1,4 +1,4 @@
-export { CSPerformanceHeader } from "./components/CSPerformanceHeader";
+export { CSPerformanceHeader, ALL_MANAGERS } from "./components/CSPerformanceHeader";
 export { CSPeriodFilter } from "./components/CSPeriodFilter";
 export { CSManagerSnapshot } from "./components/CSManagerSnapshot";
 export { BacklogsSection } from "./components/BacklogsSection";
@@ -15,6 +15,7 @@ export { PlanDetailDrawer } from "./components/drawers/PlanDetailDrawer";
 export {
   useCSManagerDashboard,
   csManagerKeys,
+  useAllCSManagersDashboard,
 } from "./hooks/use-cs-manager-dashboard";
 export { useIsCurrentCSManager } from "./hooks/use-is-current-cs-manager";
 export {
