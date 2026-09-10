@@ -23,6 +23,7 @@ import { purchaseConfirmationRoutes } from './purchase-confirmations';
 import { campaignEngineRoutes } from './campaigns-engine';
 import { paymentPlanRoutes } from './payment-plans';
 import { agencyRoutes } from './agency';
+import { courseRoutes } from './courses';
 
 /* ============================================================
  * Route registration. Importing this module (via lib/mocks/index.ts)
@@ -107,6 +108,10 @@ import { agencyRoutes } from './agency';
  *               resolve-dispute, resend). No export route — the real
  *               endpoint streams CSV with @SkipTransform; the FE hook
  *               refuses in mock mode instead (matches flex-leads).
+ * courses     — /admin/courses/* and /admin/academy-settings/*. Entirely
+ *               provisional — abode-be-v2 has no courses model yet. Covers
+ *               design screens 1–2 (list, overview) only; modules/quiz/
+ *               learners (screens 3, 5, 6, 7) are unbuilt.
  * ============================================================ */
 
 let registered = false;
@@ -139,5 +144,6 @@ export function ensureRoutesRegistered(): void {
   registerRoutes(campaignEngineRoutes);
   registerRoutes(paymentPlanRoutes);
   registerRoutes(agencyRoutes);
+  registerRoutes(courseRoutes);
   // ...added per feature as it migrates
 }

@@ -16,6 +16,7 @@ import {
   CircleDollarSign,
   ClipboardList,
   FileText,
+  GraduationCap,
   Gift,
   LandPlot,
   LayoutDashboard,
@@ -79,6 +80,15 @@ const navGroups = [
       { name: "Top associates", link: "/associates", icon: <TrendingUp /> },
       { name: "Associate Performance", link: "/associates/performance", icon: <Activity />, requiresSuperAdmin: true },
       { name: "Manager Performance", link: "/associates/managers", icon: <ShieldCheck />, requiresAdminOrManager: true },
+    ]
+  },
+  {
+    title: "Academy",
+    isCollapsible: true,
+    icon: <GraduationCap />,
+    items: [
+      { name: "Courses", link: "/academy/courses", icon: <GraduationCap /> },
+      { name: "Learners", link: "/academy/learners", icon: <Users /> },
     ]
   },
   {

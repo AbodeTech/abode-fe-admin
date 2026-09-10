@@ -45,6 +45,7 @@ everything analytical or campaign-related.
 | `campaigns` | 🚧 Engine REST mocked (`/admin/campaigns*`); Associate Pro tracker still GraphQL |
 | `allocation` | 🚧 None |
 | `sales` | 🚧 None |
+| `courses` (Academy) | 🚧 None — new domain, screens 1–2 only so far |
 
 **Roughly 45% of operations map to real endpoints; 55% are provisional.**
 
@@ -231,6 +232,31 @@ sales records, bulk assignment, pro groups — are provisional under
 
 Because this feature is large and entirely unbacked, consider migrating it
 **last**: it is pure mock-to-mock work until the BE models managers.
+
+## Courses (Academy) — `features/courses` — 🚧 **entirely provisional, new domain**
+
+Not a GraphQL conversion — a net-new admin surface for authoring courses and
+tracking who's taking them, based on a local design reference
+(`course-system-admin.html`, 7 screens + data contract). Only screens 1–2
+(courses list, course overview) are built; modules, quiz and learners
+(screens 3, 5–7) are not.
+
+| Operation | REST | Status | Notes |
+|---|---|---|---|
+| List courses | `GET /admin/courses` | 🚧 provisional | `?page&limit&status&audience&search` |
+| Filter chip counts | `GET /admin/courses/summary` | 🚧 provisional | `{ total, published, draft, realtor, buyer }` — unaffected by the active filter |
+| Create course | `POST /admin/courses` | 🚧 provisional | `{ title, audience, summary }`. Always created as `draft`. |
+| Course detail | `GET /admin/courses/:id` | 🚧 provisional | |
+| Update course | `PATCH /admin/courses/:id` | 🚧 provisional | `{ title?, summary?, audience?, estate_id?, cover_url?, grants_credential?, credential_validity_months?, credential_renewal? }` |
+| Publish / unpublish | `PATCH /admin/courses/:id/status` | 🚧 provisional | `{ status: 'draft' \| 'published' }` |
+| Delete course | `DELETE /admin/courses/:id` | 🚧 provisional | Hard delete in the mock — no soft-delete precedent decided for this domain yet |
+| Read academy settings | `GET /admin/academy-settings` | 🚧 provisional | Singleton: `{ first_sale_path_course_id, first_sale_path_course_title }` |
+| Set first-sale path | `POST /admin/academy-settings/first-sale-path` | 🚧 provisional | `{ course_id }`. Realtor-only; clears the previous holder atomically and should be written to the admin log |
+
+Not yet covered: modules/blocks, media upload + transcoding, quiz authoring
+and grading, enrolment/credential tracking (`enrolment`, `module_completion`,
+`quiz_attempt`, `credential` in the data contract). These map to screens 3–7
+of the design and are unbuilt.
 
 ## Dashboard / Analytics / Sales / Campaigns / Allocation — 🚧 **entirely provisional**
 
