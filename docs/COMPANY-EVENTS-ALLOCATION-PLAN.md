@@ -1,8 +1,16 @@
 # Company Events — Site Inspection & Allocation Flow (Implementation Map)
 
-> Status: **planning reference only** — not yet scheduled for build. Written to give
-> the team a self-explanatory map of features → components → endpoints → DTOs to
-> review and sequence before ABO-22–26 restart.
+> Status: **in build.** The admin-side create-event + allocation-table slice (§3.1–§3.2)
+> is built and wired to the real `abode-be-v2` backend, which shipped
+> 2026-09-11 (PR #67 "allocation-event"). PR #69 ("company-events-offline")
+> then added `GET /:id/allocations`, `GET /:id/analytics`, and
+> `GET /:id/registrations` — the one gap `docs/BACKEND-REQUESTS.md` item 30
+> tracked is now resolved and fully integrated (Allocated table, Analytics
+> tab, and a new Registrations tab are all real). Email, the public
+> registration form, QR check-in, and the offline scanner (§3.3–§3.6) remain
+> unbuilt on the admin side — `docs/COMPANY-EVENTS-OFFLINE-SCANNER-PLAN.md`
+> has the design for the last of those. Kept below as the original planning
+> reference.
 
 ## Context
 

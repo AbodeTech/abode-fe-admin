@@ -68,8 +68,12 @@ const navGroups = [
     icon: <CalendarDays />,
     items: [
       { name: "Meetings", link: "/meetings", icon: <Video />, requiresPermission: "view_meetings" },
-      { name: "Recruitment", link: "/recruitment", icon: <GraduationCap />, requiresPermission: "view_academy" },
-      { name: "Company Events", link: "/company-events", icon: <LandPlot />, requiresPermission: "view_academy" },
+      // No requiresPermission — ships open like the rest of the dashboard
+      // (RBAC not FE-enforced per CLAUDE.md); the real backend still gates
+      // the underlying /admin/academy/* calls on view_academy, so a page
+      // visit without that permission will show real 403 error states.
+      { name: "Recruitment", link: "/recruitment", icon: <GraduationCap /> },
+      { name: "Company Events", link: "/company-events", icon: <LandPlot />, requiresPermission: "view_allocations" },
     ]
   },
   {

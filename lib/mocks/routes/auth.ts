@@ -37,6 +37,7 @@ const ALL_PERMISSIONS = [
   'view_campaigns', 'manage_campaigns', 'export_campaigns',
   'view_payment_plans', 'export_payment_plans',
   'view_academy', 'manage_academy', 'export_academy',
+  'view_allocations', 'allocate_land', 'deallocate_land',
 ];
 
 /** Email that exercises the temporary-password lock. */
@@ -48,7 +49,7 @@ type MockAdmin = {
   lastName: string;
   userName: string;
   email: string;
-  role: string;
+  role: { id: string; name: string; is_super_admin: boolean };
   permissions: string[];
   must_change_password: boolean;
 };
@@ -118,7 +119,7 @@ export const authRoutes: MockRoutes = {
       lastName: isTempPassword ? 'Admin' : 'Okafor',
       userName: isTempPassword ? 'new.admin' : 'ada.okafor',
       email,
-      role: 'admin',
+      role: { id: 'mock-role-admin', name: 'admin', is_super_admin: true },
       permissions: ALL_PERMISSIONS,
       must_change_password: isTempPassword,
     });

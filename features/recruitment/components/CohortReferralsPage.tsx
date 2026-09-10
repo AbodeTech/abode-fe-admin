@@ -1,5 +1,6 @@
 'use client';
 
+import { useSearchParams } from 'next/navigation';
 import { Download, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -22,7 +23,9 @@ export function CohortReferralsPage({
   cohortId: string;
 }) {
   const canExport = useAdminPermissions().has('export_academy');
-  const { data, isLoading, error } = useCohortReferrals(cohortId, { page: 1 });
+  const searchParams = useSearchParams();
+  const page = Number(searchParams.get('page')) || 1;
+  const { data, isLoading, error } = useCohortReferrals(cohortId, { page });
   const exportReferrals = useExportReferrals(cohortId);
   const rows = data?.items ?? [];
   const total = data?.meta?.total ?? 0;
@@ -109,7 +112,7 @@ export function CohortReferralsPage({
         </div>
       )}
 
-      <Pagination count={total} currentIdx={1} limit={DEFAULT_REGISTRANTS_LIMIT} />
+      <Pagination count={total} currentIdx={page} limit={DEFAULT_REGISTRANTS_LIMIT} />
     </CohortShell>
   );
 }

@@ -8,10 +8,12 @@ import { SuspensePageFallback } from "@/components/shared/page-content-loader";
 import { useHasPermission } from "@/hooks/use-admin-permission";
 import {
   CreateMeetingDialog,
+  MEETING_ACCESS_TYPES,
   MEETING_AUDIENCE_TYPES,
   MeetingsFilters,
   MeetingsTable,
   useMeetings,
+  type MeetingAccessType,
   type MeetingAudienceType,
 } from "@/features/meetings";
 
@@ -25,6 +27,12 @@ function parseAudience(value: string | null): MeetingAudienceType | undefined {
     : undefined;
 }
 
+function parseAccessType(value: string | null): MeetingAccessType | undefined {
+  return value && (MEETING_ACCESS_TYPES as readonly string[]).includes(value)
+    ? (value as MeetingAccessType)
+    : undefined;
+}
+
 function MeetingsContent() {
   const router = useRouter();
   const pathname = usePathname();
@@ -33,6 +41,7 @@ function MeetingsContent() {
 
   const page = Number(searchParams.get("page")) || 1;
   const audienceType = parseAudience(searchParams.get("audience_type"));
+  const accessType = parseAccessType(searchParams.get("access_type"));
   const activeParam = searchParams.get("is_active");
   const isActive = activeParam === "true" ? true : activeParam === "false" ? false : undefined;
   const search = searchParams.get("q") || "";
@@ -50,6 +59,7 @@ function MeetingsContent() {
     page,
     limit: MEETINGS_LIST_PAGE_SIZE,
     audience_type: audienceType,
+    access_type: accessType,
     is_active: isActive,
     q: search.trim() || undefined,
   });
@@ -86,6 +96,8 @@ function MeetingsContent() {
       <MeetingsFilters
         audienceType={audienceType ?? null}
         onAudienceTypeChange={(value) => setParam("audience_type", value)}
+        accessType={accessType ?? null}
+        onAccessTypeChange={(value) => setParam("access_type", value)}
         isActive={isActive ?? null}
         onIsActiveChange={(value) => setParam("is_active", value === null ? null : String(value))}
         search={search}

@@ -4,13 +4,15 @@ For the `abode-be-v2` team. Everything below was found either by reading the cur
 
 Full FE-side field-level contract (request/response shapes, envelope, permissions) lives in `abode-fe-admin/docs/ACADEMY-BACKEND-CONTRACT.md` if useful as a reference while building any of this — you don't need it to understand what's listed here.
 
-**Update (2026-09-09, PR #65):** check-in kiosk, session-reminder emails, and the full Cohort Tests admin CRUD all landed — closing §3, §4, and §5 below. Only §1 (`cohort_id`/`access_type` on the meetings list query) and §2 (series read/cancel) remain open; both sections below are kept as a record of what shipped and what's still outstanding.
+**Update (2026-09-10, PR #66):** both remaining items landed — closing §1 and §2 below. `cohort_id`/`access_type` were added to `ListMeetingsQueryDto` (`fee2e97`, 2026-09-09), and `GET /admin/meetings/series/:id` + `POST /admin/meetings/series/:id/cancel` + `POST /admin/meetings/:id/cancel` (single-session terminal cancel) all shipped (`8843241`, 2026-09-10). Nothing outstanding in this doc as of this pull — sections below kept as a record.
+
+**Update (2026-09-09, PR #65):** check-in kiosk, session-reminder emails, and the full Cohort Tests admin CRUD all landed — closing §3, §4, and §5 below.
 
 **Earlier update:** the meetings extension (cohort sessions, physical days, recurrence) and the whole registrants/referrals/dashboard surface landed before that (`admin registrants list/filter/export`, `referral leaderboard`, `cohort dashboard and outcomes`, `meetings extension to create meeting cohort series and verify attendance`, `creating cohort sessions schedule and attendance flow`).
 
 ---
 
-## 1. `GET /admin/meetings` query filters are missing `cohort_id` and `access_type`
+## 1. `GET /admin/meetings` query filters are missing `cohort_id` and `access_type` — ✅ RESOLVED 2026-09-09 (`fee2e97`)
 
 **Confirmed live** (`https://api-v2-staging.abodeflex.ng`): both currently 400:
 
@@ -29,7 +31,9 @@ Full FE-side field-level contract (request/response shapes, envelope, permission
 
 **Now also affects:** the new Cohort Tests "create test" dialog (§5) uses the same `cohort_id`-filtered meetings call to populate its session/series eligibility pickers — same 400 on real staging, same fix.
 
-## 2. No series read or cancel endpoints
+## 2. No series read or cancel endpoints — ✅ RESOLVED 2026-09-10 (`8843241`)
+
+`GET /admin/meetings/series/:id` returns the series (audience, cohort label, access type) plus every session in schedule order with `series_position`/`series_total`, and session/cancelled counts. `POST /admin/meetings/series/:id/cancel` cancels the series and stamps `cancelled_at` on remaining *future* un-cancelled sessions only (past/in-progress sessions keep their attendance), idempotently. A separate `POST /admin/meetings/:id/cancel` also landed for a single session — terminal and irreversible, distinct from the existing reversible `toggle-active`.
 
 **Confirmed via source** — `meetings-admin.controller.ts` has no series routes at all: no `GET /admin/meetings/series/:id`, no cancel for a series, and no `POST /admin/meetings/:id/cancel` for a single session (only `toggle-active` exists, which is reversible — cancel is meant to be terminal, a different thing).
 
@@ -68,7 +72,4 @@ Not a bug — just noting it so it doesn't get lost. The staging account used fo
 
 ## Suggested order
 
-Only two items left:
-
-1. **§1 (`cohort_id`/`access_type` on the meetings list query)** — smallest fix here, unblocks both the Sessions tab and the Tests tab's eligibility pickers on real staging.
-2. **§2 (series read/cancel)** — next when ops needs to manage a series as a unit.
+Nothing left open as of the 2026-09-10 pull (PR #66) — §1 and §2 both shipped. §6 is FE/QA housekeeping, not a backend item. Kept as a record; reopen a new section here if something regresses or a new gap turns up.

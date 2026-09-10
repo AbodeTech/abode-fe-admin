@@ -104,6 +104,17 @@ export const ADMIN_PERMISSIONS = [
   'view_academy',
   'manage_academy',
   'export_academy',
+
+  // Land allocation (features/allocation/) and Company Events both gate on
+  // this vocabulary on the real BE (confirmed in both
+  // `allocation-admin.controller.ts` and `company-events-admin.controller.ts`
+  // — the latter's own comment calls this an interim reuse pending a
+  // dedicated company-events permission). Neither FE feature enforces these
+  // yet (RBAC not FE-enforced per CLAUDE.md) except the Company Events
+  // sidebar entry.
+  'view_allocations',
+  'allocate_land',
+  'deallocate_land',
 ] as const;
 
 export type AdminPermission = (typeof ADMIN_PERMISSIONS)[number];

@@ -676,10 +676,14 @@ export const meetingRoutes: MockRoutes = {
     if (typeof query.audience_type === 'string') {
       rows = rows.filter((m) => m.audience_type === query.audience_type);
     }
-    // No session_kind (never existed) or access_type filter here — the real
-    // ListMeetingsQueryDto doesn't accept either; FE no longer sends them.
+    // session_kind never existed on the real BE — still not accepted here.
+    // cohort_id and access_type both landed on the real ListMeetingsQueryDto
+    // 2026-09-09 (fee2e97) — filtered server-side here to match.
     if (typeof query.cohort_id === 'string' && query.cohort_id.trim()) {
       rows = rows.filter((m) => m.cohort_id === query.cohort_id);
+    }
+    if (typeof query.access_type === 'string') {
+      rows = rows.filter((m) => m.access_type === query.access_type);
     }
     if (query.is_active === 'true') rows = rows.filter((m) => m.is_active);
     if (query.is_active === 'false') rows = rows.filter((m) => !m.is_active);

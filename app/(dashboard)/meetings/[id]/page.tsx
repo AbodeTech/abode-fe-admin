@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { Pagination } from "@/components/shared/Pagination";
 import { SuspensePageFallback } from "@/components/shared/page-content-loader";
 import { useHasPermission } from "@/hooks/use-admin-permission";
@@ -20,6 +21,7 @@ import {
   MEETING_ACCESS_TYPE_LABELS,
   meetingAudienceDisplay,
   meetingSeriesPositionLabel,
+  useCancelMeetingSession,
   useIsMeetingLive,
   useMeeting,
   useMeetingVerifications,
@@ -34,6 +36,7 @@ function MeetingDetailContent() {
   const page = Number(searchParams.get("page")) || 1;
   const canManage = useHasPermission("manage_meetings");
   const [editOpen, setEditOpen] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
 
   const meetingQuery = useMeeting(id);
   const meeting = meetingQuery.data;
@@ -46,6 +49,7 @@ function MeetingDetailContent() {
     live,
   });
   const toggle = useToggleMeetingActive();
+  const cancelSession = useCancelMeetingSession();
 
   const copyShareUrl = async () => {
     if (!meeting?.share_url) return;
@@ -64,6 +68,17 @@ function MeetingDetailContent() {
       toast.success(meeting.is_active ? "Meeting deactivated" : "Meeting activated");
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Failed to update meeting");
+    }
+  };
+
+  // Terminal and irreversible — distinct from toggle-active, which is reversible.
+  const handleCancel = async () => {
+    if (!meeting) return;
+    try {
+      await cancelSession.mutateAsync(meeting.id);
+      toast.success("Session cancelled");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to cancel session");
     }
   };
 
@@ -96,12 +111,14 @@ function MeetingDetailContent() {
             {meeting ? (
               <Badge
                 className={
-                  meeting.is_active
-                    ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-100"
-                    : "bg-gray-100 text-gray-800 hover:bg-gray-100"
+                  meeting.cancelled_at
+                    ? "bg-red-100 text-red-800 hover:bg-red-100"
+                    : meeting.is_active
+                      ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-100"
+                      : "bg-gray-100 text-gray-800 hover:bg-gray-100"
                 }
               >
-                {meeting.is_active ? "Active" : "Inactive"}
+                {meeting.cancelled_at ? "Cancelled" : meeting.is_active ? "Active" : "Inactive"}
               </Badge>
             ) : null}
           </div>
@@ -119,14 +136,27 @@ function MeetingDetailContent() {
             <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
               Edit
             </Button>
-            <Button
-              variant={meeting.is_active ? "outline" : "default"}
-              size="sm"
-              onClick={handleToggle}
-              disabled={toggle.isPending}
-            >
-              {meeting.is_active ? "Deactivate" : "Activate"}
-            </Button>
+            {!meeting.cancelled_at ? (
+              <Button
+                variant={meeting.is_active ? "outline" : "default"}
+                size="sm"
+                onClick={handleToggle}
+                disabled={toggle.isPending}
+              >
+                {meeting.is_active ? "Deactivate" : "Activate"}
+              </Button>
+            ) : null}
+            {!meeting.cancelled_at ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-destructive hover:text-destructive"
+                onClick={() => setCancelOpen(true)}
+                disabled={cancelSession.isPending}
+              >
+                Cancel session
+              </Button>
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -145,12 +175,15 @@ function MeetingDetailContent() {
               <div>
                 <p className="text-muted-foreground">Series</p>
                 <p className="font-medium">
-                  {/* Not a link: the real BE has no series-detail endpoint
-                      (see docs/ACADEMY-BACKEND-GAPS.md §2) — a link here
-                      would 404. */}
-                  {meeting.series_id && meeting.series_name
-                    ? `${meeting.series_name} (${meetingSeriesPositionLabel(meeting)})`
-                    : meetingSeriesPositionLabel(meeting)}
+                  {meeting.series_id ? (
+                    <Link href={`/meetings/series/${meeting.series_id}`} className="hover:underline">
+                      {meeting.series_name
+                        ? `${meeting.series_name} (${meetingSeriesPositionLabel(meeting)})`
+                        : meetingSeriesPositionLabel(meeting)}
+                    </Link>
+                  ) : (
+                    meetingSeriesPositionLabel(meeting)
+                  )}
                 </p>
               </div>
               <div>
@@ -269,6 +302,14 @@ function MeetingDetailContent() {
           </div>
 
           <EditMeetingDialog meeting={meeting} open={editOpen} onOpenChange={setEditOpen} />
+          <ConfirmDialog
+            open={cancelOpen}
+            onOpenChange={setCancelOpen}
+            title="Cancel this session?"
+            description="This can't be undone."
+            confirmLabel="Cancel session"
+            onConfirm={handleCancel}
+          />
         </>
       ) : null}
     </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowLeft, Copy, Eye } from "lucide-react";
@@ -8,6 +9,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -64,6 +66,9 @@ export function SeriesDetailPage() {
 
   const series = seriesQuery.data;
 
+  const [cancelSeriesOpen, setCancelSeriesOpen] = useState(false);
+  const [sessionToCancel, setSessionToCancel] = useState<string | null>(null);
+
   const copyShareUrl = async () => {
     if (!series?.share_url) return;
     try {
@@ -76,7 +81,6 @@ export function SeriesDetailPage() {
 
   const handleCancelSeries = async () => {
     if (!series) return;
-    if (!window.confirm("Cancel all upcoming sessions in this series?")) return;
     try {
       await cancelSeries.mutateAsync(series.id);
       toast.success("Upcoming sessions cancelled");
@@ -85,13 +89,15 @@ export function SeriesDetailPage() {
     }
   };
 
-  const handleCancelSession = async (meetingId: string) => {
-    if (!window.confirm("Cancel this session?")) return;
+  const handleCancelSession = async () => {
+    if (!sessionToCancel) return;
     try {
-      await cancelSession.mutateAsync(meetingId);
+      await cancelSession.mutateAsync(sessionToCancel);
       toast.success("Session cancelled");
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Failed to cancel session");
+    } finally {
+      setSessionToCancel(null);
     }
   };
 
@@ -155,7 +161,7 @@ export function SeriesDetailPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={handleCancelSeries}
+            onClick={() => setCancelSeriesOpen(true)}
             disabled={cancelSeries.isPending}
           >
             Cancel upcoming
@@ -232,7 +238,7 @@ export function SeriesDetailPage() {
                           variant="outline"
                           size="sm"
                           className="w-full"
-                          onClick={() => handleCancelSession(session.id)}
+                          onClick={() => setSessionToCancel(session.id)}
                           disabled={cancelSession.isPending}
                         >
                           Cancel session
@@ -286,7 +292,7 @@ export function SeriesDetailPage() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => handleCancelSession(session.id)}
+                                onClick={() => setSessionToCancel(session.id)}
                                 disabled={cancelSession.isPending}
                               >
                                 Cancel
@@ -303,6 +309,25 @@ export function SeriesDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      <ConfirmDialog
+        open={cancelSeriesOpen}
+        onOpenChange={setCancelSeriesOpen}
+        title="Cancel all upcoming sessions?"
+        description="Past and in-progress sessions keep their attendance — only future, un-cancelled sessions in this series are cancelled."
+        confirmLabel="Cancel upcoming"
+        onConfirm={handleCancelSeries}
+      />
+      <ConfirmDialog
+        open={sessionToCancel !== null}
+        onOpenChange={(open) => {
+          if (!open) setSessionToCancel(null);
+        }}
+        title="Cancel this session?"
+        description="This can't be undone."
+        confirmLabel="Cancel session"
+        onConfirm={handleCancelSession}
+      />
     </div>
   );
 }

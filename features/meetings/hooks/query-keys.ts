@@ -1,14 +1,11 @@
-import type { MeetingAudienceType } from '../schemas/meeting.schema';
+import type { MeetingAccessType, MeetingAudienceType } from '../schemas/meeting.schema';
 
 /**
  * Mirrors `ListMeetingsQueryDto` on the real BE — page, limit, audience_type,
- * is_active, starts_after, starts_before, q. `access_type` is dropped from
- * this list on purpose: confirmed live against staging (2026-09-09) that it
- * 400s with "property access_type should not exist" here, even though it's a
- * real, working field on create/update now — the list DTO just hasn't caught
- * up. `cohort_id` isn't on the real query DTO either (same 400) — `useMeetings`
- * works around it by fetching wide and filtering client-side when this is set
- * against a real (non-mock) backend; see docs/ACADEMY-BACKEND-GAPS.md §1.
+ * is_active, starts_after, starts_before, q, cohort_id, access_type. The last
+ * two landed 2026-09-09 (`fee2e97`) — previously both 400'd
+ * ("property ... should not exist"), which is why older code here worked
+ * around it; see docs/ACADEMY-BACKEND-GAPS.md §1 (now resolved) for the history.
  */
 export type MeetingListFilters = {
   page?: number;
@@ -18,8 +15,8 @@ export type MeetingListFilters = {
   starts_after?: string;
   starts_before?: string;
   q?: string;
-  /** Not on GET /admin/meetings's query DTO yet — see file header. */
   cohort_id?: string;
+  access_type?: MeetingAccessType;
 };
 
 export const meetingKeys = {

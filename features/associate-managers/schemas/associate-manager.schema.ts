@@ -275,8 +275,10 @@ export function managerInitials(
  *
  * Bare Mongoose docs; the BE has no response DTO for this route, hence the
  * loose shape. Duplicated from cs-managers rather than shared because
- * `roles-permissions` still owns the admin list on GraphQL and features stay
- * self-contained — fold both into that feature once it migrates.
+ * features stay self-contained (no cross-feature imports per CLAUDE.md) —
+ * `roles-permissions` is REST now (not GraphQL) and owns the fuller admin
+ * list, but this picker's use case (a lightweight `_id`+`email`+`role` row)
+ * doesn't warrant importing that feature's whole surface for it.
  * ============================================================ */
 
 export const AdminPickerRowSchema = z.looseObject({

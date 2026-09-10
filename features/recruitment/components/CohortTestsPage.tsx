@@ -240,14 +240,17 @@ function EligibilityFields({
   setRequiredCount: (v: string) => void;
   disabled?: boolean;
 }) {
-  // NOTE: `cohort_id` isn't accepted by the real `GET /admin/meetings` query DTO
-  // yet (docs/ACADEMY-BACKEND-GAPS.md §1) — this list will 400 on real staging
-  // until that lands, same pre-existing gap CohortSessionsPage already hits.
   const meetingsQuery = useMeetings({ page: 1, limit: 50, cohort_id: cohortId });
   const seriesOptions = useMemo(() => {
     const map = new Map<string, string>();
     for (const m of meetingsQuery.data?.items ?? []) {
-      if (m.series_id) map.set(m.series_id, m.series_name ?? m.series_id);
+      if (!m.series_id) continue;
+      // `series_name` is a mock-only convenience — the real MeetingDto only
+      // carries `series_id`, so a raw id would otherwise show up as the
+      // option label against the real backend. Fall back to the session's
+      // own name (sessions in one series share a name in practice) rather
+      // than ever rendering the id itself.
+      if (!map.has(m.series_id)) map.set(m.series_id, m.series_name ?? m.name);
     }
     return [...map.entries()];
   }, [meetingsQuery.data?.items]);

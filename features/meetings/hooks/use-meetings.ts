@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { apiGet, apiGetPaged, apiPatch, apiPost } from '@/lib/api-client';
-import { isMockApiEnabled } from '@/lib/mocks';
 
 import {
   isMeetingLive,
@@ -22,54 +21,21 @@ import { meetingKeys, type MeetingListFilters } from './query-keys';
 export const DEFAULT_MEETINGS_LIMIT = 20;
 
 /**
- * How many meetings to pull in one shot when scoping to a cohort on the real
- * BE (see below) — wide enough to cover a cohort's full session list in one
- * request, since there's no server-side way to ask for just that page of it.
- */
-const COHORT_SCOPE_FETCH_LIMIT = 200;
-
-/**
  * GET /admin/meetings — paginated, filterable list.
- * Query: page, limit, audience_type, is_active, starts_after, starts_before, q.
- *
- * `cohort_id` is a real gap on the real BE — `ListMeetingsQueryDto` 400s
- * ("property cohort_id should not exist") on it, confirmed live against
- * staging (docs/ACADEMY-BACKEND-GAPS.md §1). The mock accepts it and filters
- * server-side; against the real BE we instead fetch a wide, unfiltered page
- * and filter by `cohort_id` client-side, then paginate over that filtered
- * set locally. Drop this once the BE adds the filter.
+ * Query: page, limit, audience_type, is_active, starts_after, starts_before,
+ * q, cohort_id, access_type — all filtered server-side now that `cohort_id`
+ * and `access_type` landed on the real `ListMeetingsQueryDto` (2026-09-09,
+ * `fee2e97`). Previously both 400'd and `cohort_id` was worked around with a
+ * wide client-side-filtered fetch; that workaround is gone now that the BE
+ * does the filtering itself.
  */
 export const useMeetings = (filters?: MeetingListFilters) => {
   const { page = 1, limit = DEFAULT_MEETINGS_LIMIT, ...rest } = filters ?? {};
-  const scopeToCohortClientSide = Boolean(rest.cohort_id) && !isMockApiEnabled();
 
   return useQuery({
     queryKey: meetingKeys.list({ page, limit, ...rest }),
-    queryFn: async () => {
-      if (scopeToCohortClientSide) {
-        const wide = await apiGetPaged('/admin/meetings', MeetingSchema, {
-          params: {
-            limit: COHORT_SCOPE_FETCH_LIMIT,
-            audience_type: rest.audience_type,
-            is_active: rest.is_active === undefined ? undefined : String(rest.is_active),
-            starts_after: rest.starts_after,
-            starts_before: rest.starts_before,
-            q: rest.q?.trim() || undefined,
-          },
-        });
-        const filtered = wide.items.filter((m) => m.cohort_id === rest.cohort_id);
-        const start = (page - 1) * limit;
-        return {
-          items: filtered.slice(start, start + limit),
-          meta: {
-            total: filtered.length,
-            page,
-            limit,
-            totalPages: Math.ceil(filtered.length / limit) || 0,
-          },
-        };
-      }
-      return apiGetPaged('/admin/meetings', MeetingSchema, {
+    queryFn: () =>
+      apiGetPaged('/admin/meetings', MeetingSchema, {
         params: {
           page,
           limit,
@@ -79,9 +45,9 @@ export const useMeetings = (filters?: MeetingListFilters) => {
           starts_before: rest.starts_before,
           q: rest.q?.trim() || undefined,
           cohort_id: rest.cohort_id,
+          access_type: rest.access_type,
         },
-      });
-    },
+      }),
   });
 };
 
@@ -94,10 +60,12 @@ export const useMeeting = (id: string | undefined) =>
   });
 
 /**
- * GET /admin/meetings/series/:id — series detail.
- * NOT on the real BE — there is no series controller/route at all yet
- * (confirmed by reading meetings-admin.controller.ts directly, 2026-09-09).
- * Mock-only until it lands; see docs/ACADEMY-BACKEND-GAPS.md §1.
+ * GET /admin/meetings/series/:id — series detail (the series plus every
+ * session in schedule order). Real on the BE as of 2026-09-10 (`8843241`) —
+ * previously mock-only. `series_slug`/`series_name`/`series_position`/
+ * `series_total` on each session aren't on the real `MeetingDto` (only
+ * `series_id` is) — `MeetingSchema` keeps them optional and the UI degrades
+ * gracefully when they're absent (see `meetingSeriesPositionLabel`).
  */
 export const useMeetingSeries = (id: string | undefined) =>
   useQuery({
@@ -203,8 +171,10 @@ export const useToggleMeetingActive = () => {
 };
 
 /**
- * POST /admin/meetings/series/:id/cancel — cancels remaining upcoming sessions.
- * NOT on the real BE (no series controller at all yet) — mock-only.
+ * POST /admin/meetings/series/:id/cancel — cancels the series and stamps
+ * `cancelled_at` on remaining *future*, un-cancelled sessions only (past/
+ * in-progress sessions keep their attendance). Idempotent. Real on the BE as
+ * of 2026-09-10 (`8843241`) — previously mock-only.
  */
 export const useCancelMeetingSeries = () => {
   const queryClient = useQueryClient();
@@ -219,9 +189,10 @@ export const useCancelMeetingSeries = () => {
 };
 
 /**
- * POST /admin/meetings/:id/cancel — cancel a single session in a series (or standalone).
- * NOT on the real BE — only toggle-active exists there (confirmed by reading
- * meetings.service.ts directly; no `cancel` method). Mock-only for now.
+ * POST /admin/meetings/:id/cancel — cancel a single session (standalone or
+ * part of a series). Terminal and irreversible — distinct from the existing
+ * `toggle-active`, which is reversible. Real on the BE as of 2026-09-10
+ * (`8843241`) — previously mock-only.
  */
 export const useCancelMeetingSession = () => {
   const queryClient = useQueryClient();

@@ -14,21 +14,25 @@ import {
 } from "@/components/ui/select";
 
 import {
+  MEETING_ACCESS_TYPE_LABELS,
+  MEETING_ACCESS_TYPES,
   MEETING_AUDIENCE_LABELS,
   MEETING_AUDIENCE_TYPES,
+  type MeetingAccessType,
   type MeetingAudienceType,
 } from "../schemas/meeting.schema";
 
 /**
- * `session_kind` and `access_type` filters were removed here: verified live
- * against staging (2026-09-09) that `GET /admin/meetings` 400s on either
- * ("property X should not exist") — `ListMeetingsQueryDto` only accepts
- * `audience_type`, `is_active`, `starts_after`, `starts_before`, `q`. See
- * docs/ACADEMY-BACKEND-GAPS.md §1.
+ * `session_kind` never existed on the real BE — still not a filter here.
+ * `access_type` was removed here for the same reason as `cohort_id` in
+ * `use-meetings.ts` (400'd on the real `ListMeetingsQueryDto`) but that
+ * landed 2026-09-09 (`fee2e97`) — restored below.
  */
 interface MeetingsFiltersProps {
   audienceType: MeetingAudienceType | null;
   onAudienceTypeChange: (value: MeetingAudienceType | null) => void;
+  accessType: MeetingAccessType | null;
+  onAccessTypeChange: (value: MeetingAccessType | null) => void;
   isActive: boolean | null;
   onIsActiveChange: (value: boolean | null) => void;
   search: string;
@@ -38,6 +42,8 @@ interface MeetingsFiltersProps {
 export function MeetingsFilters({
   audienceType,
   onAudienceTypeChange,
+  accessType,
+  onAccessTypeChange,
   isActive,
   onIsActiveChange,
   search,
@@ -64,7 +70,7 @@ export function MeetingsFilters({
   }, [searchInput]);
 
   const hasActiveFilters =
-    audienceType !== null || isActive !== null || searchInput.trim().length > 0;
+    audienceType !== null || accessType !== null || isActive !== null || searchInput.trim().length > 0;
 
   return (
     <div className="flex min-w-0 flex-col flex-wrap items-stretch gap-3 sm:flex-row sm:items-center">
@@ -83,6 +89,27 @@ export function MeetingsFilters({
             {MEETING_AUDIENCE_TYPES.map((type) => (
               <SelectItem key={type} value={type}>
                 {MEETING_AUDIENCE_LABELS[type]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="w-full min-w-0 sm:w-40 sm:shrink-0">
+        <Select
+          value={accessType ?? "all"}
+          onValueChange={(value) =>
+            onAccessTypeChange(value === "all" ? null : (value as MeetingAccessType))
+          }
+        >
+          <SelectTrigger className="w-full min-w-0">
+            <SelectValue placeholder="All access types" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All access types</SelectItem>
+            {MEETING_ACCESS_TYPES.map((type) => (
+              <SelectItem key={type} value={type}>
+                {MEETING_ACCESS_TYPE_LABELS[type]}
               </SelectItem>
             ))}
           </SelectContent>
@@ -124,6 +151,7 @@ export function MeetingsFilters({
           size="sm"
           onClick={() => {
             onAudienceTypeChange(null);
+            onAccessTypeChange(null);
             onIsActiveChange(null);
             setSearchInput("");
             onSearchChange("");
