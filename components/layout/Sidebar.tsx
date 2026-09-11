@@ -17,6 +17,8 @@ import {
   ClipboardList,
   FileText,
   Gift,
+  CalendarDays,
+  GraduationCap,
   LandPlot,
   LayoutDashboard,
   LogOut,
@@ -53,11 +55,25 @@ const navGroups = [
       { name: "Allocation", link: "/allocation", icon: <Building2 /> },
       { name: "Purchase Confirmations", link: "/purchase-confirmations", icon: <CheckCircle /> },
       { name: "Marketplace", link: "/marketplace", icon: <Store /> },
-      { name: "Meetings", link: "/meetings", icon: <Video /> },
       { name: "Requests", link: "/requests", icon: <ClipboardList /> },
       { name: "Amaris", link: "/amaris", icon: <Bot /> },
       { name: "Flex Leads", link: "/flex-leads", icon: <UserPlus /> },
       { name: "Upgrade Coupons", link: "/associate-upgrade/coupons", icon: <Gift /> },
+    ]
+  },
+  {
+    // ABO-5 — Meetings / Recruitment / Company Events as one Events group.
+    title: "Events",
+    isCollapsible: true,
+    icon: <CalendarDays />,
+    items: [
+      { name: "Meetings", link: "/meetings", icon: <Video />, requiresPermission: "view_meetings" },
+      // No requiresPermission — ships open like the rest of the dashboard
+      // (RBAC not FE-enforced per CLAUDE.md); the real backend still gates
+      // the underlying /admin/academy/* calls on view_academy, so a page
+      // visit without that permission will show real 403 error states.
+      { name: "Recruitment", link: "/recruitment", icon: <GraduationCap /> },
+      { name: "Company Events", link: "/company-events", icon: <LandPlot />, requiresPermission: "view_allocations" },
     ]
   },
   {

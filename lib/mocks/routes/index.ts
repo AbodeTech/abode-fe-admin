@@ -23,6 +23,8 @@ import { purchaseConfirmationRoutes } from './purchase-confirmations';
 import { campaignEngineRoutes } from './campaigns-engine';
 import { paymentPlanRoutes } from './payment-plans';
 import { agencyRoutes } from './agency';
+import { academyRoutes } from './academy';
+import { companyEventsRoutes } from './company-events';
 
 /* ============================================================
  * Route registration. Importing this module (via lib/mocks/index.ts)
@@ -107,13 +109,27 @@ import { agencyRoutes } from './agency';
  *               resolve-dispute, resend). No export route — the real
  *               endpoint streams CSV with @SkipTransform; the FE hook
  *               refuses in mock mode instead (matches flex-leads).
+ * company-events — /admin/company-events/* (create/list/detail, status
+ *               transitions, eligible-clients, save/remove allocations,
+ *               list allocations, analytics, list registrations). Real
+ *               backend module as of 2026-09-11 (PR #67 "allocation-event"),
+ *               extended by PR #69 "company-events-offline" (`GET .../allocations`,
+ *               `GET .../analytics`, `GET .../registrations`) and PR #70
+ *               "company-events-status-onboarding" (`PATCH .../status`,
+ *               `POST .../publish`, `POST .../close`) — every route here
+ *               mirrors `company-events-admin.controller.ts` field-for-field
+ *               now, not a forward guess or mock-only shape. Registration
+ *               rows are seeded directly (not served through
+ *               `event-registration.controller.ts`'s own public route,
+ *               which is unclaimed here) and check-in/offline sync
+ *               (`checkin/event-checkin.controller.ts`) has no FE work
+ *               consuming it yet, so no route is claimed for either.
  * ============================================================ */
 
 let registered = false;
 
 export function ensureRoutesRegistered(): void {
   if (registered) return;
-  registered = true;
 
   registerRoutes(authRoutes);
   registerRoutes(commissionRoutes);
@@ -139,5 +155,9 @@ export function ensureRoutesRegistered(): void {
   registerRoutes(campaignEngineRoutes);
   registerRoutes(paymentPlanRoutes);
   registerRoutes(agencyRoutes);
-  // ...added per feature as it migrates
+  registerRoutes(academyRoutes);
+  registerRoutes(companyEventsRoutes);
+
+  // Only mark done after every domain registered — a throw mid-way must allow retry.
+  registered = true;
 }
