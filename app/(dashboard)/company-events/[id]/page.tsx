@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useParams, useRouter, useSearchParams } from "next/navigation";
-import { Download, Loader2 } from "lucide-react";
+import { Copy, Download, Loader2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -106,8 +106,11 @@ function EventDetailContent() {
     search: regSearchParam || undefined,
     category: regCategoryParam ?? undefined,
   };
+  // Real for both event types — `listEventRegistrations` doesn't gate on
+  // `type` (only `getEventAnalytics` does), so a site-inspection event's
+  // registrants come back from the same endpoint the allocation flow uses.
   const { data: registrationsData, isLoading: registrationsLoading } = useEventRegistrations(
-    isAllocationEvent ? eventId : undefined,
+    eventId,
     registrationFilters
   );
 
@@ -122,6 +125,20 @@ function EventDetailContent() {
 
   // `event.reserved_size` is the real, server-computed running total.
   const usedSize = event?.reserved_size ?? 0;
+
+  // Not personalized like the allocation flow's per-person emailed link —
+  // one public URL per event, shared however the admin chooses.
+  const registrationLink = eventId ? `${process.env.NEXT_PUBLIC_FE_APP_URL ?? ""}/site-inspection/${eventId}` : "";
+
+  const handleCopyLink = async () => {
+    if (!registrationLink) return;
+    try {
+      await navigator.clipboard.writeText(registrationLink);
+      toast.success("Link copied");
+    } catch {
+      toast.error("Couldn't copy — copy it manually instead");
+    }
+  };
 
   const updateParams = useCallback(
     (next: Record<string, string | number | null | undefined>) => {
@@ -400,11 +417,65 @@ function EventDetailContent() {
       </div>
 
       {!isAllocationEvent ? (
-        <div className="rounded-xl border border-dashed bg-white p-10 text-center">
-          <p className="font-medium text-slate-900">No allocation batch for this event</p>
-          <p className="mt-2 text-sm text-slate-500">
-            Site inspection days don&apos;t have eligibility or capacity — anyone can attend.
-          </p>
+        <div className="space-y-6">
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+            <h2 className="text-sm font-semibold text-slate-900">Registration link</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Site inspection days don&apos;t have eligibility or capacity — anyone can attend. Share this link
+              however you like; everyone who submits it shows up below.
+            </p>
+            {event.status === "draft" ? (
+              <p className="mt-3 text-sm text-amber-600">
+                This event is still a draft — publish it before sharing the link.
+              </p>
+            ) : (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <code className="min-w-0 flex-1 truncate rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                  {registrationLink}
+                </code>
+                <Button variant="outline" size="sm" onClick={handleCopyLink} className="gap-2">
+                  <Copy className="h-4 w-4" />
+                  Copy link
+                </Button>
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold">Registrants</h2>
+              <p className="text-sm text-muted-foreground">Everyone who has signed up via the link above.</p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportRegistrations}
+              disabled={exportRegistrations.isPending}
+            >
+              {exportRegistrations.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+              Export
+            </Button>
+          </div>
+
+          <EventRegistrationFilters
+            search={regSearchTerm}
+            category={regCategoryParam ?? "all"}
+            onSearchChange={setRegSearchTerm}
+            onCategoryChange={(value) => updateParams({ reg_category: value === "all" ? null : value, reg_page: 1 })}
+          />
+
+          <EventRegistrationsTable rows={registrationsData?.items} isLoading={registrationsLoading} />
+
+          <Pagination
+            count={registrationsData?.meta.total ?? 0}
+            currentIdx={regPage}
+            limit={DEFAULT_EVENT_REGISTRATIONS_LIMIT}
+            pageParam="reg_page"
+          />
         </div>
       ) : (
         <Tabs value={view} onValueChange={(value) => updateParams({ view: value === "allocation" ? null : value })}>

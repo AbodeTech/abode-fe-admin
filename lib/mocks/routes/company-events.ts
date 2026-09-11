@@ -88,10 +88,17 @@ type MockEventAllocation = {
   created_at: string;
 };
 
-/** One public form submission — mirrors `EventRegistration` field-for-field. */
+/**
+ * One public form submission — mirrors `EventRegistration` field-for-field.
+ * `event_allocation_id` is `null` for a site-inspection registrant (no
+ * `EventAllocation` exists for that event type at all) — see
+ * docs/SITE-INSPECTION-REGISTRATION-BACKEND-REQUEST.md, which proposes
+ * relaxing the real schema's `required: true` the same way. Modeled ahead
+ * of that shipping, same as the rest of this file's forward-simulated bits.
+ */
 type MockEventRegistration = {
   registration_id: string;
-  event_allocation_id: string;
+  event_allocation_id: string | null;
   event_id: string;
   full_name: string;
   phone: string;
@@ -256,6 +263,24 @@ function seedIfNeeded(): void {
     size_unit: null,
   });
   inspection.status = 'published';
+
+  // Site inspection has no `EventAllocation` to hang a registrant off of —
+  // these are seeded directly against the event, `event_allocation_id: null`,
+  // so the Registrants table on a site-inspection event has something real
+  // to render ahead of the real public form shipping.
+  MOCK_USERS.slice(0, 4).forEach((user, i) => {
+    registrations.push({
+      registration_id: `evt-reg-si-${++registrationSeq}`,
+      event_allocation_id: null,
+      event_id: inspection.id,
+      full_name: `${user.firstName} ${user.lastName}`,
+      phone: user.phoneNumber,
+      email: user.email,
+      category: REGISTRANT_CATEGORIES[i % REGISTRANT_CATEGORIES.length],
+      preferred_pickup_location_id: '',
+      submitted_at: formatMockDate(-3 - i),
+    });
+  });
 
   const allocation = createEvent({
     title: `${MOCK_ASSET_DIRECTORY[1].name} — October Allocation`,
@@ -665,9 +690,13 @@ export const companyEventsRoutes: MockRoutes = {
     };
   },
 
+  // Real `listEventRegistrations()` doesn't gate on event type (only
+  // `getEventAnalytics()` does) — a site-inspection event's registrants use
+  // this same endpoint, so this stays `requireEvent`, not
+  // `requireAllocationEvent`.
   'GET /admin/company-events/:id/registrations': ({ params, query }) => {
     seedIfNeeded();
-    const event = requireAllocationEvent(params.id);
+    const event = requireEvent(params.id);
 
     let rows = registrations.filter((r) => r.event_id === params.id);
 
