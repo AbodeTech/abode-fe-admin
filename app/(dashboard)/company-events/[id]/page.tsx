@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { Pagination } from "@/components/shared/Pagination";
 import { SuspensePageFallback } from "@/components/shared/page-content-loader";
 import { toast } from "sonner";
@@ -35,6 +36,7 @@ import {
   useEventRegistrations,
   useEventRegistrationsExport,
   useSaveEventAllocations,
+  useUpdateEventStatus,
   type EligibilityTier,
   type EventAllocation,
   type EventEligibleClient,
@@ -59,6 +61,7 @@ function EventDetailContent() {
   const [searchTerm, setSearchTerm] = useState(searchParam);
   const [regSearchTerm, setRegSearchTerm] = useState(regSearchParam);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
 
   const { data: event, isLoading: eventLoading } = useCompanyEvent(eventId);
   const isAllocationEvent = event?.type === "allocation";
@@ -113,6 +116,7 @@ function EventDetailContent() {
   const exportEligible = useEventEligibleClientsExport();
   const exportAllocations = useEventAllocationsExport();
   const exportRegistrations = useEventRegistrationsExport();
+  const updateEventStatus = useUpdateEventStatus();
 
   const view = (searchParams.get("view") as "allocation" | "analytics" | "registrations" | null) ?? "allocation";
 
@@ -289,6 +293,45 @@ function EventDetailContent() {
     );
   };
 
+  const handlePublish = () => {
+    if (!eventId) return;
+    updateEventStatus.mutate(
+      { eventId, status: "published" },
+      {
+        onSuccess: () => toast.success("Event published"),
+        onError: (error) => toast.error(error.message || "Failed to publish event"),
+      }
+    );
+  };
+
+  const handleReopen = () => {
+    if (!eventId) return;
+    updateEventStatus.mutate(
+      { eventId, status: "published" },
+      {
+        onSuccess: () => toast.success("Event reopened"),
+        onError: (error) => toast.error(error.message || "Failed to reopen event"),
+      }
+    );
+  };
+
+  const handleClose = () => {
+    if (!eventId) return;
+    updateEventStatus.mutate(
+      { eventId, status: "closed" },
+      {
+        onSuccess: () => {
+          setCloseConfirmOpen(false);
+          toast.success("Event closed");
+        },
+        onError: (error) => {
+          setCloseConfirmOpen(false);
+          toast.error(error.message || "Failed to close event");
+        },
+      }
+    );
+  };
+
   if (eventLoading) {
     return (
       <div className="mx-auto w-full max-w-[1400px] space-y-4 p-4 md:p-6">
@@ -315,10 +358,36 @@ function EventDetailContent() {
         <Link href="/company-events" className="text-xs text-slate-500 hover:underline">
           ← Company Events
         </Link>
-        <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">{event.title}</h1>
-          <Badge variant="secondary">{event.type === "allocation" ? "Allocation" : "Site Inspection"}</Badge>
-          <Badge variant="outline">{event.status}</Badge>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-xl font-bold tracking-tight sm:text-2xl">{event.title}</h1>
+            <Badge variant="secondary">{event.type === "allocation" ? "Allocation" : "Site Inspection"}</Badge>
+            <Badge variant="outline">{event.status}</Badge>
+          </div>
+          <div className="flex items-center gap-2">
+            {event.status === "draft" && (
+              <Button size="sm" onClick={handlePublish} disabled={updateEventStatus.isPending}>
+                {updateEventStatus.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                Publish
+              </Button>
+            )}
+            {event.status === "published" && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCloseConfirmOpen(true)}
+                disabled={updateEventStatus.isPending}
+              >
+                Close event
+              </Button>
+            )}
+            {event.status === "closed" && (
+              <Button variant="outline" size="sm" onClick={handleReopen} disabled={updateEventStatus.isPending}>
+                {updateEventStatus.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                Reopen
+              </Button>
+            )}
+          </div>
         </div>
         <p className="text-sm text-muted-foreground">
           {event.asset_name} · {new Date(event.date).toLocaleDateString()} at {event.time}
@@ -460,6 +529,16 @@ function EventDetailContent() {
           </TabsContent>
         </Tabs>
       )}
+
+      <ConfirmDialog
+        open={closeConfirmOpen}
+        onOpenChange={setCloseConfirmOpen}
+        title="Close this event?"
+        description="Closing freezes further allocation changes and hides the event from the public kiosk. You can reopen it later."
+        confirmLabel="Close event"
+        onConfirm={handleClose}
+        destructive
+      />
     </div>
   );
 }

@@ -36,11 +36,14 @@ export const CompanyEventStatusSchema = z.enum(COMPANY_EVENT_STATUSES);
 export type CompanyEventStatus = z.infer<typeof CompanyEventStatusSchema>;
 
 /**
- * Every event is created `draft` and stays there — `createEvent()` hardcodes
- * `status: 'draft'` and there is no publish/close endpoint on the real
- * backend. `published`/`closed` are modeled (status is a real enum on the
- * schema, and `EVENT_CLOSED` is a real error `saveAllocations` can throw)
- * but nothing in this app can currently produce either value.
+ * Every event is created `draft`. Moving it on is real as of PR #70
+ * (staging `ba31456`, "company-events-status-onboarding") —
+ * `PATCH /:id/status` (and the `POST /:id/publish` / `POST /:id/close`
+ * shortcuts, which are the same transition under the hood) enforce a legal
+ * transition graph server-side: `draft → published | closed`,
+ * `published → closed`, `closed → published` (the reopen path). See
+ * `useUpdateEventStatus` in `use-update-event-status.ts`. `EVENT_CLOSED` is
+ * the real error `saveAllocations` throws once an event is `closed`.
  */
 export const PickupLocationSchema = z.object({
   id: z.string(),

@@ -109,15 +109,17 @@ import { companyEventsRoutes } from './company-events';
  *               resolve-dispute, resend). No export route — the real
  *               endpoint streams CSV with @SkipTransform; the FE hook
  *               refuses in mock mode instead (matches flex-leads).
- * company-events — /admin/company-events/* (create/list/detail,
- *               eligible-clients, save/remove allocations, list allocations,
- *               analytics, list registrations). Real backend module as of
- *               2026-09-11 (PR #67 "allocation-event"), extended by PR #69
- *               "company-events-offline" (`GET .../allocations`,
- *               `GET .../analytics`, `GET .../registrations`) — every route
- *               here mirrors `company-events-admin.controller.ts` field-for-
- *               field now, not a forward guess or mock-only shape.
- *               Registration rows are seeded directly (not served through
+ * company-events — /admin/company-events/* (create/list/detail, status
+ *               transitions, eligible-clients, save/remove allocations,
+ *               list allocations, analytics, list registrations). Real
+ *               backend module as of 2026-09-11 (PR #67 "allocation-event"),
+ *               extended by PR #69 "company-events-offline" (`GET .../allocations`,
+ *               `GET .../analytics`, `GET .../registrations`) and PR #70
+ *               "company-events-status-onboarding" (`PATCH .../status`,
+ *               `POST .../publish`, `POST .../close`) — every route here
+ *               mirrors `company-events-admin.controller.ts` field-for-field
+ *               now, not a forward guess or mock-only shape. Registration
+ *               rows are seeded directly (not served through
  *               `event-registration.controller.ts`'s own public route,
  *               which is unclaimed here) and check-in/offline sync
  *               (`checkin/event-checkin.controller.ts`) has no FE work

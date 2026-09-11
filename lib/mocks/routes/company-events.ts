@@ -198,6 +198,24 @@ function publicEvent(e: MockCompanyEvent) {
   };
 }
 
+// Legal status moves — mirrors `STATUS_TRANSITIONS` in `company-events.service.ts`
+// (PR #70, staging `ba31456`). `closed → published` is the reopen path.
+const STATUS_TRANSITIONS: Record<MockCompanyEvent['status'], MockCompanyEvent['status'][]> = {
+  draft: ['published', 'closed'],
+  published: ['closed'],
+  closed: ['published'],
+};
+
+function transitionStatus(event: MockCompanyEvent, target: MockCompanyEvent['status']) {
+  if (event.status === target) return publicEvent(event);
+  if (!STATUS_TRANSITIONS[event.status]?.includes(target)) {
+    throw new MockHttpError(400, 'That event status change is not allowed', 'INVALID_STATUS_TRANSITION');
+  }
+  event.status = target;
+  event.updatedAt = new Date().toISOString();
+  return publicEvent(event);
+}
+
 /** Shapes one allocation exactly like the real `listEventAllocations()` response row. */
 function publicAllocation(a: MockEventAllocation, event: MockCompanyEvent) {
   const registration = registrations.find((r) => r.event_allocation_id === a.allocation_id) ?? null;
@@ -419,6 +437,24 @@ export const companyEventsRoutes: MockRoutes = {
   'GET /admin/company-events/:id': ({ params }) => {
     seedIfNeeded();
     return publicEvent(requireEvent(params.id));
+  },
+
+  'PATCH /admin/company-events/:id/status': ({ params, body: raw }) => {
+    seedIfNeeded();
+    const event = requireEvent(params.id);
+    const dto = body<{ status?: MockCompanyEvent['status'] }>(raw);
+    if (!dto.status) throw new MockHttpError(400, 'status is required', 'VALIDATION_ERROR');
+    return transitionStatus(event, dto.status);
+  },
+
+  'POST /admin/company-events/:id/publish': ({ params }) => {
+    seedIfNeeded();
+    return transitionStatus(requireEvent(params.id), 'published');
+  },
+
+  'POST /admin/company-events/:id/close': ({ params }) => {
+    seedIfNeeded();
+    return transitionStatus(requireEvent(params.id), 'closed');
   },
 
   'GET /admin/company-events/:id/eligible-clients': ({ params, query }) => {

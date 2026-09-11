@@ -4,6 +4,7 @@ export * from './hooks/use-company-event-assets';
 export * from './hooks/use-company-events';
 export * from './hooks/use-company-event';
 export * from './hooks/use-create-company-event';
+export * from './hooks/use-update-event-status';
 export * from './hooks/use-event-eligible-clients';
 export * from './hooks/use-event-allocations';
 export * from './hooks/use-save-event-allocations';
