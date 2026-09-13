@@ -1,307 +1,136 @@
-"use client";
+'use client';
 
-import { useQuery } from "@tanstack/react-query";
-import { execute } from "@/lib/graphql-client";
-import { graphql } from "@/lib/gql";
-import type { TicketListFilterInput } from "@/lib/gql/graphql";
-import { ticketKeys } from "./query-keys";
+import { useQuery } from '@tanstack/react-query';
+import { z } from 'zod';
+
+import { apiGet } from '@/lib/api-client';
+
+import {
+  TicketDetailSchema,
+  TicketIssueSuggestionSchema,
+  TicketListSchema,
+  TicketQueueStatsSchema,
+  TicketUserSuggestionSchema,
+  type TicketChannel,
+  type TicketFilter,
+  type TicketSort,
+  type TicketType,
+} from '../schemas/ticket.schema';
+import { ticketKeys } from './query-keys';
 
 /**
  * Ticket reads.
  *
- * A ticket IS a threaded conversation now — `messages` carries it, oldest
- * first, and a ticket opened before threading simply has one. `body` stays
- * as the denormalised text of the message that opened it: it is what the
- * text index searches and what the classifier reads, so it is not a second
- * source of truth for the conversation.
+ * A ticket IS a threaded conversation — `messages` carries it, oldest first,
+ * and a ticket opened before threading simply has one. `body` stays as the
+ * denormalised text of the message that opened it: it is what the text index
+ * searches and what the classifier reads, not a second source of truth.
  *
- * `duplicates` outlived its original job (the stand-in for threading) and is
- * now only what it says — recent open tickets from the same source address,
- * i.e. merge candidates.
- *
- * BE contract: adminTypeDefs.ts §"Tickets".
+ * Everything here is scoped server-side to what the caller may reach. There is
+ * no "show me everything" parameter, by design — see
+ * docs/TICKETS-REST-CONTRACT.md.
  */
-
-const TICKET_ROW_FIELDS = `
-  _id
-  ticket_ref
-  channel
-  source_reference
-  subject
-  body
-  category
-  status
-  resolution
-  resolved_at
-  merged_into
-  createdAt
-  updatedAt
-  sender { _id firstName lastName email }
-  user_affected { _id firstName lastName email phoneNumber }
-  assigned_admin { _id userName email }
-  collaborators { _id userName email role }
-  issue { _id issue_ref title status }
-  attachments { url filename mime size }
-  resolved_by { _id userName email }
-`;
-
-const GET_TICKETS = graphql(`
-  query GetTickets($filter: TicketListFilterInput, $page: Int, $limit: Int) {
-    getTickets(filter: $filter, page: $page, limit: $limit) {
-      count
-      results {
-        _id
-        ticket_ref
-        channel
-        source_reference
-        subject
-        body
-        category
-        type
-        category_source
-        type_source
-        status
-        resolution
-        resolved_at
-        merged_into
-        createdAt
-        updatedAt
-        sender { _id firstName lastName email }
-        user_affected { _id firstName lastName email phoneNumber }
-        assigned_admin { _id userName email }
-        collaborators { _id userName email role }
-        issue { _id issue_ref title status }
-      }
-      filterCounts {
-        all
-        mine
-        unassigned
-        unlinked
-        open
-        waitingCustomer
-        blockedOnIssue
-        resolved
-      }
-    }
-  }
-`);
-
-const GET_TICKET = graphql(`
-  query GetTicket($ticketId: ID!) {
-    getTicket(ticketId: $ticketId) {
-      ticket {
-        _id
-        ticket_ref
-        channel
-        source_reference
-        subject
-        body
-        category
-        type
-        category_source
-        type_source
-        ai {
-          suggested_category
-          suggested_type
-          confidence
-          model
-          classified_at
-          error
-          affected_hints { value kind note }
-        }
-        status
-        resolution
-        resolved_at
-        merged_into
-        createdAt
-        updatedAt
-        sender { _id firstName lastName email }
-        user_affected { _id firstName lastName email phoneNumber }
-        assigned_admin { _id userName email }
-        collaborators { _id userName email role }
-        issue { _id issue_ref title status }
-        attachments { url filename mime size }
-        resolved_by { _id userName email }
-      }
-      messages {
-        ...TicketTimeline_message
-      }
-      notes {
-        ...TicketTimeline_note
-      }
-      duplicates {
-        _id
-        ticket_ref
-        subject
-        status
-        createdAt
-      }
-      csManager {
-        _id
-        userName
-        email
-      }
-    }
-  }
-`);
-
-const SUGGEST_USERS_FOR_TICKET = graphql(`
-  query SuggestUsersForTicket($ticketId: ID!) {
-    suggestUsersForTicket(ticketId: $ticketId) {
-      reason
-      confidence
-      user {
-        _id
-        firstName
-        lastName
-        email
-        phoneNumber
-      }
-    }
-  }
-`);
-
-const FIND_SIMILAR_TICKETS = graphql(`
-  query FindSimilarTickets($search: String!) {
-    findSimilarTickets(search: $search) {
-      _id
-      ticket_ref
-      subject
-      status
-      createdAt
-      user_affected { _id firstName lastName email }
-    }
-  }
-`);
-
-/**
- * The category list the classifier is constrained to. Free-typed categories
- * would sit outside the set the model can produce, which quietly corrupts the
- * ai-vs-human comparison that category_source exists to enable.
- */
-const TICKET_CATEGORIES = graphql(`
-  query TicketCategories {
-    ticketCategories
-  }
-`);
-
-/**
- * The numbers above the table.
- *
- * Scoped by the BE exactly as the table beneath it is — a CS Manager reads the
- * book, everyone else reads their own work — so the strip can never advertise a
- * backlog the reader has no way to open.
- */
-const TICKET_QUEUE_STATS = graphql(`
-  query TicketQueueStats {
-    ticketQueueStats {
-      open
-      inProgress
-      waitingCustomer
-      blockedOnIssue
-      breaching
-      oldestOpenHours
-      resolvedLast7Days
-    }
-  }
-`);
-
-/** Candidate issues by keyword overlap. Suggestion only — nothing is linked. */
-const SUGGEST_ISSUES_FOR_TICKET = graphql(`
-  query SuggestIssuesForTicket($ticketId: ID!) {
-    suggestIssuesForTicket(ticketId: $ticketId) {
-      matchedTerms
-      score
-      issue { _id issue_ref title status }
-    }
-  }
-`);
 
 export const DEFAULT_TICKETS_LIMIT = 25;
 
+export interface TicketListFilters {
+  filter?: TicketFilter | null;
+  category?: string | null;
+  type?: TicketType | null;
+  channel?: TicketChannel | null;
+  /** Who is WORKING it. */
+  assignedAdminId?: string | null;
+  /** Whose CUSTOMER it is about — a different question, and both are wanted. */
+  csManagerId?: string | null;
+  issueId?: string | null;
+  search?: string | null;
+  sort?: TicketSort | null;
+}
+
 export interface UseTicketsParams {
-  filter?: TicketListFilterInput;
+  filter?: TicketListFilters;
   page?: number;
   limit?: number;
   enabled?: boolean;
 }
 
+/** GET /admin/tickets — rows and the eight chip counts in one response. */
 export const useTickets = ({
   filter,
   page = 1,
   limit = DEFAULT_TICKETS_LIMIT,
   enabled = true,
-}: UseTicketsParams = {}) => {
-  return useQuery({
+}: UseTicketsParams = {}) =>
+  useQuery({
     queryKey: ticketKeys.list({ filter, page, limit }),
     queryFn: () =>
-      execute(GET_TICKETS, { filter: filter ?? null, page, limit }),
-    select: (data) => data.getTickets,
+      apiGet('/admin/tickets', TicketListSchema, {
+        params: {
+          page,
+          limit,
+          filter: filter?.filter || undefined,
+          category: filter?.category || undefined,
+          type: filter?.type || undefined,
+          channel: filter?.channel || undefined,
+          assigned_admin_id: filter?.assignedAdminId || undefined,
+          cs_manager_id: filter?.csManagerId || undefined,
+          issue_id: filter?.issueId || undefined,
+          search: filter?.search?.trim() || undefined,
+          sort: filter?.sort || undefined,
+        },
+      }),
     enabled,
   });
-};
 
-export const useTicket = (ticketId: string | null | undefined) => {
-  return useQuery({
-    queryKey: ticketKeys.detail(ticketId ?? ""),
-    queryFn: () => execute(GET_TICKET, { ticketId: ticketId as string }),
-    select: (data) => data.getTicket,
+/** GET /admin/tickets/:id — accepts an id or a `TKT-######` ref. */
+export const useTicket = (ticketId: string | null | undefined) =>
+  useQuery({
+    queryKey: ticketKeys.detail(ticketId ?? ''),
+    queryFn: () => apiGet(`/admin/tickets/${ticketId}`, TicketDetailSchema),
     enabled: !!ticketId,
   });
-};
 
-export const useTicketUserSuggestions = (
-  ticketId: string | null | undefined,
-  enabled = true
-) => {
-  return useQuery({
-    queryKey: ticketKeys.userSuggestions(ticketId ?? ""),
-    queryFn: () =>
-      execute(SUGGEST_USERS_FOR_TICKET, { ticketId: ticketId as string }),
-    select: (data) => data.suggestUsersForTicket,
-    enabled: !!ticketId && enabled,
-  });
-};
-
-export const useSimilarTickets = (search: string, enabled = true) => {
-  return useQuery({
-    queryKey: ticketKeys.similar(search),
-    queryFn: () => execute(FIND_SIMILAR_TICKETS, { search }),
-    select: (data) => data.findSimilarTickets,
-    enabled: enabled && search.trim().length > 2,
-  });
-};
-
-// TICKET_ROW_FIELDS is left as an inline reference for consistency;
-// individual queries above spell fields out so codegen infers narrower
-// operation types.
-void TICKET_ROW_FIELDS;
-
+/**
+ * GET /admin/tickets/stats — the strip above the table.
+ *
+ * Scoped identically to the list, so it can never advertise a backlog the
+ * reader has no way to open.
+ */
 export const useTicketQueueStats = () =>
   useQuery({
     queryKey: ticketKeys.queueStats(),
-    queryFn: () => execute(TICKET_QUEUE_STATS, {}),
-    select: (data) => data.ticketQueueStats,
+    queryFn: () => apiGet('/admin/tickets/stats', TicketQueueStatsSchema),
   });
 
+/**
+ * GET /admin/tickets/categories — the list the classifier is constrained to.
+ *
+ * Free-typed categories would sit outside the set the model can produce, which
+ * quietly corrupts the ai-vs-human comparison `category_source` exists for.
+ */
 export const useTicketCategories = (enabled = true) =>
   useQuery({
     queryKey: ticketKeys.categories(),
-    queryFn: () => execute(TICKET_CATEGORIES, {}),
-    select: (data) => data.ticketCategories,
+    queryFn: () => apiGet('/admin/tickets/categories', z.array(z.string())),
     // A constant per deploy — no reason to refetch it on every drawer open.
     staleTime: Infinity,
     enabled,
   });
 
-export const useTicketIssueSuggestions = (
-  ticketId: string | null | undefined,
-  enabled = true
-) =>
+/** GET /admin/tickets/:id/suggest-users — ranked, never auto-applied. */
+export const useTicketUserSuggestions = (ticketId: string | null | undefined, enabled = true) =>
   useQuery({
-    queryKey: ticketKeys.issueSuggestions(ticketId ?? ""),
+    queryKey: ticketKeys.userSuggestions(ticketId ?? ''),
     queryFn: () =>
-      execute(SUGGEST_ISSUES_FOR_TICKET, { ticketId: ticketId as string }),
-    select: (data) => data.suggestIssuesForTicket,
+      apiGet(`/admin/tickets/${ticketId}/suggest-users`, z.array(TicketUserSuggestionSchema)),
+    enabled: !!ticketId && enabled,
+  });
+
+/** GET /admin/tickets/:id/suggest-issues — keyword-matched open issues, top 3. */
+export const useTicketIssueSuggestions = (ticketId: string | null | undefined, enabled = true) =>
+  useQuery({
+    queryKey: ticketKeys.issueSuggestions(ticketId ?? ''),
+    queryFn: () =>
+      apiGet(`/admin/tickets/${ticketId}/suggest-issues`, z.array(TicketIssueSuggestionSchema)),
     enabled: !!ticketId && enabled,
   });

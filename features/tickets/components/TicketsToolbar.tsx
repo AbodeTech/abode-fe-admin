@@ -9,7 +9,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { TicketChannel, TicketSort, TicketType } from "@/lib/gql/graphql";
 import {
   CHANNEL_OPTIONS,
   SORT_OPTIONS,
@@ -18,6 +17,7 @@ import {
 } from "../lib/ticket-display";
 import { useTicketCategories } from "../hooks/use-tickets";
 import { useTicketManagerPicker } from "../hooks/use-ticket-manager-picker";
+import { type TicketChannel, type TicketSort, type TicketType } from "../schemas/ticket.schema";
 
 interface Props {
   sort: TicketSort;

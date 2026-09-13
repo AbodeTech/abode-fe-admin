@@ -20,7 +20,6 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { useNow } from "@/hooks/use-now";
-import { TicketChannel, type GetTicketsQuery } from "@/lib/gql/graphql";
 import {
   CHANNEL_LABELS,
   STATUS_LABELS,
@@ -29,8 +28,9 @@ import {
   TYPE_PILL_CLASS,
   categoryLabel,
 } from "../lib/ticket-display";
+import { type Ticket, type TicketChannel } from "../schemas/ticket.schema";
 
-type Row = GetTicketsQuery["getTickets"]["results"][number];
+type Row = Ticket;
 
 interface Props {
   rows: Row[];

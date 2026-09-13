@@ -1,13 +1,13 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { TicketFilter, type GetTicketsQuery } from "@/lib/gql/graphql";
 import { FILTER_LABELS } from "../lib/ticket-display";
+import { type TicketFilter, type TicketFilterCounts } from "../schemas/ticket.schema";
 
 interface Props {
   active: TicketFilter;
   onChange: (value: TicketFilter) => void;
-  counts?: GetTicketsQuery["getTickets"]["filterCounts"];
+  counts?: TicketFilterCounts;
   /**
    * Whether the reader also sees the unassigned pool — the router.
    *
@@ -20,7 +20,7 @@ interface Props {
 }
 
 /** Book-wide filter chips. Counts stay stable regardless of the
- * active chip — that's the BE contract (see filterCounts). */
+ * active chip — that's the BE contract (see filter_counts). */
 export function TicketFilterChips({
   active,
   onChange,
@@ -34,28 +34,28 @@ export function TicketFilterChips({
   };
 
   const chips: Chip[] = ([
-    { key: TicketFilter.All, count: counts?.all, tone: "neutral" },
+    { key: 'all', count: counts?.all, tone: "neutral" },
     // Resolved server-side from the auth context: owned by me, OR I was pulled
     // in as a collaborator. Without it a specialist has no queue of their own.
-    { key: TicketFilter.Mine, count: counts?.mine, tone: "neutral" },
-    { key: TicketFilter.Unassigned, count: counts?.unassigned, tone: "warn" },
-    { key: TicketFilter.Unlinked, count: counts?.unlinked, tone: "warn" },
-    { key: TicketFilter.Open, count: counts?.open, tone: "neutral" },
+    { key: 'mine', count: counts?.mine, tone: "neutral" },
+    { key: 'unassigned', count: counts?.unassigned, tone: "warn" },
+    { key: 'unlinked', count: counts?.unlinked, tone: "warn" },
+    { key: 'open', count: counts?.open, tone: "neutral" },
     {
-      key: TicketFilter.WaitingCustomer,
-      count: counts?.waitingCustomer,
+      key: 'waiting_customer',
+      count: counts?.waiting_customer,
       tone: "neutral",
     },
     {
-      key: TicketFilter.BlockedOnIssue,
-      count: counts?.blockedOnIssue,
+      key: 'blocked_on_issue',
+      count: counts?.blocked_on_issue,
       tone: "critical",
     },
-    { key: TicketFilter.Resolved, count: counts?.resolved, tone: "neutral" },
+    { key: 'resolved', count: counts?.resolved, tone: "neutral" },
   ] as Chip[]).filter(
     (c) =>
       canRoute ||
-      ![TicketFilter.Mine, TicketFilter.Unassigned, TicketFilter.Unlinked].includes(
+      !['mine', 'unassigned', 'unlinked'].includes(
         c.key
       )
   );

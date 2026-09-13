@@ -1,147 +1,147 @@
-"use client";
+'use client';
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { execute } from "@/lib/graphql-client";
-import { graphql } from "@/lib/gql";
-import type {
-  CreateTicketInput,
-  UpdateTicketInput,
-  ResolveTicketInput,
-} from "@/lib/gql/graphql";
-import { ticketKeys } from "./query-keys";
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { z } from 'zod';
+
+import { apiDelete, apiPatch, apiPost } from '@/lib/api-client';
+
+import {
+  TicketNoteSchema,
+  TicketSchema,
+  type TicketStatus,
+  type TicketType,
+} from '../schemas/ticket.schema';
+import { issueKeys, ticketKeys } from './query-keys';
 
 /**
- * Ticket mutations — every write invalidates both list + relevant
- * detail so the FE surface stays honest.
+ * Ticket writes.
+ *
+ * Two BE rules shape every call here, and neither is expressible client-side:
+ *
+ *   Reachability is checked before privilege. Holding the CS Manager role says
+ *   which FIELDS you may change, never which tickets you may reach.
+ *
+ *   Privilege is per field. `status` and `subject` are working the ticket,
+ *   which anyone on it may do; `category`, `type`, `assigned_admin_id` and
+ *   `user_affected_id` are routing and belong to the CS Manager.
+ *
+ * Hiding a control is legibility. The refusal is the boundary. Toasts live at
+ * the call site, not in here.
  */
 
-const CREATE_TICKET = graphql(`
-  mutation CreateTicket($input: CreateTicketInput!) {
-    createTicket(input: $input) {
-      _id
-      ticket_ref
-    }
-  }
-`);
-
-const UPDATE_TICKET = graphql(`
-  mutation UpdateTicket($input: UpdateTicketInput!) {
-    updateTicket(input: $input) {
-      _id
-      ticket_ref
-      status
-      subject
-      category
-      assigned_admin { _id userName email }
-      user_affected { _id firstName lastName email }
-      updatedAt
-    }
-  }
-`);
-
-const RESOLVE_TICKET = graphql(`
-  mutation ResolveTicket($input: ResolveTicketInput!) {
-    resolveTicket(input: $input) {
-      _id
-      ticket_ref
-      status
-      resolution
-      resolved_at
-      resolved_by { _id userName email }
-    }
-  }
-`);
-
-const ADD_TICKET_NOTE = graphql(`
-  mutation AddTicketNote($ticketId: ID!, $body: String!) {
-    addTicketNote(ticketId: $ticketId, body: $body) {
-      _id
-      body
-      createdAt
-      admin { _id userName email }
-    }
-  }
-`);
-
-const MERGE_TICKETS = graphql(`
-  mutation MergeTickets($loserTicketId: ID!, $winnerTicketId: ID!) {
-    mergeTickets(loserTicketId: $loserTicketId, winnerTicketId: $winnerTicketId) {
-      _id
-      ticket_ref
-      merged_into
-    }
-  }
-`);
-
-const LINK_TICKET_TO_ISSUE = graphql(`
-  mutation LinkTicketToIssue($ticketId: ID!, $issueId: ID!) {
-    linkTicketToIssue(ticketId: $ticketId, issueId: $issueId) {
-      _id
-      issue { _id issue_ref title status }
-    }
-  }
-`);
-
-const UNLINK_TICKET_FROM_ISSUE = graphql(`
-  mutation UnlinkTicketFromIssue($ticketId: ID!) {
-    unlinkTicketFromIssue(ticketId: $ticketId) {
-      _id
-      issue { _id issue_ref title status }
-    }
-  }
-`);
-
-const invalidateAll = (
-  qc: ReturnType<typeof useQueryClient>,
-  ticketId?: string
-) => {
-  qc.invalidateQueries({ queryKey: ticketKeys.lists() });
-  if (ticketId) {
-    qc.invalidateQueries({ queryKey: ticketKeys.detail(ticketId) });
-  }
+/** A write can move the row, the chip counts and the strip — invalidate the lot. */
+const useTicketInvalidator = () => {
+  const queryClient = useQueryClient();
+  return (ticketId?: string) => {
+    queryClient.invalidateQueries({ queryKey: ticketKeys.lists() });
+    queryClient.invalidateQueries({ queryKey: ticketKeys.queueStats() });
+    if (ticketId) queryClient.invalidateQueries({ queryKey: ticketKeys.detail(ticketId) });
+  };
 };
 
 export const useCreateTicket = () => {
-  const qc = useQueryClient();
+  const invalidate = useTicketInvalidator();
   return useMutation({
-    mutationFn: (input: CreateTicketInput) =>
-      execute(CREATE_TICKET, { input }),
-    onSuccess: () => invalidateAll(qc),
+    mutationFn: (input: {
+      channel: string;
+      subject: string;
+      body?: string;
+      source_reference?: string;
+      sender_id?: string;
+      user_affected_id?: string;
+      category?: string;
+      attachments?: { url: string; filename?: string; mime?: string; size?: number }[];
+    }) => apiPost('/admin/tickets', input, TicketSchema),
+    onSuccess: () => invalidate(),
   });
 };
 
+export interface UpdateTicketInput {
+  ticketId: string;
+  subject?: string;
+  /** `resolved` is refused — use resolve, so a resolution is recorded. */
+  status?: Exclude<TicketStatus, 'resolved'>;
+  category?: string | null;
+  type?: TicketType | null;
+  assigned_admin_id?: string | null;
+  user_affected_id?: string | null;
+  /**
+   * The `updatedAt` the caller rendered. A mismatch is a 400 carrying
+   * `code: 'TICKET_STALE_STATE'` — branch on the code, never the message.
+   * Omitting it is last-write-wins, which is the wrong default for a queue two
+   * people work.
+   */
+  expected_updated_at?: string;
+}
+
 export const useUpdateTicket = () => {
-  const qc = useQueryClient();
+  const invalidate = useTicketInvalidator();
   return useMutation({
-    mutationFn: (input: UpdateTicketInput) =>
-      execute(UPDATE_TICKET, { input }),
-    onSuccess: (data) =>
-      invalidateAll(qc, data.updateTicket._id),
+    mutationFn: ({ ticketId, ...body }: UpdateTicketInput) =>
+      apiPatch(`/admin/tickets/${ticketId}`, body, TicketSchema),
+    onSuccess: (_d, v) => invalidate(v.ticketId),
   });
 };
 
 export const useResolveTicket = () => {
-  const qc = useQueryClient();
+  const invalidate = useTicketInvalidator();
   return useMutation({
-    mutationFn: (input: ResolveTicketInput) =>
-      execute(RESOLVE_TICKET, { input }),
-    onSuccess: (data) =>
-      invalidateAll(qc, data.resolveTicket._id),
+    mutationFn: ({
+      ticketId,
+      ...body
+    }: {
+      ticketId: string;
+      /** Minimum 20 characters, enforced server-side. */
+      resolution: string;
+      notify_user?: boolean;
+      expected_updated_at?: string;
+    }) => apiPost(`/admin/tickets/${ticketId}/resolve`, body, TicketSchema),
+    onSuccess: (_d, v) => invalidate(v.ticketId),
+  });
+};
+
+/** Never overwrites a value a human has set. */
+export const useClassifyTicket = () => {
+  const invalidate = useTicketInvalidator();
+  return useMutation({
+    mutationFn: (ticketId: string) =>
+      apiPost(`/admin/tickets/${ticketId}/classify`, {}, TicketSchema),
+    onSuccess: (_d, ticketId) => invalidate(ticketId),
   });
 };
 
 export interface AddTicketNoteInput {
   ticketId: string;
+  /** Minimum 5 characters, enforced server-side. */
   body: string;
 }
 
 export const useAddTicketNote = () => {
-  const qc = useQueryClient();
+  const invalidate = useTicketInvalidator();
   return useMutation({
     mutationFn: ({ ticketId, body }: AddTicketNoteInput) =>
-      execute(ADD_TICKET_NOTE, { ticketId, body }),
-    onSuccess: (_, vars) =>
-      qc.invalidateQueries({ queryKey: ticketKeys.detail(vars.ticketId) }),
+      apiPost(`/admin/tickets/${ticketId}/notes`, { body }, z.array(TicketNoteSchema)),
+    onSuccess: (_d, v) => invalidate(v.ticketId),
+  });
+};
+
+/** Own notes only, unless super admin. */
+export const useEditTicketNote = () => {
+  const invalidate = useTicketInvalidator();
+  return useMutation({
+    mutationFn: ({ noteId, body }: { noteId: string; ticketId?: string; body: string }) =>
+      apiPatch(`/admin/tickets/notes/${noteId}`, { body }, TicketNoteSchema),
+    onSuccess: (_d, v) => invalidate(v.ticketId),
+  });
+};
+
+/** Soft delete. Same rule. */
+export const useDeleteTicketNote = () => {
+  const invalidate = useTicketInvalidator();
+  return useMutation({
+    mutationFn: ({ noteId }: { noteId: string; ticketId?: string }) =>
+      apiDelete(`/admin/tickets/notes/${noteId}`, z.unknown()),
+    onSuccess: (_d, v) => invalidate(v.ticketId),
   });
 };
 
@@ -150,94 +150,13 @@ export interface MergeTicketsInput {
   winnerTicketId: string;
 }
 
+/** Both sides are reachability-checked — a merge is not a way to read a ticket. */
 export const useMergeTickets = () => {
-  const qc = useQueryClient();
+  const invalidate = useTicketInvalidator();
   return useMutation({
     mutationFn: ({ loserTicketId, winnerTicketId }: MergeTicketsInput) =>
-      execute(MERGE_TICKETS, { loserTicketId, winnerTicketId }),
-    onSuccess: (_, vars) => {
-      invalidateAll(qc, vars.loserTicketId);
-      qc.invalidateQueries({ queryKey: ticketKeys.detail(vars.winnerTicketId) });
-    },
-  });
-};
-
-/**
- * Collaborators — specialists pulled in to help resolve. They can act on the
- * ticket and close it; the assigned admin stays accountable for the outcome.
- * Both mutations return the populated ticket, so the drawer updates from the
- * response without waiting on a refetch.
- */
-const ADD_TICKET_COLLABORATOR = graphql(`
-  mutation AddTicketCollaborator($ticketId: ID!, $adminId: ID!) {
-    addTicketCollaborator(ticketId: $ticketId, adminId: $adminId) {
-      _id
-      ticket_ref
-      assigned_admin { _id userName email }
-      collaborators { _id userName email role }
-      updatedAt
-    }
-  }
-`);
-
-const REMOVE_TICKET_COLLABORATOR = graphql(`
-  mutation RemoveTicketCollaborator($ticketId: ID!, $adminId: ID!) {
-    removeTicketCollaborator(ticketId: $ticketId, adminId: $adminId) {
-      _id
-      ticket_ref
-      assigned_admin { _id userName email }
-      collaborators { _id userName email role }
-      updatedAt
-    }
-  }
-`);
-
-/**
- * Re-run classification. Worth doing after the model was unreachable, or after
- * the category list changes. Never overwrites a value a human has set, so a
- * re-classify cannot silently undo a correction.
- */
-const CLASSIFY_TICKET = graphql(`
-  mutation ClassifyTicket($ticketId: ID!) {
-    classifyTicket(ticketId: $ticketId) {
-      _id
-      category
-      type
-      category_source
-      type_source
-      ai {
-        suggested_category
-        suggested_type
-        confidence
-        model
-        classified_at
-        error
-      }
-      updatedAt
-    }
-  }
-`);
-
-export interface LinkTicketToIssueInput {
-  ticketId: string;
-  issueId: string;
-}
-
-export const useLinkTicketToIssue = () => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({ ticketId, issueId }: LinkTicketToIssueInput) =>
-      execute(LINK_TICKET_TO_ISSUE, { ticketId, issueId }),
-    onSuccess: (_, vars) => invalidateAll(qc, vars.ticketId),
-  });
-};
-
-export const useUnlinkTicketFromIssue = () => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (ticketId: string) =>
-      execute(UNLINK_TICKET_FROM_ISSUE, { ticketId }),
-    onSuccess: (_, ticketId) => invalidateAll(qc, ticketId),
+      apiPost(`/admin/tickets/${loserTicketId}/merge-into/${winnerTicketId}`, {}, TicketSchema),
+    onSuccess: (_d, v) => invalidate(v.loserTicketId),
   });
 };
 
@@ -246,30 +165,32 @@ export interface TicketCollaboratorInput {
   adminId: string;
 }
 
+/** Idempotent, and rejects the current owner — they are already on it. */
 export const useAddTicketCollaborator = () => {
-  const qc = useQueryClient();
+  const invalidate = useTicketInvalidator();
   return useMutation({
     mutationFn: ({ ticketId, adminId }: TicketCollaboratorInput) =>
-      execute(ADD_TICKET_COLLABORATOR, { ticketId, adminId }),
-    // The `mine` chip counts collaborator tickets too, so the list counts move.
-    onSuccess: (_, vars) => invalidateAll(qc, vars.ticketId),
+      apiPost(`/admin/tickets/${ticketId}/collaborators`, { admin_id: adminId }, TicketSchema),
+    onSuccess: (_d, v) => invalidate(v.ticketId),
   });
 };
 
 export const useRemoveTicketCollaborator = () => {
-  const qc = useQueryClient();
+  const invalidate = useTicketInvalidator();
   return useMutation({
     mutationFn: ({ ticketId, adminId }: TicketCollaboratorInput) =>
-      execute(REMOVE_TICKET_COLLABORATOR, { ticketId, adminId }),
-    onSuccess: (_, vars) => invalidateAll(qc, vars.ticketId),
+      apiDelete(`/admin/tickets/${ticketId}/collaborators/${adminId}`, TicketSchema),
+    onSuccess: (_d, v) => invalidate(v.ticketId),
   });
 };
 
-export const useClassifyTicket = () => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (ticketId: string) => execute(CLASSIFY_TICKET, { ticketId }),
-    // Category/type can change, so the row in the list moves too.
-    onSuccess: (_, ticketId) => invalidateAll(qc, ticketId),
-  });
-};
+export type LinkTicketToIssueInput = { ticketId: string; issueId: string };
+
+/** Re-exported so the issue write hooks stay in one import for components. */
+export {
+  useLinkTicketToIssue,
+  useUnlinkTicketFromIssue,
+} from './use-issues';
+
+/** Every issue write can change a ticket's blocked state. */
+export const ticketAndIssueKeys = { ticketKeys, issueKeys };

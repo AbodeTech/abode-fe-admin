@@ -31,8 +31,8 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import { useAdminSession } from "@/hooks/use-admin-session";
-import { TicketChannel, TicketStatus } from "@/lib/gql/graphql";
+import { useTicketPermissions } from "../hooks/use-ticket-permissions";
+import { MIN_RESOLUTION_LENGTH, ticketWriteError } from "../lib/ticket-errors";
 import { useTicket } from "../hooks/use-tickets";
 import {
   useResolveTicket,
@@ -46,6 +46,7 @@ import {
   STATUS_OPTIONS,
   STATUS_PILL_CLASS,
 } from "../lib/ticket-display";
+import { type TicketChannel, type TicketStatus } from "../schemas/ticket.schema";
 
 interface Props {
   ticketId: string | null;
@@ -71,7 +72,7 @@ export function TicketThread({ ticketId, onBack }: Props) {
   // Moving a ticket you are working is part of working it; deciding it is done
   // — and writing the resolution the next person reads instead of the thread —
   // is the owner's call. Both are re-checked in the BE service.
-  const { canDecideTicketRouting } = useAdminSession();
+  const { canDecideRouting } = useTicketPermissions();
   const [resolveOpen, setResolveOpen] = useState(false);
   const [resolutionText, setResolutionText] = useState("");
   const [contextOpen, setContextOpen] = useState(false);
@@ -82,7 +83,7 @@ export function TicketThread({ ticketId, onBack }: Props) {
   const ticket = data?.ticket;
 
   const handleResolve = async () => {
-    if (!resolutionText.trim() || !ticketId) return;
+    if (resolutionText.trim().length < MIN_RESOLUTION_LENGTH || !ticketId) return;
     try {
       await resolveTicket.mutateAsync({
         ticketId,
@@ -93,23 +94,27 @@ export function TicketThread({ ticketId, onBack }: Props) {
       toast.success("Ticket resolved");
     } catch (err: unknown) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to resolve ticket"
+        ticketWriteError(err, "Failed to resolve ticket")
       );
     }
   };
 
   const handleStatusChange = async (next: TicketStatus) => {
     if (!ticketId || !ticket || next === ticket.status) return;
-    if (next === TicketStatus.Resolved) {
+    if (next === 'resolved') {
       setResolveOpen(true);
       return;
     }
     try {
-      await updateTicket.mutateAsync({ ticketId, status: next });
+      await updateTicket.mutateAsync({
+        ticketId,
+        status: next,
+        expected_updated_at: ticket.updatedAt,
+      });
       toast.success(`Marked ${STATUS_LABELS[next]}`);
     } catch (err: unknown) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to update status"
+        ticketWriteError(err, "Failed to update status")
       );
     }
   };
@@ -146,7 +151,7 @@ export function TicketThread({ ticketId, onBack }: Props) {
   }
 
   const Icon = CHANNEL_ICON[ticket.channel];
-  const isResolved = ticket.status === TicketStatus.Resolved;
+  const isResolved = ticket.status === 'resolved';
 
   return (
     <div className="flex h-full min-h-0">
@@ -203,17 +208,17 @@ export function TicketThread({ ticketId, onBack }: Props) {
                   aria-label="Ticket status"
                 >
                   {STATUS_OPTIONS.filter(
-                    (o) => o.value !== TicketStatus.Resolved
+                    (o) => o.value !== 'resolved'
                   ).map((opt) => (
                     <option key={opt.value} value={opt.value}>
                       {opt.label}
                     </option>
                   ))}
-                  {canDecideTicketRouting && (
-                    <option value={TicketStatus.Resolved}>Resolved…</option>
+                  {canDecideRouting && (
+                    <option value={'resolved'}>Resolved…</option>
                   )}
                 </select>
-                {canDecideTicketRouting && (
+                {canDecideRouting && (
                   <Button size="sm" onClick={() => setResolveOpen(true)}>
                     <CheckCircle2 className="h-3.5 w-3.5 sm:mr-1.5" />
                     <span className="hidden sm:inline">Resolve</span>
@@ -298,7 +303,10 @@ export function TicketThread({ ticketId, onBack }: Props) {
             <Button
               size="sm"
               onClick={handleResolve}
-              disabled={!resolutionText.trim() || resolveTicket.isPending}
+              disabled={
+                resolutionText.trim().length < MIN_RESOLUTION_LENGTH ||
+                resolveTicket.isPending
+              }
             >
               {resolveTicket.isPending && (
                 <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />

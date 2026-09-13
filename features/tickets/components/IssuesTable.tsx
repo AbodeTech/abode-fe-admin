@@ -3,15 +3,15 @@
 import Link from "next/link";
 import { AlertCircle, Loader2, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { GetIssuesQuery } from "@/lib/gql/graphql";
 import {
   ISSUE_STATUS_LABELS,
   ISSUE_STATUS_PILL_CLASS,
   recurrenceLabel,
   recurrencePillClass,
 } from "../lib/ticket-display";
+import { type Issue } from "../schemas/ticket.schema";
 
-type Row = GetIssuesQuery["getIssues"]["results"][number];
+type Row = Issue;
 
 interface Props {
   rows: Row[];
@@ -104,8 +104,8 @@ export function IssuesTable({ rows, isLoading, isError, errorMessage }: Props) {
                   )}
                 </td>
                 <td className="px-3 py-3 text-gray-700 tabular-nums whitespace-nowrap">
-                  {r.ticketCount ?? 0}
-                  {(r.ticketCount ?? 0) > 0 && (
+                  {r.ticket_count ?? 0}
+                  {(r.ticket_count ?? 0) > 0 && (
                     <AlertCircle className="inline-block h-3 w-3 text-amber-600 ml-1 -mt-0.5" />
                   )}
                 </td>
@@ -121,11 +121,11 @@ export function IssuesTable({ rows, isLoading, isError, errorMessage }: Props) {
                     </span>
                     {/* A reopened incident must not read like one that closed
                         cleanly — that is the whole point of reopen_count. */}
-                    {r.reopen_count > 0 && (
+                    {(r.reopen_count ?? 0) > 0 && (
                       <span
                         className={cn(
                           "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium",
-                          recurrencePillClass(r.reopen_count)
+                          recurrencePillClass((r.reopen_count ?? 0))
                         )}
                         title={
                           r.first_resolved_at
@@ -134,7 +134,7 @@ export function IssuesTable({ rows, isLoading, isError, errorMessage }: Props) {
                         }
                       >
                         <RotateCcw className="h-2.5 w-2.5" />
-                        {recurrenceLabel(r.reopen_count)}
+                        {recurrenceLabel((r.reopen_count ?? 0))}
                       </span>
                     )}
                   </div>

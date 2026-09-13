@@ -6,9 +6,9 @@ import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { TicketList } from "./TicketList";
 import { TicketThread } from "./TicketThread";
-import type { GetTicketsQuery } from "@/lib/gql/graphql";
+import { type Ticket } from "../schemas/ticket.schema";
 
-type Row = GetTicketsQuery["getTickets"]["results"][number];
+type Row = Ticket;
 
 interface Props {
   rows: Row[];

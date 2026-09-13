@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useTicketAdminPicker } from "../hooks/use-ticket-pickers";
 import { useAddTicketCollaborator } from "../hooks/use-ticket-mutations";
+import { ticketWriteError } from "../lib/ticket-errors";
 
 interface Props {
   open: boolean;
@@ -71,7 +72,7 @@ export function AddCollaboratorDialog({
       handleClose();
     } catch (err: unknown) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to add collaborator"
+        ticketWriteError(err, "Failed to add collaborator")
       );
     }
   };

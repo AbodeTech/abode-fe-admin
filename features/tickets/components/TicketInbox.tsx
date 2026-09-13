@@ -7,13 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Pagination } from "@/components/shared/Pagination";
 import { useDebounce } from "@/hooks/use-debounce";
-import { useAdminSession } from "@/hooks/use-admin-session";
-import {
-  TicketChannel,
-  TicketFilter,
-  TicketSort,
-  TicketType,
-} from "@/lib/gql/graphql";
+import { useTicketPermissions } from "../hooks/use-ticket-permissions";
 import { useTickets, DEFAULT_TICKETS_LIMIT } from "../hooks/use-tickets";
 import { TicketFilterChips } from "./TicketFilterChips";
 import { TicketQueueStrip } from "./TicketQueueStrip";
@@ -21,6 +15,7 @@ import { TicketsToolbar } from "./TicketsToolbar";
 import { TicketsTable } from "./TicketsTable";
 import { TicketMailView } from "./TicketMailView";
 import { CreateTicketDialog } from "./CreateTicketDialog";
+import { TICKET_CHANNELS, TICKET_FILTERS, TICKET_SORTS, TICKET_TYPES, type TicketChannel, type TicketFilter, type TicketSort, type TicketType } from "../schemas/ticket.schema";
 
 /**
  * The support queue, in two views over one list.
@@ -49,25 +44,25 @@ const parseEnum = <T extends string>(
 ): T | null => (v && values.includes(v) ? (v as T) : null);
 
 const parseFilter = (v: string | null): TicketFilter =>
-  parseEnum<TicketFilter>(v, Object.values(TicketFilter)) ?? TicketFilter.All;
+  parseEnum<TicketFilter>(v, TICKET_FILTERS) ?? 'all';
 
 const parseSort = (v: string | null): TicketSort =>
-  parseEnum<TicketSort>(v, Object.values(TicketSort)) ?? TicketSort.OldestFirst;
+  parseEnum<TicketSort>(v, TICKET_SORTS) ?? 'oldest_first';
 
 export function TicketInbox() {
   const router = useRouter();
   const search = useSearchParams();
-  const { canRouteTickets, canManageAllTickets } = useAdminSession();
+  const { canRouteTickets, canManageAllTickets } = useTicketPermissions();
 
   const filter = parseFilter(search.get("filter"));
   const sort = parseSort(search.get("sort"));
   const channel = parseEnum<TicketChannel>(
     search.get("channel"),
-    Object.values(TicketChannel)
+    TICKET_CHANNELS
   );
   const type = parseEnum<TicketType>(
     search.get("type"),
-    Object.values(TicketType)
+    TICKET_TYPES
   );
   const category = search.get("category");
   const assignedAdminId = search.get("assignedTo");
@@ -155,9 +150,9 @@ export function TicketInbox() {
             <TicketFilterChips
               active={filter}
               onChange={(v) =>
-                updateParams({ filter: v === TicketFilter.All ? null : v })
+                updateParams({ filter: v === 'all' ? null : v })
               }
-              counts={data?.filterCounts}
+              counts={data?.filter_counts}
               canRoute={canRouteTickets}
             />
           </div>
@@ -165,7 +160,7 @@ export function TicketInbox() {
           <TicketsToolbar
             sort={sort}
             onSortChange={(v) =>
-              updateParams({ sort: v === TicketSort.OldestFirst ? null : v })
+              updateParams({ sort: v === 'oldest_first' ? null : v })
             }
             channel={channel}
             onChannelChange={(v) => updateParams({ channel: v })}

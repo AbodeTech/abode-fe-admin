@@ -4,9 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, CheckCircle2, RotateCcw, User2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useAdminSession } from "@/hooks/use-admin-session";
+import { useTicketPermissions } from "../hooks/use-ticket-permissions";
 import { cn } from "@/lib/utils";
-import { IssueStatus, TicketStatus, type GetIssueQuery } from "@/lib/gql/graphql";
 import {
   ISSUE_STATUS_LABELS,
   ISSUE_STATUS_PILL_CLASS,
@@ -16,9 +15,10 @@ import {
   recurrencePillClass,
 } from "../lib/ticket-display";
 import { ResolveIssueDialog } from "./ResolveIssueDialog";
+import { type IssueDetail } from "../schemas/ticket.schema";
 
 interface Props {
-  detail: NonNullable<GetIssueQuery["getIssue"]>;
+  detail: NonNullable<IssueDetail>;
 }
 
 const MONTHS = [
@@ -41,10 +41,10 @@ export function IssueDetail({ detail }: Props) {
   // Closing an issue closes every ticket hanging off it, for customers who may
   // not have been told anything. That is the CS Manager's call, and the BE
   // refuses it from anyone else.
-  const { canDecideTicketRouting } = useAdminSession();
+  const { canDecideRouting } = useTicketPermissions();
   const [resolveOpen, setResolveOpen] = useState(false);
-  const { issue, tickets, ticketCount } = detail;
-  const isResolved = issue.status === IssueStatus.Resolved;
+  const { issue, tickets, ticket_count } = detail;
+  const isResolved = issue.status === 'resolved';
 
   /**
    * The people owed a correction.
@@ -59,8 +59,8 @@ export function IssueDetail({ detail }: Props) {
    * linked ticket was simply resolved.
    */
   const owedCorrection =
-    issue.reopen_count > 0
-      ? tickets.filter((t) => t.status === TicketStatus.Resolved)
+    (issue.reopen_count ?? 0) > 0
+      ? tickets.filter((t) => t.status === 'resolved')
       : [];
 
   return (
@@ -90,7 +90,7 @@ export function IssueDetail({ detail }: Props) {
               </p>
             )}
           </div>
-          {!isResolved && canDecideTicketRouting && (
+          {!isResolved && canDecideRouting && (
             <Button size="sm" onClick={() => setResolveOpen(true)}>
               <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
               Resolve
@@ -107,22 +107,22 @@ export function IssueDetail({ detail }: Props) {
           <MetaCell label="Opened" value={formatWhen(issue.createdAt)} />
           <MetaCell
             label="Linked tickets"
-            value={`${ticketCount}`}
+            value={`${ticket_count}`}
             emphasis
           />
         </div>
 
-        {issue.reopen_count > 0 && (
+        {(issue.reopen_count ?? 0) > 0 && (
           <div className="rounded-md border border-amber-200 bg-amber-50/70 p-3 space-y-2">
             <div className="flex items-center gap-2">
               <RotateCcw className="h-3.5 w-3.5 text-amber-700" />
               <span
                 className={cn(
                   "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
-                  recurrencePillClass(issue.reopen_count)
+                  recurrencePillClass((issue.reopen_count ?? 0))
                 )}
               >
-                {recurrenceLabel(issue.reopen_count)}
+                {recurrenceLabel((issue.reopen_count ?? 0))}
               </span>
               <span className="text-xs text-amber-900">
                 {issue.first_resolved_at && (
@@ -264,7 +264,7 @@ export function IssueDetail({ detail }: Props) {
         )}
       </section>
 
-      {canDecideTicketRouting && (
+      {canDecideRouting && (
         <ResolveIssueDialog
           open={resolveOpen}
           onOpenChange={setResolveOpen}

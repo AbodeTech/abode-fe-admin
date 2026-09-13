@@ -11,8 +11,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { useAdminSession } from "@/hooks/use-admin-session";
-import type { GetTicketQuery } from "@/lib/gql/graphql";
+import { useTicketPermissions } from "../hooks/use-ticket-permissions";
 import {
   useRemoveTicketCollaborator,
   useUnlinkTicketFromIssue,
@@ -28,8 +27,10 @@ import {
   STATUS_LABELS,
   STATUS_PILL_CLASS,
 } from "../lib/ticket-display";
+import { type AdminRef, type TicketDetail } from "../schemas/ticket.schema";
+import { ticketWriteError } from "../lib/ticket-errors";
 
-type Detail = GetTicketQuery["getTicket"];
+type Detail = TicketDetail;
 
 interface Props {
   detail: Detail;
@@ -74,11 +75,13 @@ const displayUser = (
  */
 export function TicketContextPanel({ detail }: Props) {
   const ticket = detail.ticket;
-  const { canDecideTicketRouting } = useAdminSession();
+  const { canDecideRouting } = useTicketPermissions();
   const [assignAdminOpen, setAssignAdminOpen] = useState(false);
   const [addCollaboratorOpen, setAddCollaboratorOpen] = useState(false);
   const [assignUserOpen, setAssignUserOpen] = useState(false);
   const [linkIssueOpen, setLinkIssueOpen] = useState(false);
+  // `fault` is the wire value support calls an "issue" — see TYPE_LABELS.
+  const canLinkToIssue = ticket.type === "fault";
   const [removingAdminId, setRemovingAdminId] = useState<string | null>(null);
 
   const unlinkIssue = useUnlinkTicketFromIssue();
@@ -91,7 +94,7 @@ export function TicketContextPanel({ detail }: Props) {
       toast.success("Collaborator removed");
     } catch (err: unknown) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to remove collaborator"
+        ticketWriteError(err, "Failed to remove collaborator")
       );
     } finally {
       setRemovingAdminId(null);
@@ -103,7 +106,7 @@ export function TicketContextPanel({ detail }: Props) {
       await unlinkIssue.mutateAsync(ticket._id);
       toast.success("Unlinked from issue");
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to unlink issue");
+      toast.error(ticketWriteError(err, "Failed to unlink issue"));
     }
   };
 
@@ -117,9 +120,9 @@ export function TicketContextPanel({ detail }: Props) {
           user={ticket.user_affected}
           helper="whose account this is about"
           actionLabel={
-            canDecideTicketRouting ? (ticket.user_affected ? "Change" : "Link user") : undefined
+            canDecideRouting ? (ticket.user_affected ? "Change" : "Link user") : undefined
           }
-          onAction={canDecideTicketRouting ? () => setAssignUserOpen(true) : undefined}
+          onAction={canDecideRouting ? () => setAssignUserOpen(true) : undefined}
         />
         {ticket.sender && ticket.sender._id !== ticket.user_affected?._id && (
           <IdentityRow
@@ -130,12 +133,12 @@ export function TicketContextPanel({ detail }: Props) {
         )}
         <AssignedAdminRow
           admin={ticket.assigned_admin}
-          onAssign={canDecideTicketRouting ? () => setAssignAdminOpen(true) : undefined}
+          onAssign={canDecideRouting ? () => setAssignAdminOpen(true) : undefined}
         />
         <CollaboratorsRow
           collaborators={ticket.collaborators}
-          onAdd={canDecideTicketRouting ? () => setAddCollaboratorOpen(true) : undefined}
-          onRemove={canDecideTicketRouting ? handleRemoveCollaborator : undefined}
+          onAdd={canDecideRouting ? () => setAddCollaboratorOpen(true) : undefined}
+          onRemove={canDecideRouting ? handleRemoveCollaborator : undefined}
           removingId={removeCollaborator.isPending ? removingAdminId : null}
         />
       </div>
@@ -156,7 +159,7 @@ export function TicketContextPanel({ detail }: Props) {
               <AlertCircle className="h-3.5 w-3.5" />
               Blocked on issue
             </div>
-            {canDecideTicketRouting && (
+            {canDecideRouting && (
               <button
                 type="button"
                 onClick={handleUnlinkIssue}
@@ -183,14 +186,23 @@ export function TicketContextPanel({ detail }: Props) {
             </span>
           </Link>
         </div>
-      ) : canDecideTicketRouting ? (
+      ) : canDecideRouting ? (
+        /* Only faults may group under a root cause, and the BE REFUSES anything
+           else rather than advising. Disabled with the reason, so the rule is
+           learned here instead of from a 400 the user cannot act on. */
         <button
           type="button"
+          disabled={!canLinkToIssue}
+          title={
+            canLinkToIssue
+              ? undefined
+              : "Only tickets typed as an issue can be grouped under a root cause"
+          }
           onClick={() => setLinkIssueOpen(true)}
-          className="w-full flex items-center justify-center gap-1.5 rounded-md border border-dashed border-gray-300 px-3 py-2 text-xs text-gray-600 hover:border-gray-400 hover:text-gray-800"
+          className="w-full flex items-center justify-center gap-1.5 rounded-md border border-dashed border-gray-300 px-3 py-2 text-xs text-gray-600 hover:border-gray-400 hover:text-gray-800 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-gray-300 disabled:hover:text-gray-600"
         >
           <AlertCircle className="h-3.5 w-3.5" />
-          Link to issue
+          {canLinkToIssue ? "Link to issue" : "Only issues can be grouped"}
         </button>
       ) : null}
 
@@ -222,12 +234,12 @@ export function TicketContextPanel({ detail }: Props) {
         </section>
       )}
 
-      {detail.csManager && (
+      {detail.cs_manager && (
         <div className="rounded-lg bg-gray-50/60 border border-gray-200 px-3 py-2 flex items-center gap-2 text-xs">
           <Headphones className="h-3.5 w-3.5 text-gray-500 shrink-0" />
           <span className="text-gray-500">CS Manager</span>
           <span className="text-gray-900 font-medium truncate">
-            {detail.csManager.userName}
+            {detail.cs_manager.userName}
           </span>
         </div>
       )}
@@ -285,7 +297,7 @@ export function TicketContextPanel({ detail }: Props) {
 
       {/* Mounted only for the role that can open them — a dialog nobody can
           reach is still a mutation sitting in the bundle. */}
-      {canDecideTicketRouting && (
+      {canDecideRouting && (
         <>
       <AddCollaboratorDialog
         open={addCollaboratorOpen}
@@ -300,12 +312,14 @@ export function TicketContextPanel({ detail }: Props) {
         open={assignAdminOpen}
         onOpenChange={setAssignAdminOpen}
         ticketId={ticket._id}
+        expectedUpdatedAt={ticket.updatedAt}
         currentAdminId={ticket.assigned_admin?._id ?? null}
       />
       <AssignAffectedUserDialog
         open={assignUserOpen}
         onOpenChange={setAssignUserOpen}
         ticketId={ticket._id}
+        expectedUpdatedAt={ticket.updatedAt}
         currentUserId={ticket.user_affected?._id ?? null}
       />
       <LinkTicketToIssueDialog
@@ -383,7 +397,7 @@ function AssignedAdminRow({
   admin,
   onAssign,
 }: {
-  admin?: { _id: string; userName: string; email?: string | null } | null;
+  admin?: AdminRef | null;
   /** Absent for a reader who may not reassign — the row still reports who owns it. */
   onAssign?: () => void;
 }) {
@@ -431,12 +445,7 @@ function CollaboratorsRow({
   onRemove,
   removingId,
 }: {
-  collaborators: {
-    _id: string;
-    userName: string;
-    email?: string | null;
-    role?: string | null;
-  }[];
+  collaborators: AdminRef[];
   /** Both absent for a reader who may not change who is helping. */
   onAdd?: () => void;
   onRemove?: (adminId: string) => void;

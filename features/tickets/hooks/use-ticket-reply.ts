@@ -1,53 +1,34 @@
-"use client";
+'use client';
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { execute } from "@/lib/graphql-client";
-import { graphql } from "@/lib/gql";
-import { ticketKeys } from "./query-keys";
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-/**
- * Send an email reply to the customer.
- *
- * The BE stamps the thread headers, the plus-addressed reply-to and the subject
- * tag on the way out, which is the whole mechanism by which the customer's
- * answer finds its way back to this ticket. Nothing here needs to know about
- * that beyond not dropping the call.
- *
- * Two refusals are the BE's, and the composer mirrors them up front rather than
- * letting the operator write a reply and only then be told:
- *   - the ticket did not arrive by email — there is nowhere to send it;
- *   - the ticket was merged — the conversation belongs on the winner.
- */
-const REPLY_TO_TICKET = graphql(`
-  mutation ReplyToTicket($ticketId: ID!, $body: String!) {
-    replyToTicket(ticketId: $ticketId, body: $body) {
-      ticket {
-        _id
-        status
-        updatedAt
-      }
-      messages {
-        ...TicketTimeline_message
-      }
-    }
-  }
-`);
+import { apiPost } from '@/lib/api-client';
+
+import { TicketDetailSchema } from '../schemas/ticket.schema';
+import { ticketKeys } from './query-keys';
 
 export interface ReplyToTicketInput {
   ticketId: string;
   body: string;
 }
 
+/**
+ * Answer the customer, from inside the app.
+ *
+ * The BE attempts the send before recording anything, but writes the message
+ * either way — a failed delivery has to be visible in the conversation rather
+ * than swallowed. It then throws, so the agent finds out now instead of from
+ * the customer a week later. Returns the refreshed detail, so the thread
+ * updates without a second round trip.
+ */
 export const useReplyToTicket = () => {
-  const qc = useQueryClient();
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ ticketId, body }: ReplyToTicketInput) =>
-      execute(REPLY_TO_TICKET, { ticketId, body }),
-    onSuccess: (_, vars) => {
-      // The detail refetch is what repaints the thread. The list moves too:
-      // replying bumps updatedAt, which the "Recently updated" sort reads.
-      qc.invalidateQueries({ queryKey: ticketKeys.detail(vars.ticketId) });
-      qc.invalidateQueries({ queryKey: ticketKeys.lists() });
+      apiPost(`/admin/tickets/${ticketId}/reply`, { body }, TicketDetailSchema),
+    onSuccess: (detail, v) => {
+      queryClient.setQueryData(ticketKeys.detail(v.ticketId), detail);
+      queryClient.invalidateQueries({ queryKey: ticketKeys.lists() });
     },
   });
 };

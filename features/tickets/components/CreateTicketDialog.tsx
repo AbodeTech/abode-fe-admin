@@ -22,9 +22,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { TicketChannel } from "@/lib/gql/graphql";
 import { CHANNEL_OPTIONS } from "../lib/ticket-display";
 import { useCreateTicket } from "../hooks/use-ticket-mutations";
+import { type TicketChannel } from "../schemas/ticket.schema";
+import { ticketWriteError } from "../lib/ticket-errors";
 
 interface Props {
   open: boolean;
@@ -38,7 +39,7 @@ interface Props {
  * into a raised complaint. Linking to a user happens on the detail
  * drawer via user suggestions. */
 export function CreateTicketDialog({ open, onOpenChange, onCreated }: Props) {
-  const [channel, setChannel] = useState<TicketChannel>(TicketChannel.Email);
+  const [channel, setChannel] = useState<TicketChannel>('email');
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [sourceRef, setSourceRef] = useState("");
@@ -47,7 +48,7 @@ export function CreateTicketDialog({ open, onOpenChange, onCreated }: Props) {
   const create = useCreateTicket();
 
   const reset = () => {
-    setChannel(TicketChannel.Email);
+    setChannel('email');
     setSubject("");
     setBody("");
     setSourceRef("");
@@ -67,16 +68,16 @@ export function CreateTicketDialog({ open, onOpenChange, onCreated }: Props) {
         channel,
         subject: subject.trim(),
         body: body.trim() || undefined,
-        sourceReference: sourceRef.trim() || undefined,
+        source_reference: sourceRef.trim() || undefined,
         category: category.trim() || undefined,
       });
-      toast.success(`Ticket ${res.createTicket.ticket_ref} created`);
-      onCreated?.(res.createTicket._id);
+      toast.success(`Ticket ${res.ticket_ref} created`);
+      onCreated?.(res._id);
       reset();
       onOpenChange(false);
     } catch (err: unknown) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to create ticket"
+        ticketWriteError(err, "Failed to create ticket")
       );
     }
   };

@@ -21,7 +21,7 @@ import { useTicketQueueStats } from "../hooks/use-tickets";
  * tickets the reader cannot reach would read as work they are failing to do
  * and cannot act on, which is worse than showing nothing.
  *
- * Only two of these change behaviour: `breaching` and `oldestOpenHours`. They
+ * Only two of these change behaviour: `breaching` and `oldest_open_hours`. They
  * are the ones that go red. The rest are shape — they explain what the queue is
  * made of, so the two that matter can be read against something.
  */
@@ -99,17 +99,17 @@ export function TicketQueueStrip() {
   return (
     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
       <Tile label="Open" value={data.open} icon={Inbox} />
-      <Tile label="In progress" value={data.inProgress} icon={Hourglass} />
+      <Tile label="In progress" value={data.in_progress} icon={Hourglass} />
       <Tile
         label="Waiting on customer"
-        value={data.waitingCustomer}
+        value={data.waiting_customer}
         icon={UserRound}
       />
       <Tile
         label="Blocked on an issue"
-        value={data.blockedOnIssue}
+        value={data.blocked_on_issue}
         icon={Link2}
-        alarming={data.blockedOnIssue > 0}
+        alarming={data.blocked_on_issue > 0}
       />
       <Tile
         label="Waiting over 48h"
@@ -119,13 +119,13 @@ export function TicketQueueStrip() {
       />
       <Tile
         label="Oldest still open"
-        value={formatAge(data.oldestOpenHours)}
+        value={formatAge(data.oldest_open_hours)}
         icon={Clock}
-        alarming={(data.oldestOpenHours ?? 0) > 48}
+        alarming={(data.oldest_open_hours ?? 0) > 48}
       />
       <Tile
         label="Resolved this week"
-        value={data.resolvedLast7Days}
+        value={data.resolved_last_7_days}
         icon={CheckCircle2}
       />
     </div>

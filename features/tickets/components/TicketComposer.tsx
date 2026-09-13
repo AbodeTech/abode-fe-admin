@@ -7,10 +7,11 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { TicketChannel } from "@/lib/gql/graphql";
 import { useAddTicketNote } from "../hooks/use-ticket-mutations";
+import { MIN_NOTE_LENGTH } from "../lib/ticket-errors";
 import { useReplyToTicket } from "../hooks/use-ticket-reply";
 import { CHANNEL_LABELS } from "../lib/ticket-display";
+import { type TicketChannel } from "../schemas/ticket.schema";
 
 interface Props {
   ticketId: string;
@@ -29,7 +30,7 @@ type Mode = "reply" | "note";
  * her back" is exactly the thing that still needs recording.
  */
 export function TicketComposer({ ticketId, channel, mergedInto }: Props) {
-  const isEmail = channel === TicketChannel.Email;
+  const isEmail = channel === 'email';
   const isMerged = !!mergedInto;
   const canReply = isEmail && !isMerged;
 
@@ -43,6 +44,12 @@ export function TicketComposer({ ticketId, channel, mergedInto }: Props) {
   // A ticket can stop being repliable while open (it gets merged), so the mode
   // is corrected at render rather than trusted from state.
   const activeMode: Mode = canReply ? mode : "note";
+
+  // A note has a five-character floor server-side; a reply does not. Said here
+  // so the button explains itself rather than the BE rejecting the click.
+  const trimmed = body.trim();
+  const canSend =
+    activeMode === "note" ? trimmed.length >= MIN_NOTE_LENGTH : trimmed.length > 0;
 
   const handleSend = async () => {
     const text = body.trim();
@@ -142,7 +149,7 @@ export function TicketComposer({ ticketId, channel, mergedInto }: Props) {
             ? "Sent as email, threaded so their answer returns to this ticket."
             : "Never sent to the customer."}
         </p>
-        <Button size="sm" onClick={handleSend} disabled={!body.trim() || isPending}>
+        <Button size="sm" onClick={handleSend} disabled={!canSend || isPending}>
           {isPending ? (
             <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
           ) : (

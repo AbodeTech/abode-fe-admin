@@ -7,8 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/shared/Pagination";
 import { useDebounce } from "@/hooks/use-debounce";
-import { useAdminSession } from "@/hooks/use-admin-session";
-import { IssueStatus } from "@/lib/gql/graphql";
+import { useTicketPermissions } from "@/features/tickets";
 import {
   useIssues,
   DEFAULT_ISSUES_LIMIT,
@@ -16,6 +15,7 @@ import {
   IssuesTable,
   CreateIssueDialog,
 } from "@/features/tickets";
+import { ISSUE_STATUSES, type IssueStatus } from "@/features/tickets/schemas/ticket.schema";
 
 /**
  * Root-cause issue list. Group ticket clusters here so a single fix
@@ -30,14 +30,14 @@ import {
 
 const parseStatus = (v: string | null): IssueStatus | null => {
   if (!v) return null;
-  const values = Object.values(IssueStatus) as string[];
+  const values: readonly string[] = ISSUE_STATUSES;
   return values.includes(v) ? (v as IssueStatus) : null;
 };
 
 function IssuesContent() {
   const router = useRouter();
   const search = useSearchParams();
-  const { canDecideTicketRouting } = useAdminSession();
+  const { canDecideRouting } = useTicketPermissions();
 
   const status = parseStatus(search.get("status"));
   const page = Math.max(1, Number(search.get("page") ?? "1") || 1);
@@ -76,7 +76,7 @@ function IssuesContent() {
             and every linked ticket closes with it in one deliberate act.
           </p>
         </div>
-        {canDecideTicketRouting && (
+        {canDecideRouting && (
           <Button onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4 mr-1.5" />
             New issue
@@ -118,7 +118,7 @@ function IssuesContent() {
         />
       )}
 
-      {canDecideTicketRouting && (
+      {canDecideRouting && (
         <CreateIssueDialog
           open={createOpen}
           onOpenChange={setCreateOpen}

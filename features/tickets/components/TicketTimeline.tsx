@@ -4,14 +4,7 @@ import { useEffect, useRef } from "react";
 import { format, isSameDay, isToday, isYesterday } from "date-fns";
 import { AlertTriangle, Loader2, Lock, MailWarning, Link2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { FragmentType, graphql, useFragment } from "@/lib/gql";
-import {
-  MatchSignal,
-  MessageDeliveryStatus,
-  MessageDirection,
-  type TicketTimeline_MessageFragment,
-  type TicketTimeline_NoteFragment,
-} from "@/lib/gql/graphql";
+import { type TicketMessage, type TicketNote } from "../schemas/ticket.schema";
 
 /**
  * The conversation, and the internal record, in one column.
@@ -27,36 +20,12 @@ import {
  * of the timeline looking busy.
  */
 
-export const TicketTimeline_message = graphql(`
-  fragment TicketTimeline_message on TicketMessage {
-    _id
-    direction
-    channel
-    body
-    from_address
-    sent_at
-    author_admin { _id userName email }
-    author_user { _id firstName lastName email }
-    delivery { status error }
-    match { signal conflict }
-  }
-`);
-
-export const TicketTimeline_note = graphql(`
-  fragment TicketTimeline_note on TicketNote {
-    _id
-    body
-    createdAt
-    admin { _id userName email }
-  }
-`);
-
-type Message = TicketTimeline_MessageFragment;
-type Note = TicketTimeline_NoteFragment;
+type Message = TicketMessage;
+type Note = TicketNote;
 
 interface Props {
-  messages: readonly FragmentType<typeof TicketTimeline_message>[];
-  notes: readonly FragmentType<typeof TicketTimeline_note>[];
+  messages: readonly Message[];
+  notes: readonly Note[];
   /** Re-scroll to the newest entry when the open ticket changes. */
   ticketId: string;
   /**
@@ -92,12 +61,18 @@ const userName = (
   return name || u.email || null;
 };
 
-/** Only worth surfacing when something other than the obvious happened. */
-const MATCH_NOTE: Partial<Record<MatchSignal, string>> = {
-  [MatchSignal.Headers]: "Threaded by mail headers",
-  [MatchSignal.ReplyAddress]: "Matched by the reply address",
-  [MatchSignal.SubjectTag]: "Matched by the subject tag",
-  [MatchSignal.Manual]: "Placed on this ticket by hand",
+/**
+ * Only worth surfacing when something other than the obvious happened.
+ *
+ * Keyed by the raw signal string: `original` and anything the BE adds later
+ * fall through to no note, which is the right default — the interesting case is
+ * a message that landed here by a route the reader would not assume.
+ */
+const MATCH_NOTE: Record<string, string> = {
+    headers: "Threaded by mail headers",
+    reply_address: "Matched by the reply address",
+    subject_tag: "Matched by the subject tag",
+    manual: "Placed on this ticket by hand",
 };
 
 export function TicketTimeline({
@@ -109,13 +84,15 @@ export function TicketTimeline({
   fallbackFrom,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const msgs = useFragment(TicketTimeline_message, messages);
-  const nts = useFragment(TicketTimeline_note, notes);
+  const msgs = messages;
+  const nts = notes;
 
   const entries: Entry[] = [
     ...msgs.map<Entry>((m) => ({
       kind: "message",
-      at: new Date(m.sent_at),
+      // Ingestion always stamps one of these; the epoch fallback keeps a
+      // malformed row at the bottom instead of reading the clock mid-render.
+      at: new Date(m.sent_at ?? m.createdAt ?? 0),
       key: `m-${m._id}`,
       data: m,
     })),
@@ -202,28 +179,28 @@ function DaySeparator({ label }: { label: string }) {
 }
 
 function MessageRow({ message, at }: { message: Message; at: Date }) {
-  const inbound = message.direction === MessageDirection.Inbound;
+  const inbound = message.direction === 'inbound';
   const author = inbound
     ? userName(message.author_user) ?? message.from_address ?? "the customer"
     : adminName(message.author_admin);
 
   const delivery = message.delivery;
-  const failed = delivery?.status === MessageDeliveryStatus.Failed;
-  const pending = delivery?.status === MessageDeliveryStatus.Pending;
+  const failed = delivery?.status === 'failed';
+  const pending = delivery?.status === 'pending';
   const matchNote = message.match ? MATCH_NOTE[message.match.signal] : undefined;
 
   return (
     <MessageBubble
       inbound={inbound}
-      body={message.body}
+      body={message.body ?? ""}
       at={at}
       author={author}
-      channel={message.channel}
+      channel={message.channel ?? undefined}
       failed={failed}
       failedReason={delivery?.error ?? null}
       pending={pending}
       matchNote={matchNote}
-      conflict={message.match?.conflict}
+      conflict={message.match?.conflict ?? false}
     />
   );
 }

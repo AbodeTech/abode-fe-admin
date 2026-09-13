@@ -16,20 +16,21 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useCreateIssue } from "../hooks/use-issues";
+import { ticketWriteError } from "../lib/ticket-errors";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** When provided, the issue is created linked to this ticket in the
-   * same call (BE's fromTicketId promotion path). */
-  fromTicketId?: string | null;
+   * same call (BE's from_ticket_id promotion path). */
+  from_ticket_id?: string | null;
   onCreated?: (issue: { _id: string; issue_ref: string }) => void;
 }
 
 export function CreateIssueDialog({
   open,
   onOpenChange,
-  fromTicketId,
+  from_ticket_id,
   onCreated,
 }: Props) {
   const [title, setTitle] = useState("");
@@ -53,19 +54,19 @@ export function CreateIssueDialog({
       const res = await create.mutateAsync({
         title: title.trim(),
         description: description.trim() || undefined,
-        fromTicketId: fromTicketId ?? undefined,
+        from_ticket_id: from_ticket_id ?? undefined,
       });
       toast.success(
-        fromTicketId
-          ? `Issue ${res.createIssue.issue_ref} created — ticket linked`
-          : `Issue ${res.createIssue.issue_ref} created`
+        from_ticket_id
+          ? `Issue ${res.issue_ref} created — ticket linked`
+          : `Issue ${res.issue_ref} created`
       );
-      onCreated?.(res.createIssue);
+      onCreated?.(res);
       reset();
       onOpenChange(false);
     } catch (err: unknown) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to create issue"
+        ticketWriteError(err, "Failed to create issue")
       );
     }
   };
@@ -75,10 +76,10 @@ export function CreateIssueDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {fromTicketId ? "Promote to issue" : "New issue"}
+            {from_ticket_id ? "Promote to issue" : "New issue"}
           </DialogTitle>
           <DialogDescription>
-            {fromTicketId
+            {from_ticket_id
               ? "Group similar tickets under a shared root cause. This ticket links to the new issue automatically."
               : "Group similar tickets under a shared root cause. Link tickets to it as they come in."}
           </DialogDescription>
@@ -120,7 +121,7 @@ export function CreateIssueDialog({
             {create.isPending && (
               <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
             )}
-            {fromTicketId ? "Create + link" : "Create issue"}
+            {from_ticket_id ? "Create + link" : "Create issue"}
           </Button>
         </DialogFooter>
       </DialogContent>

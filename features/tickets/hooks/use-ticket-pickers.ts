@@ -1,75 +1,62 @@
-"use client";
+'use client';
 
-import { useQuery } from "@tanstack/react-query";
-import { execute } from "@/lib/graphql-client";
-import { graphql } from "@/lib/gql";
+import { useQuery } from '@tanstack/react-query';
+import { z } from 'zod';
+
+import { apiGet, apiGetPaged } from '@/lib/api-client';
+
+import { AdminRefSchema, UserRefSchema } from '../schemas/ticket.schema';
+import { ticketKeys } from './query-keys';
 
 /**
- * Search sources for the "assign affected user" and "assign admin"
- * dialogs. Neither has ticket-specific behaviour, so they reuse the
- * shared admin + user endpoints and just narrow the fields down.
+ * The two people-pickers the ticket dialogs need: an admin to assign or pull
+ * in, and a customer to link a ticket to.
+ *
+ * Admins are fetched once and filtered in memory — the roster is small and
+ * there is no search endpoint for it. Customers are searched server-side,
+ * because there are hundreds of thousands.
  */
 
-const LIST_ADMINS_FOR_TICKET_PICKER = graphql(`
-  query ListAdminsForTicketPicker {
-    getAllAdminWithRoles {
-      data {
-        adminId
-        adminName
-        adminEmail
-        role
-      }
-    }
-  }
-`);
-
-const SEARCH_USERS_FOR_TICKET_PICKER = graphql(`
-  query SearchUsersForTicketPicker(
-    $page: Int!
-    $limit: Int!
-    $searchQuery: String
-  ) {
-    getAllUsersWithFilters(page: $page, limit: $limit, searchQuery: $searchQuery) {
-      count
-      data {
-        _id
-        firstName
-        lastName
-        email
-        phoneNumber
-      }
-    }
-  }
-`);
+const AdminOptionSchema = AdminRefSchema.extend({
+  firstName: z.string().nullish(),
+  lastName: z.string().nullish(),
+});
 
 export interface TicketAdminOption {
   _id: string;
   displayName: string;
   email: string;
-  role: string;
+  role?: string | null;
 }
 
+const adminLabel = (a: z.infer<typeof AdminOptionSchema>) =>
+  a.userName || `${a.firstName ?? ''} ${a.lastName ?? ''}`.trim() || a.email || a._id;
+
+/** GET /admin/admins — the whole roster, filtered client-side. */
 export const useTicketAdminPicker = (query: string) => {
   const q = query.trim().toLowerCase();
-  const { data, isLoading } = useQuery({
-    queryKey: ["tickets", "admin-picker"] as const,
-    queryFn: () => execute(LIST_ADMINS_FOR_TICKET_PICKER, {}),
-    select: (r) => r.getAllAdminWithRoles?.data ?? [],
+
+  const result = useQuery({
+    queryKey: ticketKeys.adminPicker(),
+    queryFn: () => apiGet('/admin/admins', z.array(AdminOptionSchema)),
+    // Who is an admin changes rarely; the dialog reopens often.
+    staleTime: 5 * 60 * 1000,
   });
-  const options: TicketAdminOption[] = (data ?? []).map((row) => ({
-    _id: row.adminId,
-    displayName: row.adminName || row.adminEmail,
-    email: row.adminEmail,
-    role: row.role,
+
+  const all: TicketAdminOption[] = (result.data ?? []).map((a) => ({
+    _id: a._id,
+    displayName: adminLabel(a),
+    email: a.email ?? '',
+    role: typeof a.role === 'string' ? a.role : null,
   }));
-  const filtered = q
-    ? options.filter(
-        (o) =>
-          o.displayName.toLowerCase().includes(q) ||
-          o.email.toLowerCase().includes(q)
+
+  const data = q
+    ? all.filter(
+        (a) => a.displayName.toLowerCase().includes(q) || a.email.toLowerCase().includes(q)
       )
-    : options;
-  return { data: filtered, isLoading };
+    : all;
+
+  return { data, isLoading: result.isLoading };
 };
 
 export interface TicketUserOption {
@@ -80,32 +67,33 @@ export interface TicketUserOption {
   phoneNumber?: string | null;
 }
 
+/**
+ * GET /admin/users?search= — server-side, and only past two characters. A
+ * one-letter search would page the entire customer base back.
+ */
 export const useTicketUserSearch = (query: string, limit = 10) => {
   const q = query.trim();
-  return useQuery({
-    queryKey: ["tickets", "user-search", q, limit] as const,
+
+  const result = useQuery({
+    queryKey: ticketKeys.userSearch(q, limit),
     queryFn: () =>
-      execute(SEARCH_USERS_FOR_TICKET_PICKER, {
-        page: 1,
-        limit,
-        searchQuery: q || null,
+      apiGetPaged('/admin/users', UserRefSchema, {
+        params: { page: 1, limit, search: q },
       }),
-    // Wait for at least 2 chars — no point paging the entire user table.
-    enabled: q.length >= 2,
-    select: (r) => {
-      const rows = r.getAllUsersWithFilters?.data ?? [];
-      // FilteredUserAdminDetail has every field nullable; keep only the
-      // ones with a real _id + email so the picker never renders a
-      // ghost row.
-      return rows
-        .filter((u): u is NonNullable<typeof u> => !!u && !!u._id && !!u.email)
-        .map<TicketUserOption>((u) => ({
-          _id: u._id!,
-          firstName: u.firstName ?? null,
-          lastName: u.lastName ?? null,
-          email: u.email!,
-          phoneNumber: u.phoneNumber ?? null,
-        }));
-    },
+    enabled: q.length > 2,
   });
+
+  // Every field is nullable on the wire; keep only rows with a real id and
+  // email so the picker never renders a ghost.
+  const data: TicketUserOption[] = (result.data?.items ?? [])
+    .filter((u) => !!u._id && !!u.email)
+    .map((u) => ({
+      _id: u._id,
+      firstName: u.firstName ?? null,
+      lastName: u.lastName ?? null,
+      email: u.email as string,
+      phoneNumber: u.phoneNumber ?? null,
+    }));
+
+  return { data, isLoading: result.isLoading };
 };

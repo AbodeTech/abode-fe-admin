@@ -5,6 +5,7 @@ import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { MIN_RESOLUTION_LENGTH, ticketWriteError } from "../lib/ticket-errors";
 import {
   Dialog,
   DialogContent,
@@ -16,24 +17,29 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import type { GetIssueQuery } from "@/lib/gql/graphql";
 import { useResolveIssue } from "../hooks/use-issues";
 import { STATUS_LABELS, STATUS_PILL_CLASS } from "../lib/ticket-display";
+import { type IssueDetail } from "../schemas/ticket.schema";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   issueId: string;
   issueTitle: string;
-  linkedTickets: NonNullable<GetIssueQuery["getIssue"]["tickets"]>;
+  linkedTickets: NonNullable<IssueDetail["tickets"]>;
   onResolved?: () => void;
 }
 
 /**
- * Resolves the issue AND every linked ticket in one BE call. Requires
- * confirmCustomersContacted to be true — nothing sends automatically,
- * so this is deliberate. Tickets can be excluded (the escape hatch for
- * tickets that also raised a different problem).
+ * Resolves the issue AND every linked ticket in one BE call.
+ *
+ * The BE notifies the affected customers by default. Turning that off is the
+ * exception, and only then is `confirm_customers_contacted` required — from
+ * the customer's side, being marked resolved in silence is indistinguishable
+ * from being ignored, so closing quietly has to be an explicit act.
+ *
+ * Tickets can be excluded: the escape hatch for one that also raised a
+ * different problem.
  */
 export function ResolveIssueDialog({
   open,
@@ -45,6 +51,7 @@ export function ResolveIssueDialog({
 }: Props) {
   const [note, setNote] = useState("");
   const [confirmed, setConfirmed] = useState(false);
+  const [notifyUsers, setNotifyUsers] = useState(true);
   const [excluded, setExcluded] = useState<Record<string, boolean>>({});
 
   const resolve = useResolveIssue();
@@ -60,26 +67,35 @@ export function ResolveIssueDialog({
     if (resolve.isPending) return;
     setNote("");
     setConfirmed(false);
+    setNotifyUsers(true);
     setExcluded({});
     onOpenChange(false);
   };
 
+  // Only the silent path needs the confirmation.
+  const needsConfirmation = !notifyUsers;
+  const canResolve =
+    note.trim().length >= MIN_RESOLUTION_LENGTH && (!needsConfirmation || confirmed);
+
   const handleResolve = async () => {
-    if (!note.trim() || !confirmed) return;
+    if (!canResolve) return;
     try {
       const res = await resolve.mutateAsync({
         issueId,
-        resolutionNote: note.trim(),
-        excludeTicketIds: excludeIds.length > 0 ? excludeIds : undefined,
-        confirmCustomersContacted: true,
+        resolution_note: note.trim(),
+        exclude_ticket_ids: excludeIds.length > 0 ? excludeIds : undefined,
+        notify_users: notifyUsers,
+        confirm_customers_contacted: needsConfirmation ? confirmed : undefined,
       });
+      const closed = res.tickets_resolved ?? 0;
+      const affected = res.customers_affected ?? 0;
       toast.success(
-        `Issue resolved · ${res.resolveIssue.ticketsResolved} ticket${res.resolveIssue.ticketsResolved === 1 ? "" : "s"} closed · ${res.resolveIssue.customersAffected} customer${res.resolveIssue.customersAffected === 1 ? "" : "s"} affected`
+        `Issue resolved · ${closed} ticket${closed === 1 ? "" : "s"} closed · ${affected} customer${affected === 1 ? "" : "s"} affected`
       );
       onResolved?.();
       handleClose();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to resolve");
+      toast.error(ticketWriteError(err, "Failed to resolve"));
     }
   };
 
@@ -171,24 +187,43 @@ export function ResolveIssueDialog({
             </div>
           )}
 
-          <label className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 cursor-pointer">
+          <label className="flex items-start gap-2 rounded-md border border-gray-200 p-3 text-sm cursor-pointer">
             <Checkbox
-              checked={confirmed}
-              onCheckedChange={(v) => setConfirmed(!!v)}
+              checked={notifyUsers}
+              onCheckedChange={(v) => setNotifyUsers(!!v)}
               className="mt-0.5"
             />
             <span className="flex-1">
-              <span className="font-medium flex items-center gap-1.5">
-                <AlertCircle className="h-3.5 w-3.5" />
-                Customers have been contacted
-              </span>
-              <span className="text-xs block mt-0.5">
-                Nothing is sent automatically. Confirm the {willResolveCount} affected
-                customer{willResolveCount === 1 ? " has" : "s have"} heard from you
-                before closing.
+              <span className="font-medium">Email the affected customers</span>
+              <span className="text-xs block mt-0.5 text-gray-500">
+                Sends the resolution to the {willResolveCount} customer
+                {willResolveCount === 1 ? "" : "s"} behind these tickets.
               </span>
             </span>
           </label>
+
+          {/* Only when they have chosen NOT to notify. Closing in silence is
+              the exception, and it has to be owned. */}
+          {needsConfirmation && (
+            <label className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 cursor-pointer">
+              <Checkbox
+                checked={confirmed}
+                onCheckedChange={(v) => setConfirmed(!!v)}
+                className="mt-0.5"
+              />
+              <span className="flex-1">
+                <span className="font-medium flex items-center gap-1.5">
+                  <AlertCircle className="h-3.5 w-3.5" />
+                  Customers have already been contacted
+                </span>
+                <span className="text-xs block mt-0.5">
+                  Nothing will be sent. Confirm the {willResolveCount} affected
+                  customer{willResolveCount === 1 ? " has" : "s have"} heard from
+                  you another way before closing.
+                </span>
+              </span>
+            </label>
+          )}
         </div>
 
         <DialogFooter>
@@ -197,7 +232,7 @@ export function ResolveIssueDialog({
           </Button>
           <Button
             onClick={handleResolve}
-            disabled={!note.trim() || !confirmed || resolve.isPending}
+            disabled={!canResolve || resolve.isPending}
           >
             {resolve.isPending && (
               <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
