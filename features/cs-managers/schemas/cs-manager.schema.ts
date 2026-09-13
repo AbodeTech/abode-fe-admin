@@ -74,6 +74,13 @@ export const CSManagerTargetSchema = z.object({
   year: z.number(),
   customers_allocated_target: z.number(),
   customers_onboarded_target: z.number(),
+  /**
+   * DEPRECATED and unread by the score, but still the only field the target
+   * endpoints accept — v2's AssignTargetDto and the target response DTO were
+   * not ported alongside the scoring change, so `tickets_resolved_target`
+   * cannot be set through the API yet. Sending it would be a hard 400 under
+   * `forbidNonWhitelisted`. Swap this the moment that DTO lands.
+   */
   deeds_delivered_target: z.number(),
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -212,14 +219,29 @@ export const CSManagerDashboardSchema = z.object({
     allocated_so_far: z.number(),
     onboarded_target: z.number(),
     onboarded_so_far: z.number(),
-    deeds_delivered_target: z.number(),
-    deeds_delivered_so_far: z.number(),
+    /**
+     * The third component is ticket resolution, not deeds delivered
+     * (CSM-ADD-16). Issuing a deed became a generated document, so scoring it
+     * measured the machine — and `deed_delivered_at` was a box the manager
+     * ticked by hand, so with issuance automated they could collect 30 points
+     * for work the system had already done.
+     *
+     * This one is a RATE, not a count: a percentage of the month's intake
+     * against a percentage target. The raw counts ride along so the dashboard
+     * can show the working — "18 of 24 resolved" is legible where "75%" alone
+     * is not.
+     */
+    tickets_resolved_target: z.number(),
+    /** Null when no tickets arrived — the UI shows "—", not a damning 0%. */
+    ticket_resolution_rate: z.number().nullable(),
+    tickets_entered: z.number().default(0),
+    tickets_resolved: z.number().default(0),
   }),
   performance_score: z.object({
     score: z.number(),
     allocated_component: z.number(),
     onboarded_component: z.number(),
-    deeds_component: z.number(),
+    tickets_component: z.number(),
   }),
   obligation: z.object({
     paid_not_allocated_this_period: z.number(),

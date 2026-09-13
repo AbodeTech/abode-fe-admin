@@ -1,6 +1,6 @@
 "use client";
 
-import { Home, Phone, FileText, Gauge, AlertCircle, Target } from "lucide-react";
+import { Home, Phone, LifeBuoy, Gauge, AlertCircle, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { KpiTile } from "@/components/shared/KpiTile";
 import { adminMinInitials, adminMinName, type CSManagerDashboard } from "../schemas/cs-manager.schema";
@@ -26,7 +26,7 @@ const daysRemaining = (end: string) => {
 };
 
 const hasActiveTarget = (t: CSManagerDashboard["target"]) =>
-  t.allocated_target > 0 || t.onboarded_target > 0 || t.deeds_delivered_target > 0;
+  t.allocated_target > 0 || t.onboarded_target > 0 || t.tickets_resolved_target > 0;
 
 export function CSManagerSnapshot({
   manager,
@@ -45,18 +45,22 @@ export function CSManagerSnapshot({
     target.allocated_target > 0 ? (target.allocated_so_far / target.allocated_target) * 100 : undefined;
   const onboardedPct =
     target.onboarded_target > 0 ? (target.onboarded_so_far / target.onboarded_target) * 100 : undefined;
-  const deedsPct =
-    target.deeds_delivered_target > 0
-      ? (target.deeds_delivered_so_far / target.deeds_delivered_target) * 100
+  // Both sides are percentages, so attainment is the achieved rate against the
+  // required one — not a count against a count like the two tiles above it.
+  // Undefined rather than 0 when nothing arrived, so the bar reads "no data"
+  // instead of "failed".
+  const ticketsPct =
+    target.tickets_resolved_target > 0 && target.ticket_resolution_rate != null
+      ? (target.ticket_resolution_rate / target.tickets_resolved_target) * 100
       : undefined;
 
   const scoreLine = (label: string, weight: number, componentScore: number, hasT: boolean) =>
     hasT ? `${label}: ${componentScore.toFixed(1)}/${weight}` : `${label}: no target set`;
   const scoreTooltip = [
-    `Objective score out of 100. Allocated 40 + Onboarded 30 + DoA 30.`,
+    `Objective score out of 100. Allocated 40 + Onboarded 30 + Tickets 30.`,
     scoreLine("Allocated", 40, score.allocated_component, target.allocated_target > 0),
     scoreLine("Onboarded", 30, score.onboarded_component, target.onboarded_target > 0),
-    scoreLine("DoA", 30, score.deeds_component, target.deeds_delivered_target > 0),
+    scoreLine("Tickets", 30, score.tickets_component, target.tickets_resolved_target > 0),
   ].join(" · ");
 
   return (
@@ -131,16 +135,24 @@ export function CSManagerSnapshot({
         />
 
         <KpiTile
-          icon={FileText}
+          icon={LifeBuoy}
           iconColor="text-amber-700"
           iconBg="bg-amber-50"
-          label="Deeds of Assignment Delivered"
-          actualDisplay={target.deeds_delivered_so_far.toLocaleString()}
-          targetDisplay={
-            target.deeds_delivered_target > 0 ? target.deeds_delivered_target.toLocaleString() : undefined
+          label="Ticket Resolution Rate"
+          actualDisplay={
+            target.ticket_resolution_rate != null ? `${target.ticket_resolution_rate}%` : "—"
           }
-          percent={deedsPct}
-          tooltip="Deeds sent to eligible customers this period. Full-ownership: eligible after payment plan + doc plan. Flex: eligible after completing land payment."
+          targetDisplay={
+            target.tickets_resolved_target > 0
+              ? `${target.tickets_resolved_target}%`
+              : undefined
+          }
+          percent={ticketsPct}
+          // A rate, not a count. The raw counts go in the tooltip because the
+          // rate is what is judged and the counts are how you check it.
+          noData={target.tickets_entered === 0}
+          noDataLabel="No tickets came in"
+          tooltip={`Of the tickets assigned to this manager that were raised this period, how many are now resolved — ${target.tickets_resolved} of ${target.tickets_entered}. Measured as of now, not month-end, so a ticket raised on the 30th still counts once it closes.`}
         />
 
         <KpiTile
