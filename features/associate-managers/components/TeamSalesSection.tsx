@@ -59,10 +59,10 @@ export function TeamSalesSection({
   });
 
   const query = viewAs === "super-admin" ? adminQuery : selfQuery;
-  const records = (query.data?.data ?? []).filter(
-    (r): r is NonNullable<typeof r> => r !== null
-  );
-  const count = query.data?.count ?? 0;
+  // apiGetPaged returns { items, meta } — rows are non-nullable on the REST
+  // shape, so the old null filter is gone with the GraphQL query.
+  const records = query.data?.items ?? [];
+  const count = query.data?.meta.total ?? records.length;
 
   const { mutateAsync: exportSales, isPending: isExportingSales } =
     useExportManagerSalesRecord();
