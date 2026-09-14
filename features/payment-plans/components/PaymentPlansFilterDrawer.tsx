@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -33,14 +33,23 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
+import { cn } from '@/lib/utils';
 
+import { ASSET_TYPE_LABELS } from '../constants/asset-type-labels';
+import {
+  PRESETS,
+  matchesPreset,
+  upcomingDueBefore,
+  type Preset,
+  type PresetFilter,
+} from '../constants/presets';
 import { STATUS_LABELS } from '../constants/status-colors';
 import { FilterFormSchema, type FilterFormValues } from '../schemas/payment-plans-filter.schema';
 import {
   PAYMENT_PLAN_ASSET_TYPES,
   PAYMENT_PLAN_STATUSES,
 } from '../schemas/payment-plan-row.schema';
-import { serializeFilterToParams } from '../lib/url-state';
+import { countActiveFilters, serializeFilterToParams } from '../lib/url-state';
 
 const STATUS_OPTIONS = PAYMENT_PLAN_STATUSES.map((value) => ({
   value,
@@ -49,20 +58,30 @@ const STATUS_OPTIONS = PAYMENT_PLAN_STATUSES.map((value) => ({
 
 const ASSET_TYPE_OPTIONS = PAYMENT_PLAN_ASSET_TYPES.map((value) => ({
   value,
-  label: value.replace(/_/g, ' '),
+  label: ASSET_TYPE_LABELS[value],
 }));
 
 export function PaymentPlansFilterDrawer({ filter }: { filter: FilterFormValues }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [open, setOpen] = useState(false);
   const form = useForm<FilterFormValues>({
     defaultValues: filter,
     resolver: zodResolver(FilterFormSchema) as never,
   });
 
-  useEffect(() => {
-    form.reset(filter);
-  }, [filter, form]);
+  const activeCount = countActiveFilters(filter);
+
+  /**
+   * Sync from the URL only as the sheet opens. Syncing on every change of the
+   * `filter` prop instead would re-`reset()` mid-edit — `parseFilter` returns a
+   * fresh object each render, so any parent re-render (a React Query refetch on
+   * window focus, say) discarded whatever the user had picked but not applied.
+   */
+  const onOpenChange = (next: boolean) => {
+    if (next) form.reset(filter);
+    setOpen(next);
+  };
 
   const apply = form.handleSubmit((values) => {
     const params = serializeFilterToParams(values, {
@@ -70,16 +89,51 @@ export function PaymentPlansFilterDrawer({ filter }: { filter: FilterFormValues 
       sort: searchParams.get('sort'),
     });
     router.replace(`?${params.toString()}`, { scroll: false });
+    setOpen(false);
   });
 
-  const clear = () => router.replace(window.location.pathname, { scroll: false });
+  const clear = () => {
+    const params = new URLSearchParams();
+    // Column choice and sort are view preferences, not filters — keep them.
+    const columns = searchParams.get('columns');
+    const sort = searchParams.get('sort');
+    if (columns) params.set('columns', columns);
+    if (sort) params.set('sort', sort);
+    router.replace(params.size ? `?${params.toString()}` : window.location.pathname, {
+      scroll: false,
+    });
+    setOpen(false);
+  };
+
+  /**
+   * Presets write into the form rather than straight to the URL, so they read
+   * as a shortcut for filling this panel in and still need Apply. Clicking the
+   * active preset clears it.
+   */
+  const values = form.watch();
+  const applyPreset = (preset: Preset) => {
+    const next: PresetFilter = matchesPreset(values, preset.filter)
+      ? {}
+      : preset.key === 'upcoming'
+        ? { status: ['active'], next_payment_due_before: upcomingDueBefore() }
+        : preset.filter;
+
+    form.setValue('status', next.status ?? []);
+    form.setValue('has_defaults', next.has_defaults);
+    form.setValue('next_payment_due_before', next.next_payment_due_before);
+  };
 
   return (
-    <Sheet>
+    <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetTrigger asChild>
         <Button variant="outline" className="w-full sm:w-auto">
           <Filter className="mr-2 h-4 w-4" />
           Filters
+          {activeCount > 0 && (
+            <span className="ml-2 rounded-full bg-primary px-1.5 py-0.5 text-xs font-semibold tabular-nums text-primary-foreground">
+              {activeCount}
+            </span>
+          )}
         </Button>
       </SheetTrigger>
       <SheetContent className="overflow-y-auto sm:max-w-md">
@@ -88,6 +142,26 @@ export function PaymentPlansFilterDrawer({ filter }: { filter: FilterFormValues 
         </SheetHeader>
         <Form {...form}>
           <form className="flex flex-col gap-4 px-4" onSubmit={apply}>
+            <div className="flex flex-col gap-2">
+              <FormLabel>Quick presets</FormLabel>
+              <div className="flex flex-wrap gap-2">
+                {PRESETS.map((preset) => (
+                  <button
+                    key={preset.key}
+                    type="button"
+                    onClick={() => applyPreset(preset)}
+                    className={cn(
+                      'rounded-full border px-3 py-1.5 text-sm',
+                      matchesPreset(values, preset.filter)
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : 'border-border bg-background text-foreground hover:bg-muted'
+                    )}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+            </div>
             <FormField
               control={form.control}
               name="status"

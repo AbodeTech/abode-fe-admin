@@ -8,6 +8,8 @@ export const userKeys = {
     searchQuery?: string | null;
     hasReferral?: boolean;
     hasAsset?: boolean;
+    isSuspended?: boolean;
+    walletSuspended?: boolean;
     tier?: string;
     referralStatus?: string;
     howYouHeard?: string;

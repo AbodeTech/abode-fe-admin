@@ -13,8 +13,11 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 
-import { SampleDataChip } from "../analytics/SampleDataChip";
-import type { PlanPerformance, SizePlanBreakdown } from "../analytics/sample-data";
+import {
+  planTenorLabel,
+  type AssetSizePlanBreakdown,
+  type AssetSizePlanGroup,
+} from "../../schemas/asset-analytics.schema";
 
 function formatNaira(amount: number | null | undefined): string {
   if (amount == null || amount === 0) return "—";
@@ -31,23 +34,29 @@ function formatSqm(sqm: number | null | undefined): string {
   return `${sqm.toLocaleString()} SQM`;
 }
 
-/** Size rows are the sum of their plans — the backend sends no group totals. */
-function totalsFor(plans: PlanPerformance[]) {
-  const sum = (pick: (plan: PlanPerformance) => number) =>
-    plans.reduce((total, plan) => total + pick(plan), 0);
+/**
+ * `sold_value`, `sqm_sold`, `units_sold` and `efficiency` come from the group
+ * itself — the BE measures them against the size's capacity, so re-deriving
+ * them by summing tenor rows would disagree with the API. The lifecycle and
+ * cash columns have no group-level equivalent and are summed from the rows.
+ */
+function totalsFor(group: AssetSizePlanGroup) {
+  const sum = (pick: (plan: AssetSizePlanBreakdown) => number) =>
+    group.plans.reduce((total, plan) => total + pick(plan), 0);
 
   return {
-    startValue: sum((p) => p.startValue),
-    soldValue: sum((p) => p.soldValue),
-    sqmSold: sum((p) => p.sqmSold),
-    sqmRemaining: sum((p) => p.sqmRemaining),
-    transactions: sum((p) => p.transactions),
-    defaultedCount: sum((p) => p.defaultingUsers),
-    defaultedValue: sum((p) => p.defaultedValue),
-    defaultedBalance: sum((p) => p.defaultedBalance),
-    terminatedCount: sum((p) => p.terminatedPlans),
-    terminatedValue: sum((p) => p.terminatedValue),
-    terminatedBalance: sum((p) => p.terminatedBalance),
+    soldValue: group.sold_value,
+    sqmSold: group.sqm_sold,
+    efficiency: group.efficiency,
+    moneyReceived: sum((p) => p.money_received),
+    balanceOwed: sum((p) => p.balance_owed),
+    transactions: sum((p) => p.plan_count),
+    defaultedCount: sum((p) => p.defaulting.customers),
+    defaultedValue: sum((p) => p.defaulting.value),
+    defaultedBalance: sum((p) => p.defaulting.amount_owing),
+    terminatedCount: sum((p) => p.terminated.plans),
+    terminatedValue: sum((p) => p.terminated.value),
+    terminatedBalance: sum((p) => p.terminated.amount_owing),
   };
 }
 
@@ -57,21 +66,21 @@ function efficiencyColour(efficiency: number): string {
   return "bg-rose-500";
 }
 
-function EfficiencyBar({ plan }: { plan: PlanPerformance }) {
+function EfficiencyBar({ efficiency, label }: { efficiency: number; label: string }) {
   return (
     <div className="flex items-center justify-end gap-2">
-      <span className="text-xs font-bold tabular-nums">{plan.efficiency.toFixed(0)}%</span>
+      <span className="text-xs font-bold tabular-nums">{efficiency.toFixed(0)}%</span>
       <div
         className="h-1.5 w-16 overflow-hidden rounded-full bg-muted"
         role="progressbar"
-        aria-valuenow={Math.round(plan.efficiency)}
+        aria-valuenow={Math.round(efficiency)}
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-label={`${plan.name} collection efficiency`}
+        aria-label={`${label} collection efficiency`}
       >
         <div
-          className={cn("h-full rounded-full", efficiencyColour(plan.efficiency))}
-          style={{ width: `${plan.efficiency}%` }}
+          className={cn("h-full rounded-full", efficiencyColour(efficiency))}
+          style={{ width: `${Math.min(Math.max(efficiency, 0), 100)}%` }}
         />
       </div>
     </div>
@@ -79,18 +88,17 @@ function EfficiencyBar({ plan }: { plan: PlanPerformance }) {
 }
 
 interface Props {
-  /** ⛔ ticket 17 — no per-asset analytics endpoint; this is `SAMPLE_SIZE_PLANS`. */
-  data: SizePlanBreakdown[];
+  data: AssetSizePlanGroup[];
 }
 
 export function PaymentPlanMatrix({ data }: Props) {
-  const [collapsed, setCollapsed] = useState<string[]>([]);
+  const [collapsed, setCollapsed] = useState<number[]>([]);
 
   // Collapsed-by-exception, so a size added to the data later starts open
   // rather than silently hidden.
-  const isOpen = (size: string) => !collapsed.includes(size);
+  const isOpen = (size: number) => !collapsed.includes(size);
 
-  const toggleSize = (size: string) =>
+  const toggleSize = (size: number) =>
     setCollapsed((prev) =>
       prev.includes(size) ? prev.filter((s) => s !== size) : [...prev, size]
     );
@@ -102,7 +110,6 @@ export function PaymentPlanMatrix({ data }: Props) {
         <h3 className="text-lg font-bold tracking-tight sm:text-xl">
           Payment plan performance
         </h3>
-        <SampleDataChip />
       </div>
 
       {data.length === 0 ? (
@@ -137,16 +144,16 @@ export function PaymentPlanMatrix({ data }: Props) {
                     Plan / Size
                   </TableHead>
                   <TableHead className="h-10 whitespace-nowrap text-[10px] font-bold uppercase tracking-wider">
-                    Start Value
-                  </TableHead>
-                  <TableHead className="h-10 whitespace-nowrap text-[10px] font-bold uppercase tracking-wider">
                     Sold Value
                   </TableHead>
                   <TableHead className="h-10 whitespace-nowrap text-[10px] font-bold uppercase tracking-wider">
-                    SQM Sold
+                    Received
                   </TableHead>
                   <TableHead className="h-10 whitespace-nowrap text-[10px] font-bold uppercase tracking-wider">
-                    SQM Remaining
+                    Balance
+                  </TableHead>
+                  <TableHead className="h-10 whitespace-nowrap text-[10px] font-bold uppercase tracking-wider">
+                    SQM Sold
                   </TableHead>
                   <TableHead className="h-10 whitespace-nowrap text-[10px] font-bold uppercase tracking-wider">
                     Transactions
@@ -177,7 +184,7 @@ export function PaymentPlanMatrix({ data }: Props) {
               <TableBody>
                 {data.map((group) => {
                   const open = isOpen(group.size);
-                  const totals = totalsFor(group.plans);
+                  const totals = totalsFor(group);
 
                   return (
                     <Fragment key={group.size}>
@@ -195,20 +202,30 @@ export function PaymentPlanMatrix({ data }: Props) {
                             {open ? "Collapse" : "Expand"} {group.size} SQM
                           </span>
                         </TableCell>
-                        <TableCell className="whitespace-nowrap text-xs font-black uppercase tracking-widest">
-                          {group.size} SQM
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap text-xs font-bold tabular-nums">
-                          {formatNaira(totals.startValue)}
+                        <TableCell className="whitespace-nowrap">
+                          <div className="flex flex-col">
+                            <span className="text-xs font-black uppercase tracking-widest">
+                              {group.size} SQM
+                            </span>
+                            {/* Start value and remaining capacity exist only per
+                                size, so they sit here rather than as columns the
+                                tenor rows below could never fill. */}
+                            <span className="text-[10px] font-medium text-muted-foreground tabular-nums">
+                              {formatNaira(group.start_value)} start · {formatSqm(group.sqm_remaining)} left
+                            </span>
+                          </div>
                         </TableCell>
                         <TableCell className="whitespace-nowrap text-xs font-bold tabular-nums">
                           {formatNaira(totals.soldValue)}
                         </TableCell>
                         <TableCell className="whitespace-nowrap text-xs font-bold tabular-nums">
-                          {formatSqm(totals.sqmSold)}
+                          {formatNaira(totals.moneyReceived)}
                         </TableCell>
                         <TableCell className="whitespace-nowrap text-xs font-bold tabular-nums">
-                          {formatSqm(totals.sqmRemaining)}
+                          {formatNaira(totals.balanceOwed)}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-xs font-bold tabular-nums">
+                          {formatSqm(totals.sqmSold)}
                         </TableCell>
                         <TableCell className="text-xs font-bold tabular-nums">
                           {totals.transactions}
@@ -247,76 +264,87 @@ export function PaymentPlanMatrix({ data }: Props) {
                         <TableCell className="whitespace-nowrap text-xs font-bold tabular-nums text-amber-500">
                           {formatNaira(totals.terminatedBalance)}
                         </TableCell>
-                        <TableCell className="border-l" />
+                        <TableCell className="border-l text-right">
+                          <EfficiencyBar
+                            efficiency={totals.efficiency}
+                            label={`${group.size} SQM`}
+                          />
+                        </TableCell>
                       </TableRow>
 
                       {open &&
                         group.plans.map((plan) => (
-                          <TableRow key={`${group.size}-${plan.name}`} className="hover:bg-muted/20">
+                          <TableRow
+                            key={`${group.size}-${plan.month_subscription}`}
+                            className="hover:bg-muted/20"
+                          >
                             <TableCell />
                             <TableCell className="py-4">
                               <div className="flex flex-col">
                                 <span className="whitespace-nowrap text-sm font-bold">
-                                  {plan.name}
+                                  {planTenorLabel(plan.month_subscription)}
                                 </span>
                                 <span className="text-[10px] font-medium uppercase text-muted-foreground">
-                                  Payment scheme
+                                  {plan.units_sold} units sold
                                 </span>
                               </div>
                             </TableCell>
                             <TableCell className="whitespace-nowrap text-sm tabular-nums">
-                              {formatNaira(plan.startValue)}
+                              {formatNaira(plan.sold_value)}
                             </TableCell>
                             <TableCell className="whitespace-nowrap text-sm tabular-nums">
-                              {formatNaira(plan.soldValue)}
+                              {formatNaira(plan.money_received)}
                             </TableCell>
                             <TableCell className="whitespace-nowrap text-sm tabular-nums">
-                              {formatSqm(plan.sqmSold)}
+                              {formatNaira(plan.balance_owed)}
                             </TableCell>
                             <TableCell className="whitespace-nowrap text-sm tabular-nums">
-                              {formatSqm(plan.sqmRemaining)}
+                              {formatSqm(plan.sqm_sold)}
                             </TableCell>
                             <TableCell className="text-sm font-bold tabular-nums">
-                              {plan.transactions}
+                              {plan.plan_count}
                             </TableCell>
                             <TableCell className="border-l">
                               <span
                                 className={cn(
                                   "text-sm font-bold tabular-nums",
-                                  plan.defaultingUsers > 0
+                                  plan.defaulting.customers > 0
                                     ? "text-rose-600"
                                     : "text-muted-foreground"
                                 )}
                               >
-                                {plan.defaultingUsers || "—"}
+                                {plan.defaulting.customers || "—"}
                               </span>
                             </TableCell>
                             <TableCell className="whitespace-nowrap text-sm tabular-nums text-rose-600">
-                              {formatNaira(plan.defaultedValue)}
+                              {formatNaira(plan.defaulting.value)}
                             </TableCell>
                             <TableCell className="whitespace-nowrap text-sm tabular-nums text-rose-500">
-                              {formatNaira(plan.defaultedBalance)}
+                              {formatNaira(plan.defaulting.amount_owing)}
                             </TableCell>
                             <TableCell className="border-l">
                               <span
                                 className={cn(
                                   "text-sm font-bold tabular-nums",
-                                  plan.terminatedPlans > 0
+                                  plan.terminated.plans > 0
                                     ? "text-amber-600"
                                     : "text-muted-foreground"
                                 )}
                               >
-                                {plan.terminatedPlans || "—"}
+                                {plan.terminated.plans || "—"}
                               </span>
                             </TableCell>
                             <TableCell className="whitespace-nowrap text-sm tabular-nums text-amber-600">
-                              {formatNaira(plan.terminatedValue)}
+                              {formatNaira(plan.terminated.value)}
                             </TableCell>
                             <TableCell className="whitespace-nowrap text-sm tabular-nums text-amber-500">
-                              {formatNaira(plan.terminatedBalance)}
+                              {formatNaira(plan.terminated.amount_owing)}
                             </TableCell>
                             <TableCell className="border-l text-right">
-                              <EfficiencyBar plan={plan} />
+                              <EfficiencyBar
+                                efficiency={plan.efficiency}
+                                label={planTenorLabel(plan.month_subscription)}
+                              />
                             </TableCell>
                           </TableRow>
                         ))}
@@ -331,7 +359,7 @@ export function PaymentPlanMatrix({ data }: Props) {
           <div className="space-y-3 md:hidden">
             {data.map((group) => {
               const open = isOpen(group.size);
-              const totals = totalsFor(group.plans);
+              const totals = totalsFor(group);
 
               return (
                 <div key={group.size} className="overflow-hidden rounded-xl border">
@@ -355,10 +383,12 @@ export function PaymentPlanMatrix({ data }: Props) {
                   </button>
 
                   <dl className="grid grid-cols-2 gap-x-4 gap-y-3 border-t px-4 py-3">
-                    <Stat label="Start value" value={formatNaira(totals.startValue)} />
+                    <Stat label="Start value" value={formatNaira(group.start_value)} />
                     <Stat label="Sold value" value={formatNaira(totals.soldValue)} />
+                    <Stat label="Received" value={formatNaira(totals.moneyReceived)} />
+                    <Stat label="Balance" value={formatNaira(totals.balanceOwed)} />
                     <Stat label="SQM sold" value={formatSqm(totals.sqmSold)} />
-                    <Stat label="SQM remaining" value={formatSqm(totals.sqmRemaining)} />
+                    <Stat label="SQM remaining" value={formatSqm(group.sqm_remaining)} />
                     <Stat label="Transactions" value={String(totals.transactions)} />
                     <Stat
                       label="Defaulted"
@@ -369,26 +399,35 @@ export function PaymentPlanMatrix({ data }: Props) {
 
                   {open &&
                     group.plans.map((plan) => (
-                      <div key={plan.name} className="border-t bg-muted/10 px-4 py-3">
+                      <div
+                        key={plan.month_subscription}
+                        className="border-t bg-muted/10 px-4 py-3"
+                      >
                         <div className="mb-2 flex items-center justify-between gap-3">
-                          <span className="text-sm font-bold">{plan.name}</span>
-                          <EfficiencyBar plan={plan} />
+                          <span className="text-sm font-bold">
+                            {planTenorLabel(plan.month_subscription)}
+                          </span>
+                          <EfficiencyBar
+                            efficiency={plan.efficiency}
+                            label={planTenorLabel(plan.month_subscription)}
+                          />
                         </div>
                         <dl className="grid grid-cols-2 gap-x-4 gap-y-2">
-                          <Stat label="Start value" value={formatNaira(plan.startValue)} />
-                          <Stat label="Sold value" value={formatNaira(plan.soldValue)} />
-                          <Stat label="SQM sold" value={formatSqm(plan.sqmSold)} />
-                          <Stat label="SQM remaining" value={formatSqm(plan.sqmRemaining)} />
-                          <Stat label="Transactions" value={String(plan.transactions)} />
+                          <Stat label="Sold value" value={formatNaira(plan.sold_value)} />
+                          <Stat label="Received" value={formatNaira(plan.money_received)} />
+                          <Stat label="Balance" value={formatNaira(plan.balance_owed)} />
+                          <Stat label="SQM sold" value={formatSqm(plan.sqm_sold)} />
+                          <Stat label="Units sold" value={String(plan.units_sold)} />
+                          <Stat label="Transactions" value={String(plan.plan_count)} />
                           <Stat
                             label="Defaults"
-                            value={`${plan.defaultingUsers || 0} · ${formatNaira(plan.defaultedBalance)}`}
-                            tone={plan.defaultingUsers > 0 ? "danger" : undefined}
+                            value={`${plan.defaulting.customers || 0} · ${formatNaira(plan.defaulting.amount_owing)}`}
+                            tone={plan.defaulting.customers > 0 ? "danger" : undefined}
                           />
                           <Stat
                             label="Terminations"
-                            value={`${plan.terminatedPlans || 0} · ${formatNaira(plan.terminatedBalance)}`}
-                            tone={plan.terminatedPlans > 0 ? "warning" : undefined}
+                            value={`${plan.terminated.plans || 0} · ${formatNaira(plan.terminated.amount_owing)}`}
+                            tone={plan.terminated.plans > 0 ? "warning" : undefined}
                           />
                         </dl>
                       </div>

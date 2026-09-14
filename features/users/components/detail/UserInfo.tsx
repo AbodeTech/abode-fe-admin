@@ -1,10 +1,18 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 import { UserDetail } from "../../types/user.types";
 import { format } from "date-fns";
 
 interface UserInfoProps {
   user: UserDetail;
+  /**
+   * Fills the second column, which the two-column grid has always reserved and
+   * never used. The short reference cards (upline associate pro, KYC, bank)
+   * live here rather than in a row of their own below.
+   */
+  aside?: ReactNode;
 }
 
 const formatDateWord = (dateString: string) => {
@@ -15,7 +23,7 @@ const formatDateWord = (dateString: string) => {
   }
 };
 
-export function UserInfo({ user }: UserInfoProps) {
+export function UserInfo({ user, aside }: UserInfoProps) {
   // Ordered fields to match typical display or legacy expectations where possible
   const infoItems = [
     { label: "Last Name", value: user.lastName },
@@ -54,7 +62,11 @@ export function UserInfo({ user }: UserInfoProps) {
   ];
 
   return (
-    <div className="mt-8 grid min-w-0 grid-cols-1 gap-x-8 gap-y-8 rounded-lg border border-[#E5EAEF] bg-white px-4 pb-12 pt-6 sm:px-6 lg:grid-cols-2 lg:gap-x-16 xl:gap-x-24">
+    <div
+      className={`mt-8 grid min-w-0 grid-cols-1 gap-x-8 gap-y-8 rounded-lg border border-[#E5EAEF] bg-white px-4 pb-8 pt-6 sm:px-6 lg:gap-x-16 xl:gap-x-24 ${
+        aside ? "lg:grid-cols-2" : ""
+      }`}
+    >
       <div className="min-w-0">
         <h3 className="font-semibold text-lg font-noto_sans text-abodeBlack text-[#101828]">Personal Info</h3>
         <ul className="mt-5 grid w-full max-w-full grid-cols-1 gap-y-4 sm:max-w-[450px]">
@@ -69,12 +81,13 @@ export function UserInfo({ user }: UserInfoProps) {
         </ul>
       </div>
 
-      {/* 
-         The legacy component had a 2-column grid layout where the second column was mostly empty 
-         or used for other sections. We'll keep the structure ready if more fields are needed 
-         on the right side, or we can distribute the items. For now, following the single list 
-         on the left side as seen in the legacy code's populated section.
-      */}
+      {/* Hairlines between the stacked sections, rather than a border around
+          each — they are part of this box, not boxes of their own. */}
+      {aside ? (
+        <div className="min-w-0 divide-y divide-[#E5EAEF] [&>*:not(:first-child)]:pt-6 [&>*:not(:last-child)]:pb-6">
+          {aside}
+        </div>
+      ) : null}
     </div>
   );
 }

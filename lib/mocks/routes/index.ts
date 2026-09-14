@@ -25,6 +25,7 @@ import { paymentPlanRoutes } from './payment-plans';
 import { agencyRoutes } from './agency';
 import { academyRoutes } from './academy';
 import { companyEventsRoutes } from './company-events';
+import { courseRoutes } from './courses';
 
 /* ============================================================
  * Route registration. Importing this module (via lib/mocks/index.ts)
@@ -124,6 +125,10 @@ import { companyEventsRoutes } from './company-events';
  *               which is unclaimed here) and check-in/offline sync
  *               (`checkin/event-checkin.controller.ts`) has no FE work
  *               consuming it yet, so no route is claimed for either.
+ * courses     — /admin/courses/* and /admin/academy-settings/*. Entirely
+ *               provisional — abode-be-v2 has no courses model yet. Covers
+ *               design screens 1–2 (list, overview) only; modules/quiz/
+ *               learners (screens 3, 5, 6, 7) are unbuilt.
  * ============================================================ */
 
 let registered = false;
@@ -160,4 +165,6 @@ export function ensureRoutesRegistered(): void {
 
   // Only mark done after every domain registered — a throw mid-way must allow retry.
   registered = true;
+  registerRoutes(courseRoutes);
+  // ...added per feature as it migrates
 }

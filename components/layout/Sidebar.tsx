@@ -6,19 +6,22 @@ import { cn } from "@/lib/utils";
 import { useUIStore } from "@/store/ui-store";
 
 import {
-  Bot,
   Activity,
+  AlertOctagon,
   ArrowDownToLine,
   BarChart3,
+  Bot,
   Building2,
   CheckCircle,
   ChevronRight,
   CircleDollarSign,
   ClipboardList,
   FileText,
+  GraduationCap,
   Gift,
   CalendarDays,
   GraduationCap,
+  Inbox,
   LandPlot,
   LayoutDashboard,
   LogOut,
@@ -29,12 +32,12 @@ import {
   SlidersHorizontal,
   Store,
   Tags,
-  Video,
   TrendingUp,
   Upload,
   UserCog,
   UserPlus,
   Users,
+  Video,
 } from "lucide-react";
 
 import LogOutModal from "@/components/settings/LogOutModal";
@@ -98,11 +101,22 @@ const navGroups = [
     ]
   },
   {
+    title: "Academy",
+    isCollapsible: true,
+    icon: <GraduationCap />,
+    items: [
+      { name: "Courses", link: "/academy/courses", icon: <GraduationCap /> },
+      { name: "Learners", link: "/academy/learners", icon: <Users /> },
+    ]
+  },
+  {
     title: "Customer Success",
     isCollapsible: true,
     icon: <UserCog />,
     items: [
       { name: "CS Manager Performance", link: "/customer-managers", icon: <ShieldCheck /> },
+      { name: "Tickets", link: "/tickets", icon: <Inbox /> },
+      { name: "Issues", link: "/issues", icon: <AlertOctagon /> },
     ]
   },
   {

@@ -2,8 +2,6 @@
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format } from "date-fns";
-import { FragmentType, useFragment } from "@/lib/gql";
-import { graphql } from "@/lib/gql";
 import {
   AdminDesktopTableWrap,
   AdminMobileCard,
@@ -16,6 +14,7 @@ import {
   paymentProgress,
   PAYMENT_STATUS_BADGE_CLASSES,
 } from "../lib/payment-status";
+import type { SalesRow } from "@/features/sales/schemas/sales.schema";
 
 /* ============================================================
  * Scoped to this feature: getManagerSalesRecord / adminGetManagerSalesRecord
@@ -32,33 +31,6 @@ import {
  * make this query text a lookup miss and silently fall back to `unknown`.
  * ============================================================ */
 
-export const SalesRowFragment = graphql(`
-  fragment SalesRowFragment on SalesRecord {
-    user_firstName
-    user_lastName
-    email
-    user_phone
-    referrer_name
-    referrer_email
-    referrer_phone
-    asset_name
-    asset_type
-    no_of_units
-    document_amount_paid
-    fullownerhsip_documentprice
-    month_subscription
-    size
-    price
-    amount_paid
-    amount_payable
-    balance
-    default_amount
-    is_suspended
-    start_date
-    next_date
-  }
-`);
-
 const formatCurrency = (amount: number) =>
   new Intl.NumberFormat("en-NG", {
     style: "currency",
@@ -67,19 +39,18 @@ const formatCurrency = (amount: number) =>
     maximumFractionDigits: 0,
   }).format(amount || 0);
 
-const formatDate = (dateString: string) => {
+const formatDate = (dateString: string | null | undefined) => {
   if (!dateString) return "N/A";
   const date = new Date(dateString);
   return isNaN(date.getTime()) ? "N/A" : format(date, "yyyy/MM/dd");
 };
 
 interface TeamSalesTableProps {
-  records: FragmentType<typeof SalesRowFragment>[] | null | undefined;
+  records: SalesRow[] | null | undefined;
 }
 
 export function TeamSalesTable({ records }: TeamSalesTableProps) {
-  const data = useFragment(SalesRowFragment, records);
-  const salesList = data || [];
+  const salesList = records ?? [];
 
   return (
     <div className="mt-4 min-w-0 space-y-4 px-0 sm:mt-8 sm:px-2 md:px-4">
@@ -89,14 +60,14 @@ export function TeamSalesTable({ records }: TeamSalesTableProps) {
             const units = Number(sale.no_of_units) || 0;
             const size = Number(sale.size) || 0;
             const totalSize = size * units;
-            const assetType = sale.asset_type?.toLowerCase() || "";
+            const assetType = sale.asset.type?.toLowerCase() || "";
             const status = derivePaymentStatus(sale);
             const progress = paymentProgress(sale);
             return (
               <AdminMobileCard
                 key={idx}
-                title={`${sale.user_firstName} ${sale.user_lastName}`}
-                subtitle={sale.email}
+                title={sale.buyer.name ?? "—"}
+                subtitle={sale.buyer.email}
               >
                 <AdminMobileField
                   label="Status"
@@ -114,11 +85,9 @@ export function TeamSalesTable({ records }: TeamSalesTableProps) {
                     </span>
                   }
                 />
-                <AdminMobileField label="Buyer phone" value={sale.user_phone || "—"} />
-                <AdminMobileField label="Referrer" value={sale.referrer_name || "No referrer"} />
-                <AdminMobileField label="Referrer email" value={sale.referrer_email || "—"} />
-                <AdminMobileField label="Referrer phone" value={sale.referrer_phone || "—"} />
-                <AdminMobileField label="Asset" value={sale.asset_name} />
+                <AdminMobileField label="Referrer" value={sale.referrer?.name || "No referrer"} />
+                <AdminMobileField label="Referrer email" value={sale.referrer?.email || "—"} />
+                <AdminMobileField label="Asset" value={sale.asset.name} />
                 <AdminMobileField
                   label="Asset type"
                   value={
@@ -127,7 +96,7 @@ export function TeamSalesTable({ records }: TeamSalesTableProps) {
                         assetType === "flex" ? "bg-blue-100 text-blue-800" : "bg-green-100 text-green-800"
                       }`}
                     >
-                      {sale.asset_type}
+                      {sale.asset.type}
                     </span>
                   }
                 />
@@ -136,11 +105,11 @@ export function TeamSalesTable({ records }: TeamSalesTableProps) {
                 <AdminMobileField label="Amount paid" value={formatCurrency(Number(sale.amount_paid))} />
                 <AdminMobileField label="Balance" value={formatCurrency(outstandingBalance(sale))} />
                 <AdminMobileField label="Progress" value={progress != null ? `${progress}%` : "—"} />
-                <AdminMobileField label="Document price" value={formatCurrency(Number(sale.fullownerhsip_documentprice) || 0)} />
-                <AdminMobileField label="Document paid" value={formatCurrency(Number(sale.document_amount_paid))} />
+                <AdminMobileField label="Document price" value={formatCurrency(Number(sale.doc_price) || 0)} />
+                <AdminMobileField label="Document paid" value={formatCurrency(Number(sale.doc_amount_paid))} />
                 <AdminMobileField label="Months subscription" value={sale.month_subscription} />
                 <AdminMobileField label="Start" value={formatDate(sale.start_date)} />
-                <AdminMobileField label="Next" value={formatDate(sale.next_date)} />
+                <AdminMobileField label="Next" value={formatDate(sale.next_date_of_payment)} />
               </AdminMobileCard>
             );
           })
@@ -156,10 +125,8 @@ export function TeamSalesTable({ records }: TeamSalesTableProps) {
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
-                <TableHead>Buyer phone</TableHead>
                 <TableHead>Referrer Name</TableHead>
                 <TableHead>Referrer Email</TableHead>
-                <TableHead>Referrer Phone</TableHead>
                 <TableHead>Asset Name</TableHead>
                 <TableHead>Asset Type</TableHead>
                 <TableHead>Status</TableHead>
@@ -181,28 +148,26 @@ export function TeamSalesTable({ records }: TeamSalesTableProps) {
                   const units = Number(sale.no_of_units) || 0;
                   const size = Number(sale.size) || 0;
                   const totalSize = size * units;
-                  const assetType = sale.asset_type?.toLowerCase() || "";
+                  const assetType = sale.asset.type?.toLowerCase() || "";
                   const status = derivePaymentStatus(sale);
                   const progress = paymentProgress(sale);
 
                   return (
                     <TableRow key={idx}>
                       <TableCell className="font-medium">
-                        {sale.user_firstName} {sale.user_lastName}
+                        {sale.buyer.name ?? "—"}
                       </TableCell>
-                      <TableCell>{sale.email}</TableCell>
-                      <TableCell>{sale.user_phone || "—"}</TableCell>
-                      <TableCell>{sale.referrer_name || "No referrer"}</TableCell>
-                      <TableCell>{sale.referrer_email || "No referrer"}</TableCell>
-                      <TableCell>{sale.referrer_phone || "—"}</TableCell>
-                      <TableCell>{sale.asset_name}</TableCell>
+                      <TableCell>{sale.buyer.email}</TableCell>
+                      <TableCell>{sale.referrer?.name || "No referrer"}</TableCell>
+                      <TableCell>{sale.referrer?.email || "No referrer"}</TableCell>
+                      <TableCell>{sale.asset.name}</TableCell>
                       <TableCell>
                         <span
                           className={`rounded-full px-2 py-1 text-xs ${
                             assetType === "flex" ? "bg-blue-100 text-blue-800" : "bg-green-100 text-green-800"
                           }`}
                         >
-                          {sale.asset_type}
+                          {sale.asset.type}
                         </span>
                       </TableCell>
                       <TableCell>
@@ -227,11 +192,11 @@ export function TeamSalesTable({ records }: TeamSalesTableProps) {
                       <TableCell>{formatCurrency(Number(sale.amount_paid))}</TableCell>
                       <TableCell>{formatCurrency(outstandingBalance(sale))}</TableCell>
                       <TableCell>{progress != null ? `${progress}%` : "—"}</TableCell>
-                      <TableCell>{formatCurrency(Number(sale.fullownerhsip_documentprice) || 0)}</TableCell>
-                      <TableCell>{formatCurrency(Number(sale.document_amount_paid))}</TableCell>
+                      <TableCell>{formatCurrency(Number(sale.doc_price) || 0)}</TableCell>
+                      <TableCell>{formatCurrency(Number(sale.doc_amount_paid))}</TableCell>
                       <TableCell>{sale.month_subscription}</TableCell>
                       <TableCell>{formatDate(sale.start_date)}</TableCell>
-                      <TableCell>{formatDate(sale.next_date)}</TableCell>
+                      <TableCell>{formatDate(sale.next_date_of_payment)}</TableCell>
                     </TableRow>
                   );
                 })

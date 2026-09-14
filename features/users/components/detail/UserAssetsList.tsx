@@ -26,6 +26,12 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -115,18 +121,40 @@ export function UserAssetsList({ userId, userEmail, readOnly = false }: UserAsse
         />
       )}
 
+      {/*
+        Was a whole card wrapping four near-identical "+ <type>" buttons. The
+        plan type is a choice within one action, not four separate actions, so
+        it belongs in the menu rather than spread across a row.
+      */}
       {!readOnly && (canCreatePlan || canCreateDeveloperPlot) && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Create payment plan</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-2">
-            {canCreatePlan && <Button onClick={() => setCreateType("flex")}><Plus className="mr-2 h-4 w-4" />Flex</Button>}
-            {canCreatePlan && <Button variant="outline" onClick={() => setCreateType("full-ownership")}><Plus className="mr-2 h-4 w-4" />Full Ownership</Button>}
-            {canCreatePlan && <Button variant="outline" onClick={() => setCreateType("commercial")}><Plus className="mr-2 h-4 w-4" />Commercial</Button>}
-            {canCreateDeveloperPlot && <Button variant="outline" onClick={() => setCreateType("developer-plot")}><Plus className="mr-2 h-4 w-4" />Developer Plot</Button>}
-          </CardContent>
-        </Card>
+        <div className="flex justify-end">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button className="w-full sm:w-auto">
+                <Plus className="mr-2 h-4 w-4" />
+                Create payment plan
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[200px]">
+              {canCreatePlan && (
+                <>
+                  <DropdownMenuItem onSelect={() => setCreateType("flex")}>Flex</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setCreateType("full-ownership")}>
+                    Full ownership
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setCreateType("commercial")}>
+                    Commercial
+                  </DropdownMenuItem>
+                </>
+              )}
+              {canCreateDeveloperPlot && (
+                <DropdownMenuItem onSelect={() => setCreateType("developer-plot")}>
+                  Developer plot
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       )}
 
       <Card>

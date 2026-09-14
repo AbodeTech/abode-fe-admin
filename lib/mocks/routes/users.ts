@@ -20,7 +20,10 @@ function toRow(person: (typeof PEOPLE)[number], index: number) {
     phone_number: person.phoneNumber,
     tier: person.referral_status === 'default' ? 'user' : person.referral_status,
     verified: Boolean(person.tin?.state === 'approved'),
-    is_suspended: false,
+    // Account and wallet suspension are independent on the BE, so vary them
+    // separately — otherwise the two filters look identical in mock mode.
+    is_suspended: index % 5 === 0,
+    wallet_suspended: index % 4 === 0,
     created_at: '2025-01-15T10:00:00.000Z',
     networth: (index + 1) * 250000,
     subscriptions: index % 3,
@@ -72,6 +75,18 @@ export const userRoutes: MockRoutes = {
     }
     if (query.has_referral === 'false' || query.has_referral === false) {
       matched = matched.filter((row) => !row.has_referral);
+    }
+    if (query.is_suspended === 'true' || query.is_suspended === true) {
+      matched = matched.filter((row) => row.is_suspended);
+    }
+    if (query.is_suspended === 'false' || query.is_suspended === false) {
+      matched = matched.filter((row) => !row.is_suspended);
+    }
+    if (query.wallet_suspended === 'true' || query.wallet_suspended === true) {
+      matched = matched.filter((row) => row.wallet_suspended);
+    }
+    if (query.wallet_suspended === 'false' || query.wallet_suspended === false) {
+      matched = matched.filter((row) => !row.wallet_suspended);
     }
     if (query.how_you_hear_about_us) {
       matched = matched.filter((row) => row.how_you_heard === query.how_you_hear_about_us);

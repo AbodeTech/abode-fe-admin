@@ -40,6 +40,7 @@ export type AllocationTableRow = Pick<
   | "payment_percentage"
   | "allocation_status"
   | "allocation_date"
+  | "payment_completed_date"
   | "date_joined"
 >;
 
@@ -60,6 +61,14 @@ const formatAmount = (value?: number | null) =>
 
 const formatNumber = (value?: number | null) =>
   new Intl.NumberFormat("en-NG").format(value ?? 0);
+
+/**
+ * Null `payment_completed_date` means the plan is still being paid — the
+ * normal case, since eligibility starts at the snapshot percentage rather than
+ * at completion. A bare em-dash would read as "unknown" instead.
+ */
+const formatCompletedDate = (value?: string | null) =>
+  value ? formatDate(value) : "Still paying";
 
 const formatDate = (value?: string | null) => {
   if (!value) return "—";
@@ -138,6 +147,10 @@ export function AllocationTable({ rows, isLoading, onSend, onResend }: Allocatio
                   <AdminMobileField label="Amount payable" value={formatAmount(client.amount_payable)} />
                   <AdminMobileField label="Balance" value={formatAmount(client.balance)} />
                   <AdminMobileField label="Location" value={client.asset_location ?? "—"} />
+                  <AdminMobileField
+                    label="Payment completed"
+                    value={formatCompletedDate(client.payment_completed_date)}
+                  />
                   <AdminMobileField label="Date joined" value={formatDate(client.date_joined)} />
                   <AdminMobileField
                     label="Allocation"
@@ -163,7 +176,7 @@ export function AllocationTable({ rows, isLoading, onSend, onResend }: Allocatio
         </AdminMobileStack>
 
         <AdminDesktopTableWrap>
-        <Table className="w-max min-w-[1420px] table-auto text-sm">
+        <Table className="w-max min-w-[1560px] table-auto text-sm">
           <TableHeader>
             <TableRow className="hover:bg-transparent">
               <TableHead className="min-w-44 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -193,6 +206,9 @@ export function AllocationTable({ rows, isLoading, onSend, onResend }: Allocatio
               <TableHead className="min-w-48 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Location
               </TableHead>
+              <TableHead className="min-w-38 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Payment Completed
+              </TableHead>
               <TableHead className="min-w-34 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Date Joined
               </TableHead>
@@ -208,7 +224,7 @@ export function AllocationTable({ rows, isLoading, onSend, onResend }: Allocatio
             {safeRows.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={12}
+                  colSpan={13}
                   className="whitespace-normal px-4 py-12 text-center text-sm text-muted-foreground"
                 >
                   No eligible clients found.
@@ -252,6 +268,9 @@ export function AllocationTable({ rows, isLoading, onSend, onResend }: Allocatio
                         <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                         <span className="min-w-0 wrap-break-word">{client.asset_location}</span>
                       </div>
+                    </TableCell>
+                    <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed wrap-break-word">
+                      {formatCompletedDate(client.payment_completed_date)}
                     </TableCell>
                     <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed wrap-break-word">
                       {formatDate(client.date_joined)}

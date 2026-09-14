@@ -5,6 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Wallet, TrendingUp, Bookmark, Package, DollarSign, PiggyBank, Calendar, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { useHasPermission } from "@/hooks/use-admin-permission";
 import { ReasonActionModal } from "../modals/ReasonActionModal";
@@ -48,12 +56,19 @@ type ActionModal = "suspend" | "unsuspend" | "forceReset" | "suspendWallet" | "u
 export function UserStats({ user }: UserStatsProps) {
   const [activeAction, setActiveAction] = useState<ActionModal>(null);
   const isSuspended = user.is_suspended;
+  // `is_active: false` is a suspended wallet. Previously both wallet buttons
+  // rendered side by side whenever the admin held both permissions — which a
+  // full admin always does — so "Unsuspend Wallet" was offered on wallets that
+  // were never suspended. Each action now shows only when it applies.
+  const isWalletSuspended = user.wallet?.is_active === false;
   const canSuspend = useHasPermission("suspend_user");
   const canUnsuspend = useHasPermission("unsuspend_user");
   const canForceReset = useHasPermission("force_password_reset");
   const canSuspendWallet = useHasPermission("suspend_wallet");
   const canUnsuspendWallet = useHasPermission("unsuspend_wallet");
   const canToggleStatus = isSuspended ? canUnsuspend : canSuspend;
+  const canToggleWallet = isWalletSuspended ? canUnsuspendWallet : canSuspendWallet;
+  const hasAnyAction = canToggleStatus || canForceReset || canToggleWallet;
 
   const suspendUser = useSuspendUser();
   const unsuspendUser = useUnsuspendUser();
@@ -116,53 +131,63 @@ export function UserStats({ user }: UserStatsProps) {
     <div className="mt-8 space-y-6 sm:space-y-8">
       <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h3 className="text-2xl font-bold text-[#101828]">User Data Points</h3>
-        <div className="flex flex-wrap gap-2">
-          {canToggleStatus && (
-            isSuspended ? (
-              <Button
-                variant="outline"
-                className="text-green-700 border-green-200 bg-green-50 hover:bg-green-100 hover:text-green-800"
-                onClick={() => setActiveAction("unsuspend")}
-              >
-                Unsuspend User
+        {/*
+          Four buttons sat in this row — suspend, force reset, and both wallet
+          actions. They are infrequent, mostly destructive, and crowded out the
+          heading, so they collapse into one menu, matching the Edit Profile
+          dropdown higher up the page.
+        */}
+        {hasAnyAction && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="w-full sm:w-auto">
+                Actions
+                <ChevronDown className="ml-2 h-4 w-4" />
               </Button>
-            ) : (
-              <Button
-                variant="destructive"
-                className="bg-[#D92D20] hover:bg-[#B42318]"
-                onClick={() => setActiveAction("suspend")}
-              >
-                Suspend User
-              </Button>
-            )
-          )}
-          {canForceReset && (
-            <Button
-              variant="outline"
-              onClick={() => setActiveAction("forceReset")}
-            >
-              Force Password Reset
-            </Button>
-          )}
-          {canSuspendWallet && (
-            <Button
-              variant="outline"
-              className="text-orange-700 border-orange-200"
-              onClick={() => setActiveAction("suspendWallet")}
-            >
-              Suspend Wallet
-            </Button>
-          )}
-          {canUnsuspendWallet && (
-            <Button
-              variant="outline"
-              className="text-green-700 border-green-200"
-              onClick={() => setActiveAction("unsuspendWallet")}
-            >
-              Unsuspend Wallet
-            </Button>
-          )}
-        </div>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[220px]">
+              {canToggleStatus &&
+                (isSuspended ? (
+                  <DropdownMenuItem onSelect={() => setActiveAction("unsuspend")}>
+                    Unsuspend user
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem
+                    onSelect={() => setActiveAction("suspend")}
+                    className="text-red-600 focus:text-red-600"
+                  >
+                    Suspend user
+                  </DropdownMenuItem>
+                ))}
+
+              {canToggleWallet &&
+                (isWalletSuspended ? (
+                  <DropdownMenuItem onSelect={() => setActiveAction("unsuspendWallet")}>
+                    Unsuspend wallet
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem
+                    onSelect={() => setActiveAction("suspendWallet")}
+                    className="text-red-600 focus:text-red-600"
+                  >
+                    Suspend wallet
+                  </DropdownMenuItem>
+                ))}
+
+              {canForceReset && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onSelect={() => setActiveAction("forceReset")}
+                    className="text-red-600 focus:text-red-600"
+                  >
+                    Force password reset
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
       <div className="grid min-w-0 gap-4 min-[380px]:grid-cols-2 md:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat, i) => (

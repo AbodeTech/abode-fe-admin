@@ -77,7 +77,7 @@ export {
 } from './schemas/asset.schema';
 export type { Asset, OfferSummary, OfferType, Visibility } from './schemas/asset.schema';
 
-// ── analytics: portfolio-wide is real (ticket 17); per-asset still fixtures ──
+// ── analytics: portfolio-wide and per-asset are both live (ticket 17) ──
 // Portfolio-wide, on the list page — GET /admin/assets/analytics/portfolio:
 export { InventoryHealthBar } from './components/InventoryHealthBar';
 export { AssetCategoryHealth } from './components/AssetCategoryHealth';
@@ -95,17 +95,35 @@ export type {
   PortfolioAnalyticsResponse,
 } from './schemas/portfolio-analytics.schema';
 
-// Per-asset, on the detail Performance tab (⛔ still ticket 17b — no endpoint):
+// Per-asset, on the detail Performance tab — GET /admin/assets/:id/analytics:
+export { AssetPerformance } from './components/detail/AssetPerformance';
 export { AssetHealthBar } from './components/detail/AssetHealthBar';
 export { PaymentPlanMatrix } from './components/detail/PaymentPlanMatrix';
-
-export { SampleDataChip } from './components/analytics/SampleDataChip';
-export {
-  SAMPLE_ASSET_HEALTH,
-  SAMPLE_SIZE_PLANS,
-} from './components/analytics/sample-data';
+export { useAssetAnalytics } from './hooks/use-asset-analytics';
+export { ANALYTICS_FILTERS, planTenorLabel } from './schemas/asset-analytics.schema';
 export type {
-  AssetHealthStats,
-  PlanPerformance,
-  SizePlanBreakdown,
-} from './components/analytics/sample-data';
+  AnalyticsFilter,
+  AssetAnalyticsResponse,
+  AssetSizePlanGroup,
+  AssetSizePlanBreakdown,
+  LifecycleBucket,
+} from './schemas/asset-analytics.schema';
+
+// Subscribers, on the detail Customers tab — GET /admin/assets/:id/subscribers:
+export { AssetSubscribers } from './components/detail/AssetSubscribers';
+export {
+  useAssetSubscribers,
+  DEFAULT_SUBSCRIBERS_LIMIT,
+} from './hooks/use-asset-subscribers';
+export type { AssetSubscribersFilters } from './hooks/use-asset-subscribers';
+export { useExportAssetSubscribers } from './hooks/use-export-asset-subscribers';
+export {
+  SUBSCRIBER_TYPES,
+  SUBSCRIBER_TYPE_LABELS,
+  SUBSCRIBER_SORT_FIELDS,
+} from './schemas/asset-subscribers.schema';
+export type {
+  SubscriberRow,
+  SubscriberType,
+  SubscriberSortField,
+} from './schemas/asset-subscribers.schema';

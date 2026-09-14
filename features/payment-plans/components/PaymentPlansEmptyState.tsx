@@ -23,7 +23,7 @@ export function PaymentPlansEmptyState({ filter }: { filter: FilterFormValues })
     <Card>
       <CardContent className="py-12 text-center">
         <p className="font-medium">{emptyMessage(filter)}</p>
-        <p className="mt-1 text-sm text-muted-foreground">Try a different preset or clear filters.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Adjust or clear your filters to see more.</p>
       </CardContent>
     </Card>
   );

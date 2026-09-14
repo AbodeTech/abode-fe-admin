@@ -53,6 +53,19 @@ export const AllocationClientSchema = z.object({
   allocation_status: AllocationStatusSchema,
   allocation_date: z.string().nullable().optional(),
   plan_status: z.string(),
+  /**
+   * The day the client finished paying — `plan_completed_at ?? land_payment_completed_date`
+   * on the BE, in that order. Flex only ever stamps `plan_completed_at`, so
+   * keying off the v1 land field alone would report every flex plan as
+   * never-paid; the land field survives only as a fallback for legacy
+   * full-ownership rows, where both are written together.
+   *
+   * **Null for most rows, and that is correct** — qualification happens at the
+   * snapshot percentage (often 30%), long before a plan is paid off, so a
+   * client is normally eligible while still paying. This answers "have they
+   * finished, and when"; it is not the eligibility date.
+   */
+  payment_completed_date: z.string().nullable().optional(),
   date_joined: z.string().nullable().optional(),
 });
 

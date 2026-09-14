@@ -1,90 +1,95 @@
-import { useQuery } from "@tanstack/react-query";
-import { execute } from "@/lib/graphql-client";
-import { graphql } from "@/lib/gql";
-import type { SalesRecordFilters } from "@/lib/gql/graphql";
-// Feature-local fragment (see TeamSalesTable.tsx) — no longer borrowed from
-// features/sales, which moved to a REST row shape this still-GraphQL query
-// doesn't return. Keeps the original `SalesRowFragment` name — see the note
-// in TeamSalesTable.tsx on why it can't be renamed.
-import { SalesRowFragment } from "../components/TeamSalesTable";
-import { managerKeys } from "./query-keys";
+'use client';
 
-// Keep the fragment referenced so codegen picks it up under our document.
-void SalesRowFragment;
+import { useQuery } from '@tanstack/react-query';
 
-const GET_MANAGER_SALES_RECORD_QUERY = graphql(`
-  query GetManagerSalesRecord(
-    $filters: SalesRecordFilters
-    $limit: Int!
-    $page: Int!
-  ) {
-    getManagerSalesRecord(filters: $filters, limit: $limit, page: $page) {
-      data {
-        ...SalesRowFragment
-      }
-      count
-    }
-  }
-`);
+import { apiGetPaged } from '@/lib/api-client';
+/**
+ * Reaching into features/sales, deliberately.
+ *
+ * `listForManager` on the BE delegates to the very same `SalesService.list`
+ * that backs `/admin/sales` — a manager's sales record IS the sales list with
+ * the roster as a referrer filter. Cloning the row schema and the query builder
+ * here would produce two descriptions of one wire shape, and they would drift
+ * the first time the sales module gains a column. The self-contained-feature
+ * rule buys isolation; there is none to buy when the bytes are identical.
+ */
+import { buildSalesListParams, type SalesListFilters } from '@/features/sales/hooks/use-sales';
+import { SalesRowSchema } from '@/features/sales/schemas/sales.schema';
 
-const ADMIN_GET_MANAGER_SALES_RECORD_QUERY = graphql(`
-  query AdminGetManagerSalesRecord(
-    $managerId: ID!
-    $filters: SalesRecordFilters
-    $limit: Int!
-    $page: Int!
-  ) {
-    adminGetManagerSalesRecord(
-      managerId: $managerId
-      filters: $filters
-      limit: $limit
-      page: $page
-    ) {
-      data {
-        ...SalesRowFragment
-      }
-      count
-    }
-  }
-`);
+import { managerKeys } from './query-keys';
 
 export interface UseTeamSalesParams {
   page?: number;
   limit?: number;
-  filters?: SalesRecordFilters | null;
+  filters?: SalesListFilters | null;
+  /** MPT-ADD-5 — drop abandoned pros from the scoped roster. */
+  activeProsOnly?: boolean;
   enabled?: boolean;
 }
 
 export const DEFAULT_TEAM_SALES_LIMIT = 25;
 
-/** Logged-in manager's view of their team's sales. */
-export const useManagerTeamSales = (params: UseTeamSalesParams = {}) => {
-  const { page = 1, limit = DEFAULT_TEAM_SALES_LIMIT, filters = null, enabled = true } = params;
+const params = ({ page, limit, filters, activeProsOnly }: Required<
+  Pick<UseTeamSalesParams, 'page' | 'limit'>
+> & { filters: SalesListFilters | null; activeProsOnly?: boolean }) => ({
+  ...buildSalesListParams(filters ?? {}),
+  page,
+  limit,
+  // Only sent when true: the BE runs `forbidNonWhitelisted`, and an explicit
+  // `false` is the same as absent to it, so omitting keeps the URL honest.
+  active_pros_only: activeProsOnly ? true : undefined,
+});
+
+/**
+ * GET /admin/managers/sales-record — the signed-in manager's own team.
+ *
+ * Guarded by IsManagerGuard, so an admin who is not a manager gets a 403 rather
+ * than an empty list. Callers that might not be a manager should pass
+ * `enabled: false` instead of firing and catching.
+ */
+export const useManagerTeamSales = (opts: UseTeamSalesParams = {}) => {
+  const {
+    page = 1,
+    limit = DEFAULT_TEAM_SALES_LIMIT,
+    filters = null,
+    activeProsOnly,
+    enabled = true,
+  } = opts;
+
   return useQuery({
-    queryKey: managerKeys.teamSalesSelf({ page, limit, filters }),
+    queryKey: managerKeys.teamSalesSelf({ page, limit, filters, activeProsOnly }),
     queryFn: () =>
-      execute(GET_MANAGER_SALES_RECORD_QUERY, { page, limit, filters }),
+      apiGetPaged('/admin/managers/sales-record', SalesRowSchema, {
+        params: params({ page, limit, filters, activeProsOnly }),
+      }),
     enabled,
-    select: (data) => data.getManagerSalesRecord,
   });
 };
 
-/** Super-admin view of any manager's team sales. */
+/** GET /admin/managers/:manager_id/sales-record — any manager's roster. */
 export const useAdminManagerTeamSales = (
   managerId: string | null,
-  params: UseTeamSalesParams = {}
+  opts: UseTeamSalesParams = {}
 ) => {
-  const { page = 1, limit = DEFAULT_TEAM_SALES_LIMIT, filters = null, enabled = true } = params;
+  const {
+    page = 1,
+    limit = DEFAULT_TEAM_SALES_LIMIT,
+    filters = null,
+    activeProsOnly,
+    enabled = true,
+  } = opts;
+
   return useQuery({
-    queryKey: managerKeys.teamSalesAdmin(managerId ?? "", { page, limit, filters }),
+    queryKey: managerKeys.teamSalesAdmin(managerId ?? '', {
+      page,
+      limit,
+      filters,
+      activeProsOnly,
+    }),
     queryFn: () =>
-      execute(ADMIN_GET_MANAGER_SALES_RECORD_QUERY, {
-        managerId: managerId as string,
-        page,
-        limit,
-        filters,
+      apiGetPaged(`/admin/managers/${managerId}/sales-record`, SalesRowSchema, {
+        params: params({ page, limit, filters, activeProsOnly }),
       }),
     enabled: enabled && Boolean(managerId),
-    select: (data) => data.adminGetManagerSalesRecord,
   });
 };
