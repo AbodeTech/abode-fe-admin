@@ -20,6 +20,7 @@ import { useSuspendUser, useUnsuspendUser } from "../../hooks/use-user-mutations
 import { toast } from "sonner";
 import { getErrorMessage } from "../../utils/error-message";
 import { useAuthStore } from "@/store/auth-store";
+import { isTopLevelAdmin } from "@/lib/admin-roles";
 
 interface UserStatsProps {
   user: UserDetail;
@@ -61,7 +62,7 @@ export function UserStats({ user }: UserStatsProps) {
   const isSuspended = user.is_suspended;
   const currentUser = useAuthStore((state) => state.user);
   const permissions = currentUser?.permissions ?? [];
-  const isAdmin = currentUser?.role === "admin";
+  const isAdmin = isTopLevelAdmin(currentUser?.role);
   const canSuspendUser = permissions.includes("suspend-user");
   const canUnsuspendUser = permissions.includes("unsuspend-user");
   const canToggleStatus = isAdmin && (isSuspended ? canUnsuspendUser : canSuspendUser);

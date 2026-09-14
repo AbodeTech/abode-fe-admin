@@ -20,6 +20,7 @@ import { ClearUserTinModal } from "../modals/ClearUserTinModal"
 
 import { UserDetail } from "../../types/user.types"
 import { useAuthStore } from "@/store/auth-store"
+import { isTopLevelAdmin } from "@/lib/admin-roles"
 
 interface UserEditActionsProps {
   user: UserDetail
@@ -28,7 +29,7 @@ interface UserEditActionsProps {
 export function UserEditActions({ user }: UserEditActionsProps) {
   const currentUser = useAuthStore((state) => state.user)
   const permissions = currentUser?.permissions ?? []
-  const isAdmin = currentUser?.role === "admin"
+  const isAdmin = isTopLevelAdmin(currentUser?.role)
   const canEditUser = permissions.includes("edit_user")
   const canModifyRefStatus = permissions.includes("modify-referral-status")
   const searchParams = useSearchParams()
