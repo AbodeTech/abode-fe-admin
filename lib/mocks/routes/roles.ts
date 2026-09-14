@@ -216,8 +216,7 @@ export const roleRoutes: MockRoutes = {
     return toRoleDto(created);
   },
 
-  'GET /admin/admins': () => [...admins.values()],
-
+  // GET /admin/admins list is owned by cs-managers mocks (see routes/index ownership).
   'GET /admin/admins/:id': ({ params }) => {
     const admin = admins.get(params.id);
     if (!admin) throw new MockHttpError(404, 'Admin not found', 'ADMIN_NOT_FOUND');

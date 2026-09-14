@@ -2425,3 +2425,110 @@ then the small repository methods, then the dashboard aggregation early
 (flagged in the doc itself as the risk item), then service layer, cron,
 controllers, migration, tests. Ships as one BE PR + one FE PR per the doc's
 own recommendation.
+
+## 30. Company Events: no way to list an event's allocations — ✅ RESOLVED (staging `d85843e`)
+
+**Priority: high — this is the one piece of the module that blocks real
+functionality, not just polish.**
+
+### Resolution
+
+PR #69 ("company-events-offline") added all three endpoints this ticket
+needed, in one pass: `GET /:id/allocations` (paginated, contact resolved from
+the registration form where present, else the user record — real `status` is
+the full lifecycle enum, `category`/`pickup_location` come off the linked
+`EventRegistration` and are `null` until that person registers),
+`GET /:id/analytics` (funnel, registration split, no-show, cancelled,
+category mix, pickup-location load, capacity — one aggregation pass), and
+`GET /:id/registrations` (paginated table of public form submissions,
+independent of the allocation's own status). All three gate on
+`view_allocations`, same as the rest of the module. Integrated into
+`abode-fe-admin` the same day: `EventAllocationSchema` now matches the real
+row shape, `useEventAllocations`/`useEventAllocationsExport` no longer gate on
+mock mode, `useEventAnalytics` replaces the old mock-only `useEventMetrics`,
+and a new Registrations tab (`use-event-registrations(-export)`,
+`EventRegistrationsTable`) was added to the event detail page. The mock
+(`lib/mocks/routes/company-events.ts`) was rebuilt to mirror all three
+real shapes field-for-field, including a `MockEventRegistration` store that
+didn't exist before. The only thing that stayed client-derived rather than
+becoming a dedicated endpoint field: "eligibility mix among allocated" —
+`analytics` has no aggregate for it, so the panel tallies `eligibility_tier`
+off the allocations page already loaded for the Allocated tab instead.
+
+### What was missing (original report)
+
+`company-events-admin.controller.ts` (PR #67, `allocation-event`, merged
+2026-09-11) shipped the whole module — create/list/detail, eligible-clients,
+`POST .../allocations` (batch save), `DELETE .../allocations/:allocationId`
+(deallocate) — read directly from that branch, not assumed. There is no
+`GET /:id/allocations` or equivalent. Confirmed via
+`grep -n "@Get\|@Post\|@Delete" company-events-admin.controller.ts`: five
+routes total, none of them a list.
+
+### Why it matters
+
+The only two ways an `EventAllocation`'s id ever reaches the client are:
+
+1. `POST .../allocations`'s response — but only for the ids that just
+   succeeded in *that* call, in that response only. Reload the page, or come
+   back tomorrow, and they're gone.
+2. Nothing else. There's no second way.
+
+So `DELETE .../allocations/:allocationId` — which is fully real and correctly
+built (idempotent, returns `{deallocated, already_cancelled, freed}`) — has
+no legitimate way to be called for anything an admin didn't personally just
+allocate in the current browser session. An admin can't open an event
+tomorrow and see who's on the list, can't remove someone who was allocated by
+a different admin or in a previous session, and can't export a roster of
+who's actually committed. The eligible-clients list *implicitly* excludes
+already-allocated people (correct, via the repository's `$lookup`), but
+that's an absence, not a view — there's no way to see the people who
+disappeared from it.
+
+### Current FE state
+
+`abode-fe-admin`'s `features/company-events/` (`EventAllocatedTable.tsx`,
+`use-event-allocations.ts`, `use-event-allocations-export.ts`) has a working
+UI for this against a mock (`lib/mocks/routes/company-events.ts`, built ahead
+of the real backend per the original plan doc) — it's the "Allocated" section
+on an event's detail page, with a remove button per row. Both hooks now check
+`isMockApiEnabled()` and refuse to call the real backend (no request fires,
+the UI shows an explanatory message instead of a 404) — see the doc comments
+on `useEventAllocations`/`useEventAllocationsExport`/`EventAllocationSchema`
+in `features/company-events/schemas/company-event.schema.ts`. Capacity
+numbers (`available_size`/`reserved_size`/`remaining_capacity`) are unaffected
+— those are real, on the event object itself — only the per-person list and
+export are blocked.
+
+### What we need
+
+`GET /admin/company-events/:id/allocations` — paginated, one row per
+non-cancelled `EventAllocation` for that event. The mock's shape
+(`EventAllocationSchema`) is a reasonable starting point for the response —
+`payment_plan_id`, `user_id`, `name`, `email`, `phone`, `size_reserved`,
+`eligibility_tier`, `status`, `actor`, `createdAt` — but isn't a contract,
+just what the FE has been rendering against. `status` should probably be the
+full real lifecycle (`allocated | email_sent | registered | checked_in |
+confirmed | cancelled`, per `event-allocation.schema.ts`) rather than the
+mock's simplified `allocated | cancelled`, now that the fuller enum exists.
+
+## 31. `DELETE .../allocations/:allocationId` omits `already_cancelled` on the normal path
+
+**Priority: low — cosmetic inconsistency, not a functional bug.**
+
+`company-events.service.ts#deallocate` (confirmed on staging `d85843e`) has
+two return statements: the idempotent path (allocation was already cancelled)
+returns `{ deallocated: false, already_cancelled: true, freed: 0 }`, but the
+normal first-time-cancel path returns `{ deallocated: true, freed }` —
+`already_cancelled` is missing entirely, not even `false`. Calling the real
+endpoint from `abode-fe-admin`'s "Remove" button on the Allocated table
+surfaces a client-side "Response shape mismatch" toast on every successful
+first-time removal (the DELETE itself succeeds — the row does get cancelled
+— only the response validation trips on the missing field).
+
+Worked around client-side for now: `DeallocateResultSchema.already_cancelled`
+is `z.boolean().optional().default(false)` in
+`features/company-events/schemas/company-event.schema.ts`, since the field's
+absence unambiguously means "not already cancelled" either way. Cleaner fix
+on the backend: add `already_cancelled: false` to the success-path return so
+the shape is the same on both branches.

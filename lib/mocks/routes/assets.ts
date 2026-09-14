@@ -176,6 +176,18 @@ const assets: MockAsset[] = [
   }),
 ];
 
+/**
+ * Minimal id+name slice of the fixture above, for other mock domains that
+ * need to resolve a real `GET /admin/assets` id (e.g. company-events'
+ * create-event site dropdown) without duplicating the full asset list.
+ * Includes drafts and the soft-deleted row on purpose — an id picked from
+ * the live dropdown must always resolve here too.
+ */
+export const MOCK_ASSET_DIRECTORY: { _id: string; name: string }[] = assets.map((a) => ({
+  _id: a._id,
+  name: a.name,
+}));
+
 /* -------------------- the detail tree -------------------- */
 
 type MockPlan = {

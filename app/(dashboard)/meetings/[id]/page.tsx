@@ -3,12 +3,13 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
-import { ArrowLeft, Copy, ExternalLink } from "lucide-react";
+import { ArrowLeft, Copy, ExternalLink, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { Pagination } from "@/components/shared/Pagination";
 import { SuspensePageFallback } from "@/components/shared/page-content-loader";
 import { useHasPermission } from "@/hooks/use-admin-permission";
@@ -17,6 +18,11 @@ import {
   DEFAULT_MEETINGS_LIMIT,
   EditMeetingDialog,
   formatMeetingWhen,
+  MEETING_ACCESS_TYPE_LABELS,
+  meetingAudienceDisplay,
+  meetingSeriesPositionLabel,
+  useCancelMeetingSession,
+  useIsMeetingLive,
   useMeeting,
   useMeetingVerifications,
   useToggleMeetingActive,
@@ -30,15 +36,20 @@ function MeetingDetailContent() {
   const page = Number(searchParams.get("page")) || 1;
   const canManage = useHasPermission("manage_meetings");
   const [editOpen, setEditOpen] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
 
   const meetingQuery = useMeeting(id);
+  const meeting = meetingQuery.data;
+  // Only poll the join log while this session's verification window is
+  // actually open — see docs on useIsMeetingLive/useMeetingVerifications.
+  const live = useIsMeetingLive(meeting);
   const verificationsQuery = useMeetingVerifications(id, {
     page,
     limit: DEFAULT_MEETINGS_LIMIT,
+    live,
   });
   const toggle = useToggleMeetingActive();
-
-  const meeting = meetingQuery.data;
+  const cancelSession = useCancelMeetingSession();
 
   const copyShareUrl = async () => {
     if (!meeting?.share_url) return;
@@ -57,6 +68,17 @@ function MeetingDetailContent() {
       toast.success(meeting.is_active ? "Meeting deactivated" : "Meeting activated");
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Failed to update meeting");
+    }
+  };
+
+  // Terminal and irreversible — distinct from toggle-active, which is reversible.
+  const handleCancel = async () => {
+    if (!meeting) return;
+    try {
+      await cancelSession.mutateAsync(meeting.id);
+      toast.success("Session cancelled");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to cancel session");
     }
   };
 
@@ -89,18 +111,23 @@ function MeetingDetailContent() {
             {meeting ? (
               <Badge
                 className={
-                  meeting.is_active
-                    ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-100"
-                    : "bg-gray-100 text-gray-800 hover:bg-gray-100"
+                  meeting.cancelled_at
+                    ? "bg-red-100 text-red-800 hover:bg-red-100"
+                    : meeting.is_active
+                      ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-100"
+                      : "bg-gray-100 text-gray-800 hover:bg-gray-100"
                 }
               >
-                {meeting.is_active ? "Active" : "Inactive"}
+                {meeting.cancelled_at ? "Cancelled" : meeting.is_active ? "Active" : "Inactive"}
               </Badge>
             ) : null}
           </div>
           {meeting ? (
             <p className="text-sm text-muted-foreground">
-              {meeting.audience_label} · {formatMeetingWhen(meeting.starts_at)} WAT
+              {meeting.access_type
+                ? `${MEETING_ACCESS_TYPE_LABELS[meeting.access_type]} · `
+                : ""}
+              {meetingAudienceDisplay(meeting)} · {formatMeetingWhen(meeting.starts_at)} WAT
             </p>
           ) : null}
         </div>
@@ -109,14 +136,27 @@ function MeetingDetailContent() {
             <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
               Edit
             </Button>
-            <Button
-              variant={meeting.is_active ? "outline" : "default"}
-              size="sm"
-              onClick={handleToggle}
-              disabled={toggle.isPending}
-            >
-              {meeting.is_active ? "Deactivate" : "Activate"}
-            </Button>
+            {!meeting.cancelled_at ? (
+              <Button
+                variant={meeting.is_active ? "outline" : "default"}
+                size="sm"
+                onClick={handleToggle}
+                disabled={toggle.isPending}
+              >
+                {meeting.is_active ? "Deactivate" : "Activate"}
+              </Button>
+            ) : null}
+            {!meeting.cancelled_at ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-destructive hover:text-destructive"
+                onClick={() => setCancelOpen(true)}
+                disabled={cancelSession.isPending}
+              >
+                Cancel session
+              </Button>
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -131,6 +171,20 @@ function MeetingDetailContent() {
               <div>
                 <p className="text-muted-foreground">Slug</p>
                 <p className="font-medium">{meeting.slug}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Series</p>
+                <p className="font-medium">
+                  {meeting.series_id ? (
+                    <Link href={`/meetings/series/${meeting.series_id}`} className="hover:underline">
+                      {meeting.series_name
+                        ? `${meeting.series_name} (${meetingSeriesPositionLabel(meeting)})`
+                        : meetingSeriesPositionLabel(meeting)}
+                    </Link>
+                  ) : (
+                    meetingSeriesPositionLabel(meeting)
+                  )}
+                </p>
               </div>
               <div>
                 <p className="text-muted-foreground">Duration</p>
@@ -148,6 +202,23 @@ function MeetingDetailContent() {
                 <p className="text-muted-foreground">Verification opens</p>
                 <p className="font-medium">{meeting.verification_lead_minutes} minutes before start</p>
               </div>
+              {meeting.access_type === "physical" && meeting.venue ? (
+                <div>
+                  <p className="text-muted-foreground">Venue</p>
+                  <p className="font-medium">
+                    {meeting.venue}
+                    {meeting.city ? `, ${meeting.city}` : ""}
+                  </p>
+                </div>
+              ) : null}
+              {meeting.access_type === "physical" ? (
+                <div>
+                  <p className="text-muted-foreground">Date confirmed</p>
+                  <p className="font-medium">
+                    {meeting.details_confirmed ? "Yes — QR issued" : "No — QR held"}
+                  </p>
+                </div>
+              ) : null}
               <div className="min-w-0 overflow-hidden sm:col-span-2">
                 <p className="text-muted-foreground">Share URL</p>
                 <div className="mt-1 flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start">
@@ -159,27 +230,40 @@ function MeetingDetailContent() {
                       <Copy className="h-4 w-4" />
                       Copy
                     </Button>
-                    <Button variant="outline" size="sm" className="gap-2" asChild>
-                      <a href={meeting.google_meet_url} target="_blank" rel="noreferrer">
-                        <ExternalLink className="h-4 w-4" />
-                        Meet
-                      </a>
-                    </Button>
+                    {meeting.google_meet_url ? (
+                      <Button variant="outline" size="sm" className="gap-2" asChild>
+                        <a href={meeting.google_meet_url} target="_blank" rel="noreferrer">
+                          <ExternalLink className="h-4 w-4" />
+                          Meet
+                        </a>
+                      </Button>
+                    ) : null}
                   </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-none shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-base">
-                Verifications ({meeting.stats.total_verifications})
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-wrap gap-2">
+          {/* Matches the stat-card look from the cohort dashboard (CohortStatCards) —
+              rounded-2xl, soft border, icon chip — instead of the plain shadcn
+              Card the rest of this page uses, since this is a metric, not a form section. */}
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                  Verifications
+                </p>
+                <p className="mt-2 text-3xl font-bold text-slate-900">
+                  {meeting.stats.total_verifications.toLocaleString()}
+                </p>
+              </div>
+              <div className="rounded-xl bg-blue-50 p-2.5">
+                <Users size={18} className="text-blue-600" />
+              </div>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
               {meeting.stats.by_referral_status.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No breakdown yet.</p>
+                <p className="text-sm text-slate-500">No breakdown yet.</p>
               ) : (
                 meeting.stats.by_referral_status.map((row) => (
                   <Badge key={row.referral_status ?? "unknown"} variant="secondary">
@@ -187,16 +271,27 @@ function MeetingDetailContent() {
                   </Badge>
                 ))
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           <div className="space-y-3">
             <h2 className="text-base font-semibold">Join log</h2>
-            <p className="text-sm text-muted-foreground">Refreshes every 5 seconds.</p>
-            <VerificationsTable
-              rows={verificationsQuery.data?.items ?? []}
-              isLoading={verificationsQuery.isLoading}
-            />
+            <p className="text-sm text-muted-foreground">
+              {live
+                ? "Verification is open — refreshes every 5 seconds."
+                : "Verification isn't open for this session, so this isn't polling."}
+            </p>
+            {verificationsQuery.error ? (
+              <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-600">
+                <p className="font-medium">Could not load the join log</p>
+                <p>{verificationsQuery.error.message}</p>
+              </div>
+            ) : (
+              <VerificationsTable
+                rows={verificationsQuery.data?.items ?? []}
+                isLoading={verificationsQuery.isLoading}
+              />
+            )}
             {(verificationsQuery.data?.meta.total ?? 0) > DEFAULT_MEETINGS_LIMIT ? (
               <Pagination
                 count={verificationsQuery.data?.meta.total ?? 0}
@@ -207,6 +302,14 @@ function MeetingDetailContent() {
           </div>
 
           <EditMeetingDialog meeting={meeting} open={editOpen} onOpenChange={setEditOpen} />
+          <ConfirmDialog
+            open={cancelOpen}
+            onOpenChange={setCancelOpen}
+            title="Cancel this session?"
+            description="This can't be undone."
+            confirmLabel="Cancel session"
+            onConfirm={handleCancel}
+          />
         </>
       ) : null}
     </div>
