@@ -11,6 +11,7 @@ import { format } from "date-fns";
 import { graphql } from "@/lib/gql";
 import { FragmentType, useFragment } from "@/lib/gql";
 import { useAuthStore } from "@/store/auth-store";
+import { isTopLevelAdmin } from "@/lib/admin-roles";
 import {
   AdminDesktopTableWrap,
   AdminMobileCard,
@@ -67,7 +68,7 @@ const DECLINE_REASONS = [
 
 export function TopupTransactionsTable({ data, isLoading, onApprove, onDecline, filterQuery = "" }: TopupTransactionsTableProps) {
   const { user } = useAuthStore();
-  const canManageTopup = user?.role === "admin";
+  const canManageTopup = isTopLevelAdmin(user?.role);
   const nonNullData = (data || []).filter((t): t is FragmentType<typeof TopupTransactionsFragment> => t !== null);
   const validTransactions = useFragment(TopupTransactionsFragment, nonNullData).filter((tx) => {
       if (!filterQuery) return true;

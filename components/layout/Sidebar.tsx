@@ -41,6 +41,7 @@ import {
 import LogOutModal from "@/components/settings/LogOutModal";
 import { useAuthStore } from "@/store/auth-store";
 import { useIsCurrentUserManager } from "@/features/associate-managers";
+import { isTopLevelAdmin } from "@/lib/admin-roles";
 
 // Grouped Navigation Items
 const navGroups = [
@@ -180,7 +181,7 @@ const Sidebar = () => {
     });
   }, [pathname]);
 
-  const isSuperAdmin = user?.role === "admin";
+  const isSuperAdmin = isTopLevelAdmin(user?.role);
 
   // Strip out items the current user shouldn't see. Each gate is a small
   // predicate keyed off a flag on the item.
