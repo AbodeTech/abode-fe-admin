@@ -64,7 +64,15 @@ function EventDetailContent() {
 
   const [searchTerm, setSearchTerm] = useState(searchParam);
   const [regSearchTerm, setRegSearchTerm] = useState(regSearchParam);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  /**
+   * Selection, keyed by payment plan but holding the whole row.
+   *
+   * It is never cleared when the page changes, so a selection can span pages —
+   * and the capacity total and the client count both need the row's size and
+   * owner, which are not recoverable from an id once the row has scrolled out
+   * of the current page's data.
+   */
+  const [selected, setSelected] = useState<Map<string, EventEligibleClientRow>>(new Map());
   const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
 
   const { data: event, isLoading: eventLoading } = useCompanyEvent(eventId);
@@ -191,11 +199,11 @@ function EventDetailContent() {
 
   const handleToggle = (row: EventEligibleClientRow) => {
     setSelected((prev) => {
-      const next = new Set(prev);
+      const next = new Map(prev);
       if (next.has(row.payment_plan)) {
         next.delete(row.payment_plan);
       } else {
-        next.add(row.payment_plan);
+        next.set(row.payment_plan, row);
       }
       return next;
     });
@@ -204,10 +212,10 @@ function EventDetailContent() {
   const handleSave = () => {
     if (!eventId || selected.size === 0) return;
     saveAllocations.mutate(
-      { eventId, paymentPlanIds: Array.from(selected) },
+      { eventId, paymentPlanIds: Array.from(selected.keys()) },
       {
         onSuccess: (result) => {
-          setSelected(new Set());
+          setSelected(new Map());
           const { succeeded, failed } = result.allocateToEvent;
           if (succeeded.length > 0) {
             // One entry is one seat, and a seat can cover several of the plots
@@ -224,11 +232,11 @@ function EventDetailContent() {
           }
           if (failed.length > 0) {
             toast.error(
-              `${failed.length} could not be saved — someone else may have taken their spot. Refresh and retry.`
+              `${failed.length} could not be confirmed — someone else may have taken their spot. Refresh and retry.`
             );
           }
         },
-        onError: (error) => toast.error(error.message || "Failed to save allocation"),
+        onError: (error) => toast.error(error.message || "Could not confirm them for this event"),
       }
     );
   };

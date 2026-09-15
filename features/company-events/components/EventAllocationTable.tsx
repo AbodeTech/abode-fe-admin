@@ -89,7 +89,8 @@ function EligibilityBadge({ tier }: { tier: EligibilityTier }) {
 interface EventAllocationTableProps {
   rows?: EventEligibleClientRow[] | null;
   isLoading?: boolean;
-  selected: Set<string>;
+  /** Keyed by payment plan, holding the row — a selection can span pages. */
+  selected: Map<string, EventEligibleClientRow>;
   onToggle: (row: EventEligibleClientRow) => void;
   availableSize?: number | null;
   sizeUnit?: string | null;
@@ -124,10 +125,21 @@ export function EventAllocationTable({
   }
 
   const safeRows = rows ?? [];
-  const selectedSize = safeRows
-    .filter((row) => selected.has(row.payment_plan))
-    .reduce((sum, row) => sum + totalSize(row), 0);
+  // Summed over the SELECTION, not over the visible rows. Selection survives
+  // paging, so totalling what happens to be on screen under-reported the
+  // capacity about to be committed the moment somebody selected across pages.
+  const selectedRows = Array.from(selected.values());
+  const selectedSize = selectedRows.reduce((sum, row) => sum + totalSize(row), 0);
   const grandTotal = usedSize + selectedSize;
+
+  /**
+   * People, not plans. A buyer holding three plots here is one passenger with
+   * one seat and one invite — counting plans would promise twelve and deliver
+   * nine, which is exactly the mismatch the success toast has to explain.
+   */
+  const selectedClients = new Set(
+    selectedRows.map((row) => row.user ?? `plan:${row.payment_plan}`)
+  ).size;
   const capacity = availableSize ?? null;
   const percent = capacity ? Math.min(100, Math.round((grandTotal / capacity) * 100)) : 0;
   const atOrOverCapacity = capacity != null && grandTotal >= capacity;
@@ -158,10 +170,21 @@ export function EventAllocationTable({
                     ? `${formatNumber(grandTotal)} / ${formatNumber(capacity)} ${unit} allocated`
                     : `${formatNumber(grandTotal)} ${unit} allocated (no capacity set)`}
                 </span>
-                <span className="font-medium">{selected.size} selected</span>
+                <span className="font-medium">
+                  {selectedClients} {selectedClients === 1 ? "person" : "people"} selected
+                </span>
               </div>
               {capacity != null && (
                 <Progress value={percent} className={cn(atOrOverCapacity && "[&>div]:bg-destructive")} />
+              )}
+              {/* The button emails everybody it confirms, immediately. On a
+                  large estate that is a hundred-odd messages from one click,
+                  and nothing else on the page says so. */}
+              {selectedClients > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Confirming reserves their land and emails each of them an invitation
+                  straight away.
+                </p>
               )}
             </div>
             <Button
@@ -172,10 +195,12 @@ export function EventAllocationTable({
               {isSaving ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
+                  Confirming...
                 </>
+              ) : selectedClients ? (
+                `Confirm ${selectedClients} for this event`
               ) : (
-                `Save allocation${selected.size ? ` (${selected.size})` : ""}`
+                "Confirm for this event"
               )}
             </Button>
           </div>
