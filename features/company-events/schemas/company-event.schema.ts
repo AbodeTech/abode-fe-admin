@@ -49,9 +49,17 @@ export const ELIGIBILITY_QUALIFIED_BY = ['fully_paid', 'qualification_threshold'
 export const EligibilityQualifiedBySchema = z.enum(ELIGIBILITY_QUALIFIED_BY);
 export type EligibilityQualifiedBy = z.infer<typeof EligibilityQualifiedBySchema>;
 
+/**
+ * Where somebody has got to on the day. This is ATTENDANCE, not land — the two
+ * were one field until the backend split them, and they answer different
+ * questions: this one is "have they replied, boarded, been seen at their plot",
+ * and it applies to visitors who are being given no land at all.
+ *
+ * `invited` replaced `email_sent`: a row now exists from the moment we allocate
+ * somebody, before any email goes out, and that is the state it starts in.
+ */
 export const EVENT_ALLOCATION_STATUSES = [
-  'allocated',
-  'email_sent',
+  'invited',
   'registered',
   'checked_in',
   'confirmed',
@@ -59,6 +67,25 @@ export const EVENT_ALLOCATION_STATUSES = [
 ] as const;
 export const EventAllocationStatusSchema = z.enum(EVENT_ALLOCATION_STATUSES);
 export type EventAllocationStatus = z.infer<typeof EventAllocationStatusSchema>;
+
+/** The land itself, which only knows whether it is still committed. */
+export const LAND_ALLOCATION_STATUSES = ['allocated', 'cancelled'] as const;
+export const LandAllocationStatusSchema = z.enum(LAND_ALLOCATION_STATUSES);
+export type LandAllocationStatus = z.infer<typeof LandAllocationStatusSchema>;
+
+/**
+ * The two kinds of person on an event.
+ *
+ * `allocated` — we are giving them land, so we invited them.
+ * `visitor`   — they signed themselves up through the public link, hold no
+ *               allocation, and are coming to look.
+ *
+ * Both board the same bus and both hold a pass, which is why they share one
+ * list rather than two.
+ */
+export const EVENT_ATTENDEE_TYPES = ['allocated', 'visitor'] as const;
+export const EventAttendeeTypeSchema = z.enum(EVENT_ATTENDEE_TYPES);
+export type EventAttendeeType = z.infer<typeof EventAttendeeTypeSchema>;
 
 /** Delivery of the invite, tracked apart from the allocation's own status. */
 export const INVITE_EMAIL_STATUSES = ['not_sent', 'queued', 'sent', 'failed'] as const;

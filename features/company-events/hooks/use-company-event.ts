@@ -2,8 +2,9 @@
 
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
+import { parse } from 'graphql';
 import { execute } from '@/lib/graphql-client';
-import { graphql } from '@/lib/gql';
 
 import type {
   CompanyEventStatus,
@@ -11,14 +12,19 @@ import type {
   EventSizeUnit,
 } from '../schemas/company-event.schema';
 import { companyEventKeys } from './query-keys';
-import { joinAssetNames } from './use-company-events';
+import { joinAssetNames, type RawCompanyEvent } from './use-company-events';
 import { useCompanyEventAssets } from './use-company-event-assets';
 
-const GET_COMPANY_EVENT_QUERY = graphql(`
+// NOTE: excluded from codegen (see codegen.ts) until the allocation-events
+// backend lands on staging. See the note in use-event-registrations.ts.
+const GET_COMPANY_EVENT_QUERY = parse(`
   query GetCompanyEvent($id: ID!) {
     companyEvent(id: $id) {
       id
       title
+      slug
+      public_url
+      open_registration
       type
       assets
       date
@@ -37,7 +43,10 @@ const GET_COMPANY_EVENT_QUERY = graphql(`
       }
     }
   }
-`);
+`) as unknown as TypedDocumentNode<
+  { companyEvent: RawCompanyEvent },
+  { id: string }
+>;
 
 /** `companyEvent(id)`. Estate names are joined in, same as `useCompanyEvents`. */
 export const useCompanyEvent = (eventId: string | undefined) => {
