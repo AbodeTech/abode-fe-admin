@@ -22,7 +22,10 @@ import {
 } from "@/components/ui/table";
 
 import type { EventAllocationRow } from "../hooks/use-event-allocations";
-import type { EventAllocationStatus } from "../schemas/company-event.schema";
+import type {
+  EventAllocationStatus,
+  LandAllocationStatus,
+} from "../schemas/company-event.schema";
 
 const formatNumber = (value?: number | null) => new Intl.NumberFormat("en-NG").format(value ?? 0);
 
@@ -33,9 +36,13 @@ const formatDate = (value?: string | null) => {
   return date.toLocaleDateString();
 };
 
+/**
+ * Attendance, not land. `invited` replaced `email_sent` when the backend split
+ * the two: a row exists from the moment somebody is allocated, which is before
+ * any email goes out, and that is the state it starts in.
+ */
 const STATUS_LABELS: Record<EventAllocationStatus, string> = {
-  allocated: "Allocated",
-  email_sent: "Invite sent",
+  invited: "Invited",
   registered: "Registered",
   checked_in: "Checked in",
   confirmed: "Confirmed",
@@ -43,19 +50,39 @@ const STATUS_LABELS: Record<EventAllocationStatus, string> = {
 };
 
 const STATUS_VARIANTS: Record<EventAllocationStatus, "secondary" | "outline" | "default"> = {
-  allocated: "secondary",
-  email_sent: "secondary",
+  invited: "secondary",
   registered: "outline",
   checked_in: "outline",
   confirmed: "default",
   cancelled: "outline",
 };
 
-function StatusBadge({ status }: { status: EventAllocationStatus }) {
+/**
+ * The attendance badge, with the land underneath it only when the two disagree.
+ *
+ * A column repeating "Allocated" on every row would be noise — the row is in
+ * this table because land is committed to it. What an admin needs to see is the
+ * exception: a seat whose land has been released.
+ */
+function StatusBadge({
+  status,
+  landStatus,
+}: {
+  status: EventAllocationStatus;
+  landStatus?: LandAllocationStatus;
+}) {
   return (
-    <Badge variant={STATUS_VARIANTS[status]} className={status === "cancelled" ? "text-muted-foreground" : undefined}>
-      {STATUS_LABELS[status]}
-    </Badge>
+    <div className="space-y-1">
+      <Badge
+        variant={STATUS_VARIANTS[status]}
+        className={status === "cancelled" ? "text-muted-foreground" : undefined}
+      >
+        {STATUS_LABELS[status]}
+      </Badge>
+      {landStatus === "cancelled" ? (
+        <span className="block text-xs text-muted-foreground">Land released</span>
+      ) : null}
+    </div>
   );
 }
 
@@ -99,11 +126,14 @@ export function EventAllocatedTable({
           ) : (
             safeRows.map((row) => (
               <AdminMobileCard key={row.id} title={row.name} subtitle={row.email ?? undefined}>
-                <AdminMobileField label="Status" value={<StatusBadge status={row.status} />} />
+                <AdminMobileField
+                  label="Status"
+                  value={<StatusBadge status={row.status} landStatus={row.allocation_status} />}
+                />
                 <AdminMobileField label="Size reserved" value={`${formatNumber(row.size_reserved)} ${unit}`} />
                 <AdminMobileField label="Pickup" value={row.pickup_location ?? "—"} />
                 <AdminMobileField label="Allocated on" value={formatDate(row.createdAt)} />
-                {row.status !== "cancelled" && (
+                {row.allocation_status !== "cancelled" && (
                   <div className="border-t border-border pt-2">
                     <Button
                       variant="outline"
@@ -168,7 +198,7 @@ export function EventAllocatedTable({
                       <span className="block text-muted-foreground">{row.phone || "—"}</span>
                     </TableCell>
                     <TableCell className="align-top whitespace-nowrap px-4 py-4">
-                      <StatusBadge status={row.status} />
+                      <StatusBadge status={row.status} landStatus={row.allocation_status} />
                     </TableCell>
                     <TableCell className="align-top whitespace-nowrap px-4 py-4 tabular-nums leading-relaxed">
                       {formatNumber(row.size_reserved)} {unit}
@@ -177,7 +207,7 @@ export function EventAllocatedTable({
                       {formatDate(row.createdAt)}
                     </TableCell>
                     <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4">
-                      {row.status !== "cancelled" ? (
+                      {row.allocation_status !== "cancelled" ? (
                         <Button
                           variant="outline"
                           size="sm"

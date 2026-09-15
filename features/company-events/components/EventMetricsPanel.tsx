@@ -152,10 +152,17 @@ const funnelChartConfig: ChartConfig = {
   count: { label: "Count", color: PALETTE.sequentialFill },
 };
 
-/** Ordered stages, one hue, magnitude comparison — value at each bar's tip. */
+/**
+ * Ordered stages, one hue, magnitude comparison — value at each bar's tip.
+ *
+ * The funnel starts at "Attending", not "Allocated". Since visitors can sign
+ * themselves up, the people on the bus are no longer the people getting land,
+ * and starting at the allocation count would show a funnel that grows at the
+ * second stage. Who is getting land is a split of the top bar, shown beneath.
+ */
 function RegistrationFunnelChart({ funnel }: { funnel: EventAnalytics["funnel"] }) {
   const data = [
-    { stage: "Allocated", count: funnel.allocated },
+    { stage: "Attending", count: funnel.attending },
     { stage: "Registered", count: funnel.registered },
     { stage: "Checked-in", count: funnel.checked_in },
     { stage: "Confirmed", count: funnel.confirmed },
@@ -354,9 +361,24 @@ export function EventMetricsPanel({
       ) : analytics ? (
         <>
           <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
-            <h3 className="mb-3 text-sm font-semibold text-slate-900">Registration funnel</h3>
+            <h3 className="mb-3 text-sm font-semibold text-slate-900">Attendance funnel</h3>
             <RegistrationFunnelChart funnel={analytics.funnel} />
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3">
+
+            {/* Who the top bar is made of. "Sixty coming" and "forty getting
+                plots" are both true and neither substitutes for the other —
+                the first plans the buses, the second plans the plots. */}
+            <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-slate-100 pt-3">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-slate-500">Getting land</span>
+                <Badge variant="secondary">{formatNumber(analytics.funnel.allocated)}</Badge>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-slate-500">Visitors</span>
+                <Badge variant="secondary">{formatNumber(analytics.funnel.registrants)}</Badge>
+              </div>
+            </div>
+
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3">
               <div className="flex items-center gap-2">
                 <span className="text-sm text-slate-500">No-show</span>
                 <Badge variant="secondary">{formatNumber(analytics.no_show)}</Badge>
@@ -366,7 +388,11 @@ export function EventMetricsPanel({
                 <Badge variant="secondary">{formatNumber(analytics.cancelled)}</Badge>
               </div>
             </div>
-            <p className="mt-1 text-xs text-slate-400">No-show: registered but never checked in for boarding.</p>
+            <p className="mt-1 text-xs text-slate-400">
+              Attending counts everyone expected on the day — people being given land and
+              visitors who signed themselves up. No-show: registered but never checked in
+              for boarding. Cancelled counts released allocations.
+            </p>
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">

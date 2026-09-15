@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Form,
   FormControl,
@@ -45,6 +46,7 @@ const formSchema = z
     available_size: z.union([z.number(), z.nan()]).optional(),
     size_unit: z.string().optional(),
     pickup_locations: z.array(z.string()),
+    open_registration: z.boolean(),
   })
   .superRefine((values, ctx) => {
     if (values.type !== "allocation") return;
@@ -83,6 +85,10 @@ export function CompanyEventForm() {
       available_size: undefined,
       size_unit: "sqm",
       pickup_locations: [],
+      // Open by default, matching the server. Both event types can take people
+      // who were never invited, and that is the normal case — a closed guest
+      // list is the thing worth opting into.
+      open_registration: true,
     },
   });
 
@@ -109,6 +115,7 @@ export function CompanyEventForm() {
         assets: values.assets,
         date: values.date,
         time: values.time,
+        openRegistration: values.open_registration,
         ...(values.type === "allocation"
           ? {
               availableSize: values.available_size,
@@ -271,6 +278,35 @@ export function CompanyEventForm() {
             />
           </div>
         )}
+
+        <FormField
+          control={form.control}
+          name="open_registration"
+          render={({ field }) => (
+            <FormItem className="rounded-lg border border-slate-200 p-4">
+              <div className="flex items-start gap-3">
+                <Checkbox
+                  id="open_registration"
+                  checked={field.value}
+                  onCheckedChange={(checked) => field.onChange(checked === true)}
+                  className="mt-0.5"
+                />
+                <div className="space-y-1">
+                  <Label htmlFor="open_registration" className="cursor-pointer">
+                    Let anyone register through the public link
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    People who were not allocated anything can sign themselves up and get a
+                    pass. They are given no land, so this does not touch the event&apos;s
+                    capacity — the registration list is what the buses are planned from.
+                    Untick for an invitation-only guest list.
+                  </p>
+                </div>
+              </div>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <Button type="submit" disabled={createEvent.isPending} className="w-full sm:w-auto">
           {createEvent.isPending ? (

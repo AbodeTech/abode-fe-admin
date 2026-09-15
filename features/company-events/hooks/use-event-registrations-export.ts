@@ -36,6 +36,8 @@ export const fetchEventRegistrationsExportRows = async (
       filter: {
         category: filters?.category || undefined,
         search: filters?.search || undefined,
+        attendee_type: filters?.attendeeType || undefined,
+        status: filters?.status || undefined,
       },
     });
     const items = result.eventRegistrations.data;

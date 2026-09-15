@@ -2,8 +2,9 @@
 
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
+import { parse } from 'graphql';
 import { execute } from '@/lib/graphql-client';
-import { graphql } from '@/lib/gql';
 
 import type {
   CompanyEventStatus,
@@ -13,13 +14,18 @@ import type {
 import { companyEventKeys } from './query-keys';
 import { useCompanyEventAssets } from './use-company-event-assets';
 
-export const GET_COMPANY_EVENTS_QUERY = graphql(`
+// NOTE: excluded from codegen (see codegen.ts) until the allocation-events
+// backend lands on staging. See the note in use-event-registrations.ts.
+export const GET_COMPANY_EVENTS_QUERY = parse(`
   query GetCompanyEvents($filter: CompanyEventFilterInput, $page: Int!, $limit: Int!) {
     companyEvents(filter: $filter, page: $page, limit: $limit) {
       count
       data {
         id
         title
+        slug
+        public_url
+        open_registration
         type
         assets
         date
@@ -39,7 +45,33 @@ export const GET_COMPANY_EVENTS_QUERY = graphql(`
       }
     }
   }
-`);
+`) as unknown as TypedDocumentNode<
+  { companyEvents: { count: number; data: RawCompanyEvent[] } },
+  { filter?: { type?: string; status?: string; q?: string }; page: number; limit: number }
+>;
+
+export interface RawCompanyEvent {
+  id: string;
+  title: string;
+  /** How the event is addressed in public URLs — the first path segment. */
+  slug: string;
+  /** The link an organiser hands out for open registration. Carries no token. */
+  public_url: string;
+  /** Whether anybody may sign themselves up, as opposed to only those we invited. */
+  open_registration: boolean;
+  type: string;
+  assets: string[];
+  date: string;
+  time: string;
+  starts_at: string;
+  available_size: number | null;
+  reserved_size: number;
+  remaining_capacity: number | null;
+  size_unit: string;
+  status: string;
+  createdAt: string | null;
+  pickup_locations: { id: string; name: string; seat_limit: number | null }[];
+}
 
 /**
  * The filters proper. Kept free of an index signature so
