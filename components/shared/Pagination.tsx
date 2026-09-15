@@ -8,20 +8,31 @@ interface PaginationProps {
   count: number;
   currentIdx?: number;
   limit?: number;
+  /**
+   * Search param this pager reads and writes. Defaults to `page`; pass a
+   * distinct name when a screen pages two tables independently, so one
+   * table's pager doesn't move the other.
+   */
+  pageParam?: string;
 }
 
-export function Pagination({ count, currentIdx = 1, limit = 10 }: PaginationProps) {
+export function Pagination({
+  count,
+  currentIdx = 1,
+  limit = 10,
+  pageParam = "page",
+}: PaginationProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   // Get current page from URL or prop fallback
-  const currentPage = Number(searchParams.get("page")) || currentIdx;
+  const currentPage = Number(searchParams.get(pageParam)) || currentIdx;
   const totalPages = Math.ceil(count / limit);
 
   const createPageURL = (pageNumber: number | string) => {
     const params = new URLSearchParams(searchParams);
-    params.set("page", pageNumber.toString());
+    params.set(pageParam, pageNumber.toString());
     return `${pathname}?${params.toString()}`;
   };
 
