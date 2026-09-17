@@ -300,6 +300,24 @@ const withGroupedCurrency = (row: Record<string, any>) => {
   return formatted
 }
 
+// Blank cells are written as "null" rather than left empty. Sheets get built
+// by pasting the CSV and splitting it (Data → Split text to columns, or
+// SPLIT()), and that drops empty values — every later value in the row then
+// slides one column left. A visible marker keeps each value in its own column,
+// and says plainly that the field has no value rather than hiding it.
+const EMPTY_CELL = 'null'
+
+// Walks the chosen columns rather than the row's own keys, so a column the
+// row has no value for at all is marked too.
+const markEmptyCells = (row: Record<string, any>, fields: string[], marker: unknown) => {
+  const marked: Record<string, any> = {}
+  fields.forEach(field => {
+    const value = row[field]
+    marked[field] = value === '' || value === null || value === undefined ? marker : value
+  })
+  return marked
+}
+
 // --- Storage Helpers ---
 const getStoredTemplates = (): ExportTemplate[] => {
   if (typeof window === 'undefined') return []
@@ -574,7 +592,10 @@ export function SalesExport({ filters }: { filters: SalesFilters }) {
       filters.endDate ? `to-${filters.endDate}` : null,
     ].filter(Boolean).join('_')
     const baseFilename = [filename, rangeSuffix, timestamp].filter(Boolean).join('_')
-    const allRows = entries.map(e => e.row)
+    // JSON gets a real null; the spreadsheet formats get the text marker.
+    const blank = format === 'json' ? null : EMPTY_CELL
+    const markRow = (row: Record<string, any>) => markEmptyCells(row, columnOrder, blank)
+    const allRows = entries.map(e => markRow(e.row))
     // csv/tsv/json have no display layer of their own, so the separators have
     // to be written into the values. json2csv quotes anything containing the
     // delimiter, so comma-grouped amounts stay in one csv column.
@@ -592,7 +613,7 @@ export function SalesExport({ filters }: { filters: SalesFilters }) {
         const workbook = XLSX.utils.book_new()
         XLSX.utils.book_append_sheet(workbook, buildWorksheet(allRows), 'All Sales')
         PAYMENT_STATUS_SHEETS.forEach(status => {
-          const rows = entries.filter(e => e.status === status).map(e => e.row)
+          const rows = entries.filter(e => e.status === status).map(e => markRow(e.row))
           if (rows.length > 0) {
             XLSX.utils.book_append_sheet(workbook, buildWorksheet(rows), status)
           }
