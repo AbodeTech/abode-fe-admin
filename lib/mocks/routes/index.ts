@@ -25,6 +25,7 @@ import { paymentPlanRoutes } from './payment-plans';
 import { agencyRoutes } from './agency';
 import { academyRoutes } from './academy';
 import { companyEventsRoutes } from './company-events';
+import { estateUpdateRoutes } from './estate-updates';
 import { courseRoutes } from './courses';
 
 /* ============================================================
@@ -125,6 +126,11 @@ import { courseRoutes } from './courses';
  *               which is unclaimed here) and check-in/offline sync
  *               (`checkin/event-checkin.controller.ts`) has no FE work
  *               consuming it yet, so no route is claimed for either.
+ * estate-updates — /admin/assets/:id/updates* (list, detail, create, edit,
+ *               publish, archive). Carved out of the assets domain's
+ *               /admin/assets/* claim; no path collides because the segment
+ *               after :id is the literal "updates" (assets uses "offers" /
+ *               "blocks" there).
  * courses     — /admin/courses/* and /admin/academy-settings/*. Entirely
  *               provisional — abode-be-v2 has no courses model yet. Covers
  *               design screens 1–2 (list, overview) only; modules/quiz/
@@ -162,6 +168,7 @@ export function ensureRoutesRegistered(): void {
   registerRoutes(agencyRoutes);
   registerRoutes(academyRoutes);
   registerRoutes(companyEventsRoutes);
+  registerRoutes(estateUpdateRoutes);
 
   // Only mark done after every domain registered — a throw mid-way must allow retry.
   registered = true;

@@ -90,7 +90,7 @@ middleware verify rather than trust a cookie), `POST /auth/admin/logout-all`.
 | `UpdateUserTin`, `ClearUserTin` | `PATCH /admin/users/:id` | ⚠️ adapt | Fold into the user PATCH if `tin` is in the DTO. |
 | `ExportUsersByFilter`, `ExportUsersWithAsset`, `ExportSuspendedUsers`, `ExportDefaultUsers`, `ExportSuspendedPaymentPlans` | — | 🚧 provisional | `GET /admin/users/export`. **No export endpoints anywhere on the BE** — see Exports note below. |
 
-## Assets — `features/assets` (18 ops)
+## Assets — `features/assets` (24 ops)
 
 | Operation | REST | Status |
 |---|---|---|
@@ -105,6 +105,24 @@ middleware verify rather than trust a cookie), `POST /auth/admin/logout-all`.
 The BE's nested offer/size/plan endpoints (`PATCH /admin/assets/:assetId/offers/:offerType`,
 `.../sizes`, `.../plans/:tenor`) have **no FE consumer yet** — the FE edits
 these inline via `UpdateAsset`. Worth aligning during conversion.
+
+### Estate updates — Updates tab
+
+Not a GraphQL conversion: progress posts an admin writes from an estate's
+detail Updates tab, which buyers then read on their plot page and in "This week
+at Abode". Reads need `view_estate_updates`; create, edit, publish and archive
+need `manage_estate_updates`. An update is always created as a draft.
+`published_at` is set once, on the first publish, and a re-publish keeps it.
+Archive is the unpublish; there is no delete.
+
+| Operation | REST | Status |
+|---|---|---|
+| List updates | `GET /admin/assets/:id/updates` | 🚧 provisional (mock-backed until the BE branch merges) |
+| Update detail | `GET /admin/assets/:id/updates/:updateId` | 🚧 provisional (mock-backed until the BE branch merges) |
+| Create update | `POST /admin/assets/:id/updates` | 🚧 provisional (mock-backed until the BE branch merges) |
+| Edit update | `PATCH /admin/assets/:id/updates/:updateId` | 🚧 provisional (mock-backed until the BE branch merges) |
+| Publish / re-publish | `POST /admin/assets/:id/updates/:updateId/publish` | 🚧 provisional (mock-backed until the BE branch merges) |
+| Archive | `POST /admin/assets/:id/updates/:updateId/archive` | 🚧 provisional (mock-backed until the BE branch merges) |
 
 ## Roles & Permissions — `features/roles-permissions` (6 ops)
 

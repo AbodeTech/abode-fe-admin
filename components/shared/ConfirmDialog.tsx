@@ -21,6 +21,11 @@ interface ConfirmDialogProps {
   onConfirm: () => void;
   /** Red confirm button for a destructive/irreversible action. Default true. */
   destructive?: boolean;
+  /**
+   * Optional controls between the description and the buttons — a checkbox that
+   * changes what confirming does, say. Most confirms need none.
+   */
+  children?: React.ReactNode;
 }
 
 /**
@@ -40,6 +45,7 @@ export function ConfirmDialog({
   cancelLabel = "Back",
   onConfirm,
   destructive = true,
+  children,
 }: ConfirmDialogProps) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -48,6 +54,7 @@ export function ConfirmDialog({
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
+        {children}
         <AlertDialogFooter>
           <AlertDialogCancel>{cancelLabel}</AlertDialogCancel>
           <AlertDialogAction

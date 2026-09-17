@@ -18,6 +18,7 @@ const TABS = [
   { segment: "blocks", label: "Blocks & Plots" },
   { segment: "performance", label: "Performance" },
   { segment: "customers", label: "Customers" },
+  { segment: "updates", label: "Updates" },
 ] as const;
 
 export function AssetDetailNav({ assetId }: { assetId: string }) {

@@ -30,6 +30,12 @@ export const assetKeys = {
   /** GET /admin/assets/:id/subscribers — keyed by id, unlike the legacy name/type key above. */
   assetSubscribers: (assetId: string, filters?: object) =>
     [...assetKeys.detail(assetId), 'subscribers', filters ?? {}] as const,
+  /** GET /admin/assets/:id/updates — nested under detail so an asset-wide invalidate also refetches it. */
+  estateUpdates: (assetId: string) => [...assetKeys.detail(assetId), 'estate-updates'] as const,
+  estateUpdateList: (assetId: string, params?: object) =>
+    [...assetKeys.estateUpdates(assetId), 'list', params ?? {}] as const,
+  estateUpdate: (assetId: string, updateId: string) =>
+    [...assetKeys.estateUpdates(assetId), 'detail', updateId] as const,
   analytics: (assetId: string, filter: string, startDate?: string, endDate?: string) =>
     [...assetKeys.all, 'analytics', assetId, filter, startDate, endDate] as const,
   portfolioAnalytics: () => [...assetKeys.all, 'portfolio-analytics'] as const,

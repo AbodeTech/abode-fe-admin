@@ -66,6 +66,10 @@ export const ADMIN_PERMISSIONS = [
   'update_asset_question',
   'send_contract',
 
+  // Estate updates — the asset detail Updates tab.
+  'view_estate_updates',
+  'manage_estate_updates',
+
   'asset_transactions',
   'approve_payments',
   'withdrawals',

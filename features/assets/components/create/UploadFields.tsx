@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { AlertCircle, Check, Loader2, Upload, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -124,25 +124,46 @@ export function GalleryUploadField({
   label,
   value,
   onChange,
+  max,
+  "aria-describedby": describedBy,
+  "aria-invalid": invalid,
 }: {
   id: string;
   label: string;
   value: string[];
   onChange: (urls: string[]) => void;
+  /**
+   * Most images the field holds. Adding stops there, and a bigger selection
+   * uploads only the files that fit, so nothing is uploaded just to fail the
+   * form's own limit at submit. Unset means no limit.
+   */
+  max?: number;
+  /** Passed down by `FormControl`, so the field's `FormMessage` describes the add button. */
+  "aria-describedby"?: string;
+  "aria-invalid"?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const { uploadMany } = useAssetUpload();
+  const [leftOut, setLeftOut] = useState(0);
 
   const uploads = useAssetFormStore((state) => state.uploads);
   const pending = Object.entries(uploads).filter(
     ([key, entry]) => key.startsWith(`${id}.`) && entry.status !== "done"
   );
+  // Uploads still in flight take a slot too, or two quick selections could each
+  // fit on their own and overshoot together.
+  const inFlight = pending.filter(([, entry]) => entry.status === "uploading").length;
+  const slotsLeft = max === undefined ? Infinity : Math.max(0, max - value.length - inFlight);
 
   const handleSelect = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
-    const urls = await uploadMany(id, Array.from(files));
-    if (urls.length > 0) onChange([...value, ...urls]);
+    const selected = Array.from(files);
+    const accepted = selected.slice(0, slotsLeft);
+    setLeftOut(selected.length - accepted.length);
     if (inputRef.current) inputRef.current.value = "";
+    if (accepted.length === 0) return;
+    const urls = await uploadMany(id, accepted);
+    if (urls.length > 0) onChange([...value, ...urls]);
   };
 
   return (
@@ -151,7 +172,15 @@ export function GalleryUploadField({
         {label}
       </Label>
 
-      <Button type="button" variant="outline" size="sm" onClick={() => inputRef.current?.click()}>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => inputRef.current?.click()}
+        disabled={slotsLeft === 0}
+        aria-describedby={describedBy}
+        aria-invalid={invalid}
+      >
         <Upload className="mr-2 h-3.5 w-3.5" />
         Add images
       </Button>
@@ -190,8 +219,16 @@ export function GalleryUploadField({
       ))}
 
       <p className={cn("text-xs text-muted-foreground", value.length === 0 && "hidden")}>
-        {value.length} image{value.length === 1 ? "" : "s"} uploaded
+        {max === undefined
+          ? `${value.length} image${value.length === 1 ? "" : "s"} uploaded`
+          : `${value.length} of ${max} images uploaded`}
       </p>
+
+      {leftOut > 0 ? (
+        <p className="text-xs text-muted-foreground">
+          {leftOut} image{leftOut === 1 ? " was" : "s were"} left out. This field holds up to {max}.
+        </p>
+      ) : null}
     </div>
   );
 }
