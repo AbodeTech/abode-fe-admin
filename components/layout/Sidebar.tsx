@@ -20,7 +20,6 @@ import {
   GraduationCap,
   Gift,
   CalendarDays,
-  GraduationCap,
   Inbox,
   LandPlot,
   LayoutDashboard,

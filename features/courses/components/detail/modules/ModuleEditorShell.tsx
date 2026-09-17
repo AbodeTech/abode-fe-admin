@@ -2,9 +2,12 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 
-import { DUMMY_COURSES } from "../../../dummy-data";
-import { getModulesForCourse } from "../../../dummy-modules";
+import { PageContentLoader } from "@/components/shared/page-content-loader";
+
+import { useCourseDetail } from "../../../hooks/use-course-detail";
+import { useModules } from "../../../hooks/use-modules";
 
 /**
  * Breadcrumb-only shell for the module editor — a drill-down from Modules,
@@ -15,25 +18,36 @@ import { getModulesForCourse } from "../../../dummy-modules";
  */
 export function ModuleEditorShell({ children }: { children: React.ReactNode }) {
   const params = useParams<{ id: string; moduleId: string }>();
-  const course = DUMMY_COURSES.find((c) => c.id === params.id) ?? DUMMY_COURSES[0];
-  const modules = getModulesForCourse(course.id, course.modules_count);
-  const mod = modules.find((m) => m.id === params.moduleId) ?? modules[0];
+  const { data: course, isLoading: loadingCourse } = useCourseDetail(params.id);
+  const { data: modules, isLoading: loadingModules } = useModules(params.id);
+
+  if (loadingCourse || loadingModules) return <PageContentLoader label="Loading…" />;
+
+  const mod = modules?.find((m) => m.id === params.moduleId);
 
   return (
-    <div className="mx-auto mt-4 w-full min-w-0 max-w-[1200px] space-y-5 px-3 pb-16 sm:px-4 sm:pb-20">
+    <div className="mx-auto mt-4 w-full min-w-0 max-w-[1200px] space-y-3 px-3 pb-16 sm:px-4 sm:pb-20">
+      <Link
+        href={`/academy/courses/${params.id}/modules`}
+        className="inline-flex items-center text-sm text-muted-foreground transition-colors hover:text-primary"
+      >
+        <ArrowLeft className="mr-2 h-4 w-4" />
+        Back to modules
+      </Link>
+
       <div className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
         <Link href="/academy/courses" className="hover:text-primary">
           Courses
         </Link>
         <span>›</span>
-        <Link href={`/academy/courses/${course.id}/modules`} className="truncate hover:text-primary">
-          {course.title}
+        <Link href={`/academy/courses/${params.id}/modules`} className="truncate hover:text-primary">
+          {course?.title ?? "Course"}
         </Link>
         <span>›</span>
-        <span className="truncate font-medium text-foreground">{mod.title}</span>
+        <span className="truncate font-medium text-foreground">{mod?.title ?? "Module"}</span>
       </div>
 
-      <div className="min-w-0">{children}</div>
+      <div className="min-w-0 pt-2">{children}</div>
     </div>
   );
 }

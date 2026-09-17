@@ -1,13 +1,15 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { PageContentLoader } from "@/components/shared/page-content-loader";
 
-import { DUMMY_ACADEMY_SETTINGS, DUMMY_COURSES } from "../../dummy-data";
-import { COURSE_AUDIENCE_LABELS } from "../../schemas/course.schema";
+import { useAcademySettings, useCourseDetail, useSetFirstSalePath, useUpdateCourse } from "../../hooks/use-course-detail";
+import { COURSE_AUDIENCE_LABELS, type Course } from "../../schemas/course.schema";
 import { useCourseFormStore } from "../../store/course-form-store";
+import { getErrorMessage } from "../../utils/error-message";
 import { EditablePanel } from "./EditablePanel";
 import {
   CourseCoverFields,
@@ -31,18 +33,30 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-function CoverPanelBody({
-  course,
-}: {
-  course: (typeof DUMMY_COURSES)[number];
-}) {
+/** Placeholder shape only — used to keep the section hooks' hook-count stable while the real course loads. Never rendered or saved. */
+const FALLBACK_COURSE: Course = {
+  id: "",
+  title: "",
+  slug: "",
+  summary: null,
+  cover_image: null,
+  status: "draft",
+  audience: "realtor",
+  estimated_minutes: 0,
+  credential_validity_months: null,
+  grants_credential: false,
+  created_by: "",
+  published_at: null,
+};
+
+function CoverPanelBody({ course }: { course: Course }) {
   const startEditing = useCourseFormStore((state) => state.startEditing);
 
-  if (course.cover_url) {
+  if (course.cover_image) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
-        src={course.cover_url}
+        src={course.cover_image}
         alt=""
         className="h-40 w-full rounded-md border object-cover"
       />
@@ -68,48 +82,58 @@ function CoverPanelBody({
   );
 }
 
-/**
- * Design preview — abode-be-v2 has no courses endpoints yet, so this screen
- * runs entirely on features/courses/dummy-data.ts. Every edit here lives in
- * this component's state; refreshing the page resets it. Swap in
- * useCourseDetail / useUpdateCourse (already written, see hooks/) once the
- * BE ships /admin/courses.
- */
 export function CourseOverview() {
   const params = useParams<{ id: string }>();
-  const [course, setCourse] = useState(
-    () => DUMMY_COURSES.find((c) => c.id === params.id) ?? DUMMY_COURSES[0],
+  const { data: course, isLoading, error } = useCourseDetail(params.id);
+  const { data: academySettings } = useAcademySettings();
+  const updateCourse = useUpdateCourse(params.id);
+  const setFirstSalePath = useSetFirstSalePath();
+
+  const saveCourse = async (values: Partial<Course>, successMessage: string, sectionId: string) => {
+    try {
+      await updateCourse.mutateAsync(values);
+      toast.success(successMessage);
+    } catch (err) {
+      toast.error(getErrorMessage(err, `Couldn't save ${sectionId}.`));
+      throw err;
+    }
+  };
+
+  const handleMakeFirstSalePath = async () => {
+    if (!course) return;
+    try {
+      await setFirstSalePath.mutateAsync(course.id);
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Couldn't set the first-sale path."));
+      throw err;
+    }
+  };
+
+  // Section hooks call useForm/useEffect internally, so they must run every
+  // render regardless of loading state — hence the fallback shape instead of
+  // an early return above this point (that would change the hook count).
+  const details = useCourseDetailsSection(course ?? FALLBACK_COURSE, (values) =>
+    saveCourse(values, "Course details saved", "details")
   );
-  const [firstSalePathId, setFirstSalePathId] = useState(
-    DUMMY_ACADEMY_SETTINGS.first_sale_path_course_id,
+  const cover = useCourseCoverSection(course ?? FALLBACK_COURSE, (values) => saveCourse(values, "Cover saved", "cover"));
+  const credential = useCourseCredentialSection(course ?? FALLBACK_COURSE, (values) =>
+    saveCourse(values, "Credential settings saved", "credential")
   );
 
+  if (isLoading) return <PageContentLoader label="Loading course…" />;
+
+  if (error || !course) {
+    return (
+      <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-500">
+        <h3 className="font-bold">Couldn&apos;t load this course</h3>
+        <p>{getErrorMessage(error, "It may have been deleted.")}</p>
+      </div>
+    );
+  }
+
+  const firstSalePathId = academySettings?.first_sale_path_course_id ?? null;
   const isFirstSalePath = firstSalePathId === course.id;
-  const currentHolderTitle =
-    firstSalePathId === course.id
-      ? null
-      : (DUMMY_COURSES.find((c) => c.id === firstSalePathId)?.title ?? null);
-
-  const details = useCourseDetailsSection(course, (values) => {
-    setCourse((prev) => ({ ...prev, ...values }));
-  });
-  const cover = useCourseCoverSection(course, (values) => {
-    setCourse((prev) => ({ ...prev, ...values }));
-  });
-  const credential = useCourseCredentialSection(course, (values) => {
-    setCourse((prev) => ({
-      ...prev,
-      ...values,
-      // The BE only reads validity/renewal when the switch is on — null them
-      // together so a course that used to grant a credential leaves nothing stale.
-      credential_validity_months: values.grants_credential
-        ? values.credential_validity_months
-        : null,
-      credential_renewal: values.grants_credential
-        ? values.credential_renewal
-        : null,
-    }));
-  });
+  const hasOtherHolder = firstSalePathId !== null && firstSalePathId !== course.id;
 
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
@@ -118,6 +142,7 @@ export function CourseOverview() {
           id="details"
           title="Details"
           onSave={details.submit}
+          isSaving={details.isSaving}
           form={<CourseDetailsFields form={details.form} />}
         >
           <div className="space-y-4">
@@ -133,10 +158,6 @@ export function CourseOverview() {
               label="Audience"
               value={COURSE_AUDIENCE_LABELS[course.audience]}
             />
-            <Field
-              label="Linked estate"
-              value={course.estate_name ?? course.estate_id}
-            />
           </div>
         </EditablePanel>
 
@@ -145,6 +166,7 @@ export function CourseOverview() {
           title="Cover"
           description="1200 × 630"
           onSave={cover.submit}
+          isSaving={cover.isSaving}
           form={<CourseCoverFields form={cover.form} />}
         >
           <CoverPanelBody course={course} />
@@ -153,15 +175,18 @@ export function CourseOverview() {
 
       <div className="space-y-4">
         <FirstSalePathCard
-          course={{ ...course, is_first_sale_path: isFirstSalePath }}
-          currentHolderTitle={currentHolderTitle}
-          onMakeFirstSalePath={() => setFirstSalePathId(course.id)}
+          course={course}
+          isFirstSalePath={isFirstSalePath}
+          hasOtherHolder={hasOtherHolder}
+          onMakeFirstSalePath={handleMakeFirstSalePath}
+          isSaving={setFirstSalePath.isPending}
         />
 
         <EditablePanel
           id="credential"
           title="Credential"
           onSave={credential.submit}
+          isSaving={credential.isSaving}
           form={<CourseCredentialFields form={credential.form} />}
         >
           <div className="space-y-4">
@@ -191,16 +216,6 @@ export function CourseOverview() {
                     : null
                 }
               />
-              <Field
-                label="Renewal"
-                value={
-                  course.credential_renewal
-                    ? course.credential_renewal === "refresher"
-                      ? "Refresher module only"
-                      : "Full retake"
-                    : null
-                }
-              />
               <p className="text-xs text-muted-foreground">
                 Unlocks when the switch is on.
               </p>
@@ -208,19 +223,7 @@ export function CourseOverview() {
           </div>
         </EditablePanel>
 
-        <PublishingCard
-          course={course}
-          onToggleStatus={() =>
-            setCourse((prev) => ({
-              ...prev,
-              status: prev.status === "published" ? "draft" : "published",
-              published_at:
-                prev.status === "published"
-                  ? prev.published_at
-                  : (prev.published_at ?? new Date().toISOString()),
-            }))
-          }
-        />
+        <PublishingCard course={course} />
       </div>
     </div>
   );

@@ -45,7 +45,7 @@ everything analytical or campaign-related.
 | `campaigns` | 🚧 Engine REST mocked (`/admin/campaigns*`); Associate Pro tracker still GraphQL |
 | `allocation` | 🚧 None |
 | `sales` | 🚧 None |
-| `courses` (Academy) | 🚧 None — new domain, screens 1–2 only so far |
+| `courses` (Academy) | ✅ Complete — all 7 screens wired. Credential revoke/reinstate unreachable pending a BE gap (no `credential_id` on learner rows) |
 
 **Roughly 45% of operations map to real endpoints; 55% are provisional.**
 
@@ -233,30 +233,53 @@ sales records, bulk assignment, pro groups — are provisional under
 Because this feature is large and entirely unbacked, consider migrating it
 **last**: it is pure mock-to-mock work until the BE models managers.
 
-## Courses (Academy) — `features/courses` — 🚧 **entirely provisional, new domain**
+## Courses (Academy) — `features/courses` — ✅ **complete, all 7 screens real**
 
 Not a GraphQL conversion — a net-new admin surface for authoring courses and
 tracking who's taking them, based on a local design reference
-(`course-system-admin.html`, 7 screens + data contract). Only screens 1–2
-(courses list, course overview) are built; modules, quiz and learners
-(screens 3, 5–7) are not.
+(`course-system-admin.html`, 7 screens + data contract). All 7 screens are
+wired to real endpoints, confirmed against `abode-be-v2` source directly
+(staging `7fefe13`).
 
 | Operation | REST | Status | Notes |
 |---|---|---|---|
-| List courses | `GET /admin/courses` | 🚧 provisional | `?page&limit&status&audience&search` |
-| Filter chip counts | `GET /admin/courses/summary` | 🚧 provisional | `{ total, published, draft, realtor, buyer }` — unaffected by the active filter |
-| Create course | `POST /admin/courses` | 🚧 provisional | `{ title, audience, summary }`. Always created as `draft`. |
-| Course detail | `GET /admin/courses/:id` | 🚧 provisional | |
-| Update course | `PATCH /admin/courses/:id` | 🚧 provisional | `{ title?, summary?, audience?, estate_id?, cover_url?, grants_credential?, credential_validity_months?, credential_renewal? }` |
-| Publish / unpublish | `PATCH /admin/courses/:id/status` | 🚧 provisional | `{ status: 'draft' \| 'published' }` |
-| Delete course | `DELETE /admin/courses/:id` | 🚧 provisional | Hard delete in the mock — no soft-delete precedent decided for this domain yet |
-| Read academy settings | `GET /admin/academy-settings` | 🚧 provisional | Singleton: `{ first_sale_path_course_id, first_sale_path_course_title }` |
-| Set first-sale path | `POST /admin/academy-settings/first-sale-path` | 🚧 provisional | `{ course_id }`. Realtor-only; clears the previous holder atomically and should be written to the admin log |
+| List courses | `GET /admin/courses` | ✅ real | `?page&limit&status&audience&q` — the search param is `q`, not `search` |
+| Create course | `POST /admin/courses` | ✅ real | `{ title, slug?, summary?, cover_image?, audience?, estimated_minutes?, credential_validity_months?, grants_credential? }`. Always created as `draft`. |
+| Course detail | `GET /admin/courses/:id` | ✅ real | Includes `modules: [...]`, each with its `blocks` embedded. |
+| Update course | `PATCH /admin/courses/:id` | ✅ real | Same optional fields as create, minus `slug`'s auto-derivation. |
+| Publish | `POST /admin/courses/:id/publish` | ✅ real | Not a status PATCH — a dedicated route. 400s `COURSE_EMPTY` if the course has no modules or no content blocks yet. |
+| Unpublish | `POST /admin/courses/:id/unpublish` | ✅ real | Also a dedicated route, not a status PATCH. |
+| Delete course | `DELETE /admin/courses/:id` | ✅ real | Cascades modules and blocks. |
+| Read / set academy settings | `GET`/`PATCH /admin/academy-settings` | ✅ real | Singleton: `{ first_sale_path_course_id }` only — no title, see gaps doc §7. `PATCH` 400s unless the target is already published — no audience check, see gaps doc §8. |
+| Modules — list/create/rename/delete/reorder | `.../courses/:id/modules`, `.../modules/:id`, `.../modules/reorder` | ✅ real | A module is just `{id, course_id, title, position}` — no duration, kind, or completion-weight fields. |
+| Content blocks — list/create/update/delete/reorder | `.../modules/:id/blocks`, `.../content-blocks/:id`, `.../content-blocks/reorder` | ✅ real | 5 types: `text` (`{html}`), `video`/`image`/`file` (`{media_asset_id}`, must be `ready`), `quiz` (`{quiz_settings_id}`). |
+| Media upload | `POST .../media/upload-url` → browser `PUT` to the presigned URL → `POST .../media/:id/finalize`; `POST .../media/external`; `GET`/`DELETE .../media/:id` | ✅ real | Video goes `uploading` → `processing` → `ready`; image/file go straight to `ready`. `shapeMedia()` never returns the original filename, only kind/status/renditions/duration. |
+| Quiz settings & questions | `.../quiz-settings[/...]`, `.../quiz-questions[/...]` | ✅ real | A quiz belongs to a module, not a course — the FE's course-level Quiz tab scans the course's modules for the first one with a quiz. |
+| Learner-preview / grade-preview | `GET .../quiz-settings/:id/learner-preview`, `POST .../quiz-settings/:id/grade-preview` | ✅ real | Both admin-only, no-answer-key / no-attempt-recorded tools. |
 
-Not yet covered: modules/blocks, media upload + transcoding, quiz authoring
-and grading, enrolment/credential tracking (`enrolment`, `module_completion`,
-`quiz_attempt`, `credential` in the data contract). These map to screens 3–7
-of the design and are unbuilt.
+There is no `GET /admin/courses/summary` aggregate for the filter-chip counts
+— `abode-fe-admin` derives them client-side (`useCourseSummary`) the same way
+`useAgencyStats` does, five `limit=1` list calls reading `meta.total`. See
+gaps doc §3.
+
+The `Course` record itself has no `estate_id`, `require_in_order`,
+`credential_renewal`, or `is_first_sale_path` field, and no
+`modules_count`/`learners_count`/`completed_count` roll-up on the list or bare
+record — see `course.schema.ts` (FE) for exactly what `shapeCourse()` (BE)
+returns.
+
+**Update (2026-09-17):** enrolment/credential tracking (screens 6–7), then
+courses list/overview (1–2), then modules/module-editor/quiz (3–5) — all
+wired the same day, each confirmed against `abode-be-v2` source directly
+rather than inferred. Only `POST /admin/credentials/:id/{revoke,reinstate}`
+remain unreachable — see `docs/COURSE-LEARNERS-BACKEND-GAPS.md` §2.
+
+| Operation | REST | Status | Notes |
+|---|---|---|---|
+| Course learners | `GET /admin/courses/:id/learners` | ✅ real | `?page&limit`. `course`/`quiz_stats` are computed server-side but dropped by the response interceptor — see gaps doc §1. |
+| All learners | `GET /admin/learners` | ✅ real | `?page&limit&course_id`. One row per *enrolment*, not per associate — see gaps doc §6. |
+| Revoke credential | `POST /admin/credentials/:id/revoke` | ⚠️ not reachable from learner rows | `{ reason }`, min 20 chars. Learner rows carry no `credential_id` yet — see gaps doc §2. |
+| Reinstate credential | `POST /admin/credentials/:id/reinstate` | ⚠️ not reachable from learner rows | Same blocker. |
 
 ## Dashboard / Analytics / Sales / Campaigns / Allocation — 🚧 **entirely provisional**
 

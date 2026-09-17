@@ -20,24 +20,105 @@ import {
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PageContentLoader } from "@/components/shared/page-content-loader";
 
-import { DUMMY_COURSES } from "../../../dummy-data";
-import { getModulesForCourse, moduleStats } from "../../../dummy-modules";
+import { useCourseDetail } from "../../../hooks/use-course-detail";
+import { useCreateModule, useDeleteModule, useModules, useReorderModules, useUpdateModule } from "../../../hooks/use-modules";
+import type { CourseModuleRef } from "../../../schemas/course.schema";
+import { getErrorMessage } from "../../../utils/error-message";
 import { ModuleRow } from "./ModuleRow";
 
-/**
- * Design preview — reorder, add, and the "Require in order" toggle all
- * update local state only. See dummy-modules.ts's header.
- */
+function TitleDialog({
+  open,
+  onOpenChange,
+  title,
+  initialValue,
+  onSubmit,
+  isSaving,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: string;
+  initialValue: string;
+  onSubmit: (value: string) => void;
+  isSaving: boolean;
+}) {
+  const [value, setValue] = useState(initialValue);
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (next) setValue(initialValue);
+        onOpenChange(next);
+      }}
+    >
+      <DialogContent>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!value.trim()) {
+              toast.error("Title is required");
+              return;
+            }
+            onSubmit(value.trim());
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>{title}</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <Label htmlFor="module-title">Title</Label>
+            <Input id="module-title" className="mt-1.5" value={value} onChange={(e) => setValue(e.target.value)} autoFocus />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isSaving}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSaving}>
+              {isSaving ? "Saving…" : "Save"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function CourseModules() {
   const params = useParams<{ id: string }>();
-  const course = DUMMY_COURSES.find((c) => c.id === params.id) ?? DUMMY_COURSES[0];
+  const courseId = params.id;
+  const { data: course } = useCourseDetail(courseId);
+  const { data: modules, isLoading, error } = useModules(courseId);
 
-  const [modules, setModules] = useState(() => getModulesForCourse(course.id, course.modules_count));
-  const [requireInOrder, setRequireInOrder] = useState(course.require_in_order);
+  const createModule = useCreateModule(courseId);
+  const updateModule = useUpdateModule(courseId);
+  const deleteModule = useDeleteModule(courseId);
+  const reorderModules = useReorderModules(courseId);
+
+  const [creating, setCreating] = useState(false);
+  const [renaming, setRenaming] = useState<CourseModuleRef | null>(null);
+  const [deleting, setDeleting] = useState<CourseModuleRef | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -46,122 +127,141 @@ export function CourseModules() {
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-    if (!over || active.id === over.id) return;
+    if (!over || active.id === over.id || !modules) return;
 
-    setModules((items) => {
-      const oldIndex = items.findIndex((m) => m.id === active.id);
-      const newIndex = items.findIndex((m) => m.id === over.id);
-      return arrayMove(items, oldIndex, newIndex).map((m, index) => ({ ...m, position: index + 1 }));
-    });
-  };
-
-  const handleAddModule = () => {
-    setModules((prev) => [
-      ...prev,
+    const oldIndex = modules.findIndex((m) => m.id === active.id);
+    const newIndex = modules.findIndex((m) => m.id === over.id);
+    const reordered = arrayMove(modules, oldIndex, newIndex);
+    reorderModules.mutate(
+      reordered.map((m) => m.id),
       {
-        id: `mod-new-${Date.now()}`,
-        courseId: course.id,
-        position: prev.length + 1,
-        title: "Untitled module",
-        description: "Add a description",
-        kind: "lesson",
-        tags: ["Text"],
-        durationMinutes: 0,
-        durationIsOverride: false,
-        countsTowardCompletion: true,
-        blocks: [],
-      },
-    ]);
+        onSuccess: () => toast.success("Modules reordered"),
+        onError: (err) => toast.error(getErrorMessage(err, "Couldn't reorder modules.")),
+      }
+    );
   };
 
-  const stats = moduleStats(modules);
+  if (isLoading) return <PageContentLoader label="Loading modules…" />;
+
+  if (error) {
+    return (
+      <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-500">
+        <h3 className="font-bold">Couldn&apos;t load modules</h3>
+        <p>{getErrorMessage(error, "An unexpected error occurred.")}</p>
+      </div>
+    );
+  }
+
+  const rows = modules ?? [];
 
   return (
     <div className="space-y-4">
       <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <h2 className="text-lg font-semibold wrap-break-word">{course.title}</h2>
+          <h2 className="text-lg font-semibold wrap-break-word">{course?.title}</h2>
           <p className="text-sm text-muted-foreground">
-            {modules.length} module{modules.length === 1 ? "" : "s"} · {stats.totalMinutes} minutes end to end
+            {rows.length} module{rows.length === 1 ? "" : "s"}
           </p>
         </div>
-        <Button className="w-full sm:w-auto" onClick={() => toast.success("Modules saved")}>
-          Save
+        <Button className="w-full sm:w-auto" onClick={() => setCreating(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          Add a module
         </Button>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
-        <div className="min-w-0 space-y-2">
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={modules.map((m) => m.id)} strategy={verticalListSortingStrategy}>
-              {modules.map((mod) => (
-                <ModuleRow key={mod.id} module={mod} courseId={course.id} />
-              ))}
-            </SortableContext>
-          </DndContext>
+      <div className="space-y-2">
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={rows.map((m) => m.id)} strategy={verticalListSortingStrategy}>
+            {rows.map((mod) => (
+              <ModuleRow
+                key={mod.id}
+                module={mod}
+                courseId={courseId}
+                onRename={() => setRenaming(mod)}
+                onDelete={() => setDeleting(mod)}
+              />
+            ))}
+          </SortableContext>
+        </DndContext>
 
-          <button
-            type="button"
-            onClick={handleAddModule}
-            className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed p-3.5 text-sm font-medium text-muted-foreground transition-colors hover:border-foreground hover:text-foreground"
-          >
-            <Plus className="h-4 w-4" />
-            Add a module
-          </button>
-        </div>
-
-        <div className="space-y-4">
-          <section className="rounded-lg border">
-            <div className="border-b px-4 py-3">
-              <h3 className="font-medium">This course</h3>
-            </div>
-            <div className="space-y-1 p-4 text-sm">
-              <div className="flex items-center justify-between border-b py-2.5">
-                <span className="text-muted-foreground">Lessons</span>
-                <span className="font-medium tabular-nums">{stats.lessons}</span>
-              </div>
-              <div className="flex items-center justify-between border-b py-2.5">
-                <span className="text-muted-foreground">Quizzes</span>
-                <span className="font-medium tabular-nums">{stats.quizzes}</span>
-              </div>
-              <div className="flex items-center justify-between border-b py-2.5">
-                <span className="text-muted-foreground">Video</span>
-                <span className="font-medium tabular-nums">
-                  {stats.videoClips} clip{stats.videoClips === 1 ? "" : "s"}
-                  {stats.videoClips > 0 ? ` · ${stats.videoMinutes} min` : ""}
-                </span>
-              </div>
-              <div className="flex items-center justify-between py-2.5">
-                <span className="text-muted-foreground">Total time</span>
-                <span className="font-medium tabular-nums">{stats.totalMinutes} min</span>
-              </div>
-            </div>
-          </section>
-
-          <section className="rounded-lg border">
-            <div className="border-b px-4 py-3">
-              <h3 className="font-medium">Ordering</h3>
-            </div>
-            <div className="space-y-2 p-4">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="require-in-order"
-                  checked={requireInOrder}
-                  onCheckedChange={(checked) => setRequireInOrder(Boolean(checked))}
-                />
-                <Label htmlFor="require-in-order" className="text-sm font-semibold">
-                  Require in order
-                </Label>
-              </div>
-              <p className="text-xs leading-relaxed text-muted-foreground">
-                {requireInOrder ? "On" : "Off"}. {requireInOrder
-                  ? "Each module is gated behind the one before it — which also gates the first sale behind reading in sequence."
-                  : "An associate can open any module at any time. Turning it on gates each module behind the one before it — which also gates the first sale behind reading in sequence."}
-              </p>
-            </div>
-          </section>
-        </div>
+        {rows.length === 0 ? (
+          <div className="rounded-md border border-dashed p-8 text-center">
+            <p className="font-medium">No modules yet</p>
+            <p className="mt-1 text-sm text-muted-foreground">Add one to start building this course.</p>
+          </div>
+        ) : null}
       </div>
+
+      <TitleDialog
+        open={creating}
+        onOpenChange={setCreating}
+        title="Add a module"
+        initialValue=""
+        isSaving={createModule.isPending}
+        onSubmit={(title) =>
+          createModule.mutate(title, {
+            onSuccess: () => {
+              toast.success("Module added");
+              setCreating(false);
+            },
+            onError: (err) => toast.error(getErrorMessage(err, "Couldn't add the module.")),
+          })
+        }
+      />
+
+      <TitleDialog
+        // Radix's onOpenChange only fires from its own internal interactions
+        // (overlay click, Escape) — not when `open` is flipped true by us
+        // externally, so `initialValue` alone never re-seeded the field.
+        // Keying on the module id forces a fresh instance per rename.
+        key={renaming?.id ?? "renaming"}
+        open={renaming !== null}
+        onOpenChange={(open) => !open && setRenaming(null)}
+        title="Rename module"
+        initialValue={renaming?.title ?? ""}
+        isSaving={updateModule.isPending}
+        onSubmit={(title) => {
+          if (!renaming) return;
+          updateModule.mutate(
+            { id: renaming.id, title },
+            {
+              onSuccess: () => {
+                toast.success("Module renamed");
+                setRenaming(null);
+              },
+              onError: (err) => toast.error(getErrorMessage(err, "Couldn't rename the module.")),
+            }
+          );
+        }}
+      />
+
+      <AlertDialog open={deleting !== null} onOpenChange={(open) => !open && setDeleting(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {deleting?.title}?</AlertDialogTitle>
+            <AlertDialogDescription>This removes the module and its content blocks. This can&apos;t be undone.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteModule.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleteModule.isPending}
+              onClick={(event) => {
+                event.preventDefault();
+                if (!deleting) return;
+                deleteModule.mutate(deleting.id, {
+                  onSuccess: () => {
+                    toast.success("Module deleted");
+                    setDeleting(null);
+                  },
+                  onError: (err) => toast.error(getErrorMessage(err, "Couldn't delete the module.")),
+                });
+              }}
+            >
+              {deleteModule.isPending ? "Deleting…" : "Delete module"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -19,34 +19,48 @@ import type { Course } from "../../schemas/course.schema";
 
 /**
  * The two controls that decide what a course *means* get their own cards.
- * Exactly one realtor course can hold this — setting it here takes it off
- * whichever course has it today, and this card says so before the admin
- * presses anything.
+ * Exactly one course can hold this — setting it here takes it off whichever
+ * course has it today, and this card says so before the admin presses
+ * anything.
+ *
+ * `is_first_sale_path` isn't a field on the course record — the BE's
+ * `academy_settings` singleton only carries an id, no title (see
+ * academy-settings.schema.ts), so the caller passes down whether *this*
+ * course holds it and whether some *other* course does, rather than a name
+ * to display. `PATCH /admin/academy-settings` also 400s
+ * (`FIRST_SALE_COURSE_NOT_PUBLISHED`) unless the target is already
+ * published — gated here so the action isn't offered when it would just fail.
  *
  * Only the header is dark (matching the design's `.card.hi` — the body stays
  * on the normal white card surface); a "1" badge marks it as checkpoint one.
- *
- * Design preview — `onMakeFirstSalePath` updates local state in
- * CourseOverview only; nothing is persisted past a refresh.
  */
 export function FirstSalePathCard({
   course,
-  currentHolderTitle,
+  isFirstSalePath,
+  hasOtherHolder,
   onMakeFirstSalePath,
+  isSaving,
 }: {
   course: Course;
-  /** Title of whichever course holds it today, or null if none does. */
-  currentHolderTitle: string | null;
-  onMakeFirstSalePath: () => void;
+  isFirstSalePath: boolean;
+  /** Whether some other course currently holds it (the BE gives no title for it). */
+  hasOtherHolder: boolean;
+  onMakeFirstSalePath: () => Promise<void>;
+  isSaving?: boolean;
 }) {
   const [confirming, setConfirming] = useState(false);
 
   const isBuyerCourse = course.audience === "buyer";
+  const isPublished = course.status === "published";
 
-  const handleConfirm = () => {
-    onMakeFirstSalePath();
-    toast.success(`${course.title} is now the first-sale path`);
-    setConfirming(false);
+  const handleConfirm = async () => {
+    try {
+      await onMakeFirstSalePath();
+      toast.success(`${course.title} is now the first-sale path`);
+      setConfirming(false);
+    } catch {
+      // caller already surfaced the error via toast
+    }
   };
 
   return (
@@ -55,7 +69,7 @@ export function FirstSalePathCard({
         <h2 className="font-medium text-background">First sale path</h2>
       </div>
       <div className="p-4">
-        {course.is_first_sale_path ? (
+        {isFirstSalePath ? (
           <div className="flex items-start gap-3">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-foreground text-base font-semibold text-background">
               1
@@ -70,6 +84,10 @@ export function FirstSalePathCard({
             Buyer courses can&apos;t be the first-sale path — that checkpoint only exists on the realtor
             dashboard.
           </p>
+        ) : !isPublished ? (
+          <p className="text-sm text-muted-foreground">
+            Publish this course first — the first-sale path can only point at a published course.
+          </p>
         ) : (
           <>
             <div className="flex items-start gap-3">
@@ -79,15 +97,9 @@ export function FirstSalePathCard({
               <div>
                 <p className="text-sm font-semibold">Not this course</p>
                 <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                  {currentHolderTitle ? (
-                    <>
-                      <span className="font-semibold text-foreground">{currentHolderTitle}</span> is the
-                      first-sale path today. It shows as checkpoint 1 on the dashboard of every realtor
-                      with no sales.
-                    </>
-                  ) : (
-                    "No course currently holds it."
-                  )}
+                  {hasOtherHolder
+                    ? "Another course is the first-sale path today. It shows as checkpoint 1 on the dashboard of every realtor with no sales."
+                    : "No course currently holds it."}
                 </p>
               </div>
             </div>
@@ -95,8 +107,9 @@ export function FirstSalePathCard({
               Make this the first-sale path
             </Button>
             <p className="mt-2.5 text-xs leading-relaxed text-muted-foreground">
-              Only one course can hold it. Doing this moves it off {currentHolderTitle ?? "the current course"} — you
-              will be asked to confirm, and it is written to the admin log.
+              Only one course can hold it
+              {hasOtherHolder ? " — doing this moves it off the course that has it" : ""}. You will be
+              asked to confirm, and it is written to the admin log.
             </p>
           </>
         )}
@@ -107,20 +120,21 @@ export function FirstSalePathCard({
           <AlertDialogHeader>
             <AlertDialogTitle>Make {course.title} the first-sale path?</AlertDialogTitle>
             <AlertDialogDescription>
-              {currentHolderTitle
-                ? `This takes the first-sale path off ${currentHolderTitle}. Every realtor with no sales will see ${course.title} as checkpoint 1 instead.`
+              {hasOtherHolder
+                ? `This takes the first-sale path off whichever course has it today. Every realtor with no sales will see ${course.title} as checkpoint 1 instead.`
                 : `${course.title} will show as checkpoint 1 on the dashboard of every realtor with no sales.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isSaving}>Cancel</AlertDialogCancel>
             <AlertDialogAction
+              disabled={isSaving}
               onClick={(event) => {
                 event.preventDefault();
                 handleConfirm();
               }}
             >
-              Confirm
+              {isSaving ? "Confirming…" : "Confirm"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -19,14 +19,17 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
+import { getErrorMessage } from "../../utils/error-message";
+import { useCreateCourse } from "../../hooks/use-course-list";
 import { COURSE_AUDIENCES, COURSE_AUDIENCE_LABELS, type Course, type CourseAudience } from "../../schemas/course.schema";
 
-/** Design preview — appends to the in-memory list held by the courses page; nothing is persisted past a refresh. */
-export function CreateCourseDialog({ onCreate }: { onCreate: (course: Course) => void }) {
+export function CreateCourseDialog({ onCreate }: { onCreate?: (course: Course) => void }) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [audience, setAudience] = useState<CourseAudience>("realtor");
   const [summary, setSummary] = useState("");
+
+  const createCourse = useCreateCourse();
 
   const resetForm = () => {
     setTitle("");
@@ -46,36 +49,20 @@ export function CreateCourseDialog({ onCreate }: { onCreate: (course: Course) =>
       return;
     }
 
-    const course: Course = {
-      id: `preview-${Date.now()}`,
-      title: title.trim(),
-      slug: title
-        .trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/(^-|-$)/g, ""),
-      summary: summary.trim(),
-      audience,
-      estate_id: null,
-      estate_name: null,
-      cover_url: null,
-      status: "draft",
-      published_at: null,
-      require_in_order: false,
-      grants_credential: false,
-      credential_validity_months: null,
-      credential_renewal: null,
-      is_first_sale_path: false,
-      modules_count: 0,
-      learners_count: 0,
-      completed_count: 0,
-      estimated_minutes: 0,
-    };
-
-    onCreate(course);
-    toast.success(`${course.title} created as a draft`);
-    setOpen(false);
-    resetForm();
+    createCourse.mutate(
+      { title: title.trim(), audience, summary: summary.trim() },
+      {
+        onSuccess: (course) => {
+          onCreate?.(course);
+          toast.success(`${course.title} created as a draft`);
+          setOpen(false);
+          resetForm();
+        },
+        onError: (error) => {
+          toast.error(getErrorMessage(error, "Couldn't create the course."));
+        },
+      }
+    );
   };
 
   return (
@@ -136,10 +123,12 @@ export function CreateCourseDialog({ onCreate }: { onCreate: (course: Course) =>
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
+            <Button type="button" variant="ghost" onClick={() => setOpen(false)} disabled={createCourse.isPending}>
               Cancel
             </Button>
-            <Button type="submit">Create course</Button>
+            <Button type="submit" disabled={createCourse.isPending}>
+              {createCourse.isPending ? "Creating…" : "Create course"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
