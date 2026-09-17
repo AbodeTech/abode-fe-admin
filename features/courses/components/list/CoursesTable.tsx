@@ -19,7 +19,7 @@ import {
   AdminMobileStack,
 } from "@/components/shared/admin-responsive-table";
 
-import { COURSE_AUDIENCE_LABELS, type Course } from "../../schemas/course.schema";
+import { COURSE_AUDIENCE_LABELS, COURSE_STATUS_LABELS, type Course } from "../../schemas/course.schema";
 
 function CourseName({ course }: { course: Course }) {
   return (
@@ -30,39 +30,31 @@ function CourseName({ course }: { course: Course }) {
       >
         {course.title}
       </Link>
-      <p className="truncate text-xs text-muted-foreground">
-        {course.estate_name ?? "No estate"} · {course.estimated_minutes} min
-      </p>
+      <p className="truncate text-xs text-muted-foreground">{course.estimated_minutes} min</p>
     </div>
   );
 }
 
-function RoleTag({ course }: { course: Course }) {
-  if (course.is_first_sale_path) return <Badge>First sale path</Badge>;
+/**
+ * `is_first_sale_path` isn't a field on the course record (see
+ * course.schema.ts) — the caller cross-references `academySettings` and
+ * passes the winning id down, since there's no aggregate endpoint to ask.
+ */
+function RoleTag({ course, isFirstSalePath }: { course: Course; isFirstSalePath: boolean }) {
+  if (isFirstSalePath) return <Badge>First sale path</Badge>;
   if (course.grants_credential) return <Badge variant="outline">Grants a credential</Badge>;
   return null;
-}
-
-function Completed({ course }: { course: Course }) {
-  if (course.learners_count === 0) return <span className="text-muted-foreground">—</span>;
-  const pct = Math.round((course.completed_count / course.learners_count) * 100);
-  return (
-    <div className="flex items-center gap-2.5">
-      <div className="h-1.5 w-24 overflow-hidden rounded-full bg-muted">
-        <div className="h-full rounded-full bg-foreground/60" style={{ width: `${pct}%` }} />
-      </div>
-      <span className="text-xs tabular-nums text-muted-foreground">{course.completed_count}</span>
-    </div>
-  );
 }
 
 interface CoursesTableProps {
   rows: Course[];
   isLoading?: boolean;
   emptyState?: React.ReactNode;
+  /** `academy-settings.first_sale_path_course_id`, so rows can badge the current holder. */
+  firstSalePathCourseId?: string | null;
 }
 
-export function CoursesTable({ rows, isLoading, emptyState }: CoursesTableProps) {
+export function CoursesTable({ rows, isLoading, emptyState, firstSalePathCourseId }: CoursesTableProps) {
   if (isLoading) {
     return (
       <div className="space-y-3">
@@ -84,15 +76,12 @@ export function CoursesTable({ rows, isLoading, emptyState }: CoursesTableProps)
               <TableHead>Course</TableHead>
               <TableHead>Audience</TableHead>
               <TableHead>Role</TableHead>
-              <TableHead>Modules</TableHead>
-              <TableHead>Learners</TableHead>
-              <TableHead>Completed</TableHead>
               <TableHead>Status</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {rows.map((course) => (
-              <TableRow key={course.id}>
+              <TableRow key={course.id} className="hover:bg-muted/30">
                 <TableCell className="max-w-[22rem]">
                   <CourseName course={course} />
                 </TableCell>
@@ -100,16 +89,11 @@ export function CoursesTable({ rows, isLoading, emptyState }: CoursesTableProps)
                   <Badge variant="secondary">{COURSE_AUDIENCE_LABELS[course.audience]}</Badge>
                 </TableCell>
                 <TableCell>
-                  <RoleTag course={course} />
-                </TableCell>
-                <TableCell className="tabular-nums">{course.modules_count}</TableCell>
-                <TableCell className="tabular-nums">{course.learners_count}</TableCell>
-                <TableCell>
-                  <Completed course={course} />
+                  <RoleTag course={course} isFirstSalePath={course.id === firstSalePathCourseId} />
                 </TableCell>
                 <TableCell>
                   <Badge variant={course.status === "published" ? "default" : "secondary"}>
-                    {course.status === "published" ? "Published" : "Draft"}
+                    {COURSE_STATUS_LABELS[course.status]}
                   </Badge>
                 </TableCell>
               </TableRow>
@@ -123,17 +107,14 @@ export function CoursesTable({ rows, isLoading, emptyState }: CoursesTableProps)
           <AdminMobileCard
             key={course.id}
             title={<CourseName course={course} />}
-            subtitle={<RoleTag course={course} />}
+            subtitle={<RoleTag course={course} isFirstSalePath={course.id === firstSalePathCourseId} />}
           >
             <AdminMobileField label="Audience" value={COURSE_AUDIENCE_LABELS[course.audience]} />
-            <AdminMobileField label="Modules" value={course.modules_count} />
-            <AdminMobileField label="Learners" value={course.learners_count} />
-            <AdminMobileField label="Completed" value={<Completed course={course} />} />
             <AdminMobileField
               label="Status"
               value={
                 <Badge variant={course.status === "published" ? "default" : "secondary"}>
-                  {course.status === "published" ? "Published" : "Draft"}
+                  {COURSE_STATUS_LABELS[course.status]}
                 </Badge>
               }
             />

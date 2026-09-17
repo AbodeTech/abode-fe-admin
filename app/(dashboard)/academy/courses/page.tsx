@@ -1,21 +1,25 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { Pagination } from "@/components/shared/Pagination";
-import { PageContentLoader } from "@/components/shared/page-content-loader";
+import { SuspensePageFallback } from "@/components/shared/page-content-loader";
 import {
   CourseFilterChips,
   CourseSearch,
   CoursesTable,
   CreateCourseDialog,
   DEFAULT_COURSE_LIMIT,
-  DUMMY_COURSES,
-  type Course,
+  useAcademySettings,
+  useCourseList,
+  useCourseSummary,
   type CourseAudience,
   type CourseStatus,
 } from "@/features/courses";
+import { getErrorMessage } from "@/features/courses/utils/error-message";
+
+const EMPTY_SUMMARY = { total: 0, published: 0, draft: 0, realtor: 0, buyer: 0 };
 
 function EmptyState({ title, body }: { title: string; body: string }) {
   return (
@@ -26,55 +30,46 @@ function EmptyState({ title, body }: { title: string; body: string }) {
   );
 }
 
-/**
- * Design preview — abode-be-v2 has no courses endpoints yet, so this page
- * runs entirely on features/courses/dummy-data.ts, held in local state so
- * "New course" has somewhere to append to. Refreshing resets it. Swap in
- * useCourseList / useCourseSummary (already written, see hooks/) once the
- * BE ships /admin/courses.
- */
-function CoursesPageContent({
-  courses,
-  onCreate,
-}: {
-  courses: Course[];
-  onCreate: (course: Course) => void;
-}) {
+function CoursesPageContent() {
   const searchParams = useSearchParams();
 
   const page = Number(searchParams.get("page")) || 1;
-  const search = (searchParams.get("search") ?? "").trim().toLowerCase();
+  const search = searchParams.get("search") ?? "";
   const status = (searchParams.get("status") as CourseStatus) || undefined;
   const audience = (searchParams.get("audience") as CourseAudience) || undefined;
-
-  const summary = {
-    total: courses.length,
-    published: courses.filter((c) => c.status === "published").length,
-    draft: courses.filter((c) => c.status === "draft").length,
-    realtor: courses.filter((c) => c.audience === "realtor").length,
-    buyer: courses.filter((c) => c.audience === "buyer").length,
-  };
-
-  const filtered = courses
-    .filter((c) => (status ? c.status === status : true))
-    .filter((c) => (audience ? c.audience === audience : true))
-    .filter((c) => (search ? c.title.toLowerCase().includes(search) : true));
-
-  const total = filtered.length;
-  const start = (page - 1) * DEFAULT_COURSE_LIMIT;
-  const rows = filtered.slice(start, start + DEFAULT_COURSE_LIMIT);
   const hasFilters = Boolean(search || status || audience);
+
+  const { data, isLoading, error } = useCourseList({
+    page,
+    limit: DEFAULT_COURSE_LIMIT,
+    search,
+    status,
+    audience,
+  });
+  const { data: summary } = useCourseSummary();
+  const { data: academySettings } = useAcademySettings();
+
+  if (error) {
+    return (
+      <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-500">
+        <h3 className="font-bold">Error loading courses</h3>
+        <p>{getErrorMessage(error, "An unexpected error occurred.")}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
-      <CourseFilterChips summary={summary} />
+      <CourseFilterChips summary={summary ?? EMPTY_SUMMARY} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <CourseSearch />
-        <CreateCourseDialog onCreate={onCreate} />
+        <CreateCourseDialog />
       </div>
 
       <CoursesTable
-        rows={rows}
+        rows={data?.items ?? []}
+        isLoading={isLoading}
+        firstSalePathCourseId={academySettings?.first_sale_path_course_id}
         emptyState={
           hasFilters ? (
             <EmptyState
@@ -87,14 +82,16 @@ function CoursesPageContent({
         }
       />
 
-      <Pagination count={total} currentIdx={page} limit={DEFAULT_COURSE_LIMIT} />
+      <Pagination
+        count={data?.meta.total ?? 0}
+        currentIdx={data?.meta.page ?? page}
+        limit={data?.meta.limit ?? DEFAULT_COURSE_LIMIT}
+      />
     </div>
   );
 }
 
 export default function CoursesPage() {
-  const [courses, setCourses] = useState<Course[]>(DUMMY_COURSES);
-
   return (
     <div className="mx-auto mt-4 w-full min-w-0 max-w-[1600px] space-y-6 px-3 pb-16 sm:px-4 sm:pb-20">
       <div className="min-w-0">
@@ -105,11 +102,8 @@ export default function CoursesPage() {
         </p>
       </div>
 
-      <Suspense fallback={<PageContentLoader label="Loading courses…" />}>
-        <CoursesPageContent
-          courses={courses}
-          onCreate={(course) => setCourses((prev) => [course, ...prev])}
-        />
+      <Suspense fallback={<SuspensePageFallback />}>
+        <CoursesPageContent />
       </Suspense>
     </div>
   );

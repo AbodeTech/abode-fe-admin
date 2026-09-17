@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useForm, type UseFormReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 
+import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Form,
@@ -17,22 +18,11 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
-import {
-  COURSE_AUDIENCES,
-  COURSE_AUDIENCE_LABELS,
-  CREDENTIAL_RENEWALS,
-  CREDENTIAL_RENEWAL_LABELS,
-} from "../../schemas/course.schema";
+import { useUploadMedia } from "../../hooks/use-media";
+import { COURSE_AUDIENCES, COURSE_AUDIENCE_LABELS } from "../../schemas/course.schema";
 import type { Course } from "../../schemas/course.schema";
 import {
   courseCoverFormSchema,
@@ -45,32 +35,48 @@ import {
   type CourseCredentialFormValues,
   type CourseDetailsFormValues,
 } from "../../schemas/edit-course.schema";
+import { getErrorMessage } from "../../utils/error-message";
 import { useCourseFormStore } from "../../store/course-form-store";
 
-/**
- * Design preview — no backend yet. Saving updates the course object held in
- * CourseOverview's local state via `onSave`; nothing is persisted past a
- * refresh. Swap `onSave` for a mutation once /admin/courses exists.
- */
 export type SectionForm<TValues extends Record<string, unknown>> = {
   form: UseFormReturn<TValues>;
   submit: () => void;
+  /** True while `onSave` is in flight — pass to EditablePanel's `isSaving`. */
+  isSaving: boolean;
 };
 
-/** Re-seed whenever editing opens, so a cancelled edit never lingers. */
+/**
+ * Re-seed exactly once when editing opens — not on every render while it's
+ * open. `seed` is a fresh closure every render (it closes over `course`), so
+ * putting it in the effect's own deps re-ran `reset()` on *every* re-render
+ * while editing — including ones caused by an unrelated background refetch —
+ * silently snapping the form back to server values and discarding whatever
+ * the admin had just typed or toggled. A ref sidesteps that: the effect only
+ * depends on `editing` itself, and fires on the false→true transition.
+ */
 function useReseedOnOpen(sectionId: string, seed: () => void) {
   const editing = useCourseFormStore((state) => state.editingSections[sectionId] ?? false);
+  const seedRef = useRef(seed);
+  const wasEditing = useRef(false);
+
+  // Keep the ref current *after* render, not during it — mutating a ref's
+  // `.current` while rendering is itself unsafe, even when the value read
+  // back out is only ever used inside an effect.
+  useEffect(() => {
+    seedRef.current = seed;
+  });
 
   useEffect(() => {
-    if (editing) seed();
-  }, [editing, seed]);
+    if (editing && !wasEditing.current) seedRef.current();
+    wasEditing.current = editing;
+  }, [editing]);
 }
 
 /* -------------------- details -------------------- */
 
 export function useCourseDetailsSection(
   course: Course,
-  onSave: (values: CourseDetailsFormValues) => void
+  onSave: (values: CourseDetailsFormValues) => void | Promise<void>
 ): SectionForm<CourseDetailsFormValues> {
   const stopEditing = useCourseFormStore((state) => state.stopEditing);
 
@@ -82,13 +88,16 @@ export function useCourseDetailsSection(
   const { reset } = form;
   useReseedOnOpen("details", () => reset(courseToDetailsForm(course)));
 
-  const submit = form.handleSubmit((values) => {
-    onSave(values);
-    toast.success("Course details saved");
-    stopEditing("details");
+  const submit = form.handleSubmit(async (values) => {
+    try {
+      await onSave(values);
+      stopEditing("details");
+    } catch {
+      // caller already surfaced the error via toast
+    }
   });
 
-  return { form, submit };
+  return { form, submit, isSaving: form.formState.isSubmitting };
 }
 
 function AudienceToggle({ value, onChange }: { value: string; onChange: (value: string) => void }) {
@@ -165,28 +174,6 @@ export function CourseDetailsFields({ form }: { form: UseFormReturn<CourseDetail
           )}
         />
 
-        <FormField
-          control={form.control}
-          name="estate_id"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="text-xs">Linked estate</FormLabel>
-              <FormControl>
-                <Input
-                  {...field}
-                  value={field.value ?? ""}
-                  placeholder="Asset ID"
-                  onChange={(e) => field.onChange(e.target.value || null)}
-                />
-              </FormControl>
-              <FormDescription className="text-xs">
-                Lets the course pull live prices instead of copy that goes stale.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
       </div>
     </Form>
   );
@@ -196,7 +183,7 @@ export function CourseDetailsFields({ form }: { form: UseFormReturn<CourseDetail
 
 export function useCourseCoverSection(
   course: Course,
-  onSave: (values: CourseCoverFormValues) => void
+  onSave: (values: CourseCoverFormValues) => void | Promise<void>
 ): SectionForm<CourseCoverFormValues> {
   const stopEditing = useCourseFormStore((state) => state.stopEditing);
 
@@ -208,39 +195,91 @@ export function useCourseCoverSection(
   const { reset } = form;
   useReseedOnOpen("cover", () => reset(courseToCoverForm(course)));
 
-  const submit = form.handleSubmit((values) => {
-    onSave(values);
-    toast.success("Cover saved");
-    stopEditing("cover");
+  const submit = form.handleSubmit(async (values) => {
+    try {
+      await onSave(values);
+      stopEditing("cover");
+    } catch {
+      // caller already surfaced the error via toast
+    }
   });
 
-  return { form, submit };
+  return { form, submit, isSaving: form.formState.isSubmitting };
 }
 
 export function CourseCoverFields({ form }: { form: UseFormReturn<CourseCoverFormValues> }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const upload = useUploadMedia();
+
+  const handleFile = (file: File) => {
+    upload.mutate(
+      { kind: "image", file },
+      {
+        onSuccess: (asset) => {
+          const url = asset.renditions.source ?? null;
+          if (url) form.setValue("cover_image", url, { shouldDirty: true });
+          else toast.error("Upload finished, but the file has no URL yet — try again.");
+        },
+        onError: (err) => toast.error(getErrorMessage(err, "Upload failed.")),
+      }
+    );
+  };
+
   return (
     <Form {...form}>
-      <FormField
-        control={form.control}
-        name="cover_url"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel className="text-xs">Image URL</FormLabel>
-            <FormControl>
-              <Input
-                {...field}
-                value={field.value ?? ""}
-                placeholder="https://…"
-                onChange={(e) => field.onChange(e.target.value || null)}
-              />
-            </FormControl>
-            <FormDescription className="text-xs">
-              Direct upload isn&apos;t wired up yet — paste an image URL. JPG or PNG, 1200 × 630.
-            </FormDescription>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+      <div className="space-y-3">
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleFile(file);
+          }}
+        />
+        <div
+          className="rounded-md border border-dashed p-4 text-center"
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => {
+            e.preventDefault();
+            const file = e.dataTransfer.files?.[0];
+            if (file) handleFile(file);
+          }}
+        >
+          <p className="text-sm font-semibold">Drop an image here</p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-2"
+            disabled={upload.isPending}
+            onClick={() => inputRef.current?.click()}
+          >
+            {upload.isPending ? "Uploading…" : "Browse files"}
+          </Button>
+        </div>
+
+        <FormField
+          control={form.control}
+          name="cover_image"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-xs">Or paste an image URL</FormLabel>
+              <FormControl>
+                <Input
+                  {...field}
+                  value={field.value ?? ""}
+                  placeholder="https://…"
+                  onChange={(e) => field.onChange(e.target.value || null)}
+                />
+              </FormControl>
+              <FormDescription className="text-xs">JPG or PNG, 1200 × 630.</FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
     </Form>
   );
 }
@@ -249,7 +288,7 @@ export function CourseCoverFields({ form }: { form: UseFormReturn<CourseCoverFor
 
 export function useCourseCredentialSection(
   course: Course,
-  onSave: (values: CourseCredentialFormValues) => void
+  onSave: (values: CourseCredentialFormValues) => void | Promise<void>
 ): SectionForm<CourseCredentialFormValues> {
   const stopEditing = useCourseFormStore((state) => state.stopEditing);
 
@@ -261,13 +300,16 @@ export function useCourseCredentialSection(
   const { reset } = form;
   useReseedOnOpen("credential", () => reset(courseToCredentialForm(course)));
 
-  const submit = form.handleSubmit((values) => {
-    onSave(values);
-    toast.success("Credential settings saved");
-    stopEditing("credential");
+  const submit = form.handleSubmit(async (values) => {
+    try {
+      await onSave(values);
+      stopEditing("credential");
+    } catch {
+      // caller already surfaced the error via toast
+    }
   });
 
-  return { form, submit };
+  return { form, submit, isSaving: form.formState.isSubmitting };
 }
 
 export function CourseCredentialFields({ form }: { form: UseFormReturn<CourseCredentialFormValues> }) {
@@ -313,35 +355,6 @@ export function CourseCredentialFields({ form }: { form: UseFormReturn<CourseCre
                     }
                   />
                 </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="credential_renewal"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-xs">Renewal</FormLabel>
-                <Select
-                  value={field.value ?? undefined}
-                  onValueChange={field.onChange}
-                  disabled={!grants}
-                >
-                  <FormControl>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Not set" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {CREDENTIAL_RENEWALS.map((renewal) => (
-                      <SelectItem key={renewal} value={renewal}>
-                        {CREDENTIAL_RENEWAL_LABELS[renewal]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
                 <FormMessage />
               </FormItem>
             )}

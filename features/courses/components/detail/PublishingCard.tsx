@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2 } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -18,7 +18,10 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
-import type { Course } from "../../schemas/course.schema";
+import { useDeleteCourse, usePublishCourse, useUnpublishCourse } from "../../hooks/use-course-detail";
+import { useCourseLearners } from "../../hooks/use-learners";
+import type { CourseDetail } from "../../schemas/course.schema";
+import { getErrorMessage } from "../../utils/error-message";
 
 function formatDate(value: string | null): string {
   if (!value) return "—";
@@ -27,27 +30,58 @@ function formatDate(value: string | null): string {
   return parsed.toLocaleDateString("en-NG", { year: "numeric", month: "short", day: "numeric" });
 }
 
-/** Design preview — `onToggleStatus` updates local state only; delete just navigates back. */
-export function PublishingCard({
-  course,
-  onToggleStatus,
-}: {
-  course: Course;
-  onToggleStatus: () => void;
-}) {
+/**
+ * `course` is the detail shape (with embedded `modules`) rather than the
+ * plain list-row `Course` — `modules.length` is the only real module count
+ * the BE exposes anywhere (there's no roll-up on the list or a bare course
+ * record). There's likewise no learners-count field on the course record, so
+ * the delete-warning below asks `GET /admin/courses/:id/learners?limit=1`
+ * for a real number instead of guessing.
+ */
+export function PublishingCard({ course }: { course: CourseDetail }) {
   const router = useRouter();
   const [deleting, setDeleting] = useState(false);
 
+  const publishCourse = usePublishCourse(course.id);
+  const unpublishCourse = useUnpublishCourse(course.id);
+  const deleteCourse = useDeleteCourse();
+  const { data: learners } = useCourseLearners(course.id, { page: 1, limit: 1 });
+  const learnerCount = learners?.meta.total ?? 0;
+
   const isPublished = course.status === "published";
+  const isToggling = publishCourse.isPending || unpublishCourse.isPending;
 
   const handleToggle = () => {
-    onToggleStatus();
-    toast.success(isPublished ? "Course unpublished" : "Course published");
+    if (isPublished) {
+      unpublishCourse.mutate(undefined, {
+        onSuccess: () => toast.success("Course unpublished"),
+        onError: (err) => toast.error(getErrorMessage(err, "Couldn't unpublish the course.")),
+      });
+    } else {
+      publishCourse.mutate(undefined, {
+        onSuccess: () => toast.success("Course published"),
+        onError: (err) =>
+          toast.error(
+            getErrorMessage(
+              err,
+              "A course needs at least one module with content before it can be published."
+            )
+          ),
+      });
+    }
   };
 
   const handleDelete = () => {
-    toast.success(`${course.title} deleted`);
-    router.push("/academy/courses");
+    deleteCourse.mutate(course.id, {
+      onSuccess: () => {
+        toast.success(`${course.title} deleted`);
+        router.push("/academy/courses");
+      },
+      onError: (err) => {
+        toast.error(getErrorMessage(err, "Couldn't delete the course."));
+        setDeleting(false);
+      },
+    });
   };
 
   return (
@@ -68,7 +102,7 @@ export function PublishingCard({
         </div>
         <div className="flex items-center justify-between border-b py-2.5">
           <span className="text-muted-foreground">Modules</span>
-          <span className="font-medium tabular-nums">{course.modules_count}</span>
+          <span className="font-medium tabular-nums">{course.modules.length}</span>
         </div>
         <div className="flex items-center justify-between py-2.5">
           <span className="text-muted-foreground">Estimated time</span>
@@ -76,8 +110,20 @@ export function PublishingCard({
         </div>
 
         <div className="flex gap-2 pt-3">
-          <Button type="button" variant="outline" className="flex-1" onClick={handleToggle}>
-            {isPublished ? "Unpublish" : "Publish"}
+          <Button
+            type="button"
+            variant="outline"
+            className="flex-1"
+            onClick={handleToggle}
+            disabled={isToggling}
+          >
+            {isToggling ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : isPublished ? (
+              "Unpublish"
+            ) : (
+              "Publish"
+            )}
           </Button>
           <Button
             type="button"
@@ -93,7 +139,8 @@ export function PublishingCard({
 
         <p className="pt-2.5 text-xs text-muted-foreground">
           Published courses are visible to every associate in the audience. There is no per-person
-          assignment — a published course is available, full stop.
+          assignment — a published course is available, full stop. Publishing is refused until the
+          course has at least one module with content.
         </p>
       </div>
 
@@ -102,20 +149,21 @@ export function PublishingCard({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete {course.title}?</AlertDialogTitle>
             <AlertDialogDescription>
-              {course.learners_count > 0
-                ? `${course.learners_count} learner${course.learners_count === 1 ? " has" : "s have"} started this course. Deleting it removes it from every associate's view.`
+              {learnerCount > 0
+                ? `${learnerCount} learner${learnerCount === 1 ? " has" : "s have"} started this course. Deleting it removes it from every associate's view.`
                 : "This removes the course and its modules. This can't be undone."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleteCourse.isPending}>Cancel</AlertDialogCancel>
             <AlertDialogAction
+              disabled={deleteCourse.isPending}
               onClick={(event) => {
                 event.preventDefault();
                 handleDelete();
               }}
             >
-              Delete course
+              {deleteCourse.isPending ? "Deleting…" : "Delete course"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
