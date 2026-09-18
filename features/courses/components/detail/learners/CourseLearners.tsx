@@ -1,10 +1,11 @@
 "use client";
 
 import { useParams, useSearchParams } from "next/navigation";
-import { Download } from "lucide-react";
+import { Download, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -40,6 +41,10 @@ function tierLabel(tier: string | null): string {
 }
 
 function ModulesProgress({ progress }: { progress: EnrolmentRow["progress"] }) {
+  if (progress.total_modules === 0) {
+    return <span className="text-xs text-muted-foreground">No modules yet</span>;
+  }
+
   const pct = progress.percent;
   return (
     <div className="flex items-center gap-2.5">
@@ -149,11 +154,21 @@ export function CourseLearners() {
         page's meta.total). A completed/in-progress breakdown would need
         either a BE aggregate or summing completed_at across every page
         client-side; the course record itself carries no such counts (see
-        docs/COURSE-LEARNERS-BACKEND-GAPS.md).
+        docs/COURSE-LEARNERS-BACKEND-GAPS.md). Still uses the app's usual
+        stat-card grid (see WithdrawalStatCards) rather than a standalone box,
+        even with just one card, for consistent spacing with every other
+        stats-above-a-table screen.
       */}
-      <div className="w-fit rounded-lg border p-4">
-        <p className="text-xs text-muted-foreground">Enrolled</p>
-        <p className="text-xl font-semibold tabular-nums">{total}</p>
+      <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <Card className="min-w-0 overflow-hidden">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Enrolled</CardTitle>
+            <Users className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold tabular-nums">{total}</p>
+          </CardContent>
+        </Card>
       </div>
 
       {isLoading ? (

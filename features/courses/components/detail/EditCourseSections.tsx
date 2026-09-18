@@ -174,6 +174,28 @@ export function CourseDetailsFields({ form }: { form: UseFormReturn<CourseDetail
           )}
         />
 
+        <FormField
+          control={form.control}
+          name="estimated_minutes"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-xs">Estimated time (minutes)</FormLabel>
+              <FormControl>
+                <Input
+                  type="number"
+                  min={0}
+                  value={field.value}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => field.onChange(e.target.value === "" ? 0 : e.target.valueAsNumber)}
+                />
+              </FormControl>
+              <FormDescription className="text-xs">
+                A plain estimate you set yourself — not calculated from the modules.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
       </div>
     </Form>
   );

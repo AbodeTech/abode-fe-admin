@@ -158,6 +158,7 @@ export function CourseOverview() {
               label="Audience"
               value={COURSE_AUDIENCE_LABELS[course.audience]}
             />
+            <Field label="Estimated time" value={`${course.estimated_minutes} min`} />
           </div>
         </EditablePanel>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,15 +21,11 @@ import {
 
 import { COURSE_AUDIENCE_LABELS, COURSE_STATUS_LABELS, type Course } from "../../schemas/course.schema";
 
+/** The row itself is the navigation target (see `CoursesTable`) — this is just the label, not a link. */
 function CourseName({ course }: { course: Course }) {
   return (
     <div className="min-w-0">
-      <Link
-        href={`/academy/courses/${course.id}`}
-        className="font-medium wrap-break-word hover:underline"
-      >
-        {course.title}
-      </Link>
+      <p className="font-medium wrap-break-word">{course.title}</p>
       <p className="truncate text-xs text-muted-foreground">{course.estimated_minutes} min</p>
     </div>
   );
@@ -55,6 +51,8 @@ interface CoursesTableProps {
 }
 
 export function CoursesTable({ rows, isLoading, emptyState, firstSalePathCourseId }: CoursesTableProps) {
+  const router = useRouter();
+
   if (isLoading) {
     return (
       <div className="space-y-3">
@@ -81,7 +79,11 @@ export function CoursesTable({ rows, isLoading, emptyState, firstSalePathCourseI
           </TableHeader>
           <TableBody>
             {rows.map((course) => (
-              <TableRow key={course.id} className="hover:bg-muted/30">
+              <TableRow
+                key={course.id}
+                className="cursor-pointer hover:bg-muted/30"
+                onClick={() => router.push(`/academy/courses/${course.id}`)}
+              >
                 <TableCell className="max-w-[22rem]">
                   <CourseName course={course} />
                 </TableCell>
@@ -108,6 +110,7 @@ export function CoursesTable({ rows, isLoading, emptyState, firstSalePathCourseI
             key={course.id}
             title={<CourseName course={course} />}
             subtitle={<RoleTag course={course} isFirstSalePath={course.id === firstSalePathCourseId} />}
+            onClick={() => router.push(`/academy/courses/${course.id}`)}
           >
             <AdminMobileField label="Audience" value={COURSE_AUDIENCE_LABELS[course.audience]} />
             <AdminMobileField

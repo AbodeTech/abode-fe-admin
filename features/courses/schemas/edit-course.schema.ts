@@ -8,6 +8,8 @@ export const courseDetailsFormSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   summary: z.string().min(1, 'Summary is required'),
   audience: CourseAudienceSchema,
+  /** Plain settable field — not derived from module durations. Matches the BE's `@IsInt() @Min(0)`. */
+  estimated_minutes: z.number().int().min(0, 'Must be 0 or more'),
 });
 export type CourseDetailsFormValues = z.infer<typeof courseDetailsFormSchema>;
 
@@ -16,6 +18,7 @@ export function courseToDetailsForm(course: Course): CourseDetailsFormValues {
     title: course.title,
     summary: course.summary ?? '',
     audience: course.audience,
+    estimated_minutes: course.estimated_minutes,
   };
 }
 
