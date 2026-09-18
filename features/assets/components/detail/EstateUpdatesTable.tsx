@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -93,7 +95,13 @@ export function EstateUpdatesTable({
             <TableRow key={row.id}>
               <TableCell className="min-w-56 whitespace-normal">
                 <div className="flex flex-col">
-                  <span className="text-sm font-medium">{row.headline}</span>
+                  {/* The row can only count the photos; the detail page shows them. */}
+                  <Link
+                    href={`/assets/${assetId}/updates/${row.id}`}
+                    className="text-sm font-medium hover:underline"
+                  >
+                    {row.headline}
+                  </Link>
                   {row.images.length > 0 && (
                     <span className="text-xs text-muted-foreground">
                       {row.images.length} {row.images.length === 1 ? "image" : "images"}

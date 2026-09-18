@@ -184,17 +184,33 @@ function ActiveTargetCard({ target, onEdit }: { target: CSManagerTarget; onEdit:
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
         <TargetCell label="Customers Allocated" value={target.customers_allocated_target} />
         <TargetCell label="Customers Onboarded" value={target.customers_onboarded_target} />
-        <TargetCell label="Deeds Delivered" value={target.deeds_delivered_target} />
+        <TargetCell
+          label="Ticket Resolution"
+          value={target.tickets_resolved_target}
+          suffix="%"
+        />
       </div>
     </div>
   );
 }
 
-function TargetCell({ label, value }: { label: string; value: number }) {
+function TargetCell({
+  label,
+  value,
+  suffix,
+}: {
+  label: string;
+  value: number;
+  /** "%" for the ticket rate — a share, where the other two are counts. */
+  suffix?: string;
+}) {
   return (
     <div className="rounded-md bg-white border border-gray-200 px-3 py-2">
       <p className="text-xs text-gray-500 truncate">{label}</p>
-      <p className="text-sm font-semibold text-gray-900 tabular-nums">{value.toLocaleString()}</p>
+      <p className="text-sm font-semibold text-gray-900 tabular-nums">
+        {value.toLocaleString()}
+        {suffix}
+      </p>
     </div>
   );
 }
@@ -208,7 +224,7 @@ function UpcomingTargetRow({ target, onEdit }: { target: CSManagerTarget; onEdit
           <p className="text-sm font-medium text-gray-900">{formatPeriodLabel(target)}</p>
           <p className="text-xs text-gray-500">
             {target.customers_allocated_target} allocated · {target.customers_onboarded_target} onboarded ·{" "}
-            {target.deeds_delivered_target} deeds
+            {target.tickets_resolved_target}% tickets resolved
           </p>
         </div>
       </div>
@@ -227,7 +243,7 @@ function PastTargetRow({ target }: { target: CSManagerTarget }) {
         <span className="text-gray-700 font-medium w-24">{formatPeriodLabel(target)}</span>
         <span className="text-gray-500 text-xs tabular-nums">
           {target.customers_allocated_target} / {target.customers_onboarded_target} /{" "}
-          {target.deeds_delivered_target}
+          {target.tickets_resolved_target}%
         </span>
       </div>
       <span className="text-xs text-gray-400">target</span>

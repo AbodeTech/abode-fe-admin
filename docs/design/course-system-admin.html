@@ -1,0 +1,908 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Abode Admin · Courses</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+*{box-sizing:border-box}
+:root{
+  --paper:#F2F4F5;--page:#FFFFFF;--side:#FAFAFA;
+  --ink:#171717;--ink2:#404040;--muted:#737373;--faint:#A3A3A3;
+  --line:#E5E5E5;--line2:#F0F0F0;--accent:#F5F5F5;
+  --teal:#0593A5;--teal-deep:#046F7A;--teal-wash:#EAF7F9;
+  --green:#1E8E5C;--green-wash:#E8F5EE;
+  --amber:#B45309;--amber-wash:#FEF3E2;
+  --red:#DC2626;--red-wash:#FEECEC;
+  --r:10px;--r-sm:6px;
+  --sh:0 1px 2px rgba(0,0,0,.04),0 8px 24px -12px rgba(0,0,0,.12);
+}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:Geist,-apple-system,'Segoe UI',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.mast{max-width:1560px;margin:0 auto;padding:48px 32px 26px;border-bottom:1px solid #DDE1E3}
+.eyebrow{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin:0 0 12px}
+.mast h1{font-size:clamp(28px,4vw,44px);font-weight:700;letter-spacing:-.03em;margin:0;line-height:1.05}
+.dek{margin:16px 0 0;max-width:68ch;font-size:16px;line-height:1.6;color:var(--ink2)}
+.meta{display:flex;flex-wrap:wrap;gap:6px 20px;margin-top:18px}
+.meta span{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.wrap{max-width:1560px;margin:0 auto;padding:0 32px 80px}
+.screen{padding:40px 0;border-bottom:1px solid #E4E8EA}
+.cap{max-width:80ch;margin:0 0 20px}
+.cap h3{font-size:20px;margin:0 0 6px;letter-spacing:-.02em}
+.cap p{margin:0;font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:1.7;color:var(--muted)}
+.cap p b{color:var(--ink2);font-weight:500}
+.flabel{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+.frame{background:var(--page);border:1px solid #DDE1E3;box-shadow:var(--sh);overflow:auto;max-width:100%}
+h2.sec{font-size:26px;letter-spacing:-.025em;margin:56px 0 6px;padding-top:34px;border-top:2px solid #DDE1E3}
+.secdek{margin:0 0 8px;font-size:15px;color:var(--ink2);max-width:74ch;line-height:1.6}
+.dt{max-width:1100px;margin-top:22px;border:1px solid #DDE1E3;border-radius:10px;background:#fff;overflow:hidden}
+.dt h4{margin:0;padding:13px 16px;font-size:14px;font-weight:600;border-bottom:1px solid var(--line);background:#FAFAFA}
+.dt .f{display:grid;grid-template-columns:210px 150px 1fr;gap:14px;padding:9px 16px;border-bottom:1px solid var(--line2);font-size:12.5px;align-items:baseline}
+.dt .f:last-child{border-bottom:none}
+.dt .f code{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink)}
+.dt .f em{font-style:normal;font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--teal-deep)}
+.dt .f span{color:var(--muted);line-height:1.5}
+.note{margin-top:40px;padding-top:20px;border-top:1px solid #DDE1E3;font-size:14.5px;line-height:1.65;color:var(--muted);max-width:80ch}
+.note b{color:var(--ink2);font-weight:600}
+@media print{.frame{box-shadow:none;break-inside:avoid}.screen{break-inside:avoid;border:none}body{background:#fff}}
+
+.app{width:1440px;display:flex;background:var(--page);font-size:14px}
+.side{width:236px;flex:none;background:var(--side);border-right:1px solid var(--line);display:flex;flex-direction:column;padding-bottom:12px}
+.brand{height:56px;display:flex;align-items:center;gap:9px;padding:0 16px;border-bottom:1px solid var(--line)}
+.brand b{font-size:15px;font-weight:700;letter-spacing:-.02em}
+.brand b span{color:var(--teal)}
+.brand em{font-style:normal;font-size:10px;font-weight:500;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:2px 7px;margin-left:auto}
+.navgrp{padding:12px 10px 2px}
+.navgrp p{margin:0 0 4px;padding:0 8px;font-size:11px;font-weight:600;letter-spacing:.04em;color:var(--faint);text-transform:uppercase}
+.nav{display:flex;align-items:center;gap:9px;height:32px;padding:0 8px;border-radius:var(--r-sm);color:var(--ink2);font-size:13.5px}
+.nav i{width:15px;height:15px;border-radius:3px;background:#D4D4D4;flex:none;display:block}
+.nav.sub{padding-left:30px;font-size:13px;color:var(--muted)}
+.nav.sub.on{background:var(--accent);color:var(--ink);font-weight:600}
+.nav.sub.on i{background:var(--teal)}
+.nav .ct{margin-left:auto;font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums}
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.top{height:56px;flex:none;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;padding:0 24px}
+.crumb{display:flex;align-items:center;gap:7px;font-size:13.5px;color:var(--muted);flex:1;min-width:0}
+.crumb b{color:var(--ink);font-weight:600}
+.crumb s{text-decoration:none;color:#C4C4C4}
+.avatar{width:28px;height:28px;border-radius:999px;background:var(--accent);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--ink2)}
+.body{flex:1;padding:24px;display:flex;flex-direction:column;gap:18px}
+h2.pt{font-size:22px;font-weight:600;letter-spacing:-.025em;margin:0}
+.sub{font-size:13.5px;color:var(--muted);margin:4px 0 0;line-height:1.5}
+.row{display:flex;align-items:center;gap:12px}
+.grow{flex:1;min-width:0}
+.btn{height:34px;padding:0 13px;border-radius:var(--r-sm);border:1px solid var(--line);background:#fff;font-size:13px;font-weight:500;color:var(--ink);display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+.btn.dark{background:var(--ink);border-color:var(--ink);color:#fff}
+.btn.teal{background:var(--teal);border-color:var(--teal);color:#fff}
+.btn.ghost{border-color:transparent;color:var(--muted)}
+.btn.danger{border-color:#F5C9C9;color:var(--red)}
+.btn.sm{height:29px;padding:0 10px;font-size:12.5px}
+.btn.icon{width:34px;padding:0;justify-content:center}
+.btn.wide{width:100%;justify-content:center}
+.chip{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 11px;border-radius:999px;border:1px solid var(--line);background:#fff;font-size:12.5px;font-weight:500;color:var(--ink2);white-space:nowrap}
+.chip.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.chip .n{font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums}
+.chip.on .n{color:rgba(255,255,255,.65)}
+.tag{display:inline-flex;align-items:center;gap:5px;height:21px;padding:0 8px;border-radius:var(--r-sm);font-size:11.5px;font-weight:500;white-space:nowrap;border:1px solid transparent}
+.tag.green{background:var(--green-wash);color:var(--green);border-color:#C9E7D6}
+.tag.grey{background:var(--accent);color:var(--muted);border-color:var(--line)}
+.tag.teal{background:var(--teal-wash);color:var(--teal-deep);border-color:#BFE2E8}
+.tag.amber{background:var(--amber-wash);color:var(--amber);border-color:#F3DDBB}
+.tag.red{background:var(--red-wash);color:var(--red);border-color:#F5C9C9}
+.tag.ink{background:var(--ink);color:#fff}
+.card{border:1px solid var(--line);border-radius:var(--r);background:#fff}
+.card>.hd{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px}
+.card>.hd h4{margin:0;font-size:14.5px;font-weight:600;letter-spacing:-.01em}
+.card>.hd p{margin:3px 0 0;font-size:12.5px;color:var(--muted)}
+.card>.bd{padding:16px}
+.card.hi{border-color:var(--ink)}
+.card.hi>.hd{background:var(--ink);border-bottom-color:var(--ink)}
+.card.hi>.hd h4{color:#fff}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
+.stack{display:flex;flex-direction:column;gap:14px}
+.fld{display:flex;flex-direction:column;gap:6px}
+.fld label{font-size:12.5px;font-weight:500;color:var(--ink2)}
+.fld .in{border:1px solid var(--line);border-radius:var(--r-sm);padding:9px 11px;font-size:13.5px;color:var(--ink);background:#fff;min-height:36px;display:flex;align-items:center}
+.fld .in.ta{min-height:70px;align-items:flex-start;line-height:1.55;color:var(--ink2)}
+.fld .hint{font-size:11.5px;color:var(--muted);line-height:1.45}
+.seg{display:inline-flex;padding:3px;background:var(--accent);border-radius:var(--r-sm);gap:3px}
+.seg div{padding:6px 13px;border-radius:4px;font-size:12.5px;font-weight:500;color:var(--muted)}
+.seg div.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin:0 -24px;padding:0 24px}
+.tabs div{padding:0 12px 11px;font-size:13.5px;font-weight:500;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabs div.on{color:var(--ink);border-bottom-color:var(--ink);font-weight:600}
+.tabs div .b{margin-left:6px;font-size:11px;color:var(--faint)}
+.sw{width:34px;height:20px;border-radius:999px;background:#D4D4D4;flex:none;padding:2px;display:flex}
+.sw i{width:16px;height:16px;border-radius:999px;background:#fff;display:block;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.sw.on{background:var(--teal);justify-content:flex-end}
+.tog{display:flex;align-items:flex-start;gap:11px;padding:13px 0}
+.tog+.tog{border-top:1px solid var(--line2)}
+.tog .tx{flex:1;min-width:0}
+.tog .tx b{display:block;font-size:13.5px;font-weight:600}
+.tog .tx p{margin:3px 0 0;font-size:12px;color:var(--muted);line-height:1.5}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:11.5px;font-weight:500;color:var(--muted);padding:0 14px 9px;border-bottom:1px solid var(--line)}
+td{padding:12px 14px;border-bottom:1px solid var(--line2);font-size:13.5px;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+td.n{font-variant-numeric:tabular-nums;color:var(--ink2)}
+td b{font-weight:600}
+td .s{display:block;font-size:12px;color:var(--muted);margin-top:2px}
+.bar{height:5px;border-radius:999px;background:var(--accent);overflow:hidden;width:104px}
+.bar i{display:block;height:100%;border-radius:999px;background:var(--teal)}
+.bar.g i{background:var(--green)}
+.mod{display:flex;align-items:center;gap:12px;padding:13px 14px;border:1px solid var(--line);border-radius:var(--r);background:#fff}
+.mod+.mod{margin-top:9px}
+.drag{width:16px;color:#C4C4C4;font-size:14px;line-height:1;flex:none}
+.num{width:24px;height:24px;border-radius:999px;background:var(--accent);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:600;color:var(--ink2);flex:none}
+.mod .tx{flex:1;min-width:0}
+.mod .tx b{font-size:13.5px;font-weight:600;display:block}
+.mod .tx p{margin:3px 0 0;font-size:12px;color:var(--muted)}
+.dash{border:1px dashed var(--line);border-radius:var(--r);padding:15px;display:flex;align-items:center;justify-content:center;gap:8px;color:var(--muted);font-size:13px;font-weight:500;margin-top:9px}
+.blk{border:1px solid var(--line);border-radius:var(--r);background:#fff;padding:14px 15px}
+.blk+.blk{margin-top:10px}
+.blk .bh{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+.blk .bh span{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+.blk .bh .sp{flex:1}
+.blk h5{margin:0;font-size:17px;font-weight:600;letter-spacing:-.02em}
+.blk p{margin:0;font-size:13.5px;line-height:1.65;color:var(--ink2)}
+.tb{display:flex;gap:2px;padding:5px;background:var(--accent);border-radius:var(--r-sm);margin-bottom:10px}
+.tb i{width:26px;height:24px;border-radius:4px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:600;color:var(--ink2);font-style:normal;border:1px solid var(--line)}
+.call{border:1px solid #BFE2E8;background:var(--teal-wash);border-radius:var(--r);padding:13px 14px}
+.call b{display:block;font-size:13px;font-weight:600;color:var(--teal-deep);margin-bottom:4px}
+.call p{margin:0;font-size:13px;line-height:1.6;color:var(--ink2)}
+.drop{border:1.5px dashed #CFCFCF;border-radius:var(--r);background:#FCFCFC;padding:26px;text-align:center}
+.drop b{display:block;font-size:13.5px;font-weight:600;margin-bottom:4px}
+.drop p{margin:0 0 13px;font-size:12.5px;color:var(--muted);line-height:1.55}
+.vid{display:flex;gap:13px;align-items:flex-start}
+.thumb{width:168px;height:95px;flex:none;border-radius:var(--r-sm);border:1px solid var(--line);background:#1F1F1F;position:relative;display:flex;align-items:center;justify-content:center}
+.thumb .play{width:34px;height:34px;border-radius:999px;background:rgba(255,255,255,.92);display:flex;align-items:center;justify-content:center;font-size:12px;color:#171717}
+.thumb .dur{position:absolute;right:6px;bottom:6px;background:rgba(0,0,0,.75);color:#fff;font-size:10.5px;font-weight:500;padding:2px 5px;border-radius:3px;font-variant-numeric:tabular-nums}
+.thumb.work{background:repeating-linear-gradient(45deg,#F5F5F5,#F5F5F5 9px,#EDEDED 9px,#EDEDED 18px)}
+.prog{height:5px;border-radius:999px;background:var(--accent);overflow:hidden;margin-top:9px}
+.prog i{display:block;height:100%;background:var(--teal);border-radius:999px}
+.kv{display:flex;align-items:center;justify-content:space-between;padding:11px 0;font-size:13px}
+.kv+.kv{border-top:1px solid var(--line2)}
+.kv span{color:var(--muted)}
+.kv b{font-weight:600;font-variant-numeric:tabular-nums}
+.stat{display:flex;flex-direction:column;gap:3px}
+.stat span{font-size:11.5px;color:var(--muted)}
+.stat b{font-size:22px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr))}
+.stats>div{padding:0 18px;border-left:1px solid var(--line2)}
+.stats>div:first-child{padding-left:0;border-left:none}
+.opt{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-sm)}
+.opt+.opt{margin-top:7px}
+.opt .rd{width:15px;height:15px;border-radius:999px;border:1.5px solid #C4C4C4;flex:none}
+.opt.yes{border-color:#C9E7D6;background:var(--green-wash)}
+.opt.yes .rd{border-color:var(--green);background:var(--green);box-shadow:inset 0 0 0 2.5px #fff}
+.opt .tx{flex:1;font-size:13.5px}
+.q{border:1px solid var(--line);border-radius:var(--r);background:#fff;padding:13px 14px;display:flex;align-items:center;gap:12px}
+.q+.q{margin-top:8px}
+.q.open{border-color:var(--ink);display:block;padding:16px}
+.fsp{display:flex;align-items:flex-start;gap:13px}
+.fsp .ic{width:38px;height:38px;border-radius:var(--r-sm);background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;flex:none}
+</style>
+</head>
+<body>
+
+<header class="mast">
+  <p class="eyebrow">Abode admin · academy</p>
+  <h1>Courses</h1>
+  <p class="dek">Seven admin screens for authoring courses and their material, and for seeing who is doing
+    them. Drawn in the admin app's own system — Geist, white surfaces, <code>#171717</code> primary,
+    <code>#E5E5E5</code> borders, 10px radius — with Abode teal as the only accent. Two sidebar items:
+    <b>Courses</b> and <b>Learners</b>. Certification is not a third thing; it is a course whose completion
+    grants a credential. Every field drawn here is listed as a data contract at the end.</p>
+  <div class="meta"><span>7 screens</span><span>Desktop 1440</span><span>Sidebar group: Academy</span><span>Data contract included</span></div>
+</header>
+
+<div class="wrap">
+
+<!-- =================================================== 1 -->
+<div class="screen">
+  <div class="cap"><h3>1. Courses</h3>
+  <p>Every course in one table. <b>First sale path</b> and <b>Certification</b> are role tags, not separate
+    features — a course earns them from its own settings. Sold-out concepts do not get their own nav item.</p></div>
+  <p class="flabel">Desktop · 1440</p>
+  <div class="frame"><div class="app">
+    <aside class="side">
+      <div class="brand"><b><span>A</span>bode</b><em>Admin</em></div>
+      <div class="navgrp"><p>General</p><div class="nav"><i></i>Dashboard</div><div class="nav"><i></i>Assets</div><div class="nav"><i></i>Sales</div><div class="nav"><i></i>Allocation</div></div>
+      <div class="navgrp"><p>People</p><div class="nav"><i></i>Users</div><div class="nav"><i></i>Associates</div></div>
+      <div class="navgrp"><p>Academy</p><div class="nav sub on"><i></i>Courses<span class="ct">7</span></div><div class="nav sub"><i></i>Learners<span class="ct">141</span></div></div>
+      <div class="navgrp"><p>Operations</p><div class="nav"><i></i>Customer Success</div><div class="nav"><i></i>Ilé Assistant</div><div class="nav"><i></i>Transactions</div><div class="nav"><i></i>Campaigns</div></div>
+      <div class="navgrp"><p>Admin</p><div class="nav"><i></i>Security</div><div class="nav"><i></i>Settings</div></div>
+    </aside>
+    <div class="main">
+      <div class="top"><div class="crumb"><b>Courses</b></div><div class="btn sm">Search</div><div class="avatar">MO</div></div>
+      <div class="body">
+        <div class="row"><div class="grow"><h2 class="pt">Courses</h2>
+          <p class="sub">Seven courses. Three are drafts no associate can see.</p></div>
+          <div class="btn dark">New course</div></div>
+        <div class="row" style="gap:7px;flex-wrap:wrap">
+          <div class="chip on">All <span class="n">7</span></div>
+          <div class="chip">Published <span class="n">4</span></div>
+          <div class="chip">Draft <span class="n">3</span></div>
+          <div class="chip">Realtor <span class="n">5</span></div>
+          <div class="chip">Buyer <span class="n">2</span></div>
+        </div>
+        <div class="card"><table>
+          <thead><tr><th style="width:32%">Course</th><th>Audience</th><th>Role</th><th>Modules</th>
+            <th>Learners</th><th style="width:14%">Completed</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td><b>Selling Woodgate Prime</b><span class="s">Woodgate Prime · 35 min</span></td>
+              <td><span class="tag grey">Realtor</span></td><td><span class="tag ink">First sale path</span></td>
+              <td class="n">4</td><td class="n">128</td>
+              <td><div class="row" style="gap:9px"><div class="bar"><i style="width:61%"></i></div><span class="n" style="font-size:12.5px">78</span></div></td>
+              <td><span class="tag green">Published</span></td></tr>
+            <tr><td><b>Abode Associate Certification</b><span class="s">5 modules · credential, 12 months</span></td>
+              <td><span class="tag grey">Realtor</span></td><td><span class="tag teal">Grants a credential</span></td>
+              <td class="n">5</td><td class="n">96</td>
+              <td><div class="row" style="gap:9px"><div class="bar"><i style="width:34%"></i></div><span class="n" style="font-size:12.5px">34</span></div></td>
+              <td><span class="tag green">Published</span></td></tr>
+            <tr><td><b>Selling The District</b><span class="s">The District · 32 min</span></td>
+              <td><span class="tag grey">Realtor</span></td><td></td><td class="n">4</td><td class="n">41</td>
+              <td><div class="row" style="gap:9px"><div class="bar"><i style="width:22%"></i></div><span class="n" style="font-size:12.5px">9</span></div></td>
+              <td><span class="tag green">Published</span></td></tr>
+            <tr><td><b>Handling title questions</b><span class="s">No estate · 28 min</span></td>
+              <td><span class="tag grey">Realtor</span></td><td></td><td class="n">3</td><td class="n">64</td>
+              <td><div class="row" style="gap:9px"><div class="bar"><i style="width:48%"></i></div><span class="n" style="font-size:12.5px">31</span></div></td>
+              <td><span class="tag green">Published</span></td></tr>
+            <tr><td><b>Selling Empire Park</b><span class="s">Empire Park · draft since 2 Sept</span></td>
+              <td><span class="tag grey">Realtor</span></td><td></td><td class="n">4</td><td class="n">—</td>
+              <td><span style="color:var(--faint)">—</span></td><td><span class="tag amber">Draft</span></td></tr>
+            <tr><td><b>Understanding your land documents</b><span class="s">No estate · draft since 28 Aug</span></td>
+              <td><span class="tag grey">Buyer</span></td><td></td><td class="n">3</td><td class="n">—</td>
+              <td><span style="color:var(--faint)">—</span></td><td><span class="tag amber">Draft</span></td></tr>
+            <tr><td><b>What allocation means</b><span class="s">No estate · draft since 28 Aug</span></td>
+              <td><span class="tag grey">Buyer</span></td><td></td><td class="n">2</td><td class="n">—</td>
+              <td><span style="color:var(--faint)">—</span></td><td><span class="tag amber">Draft</span></td></tr>
+          </tbody></table></div>
+      </div>
+    </div>
+  </div></div>
+</div>
+
+<!-- =================================================== 2 -->
+<div class="screen">
+  <div class="cap"><h3>2. Course · Overview — where the first-sale path is set</h3>
+  <p>The two controls that decide what a course <i>means</i> sit in their own cards, each stating who
+    currently holds it. Exactly one realtor course can be the first-sale path; setting it here takes it
+    off the course that has it, and the card says so before you press anything.</p></div>
+  <p class="flabel">Desktop · 1440</p>
+  <div class="frame"><div class="app">
+    <aside class="side">
+      <div class="brand"><b><span>A</span>bode</b><em>Admin</em></div>
+      <div class="navgrp"><p>General</p><div class="nav"><i></i>Dashboard</div><div class="nav"><i></i>Assets</div><div class="nav"><i></i>Sales</div><div class="nav"><i></i>Allocation</div></div>
+      <div class="navgrp"><p>People</p><div class="nav"><i></i>Users</div><div class="nav"><i></i>Associates</div></div>
+      <div class="navgrp"><p>Academy</p><div class="nav sub on"><i></i>Courses<span class="ct">7</span></div><div class="nav sub"><i></i>Learners<span class="ct">141</span></div></div>
+      <div class="navgrp"><p>Operations</p><div class="nav"><i></i>Customer Success</div><div class="nav"><i></i>Ilé Assistant</div><div class="nav"><i></i>Transactions</div><div class="nav"><i></i>Campaigns</div></div>
+      <div class="navgrp"><p>Admin</p><div class="nav"><i></i>Security</div><div class="nav"><i></i>Settings</div></div>
+    </aside>
+    <div class="main">
+      <div class="top"><div class="crumb">Courses <s>›</s> <b>Selling The District</b></div>
+        <span class="tag green">Published</span><div class="btn sm">Preview</div><div class="avatar">MO</div></div>
+      <div class="body">
+        <div class="row"><div class="grow"><h2 class="pt">Selling The District</h2>
+          <p class="sub">Last edited by Martha Oke · 4 September, 11:20</p></div>
+          <div class="btn">Discard</div><div class="btn dark">Save</div></div>
+        <div class="tabs"><div class="on">Overview</div><div>Modules<span class="b">4</span></div><div>Quiz<span class="b">10</span></div><div>Learners<span class="b">41</span></div></div>
+        <div class="grid2">
+          <div class="stack">
+            <div class="card"><div class="hd"><h4>Details</h4></div><div class="bd stack">
+              <div class="fld"><label>Title</label><div class="in">Selling The District</div></div>
+              <div class="fld"><label>URL slug</label><div class="in" style="color:var(--muted)">selling-the-district</div></div>
+              <div class="fld"><label>Summary</label><div class="in ta">What The District costs, how the plan
+                works, what the title is today, and when a client's plot gets allocated.</div>
+                <span class="hint">Shown on the course card, and on the dashboard checkpoint if this is the first-sale path.</span></div>
+              <div class="fld"><label>Audience</label><div class="seg"><div class="on">Realtor</div><div>Buyer</div></div>
+                <span class="hint">Buyer courses cannot be the first-sale path — that checkpoint only exists on the realtor dashboard.</span></div>
+              <div class="fld"><label>Linked estate</label><div class="in row"><span class="grow">The District</span><span style="color:var(--faint)">▾</span></div>
+                <span class="hint">Lets the course pull live prices instead of copy that goes stale.</span></div>
+            </div></div>
+            <div class="card"><div class="hd"><h4>Cover</h4><p style="margin-left:auto">1200 × 630</p></div>
+              <div class="bd"><div class="drop"><b>Drop an image here</b>
+                <p>JPG or PNG, up to 5 MB</p><div class="btn sm">Browse files</div></div></div></div>
+          </div>
+
+          <div class="stack">
+            <div class="card hi"><div class="hd"><h4>First sale path</h4></div><div class="bd">
+              <div class="fsp"><div class="ic">1</div><div>
+                <b style="font-size:13.5px;display:block">Not this course</b>
+                <p style="margin:4px 0 0;font-size:12.5px;color:var(--muted);line-height:1.55">
+                  <b style="color:var(--ink)">Selling Woodgate Prime</b> is the first-sale path today. It shows as
+                  checkpoint 1 on the dashboard of every realtor with no sales.</p></div></div>
+              <div class="btn dark wide" style="margin-top:14px">Make this the first-sale path</div>
+              <p style="margin:10px 0 0;font-size:11.5px;color:var(--muted);line-height:1.5">
+                Only one course can hold it. Doing this moves it off Selling Woodgate Prime — you will be asked
+                to confirm, and it is written to the admin log.</p>
+            </div></div>
+
+            <div class="card"><div class="hd"><h4>Credential</h4></div><div class="bd" style="padding-top:4px">
+              <div class="tog"><div class="sw"><i></i></div><div class="tx"><b>Finishing grants a credential</b>
+                <p>Off. A verified badge on the associate's public profile, beside their name on every property
+                  page they share.</p></div></div>
+              <div style="border-top:1px solid var(--line2);padding-top:13px;opacity:.45">
+                <div class="fld" style="margin-bottom:11px"><label>Valid for</label>
+                  <div class="in row"><span class="grow">12 months</span><span style="color:var(--faint)">▾</span></div></div>
+                <div class="fld"><label>Renewal</label>
+                  <div class="in row"><span class="grow">Refresher module only</span><span style="color:var(--faint)">▾</span></div></div>
+                <p style="margin:9px 0 0;font-size:11.5px;color:var(--muted)">Unlocks when the switch is on.</p>
+              </div>
+            </div></div>
+
+            <div class="card"><div class="hd"><h4>Publishing</h4></div><div class="bd">
+              <div class="kv"><span>Status</span><span class="tag green">Published</span></div>
+              <div class="kv"><span>First published</span><b>14 Aug 2026</b></div>
+              <div class="kv"><span>Modules</span><b>4</b></div>
+              <div class="kv"><span>Estimated time</span><b>32 min</b></div>
+              <div class="row" style="margin-top:14px;gap:8px">
+                <div class="btn grow" style="justify-content:center">Unpublish</div>
+                <div class="btn danger icon">⌫</div></div>
+              <p style="margin:10px 0 0;font-size:11.5px;color:var(--muted);line-height:1.5">
+                Published courses are visible to every associate in the audience. There is no per-person
+                assignment — a published course is available, full stop.</p>
+            </div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div></div>
+</div>
+
+<!-- =================================================== 3 -->
+<div class="screen">
+  <div class="cap"><h3>3. Course · Modules</h3>
+  <p>Drag to reorder — the admin already ships <b>@dnd-kit/sortable</b>. Order is what the associate sees,
+    but nothing is gated unless <b>Require in order</b> is switched on.</p></div>
+  <p class="flabel">Desktop · 1440</p>
+  <div class="frame"><div class="app">
+    <aside class="side">
+      <div class="brand"><b><span>A</span>bode</b><em>Admin</em></div>
+      <div class="navgrp"><p>General</p><div class="nav"><i></i>Dashboard</div><div class="nav"><i></i>Assets</div><div class="nav"><i></i>Sales</div><div class="nav"><i></i>Allocation</div></div>
+      <div class="navgrp"><p>People</p><div class="nav"><i></i>Users</div><div class="nav"><i></i>Associates</div></div>
+      <div class="navgrp"><p>Academy</p><div class="nav sub on"><i></i>Courses<span class="ct">7</span></div><div class="nav sub"><i></i>Learners<span class="ct">141</span></div></div>
+      <div class="navgrp"><p>Operations</p><div class="nav"><i></i>Customer Success</div><div class="nav"><i></i>Ilé Assistant</div><div class="nav"><i></i>Transactions</div><div class="nav"><i></i>Campaigns</div></div>
+      <div class="navgrp"><p>Admin</p><div class="nav"><i></i>Security</div><div class="nav"><i></i>Settings</div></div>
+    </aside>
+    <div class="main">
+      <div class="top"><div class="crumb">Courses <s>›</s> <b>Selling Woodgate Prime</b></div>
+        <span class="tag ink">First sale path</span><span class="tag green">Published</span><div class="avatar">MO</div></div>
+      <div class="body">
+        <div class="row"><div class="grow"><h2 class="pt">Selling Woodgate Prime</h2>
+          <p class="sub">Four modules · 35 minutes end to end</p></div><div class="btn dark">Save</div></div>
+        <div class="tabs"><div>Overview</div><div class="on">Modules<span class="b">4</span></div><div>Quiz<span class="b">10</span></div><div>Learners<span class="b">128</span></div></div>
+        <div class="grid2">
+          <div>
+            <div class="mod"><span class="drag">⠿</span><span class="num">1</span>
+              <div class="tx"><b>What Woodgate Prime is</b><p>Where it is, who it suits, what is already built</p></div>
+              <span class="tag grey">Text</span><span style="font-size:12.5px;color:var(--muted)">6 min</span>
+              <div class="btn sm">Edit</div></div>
+            <div class="mod"><span class="drag">⠿</span><span class="num">2</span>
+              <div class="tx"><b>The plan and the price</b><p>₦19,000 a month, 36 payments, what the client ends up owning</p></div>
+              <span class="tag grey">Text</span><span class="tag teal">Video</span><span style="font-size:12.5px;color:var(--muted)">9 min</span>
+              <div class="btn sm">Edit</div></div>
+            <div class="mod" style="border-color:var(--ink)"><span class="drag">⠿</span>
+              <span class="num" style="background:var(--ink);color:#fff;border-color:var(--ink)">3</span>
+              <div class="tx"><b>Title and allocation</b><p>Excision, survey, and the ₦205,200 allocation threshold</p></div>
+              <span class="tag grey">Text</span><span class="tag teal">Video</span><span style="font-size:12.5px;color:var(--muted)">12 min</span>
+              <div class="btn sm">Edit</div></div>
+            <div class="mod"><span class="drag">⠿</span><span class="num">4</span>
+              <div class="tx"><b>Check what you know</b><p>Ten questions · 70% to pass · open book</p></div>
+              <span class="tag teal">Quiz</span><span style="font-size:12.5px;color:var(--muted)">8 min</span>
+              <div class="btn sm">Edit</div></div>
+            <div class="dash">+ &nbsp;Add a module</div>
+          </div>
+          <div class="stack">
+            <div class="card"><div class="hd"><h4>This course</h4></div><div class="bd">
+              <div class="kv"><span>Lessons</span><b>3</b></div>
+              <div class="kv"><span>Quizzes</span><b>1</b></div>
+              <div class="kv"><span>Video</span><b>2 clips · 7 min</b></div>
+              <div class="kv"><span>Total time</span><b>35 min</b></div>
+            </div></div>
+            <div class="card"><div class="hd"><h4>Ordering</h4></div><div class="bd" style="padding-top:4px">
+              <div class="tog"><div class="sw"><i></i></div><div class="tx"><b>Require in order</b>
+                <p>Off. An associate can open any module at any time. Turning it on gates each module behind
+                  the one before it — which also gates the first sale behind reading in sequence.</p></div></div>
+            </div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div></div>
+</div>
+
+<!-- =================================================== 4 -->
+<div class="screen">
+  <div class="cap"><h3>4. Module editor — text, image and video</h3>
+  <p>A block editor. The <b>video block</b> is drawn in both its states: one uploaded and playable, one still
+    transcoding. Upload is async — the admin can keep editing while it processes, and the module cannot be
+    published until every clip is ready.</p></div>
+  <p class="flabel">Desktop · 1440</p>
+  <div class="frame"><div class="app">
+    <aside class="side">
+      <div class="brand"><b><span>A</span>bode</b><em>Admin</em></div>
+      <div class="navgrp"><p>General</p><div class="nav"><i></i>Dashboard</div><div class="nav"><i></i>Assets</div><div class="nav"><i></i>Sales</div><div class="nav"><i></i>Allocation</div></div>
+      <div class="navgrp"><p>People</p><div class="nav"><i></i>Users</div><div class="nav"><i></i>Associates</div></div>
+      <div class="navgrp"><p>Academy</p><div class="nav sub on"><i></i>Courses<span class="ct">7</span></div><div class="nav sub"><i></i>Learners<span class="ct">141</span></div></div>
+      <div class="navgrp"><p>Operations</p><div class="nav"><i></i>Customer Success</div><div class="nav"><i></i>Ilé Assistant</div><div class="nav"><i></i>Transactions</div><div class="nav"><i></i>Campaigns</div></div>
+      <div class="navgrp"><p>Admin</p><div class="nav"><i></i>Security</div><div class="nav"><i></i>Settings</div></div>
+    </aside>
+    <div class="main">
+      <div class="top"><div class="crumb">Courses <s>›</s> Selling Woodgate Prime <s>›</s> <b>Title and allocation</b></div>
+        <span class="tag amber">Unsaved</span><div class="btn sm">Preview as associate</div><div class="avatar">MO</div></div>
+      <div class="body">
+        <div class="row"><div class="grow"><h2 class="pt">Title and allocation</h2>
+          <p class="sub">Module 3 of 4 · about 12 minutes</p></div>
+          <div class="btn">Cancel</div><div class="btn dark">Save module</div></div>
+        <div class="grid2">
+          <div>
+            <div class="blk"><div class="bh"><span>Heading</span><span class="sp"></span><span>⠿</span><span>⋯</span></div>
+              <h5>What allocation actually means</h5></div>
+
+            <div class="blk"><div class="bh"><span>Text</span><span class="sp"></span><span>⠿</span><span>⋯</span></div>
+              <div class="tb"><i>B</i><i>I</i><i>H</i><i>“</i><i>≔</i><i>🔗</i></div>
+              <p>Allocation is the moment a specific plot on the estate layout gets tied to your client's name.
+                Until then they own a place in the queue and a contract, not a numbered plot. Say that plainly —
+                the clients who feel misled are the ones who thought they already had a plot number.</p></div>
+
+            <div class="blk"><div class="bh"><span>Video</span><span class="sp"></span>
+              <span class="tag green" style="height:19px">Ready</span><span>⠿</span><span>⋯</span></div>
+              <div class="vid">
+                <div class="thumb"><div class="play">▶</div><div class="dur">4:12</div></div>
+                <div style="flex:1;min-width:0">
+                  <b style="font-size:13.5px;display:block">allocation-explained.mp4</b>
+                  <p style="margin:4px 0 0;font-size:12px;color:var(--muted);line-height:1.6">
+                    124 MB · 1080p · uploaded 4 Sept by Martha Oke<br>Streams at 360p / 720p / 1080p</p>
+                  <div class="row" style="gap:7px;margin-top:10px">
+                    <div class="btn sm">Replace</div><div class="btn sm">Add captions</div>
+                    <div class="btn sm ghost">Remove</div></div>
+                </div></div>
+              <div class="fld" style="margin-top:12px"><label>Caption</label>
+                <div class="in">Bunmi from the allocation team walks through one real assignment</div></div>
+            </div>
+
+            <div class="blk"><div class="bh"><span>Video</span><span class="sp"></span>
+              <span class="tag amber" style="height:19px">Processing</span><span>⠿</span><span>⋯</span></div>
+              <div class="vid">
+                <div class="thumb work"><span style="font-size:11.5px;color:var(--muted)">Making a thumbnail</span></div>
+                <div style="flex:1;min-width:0">
+                  <b style="font-size:13.5px;display:block">site-walk-blocks-c-d.mov</b>
+                  <p style="margin:4px 0 0;font-size:12px;color:var(--muted);line-height:1.6">
+                    418 MB · uploaded 2 minutes ago · transcoding 720p</p>
+                  <div class="prog"><i style="width:64%"></i></div>
+                  <p style="margin:7px 0 0;font-size:11.5px;color:var(--muted)">
+                    64% · about 3 minutes left. You can keep editing — the module will not publish until this finishes.</p>
+                </div></div>
+            </div>
+
+            <div class="blk"><div class="bh"><span>Video · empty</span><span class="sp"></span><span>⠿</span><span>⋯</span></div>
+              <div class="drop"><b>Drop a video here</b>
+                <p>MP4, MOV or WebM · up to 2 GB · we transcode to 360p, 720p and 1080p</p>
+                <div class="row" style="justify-content:center;gap:8px">
+                  <div class="btn sm dark">Browse files</div>
+                  <div class="btn sm">Paste a YouTube or Vimeo link</div></div></div>
+            </div>
+
+            <div class="blk"><div class="bh"><span>Callout</span><span class="sp"></span><span>⠿</span><span>⋯</span></div>
+              <div class="call"><b>The number to remember</b>
+                <p>Allocation at Woodgate Prime unlocks at <b style="color:var(--ink)">₦205,200 paid</b> — about
+                  payment 11 of 36. Triggered by the amount paid, not by elapsed time, so a client who pays
+                  ahead gets allocated sooner.</p></div></div>
+
+            <div class="row" style="gap:7px;flex-wrap:wrap;margin-top:11px">
+              <div class="btn sm">+ Text</div><div class="btn sm">+ Heading</div><div class="btn sm">+ Image</div>
+              <div class="btn sm">+ Video</div><div class="btn sm">+ Callout</div><div class="btn sm">+ File</div>
+              <div class="btn sm">+ Quote</div></div>
+          </div>
+
+          <div class="stack">
+            <div class="card"><div class="hd"><h4>Module</h4></div><div class="bd stack">
+              <div class="fld"><label>Title</label><div class="in">Title and allocation</div></div>
+              <div class="fld"><label>Reading time</label><div class="in row"><span class="grow">12 min</span>
+                <span class="tag grey">Auto</span></div>
+                <span class="hint">Words on the page plus video duration. Override if you disagree.</span></div>
+              <div class="tog" style="padding-top:2px"><div class="sw on"><i></i></div><div class="tx">
+                <b>Counts toward completion</b><p>Off makes it optional background reading that does not
+                  block finishing the course.</p></div></div>
+            </div></div>
+
+            <div class="card"><div class="hd"><h4>Media in this module</h4></div><div class="bd">
+              <div class="kv"><span>Video</span><b>2 clips</b></div>
+              <div class="kv"><span>Total duration</span><b>4:12 + pending</b></div>
+              <div class="kv"><span>Images</span><b>1</b></div>
+              <div class="kv"><span>Storage</span><b>542 MB</b></div>
+            </div></div>
+
+            <div class="card"><div class="hd"><h4>Live figures</h4></div><div class="bd">
+              <p style="margin:0 0 11px;font-size:13px;line-height:1.6;color:var(--ink2)">
+                This course is linked to Woodgate Prime. Drop these into the text and they update themselves
+                when the estate changes — so a price move never leaves the training wrong.</p>
+              <div class="kv"><span>{{monthly}}</span><b>₦19,000</b></div>
+              <div class="kv"><span>{{total}}</span><b>₦684,000</b></div>
+              <div class="kv"><span>{{allocation_at}}</span><b>₦205,200</b></div>
+              <div class="kv"><span>{{payments}}</span><b>36</b></div>
+            </div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div></div>
+</div>
+
+<!-- =================================================== 5 -->
+<div class="screen">
+  <div class="cap"><h3>5. Course · Quiz</h3>
+  <p>Questions, options, the right answer and why. <b>Answers never leave the server</b> — the browser gets
+    questions and options, submits a choice, receives right or wrong.</p></div>
+  <p class="flabel">Desktop · 1440</p>
+  <div class="frame"><div class="app">
+    <aside class="side">
+      <div class="brand"><b><span>A</span>bode</b><em>Admin</em></div>
+      <div class="navgrp"><p>General</p><div class="nav"><i></i>Dashboard</div><div class="nav"><i></i>Assets</div><div class="nav"><i></i>Sales</div><div class="nav"><i></i>Allocation</div></div>
+      <div class="navgrp"><p>People</p><div class="nav"><i></i>Users</div><div class="nav"><i></i>Associates</div></div>
+      <div class="navgrp"><p>Academy</p><div class="nav sub on"><i></i>Courses<span class="ct">7</span></div><div class="nav sub"><i></i>Learners<span class="ct">141</span></div></div>
+      <div class="navgrp"><p>Operations</p><div class="nav"><i></i>Customer Success</div><div class="nav"><i></i>Ilé Assistant</div><div class="nav"><i></i>Transactions</div><div class="nav"><i></i>Campaigns</div></div>
+      <div class="navgrp"><p>Admin</p><div class="nav"><i></i>Security</div><div class="nav"><i></i>Settings</div></div>
+    </aside>
+    <div class="main">
+      <div class="top"><div class="crumb">Courses <s>›</s> Selling Woodgate Prime <s>›</s> <b>Quiz</b></div>
+        <div class="btn sm">Preview quiz</div><div class="avatar">MO</div></div>
+      <div class="body">
+        <div class="row"><div class="grow"><h2 class="pt">Check what you know</h2>
+          <p class="sub">Ten questions · 70% to pass · unlimited attempts</p></div><div class="btn dark">Save quiz</div></div>
+        <div class="tabs"><div>Overview</div><div>Modules<span class="b">4</span></div><div class="on">Quiz<span class="b">10</span></div><div>Learners<span class="b">128</span></div></div>
+        <div class="grid2">
+          <div>
+            <div class="q"><span class="drag">⠿</span><span class="num">1</span>
+              <div class="grow"><b style="font-size:13.5px">What is the monthly payment on a 150sqm plot?</b></div>
+              <span class="tag grey">4 options</span><div class="btn sm">Edit</div></div>
+            <div class="q"><span class="drag">⠿</span><span class="num">2</span>
+              <div class="grow"><b style="font-size:13.5px">How many payments does the standard plan run for?</b></div>
+              <span class="tag grey">4 options</span><div class="btn sm">Edit</div></div>
+            <div class="q open">
+              <div class="row" style="margin-bottom:14px"><span class="drag">⠿</span>
+                <span class="num" style="background:var(--ink);color:#fff;border-color:var(--ink)">3</span>
+                <span class="grow" style="font-size:12px;color:var(--muted)">Question 3 of 10</span>
+                <div class="btn sm">Duplicate</div><div class="btn sm danger">Delete</div></div>
+              <div class="stack">
+                <div class="fld"><label>Question</label>
+                  <div class="in">When does a client's plot get allocated at Woodgate Prime?</div></div>
+                <div class="fld"><label>Options — tap a circle to mark the right one</label><div>
+                  <div class="opt"><span class="rd"></span><span class="tx">After twelve months of payments</span><span class="btn sm ghost">⌫</span></div>
+                  <div class="opt yes"><span class="rd"></span><span class="tx">When they have paid ₦205,200</span>
+                    <span class="tag green">Correct</span><span class="btn sm ghost">⌫</span></div>
+                  <div class="opt"><span class="rd"></span><span class="tx">On the date written in the contract</span><span class="btn sm ghost">⌫</span></div>
+                  <div class="opt"><span class="rd"></span><span class="tx">When the estate is fully sold</span><span class="btn sm ghost">⌫</span></div>
+                </div><div class="btn sm" style="margin-top:9px">+ Add option</div></div>
+                <div class="fld"><label>Why — shown after they answer</label>
+                  <div class="in ta">Allocation is triggered by the amount paid, not by time. That is why paying
+                    ahead brings a client's allocation forward, and it is the most useful thing you can tell
+                    someone who is impatient.</div></div>
+              </div>
+            </div>
+            <div class="q"><span class="drag">⠿</span><span class="num">4</span>
+              <div class="grow"><b style="font-size:13.5px">Which title does Woodgate Prime hold today?</b></div>
+              <span class="tag grey">4 options</span><div class="btn sm">Edit</div></div>
+            <div class="q"><span class="drag">⠿</span><span class="num">5</span>
+              <div class="grow"><b style="font-size:13.5px">A client asks when the C of O will be issued. What do you say?</b></div>
+              <span class="tag grey">4 options</span><span class="tag amber">Most missed</span><div class="btn sm">Edit</div></div>
+            <div class="dash">+ &nbsp;Add a question</div>
+          </div>
+          <div class="stack">
+            <div class="card"><div class="hd"><h4>Quiz settings</h4></div><div class="bd stack">
+              <div class="fld"><label>Pass mark</label><div class="in row"><span class="grow">70%</span><span style="color:var(--faint)">▾</span></div></div>
+              <div class="fld"><label>Attempts</label><div class="in row"><span class="grow">Unlimited</span><span style="color:var(--faint)">▾</span></div>
+                <span class="hint">Associates are told this is open book and retakeable. Limiting attempts changes that promise.</span></div>
+              <div class="tog" style="padding-top:2px"><div class="sw on"><i></i></div><div class="tx">
+                <b>Shuffle questions</b><p>Different order each attempt.</p></div></div>
+              <div class="tog"><div class="sw on"><i></i></div><div class="tx">
+                <b>Show why after each answer</b><p>Teaches on the way through, not only at the end.</p></div></div>
+            </div></div>
+            <div class="card"><div class="hd"><h4>How it grades</h4></div><div class="bd">
+              <p style="margin:0;font-size:13px;line-height:1.65;color:var(--ink2)">
+                Correct answers stay on the server. The browser receives questions and options only. Nobody
+                can read the answer key out of the network tab — which matters, because passing this is what
+                puts a badge in front of buyers.</p>
+              <div class="kv" style="margin-top:12px"><span>Average score</span><b>81%</b></div>
+              <div class="kv"><span>Pass rate, first attempt</span><b>64%</b></div>
+              <div class="kv"><span>Most missed</span><b>Question 5</b></div>
+            </div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div></div>
+</div>
+
+<!-- =================================================== 6 -->
+<div class="screen">
+  <div class="cap"><h3>6. Course · Learners — inside one course</h3>
+  <p>Who is doing <i>this</i> course and how far they have got. Reached as a tab, so it is always in the
+    context of the course you were just editing. Credential columns appear only when the course grants one.</p></div>
+  <p class="flabel">Desktop · 1440</p>
+  <div class="frame"><div class="app">
+    <aside class="side">
+      <div class="brand"><b><span>A</span>bode</b><em>Admin</em></div>
+      <div class="navgrp"><p>General</p><div class="nav"><i></i>Dashboard</div><div class="nav"><i></i>Assets</div><div class="nav"><i></i>Sales</div><div class="nav"><i></i>Allocation</div></div>
+      <div class="navgrp"><p>People</p><div class="nav"><i></i>Users</div><div class="nav"><i></i>Associates</div></div>
+      <div class="navgrp"><p>Academy</p><div class="nav sub on"><i></i>Courses<span class="ct">7</span></div><div class="nav sub"><i></i>Learners<span class="ct">141</span></div></div>
+      <div class="navgrp"><p>Operations</p><div class="nav"><i></i>Customer Success</div><div class="nav"><i></i>Ilé Assistant</div><div class="nav"><i></i>Transactions</div><div class="nav"><i></i>Campaigns</div></div>
+      <div class="navgrp"><p>Admin</p><div class="nav"><i></i>Security</div><div class="nav"><i></i>Settings</div></div>
+    </aside>
+    <div class="main">
+      <div class="top"><div class="crumb">Courses <s>›</s> <b>Abode Associate Certification</b></div>
+        <span class="tag teal">Grants a credential</span><span class="tag green">Published</span><div class="avatar">MO</div></div>
+      <div class="body">
+        <div class="row"><div class="grow"><h2 class="pt">Abode Associate Certification</h2>
+          <p class="sub">Five modules · credential valid twelve months</p></div>
+          <div class="btn">Export CSV</div></div>
+        <div class="tabs"><div>Overview</div><div>Modules<span class="b">5</span></div><div>Quiz<span class="b">20</span></div><div class="on">Learners<span class="b">96</span></div></div>
+
+        <div class="card"><div class="bd"><div class="stats">
+          <div class="stat"><span>Started</span><b>96</b></div>
+          <div class="stat"><span>Completed</span><b>34</b></div>
+          <div class="stat"><span>In progress</span><b>62</b></div>
+          <div class="stat"><span>Expiring in 30 days</span><b style="color:var(--amber)">7</b></div>
+          <div class="stat"><span>Expired</span><b style="color:var(--red)">3</b></div>
+        </div></div></div>
+
+        <div class="card">
+          <div class="hd"><h4>Learners</h4><div class="row" style="margin-left:auto;gap:7px">
+            <div class="chip on">All <span class="n">96</span></div>
+            <div class="chip">Completed <span class="n">34</span></div>
+            <div class="chip">In progress <span class="n">62</span></div>
+            <div class="chip">Expiring <span class="n">7</span></div>
+            <div class="chip">Expired <span class="n">3</span></div></div></div>
+          <table>
+            <thead><tr><th style="width:22%">Associate</th><th style="width:16%">Modules</th><th>Quiz</th>
+              <th>Status</th><th>Last active</th><th>Completed</th><th>Expires</th><th></th></tr></thead>
+            <tbody>
+              <tr><td><b>Kemi Adeyemi</b><span class="s">Lagos West · Founder</span></td>
+                <td><div class="row" style="gap:9px"><div class="bar g"><i style="width:100%"></i></div><span class="n" style="font-size:12.5px">5/5</span></div></td>
+                <td class="n">92%</td><td><span class="tag green">Certified</span></td>
+                <td class="n">Today</td><td class="n">2 Mar 2026</td><td class="n">2 Mar 2027</td>
+                <td style="text-align:right"><span class="btn sm">View</span></td></tr>
+              <tr><td><b>Femi Okon</b><span class="s">Ikeja · Associate Pro</span></td>
+                <td><div class="row" style="gap:9px"><div class="bar g"><i style="width:100%"></i></div><span class="n" style="font-size:12.5px">5/5</span></div></td>
+                <td class="n">78%</td><td><span class="tag amber">Expires soon</span></td>
+                <td class="n">6 days ago</td><td class="n">28 Sep 2025</td><td class="n" style="color:var(--amber)">28 Sep 2026</td>
+                <td style="text-align:right"><span class="btn sm">View</span></td></tr>
+              <tr><td><b>Chidi Nwosu</b><span class="s">Lagos West · Associate Pro</span></td>
+                <td><div class="row" style="gap:9px"><div class="bar"><i style="width:60%"></i></div><span class="n" style="font-size:12.5px">3/5</span></div></td>
+                <td class="n">—</td><td><span class="tag teal">In progress</span></td>
+                <td class="n">2 days ago</td><td class="n">—</td><td class="n">—</td>
+                <td style="text-align:right"><span class="btn sm">View</span></td></tr>
+              <tr><td><b>Ngozi Balogun</b><span class="s">Lagos West · Associate Pro</span></td>
+                <td><div class="row" style="gap:9px"><div class="bar"><i style="width:40%"></i></div><span class="n" style="font-size:12.5px">2/5</span></div></td>
+                <td class="n">—</td><td><span class="tag teal">In progress</span></td>
+                <td class="n">Yesterday</td><td class="n">—</td><td class="n">—</td>
+                <td style="text-align:right"><span class="btn sm">View</span></td></tr>
+              <tr><td><b>Amaka Eze</b><span class="s">Lagos West · Associate Pro</span></td>
+                <td><div class="row" style="gap:9px"><div class="bar"><i style="width:20%"></i></div><span class="n" style="font-size:12.5px">1/5</span></div></td>
+                <td class="n">—</td><td><span class="tag grey">Stalled 34 days</span></td>
+                <td class="n">34 days ago</td><td class="n">—</td><td class="n">—</td>
+                <td style="text-align:right"><span class="btn sm">View</span></td></tr>
+              <tr><td><b>Segun Ade</b><span class="s">Lagos West · Associate</span></td>
+                <td><div class="row" style="gap:9px"><div class="bar g"><i style="width:100%"></i></div><span class="n" style="font-size:12.5px">5/5</span></div></td>
+                <td class="n">71%</td><td><span class="tag red">Expired</span></td>
+                <td class="n">4 months ago</td><td class="n">11 Aug 2025</td><td class="n" style="color:var(--red)">11 Aug 2026</td>
+                <td style="text-align:right"><span class="btn sm">View</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div></div>
+</div>
+
+<!-- =================================================== 7 -->
+<div class="screen">
+  <div class="cap"><h3>7. Learners — across every course</h3>
+  <p>The sidebar item. One row per person, not per enrolment. This is the only place that answers
+    "who is certified and whose badge lapses this month" without picking a course first.</p></div>
+  <p class="flabel">Desktop · 1440</p>
+  <div class="frame"><div class="app">
+    <aside class="side">
+      <div class="brand"><b><span>A</span>bode</b><em>Admin</em></div>
+      <div class="navgrp"><p>General</p><div class="nav"><i></i>Dashboard</div><div class="nav"><i></i>Assets</div><div class="nav"><i></i>Sales</div><div class="nav"><i></i>Allocation</div></div>
+      <div class="navgrp"><p>People</p><div class="nav"><i></i>Users</div><div class="nav"><i></i>Associates</div></div>
+      <div class="navgrp"><p>Academy</p><div class="nav sub"><i></i>Courses<span class="ct">7</span></div><div class="nav sub on"><i></i>Learners<span class="ct">141</span></div></div>
+      <div class="navgrp"><p>Operations</p><div class="nav"><i></i>Customer Success</div><div class="nav"><i></i>Ilé Assistant</div><div class="nav"><i></i>Transactions</div><div class="nav"><i></i>Campaigns</div></div>
+      <div class="navgrp"><p>Admin</p><div class="nav"><i></i>Security</div><div class="nav"><i></i>Settings</div></div>
+    </aside>
+    <div class="main">
+      <div class="top"><div class="crumb"><b>Learners</b></div><div class="btn sm">Export CSV</div><div class="avatar">MO</div></div>
+      <div class="body">
+        <div class="row"><div class="grow"><h2 class="pt">Learners</h2>
+          <p class="sub">141 associates. Seven credentials lapse within thirty days.</p></div>
+          <div class="btn">Filter by course</div></div>
+
+        <div class="card"><div class="bd"><div class="stats">
+          <div class="stat"><span>Associates</span><b>141</b></div>
+          <div class="stat"><span>Started something</span><b>112</b></div>
+          <div class="stat"><span>Certified</span><b>34</b></div>
+          <div class="stat"><span>Lapsing in 30 days</span><b style="color:var(--amber)">7</b></div>
+          <div class="stat"><span>Never opened a course</span><b>29</b></div>
+        </div></div></div>
+
+        <div class="card">
+          <div class="hd"><h4>Everyone</h4><div class="row" style="margin-left:auto;gap:7px">
+            <div class="chip on">All <span class="n">141</span></div>
+            <div class="chip">Certified <span class="n">34</span></div>
+            <div class="chip">Lapsing <span class="n">7</span></div>
+            <div class="chip">Stalled <span class="n">18</span></div>
+            <div class="chip">Never started <span class="n">29</span></div></div></div>
+          <table>
+            <thead><tr><th style="width:20%">Associate</th><th>First sale path</th><th>Courses done</th>
+              <th style="width:16%">Certification</th><th>Credential</th><th>Expires</th><th>Last active</th><th></th></tr></thead>
+            <tbody>
+              <tr><td><b>Kemi Adeyemi</b><span class="s">Lagos West · Founder · 6 sales</span></td>
+                <td><span class="tag green">Done</span></td><td class="n">4 of 5</td>
+                <td><div class="row" style="gap:9px"><div class="bar g"><i style="width:100%"></i></div><span class="n" style="font-size:12.5px">5/5</span></div></td>
+                <td><span class="tag green">Certified</span></td><td class="n">2 Mar 2027</td>
+                <td class="n">Today</td><td style="text-align:right"><span class="btn sm">View</span></td></tr>
+              <tr><td><b>Femi Okon</b><span class="s">Ikeja · Associate Pro · 5 sales</span></td>
+                <td><span class="tag green">Done</span></td><td class="n">3 of 5</td>
+                <td><div class="row" style="gap:9px"><div class="bar g"><i style="width:100%"></i></div><span class="n" style="font-size:12.5px">5/5</span></div></td>
+                <td><span class="tag amber">Lapses in 19 days</span></td><td class="n" style="color:var(--amber)">28 Sep 2026</td>
+                <td class="n">6 days ago</td><td style="text-align:right"><span class="btn sm">View</span></td></tr>
+              <tr><td><b>Ngozi Balogun</b><span class="s">Lagos West · Associate Pro · 3 sales</span></td>
+                <td><span class="tag green">Done</span></td><td class="n">2 of 5</td>
+                <td><div class="row" style="gap:9px"><div class="bar"><i style="width:40%"></i></div><span class="n" style="font-size:12.5px">2/5</span></div></td>
+                <td><span class="tag grey">None</span></td><td class="n">—</td>
+                <td class="n">Yesterday</td><td style="text-align:right"><span class="btn sm">View</span></td></tr>
+              <tr><td><b>Chidi Nwosu</b><span class="s">Lagos West · Associate Pro · 4 sales</span></td>
+                <td><span class="tag green">Done</span></td><td class="n">2 of 5</td>
+                <td><div class="row" style="gap:9px"><div class="bar"><i style="width:60%"></i></div><span class="n" style="font-size:12.5px">3/5</span></div></td>
+                <td><span class="tag grey">None</span></td><td class="n">—</td>
+                <td class="n">2 days ago</td><td style="text-align:right"><span class="btn sm">View</span></td></tr>
+              <tr><td><b>Tolu Bakare</b><span class="s">Lagos West · Associate · no sales</span></td>
+                <td><div class="row" style="gap:9px"><div class="bar"><i style="width:50%"></i></div><span class="n" style="font-size:12.5px">2/4</span></div></td>
+                <td class="n">0 of 5</td>
+                <td><div class="row" style="gap:9px"><div class="bar" style="background:#F0F0F0"></div><span class="n" style="font-size:12.5px">0/5</span></div></td>
+                <td><span class="tag grey">None</span></td><td class="n">—</td>
+                <td class="n">Today</td><td style="text-align:right"><span class="btn sm">View</span></td></tr>
+              <tr><td><b>Amaka Eze</b><span class="s">Lagos West · Associate Pro · no sales</span></td>
+                <td><div class="row" style="gap:9px"><div class="bar"><i style="width:25%"></i></div><span class="n" style="font-size:12.5px">1/4</span></div></td>
+                <td class="n">0 of 5</td>
+                <td><div class="row" style="gap:9px"><div class="bar"><i style="width:20%"></i></div><span class="n" style="font-size:12.5px">1/5</span></div></td>
+                <td><span class="tag grey">None</span></td><td class="n">—</td>
+                <td class="n">34 days ago</td><td style="text-align:right"><span class="btn sm">View</span></td></tr>
+              <tr><td><b>Segun Ade</b><span class="s">Lagos West · Associate · no sales</span></td>
+                <td><span class="tag grey">Not started</span></td><td class="n">1 of 5</td>
+                <td><div class="row" style="gap:9px"><div class="bar g"><i style="width:100%"></i></div><span class="n" style="font-size:12.5px">5/5</span></div></td>
+                <td><span class="tag red">Expired</span></td><td class="n" style="color:var(--red)">11 Aug 2026</td>
+                <td class="n">4 months ago</td><td style="text-align:right"><span class="btn sm">View</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div></div>
+</div>
+
+<!-- =================================================== DATA -->
+<h2 class="sec">Data this implies</h2>
+<p class="secdek">Every field drawn above, and nothing that is not. Names are indicative — the shapes are the point.
+  Anything marked <em>derived</em> should be computed, not stored, so it cannot drift from the truth.</p>
+
+<div class="dt"><h4>course</h4>
+  <div class="f"><code>id</code><em>uuid</em><span></span></div>
+  <div class="f"><code>title</code><em>string</em><span></span></div>
+  <div class="f"><code>slug</code><em>string, unique</em><span>Used in the associate-facing URL</span></div>
+  <div class="f"><code>summary</code><em>text</em><span>Course card, and the dashboard checkpoint if this is the first-sale path</span></div>
+  <div class="f"><code>audience</code><em>enum realtor | buyer</em><span>Only a realtor course can be the first-sale path</span></div>
+  <div class="f"><code>estate_id</code><em>uuid, nullable</em><span>Enables the live-figure placeholders</span></div>
+  <div class="f"><code>cover_url</code><em>string, nullable</em><span></span></div>
+  <div class="f"><code>status</code><em>enum draft | published</em><span>Published means visible to the whole audience — there is no per-person assignment</span></div>
+  <div class="f"><code>published_at</code><em>timestamp, nullable</em><span></span></div>
+  <div class="f"><code>require_in_order</code><em>bool, default false</em><span>Gates each module behind the one before it</span></div>
+  <div class="f"><code>grants_credential</code><em>bool, default false</em><span></span></div>
+  <div class="f"><code>credential_validity_months</code><em>int, nullable</em><span>Only meaningful when grants_credential</span></div>
+  <div class="f"><code>credential_renewal</code><em>enum refresher | full_retake, nullable</em><span></span></div>
+  <div class="f"><code>estimated_minutes</code><em>derived</em><span>Sum of module durations</span></div>
+</div>
+
+<div class="dt"><h4>academy_settings <span style="font-weight:400;color:var(--muted);font-size:12.5px">— singleton</span></h4>
+  <div class="f"><code>first_sale_path_course_id</code><em>uuid, nullable</em><span>A single reference, not a flag on the course. Makes the exclusivity structural: two courses cannot both claim it, and clearing it is one write. Changing it writes to the admin log.</span></div>
+</div>
+
+<div class="dt"><h4>course_module</h4>
+  <div class="f"><code>id</code><em>uuid</em><span></span></div>
+  <div class="f"><code>course_id</code><em>uuid</em><span></span></div>
+  <div class="f"><code>title</code><em>string</em><span></span></div>
+  <div class="f"><code>position</code><em>int</em><span>Reorderable; not the same as gating</span></div>
+  <div class="f"><code>kind</code><em>enum lesson | quiz</em><span></span></div>
+  <div class="f"><code>blocks</code><em>jsonb[]</em><span>Ordered content blocks — see below</span></div>
+  <div class="f"><code>duration_minutes</code><em>int</em><span>Auto from words + video, overridable</span></div>
+  <div class="f"><code>duration_is_override</code><em>bool</em><span></span></div>
+  <div class="f"><code>counts_toward_completion</code><em>bool, default true</em><span></span></div>
+  <div class="f"><code>publishable</code><em>derived</em><span>False while any video block is still processing</span></div>
+</div>
+
+<div class="dt"><h4>content block <span style="font-weight:400;color:var(--muted);font-size:12.5px">— element of course_module.blocks</span></h4>
+  <div class="f"><code>type</code><em>enum</em><span>heading · text · image · video · callout · file · quote</span></div>
+  <div class="f"><code>position</code><em>int</em><span></span></div>
+  <div class="f"><code>content</code><em>jsonb</em><span>Rich text for text blocks; asset reference for media</span></div>
+  <div class="f"><code>caption</code><em>string, nullable</em><span>Image and video</span></div>
+</div>
+
+<div class="dt"><h4>media_asset <span style="font-weight:400;color:var(--muted);font-size:12.5px">— the async half</span></h4>
+  <div class="f"><code>id</code><em>uuid</em><span></span></div>
+  <div class="f"><code>kind</code><em>enum video | image | file</em><span></span></div>
+  <div class="f"><code>original_filename</code><em>string</em><span>Shown to the admin so they recognise their own upload</span></div>
+  <div class="f"><code>bytes</code><em>bigint</em><span>Video cap 2 GB, image 5 MB</span></div>
+  <div class="f"><code>status</code><em>enum uploading | processing | ready | failed</em><span>The module cannot publish until every video is ready</span></div>
+  <div class="f"><code>progress_pct</code><em>int</em><span>Drives the transcoding bar</span></div>
+  <div class="f"><code>duration_seconds</code><em>int, nullable</em><span>Video only; feeds module duration</span></div>
+  <div class="f"><code>renditions</code><em>jsonb</em><span>360p / 720p / 1080p URLs — associates are on Nigerian mobile data, so the low rendition is not optional</span></div>
+  <div class="f"><code>thumbnail_url</code><em>string, nullable</em><span>Generated during processing</span></div>
+  <div class="f"><code>captions_url</code><em>string, nullable</em><span></span></div>
+  <div class="f"><code>external_url</code><em>string, nullable</em><span>Set instead of an upload when the admin pastes YouTube or Vimeo; then no transcoding runs</span></div>
+  <div class="f"><code>uploaded_by</code><em>uuid</em><span></span></div>
+</div>
+
+<div class="dt"><h4>quiz_question</h4>
+  <div class="f"><code>id</code><em>uuid</em><span></span></div>
+  <div class="f"><code>module_id</code><em>uuid</em><span></span></div>
+  <div class="f"><code>position</code><em>int</em><span></span></div>
+  <div class="f"><code>prompt</code><em>text</em><span></span></div>
+  <div class="f"><code>options</code><em>jsonb[]</em><span>{ id, text }. <b>The correct id is never included in any client response.</b></span></div>
+  <div class="f"><code>correct_option_id</code><em>string, server only</em><span>Grading happens server-side. Passing this course puts a badge in front of buyers, so the answer key cannot ship to the browser.</span></div>
+  <div class="f"><code>explanation</code><em>text</em><span>Returned after an answer is submitted, never before</span></div>
+</div>
+
+<div class="dt"><h4>quiz_settings <span style="font-weight:400;color:var(--muted);font-size:12.5px">— one per quiz module</span></h4>
+  <div class="f"><code>pass_mark_pct</code><em>int, default 70</em><span></span></div>
+  <div class="f"><code>max_attempts</code><em>int, nullable</em><span>Null means unlimited</span></div>
+  <div class="f"><code>shuffle</code><em>bool</em><span></span></div>
+  <div class="f"><code>show_explanation_inline</code><em>bool</em><span></span></div>
+</div>
+
+<div class="dt"><h4>enrolment <span style="font-weight:400;color:var(--muted);font-size:12.5px">— one per person per course</span></h4>
+  <div class="f"><code>user_id · course_id</code><em>composite key</em><span></span></div>
+  <div class="f"><code>started_at</code><em>timestamp</em><span></span></div>
+  <div class="f"><code>completed_at</code><em>timestamp, nullable</em><span>Set when every counts_toward_completion module is done and the quiz is passed</span></div>
+  <div class="f"><code>last_active_at</code><em>timestamp</em><span>Drives "Stalled 34 days"</span></div>
+  <div class="f"><code>modules_completed</code><em>derived</em><span></span></div>
+  <div class="f"><code>best_score_pct</code><em>int, nullable</em><span></span></div>
+</div>
+
+<div class="dt"><h4>module_completion</h4>
+  <div class="f"><code>user_id · module_id</code><em>composite key</em><span></span></div>
+  <div class="f"><code>completed_at</code><em>timestamp</em><span></span></div>
+</div>
+
+<div class="dt"><h4>quiz_attempt</h4>
+  <div class="f"><code>id · user_id · module_id</code><em></em><span></span></div>
+  <div class="f"><code>score_pct</code><em>int</em><span></span></div>
+  <div class="f"><code>passed</code><em>bool</em><span></span></div>
+  <div class="f"><code>answers</code><em>jsonb</em><span>Kept per question — this is what produces "most missed"</span></div>
+  <div class="f"><code>submitted_at</code><em>timestamp</em><span></span></div>
+</div>
+
+<div class="dt"><h4>credential</h4>
+  <div class="f"><code>id · user_id · course_id</code><em></em><span></span></div>
+  <div class="f"><code>earned_at</code><em>timestamp</em><span></span></div>
+  <div class="f"><code>expires_at</code><em>timestamp</em><span>earned_at + course.credential_validity_months</span></div>
+  <div class="f"><code>revoked_at</code><em>timestamp, nullable</em><span></span></div>
+  <div class="f"><code>revoked_reason</code><em>text, nullable</em><span>Revocation is written to the admin log</span></div>
+  <div class="f"><code>state</code><em>derived</em><span>active · expiring (&lt;30d) · expired · revoked. Never stored — a stored status goes stale the day it expires.</span></div>
+</div>
+
+<p class="note"><b>What this file is not.</b> It does not cover the associate-facing side — taking a course,
+reading a module, sitting the quiz. Those are separate screens in <code>abode-fe-v2</code> under <b>Sell</b>,
+and the dashboard checkpoint that links to them. It also does not decide whether certification should ever be
+<i>required</i> to sell; that switch is deliberately absent until someone chooses.
+<br><br><b>Chrome.</b> Drawn in <code>abode-fe-admin</code>'s own theme — white surfaces, <code>#171717</code>
+primary and text, <code>#E5E5E5</code> borders, <code>#FAFAFA</code> sidebar, 10px radius, Geist — with Abode
+teal <code>#0593A5</code> as the single accent. Sidebar groups mirror
+<code>components/layout/Sidebar.tsx</code> plus one addition, <b>Academy</b>. Estate figures (₦19,000,
+₦205,200, 36 payments) are Abode's real published ones; associates, scores and dates are invented.</p>
+
+</div>
+</body>
+</html>

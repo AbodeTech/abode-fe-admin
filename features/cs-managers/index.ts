@@ -11,7 +11,6 @@ export { useCSManagerDashboard } from './hooks/use-cs-manager-dashboard';
 export {
   useCustomerOnboardingAttempts,
   useLogOnboardingCall,
-  useMarkDeedDelivered,
 } from './hooks/use-plan-actions';
 export { useExportDashboardPlans } from './hooks/use-export-dashboard-plans';
 export { useIsCurrentCSManager } from './hooks/use-is-current-cs-manager';

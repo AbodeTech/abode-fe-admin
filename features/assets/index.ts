@@ -131,6 +131,7 @@ export type {
 // Estate updates, on the detail Updates tab — /admin/assets/:id/updates:
 export { AssetEstateUpdates } from './components/detail/AssetEstateUpdates';
 export { EstateUpdatesTable } from './components/detail/EstateUpdatesTable';
+export { EstateUpdateDetail } from './components/detail/EstateUpdateDetail';
 export { EstateUpdateFormDialog } from './components/detail/EstateUpdateFormDialog';
 export { EstateUpdateActions } from './components/detail/EstateUpdateActions';
 export {

@@ -75,13 +75,13 @@ export const CSManagerTargetSchema = z.object({
   customers_allocated_target: z.number(),
   customers_onboarded_target: z.number(),
   /**
-   * DEPRECATED and unread by the score, but still the only field the target
-   * endpoints accept — v2's AssignTargetDto and the target response DTO were
-   * not ported alongside the scoring change, so `tickets_resolved_target`
-   * cannot be set through the API yet. Sending it would be a hard 400 under
-   * `forbidNonWhitelisted`. Swap this the moment that DTO lands.
+   * The third target, and a PERCENTAGE rather than a count: the share of the
+   * month's ticket intake that should end up resolved.
+   *
+   * Replaced `deeds_delivered_target`, which is deprecated and unread now that
+   * the system issues deeds itself. The API accepts and returns this one.
    */
-  deeds_delivered_target: z.number(),
+  tickets_resolved_target: z.number(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -92,7 +92,8 @@ export type CSManagerTarget = z.infer<typeof CSManagerTargetSchema>;
 export type AssignTargetPayload = {
   customers_allocated_target: number;
   customers_onboarded_target: number;
-  deeds_delivered_target: number;
+  /** A percentage (0-100), not a count. */
+  tickets_resolved_target: number;
 };
 
 /** GET /admin/cs-managers/unassigned-customers */
@@ -277,9 +278,12 @@ export const CSManagerDashboardSchema = z.object({
 export type CSManagerDashboard = z.infer<typeof CSManagerDashboardSchema>;
 
 /* ============================================================
- * Onboarding calls + Deed of Assignment —
- * GET/POST /admin/payment-plans/:plan_id/onboarding-attempts,
- * POST /admin/payment-plans/:plan_id/mark-deed-delivered.
+ * Onboarding calls —
+ * GET/POST /admin/payment-plans/:plan_id/onboarding-attempts
+ *
+ * There is no deed mutation here any more. The system issues the Deed of
+ * Assignment on its own, so nobody marks one delivered; the `doa` column on the
+ * plans table reads `deed_sent_at` and is information, not a task.
  * ============================================================ */
 
 export const ONBOARDING_CALL_OUTCOMES = ['done', 'spoke', 'no_answer', 'rescheduled'] as const;
@@ -306,9 +310,3 @@ export type LogOnboardingCallPayload = {
   notes?: string;
 };
 
-export const MarkDeedDeliveredResultSchema = z.object({
-  plan_id: z.string(),
-  deed_delivered_at: z.string(),
-  deed_delivered_by: z.string(),
-  was_already_delivered: z.boolean(),
-});

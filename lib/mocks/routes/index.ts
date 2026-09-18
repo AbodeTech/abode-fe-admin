@@ -95,7 +95,7 @@ import { courseRoutes } from './courses';
  *               than re-registering when it migrates. No dashboard route
  *               (CSM-21/CSM-39 don't exist on the BE yet, committed or not
  *               — ticket in docs/BACKEND-REQUESTS.md) and no onboarding-
- *               attempts / mark-deed-delivered routes (nothing in this
+ *               attempts routes (nothing in this
  *               scoped UI reaches a plan_id to call them with).
  * payment-plans — GET /admin/payment-plans, /summary, /export. Distinct from
  *               CS-manager plan actions under
