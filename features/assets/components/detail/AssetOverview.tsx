@@ -13,6 +13,7 @@ import {
 import type { AssetDetail } from "../../schemas/asset-detail.schema";
 import { useAssetDetail } from "../../hooks/use-asset-detail";
 import { EditablePanel } from "./EditablePanel";
+import { PitchPackPanel } from "./PitchPackPanel";
 import {
   AssetAvailabilityFields,
   AssetDetailsFields,
@@ -213,6 +214,8 @@ export function AssetOverview() {
           ))}
         </div>
       </EditablePanel>
+
+      <PitchPackPanel asset={asset} />
 
       {asset.asset_history.length > 0 ? (
         <Panel title="Value history">

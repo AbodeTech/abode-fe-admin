@@ -69,6 +69,19 @@ export const OfferSchema = z.object({
 export type Offer = z.infer<typeof OfferSchema>;
 
 /**
+ * Mirrors the backend's `PitchPack` subdocument — a single PDF per asset,
+ * with its own endpoint family (`PUT`/`DELETE /admin/assets/:id/pitch-pack`)
+ * rather than living in `documents`. `null` means no pitch pack uploaded.
+ */
+export const PitchPackSchema = z.object({
+  url: z.string(),
+  size_bytes: z.number(),
+  uploaded_at: z.string(),
+});
+
+export type PitchPack = z.infer<typeof PitchPackSchema>;
+
+/**
  * Same asset fields as the list row, but `offers` is the full nested tree
  * rather than a counts summary — so this is its own schema rather than an
  * extension of `AssetSchema`.
@@ -88,6 +101,7 @@ export const AssetDetailSchema = z.object({
   hero_image: z.string().nullable().optional(),
   pictures: z.array(z.string()).default([]),
   documents: AssetDocumentsSchema.default({}),
+  pitch_pack: PitchPackSchema.nullable().optional(),
   asset_history: z.array(AssetHistoryEntrySchema).default([]),
 
   sales_cap: z.number(),

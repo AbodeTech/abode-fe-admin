@@ -26,10 +26,12 @@ export { AssetOffers } from './components/detail/AssetOffers';
 export { SampleDataBanner } from './components/detail/SampleDataBanner';
 export { EditablePanel } from './components/detail/EditablePanel';
 export { OfferEditDialogs } from './components/detail/OfferEditDialogs';
+export { PitchPackPanel } from './components/detail/PitchPackPanel';
 
 export { BlocksManager } from './components/detail/BlocksManager';
 
 export { useAssetDetail, useUpdateAsset } from './hooks/use-asset-detail';
+export { useSetPitchPack, useRemovePitchPack } from './hooks/use-pitch-pack';
 export { useAssetBlocks, useCreateBlock, useUpdateBlock, useDeleteBlock } from './hooks/use-blocks';
 export {
   useBlockPlots,
@@ -45,7 +47,7 @@ export {
   useUpdatePlan,
   useDeletePlan,
 } from './hooks/use-offer-mutations';
-export type { AssetDetail, Offer, Size, Plan } from './schemas/asset-detail.schema';
+export type { AssetDetail, Offer, Size, Plan, PitchPack } from './schemas/asset-detail.schema';
 export {
   PLOT_STATUSES,
   blockStats,

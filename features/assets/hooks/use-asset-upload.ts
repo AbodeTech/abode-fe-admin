@@ -28,25 +28,42 @@ export function useAssetUpload() {
   const completeUpload = useAssetFormStore((state) => state.completeUpload);
   const failUpload = useAssetFormStore((state) => state.failUpload);
 
-  /** Resolves to the secure URL, or null when the upload failed. */
-  const upload = useCallback(
-    async (key: string, file: File): Promise<string | null> => {
+  /**
+   * Resolves to the secure URL and byte size, or null when the upload failed.
+   *
+   * The size comes from Cloudinary's own response rather than `file.size` —
+   * that's what the pitch-pack endpoint's `size_bytes` should describe, and
+   * falling back to `file.size` only if Cloudinary omits it keeps a network
+   * hiccup in that one field from failing the whole upload.
+   */
+  const uploadFile = useCallback(
+    async (key: string, file: File): Promise<{ url: string; bytes: number } | null> => {
       startUpload(key, file.name);
 
       try {
         const result = await uploadToCloudinary(file, ASSET_FOLDER);
         const url: string | undefined = result?.secure_url;
+        const bytes: number | undefined = result?.bytes;
 
         if (!url) throw new Error('Upload succeeded but returned no URL');
 
         completeUpload(key, url);
-        return url;
+        return { url, bytes: bytes ?? file.size };
       } catch (error) {
         failUpload(key, error instanceof Error ? error.message : 'Upload failed');
         return null;
       }
     },
     [startUpload, completeUpload, failUpload]
+  );
+
+  /** Resolves to the secure URL, or null when the upload failed. */
+  const upload = useCallback(
+    async (key: string, file: File): Promise<string | null> => {
+      const result = await uploadFile(key, file);
+      return result?.url ?? null;
+    },
+    [uploadFile]
   );
 
   /**
@@ -63,5 +80,5 @@ export function useAssetUpload() {
     [upload]
   );
 
-  return { upload, uploadMany };
+  return { upload, uploadMany, uploadFile };
 }
