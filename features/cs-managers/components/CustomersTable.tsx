@@ -2,13 +2,21 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowRight, Repeat } from "lucide-react";
+import { ArrowDown, ArrowRight, ArrowUp, Repeat } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Pagination } from "@/components/shared/Pagination";
 import { useDebounce } from "@/hooks/use-debounce";
 import { cn } from "@/lib/utils";
-import { CsPlanFilter } from "@/lib/gql/graphql";
+import { CsPlanFilter, CsPlanSort } from "@/lib/gql/graphql";
 import type { CsPlanFilterCounts, PlanRow } from "@/lib/gql/graphql";
+import { PLAN_SORTS, effectivePlanSort } from "../lib/plan-sort";
 import {
   AllocationPill,
   DoaPill,
@@ -62,6 +70,21 @@ const FILTERS: {
   },
 ];
 
+/**
+ * How long this buyer has been on the books — the age of the row in a queue,
+ * read at a glance next to the date itself.
+ */
+const monthsSince = (iso: string) => {
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
+  if (days < 1) return "today";
+  if (days < 31) return `${days}d ago`;
+  const months = Math.floor(days / 30.44);
+  if (months < 12) return `${months}mo ago`;
+  const years = Math.floor(months / 12);
+  const rest = months % 12;
+  return rest ? `${years}y ${rest}mo ago` : `${years}y ago`;
+};
+
 const timeAgo = (iso: string) => {
   const ms = Date.now() - new Date(iso).getTime();
   const hours = Math.floor(ms / (1000 * 60 * 60));
@@ -93,6 +116,12 @@ export function CustomersTable({
   const activeFilter =
     (searchParams.get("filter") as CsPlanFilter | null) ?? CsPlanFilter.All;
   const searchParam = searchParams.get("search") ?? "";
+  // Mirrors what the page sends, so the control shows the order on screen even
+  // when the URL carries no sort and the queue default is in force.
+  const activeSort = effectivePlanSort(
+    activeFilter,
+    searchParams.get("sort") as CsPlanSort | null
+  );
 
   // Local input state so typing stays responsive; the URL (and the query)
   // only move once typing settles.
@@ -133,6 +162,20 @@ export function CustomersTable({
       if (key === CsPlanFilter.All) p.delete("filter");
       else p.set("filter", key);
     });
+
+  const setSort = (next: CsPlanSort) => pushParams((p) => p.set("sort", next));
+
+  const boughtSortActive =
+    activeSort === CsPlanSort.PurchaseDateAsc ||
+    activeSort === CsPlanSort.PurchaseDateDesc;
+
+  /** Header click: first click oldest-first, thereafter flip. */
+  const toggleBoughtSort = () =>
+    setSort(
+      activeSort === CsPlanSort.PurchaseDateAsc
+        ? CsPlanSort.PurchaseDateDesc
+        : CsPlanSort.PurchaseDateAsc
+    );
 
   const openPlan = openPlanId
     ? plans.find((p) => p.planId === openPlanId) ?? null
@@ -182,12 +225,29 @@ export function CustomersTable({
               );
             })}
           </div>
-          <Input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search customer name, email, or asset…"
-            className="h-8 text-xs w-56"
-          />
+          <div className="flex items-center gap-2">
+            <Input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search customer name, email, or asset…"
+              className="h-8 text-xs w-56"
+            />
+            <Select
+              value={activeSort}
+              onValueChange={(v) => setSort(v as CsPlanSort)}
+            >
+              <SelectTrigger className="h-8 text-xs w-fit min-w-40 bg-white">
+                <SelectValue placeholder="Sort" />
+              </SelectTrigger>
+              <SelectContent>
+                {PLAN_SORTS.map((s) => (
+                  <SelectItem key={s.value} value={s.value} className="text-xs">
+                    {s.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         <div className={cn("overflow-x-auto transition-opacity", isFetching && "opacity-60")}>
@@ -196,6 +256,25 @@ export function CustomersTable({
               <tr className="text-left text-[11px] uppercase tracking-wide text-gray-500 bg-gray-50">
                 <th className="px-4 py-2.5 font-medium">Customer</th>
                 <th className="px-4 py-2.5 font-medium">Plan</th>
+                <th className="px-4 py-2.5 font-medium">
+                  <button
+                    type="button"
+                    onClick={toggleBoughtSort}
+                    className={cn(
+                      "inline-flex items-center gap-1 uppercase tracking-wide hover:text-gray-700",
+                      boughtSortActive && "text-[#00695C]"
+                    )}
+                    title="Sort by when the plan was bought"
+                  >
+                    Bought
+                    {boughtSortActive &&
+                      (activeSort === CsPlanSort.PurchaseDateAsc ? (
+                        <ArrowUp className="h-3 w-3" />
+                      ) : (
+                        <ArrowDown className="h-3 w-3" />
+                      ))}
+                  </button>
+                </th>
                 <th className="px-4 py-2.5 font-medium">Payment</th>
                 <th className="px-4 py-2.5 font-medium">Onboarding</th>
                 <th className="px-4 py-2.5 font-medium">Allocation</th>
@@ -208,7 +287,7 @@ export function CustomersTable({
               {plans.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={9}
                     className="px-4 py-8 text-center text-gray-500 text-sm"
                   >
                     {searchParam || activeFilter !== CsPlanFilter.All
@@ -251,8 +330,15 @@ export function CustomersTable({
                     <td className="px-4 py-3 text-gray-700">
                       <p className="leading-tight">{r.asset}</p>
                       <p className="text-xs text-gray-500 leading-tight">
-                        {r.product === "flex" ? "Flex" : "Full-ownership"} ·
-                        opened {formatShortDate(r.purchaseDate)}
+                        {r.product === "flex" ? "Flex" : "Full-ownership"}
+                      </p>
+                    </td>
+                    <td className="px-4 py-3 text-gray-700 whitespace-nowrap">
+                      <p className="leading-tight">
+                        {formatShortDate(r.purchaseDate)}
+                      </p>
+                      <p className="text-xs text-gray-500 leading-tight tabular-nums">
+                        {monthsSince(r.purchaseDate)}
                       </p>
                     </td>
                     <td className="px-4 py-3">
