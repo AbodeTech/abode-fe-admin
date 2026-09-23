@@ -283,7 +283,7 @@ of the design and are unbuilt.
 | `dashboard` | `GetAdminDashboardDetails` | `GET /admin/dashboard` |
 | `analytics` | `GetSalesAnalytics` (+2) | `GET /admin/analytics/sales` |
 | `sales` | `GetSalesRecord`, `GetSalesStatusCounts`, `GetSalesDashboard`, `ExportSales` | `GET /admin/sales[...]` |
-| `campaigns` | Engine: list/create/detail/dashboard/rewards/transition/invalidate/export/PDF. Tracker: GraphQL Campaign2000 | `GET/POST/PATCH /admin/campaigns*` |
+| `campaigns` | Engine: list/create/detail/dashboard/rewards/transition/invalidate/export/PDF, plus revenue + purchases (`view_campaigns` **and** `view_sales`). Tracker: GraphQL Campaign2000 | `GET/POST/PATCH /admin/campaigns*` |
 | `allocation` | 7 ops (eligible clients, allocate/deallocate/reassign land, allocation email) | `/admin/allocation/*` — FO assign/reassign is `POST /admin/acquisitions/plans/:planId/allocate` |
 
 None of these exist on the BE as GraphQL domains. Campaigns remain unbacked.

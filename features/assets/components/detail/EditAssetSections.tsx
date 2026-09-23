@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useForm, type UseFormReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -26,6 +26,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 
 import { TOPOGRAPHIES, VISIBILITIES, VISIBILITY_LABELS } from "../../schemas/asset.schema";
+import { NIGERIAN_STATES, stateLabel } from "../../lib/nigerian-states";
 import type { AssetDetail } from "../../schemas/asset-detail.schema";
 import {
   assetAvailabilityFormSchema,
@@ -65,14 +66,32 @@ export type SectionForm<TValues extends Record<string, unknown>> = {
   isSaving: boolean;
 };
 
-/** Re-seed whenever editing opens, so a cancelled edit never lingers. */
+/**
+ * Re-seed whenever editing opens, so a cancelled edit never lingers.
+ *
+ * `seed` is held in a ref rather than listed as a dependency. Every call site
+ * passes an inline arrow, so its identity changes on every render — and with it
+ * in the deps the effect ran `reset()`, which re-rendered, which made a new
+ * arrow, which ran the effect again. Opening any of these forms hit React's
+ * "Maximum update depth exceeded" and took the page down with it.
+ *
+ * Depending on `editing` alone is also the more correct rule: re-seeding
+ * because the asset object changed underneath an open form would throw away
+ * whatever the admin had typed.
+ */
 function useReseedOnOpen(sectionId: string, seed: () => void) {
   const editing = useAssetFormStore((state) => state.editingSections[sectionId] ?? false);
+  const seedRef = useRef(seed);
+  // Written in an effect, not during render — React's compiler rules forbid
+  // touching a ref while rendering, and this one only has to be current by the
+  // time the `editing` effect below reads it.
+  useEffect(() => {
+    seedRef.current = seed;
+  });
 
   useEffect(() => {
-    if (editing) seed();
-    // `seed` closes over the asset, so this re-runs when the asset changes too.
-  }, [editing, seed]);
+    if (editing) seedRef.current();
+  }, [editing]);
 }
 
 /* -------------------- details -------------------- */
@@ -135,6 +154,39 @@ export function AssetDetailsFields({ form }: { form: UseFormReturn<AssetDetailsF
                 <FormControl>
                   <Input {...field} value={field.value ?? ""} />
                 </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <FormField
+            control={form.control}
+            name="state"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-xs">State</FormLabel>
+                <Select value={field.value ?? ""} onValueChange={field.onChange}>
+                  <FormControl>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Not set" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {NIGERIAN_STATES.map((state) => (
+                      <SelectItem key={state} value={state}>
+                        {stateLabel(state)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {/* Worth saying plainly: this field is what a legal document
+                    reads, not just a filter. */}
+                <p className="text-[11px] text-gray-500">
+                  Named on the Deed of Assignment as the state whose Governor&apos;s consent it
+                  is submitted for. Left unset, the deed prints a blank there.
+                </p>
                 <FormMessage />
               </FormItem>
             )}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -17,6 +18,7 @@ import { cn } from "@/lib/utils";
 
 import type { CampaignReward } from "../schemas/reward.schema";
 import { formatDate } from "../utils/format-period";
+import { personName } from "../utils/format-metrics";
 import { DownloadTicketPdfButton } from "./DownloadTicketPdfButton";
 import { InvalidateRewardDialog } from "./InvalidateRewardDialog";
 
@@ -49,6 +51,7 @@ export function RewardsTable({ rewards, isLoading }: { rewards: CampaignReward[]
           <TableRow>
             <TableHead>Recipient</TableHead>
             <TableHead>Role</TableHead>
+            <TableHead>Bought by</TableHead>
             <TableHead>Ticket ID</TableHead>
             <TableHead>Asset</TableHead>
             <TableHead>Sqm</TableHead>
@@ -60,14 +63,44 @@ export function RewardsTable({ rewards, isLoading }: { rewards: CampaignReward[]
         <TableBody>
           {rewards.map((reward) => (
             <TableRow key={reward.id} className={cn(!reward.is_active && "opacity-50")}>
-              <TableCell className={cn(!reward.is_active && "line-through")}>
-                {reward.recipient
-                  ? [reward.recipient.first_name, reward.recipient.last_name].filter(Boolean).join(" ") || "—"
-                  : "—"}
+              <TableCell className={cn("max-w-56", !reward.is_active && "line-through")}>
+                {reward.recipient ? (
+                  <>
+                    <Link
+                      href={`/users/${reward.recipient.id}`}
+                      className="block truncate font-medium text-foreground hover:underline"
+                    >
+                      {personName(reward.recipient.first_name, reward.recipient.last_name)}
+                    </Link>
+                    {reward.recipient.email ? (
+                      <span className="block truncate text-xs text-muted-foreground">{reward.recipient.email}</span>
+                    ) : null}
+                  </>
+                ) : (
+                  "—"
+                )}
               </TableCell>
               <TableCell className="capitalize">{reward.role}</TableCell>
+              <TableCell className="max-w-48">
+                {/* A referrer's reward was earned on someone else's purchase — name them. */}
+                {reward.role === "referrer" && reward.source_buyer ? (
+                  <Link
+                    href={`/users/${reward.source_buyer.id}`}
+                    className="block truncate text-foreground hover:underline"
+                  >
+                    {personName(reward.source_buyer.first_name, reward.source_buyer.last_name)}
+                  </Link>
+                ) : (
+                  <span className="text-muted-foreground">{reward.role === "buyer" ? "Self" : "—"}</span>
+                )}
+              </TableCell>
               <TableCell>
                 <code className="text-xs">{reward.ticket_id ?? "—"}</code>
+                {reward.batch_size != null && reward.batch_size > 1 && reward.reward_index_in_batch != null ? (
+                  <span className="block text-xs text-muted-foreground">
+                    {reward.reward_index_in_batch + 1} of {reward.batch_size} from one purchase
+                  </span>
+                ) : null}
               </TableCell>
               <TableCell>{reward.asset_name}</TableCell>
               <TableCell>{reward.sqm_purchased.toLocaleString()}</TableCell>

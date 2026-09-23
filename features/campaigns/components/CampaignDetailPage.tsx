@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, usePathname, useSearchParams } from "next/navigation";
 
 import { PageContentLoader } from "@/components/shared/page-content-loader";
+import { useAdminPermissions } from "@/hooks/use-admin-permission";
 import { cn } from "@/lib/utils";
 
 import { useCampaignDetail } from "../hooks/use-campaign-detail";
@@ -11,6 +12,7 @@ import { PageShell } from "./CampaignLayout";
 import { CampaignConfigTab } from "./CampaignConfigTab";
 import { CampaignDetailHeader } from "./CampaignDetailHeader";
 import { CampaignOverviewTab } from "./CampaignOverviewTab";
+import { CampaignPurchasesTab } from "./CampaignPurchasesTab";
 import { CampaignRewardsTab } from "./CampaignRewardsTab";
 
 export default function CampaignDetailPage({ tab }: { tab?: "overview" | "rewards" | "config" }) {
@@ -19,9 +21,18 @@ export default function CampaignDetailPage({ tab }: { tab?: "overview" | "reward
   const searchParams = useSearchParams();
   const campaignId = params.id;
   const { data: campaign, isLoading, error } = useCampaignDetail(campaignId);
+  // Purchases carry prices and payments — sales data, so view_sales as well.
+  const canViewSales = useAdminPermissions().has("view_sales");
 
-  const configOpen = searchParams.get("tab") === "config";
-  const activeTab = tab === "rewards" || pathname.endsWith("/rewards") ? "rewards" : configOpen ? "config" : "overview";
+  const tabParam = searchParams.get("tab");
+  const activeTab =
+    tab === "rewards" || pathname.endsWith("/rewards")
+      ? "rewards"
+      : tabParam === "config"
+        ? "config"
+        : tabParam === "purchases" && canViewSales
+          ? "purchases"
+          : "overview";
 
   if (isLoading) {
     return (
@@ -46,6 +57,9 @@ export default function CampaignDetailPage({ tab }: { tab?: "overview" | "reward
 
   const tabs = [
     { id: "overview" as const, label: "Overview", href: `/campaigns/${campaignId}` },
+    ...(canViewSales
+      ? [{ id: "purchases" as const, label: "Purchases", href: `/campaigns/${campaignId}?tab=purchases` }]
+      : []),
     { id: "rewards" as const, label: "Rewards", href: `/campaigns/${campaignId}/rewards` },
     { id: "config" as const, label: "Config", href: `/campaigns/${campaignId}?tab=config` },
   ];
@@ -72,7 +86,8 @@ export default function CampaignDetailPage({ tab }: { tab?: "overview" | "reward
         ))}
       </nav>
 
-      {activeTab === "overview" ? <CampaignOverviewTab campaignId={campaignId} /> : null}
+      {activeTab === "overview" ? <CampaignOverviewTab campaign={campaign} /> : null}
+      {activeTab === "purchases" ? <CampaignPurchasesTab campaign={campaign} /> : null}
       {activeTab === "rewards" ? <CampaignRewardsTab campaignId={campaignId} /> : null}
       {activeTab === "config" ? <CampaignConfigTab campaign={campaign} /> : null}
     </PageShell>

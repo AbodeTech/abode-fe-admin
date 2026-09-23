@@ -51,6 +51,7 @@ import { FormSection } from "./FormSection";
 import { OfferSection, emptySize } from "./OfferSection";
 import { PlanGeneratorDialog } from "./PlanGeneratorDialog";
 import { GalleryUploadField, SingleUploadField } from "./UploadFields";
+import { NIGERIAN_STATES, stateLabel } from "../../lib/nigerian-states";
 
 const DOCUMENT_SLOTS = [
   { key: "deed_of_assignment", label: "Deed of assignment" },
@@ -155,6 +156,36 @@ export function CreateAssetForm() {
                     <FormControl>
                       <Input placeholder="Ibeju-Lekki, Lagos" {...field} value={field.value ?? ""} />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="state"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs">State</FormLabel>
+                    <Select value={field.value ?? ""} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select a state" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {NIGERIAN_STATES.map((state) => (
+                          <SelectItem key={state} value={state}>
+                            {stateLabel(state)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {/* Not just a filter: this is what the Deed of Assignment
+                        reads to name the Governor it is submitted under. */}
+                    <p className="text-[11px] text-gray-500">
+                      Named on the Deed of Assignment. Left unset, the deed prints a blank there.
+                    </p>
                     <FormMessage />
                   </FormItem>
                 )}

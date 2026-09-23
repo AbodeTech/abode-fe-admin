@@ -77,6 +77,8 @@ export const AssetDetailSchema = z.object({
   _id: z.string(),
   name: z.string(),
   asset_location: z.string().nullable().optional(),
+  /** The estate's state. Null on assets that predate the field. */
+  state: z.string().nullable().optional(),
   google_map: z.string().nullable().optional(),
   description: z.string().nullable().optional(),
 

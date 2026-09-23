@@ -27,7 +27,10 @@ export function CampaignDetailHeader({ campaign }: { campaign: Campaign }) {
   if (campaign.status === "draft") actions.push({ label: "Publish", status: "active" });
   if (campaign.status === "active") actions.push({ label: "Pause", status: "paused" });
   if (campaign.status === "paused") actions.push({ label: "Resume", status: "active" });
-  if (campaign.status !== "completed") actions.push({ label: "End Campaign", status: "completed" });
+  // The BE only moves a draft to active — an unpublished draft cannot be ended.
+  if (campaign.status === "active" || campaign.status === "paused") {
+    actions.push({ label: "End Campaign", status: "completed" });
+  }
 
   const showEdit = canManage && campaign.status !== "completed";
   const editHref = campaign.status === "draft" ? `/campaigns/new?draft=${campaign.id}` : null;

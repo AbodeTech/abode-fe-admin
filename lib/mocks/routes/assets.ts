@@ -29,6 +29,8 @@ type MockAsset = {
   _id: string;
   name: string;
   asset_location: string;
+  /** The estate's state. Null on the seed that predates the field, on purpose. */
+  state?: string | null;
   google_map: string | null;
   description: string;
   amenities: string[];
@@ -83,12 +85,22 @@ const asset = (
   };
 };
 
+/** Mirrors the BE's state enum — the PATCH above validates against it. */
+const NIGERIAN_STATES = [
+  'Abia', 'Adamawa', 'Akwa Ibom', 'Anambra', 'Bauchi', 'Bayelsa', 'Benue', 'Borno',
+  'Cross River', 'Delta', 'Ebonyi', 'Edo', 'Ekiti', 'Enugu', 'FCT', 'Gombe', 'Imo',
+  'Jigawa', 'Kaduna', 'Kano', 'Katsina', 'Kebbi', 'Kogi', 'Kwara', 'Lagos', 'Nasarawa',
+  'Niger', 'Ogun', 'Ondo', 'Osun', 'Oyo', 'Plateau', 'Rivers', 'Sokoto', 'Taraba',
+  'Yobe', 'Zamfara',
+] as const;
+
 const assets: MockAsset[] = [
   // All three offer types on one asset — impossible in v1's model.
   asset({
     _id: '665faaaa00000000000000a1',
     name: 'Aviation City',
     asset_location: 'Ibeju-Lekki, Lagos',
+    state: 'Lagos',
     sales_cap: 480,
     sold_units: 312,
     reserved_units: 24,
@@ -103,6 +115,7 @@ const assets: MockAsset[] = [
     _id: '665faaaa00000000000000a2',
     name: 'Harmony Gardens',
     asset_location: 'Epe, Lagos',
+    state: 'Lagos',
     sales_cap: 260,
     sold_units: 88,
     offers: [{ offer_type: 'flex', is_active: true, size_count: 2, plan_count: 6 }],
@@ -113,6 +126,9 @@ const assets: MockAsset[] = [
     _id: '665faaaa00000000000000a3',
     name: 'Cornerstone Estate',
     asset_location: 'Abeokuta, Ogun',
+    // Deliberately unset: this is what an asset looks like before the backfill,
+    // so the "not set" state of the form and the overview stay exercisable.
+    state: null,
     sales_cap: 180,
     sold_units: 41,
     offers: [{ offer_type: 'full-ownership', is_active: false, size_count: 2, plan_count: 5 }],
@@ -549,6 +565,57 @@ export const assetRoutes: MockRoutes = {
   'GET /admin/assets/:id': ({ params }) => {
     const row = assets.find((candidate) => candidate._id === params.id);
     if (!row) throw new MockHttpError(404, 'Asset not found', 'ASSET_NOT_FOUND');
+
+    return { ...row, offers: offerTree(row) };
+  },
+
+  /**
+   * The detail edit save. Absent until now, so every "Save" on the asset detail
+   * page 404'd in mock mode — including the new State field, which is exactly
+   * the sort of thing worth being able to try before it reaches production.
+   *
+   * PATCH semantics, as the BE has them: a key that is present is written, a
+   * key that is absent is left alone. `''` is a real value — it is how an admin
+   * clears a free-text field — but `state` is validated against the state enum
+   * on the server, so the form omits it rather than sending a blank.
+   */
+  'PATCH /admin/assets/:id': ({ params, body: raw }) => {
+    const row = assets.find((candidate) => candidate._id === params.id && !candidate.deleted_at);
+    if (!row) throw new MockHttpError(404, 'Asset not found', 'ASSET_NOT_FOUND');
+
+    const dto = body<Record<string, unknown>>(raw);
+
+    if ('name' in dto && !String(dto.name ?? '').trim()) {
+      throw new MockHttpError(400, 'name should not be empty', 'VALIDATION_FAILED');
+    }
+    if (
+      'state' in dto &&
+      dto.state !== null &&
+      !NIGERIAN_STATES.includes(String(dto.state) as (typeof NIGERIAN_STATES)[number])
+    ) {
+      throw new MockHttpError(400, 'state must be a Nigerian state', 'VALIDATION_FAILED');
+    }
+
+    const WRITABLE = [
+      'name',
+      'asset_location',
+      'state',
+      'asset_purpose',
+      'topography',
+      'amenities',
+      'landmark',
+      'google_map',
+      'description',
+      'hero_image',
+      'pictures',
+      'documents',
+      'visibility',
+      'sales_cap',
+    ];
+    for (const key of WRITABLE) {
+      if (key in dto) (row as Record<string, unknown>)[key] = dto[key];
+    }
+    row.updatedAt = new Date().toISOString();
 
     return { ...row, offers: offerTree(row) };
   },

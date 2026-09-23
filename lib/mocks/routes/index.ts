@@ -27,6 +27,8 @@ import { academyRoutes } from './academy';
 import { companyEventsRoutes } from './company-events';
 import { estateUpdateRoutes } from './estate-updates';
 import { courseRoutes } from './courses';
+import { divisionRoutes } from './division';
+import { standingRoutes } from './standing';
 
 /* ============================================================
  * Route registration. Importing this module (via lib/mocks/index.ts)
@@ -135,6 +137,13 @@ import { courseRoutes } from './courses';
  *               provisional — abode-be-v2 has no courses model yet. Covers
  *               design screens 1–2 (list, overview) only; modules/quiz/
  *               learners (screens 3, 5, 6, 7) are unbuilt.
+ * standing    — /admin/standing/* (config, summary, members). Membership is
+ *               derived from a holdings fixture rather than stored, so moving
+ *               a threshold in the editor moves buyers on the next read.
+ * division    — /admin/division/* (config, summary, members). The associate
+ *               season ladder. Two seasons of fixtures (2026 live, 2025
+ *               closed) so the year picker demonstrably changes the answer,
+ *               and one opted-out associate so the "Hidden" marker has a case.
  * ============================================================ */
 
 let registered = false;
@@ -169,9 +178,14 @@ export function ensureRoutesRegistered(): void {
   registerRoutes(academyRoutes);
   registerRoutes(companyEventsRoutes);
   registerRoutes(estateUpdateRoutes);
+  // `courseRoutes` was registering AFTER the `registered = true` below, which
+  // defeated the retry the comment promises: a throw in it left the flag set
+  // and every later attempt short-circuited. Moved above the flag with the rest.
+  registerRoutes(courseRoutes);
+  registerRoutes(standingRoutes);
+  registerRoutes(divisionRoutes);
 
   // Only mark done after every domain registered — a throw mid-way must allow retry.
   registered = true;
-  registerRoutes(courseRoutes);
   // ...added per feature as it migrates
 }

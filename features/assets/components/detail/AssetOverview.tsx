@@ -94,6 +94,7 @@ export function AssetOverview() {
       >
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Field label="Location" value={asset.asset_location} />
+          <Field label="State" value={asset.state} />
           <Field label="Purpose" value={asset.asset_purpose} />
           <Field
             label="Topography"
