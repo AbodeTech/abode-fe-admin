@@ -19,8 +19,12 @@ import { ticketKeys } from "./query-keys";
  *   - the ticket was merged — the conversation belongs on the winner.
  */
 const REPLY_TO_TICKET = graphql(`
-  mutation ReplyToTicket($ticketId: ID!, $body: String!) {
-    replyToTicket(ticketId: $ticketId, body: $body) {
+  mutation ReplyToTicket(
+    $ticketId: ID!
+    $body: String!
+    $attachments: [TicketReplyAttachmentInput!]
+  ) {
+    replyToTicket(ticketId: $ticketId, body: $body, attachments: $attachments) {
       ticket {
         _id
         status
@@ -36,13 +40,22 @@ const REPLY_TO_TICKET = graphql(`
 export interface ReplyToTicketInput {
   ticketId: string;
   body: string;
+  attachments?: {
+    url: string;
+    filename: string;
+    mime: string;
+    size: number;
+    public_id: string;
+    resource_type: string;
+    format: string;
+  }[];
 }
 
 export const useReplyToTicket = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ ticketId, body }: ReplyToTicketInput) =>
-      execute(REPLY_TO_TICKET, { ticketId, body }),
+    mutationFn: ({ ticketId, body, attachments }: ReplyToTicketInput) =>
+      execute(REPLY_TO_TICKET, { ticketId, body, attachments }),
     onSuccess: (_, vars) => {
       // The detail refetch is what repaints the thread. The list moves too:
       // replying bumps updatedAt, which the "Recently updated" sort reads.
