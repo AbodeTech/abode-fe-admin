@@ -255,6 +255,7 @@ export function CustomersTable({
             <thead>
               <tr className="text-left text-[11px] uppercase tracking-wide text-gray-500 bg-gray-50">
                 <th className="px-4 py-2.5 font-medium">Customer</th>
+                <th className="px-4 py-2.5 font-medium">Phone</th>
                 <th className="px-4 py-2.5 font-medium">Plan</th>
                 <th className="px-4 py-2.5 font-medium">
                   <button
@@ -287,7 +288,7 @@ export function CustomersTable({
               {plans.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={9}
+                    colSpan={10}
                     className="px-4 py-8 text-center text-gray-500 text-sm"
                   >
                     {searchParam || activeFilter !== CsPlanFilter.All
@@ -326,6 +327,20 @@ export function CustomersTable({
                           </p>
                         </div>
                       </div>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {r.customer.phone ? (
+                        // A queue row is read to place a call, so the number
+                        // dials from the desk phone or the CSM's handset.
+                        <a
+                          href={`tel:${r.customer.phone.replace(/[^\d+]/g, "")}`}
+                          className="text-gray-700 tabular-nums hover:text-[#00695C]"
+                        >
+                          {r.customer.phone}
+                        </a>
+                      ) : (
+                        <span className="text-gray-400">—</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-gray-700">
                       <p className="leading-tight">{r.asset}</p>
