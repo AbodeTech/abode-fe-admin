@@ -19,8 +19,10 @@ import {
   useIsCurrentCSManager,
 } from "@/features/cs-managers";
 import { csManagerName } from "@/features/cs-managers/lib/manager-display";
+import { effectivePlanSort } from "@/features/cs-managers/lib/plan-sort";
 import { useAuthStore } from "@/store/auth-store";
-import type { CsPlanFilter, CsPlanSort } from "@/lib/gql/graphql";
+import { CsPlanFilter } from "@/lib/gql/graphql";
+import type { CsPlanSort } from "@/lib/gql/graphql";
 import { isTopLevelAdmin } from "@/lib/admin-roles";
 
 /** Friendly empty state for admins who shouldn't be here. */
@@ -85,7 +87,12 @@ function CustomerManagersContent() {
   // the rest of the dashboard state.
   const filter = (searchParams.get("filter") as CsPlanFilter | null) ?? undefined;
   const search = searchParams.get("search") ?? undefined;
-  const sort = (searchParams.get("sort") as CsPlanSort | null) ?? undefined;
+  // Unsorted URLs take the queue's own default rather than the BE's — see
+  // defaultPlanSort. CustomersTable derives the same value for its controls.
+  const sort = effectivePlanSort(
+    filter ?? CsPlanFilter.All,
+    searchParams.get("sort") as CsPlanSort | null
+  );
 
   const managersQuery = useCSManagersList();
   const managers = managersQuery.data ?? [];

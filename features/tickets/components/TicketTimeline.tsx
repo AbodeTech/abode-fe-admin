@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { format, isSameDay, isToday, isYesterday } from "date-fns";
-import { AlertTriangle, Loader2, Lock, MailWarning, Link2 } from "lucide-react";
+import { AlertTriangle, Loader2, Lock, MailWarning, Link2, Paperclip } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FragmentType, graphql, useFragment } from "@/lib/gql";
 import {
@@ -37,6 +37,7 @@ export const TicketTimeline_message = graphql(`
     sent_at
     author_admin { _id userName email }
     author_user { _id firstName lastName email }
+    attachments { filename mime size url inline }
     delivery { status error }
     match { signal conflict }
   }
@@ -224,6 +225,7 @@ function MessageRow({ message, at }: { message: Message; at: Date }) {
       pending={pending}
       matchNote={matchNote}
       conflict={message.match?.conflict}
+      attachments={message.attachments}
     />
   );
 }
@@ -240,6 +242,7 @@ function MessageBubble({
   matchNote,
   conflict,
   legacy,
+  attachments,
 }: {
   inbound: boolean;
   body: string;
@@ -252,6 +255,13 @@ function MessageBubble({
   matchNote?: string;
   conflict?: boolean;
   legacy?: boolean;
+  attachments?: readonly {
+    filename: string;
+    mime: string;
+    size: number;
+    url?: string | null;
+    inline: boolean;
+  }[];
 }) {
   return (
     <div className={cn("flex", inbound ? "justify-start" : "justify-end")}>
@@ -287,6 +297,36 @@ function MessageBubble({
         >
           {body || <span className="text-gray-400 italic">(empty message)</span>}
         </div>
+
+        {attachments && attachments.length > 0 && (
+          <ul className={cn("mt-1.5 space-y-1", !inbound && "text-right")}>
+            {attachments.map((attachment, index) => (
+              <li key={`${attachment.url ?? attachment.filename}-${index}`}>
+                {attachment.url ? (
+                  <a
+                    href={attachment.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex max-w-full items-center gap-1 rounded border border-gray-200 bg-white px-2 py-1 text-xs text-[#00695C] hover:border-[#00695C]"
+                  >
+                    <Paperclip className="h-3 w-3 shrink-0" />
+                    <span className="truncate">{attachment.filename}</span>
+                    {attachment.size > 0 && (
+                      <span className="shrink-0 text-gray-400">
+                        · {Math.max(1, Math.round(attachment.size / 1024))} KB
+                      </span>
+                    )}
+                  </a>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-xs text-gray-400">
+                    <Paperclip className="h-3 w-3" />
+                    {attachment.filename} (unavailable)
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
 
         {legacy && (
           <p className="text-[10px] text-gray-400 mt-1">

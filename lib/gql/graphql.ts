@@ -2093,12 +2093,29 @@ export type CompanyEvent = {
   /** As entered, yyyy-mm-dd. */
   date: Scalars['String']['output'];
   id: Scalars['ID']['output'];
+  /**
+   * Whether anybody may sign themselves up, as opposed to only the people we
+   * invited. Unrelated to available_size: that cap governs land, and a
+   * registrant is allocated none.
+   */
+  open_registration: Scalars['Boolean']['output'];
   pickup_locations: Array<EventPickupLocation>;
+  /**
+   * The link to hand out for open registration. Shareable as-is: it carries no
+   * token, and anybody who opens it gets the sign-up form.
+   */
+  public_url: Scalars['String']['output'];
   remaining_capacity?: Maybe<Scalars['Int']['output']>;
   /** Running total committed to non-cancelled allocations. */
   reserved_size: Scalars['Int']['output'];
   /** sqm | plots */
   size_unit: Scalars['String']['output'];
+  /**
+   * The name this event is addressed by in public URLs — it IS the first path
+   * segment, as in /the-district-allocation-day-3-oct-2026/form. Generated from
+   * the title and the date when the event is created, and never changed.
+   */
+  slug: Scalars['String']['output'];
   starts_at: Scalars['Date']['output'];
   /** draft | published | closed */
   status: Scalars['String']['output'];
@@ -2116,7 +2133,7 @@ export type CompanyEventAnalytics = {
   capacity: EventCapacity;
   category_mix: Array<EventCategoryCount>;
   event: Scalars['ID']['output'];
-  /** Allocated → Registered → Checked in (boarded) → Confirmed (at the plot). */
+  /** Attending → Registered → Checked in (boarded) → Confirmed (at the plot). */
   funnel: EventFunnel;
   /** Registered but never boarded — the morning's chase list. */
   no_show: Scalars['Int']['output'];
@@ -2138,6 +2155,20 @@ export type CompanyEventListPayload = {
   __typename?: 'CompanyEventListPayload';
   count: Scalars['Int']['output'];
   data: Array<CompanyEvent>;
+};
+
+export type ConfirmSyncOutcome = {
+  __typename?: 'ConfirmSyncOutcome';
+  /** confirmed | already | duplicate | invalid */
+  outcome: Scalars['String']['output'];
+  token: Scalars['String']['output'];
+};
+
+export type ConfirmSyncResult = {
+  __typename?: 'ConfirmSyncResult';
+  confirmed: Scalars['Int']['output'];
+  received: Scalars['Int']['output'];
+  results: Array<ConfirmSyncOutcome>;
 };
 
 export type ConversionDataPoint = {
@@ -2234,6 +2265,12 @@ export type CreateCompanyEventInput = {
   available_size?: InputMaybe<Scalars['Int']['input']>;
   /** yyyy-mm-dd, as the organiser types it. */
   date: Scalars['String']['input'];
+  /**
+   * Whether anybody may sign themselves up. Defaults to true — set it false for
+   * a closed guest list. It is not a capacity control; registrants are allocated
+   * no land, and the buses are planned from the resulting list.
+   */
+  open_registration?: InputMaybe<Scalars['Boolean']['input']>;
   pickup_locations?: InputMaybe<Array<EventPickupLocationInput>>;
   /** sqm | plots. Defaults to sqm. */
   size_unit?: InputMaybe<Scalars['String']['input']>;
@@ -2754,6 +2791,8 @@ export type EventAllocationListPayload = {
 /** One person's committed seat, with their contact resolved for the admin table. */
 export type EventAllocationRow = {
   __typename?: 'EventAllocationRow';
+  /** The land: allocated | cancelled. Separate from attendance, and not the same question. */
+  allocation_status: Scalars['String']['output'];
   cancelled_at?: Maybe<Scalars['Date']['output']>;
   /** From their registration form, where they have submitted one. */
   category?: Maybe<Scalars['String']['output']>;
@@ -2773,7 +2812,7 @@ export type EventAllocationRow = {
   pickup_location?: Maybe<Scalars['String']['output']>;
   registered_at?: Maybe<Scalars['Date']['output']>;
   size_reserved: Scalars['Int']['output'];
-  /** allocated | email_sent | registered | checked_in | confirmed | cancelled */
+  /** Attendance: invited | registered | checked_in | confirmed | cancelled. */
   status: Scalars['String']['output'];
   user?: Maybe<Scalars['ID']['output']>;
 };
@@ -2784,6 +2823,18 @@ export type EventAllocationSuccess = {
   /** The plots this one seat covers, summed into size_reserved. */
   payment_plans: Array<Scalars['ID']['output']>;
   size_reserved: Scalars['Int']['output'];
+};
+
+export type EventAttendee = {
+  __typename?: 'EventAttendee';
+  attendance_id: Scalars['ID']['output'];
+  checked_in_at?: Maybe<Scalars['Date']['output']>;
+  confirmed_at?: Maybe<Scalars['Date']['output']>;
+  /** True when there is land attached; false for someone who registered themselves. */
+  getting_land: Scalars['Boolean']['output'];
+  name?: Maybe<Scalars['String']['output']>;
+  phone?: Maybe<Scalars['String']['output']>;
+  status?: Maybe<Scalars['String']['output']>;
 };
 
 export type EventCapacity = {
@@ -2799,6 +2850,50 @@ export type EventCategoryCount = {
   __typename?: 'EventCategoryCount';
   category: Scalars['String']['output'];
   count: Scalars['Int']['output'];
+};
+
+export type EventCheckinResult = {
+  __typename?: 'EventCheckinResult';
+  attendanceId: Scalars['ID']['output'];
+  /** On 'already' this is the ORIGINAL boarding time, not now. */
+  checkedInAt?: Maybe<Scalars['Date']['output']>;
+  name?: Maybe<Scalars['String']['output']>;
+  /** ok on the first scan, already on any scan after it. */
+  status: Scalars['String']['output'];
+};
+
+export type EventCheckinScanInput = {
+  /** Picked from search, when there is no code at all. */
+  attendanceId?: InputMaybe<Scalars['ID']['input']>;
+  /** The scanned QR contents — the token is pulled out of the URL. */
+  qrPayload?: InputMaybe<Scalars['String']['input']>;
+  /** A typed token, when a code will not scan. */
+  token?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type EventCheckinSession = {
+  __typename?: 'EventCheckinSession';
+  date: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  pickupLocations: Array<EventPickupLocationAdmin>;
+  startsAt: Scalars['Date']['output'];
+  time: Scalars['String']['output'];
+  title: Scalars['String']['output'];
+};
+
+export type EventCheckinStats = {
+  __typename?: 'EventCheckinStats';
+  /** Of those, how many are being given land. */
+  allocated: Scalars['Int']['output'];
+  /** Everyone coming — allocated and registrants together. This is the bus number. */
+  attending: Scalars['Int']['output'];
+  /** Scanned onto the bus. */
+  boarded: Scalars['Int']['output'];
+  /** Scanned again at the plot. */
+  confirmed: Scalars['Int']['output'];
+  registered: Scalars['Int']['output'];
+  /** And how many signed themselves up with no allocation. */
+  registrants: Scalars['Int']['output'];
 };
 
 /** A client who has finished paying and is not yet committed to any event. */
@@ -2846,10 +2941,15 @@ export type EventEligibleClientListPayload = {
 
 export type EventFunnel = {
   __typename?: 'EventFunnel';
+  /** Of those, how many are being given land. */
   allocated: Scalars['Int']['output'];
+  /** Everyone expected — allocated and registrants together. This is the bus number. */
+  attending: Scalars['Int']['output'];
   checked_in: Scalars['Int']['output'];
   confirmed: Scalars['Int']['output'];
   registered: Scalars['Int']['output'];
+  /** And how many signed themselves up with no allocation. */
+  registrants: Scalars['Int']['output'];
 };
 
 export type EventPickupLoad = {
@@ -2864,8 +2964,17 @@ export type EventPickupLocation = {
   __typename?: 'EventPickupLocation';
   id: Scalars['ID']['output'];
   name: Scalars['String']['output'];
+  /** Null means the bus from this point is uncapped. */
+  seatLimit?: Maybe<Scalars['Int']['output']>;
   /** Seats on the bus from this point. Null means uncapped. */
   seat_limit?: Maybe<Scalars['Int']['output']>;
+};
+
+export type EventPickupLocationAdmin = {
+  __typename?: 'EventPickupLocationAdmin';
+  id: Scalars['ID']['output'];
+  name: Scalars['String']['output'];
+  seatLimit?: Maybe<Scalars['Int']['output']>;
 };
 
 export type EventPickupLocationInput = {
@@ -2873,9 +2982,30 @@ export type EventPickupLocationInput = {
   seat_limit?: InputMaybe<Scalars['Int']['input']>;
 };
 
+/** What the public form page needs to render itself. */
+export type EventRegistrationContext = {
+  __typename?: 'EventRegistrationContext';
+  /** True when the form has already been submitted — show their details, not an empty form. */
+  alreadyRegistered: Scalars['Boolean']['output'];
+  date: Scalars['String']['output'];
+  /** The name this event is addressed by in public URLs. */
+  eventSlug: Scalars['String']['output'];
+  eventTitle: Scalars['String']['output'];
+  eventType: Scalars['String']['output'];
+  pickupLocations: Array<EventPickupLocation>;
+  /** From the account, but every field stays editable: the traveller is not always the account holder. */
+  prefill: EventRegistrationPrefill;
+  startsAt: Scalars['Date']['output'];
+  time: Scalars['String']['output'];
+};
+
 export type EventRegistrationFilterInput = {
+  /** allocated | visitor — the two populations, filtered apart. */
+  attendee_type?: InputMaybe<Scalars['String']['input']>;
   category?: InputMaybe<Scalars['String']['input']>;
   search?: InputMaybe<Scalars['String']['input']>;
+  /** invited | registered | checked_in | confirmed | cancelled */
+  status?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type EventRegistrationListPayload = {
@@ -2884,16 +3014,51 @@ export type EventRegistrationListPayload = {
   data: Array<EventRegistrationRow>;
 };
 
+export type EventRegistrationPrefill = {
+  __typename?: 'EventRegistrationPrefill';
+  email: Scalars['String']['output'];
+  fullName: Scalars['String']['output'];
+  phone: Scalars['String']['output'];
+};
+
+export type EventRegistrationResult = {
+  __typename?: 'EventRegistrationResult';
+  date: Scalars['String']['output'];
+  eventSlug: Scalars['String']['output'];
+  eventTitle: Scalars['String']['output'];
+  registered: Scalars['Boolean']['output'];
+  time: Scalars['String']['output'];
+};
+
+/**
+ * One person coming to an event — of either kind.
+ *
+ * attendee_type is the split: "allocated" means we are giving them land and
+ * invited them, "visitor" means they signed themselves up and are coming to
+ * look. Both board the same bus and both hold a pass.
+ */
 export type EventRegistrationRow = {
   __typename?: 'EventRegistrationRow';
+  /** Null for a visitor — there is no allocation behind them. */
   allocation?: Maybe<Scalars['ID']['output']>;
-  /** associate_pro | associate | client */
-  category: Scalars['String']['output'];
-  email: Scalars['String']['output'];
+  /** allocated | visitor */
+  attendee_type: Scalars['String']['output'];
+  /** associate_pro | associate | client. Null until they tell us. */
+  category?: Maybe<Scalars['String']['output']>;
+  checked_in_at?: Maybe<Scalars['Date']['output']>;
+  confirmed_at?: Maybe<Scalars['Date']['output']>;
+  email?: Maybe<Scalars['String']['output']>;
+  /** The same distinction as a boolean, for a column that just needs a tick. */
+  getting_land: Scalars['Boolean']['output'];
   id: Scalars['ID']['output'];
-  name: Scalars['String']['output'];
-  phone: Scalars['String']['output'];
+  invite_sent_at?: Maybe<Scalars['Date']['output']>;
+  /** Null on an invited row until they fill the form in. */
+  name?: Maybe<Scalars['String']['output']>;
+  phone?: Maybe<Scalars['String']['output']>;
   pickup_location?: Maybe<Scalars['String']['output']>;
+  registered_at?: Maybe<Scalars['Date']['output']>;
+  /** invited | registered | checked_in | confirmed | cancelled */
+  status: Scalars['String']['output'];
   submitted_at?: Maybe<Scalars['Date']['output']>;
 };
 
@@ -2901,6 +3066,25 @@ export type EventRegistrationSplit = {
   __typename?: 'EventRegistrationSplit';
   not_registered: Scalars['Int']['output'];
   registered: Scalars['Int']['output'];
+};
+
+/** Everything a scanner caches before it loses signal. */
+export type EventRoster = {
+  __typename?: 'EventRoster';
+  attendees: Array<EventRosterEntry>;
+  count: Scalars['Int']['output'];
+  eventId: Scalars['ID']['output'];
+  title: Scalars['String']['output'];
+};
+
+export type EventRosterEntry = {
+  __typename?: 'EventRosterEntry';
+  attendance_id: Scalars['ID']['output'];
+  checked_in_at?: Maybe<Scalars['Date']['output']>;
+  confirmed_at?: Maybe<Scalars['Date']['output']>;
+  getting_land: Scalars['Boolean']['output'];
+  name?: Maybe<Scalars['String']['output']>;
+  phone?: Maybe<Scalars['String']['output']>;
 };
 
 export enum ExpiryType {
@@ -4040,6 +4224,8 @@ export type Mutation = {
   addReferralByAdmin: Scalars['String']['output'];
   addTicketCollaborator: Ticket;
   addTicketNote: Array<TicketNote>;
+  /** Copy somebody on this ticket from now on. They need no admin account. */
+  addTicketParticipant: TicketDetail;
   addUserAssetByAdmin: Scalars['String']['output'];
   adminRecurringAssetPaymentTransfer: Scalars['String']['output'];
   adminRecurringFullOwnershipAssetPaymentTransfer: Scalars['String']['output'];
@@ -4128,6 +4314,10 @@ export type Mutation = {
   editUserWalletDetailsByAdmin: Scalars['String']['output'];
   editWalletCommission: Scalars['String']['output'];
   enableAsset: Scalars['String']['output'];
+  /** Board one person. Idempotent — a second scan reports the original time. */
+  eventCheckIn: EventCheckinResult;
+  /** Apply scans taken offline. Safe to send twice; every scan gets an outcome. */
+  eventConfirmSync: ConfirmSyncResult;
   faqEmail: Scalars['String']['output'];
   initializeDocumentWithPaystack: InitializePaystackResponse;
   initializeFullOwnershipPaystackTransaction: InitializePaystackResponse;
@@ -4152,13 +4342,27 @@ export type Mutation = {
   recurringAssetPaymentWallet: Scalars['String']['output'];
   recurringFullOwnershipAssetByTransfer: Scalars['String']['output'];
   recurringFullOwnershipAssetByWallet: Scalars['String']['output'];
+  /**
+   * Open registration (public): no allocation, no token, no account. Addressed by
+   * the event's slug, the same as the landing page it is posted from.
+   */
+  registerForEvent: EventRegistrationResult;
   rejectMarketplacePurchase: AdminMarketplaceActionResponse;
   removeAssociateManager: RemoveAssociateManagerResponse;
   removeCSManager: CsManagerAssignmentType;
   removeReferralByAdmin: Scalars['String']['output'];
   removeTicketCollaborator: Ticket;
+  /** Stop copying somebody. It cannot un-send what they already have. */
+  removeTicketParticipant: TicketDetail;
   removeUserAssetByAdmin: Scalars['String']['output'];
-  /** Email the customer. Stamps the thread headers, the plus-addressed reply-to and the subject tag, so their answer can be matched back. */
+  /**
+   * Email the customer. Stamps the thread headers, the plus-addressed reply-to and
+   * the subject tag, so their answer can be matched back.
+   *
+   * Goes to the customer of record and copies everyone else on the thread — not
+   * to whoever wrote most recently. The cc argument adds addresses for this reply
+   * and puts them on the thread for later ones.
+   */
   replyToTicket: TicketDetail;
   /**
    * Email a 6-digit code to begin resetting a forgotten withdrawal PIN. Needs no
@@ -4194,6 +4398,7 @@ export type Mutation = {
   signinAdmin: Admin;
   signinUser: AuthResponse;
   signupUser: AuthResponse;
+  submitEventRegistration: EventRegistrationResult;
   submitFlexBrochureLead: Scalars['String']['output'];
   submitManagerRating: SubmitManagerRatingResponse;
   suspendAgency: SuspendAgencyResponse;
@@ -4285,6 +4490,13 @@ export type MutationAddTicketCollaboratorArgs = {
 
 export type MutationAddTicketNoteArgs = {
   body: Scalars['String']['input'];
+  ticketId: Scalars['ID']['input'];
+};
+
+
+export type MutationAddTicketParticipantArgs = {
+  address: Scalars['String']['input'];
+  name?: InputMaybe<Scalars['String']['input']>;
   ticketId: Scalars['ID']['input'];
 };
 
@@ -4713,6 +4925,20 @@ export type MutationEnableAssetArgs = {
 };
 
 
+export type MutationEventCheckInArgs = {
+  eventId: Scalars['ID']['input'];
+  pin: Scalars['String']['input'];
+  scan: EventCheckinScanInput;
+};
+
+
+export type MutationEventConfirmSyncArgs = {
+  eventId: Scalars['ID']['input'];
+  pin: Scalars['String']['input'];
+  scans: Array<OfflineScanInput>;
+};
+
+
 export type MutationFaqEmailArgs = {
   faqEmailInput?: InputMaybe<FaqEmailInput>;
 };
@@ -4842,6 +5068,12 @@ export type MutationRecurringFullOwnershipAssetByWalletArgs = {
 };
 
 
+export type MutationRegisterForEventArgs = {
+  event: Scalars['String']['input'];
+  input: SubmitEventRegistrationInput;
+};
+
+
 export type MutationRejectMarketplacePurchaseArgs = {
   listingId: Scalars['ID']['input'];
   reason: Scalars['String']['input'];
@@ -4869,13 +5101,21 @@ export type MutationRemoveTicketCollaboratorArgs = {
 };
 
 
+export type MutationRemoveTicketParticipantArgs = {
+  address: Scalars['String']['input'];
+  ticketId: Scalars['ID']['input'];
+};
+
+
 export type MutationRemoveUserAssetByAdminArgs = {
   removeAssetInput: RemoveAssetInput;
 };
 
 
 export type MutationReplyToTicketArgs = {
+  attachments?: InputMaybe<Array<TicketReplyAttachmentInput>>;
   body: Scalars['String']['input'];
+  cc?: InputMaybe<Array<Scalars['String']['input']>>;
   ticketId: Scalars['ID']['input'];
 };
 
@@ -4981,6 +5221,12 @@ export type MutationSigninUserArgs = {
 
 export type MutationSignupUserArgs = {
   signupInput: SignupInput;
+};
+
+
+export type MutationSubmitEventRegistrationArgs = {
+  input: SubmitEventRegistrationInput;
+  token: Scalars['String']['input'];
 };
 
 
@@ -5316,6 +5562,11 @@ export type NextofKinResponse = {
   success: Scalars['Boolean']['output'];
 };
 
+export type OfflineScanInput = {
+  deviceId?: InputMaybe<Scalars['String']['input']>;
+  token: Scalars['String']['input'];
+};
+
 export type OnboardingAttempt = {
   __typename?: 'OnboardingAttempt';
   _id: Scalars['ID']['output'];
@@ -5520,6 +5771,8 @@ export type PlanRowCustomer = {
   firstName: Scalars['String']['output'];
   id: Scalars['ID']['output'];
   lastName: Scalars['String']['output'];
+  /** As the customer typed it — local or international, not normalised. */
+  phone: Scalars['String']['output'];
 };
 
 export type Plot = {
@@ -5657,6 +5910,20 @@ export type PromoDetailsHamper = {
   totalPromoDays?: Maybe<Scalars['Int']['output']>;
 };
 
+export type PublicEventContext = {
+  __typename?: 'PublicEventContext';
+  date: Scalars['String']['output'];
+  /** The name this event is addressed by in public URLs. */
+  eventSlug: Scalars['String']['output'];
+  eventTitle: Scalars['String']['output'];
+  eventType: Scalars['String']['output'];
+  /** False while the event is a draft, once it has closed, or if it is invitation only. */
+  open: Scalars['Boolean']['output'];
+  pickupLocations: Array<EventPickupLocation>;
+  startsAt: Scalars['Date']['output'];
+  time: Scalars['String']['output'];
+};
+
 export type PublicMeeting = {
   __typename?: 'PublicMeeting';
   is_active: Scalars['Boolean']['output'];
@@ -5789,8 +6056,16 @@ export type Query = {
   eligibleClientsForLand: EligibleClientsForLandResponse;
   /** Includes cancelled rows — a released seat is part of the event's history. */
   eventAllocations: EventAllocationListPayload;
+  /** Full boarded list for offline use, cached before signal is lost. */
+  eventCheckinRoster: EventRoster;
+  /** Find somebody by name or phone when their QR will not scan. */
+  eventCheckinSearch: Array<EventAttendee>;
+  /** Allocation events running today. PIN-gated — the kiosk has no session. */
+  eventCheckinSessions: Array<EventCheckinSession>;
+  eventCheckinStats: EventCheckinStats;
   /** Allocation events only. */
   eventEligibleClients: EventEligibleClientListPayload;
+  eventRegistrationContext: EventRegistrationContext;
   eventRegistrations: EventRegistrationListPayload;
   exportManagerDashboardPros: Array<ManagerDashboardProRow>;
   exportManagerSalesRecord: SalesRecordResponse;
@@ -5927,6 +6202,12 @@ export type Query = {
   managerDashboard: ManagerDashboardResponse;
   myPurchaseTickets: MyPurchaseTickets;
   myRaffleStanding: MyRaffleStanding;
+  /**
+   * Public event landing page — anyone may open it, for either event type.
+   * Addressed by the slug in the URL ("the-district-allocation-day-3-oct-2026");
+   * an id still resolves, for a link pasted out of the admin.
+   */
+  publicEventContext: PublicEventContext;
   purchaseConfirmationCounts: PurchaseConfirmationCounts;
   raffleLeaderboard: RaffleLeaderboard;
   removeUserBankDetails: Scalars['String']['output'];
@@ -6048,11 +6329,40 @@ export type QueryEventAllocationsArgs = {
 };
 
 
+export type QueryEventCheckinRosterArgs = {
+  eventId: Scalars['ID']['input'];
+  pin: Scalars['String']['input'];
+};
+
+
+export type QueryEventCheckinSearchArgs = {
+  eventId: Scalars['ID']['input'];
+  pin: Scalars['String']['input'];
+  query?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryEventCheckinSessionsArgs = {
+  pin: Scalars['String']['input'];
+};
+
+
+export type QueryEventCheckinStatsArgs = {
+  eventId: Scalars['ID']['input'];
+  pin: Scalars['String']['input'];
+};
+
+
 export type QueryEventEligibleClientsArgs = {
   eventId: Scalars['ID']['input'];
   filter?: InputMaybe<EventEligibleClientFilterInput>;
   limit?: InputMaybe<Scalars['Int']['input']>;
   page?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
+export type QueryEventRegistrationContextArgs = {
+  token: Scalars['String']['input'];
 };
 
 
@@ -6690,6 +7000,11 @@ export type QueryManagerDashboardArgs = {
 };
 
 
+export type QueryPublicEventContextArgs = {
+  event: Scalars['String']['input'];
+};
+
+
 export type QuerySearchAcademyUsersArgs = {
   query: Scalars['String']['input'];
 };
@@ -7041,9 +7356,17 @@ export type ReferralUpgrade = {
   _id: Scalars['ID']['output'];
   admin_status?: Maybe<Scalars['String']['output']>;
   associate?: Maybe<User>;
+  bankName?: Maybe<Scalars['String']['output']>;
   createdAt?: Maybe<Scalars['String']['output']>;
   fee_amount?: Maybe<Scalars['Float']['output']>;
   file_Url?: Maybe<Scalars['String']['output']>;
+  reference_no?: Maybe<Scalars['String']['output']>;
+  /**
+   * Which channel the request came from: absent for the app, "whatsapp" for the
+   * chat flow. A WhatsApp receipt's file_Url is a signed link that expires, so it
+   * has to be opened from a fresh read rather than bookmarked.
+   */
+  submitted_via?: Maybe<Scalars['String']['output']>;
   transaction_type?: Maybe<Scalars['String']['output']>;
   user?: Maybe<User>;
   user_upgrade_type?: Maybe<Scalars['String']['output']>;
@@ -7526,6 +7849,16 @@ export type SubAdminInput = {
   role?: InputMaybe<Scalars['String']['input']>;
 };
 
+export type SubmitEventRegistrationInput = {
+  /** client | associate | associate_pro */
+  category: Scalars['String']['input'];
+  email: Scalars['String']['input'];
+  fullName: Scalars['String']['input'];
+  phone: Scalars['String']['input'];
+  /** Must be one of the event's own pickup locations. */
+  preferredPickupLocationId?: InputMaybe<Scalars['ID']['input']>;
+};
+
 export type SubmitManagerRatingInput = {
   comment?: InputMaybe<Scalars['String']['input']>;
   month: Scalars['Int']['input'];
@@ -7715,6 +8048,8 @@ export type Ticket = {
   ai?: Maybe<TicketClassification>;
   /** The accountable owner. Auto-set to the customer's CS Manager when userAffected is linked. */
   assigned_admin?: Maybe<Admin>;
+  /** Why the current owner was selected. Null on tickets created before assignment tracking. */
+  assigned_admin_source?: Maybe<TicketAssignmentSource>;
   attachments: Array<TicketAttachment>;
   body?: Maybe<Scalars['String']['output']>;
   category?: Maybe<Scalars['String']['output']>;
@@ -7726,6 +8061,8 @@ export type Ticket = {
   issue?: Maybe<TicketIssueRef>;
   /** Set when merged into another ticket; drops out of every queue. */
   merged_into?: Maybe<Scalars['ID']['output']>;
+  /** Everyone on the email thread. Replies go to the customer and copy the rest. */
+  participants: Array<TicketParticipant>;
   /** The ticket this one continues, when a reply arrived too late to reopen it. Both stay in the queues. */
   related_ticket?: Maybe<Scalars['ID']['output']>;
   resolution?: Maybe<Scalars['String']['output']>;
@@ -7757,6 +8094,12 @@ export type TicketAffectedHint = {
   note?: Maybe<Scalars['String']['output']>;
   value: Scalars['String']['output'];
 };
+
+export enum TicketAssignmentSource {
+  CustomerManager = 'customer_manager',
+  FallbackLeastLoaded = 'fallback_least_loaded',
+  Human = 'human'
+}
 
 export type TicketAttachment = {
   __typename?: 'TicketAttachment';
@@ -7798,14 +8141,21 @@ export enum TicketChannel {
 
 export type TicketClassification = {
   __typename?: 'TicketClassification';
+  action_confidence?: Maybe<Scalars['Float']['output']>;
   affected_hints: Array<TicketAffectedHint>;
+  category_confidence?: Maybe<Scalars['Float']['output']>;
   classified_at?: Maybe<Scalars['Date']['output']>;
+  /** Legacy combined category/type score. New clients should use the field-specific scores. */
   confidence?: Maybe<Scalars['Float']['output']>;
   /** Set when classification failed. Ticket creation never depends on it. */
   error?: Maybe<Scalars['String']['output']>;
   model?: Maybe<Scalars['String']['output']>;
+  requires_action?: Maybe<Scalars['Boolean']['output']>;
+  sender_confidence?: Maybe<Scalars['Float']['output']>;
+  sender_is_affected?: Maybe<Scalars['Boolean']['output']>;
   suggested_category?: Maybe<Scalars['String']['output']>;
   suggested_type?: Maybe<TicketType>;
+  type_confidence?: Maybe<Scalars['Float']['output']>;
 };
 
 export type TicketClassifierStats = {
@@ -7939,10 +8289,13 @@ export type TicketListResponse = {
 export type TicketMessage = {
   __typename?: 'TicketMessage';
   _id: Scalars['ID']['output'];
+  attachments: Array<TicketMessageAttachment>;
   /** Who sent it -- an admin for outbound, the customer's account for inbound where known. */
   author_admin?: Maybe<Admin>;
   author_user?: Maybe<User>;
   body: Scalars['String']['output'];
+  /** Everyone else copied on this message. */
+  cc_addresses: Array<Scalars['String']['output']>;
   channel: Scalars['String']['output'];
   createdAt: Scalars['Date']['output'];
   delivery?: Maybe<TicketMessageDelivery>;
@@ -7953,6 +8306,24 @@ export type TicketMessage = {
   sent_at: Scalars['Date']['output'];
   subject?: Maybe<Scalars['String']['output']>;
   to_address?: Maybe<Scalars['String']['output']>;
+};
+
+/**
+ * A file that arrived on, or went out with, one message.
+ *
+ * The url is a permanent, public Cloudinary link: anyone holding it can open the
+ * file, with no login. Support mail carries ID documents and bank statements, so
+ * treat these links as sensitive and do not paste them anywhere public.
+ */
+export type TicketMessageAttachment = {
+  __typename?: 'TicketMessageAttachment';
+  filename: Scalars['String']['output'];
+  /** Set when the mail client embedded it in the body rather than attaching it. */
+  inline: Scalars['Boolean']['output'];
+  mime: Scalars['String']['output'];
+  size: Scalars['Int']['output'];
+  /** Public and permanent. Null only on a row stored before urls were kept. */
+  url?: Maybe<Scalars['String']['output']>;
 };
 
 /** Outbound only. A failed reply stays in the conversation and must not read as a sent one. */
@@ -7991,6 +8362,24 @@ export type TicketNote = {
 };
 
 /**
+ * Somebody on a ticket's email thread.
+ *
+ * Distinct from a collaborator: a collaborator is an admin who can act on the
+ * ticket, a participant is an address that gets copied. Someone outside the
+ * company can be the second and never the first.
+ */
+export type TicketParticipant = {
+  __typename?: 'TicketParticipant';
+  added_at: Scalars['Date']['output'];
+  /** original | inbound | outbound | manual */
+  added_via: Scalars['String']['output'];
+  address: Scalars['String']['output'];
+  name?: Maybe<Scalars['String']['output']>;
+  /** customer — the person the ticket is for, and who replies are addressed to. cc — everybody else. */
+  role: Scalars['String']['output'];
+};
+
+/**
  * The reader's own queue in a handful of numbers -- what sits above the ticket
  * table. Scoped exactly like the table beneath it: a CS Manager reads the book,
  * everyone else reads only what they are party to.
@@ -8007,6 +8396,17 @@ export type TicketQueueStats = {
   open: Scalars['Int']['output'];
   resolvedLast7Days: Scalars['Int']['output'];
   waitingCustomer: Scalars['Int']['output'];
+};
+
+/** A Cloudinary file uploaded by an admin and sent with one email reply. */
+export type TicketReplyAttachmentInput = {
+  filename: Scalars['String']['input'];
+  format: Scalars['String']['input'];
+  mime: Scalars['String']['input'];
+  public_id: Scalars['String']['input'];
+  resource_type: Scalars['String']['input'];
+  size: Scalars['Int']['input'];
+  url: Scalars['String']['input'];
 };
 
 export type TicketResolutionStats = {
@@ -9775,13 +10175,6 @@ export type GetCompanyEventAssetsQueryVariables = Exact<{
 
 export type GetCompanyEventAssetsQuery = { __typename?: 'Query', getAllAdminAssets?: { __typename?: 'AssetAdminResponse', data: Array<{ __typename?: 'Asset', _id?: string | null, asset_name?: string | null, asset_location?: string | null, asset_type?: string | null, asset_option?: Array<{ __typename?: 'AssetOption', size?: number | null } | null> | null } | null> } | null };
 
-export type GetCompanyEventQueryVariables = Exact<{
-  id: Scalars['ID']['input'];
-}>;
-
-
-export type GetCompanyEventQuery = { __typename?: 'Query', companyEvent: { __typename?: 'CompanyEvent', id: string, title: string, type: string, assets: Array<string>, date: string, time: string, starts_at: any, available_size?: number | null, reserved_size: number, remaining_capacity?: number | null, size_unit: string, status: string, createdAt?: any | null, pickup_locations: Array<{ __typename?: 'EventPickupLocation', id: string, name: string, seat_limit?: number | null }> } };
-
 export type GetCompanyEventAssetNamesQueryVariables = Exact<{
   page: Scalars['Int']['input'];
   limit: Scalars['Int']['input'];
@@ -9789,22 +10182,6 @@ export type GetCompanyEventAssetNamesQueryVariables = Exact<{
 
 
 export type GetCompanyEventAssetNamesQuery = { __typename?: 'Query', getAllAdminAssets?: { __typename?: 'AssetAdminResponse', data: Array<{ __typename?: 'Asset', _id?: string | null, asset_name?: string | null, asset_type?: string | null } | null> } | null };
-
-export type GetCompanyEventsQueryVariables = Exact<{
-  filter?: InputMaybe<CompanyEventFilterInput>;
-  page: Scalars['Int']['input'];
-  limit: Scalars['Int']['input'];
-}>;
-
-
-export type GetCompanyEventsQuery = { __typename?: 'Query', companyEvents: { __typename?: 'CompanyEventListPayload', count: number, data: Array<{ __typename?: 'CompanyEvent', id: string, title: string, type: string, assets: Array<string>, date: string, time: string, starts_at: any, available_size?: number | null, reserved_size: number, remaining_capacity?: number | null, size_unit: string, status: string, createdAt?: any | null, pickup_locations: Array<{ __typename?: 'EventPickupLocation', id: string, name: string, seat_limit?: number | null }> }> } };
-
-export type CreateCompanyEventMutationVariables = Exact<{
-  input: CreateCompanyEventInput;
-}>;
-
-
-export type CreateCompanyEventMutation = { __typename?: 'Mutation', createCompanyEvent: { __typename?: 'CompanyEvent', id: string, title: string, type: string, status: string } };
 
 export type DeallocateFromEventMutationVariables = Exact<{
   eventId: Scalars['ID']['input'];
@@ -9815,23 +10192,6 @@ export type DeallocateFromEventMutationVariables = Exact<{
 
 export type DeallocateFromEventMutation = { __typename?: 'Mutation', deallocateFromEvent: { __typename?: 'DeallocateFromEventPayload', deallocated: boolean, already_cancelled: boolean, freed: number } };
 
-export type GetEventAllocationsQueryVariables = Exact<{
-  eventId: Scalars['ID']['input'];
-  filter?: InputMaybe<EventAllocationFilterInput>;
-  page: Scalars['Int']['input'];
-  limit: Scalars['Int']['input'];
-}>;
-
-
-export type GetEventAllocationsQuery = { __typename?: 'Query', eventAllocations: { __typename?: 'EventAllocationListPayload', count: number, data: Array<{ __typename?: 'EventAllocationRow', id: string, user?: string | null, payment_plans: Array<string>, name: string, email?: string | null, phone?: string | null, category?: string | null, pickup_location?: string | null, status: string, eligibility_tier: string, size_reserved: number, email_status: string, invite_sent_at?: any | null, registered_at?: any | null, checked_in_at?: any | null, confirmed_at?: any | null, cancelled_at?: any | null, createdAt?: any | null }> } };
-
-export type GetCompanyEventAnalyticsQueryVariables = Exact<{
-  eventId: Scalars['ID']['input'];
-}>;
-
-
-export type GetCompanyEventAnalyticsQuery = { __typename?: 'Query', companyEventAnalytics: { __typename?: 'CompanyEventAnalytics', event: string, title: string, no_show: number, cancelled: number, funnel: { __typename?: 'EventFunnel', allocated: number, registered: number, checked_in: number, confirmed: number }, registration_split: { __typename?: 'EventRegistrationSplit', registered: number, not_registered: number }, category_mix: Array<{ __typename?: 'EventCategoryCount', category: string, count: number }>, pickup_load: Array<{ __typename?: 'EventPickupLoad', id: string, name: string, seat_limit?: number | null, registered: number }>, capacity: { __typename?: 'EventCapacity', available_size?: number | null, reserved_size: number, remaining?: number | null, utilization_pct?: number | null, size_unit: string } } };
-
 export type GetEventEligibleClientsQueryVariables = Exact<{
   eventId: Scalars['ID']['input'];
   filter?: InputMaybe<EventEligibleClientFilterInput>;
@@ -9841,16 +10201,6 @@ export type GetEventEligibleClientsQueryVariables = Exact<{
 
 
 export type GetEventEligibleClientsQuery = { __typename?: 'Query', eventEligibleClients: { __typename?: 'EventEligibleClientListPayload', count: number, data: Array<{ __typename?: 'EventEligibleClient', payment_plan: string, user?: string | null, name: string, email?: string | null, phone?: string | null, size: number, no_of_units: number, total_size: number, eligibility_tier: string, land_completed_at?: any | null, asset?: string | null, asset_type?: string | null, qualified_by: string, percent_paid: number, allocation_qualification?: number | null }> } };
-
-export type GetEventRegistrationsQueryVariables = Exact<{
-  eventId: Scalars['ID']['input'];
-  filter?: InputMaybe<EventRegistrationFilterInput>;
-  page: Scalars['Int']['input'];
-  limit: Scalars['Int']['input'];
-}>;
-
-
-export type GetEventRegistrationsQuery = { __typename?: 'Query', eventRegistrations: { __typename?: 'EventRegistrationListPayload', count: number, data: Array<{ __typename?: 'EventRegistrationRow', id: string, allocation?: string | null, name: string, phone: string, email: string, category: string, pickup_location?: string | null, submitted_at?: any | null }> } };
 
 export type AllocateToEventMutationVariables = Exact<{
   eventId: Scalars['ID']['input'];
@@ -9880,7 +10230,7 @@ export type GetCsManagerDashboardQueryVariables = Exact<{
 }>;
 
 
-export type GetCsManagerDashboardQuery = { __typename?: 'Query', getCSManagerDashboard: { __typename?: 'CSManagerDashboardResponse', plansTotal: number, period: { __typename?: 'CSManagerPeriod', periodType: string, month?: number | null, year?: number | null, start: any, end: any }, manager?: { __typename?: 'Admin', _id: string, userName: string, email: string, role: string } | null, target: { __typename?: 'CSManagerTargets', allocatedTarget: number, allocatedSoFar: number, onboardedTarget: number, onboardedSoFar: number, ticketsResolvedTarget: number, ticketsEntered: number, ticketsResolved: number, ticketResolutionRate?: number | null }, performanceScore: { __typename?: 'CSManagerPerformanceScore', score: number, allocatedComponent: number, onboardedComponent: number, ticketsComponent: number }, obligation: { __typename?: 'CSManagerObligation', paidNotAllocatedThisPeriod: number }, backlogs: { __typename?: 'CSManagerBacklogs', allocation: { __typename?: 'AgeSplitBacklog', total: number, thisMonth: number, lastMonth: number, older: number }, onboarding: { __typename?: 'OnboardingBacklog', total: number, callPending: number, confirmPending: number, disputed: number }, doa: { __typename?: 'AgeSplitBacklog', total: number, thisMonth: number, lastMonth: number, older: number } }, portfolio: { __typename?: 'CSManagerPortfolio', totalAssigned: number, completedPayment: number, withinPaymentPeriod: number, closeToDefaulting: number }, plans: Array<{ __typename?: 'PlanRow', planId: string, priorPlansCount: number, asset: string, product: FlexOrFullownership, purchaseDate: any, paymentStatus: PaymentStatus, paymentLabel: string, onboarding: OnboardingStatus, allocation: AllocationStatus, allocationLabel?: string | null, doa: DoaStatus, doaLabel?: string | null, lastActivityAt: any, customer: { __typename?: 'PlanRowCustomer', id: string, firstName: string, lastName: string, email: string } }>, filterCounts: { __typename?: 'CSPlanFilterCounts', all: number, dueAllocation: number, onboardingPending: number, dueDoa: number, defaultingSoon: number, completedPayment: number } } };
+export type GetCsManagerDashboardQuery = { __typename?: 'Query', getCSManagerDashboard: { __typename?: 'CSManagerDashboardResponse', plansTotal: number, period: { __typename?: 'CSManagerPeriod', periodType: string, month?: number | null, year?: number | null, start: any, end: any }, manager?: { __typename?: 'Admin', _id: string, userName: string, email: string, role: string } | null, target: { __typename?: 'CSManagerTargets', allocatedTarget: number, allocatedSoFar: number, onboardedTarget: number, onboardedSoFar: number, ticketsResolvedTarget: number, ticketsEntered: number, ticketsResolved: number, ticketResolutionRate?: number | null }, performanceScore: { __typename?: 'CSManagerPerformanceScore', score: number, allocatedComponent: number, onboardedComponent: number, ticketsComponent: number }, obligation: { __typename?: 'CSManagerObligation', paidNotAllocatedThisPeriod: number }, backlogs: { __typename?: 'CSManagerBacklogs', allocation: { __typename?: 'AgeSplitBacklog', total: number, thisMonth: number, lastMonth: number, older: number }, onboarding: { __typename?: 'OnboardingBacklog', total: number, callPending: number, confirmPending: number, disputed: number }, doa: { __typename?: 'AgeSplitBacklog', total: number, thisMonth: number, lastMonth: number, older: number } }, portfolio: { __typename?: 'CSManagerPortfolio', totalAssigned: number, completedPayment: number, withinPaymentPeriod: number, closeToDefaulting: number }, plans: Array<{ __typename?: 'PlanRow', planId: string, priorPlansCount: number, asset: string, product: FlexOrFullownership, purchaseDate: any, paymentStatus: PaymentStatus, paymentLabel: string, onboarding: OnboardingStatus, allocation: AllocationStatus, allocationLabel?: string | null, doa: DoaStatus, doaLabel?: string | null, lastActivityAt: any, customer: { __typename?: 'PlanRowCustomer', id: string, firstName: string, lastName: string, email: string, phone: string } }>, filterCounts: { __typename?: 'CSPlanFilterCounts', all: number, dueAllocation: number, onboardingPending: number, dueDoa: number, defaultingSoon: number, completedPayment: number } } };
 
 export type GetAllCsManagersDashboardQueryVariables = Exact<{
   month?: InputMaybe<Scalars['Int']['input']>;
@@ -9893,7 +10243,7 @@ export type GetAllCsManagersDashboardQueryVariables = Exact<{
 }>;
 
 
-export type GetAllCsManagersDashboardQuery = { __typename?: 'Query', getAllCSManagersDashboard: { __typename?: 'CSManagerDashboardResponse', plansTotal: number, period: { __typename?: 'CSManagerPeriod', periodType: string, month?: number | null, year?: number | null, start: any, end: any }, manager?: { __typename?: 'Admin', _id: string, userName: string, email: string, role: string } | null, target: { __typename?: 'CSManagerTargets', allocatedTarget: number, allocatedSoFar: number, onboardedTarget: number, onboardedSoFar: number, ticketsResolvedTarget: number, ticketsEntered: number, ticketsResolved: number, ticketResolutionRate?: number | null }, performanceScore: { __typename?: 'CSManagerPerformanceScore', score: number, allocatedComponent: number, onboardedComponent: number, ticketsComponent: number }, obligation: { __typename?: 'CSManagerObligation', paidNotAllocatedThisPeriod: number }, backlogs: { __typename?: 'CSManagerBacklogs', allocation: { __typename?: 'AgeSplitBacklog', total: number, thisMonth: number, lastMonth: number, older: number }, onboarding: { __typename?: 'OnboardingBacklog', total: number, callPending: number, confirmPending: number, disputed: number }, doa: { __typename?: 'AgeSplitBacklog', total: number, thisMonth: number, lastMonth: number, older: number } }, portfolio: { __typename?: 'CSManagerPortfolio', totalAssigned: number, completedPayment: number, withinPaymentPeriod: number, closeToDefaulting: number }, plans: Array<{ __typename?: 'PlanRow', planId: string, priorPlansCount: number, asset: string, product: FlexOrFullownership, purchaseDate: any, paymentStatus: PaymentStatus, paymentLabel: string, onboarding: OnboardingStatus, allocation: AllocationStatus, allocationLabel?: string | null, doa: DoaStatus, doaLabel?: string | null, lastActivityAt: any, customer: { __typename?: 'PlanRowCustomer', id: string, firstName: string, lastName: string, email: string } }>, filterCounts: { __typename?: 'CSPlanFilterCounts', all: number, dueAllocation: number, onboardingPending: number, dueDoa: number, defaultingSoon: number, completedPayment: number } } };
+export type GetAllCsManagersDashboardQuery = { __typename?: 'Query', getAllCSManagersDashboard: { __typename?: 'CSManagerDashboardResponse', plansTotal: number, period: { __typename?: 'CSManagerPeriod', periodType: string, month?: number | null, year?: number | null, start: any, end: any }, manager?: { __typename?: 'Admin', _id: string, userName: string, email: string, role: string } | null, target: { __typename?: 'CSManagerTargets', allocatedTarget: number, allocatedSoFar: number, onboardedTarget: number, onboardedSoFar: number, ticketsResolvedTarget: number, ticketsEntered: number, ticketsResolved: number, ticketResolutionRate?: number | null }, performanceScore: { __typename?: 'CSManagerPerformanceScore', score: number, allocatedComponent: number, onboardedComponent: number, ticketsComponent: number }, obligation: { __typename?: 'CSManagerObligation', paidNotAllocatedThisPeriod: number }, backlogs: { __typename?: 'CSManagerBacklogs', allocation: { __typename?: 'AgeSplitBacklog', total: number, thisMonth: number, lastMonth: number, older: number }, onboarding: { __typename?: 'OnboardingBacklog', total: number, callPending: number, confirmPending: number, disputed: number }, doa: { __typename?: 'AgeSplitBacklog', total: number, thisMonth: number, lastMonth: number, older: number } }, portfolio: { __typename?: 'CSManagerPortfolio', totalAssigned: number, completedPayment: number, withinPaymentPeriod: number, closeToDefaulting: number }, plans: Array<{ __typename?: 'PlanRow', planId: string, priorPlansCount: number, asset: string, product: FlexOrFullownership, purchaseDate: any, paymentStatus: PaymentStatus, paymentLabel: string, onboarding: OnboardingStatus, allocation: AllocationStatus, allocationLabel?: string | null, doa: DoaStatus, doaLabel?: string | null, lastActivityAt: any, customer: { __typename?: 'PlanRowCustomer', id: string, firstName: string, lastName: string, email: string, phone: string } }>, filterCounts: { __typename?: 'CSPlanFilterCounts', all: number, dueAllocation: number, onboardingPending: number, dueDoa: number, defaultingSoon: number, completedPayment: number } } };
 
 export type AddCsManagerMutationVariables = Exact<{
   managerId: Scalars['ID']['input'];
@@ -10176,7 +10526,7 @@ export type GetSalesStatusCountsQueryVariables = Exact<{
 
 export type GetSalesStatusCountsQuery = { __typename?: 'Query', getSalesRecord?: { __typename?: 'SalesRecordResponse', count?: number | null, data?: Array<{ __typename?: 'SalesRecord', amount_paid?: number | null, amount_payable?: number | null, balance?: number | null, price?: number | null } | null> | null } | null };
 
-export type TicketTimeline_MessageFragment = { __typename?: 'TicketMessage', _id: string, direction: MessageDirection, channel: string, body: string, from_address?: string | null, sent_at: any, author_admin?: { __typename?: 'Admin', _id: string, userName: string, email: string } | null, author_user?: { __typename?: 'User', _id: string, firstName: string, lastName: string, email: string } | null, delivery?: { __typename?: 'TicketMessageDelivery', status: MessageDeliveryStatus, error?: string | null } | null, match?: { __typename?: 'TicketMessageMatch', signal: MatchSignal, conflict: boolean } | null } & { ' $fragmentName'?: 'TicketTimeline_MessageFragment' };
+export type TicketTimeline_MessageFragment = { __typename?: 'TicketMessage', _id: string, direction: MessageDirection, channel: string, body: string, from_address?: string | null, sent_at: any, author_admin?: { __typename?: 'Admin', _id: string, userName: string, email: string } | null, author_user?: { __typename?: 'User', _id: string, firstName: string, lastName: string, email: string } | null, attachments: Array<{ __typename?: 'TicketMessageAttachment', filename: string, mime: string, size: number, url?: string | null, inline: boolean }>, delivery?: { __typename?: 'TicketMessageDelivery', status: MessageDeliveryStatus, error?: string | null } | null, match?: { __typename?: 'TicketMessageMatch', signal: MatchSignal, conflict: boolean } | null } & { ' $fragmentName'?: 'TicketTimeline_MessageFragment' };
 
 export type TicketTimeline_NoteFragment = { __typename?: 'TicketNote', _id: string, body: string, createdAt: any, admin?: { __typename?: 'Admin', _id: string, userName: string, email: string } | null } & { ' $fragmentName'?: 'TicketTimeline_NoteFragment' };
 
@@ -10315,6 +10665,7 @@ export type SearchUsersForTicketPickerQuery = { __typename?: 'Query', getAllUser
 export type ReplyToTicketMutationVariables = Exact<{
   ticketId: Scalars['ID']['input'];
   body: Scalars['String']['input'];
+  attachments?: InputMaybe<Array<TicketReplyAttachmentInput> | TicketReplyAttachmentInput>;
 }>;
 
 
@@ -10798,7 +11149,7 @@ export const PermissionOptionFragmentFragmentDoc = {"kind":"Document","definitio
 export const RoleCardFragmentFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"RoleCardFragment"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Role"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"permissions"}}]}}]} as unknown as DocumentNode<RoleCardFragmentFragment, unknown>;
 export const SalesRowFragmentFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"SalesRowFragment"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"SalesRecord"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"user_firstName"}},{"kind":"Field","name":{"kind":"Name","value":"user_lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"user_phone"}},{"kind":"Field","name":{"kind":"Name","value":"referrer_name"}},{"kind":"Field","name":{"kind":"Name","value":"referrer_email"}},{"kind":"Field","name":{"kind":"Name","value":"referrer_phone"}},{"kind":"Field","name":{"kind":"Name","value":"asset_name"}},{"kind":"Field","name":{"kind":"Name","value":"asset_type"}},{"kind":"Field","name":{"kind":"Name","value":"no_of_units"}},{"kind":"Field","name":{"kind":"Name","value":"document_amount_paid"}},{"kind":"Field","name":{"kind":"Name","value":"fullownerhsip_documentprice"}},{"kind":"Field","name":{"kind":"Name","value":"month_subscription"}},{"kind":"Field","name":{"kind":"Name","value":"size"}},{"kind":"Field","name":{"kind":"Name","value":"price"}},{"kind":"Field","name":{"kind":"Name","value":"amount_paid"}},{"kind":"Field","name":{"kind":"Name","value":"amount_payable"}},{"kind":"Field","name":{"kind":"Name","value":"balance"}},{"kind":"Field","name":{"kind":"Name","value":"default_amount"}},{"kind":"Field","name":{"kind":"Name","value":"is_suspended"}},{"kind":"Field","name":{"kind":"Name","value":"start_date"}},{"kind":"Field","name":{"kind":"Name","value":"next_date"}},{"kind":"Field","name":{"kind":"Name","value":"block"}},{"kind":"Field","name":{"kind":"Name","value":"plot"}},{"kind":"Field","name":{"kind":"Name","value":"land_payment_completed_date"}},{"kind":"Field","name":{"kind":"Name","value":"name_on_document"}}]}}]} as unknown as DocumentNode<SalesRowFragmentFragment, unknown>;
 export const SummaryCards_DashboardFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"SummaryCards_dashboard"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"SalesDashboard"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"totalTransactionValue"}},{"kind":"Field","name":{"kind":"Name","value":"expectedTransactionValue"}},{"kind":"Field","name":{"kind":"Name","value":"totalReceivedTransactionValue"}},{"kind":"Field","name":{"kind":"Name","value":"outstandingTransactionValue"}},{"kind":"Field","name":{"kind":"Name","value":"totalFlexTransactionValue"}},{"kind":"Field","name":{"kind":"Name","value":"expectedFlexTransactionValue"}},{"kind":"Field","name":{"kind":"Name","value":"totalReceivedFlexTransactionValue"}},{"kind":"Field","name":{"kind":"Name","value":"outstandingFlexTransactionValue"}},{"kind":"Field","name":{"kind":"Name","value":"totalFullOwnershipTransactionValue"}},{"kind":"Field","name":{"kind":"Name","value":"expectedFullOwnershipTransactionValue"}},{"kind":"Field","name":{"kind":"Name","value":"totalReceivedFullOwnershipTransactionValue"}},{"kind":"Field","name":{"kind":"Name","value":"outstandingFullOwnershipTransactionValue"}}]}}]} as unknown as DocumentNode<SummaryCards_DashboardFragment, unknown>;
-export const TicketTimeline_MessageFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"TicketTimeline_message"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"TicketMessage"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"direction"}},{"kind":"Field","name":{"kind":"Name","value":"channel"}},{"kind":"Field","name":{"kind":"Name","value":"body"}},{"kind":"Field","name":{"kind":"Name","value":"from_address"}},{"kind":"Field","name":{"kind":"Name","value":"sent_at"}},{"kind":"Field","name":{"kind":"Name","value":"author_admin"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}},{"kind":"Field","name":{"kind":"Name","value":"author_user"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}},{"kind":"Field","name":{"kind":"Name","value":"delivery"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"error"}}]}},{"kind":"Field","name":{"kind":"Name","value":"match"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"signal"}},{"kind":"Field","name":{"kind":"Name","value":"conflict"}}]}}]}}]} as unknown as DocumentNode<TicketTimeline_MessageFragment, unknown>;
+export const TicketTimeline_MessageFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"TicketTimeline_message"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"TicketMessage"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"direction"}},{"kind":"Field","name":{"kind":"Name","value":"channel"}},{"kind":"Field","name":{"kind":"Name","value":"body"}},{"kind":"Field","name":{"kind":"Name","value":"from_address"}},{"kind":"Field","name":{"kind":"Name","value":"sent_at"}},{"kind":"Field","name":{"kind":"Name","value":"author_admin"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}},{"kind":"Field","name":{"kind":"Name","value":"author_user"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}},{"kind":"Field","name":{"kind":"Name","value":"attachments"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"filename"}},{"kind":"Field","name":{"kind":"Name","value":"mime"}},{"kind":"Field","name":{"kind":"Name","value":"size"}},{"kind":"Field","name":{"kind":"Name","value":"url"}},{"kind":"Field","name":{"kind":"Name","value":"inline"}}]}},{"kind":"Field","name":{"kind":"Name","value":"delivery"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"error"}}]}},{"kind":"Field","name":{"kind":"Name","value":"match"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"signal"}},{"kind":"Field","name":{"kind":"Name","value":"conflict"}}]}}]}}]} as unknown as DocumentNode<TicketTimeline_MessageFragment, unknown>;
 export const TicketTimeline_NoteFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"TicketTimeline_note"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"TicketNote"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"body"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"admin"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}}]}}]} as unknown as DocumentNode<TicketTimeline_NoteFragment, unknown>;
 export const AssetTransactionsTable_DataFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"AssetTransactionsTable_data"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"AdminTransactions"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"amount"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"admin_status"}},{"kind":"Field","name":{"kind":"Name","value":"plot_size"}},{"kind":"Field","name":{"kind":"Name","value":"asset_type"}},{"kind":"Field","name":{"kind":"Name","value":"referral"}},{"kind":"Field","name":{"kind":"Name","value":"property_owner"}},{"kind":"Field","name":{"kind":"Name","value":"transaction_type"}},{"kind":"Field","name":{"kind":"Name","value":"transfer_file"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"file"}}]}},{"kind":"Field","name":{"kind":"Name","value":"user"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"_id"}}]}},{"kind":"Field","name":{"kind":"Name","value":"time_of_transaction"}}]}}]} as unknown as DocumentNode<AssetTransactionsTable_DataFragment, unknown>;
 export const CommissionTransactionsTable_DataFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"CommissionTransactionsTable_data"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"AdminTransactions"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"tin"}},{"kind":"Field","name":{"kind":"Name","value":"admin_status"}},{"kind":"Field","name":{"kind":"Name","value":"amount"}},{"kind":"Field","name":{"kind":"Name","value":"asset_type"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"user"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"referrer"}},{"kind":"Field","name":{"kind":"Name","value":"referral_status"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"tin"}}]}},{"kind":"Field","name":{"kind":"Name","value":"plot_size"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"referral"}},{"kind":"Field","name":{"kind":"Name","value":"transaction_type"}},{"kind":"Field","name":{"kind":"Name","value":"time_of_transaction"}}]}}]} as unknown as DocumentNode<CommissionTransactionsTable_DataFragment, unknown>;
@@ -10883,19 +11234,13 @@ export const GetRaffleTicketsDocument = {"kind":"Document","definitions":[{"kind
 export const GetHamperTransactionsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetHamperTransactions"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getCampaignPaymentPlans"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"count"}},{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"assetName"}},{"kind":"Field","name":{"kind":"Name","value":"dateStarted"}},{"kind":"Field","name":{"kind":"Name","value":"documentAmountPaid"}},{"kind":"Field","name":{"kind":"Name","value":"documentPrice"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"landAmountPaid"}},{"kind":"Field","name":{"kind":"Name","value":"landPrice"}},{"kind":"Field","name":{"kind":"Name","value":"monthsOfSubscription"}},{"kind":"Field","name":{"kind":"Name","value":"nextDateOfPayment"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"size"}},{"kind":"Field","name":{"kind":"Name","value":"unit"}},{"kind":"Field","name":{"kind":"Name","value":"userId"}}]}}]}}]}}]} as unknown as DocumentNode<GetHamperTransactionsQuery, GetHamperTransactionsQueryVariables>;
 export const GetHamperLeaderboardDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetHamperLeaderboard"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"startDate"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"endDate"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getHamperLeaderboard"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"startDate"},"value":{"kind":"Variable","name":{"kind":"Name","value":"startDate"}}},{"kind":"Argument","name":{"kind":"Name","value":"endDate"},"value":{"kind":"Variable","name":{"kind":"Name","value":"endDate"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"hamperCount"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"numberOfReferredUsers"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}},{"kind":"Field","name":{"kind":"Name","value":"referrerId"}},{"kind":"Field","name":{"kind":"Name","value":"totalAmountPaid"}},{"kind":"Field","name":{"kind":"Name","value":"totalAssetValue"}},{"kind":"Field","name":{"kind":"Name","value":"totalBalance"}},{"kind":"Field","name":{"kind":"Name","value":"totalLandPrice"}},{"kind":"Field","name":{"kind":"Name","value":"totalSqmSold"}}]}}]}}]} as unknown as DocumentNode<GetHamperLeaderboardQuery, GetHamperLeaderboardQueryVariables>;
 export const GetCompanyEventAssetsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetCompanyEventAssets"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAllAdminAssets"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"asset_name"}},{"kind":"Field","name":{"kind":"Name","value":"asset_location"}},{"kind":"Field","name":{"kind":"Name","value":"asset_type"}},{"kind":"Field","name":{"kind":"Name","value":"asset_option"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"size"}}]}}]}}]}}]}}]} as unknown as DocumentNode<GetCompanyEventAssetsQuery, GetCompanyEventAssetsQueryVariables>;
-export const GetCompanyEventDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetCompanyEvent"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"companyEvent"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"assets"}},{"kind":"Field","name":{"kind":"Name","value":"date"}},{"kind":"Field","name":{"kind":"Name","value":"time"}},{"kind":"Field","name":{"kind":"Name","value":"starts_at"}},{"kind":"Field","name":{"kind":"Name","value":"available_size"}},{"kind":"Field","name":{"kind":"Name","value":"reserved_size"}},{"kind":"Field","name":{"kind":"Name","value":"remaining_capacity"}},{"kind":"Field","name":{"kind":"Name","value":"size_unit"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"pickup_locations"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"seat_limit"}}]}}]}}]}}]} as unknown as DocumentNode<GetCompanyEventQuery, GetCompanyEventQueryVariables>;
 export const GetCompanyEventAssetNamesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetCompanyEventAssetNames"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAllAdminAssets"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"asset_name"}},{"kind":"Field","name":{"kind":"Name","value":"asset_type"}}]}}]}}]}}]} as unknown as DocumentNode<GetCompanyEventAssetNamesQuery, GetCompanyEventAssetNamesQueryVariables>;
-export const GetCompanyEventsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetCompanyEvents"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filter"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"CompanyEventFilterInput"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"companyEvents"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filter"}}},{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"count"}},{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"assets"}},{"kind":"Field","name":{"kind":"Name","value":"date"}},{"kind":"Field","name":{"kind":"Name","value":"time"}},{"kind":"Field","name":{"kind":"Name","value":"starts_at"}},{"kind":"Field","name":{"kind":"Name","value":"available_size"}},{"kind":"Field","name":{"kind":"Name","value":"reserved_size"}},{"kind":"Field","name":{"kind":"Name","value":"remaining_capacity"}},{"kind":"Field","name":{"kind":"Name","value":"size_unit"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"pickup_locations"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"seat_limit"}}]}}]}}]}}]}}]} as unknown as DocumentNode<GetCompanyEventsQuery, GetCompanyEventsQueryVariables>;
-export const CreateCompanyEventDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateCompanyEvent"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"CreateCompanyEventInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createCompanyEvent"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"status"}}]}}]}}]} as unknown as DocumentNode<CreateCompanyEventMutation, CreateCompanyEventMutationVariables>;
 export const DeallocateFromEventDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"DeallocateFromEvent"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"eventId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"allocationId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"reason"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deallocateFromEvent"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"eventId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"eventId"}}},{"kind":"Argument","name":{"kind":"Name","value":"allocationId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"allocationId"}}},{"kind":"Argument","name":{"kind":"Name","value":"reason"},"value":{"kind":"Variable","name":{"kind":"Name","value":"reason"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deallocated"}},{"kind":"Field","name":{"kind":"Name","value":"already_cancelled"}},{"kind":"Field","name":{"kind":"Name","value":"freed"}}]}}]}}]} as unknown as DocumentNode<DeallocateFromEventMutation, DeallocateFromEventMutationVariables>;
-export const GetEventAllocationsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetEventAllocations"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"eventId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filter"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"EventAllocationFilterInput"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"eventAllocations"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"eventId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"eventId"}}},{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filter"}}},{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"count"}},{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"user"}},{"kind":"Field","name":{"kind":"Name","value":"payment_plans"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phone"}},{"kind":"Field","name":{"kind":"Name","value":"category"}},{"kind":"Field","name":{"kind":"Name","value":"pickup_location"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"eligibility_tier"}},{"kind":"Field","name":{"kind":"Name","value":"size_reserved"}},{"kind":"Field","name":{"kind":"Name","value":"email_status"}},{"kind":"Field","name":{"kind":"Name","value":"invite_sent_at"}},{"kind":"Field","name":{"kind":"Name","value":"registered_at"}},{"kind":"Field","name":{"kind":"Name","value":"checked_in_at"}},{"kind":"Field","name":{"kind":"Name","value":"confirmed_at"}},{"kind":"Field","name":{"kind":"Name","value":"cancelled_at"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}}]}}]}}]} as unknown as DocumentNode<GetEventAllocationsQuery, GetEventAllocationsQueryVariables>;
-export const GetCompanyEventAnalyticsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetCompanyEventAnalytics"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"eventId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"companyEventAnalytics"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"eventId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"eventId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"event"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"funnel"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"allocated"}},{"kind":"Field","name":{"kind":"Name","value":"registered"}},{"kind":"Field","name":{"kind":"Name","value":"checked_in"}},{"kind":"Field","name":{"kind":"Name","value":"confirmed"}}]}},{"kind":"Field","name":{"kind":"Name","value":"registration_split"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"registered"}},{"kind":"Field","name":{"kind":"Name","value":"not_registered"}}]}},{"kind":"Field","name":{"kind":"Name","value":"no_show"}},{"kind":"Field","name":{"kind":"Name","value":"cancelled"}},{"kind":"Field","name":{"kind":"Name","value":"category_mix"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"category"}},{"kind":"Field","name":{"kind":"Name","value":"count"}}]}},{"kind":"Field","name":{"kind":"Name","value":"pickup_load"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"seat_limit"}},{"kind":"Field","name":{"kind":"Name","value":"registered"}}]}},{"kind":"Field","name":{"kind":"Name","value":"capacity"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"available_size"}},{"kind":"Field","name":{"kind":"Name","value":"reserved_size"}},{"kind":"Field","name":{"kind":"Name","value":"remaining"}},{"kind":"Field","name":{"kind":"Name","value":"utilization_pct"}},{"kind":"Field","name":{"kind":"Name","value":"size_unit"}}]}}]}}]}}]} as unknown as DocumentNode<GetCompanyEventAnalyticsQuery, GetCompanyEventAnalyticsQueryVariables>;
 export const GetEventEligibleClientsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetEventEligibleClients"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"eventId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filter"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"EventEligibleClientFilterInput"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"eventEligibleClients"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"eventId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"eventId"}}},{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filter"}}},{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"count"}},{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"payment_plan"}},{"kind":"Field","name":{"kind":"Name","value":"user"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phone"}},{"kind":"Field","name":{"kind":"Name","value":"size"}},{"kind":"Field","name":{"kind":"Name","value":"no_of_units"}},{"kind":"Field","name":{"kind":"Name","value":"total_size"}},{"kind":"Field","name":{"kind":"Name","value":"eligibility_tier"}},{"kind":"Field","name":{"kind":"Name","value":"land_completed_at"}},{"kind":"Field","name":{"kind":"Name","value":"asset"}},{"kind":"Field","name":{"kind":"Name","value":"asset_type"}},{"kind":"Field","name":{"kind":"Name","value":"qualified_by"}},{"kind":"Field","name":{"kind":"Name","value":"percent_paid"}},{"kind":"Field","name":{"kind":"Name","value":"allocation_qualification"}}]}}]}}]}}]} as unknown as DocumentNode<GetEventEligibleClientsQuery, GetEventEligibleClientsQueryVariables>;
-export const GetEventRegistrationsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetEventRegistrations"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"eventId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filter"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"EventRegistrationFilterInput"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"eventRegistrations"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"eventId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"eventId"}}},{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filter"}}},{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"count"}},{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"allocation"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"phone"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"category"}},{"kind":"Field","name":{"kind":"Name","value":"pickup_location"}},{"kind":"Field","name":{"kind":"Name","value":"submitted_at"}}]}}]}}]}}]} as unknown as DocumentNode<GetEventRegistrationsQuery, GetEventRegistrationsQueryVariables>;
 export const AllocateToEventDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"AllocateToEvent"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"eventId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"paymentPlanIds"}},"type":{"kind":"NonNullType","type":{"kind":"ListType","type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"allocateToEvent"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"eventId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"eventId"}}},{"kind":"Argument","name":{"kind":"Name","value":"paymentPlanIds"},"value":{"kind":"Variable","name":{"kind":"Name","value":"paymentPlanIds"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"remaining_capacity"}},{"kind":"Field","name":{"kind":"Name","value":"succeeded"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"payment_plans"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"size_reserved"}}]}},{"kind":"Field","name":{"kind":"Name","value":"failed"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"payment_plan"}},{"kind":"Field","name":{"kind":"Name","value":"reason"}}]}}]}}]}}]} as unknown as DocumentNode<AllocateToEventMutation, AllocateToEventMutationVariables>;
 export const SetCompanyEventStatusDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"SetCompanyEventStatus"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"status"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"setCompanyEventStatus"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}},{"kind":"Argument","name":{"kind":"Name","value":"status"},"value":{"kind":"Variable","name":{"kind":"Name","value":"status"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"status"}}]}}]}}]} as unknown as DocumentNode<SetCompanyEventStatusMutation, SetCompanyEventStatusMutationVariables>;
-export const GetCsManagerDashboardDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetCSManagerDashboard"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"month"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"year"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filter"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"CSPlanFilter"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"search"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"sort"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"CSPlanSort"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getCSManagerDashboard"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"managerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}}},{"kind":"Argument","name":{"kind":"Name","value":"month"},"value":{"kind":"Variable","name":{"kind":"Name","value":"month"}}},{"kind":"Argument","name":{"kind":"Name","value":"year"},"value":{"kind":"Variable","name":{"kind":"Name","value":"year"}}},{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}},{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filter"}}},{"kind":"Argument","name":{"kind":"Name","value":"search"},"value":{"kind":"Variable","name":{"kind":"Name","value":"search"}}},{"kind":"Argument","name":{"kind":"Name","value":"sort"},"value":{"kind":"Variable","name":{"kind":"Name","value":"sort"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"period"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"periodType"}},{"kind":"Field","name":{"kind":"Name","value":"month"}},{"kind":"Field","name":{"kind":"Name","value":"year"}},{"kind":"Field","name":{"kind":"Name","value":"start"}},{"kind":"Field","name":{"kind":"Name","value":"end"}}]}},{"kind":"Field","name":{"kind":"Name","value":"manager"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"role"}}]}},{"kind":"Field","name":{"kind":"Name","value":"target"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"allocatedTarget"}},{"kind":"Field","name":{"kind":"Name","value":"allocatedSoFar"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedTarget"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedSoFar"}},{"kind":"Field","name":{"kind":"Name","value":"ticketsResolvedTarget"}},{"kind":"Field","name":{"kind":"Name","value":"ticketsEntered"}},{"kind":"Field","name":{"kind":"Name","value":"ticketsResolved"}},{"kind":"Field","name":{"kind":"Name","value":"ticketResolutionRate"}}]}},{"kind":"Field","name":{"kind":"Name","value":"performanceScore"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"score"}},{"kind":"Field","name":{"kind":"Name","value":"allocatedComponent"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedComponent"}},{"kind":"Field","name":{"kind":"Name","value":"ticketsComponent"}}]}},{"kind":"Field","name":{"kind":"Name","value":"obligation"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"paidNotAllocatedThisPeriod"}}]}},{"kind":"Field","name":{"kind":"Name","value":"backlogs"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"allocation"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"total"}},{"kind":"Field","name":{"kind":"Name","value":"thisMonth"}},{"kind":"Field","name":{"kind":"Name","value":"lastMonth"}},{"kind":"Field","name":{"kind":"Name","value":"older"}}]}},{"kind":"Field","name":{"kind":"Name","value":"onboarding"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"total"}},{"kind":"Field","name":{"kind":"Name","value":"callPending"}},{"kind":"Field","name":{"kind":"Name","value":"confirmPending"}},{"kind":"Field","name":{"kind":"Name","value":"disputed"}}]}},{"kind":"Field","name":{"kind":"Name","value":"doa"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"total"}},{"kind":"Field","name":{"kind":"Name","value":"thisMonth"}},{"kind":"Field","name":{"kind":"Name","value":"lastMonth"}},{"kind":"Field","name":{"kind":"Name","value":"older"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"portfolio"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"totalAssigned"}},{"kind":"Field","name":{"kind":"Name","value":"completedPayment"}},{"kind":"Field","name":{"kind":"Name","value":"withinPaymentPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"closeToDefaulting"}}]}},{"kind":"Field","name":{"kind":"Name","value":"plans"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"planId"}},{"kind":"Field","name":{"kind":"Name","value":"customer"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}},{"kind":"Field","name":{"kind":"Name","value":"priorPlansCount"}},{"kind":"Field","name":{"kind":"Name","value":"asset"}},{"kind":"Field","name":{"kind":"Name","value":"product"}},{"kind":"Field","name":{"kind":"Name","value":"purchaseDate"}},{"kind":"Field","name":{"kind":"Name","value":"paymentStatus"}},{"kind":"Field","name":{"kind":"Name","value":"paymentLabel"}},{"kind":"Field","name":{"kind":"Name","value":"onboarding"}},{"kind":"Field","name":{"kind":"Name","value":"allocation"}},{"kind":"Field","name":{"kind":"Name","value":"allocationLabel"}},{"kind":"Field","name":{"kind":"Name","value":"doa"}},{"kind":"Field","name":{"kind":"Name","value":"doaLabel"}},{"kind":"Field","name":{"kind":"Name","value":"lastActivityAt"}}]}},{"kind":"Field","name":{"kind":"Name","value":"plansTotal"}},{"kind":"Field","name":{"kind":"Name","value":"filterCounts"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"all"}},{"kind":"Field","name":{"kind":"Name","value":"dueAllocation"}},{"kind":"Field","name":{"kind":"Name","value":"onboardingPending"}},{"kind":"Field","name":{"kind":"Name","value":"dueDoa"}},{"kind":"Field","name":{"kind":"Name","value":"defaultingSoon"}},{"kind":"Field","name":{"kind":"Name","value":"completedPayment"}}]}}]}}]}}]} as unknown as DocumentNode<GetCsManagerDashboardQuery, GetCsManagerDashboardQueryVariables>;
-export const GetAllCsManagersDashboardDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetAllCSManagersDashboard"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"month"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"year"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filter"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"CSPlanFilter"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"search"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"sort"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"CSPlanSort"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAllCSManagersDashboard"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"month"},"value":{"kind":"Variable","name":{"kind":"Name","value":"month"}}},{"kind":"Argument","name":{"kind":"Name","value":"year"},"value":{"kind":"Variable","name":{"kind":"Name","value":"year"}}},{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}},{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filter"}}},{"kind":"Argument","name":{"kind":"Name","value":"search"},"value":{"kind":"Variable","name":{"kind":"Name","value":"search"}}},{"kind":"Argument","name":{"kind":"Name","value":"sort"},"value":{"kind":"Variable","name":{"kind":"Name","value":"sort"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"period"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"periodType"}},{"kind":"Field","name":{"kind":"Name","value":"month"}},{"kind":"Field","name":{"kind":"Name","value":"year"}},{"kind":"Field","name":{"kind":"Name","value":"start"}},{"kind":"Field","name":{"kind":"Name","value":"end"}}]}},{"kind":"Field","name":{"kind":"Name","value":"manager"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"role"}}]}},{"kind":"Field","name":{"kind":"Name","value":"target"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"allocatedTarget"}},{"kind":"Field","name":{"kind":"Name","value":"allocatedSoFar"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedTarget"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedSoFar"}},{"kind":"Field","name":{"kind":"Name","value":"ticketsResolvedTarget"}},{"kind":"Field","name":{"kind":"Name","value":"ticketsEntered"}},{"kind":"Field","name":{"kind":"Name","value":"ticketsResolved"}},{"kind":"Field","name":{"kind":"Name","value":"ticketResolutionRate"}}]}},{"kind":"Field","name":{"kind":"Name","value":"performanceScore"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"score"}},{"kind":"Field","name":{"kind":"Name","value":"allocatedComponent"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedComponent"}},{"kind":"Field","name":{"kind":"Name","value":"ticketsComponent"}}]}},{"kind":"Field","name":{"kind":"Name","value":"obligation"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"paidNotAllocatedThisPeriod"}}]}},{"kind":"Field","name":{"kind":"Name","value":"backlogs"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"allocation"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"total"}},{"kind":"Field","name":{"kind":"Name","value":"thisMonth"}},{"kind":"Field","name":{"kind":"Name","value":"lastMonth"}},{"kind":"Field","name":{"kind":"Name","value":"older"}}]}},{"kind":"Field","name":{"kind":"Name","value":"onboarding"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"total"}},{"kind":"Field","name":{"kind":"Name","value":"callPending"}},{"kind":"Field","name":{"kind":"Name","value":"confirmPending"}},{"kind":"Field","name":{"kind":"Name","value":"disputed"}}]}},{"kind":"Field","name":{"kind":"Name","value":"doa"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"total"}},{"kind":"Field","name":{"kind":"Name","value":"thisMonth"}},{"kind":"Field","name":{"kind":"Name","value":"lastMonth"}},{"kind":"Field","name":{"kind":"Name","value":"older"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"portfolio"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"totalAssigned"}},{"kind":"Field","name":{"kind":"Name","value":"completedPayment"}},{"kind":"Field","name":{"kind":"Name","value":"withinPaymentPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"closeToDefaulting"}}]}},{"kind":"Field","name":{"kind":"Name","value":"plans"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"planId"}},{"kind":"Field","name":{"kind":"Name","value":"customer"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}},{"kind":"Field","name":{"kind":"Name","value":"priorPlansCount"}},{"kind":"Field","name":{"kind":"Name","value":"asset"}},{"kind":"Field","name":{"kind":"Name","value":"product"}},{"kind":"Field","name":{"kind":"Name","value":"purchaseDate"}},{"kind":"Field","name":{"kind":"Name","value":"paymentStatus"}},{"kind":"Field","name":{"kind":"Name","value":"paymentLabel"}},{"kind":"Field","name":{"kind":"Name","value":"onboarding"}},{"kind":"Field","name":{"kind":"Name","value":"allocation"}},{"kind":"Field","name":{"kind":"Name","value":"allocationLabel"}},{"kind":"Field","name":{"kind":"Name","value":"doa"}},{"kind":"Field","name":{"kind":"Name","value":"doaLabel"}},{"kind":"Field","name":{"kind":"Name","value":"lastActivityAt"}}]}},{"kind":"Field","name":{"kind":"Name","value":"plansTotal"}},{"kind":"Field","name":{"kind":"Name","value":"filterCounts"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"all"}},{"kind":"Field","name":{"kind":"Name","value":"dueAllocation"}},{"kind":"Field","name":{"kind":"Name","value":"onboardingPending"}},{"kind":"Field","name":{"kind":"Name","value":"dueDoa"}},{"kind":"Field","name":{"kind":"Name","value":"defaultingSoon"}},{"kind":"Field","name":{"kind":"Name","value":"completedPayment"}}]}}]}}]}}]} as unknown as DocumentNode<GetAllCsManagersDashboardQuery, GetAllCsManagersDashboardQueryVariables>;
+export const GetCsManagerDashboardDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetCSManagerDashboard"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"month"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"year"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filter"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"CSPlanFilter"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"search"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"sort"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"CSPlanSort"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getCSManagerDashboard"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"managerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}}},{"kind":"Argument","name":{"kind":"Name","value":"month"},"value":{"kind":"Variable","name":{"kind":"Name","value":"month"}}},{"kind":"Argument","name":{"kind":"Name","value":"year"},"value":{"kind":"Variable","name":{"kind":"Name","value":"year"}}},{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}},{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filter"}}},{"kind":"Argument","name":{"kind":"Name","value":"search"},"value":{"kind":"Variable","name":{"kind":"Name","value":"search"}}},{"kind":"Argument","name":{"kind":"Name","value":"sort"},"value":{"kind":"Variable","name":{"kind":"Name","value":"sort"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"period"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"periodType"}},{"kind":"Field","name":{"kind":"Name","value":"month"}},{"kind":"Field","name":{"kind":"Name","value":"year"}},{"kind":"Field","name":{"kind":"Name","value":"start"}},{"kind":"Field","name":{"kind":"Name","value":"end"}}]}},{"kind":"Field","name":{"kind":"Name","value":"manager"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"role"}}]}},{"kind":"Field","name":{"kind":"Name","value":"target"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"allocatedTarget"}},{"kind":"Field","name":{"kind":"Name","value":"allocatedSoFar"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedTarget"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedSoFar"}},{"kind":"Field","name":{"kind":"Name","value":"ticketsResolvedTarget"}},{"kind":"Field","name":{"kind":"Name","value":"ticketsEntered"}},{"kind":"Field","name":{"kind":"Name","value":"ticketsResolved"}},{"kind":"Field","name":{"kind":"Name","value":"ticketResolutionRate"}}]}},{"kind":"Field","name":{"kind":"Name","value":"performanceScore"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"score"}},{"kind":"Field","name":{"kind":"Name","value":"allocatedComponent"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedComponent"}},{"kind":"Field","name":{"kind":"Name","value":"ticketsComponent"}}]}},{"kind":"Field","name":{"kind":"Name","value":"obligation"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"paidNotAllocatedThisPeriod"}}]}},{"kind":"Field","name":{"kind":"Name","value":"backlogs"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"allocation"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"total"}},{"kind":"Field","name":{"kind":"Name","value":"thisMonth"}},{"kind":"Field","name":{"kind":"Name","value":"lastMonth"}},{"kind":"Field","name":{"kind":"Name","value":"older"}}]}},{"kind":"Field","name":{"kind":"Name","value":"onboarding"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"total"}},{"kind":"Field","name":{"kind":"Name","value":"callPending"}},{"kind":"Field","name":{"kind":"Name","value":"confirmPending"}},{"kind":"Field","name":{"kind":"Name","value":"disputed"}}]}},{"kind":"Field","name":{"kind":"Name","value":"doa"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"total"}},{"kind":"Field","name":{"kind":"Name","value":"thisMonth"}},{"kind":"Field","name":{"kind":"Name","value":"lastMonth"}},{"kind":"Field","name":{"kind":"Name","value":"older"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"portfolio"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"totalAssigned"}},{"kind":"Field","name":{"kind":"Name","value":"completedPayment"}},{"kind":"Field","name":{"kind":"Name","value":"withinPaymentPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"closeToDefaulting"}}]}},{"kind":"Field","name":{"kind":"Name","value":"plans"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"planId"}},{"kind":"Field","name":{"kind":"Name","value":"customer"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phone"}}]}},{"kind":"Field","name":{"kind":"Name","value":"priorPlansCount"}},{"kind":"Field","name":{"kind":"Name","value":"asset"}},{"kind":"Field","name":{"kind":"Name","value":"product"}},{"kind":"Field","name":{"kind":"Name","value":"purchaseDate"}},{"kind":"Field","name":{"kind":"Name","value":"paymentStatus"}},{"kind":"Field","name":{"kind":"Name","value":"paymentLabel"}},{"kind":"Field","name":{"kind":"Name","value":"onboarding"}},{"kind":"Field","name":{"kind":"Name","value":"allocation"}},{"kind":"Field","name":{"kind":"Name","value":"allocationLabel"}},{"kind":"Field","name":{"kind":"Name","value":"doa"}},{"kind":"Field","name":{"kind":"Name","value":"doaLabel"}},{"kind":"Field","name":{"kind":"Name","value":"lastActivityAt"}}]}},{"kind":"Field","name":{"kind":"Name","value":"plansTotal"}},{"kind":"Field","name":{"kind":"Name","value":"filterCounts"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"all"}},{"kind":"Field","name":{"kind":"Name","value":"dueAllocation"}},{"kind":"Field","name":{"kind":"Name","value":"onboardingPending"}},{"kind":"Field","name":{"kind":"Name","value":"dueDoa"}},{"kind":"Field","name":{"kind":"Name","value":"defaultingSoon"}},{"kind":"Field","name":{"kind":"Name","value":"completedPayment"}}]}}]}}]}}]} as unknown as DocumentNode<GetCsManagerDashboardQuery, GetCsManagerDashboardQueryVariables>;
+export const GetAllCsManagersDashboardDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetAllCSManagersDashboard"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"month"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"year"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filter"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"CSPlanFilter"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"search"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"sort"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"CSPlanSort"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAllCSManagersDashboard"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"month"},"value":{"kind":"Variable","name":{"kind":"Name","value":"month"}}},{"kind":"Argument","name":{"kind":"Name","value":"year"},"value":{"kind":"Variable","name":{"kind":"Name","value":"year"}}},{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}},{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filter"}}},{"kind":"Argument","name":{"kind":"Name","value":"search"},"value":{"kind":"Variable","name":{"kind":"Name","value":"search"}}},{"kind":"Argument","name":{"kind":"Name","value":"sort"},"value":{"kind":"Variable","name":{"kind":"Name","value":"sort"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"period"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"periodType"}},{"kind":"Field","name":{"kind":"Name","value":"month"}},{"kind":"Field","name":{"kind":"Name","value":"year"}},{"kind":"Field","name":{"kind":"Name","value":"start"}},{"kind":"Field","name":{"kind":"Name","value":"end"}}]}},{"kind":"Field","name":{"kind":"Name","value":"manager"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"role"}}]}},{"kind":"Field","name":{"kind":"Name","value":"target"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"allocatedTarget"}},{"kind":"Field","name":{"kind":"Name","value":"allocatedSoFar"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedTarget"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedSoFar"}},{"kind":"Field","name":{"kind":"Name","value":"ticketsResolvedTarget"}},{"kind":"Field","name":{"kind":"Name","value":"ticketsEntered"}},{"kind":"Field","name":{"kind":"Name","value":"ticketsResolved"}},{"kind":"Field","name":{"kind":"Name","value":"ticketResolutionRate"}}]}},{"kind":"Field","name":{"kind":"Name","value":"performanceScore"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"score"}},{"kind":"Field","name":{"kind":"Name","value":"allocatedComponent"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedComponent"}},{"kind":"Field","name":{"kind":"Name","value":"ticketsComponent"}}]}},{"kind":"Field","name":{"kind":"Name","value":"obligation"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"paidNotAllocatedThisPeriod"}}]}},{"kind":"Field","name":{"kind":"Name","value":"backlogs"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"allocation"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"total"}},{"kind":"Field","name":{"kind":"Name","value":"thisMonth"}},{"kind":"Field","name":{"kind":"Name","value":"lastMonth"}},{"kind":"Field","name":{"kind":"Name","value":"older"}}]}},{"kind":"Field","name":{"kind":"Name","value":"onboarding"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"total"}},{"kind":"Field","name":{"kind":"Name","value":"callPending"}},{"kind":"Field","name":{"kind":"Name","value":"confirmPending"}},{"kind":"Field","name":{"kind":"Name","value":"disputed"}}]}},{"kind":"Field","name":{"kind":"Name","value":"doa"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"total"}},{"kind":"Field","name":{"kind":"Name","value":"thisMonth"}},{"kind":"Field","name":{"kind":"Name","value":"lastMonth"}},{"kind":"Field","name":{"kind":"Name","value":"older"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"portfolio"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"totalAssigned"}},{"kind":"Field","name":{"kind":"Name","value":"completedPayment"}},{"kind":"Field","name":{"kind":"Name","value":"withinPaymentPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"closeToDefaulting"}}]}},{"kind":"Field","name":{"kind":"Name","value":"plans"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"planId"}},{"kind":"Field","name":{"kind":"Name","value":"customer"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phone"}}]}},{"kind":"Field","name":{"kind":"Name","value":"priorPlansCount"}},{"kind":"Field","name":{"kind":"Name","value":"asset"}},{"kind":"Field","name":{"kind":"Name","value":"product"}},{"kind":"Field","name":{"kind":"Name","value":"purchaseDate"}},{"kind":"Field","name":{"kind":"Name","value":"paymentStatus"}},{"kind":"Field","name":{"kind":"Name","value":"paymentLabel"}},{"kind":"Field","name":{"kind":"Name","value":"onboarding"}},{"kind":"Field","name":{"kind":"Name","value":"allocation"}},{"kind":"Field","name":{"kind":"Name","value":"allocationLabel"}},{"kind":"Field","name":{"kind":"Name","value":"doa"}},{"kind":"Field","name":{"kind":"Name","value":"doaLabel"}},{"kind":"Field","name":{"kind":"Name","value":"lastActivityAt"}}]}},{"kind":"Field","name":{"kind":"Name","value":"plansTotal"}},{"kind":"Field","name":{"kind":"Name","value":"filterCounts"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"all"}},{"kind":"Field","name":{"kind":"Name","value":"dueAllocation"}},{"kind":"Field","name":{"kind":"Name","value":"onboardingPending"}},{"kind":"Field","name":{"kind":"Name","value":"dueDoa"}},{"kind":"Field","name":{"kind":"Name","value":"defaultingSoon"}},{"kind":"Field","name":{"kind":"Name","value":"completedPayment"}}]}}]}}]}}]} as unknown as DocumentNode<GetAllCsManagersDashboardQuery, GetAllCsManagersDashboardQueryVariables>;
 export const AddCsManagerDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"AddCSManager"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"addCSManager"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"managerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"manager"}},{"kind":"Field","name":{"kind":"Name","value":"assigned_from"}},{"kind":"Field","name":{"kind":"Name","value":"assigned_to"}},{"kind":"Field","name":{"kind":"Name","value":"created_by"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<AddCsManagerMutation, AddCsManagerMutationVariables>;
 export const RemoveCsManagerDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"RemoveCSManager"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"removeCSManager"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"managerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"manager"}},{"kind":"Field","name":{"kind":"Name","value":"assigned_from"}},{"kind":"Field","name":{"kind":"Name","value":"assigned_to"}},{"kind":"Field","name":{"kind":"Name","value":"created_by"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<RemoveCsManagerMutation, RemoveCsManagerMutationVariables>;
 export const AssignCustomersToCsManagerDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"AssignCustomersToCSManager"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"AssignCustomersToCSMInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"assignCustomersToCSManager"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"assigned"}},{"kind":"Field","name":{"kind":"Name","value":"managerId"}}]}}]}}]} as unknown as DocumentNode<AssignCustomersToCsManagerMutation, AssignCustomersToCsManagerMutationVariables>;
@@ -10947,9 +11292,9 @@ export const RemoveTicketCollaboratorDocument = {"kind":"Document","definitions"
 export const ClassifyTicketDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"ClassifyTicket"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ticketId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"classifyTicket"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"ticketId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ticketId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"category"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"category_source"}},{"kind":"Field","name":{"kind":"Name","value":"type_source"}},{"kind":"Field","name":{"kind":"Name","value":"ai"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"suggested_category"}},{"kind":"Field","name":{"kind":"Name","value":"suggested_type"}},{"kind":"Field","name":{"kind":"Name","value":"confidence"}},{"kind":"Field","name":{"kind":"Name","value":"model"}},{"kind":"Field","name":{"kind":"Name","value":"classified_at"}},{"kind":"Field","name":{"kind":"Name","value":"error"}}]}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<ClassifyTicketMutation, ClassifyTicketMutationVariables>;
 export const ListAdminsForTicketPickerDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ListAdminsForTicketPicker"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAllAdminWithRoles"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"adminId"}},{"kind":"Field","name":{"kind":"Name","value":"adminName"}},{"kind":"Field","name":{"kind":"Name","value":"adminEmail"}},{"kind":"Field","name":{"kind":"Name","value":"role"}}]}}]}}]}}]} as unknown as DocumentNode<ListAdminsForTicketPickerQuery, ListAdminsForTicketPickerQueryVariables>;
 export const SearchUsersForTicketPickerDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"SearchUsersForTicketPicker"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"searchQuery"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAllUsersWithFilters"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}},{"kind":"Argument","name":{"kind":"Name","value":"searchQuery"},"value":{"kind":"Variable","name":{"kind":"Name","value":"searchQuery"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"count"}},{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}}]}}]}}]}}]} as unknown as DocumentNode<SearchUsersForTicketPickerQuery, SearchUsersForTicketPickerQueryVariables>;
-export const ReplyToTicketDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"ReplyToTicket"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ticketId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"body"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"replyToTicket"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"ticketId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ticketId"}}},{"kind":"Argument","name":{"kind":"Name","value":"body"},"value":{"kind":"Variable","name":{"kind":"Name","value":"body"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"ticket"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}},{"kind":"Field","name":{"kind":"Name","value":"messages"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"TicketTimeline_message"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"TicketTimeline_message"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"TicketMessage"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"direction"}},{"kind":"Field","name":{"kind":"Name","value":"channel"}},{"kind":"Field","name":{"kind":"Name","value":"body"}},{"kind":"Field","name":{"kind":"Name","value":"from_address"}},{"kind":"Field","name":{"kind":"Name","value":"sent_at"}},{"kind":"Field","name":{"kind":"Name","value":"author_admin"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}},{"kind":"Field","name":{"kind":"Name","value":"author_user"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}},{"kind":"Field","name":{"kind":"Name","value":"delivery"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"error"}}]}},{"kind":"Field","name":{"kind":"Name","value":"match"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"signal"}},{"kind":"Field","name":{"kind":"Name","value":"conflict"}}]}}]}}]} as unknown as DocumentNode<ReplyToTicketMutation, ReplyToTicketMutationVariables>;
+export const ReplyToTicketDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"ReplyToTicket"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ticketId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"body"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"attachments"}},"type":{"kind":"ListType","type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"TicketReplyAttachmentInput"}}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"replyToTicket"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"ticketId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ticketId"}}},{"kind":"Argument","name":{"kind":"Name","value":"body"},"value":{"kind":"Variable","name":{"kind":"Name","value":"body"}}},{"kind":"Argument","name":{"kind":"Name","value":"attachments"},"value":{"kind":"Variable","name":{"kind":"Name","value":"attachments"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"ticket"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}},{"kind":"Field","name":{"kind":"Name","value":"messages"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"TicketTimeline_message"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"TicketTimeline_message"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"TicketMessage"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"direction"}},{"kind":"Field","name":{"kind":"Name","value":"channel"}},{"kind":"Field","name":{"kind":"Name","value":"body"}},{"kind":"Field","name":{"kind":"Name","value":"from_address"}},{"kind":"Field","name":{"kind":"Name","value":"sent_at"}},{"kind":"Field","name":{"kind":"Name","value":"author_admin"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}},{"kind":"Field","name":{"kind":"Name","value":"author_user"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}},{"kind":"Field","name":{"kind":"Name","value":"attachments"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"filename"}},{"kind":"Field","name":{"kind":"Name","value":"mime"}},{"kind":"Field","name":{"kind":"Name","value":"size"}},{"kind":"Field","name":{"kind":"Name","value":"url"}},{"kind":"Field","name":{"kind":"Name","value":"inline"}}]}},{"kind":"Field","name":{"kind":"Name","value":"delivery"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"error"}}]}},{"kind":"Field","name":{"kind":"Name","value":"match"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"signal"}},{"kind":"Field","name":{"kind":"Name","value":"conflict"}}]}}]}}]} as unknown as DocumentNode<ReplyToTicketMutation, ReplyToTicketMutationVariables>;
 export const GetTicketsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetTickets"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filter"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"TicketListFilterInput"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getTickets"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filter"}}},{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"count"}},{"kind":"Field","name":{"kind":"Name","value":"results"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"ticket_ref"}},{"kind":"Field","name":{"kind":"Name","value":"channel"}},{"kind":"Field","name":{"kind":"Name","value":"source_reference"}},{"kind":"Field","name":{"kind":"Name","value":"subject"}},{"kind":"Field","name":{"kind":"Name","value":"body"}},{"kind":"Field","name":{"kind":"Name","value":"category"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"category_source"}},{"kind":"Field","name":{"kind":"Name","value":"type_source"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"resolution"}},{"kind":"Field","name":{"kind":"Name","value":"resolved_at"}},{"kind":"Field","name":{"kind":"Name","value":"merged_into"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}},{"kind":"Field","name":{"kind":"Name","value":"sender"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}},{"kind":"Field","name":{"kind":"Name","value":"user_affected"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}}]}},{"kind":"Field","name":{"kind":"Name","value":"assigned_admin"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}},{"kind":"Field","name":{"kind":"Name","value":"collaborators"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"role"}}]}},{"kind":"Field","name":{"kind":"Name","value":"issue"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"issue_ref"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"status"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"filterCounts"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"all"}},{"kind":"Field","name":{"kind":"Name","value":"mine"}},{"kind":"Field","name":{"kind":"Name","value":"unassigned"}},{"kind":"Field","name":{"kind":"Name","value":"unlinked"}},{"kind":"Field","name":{"kind":"Name","value":"open"}},{"kind":"Field","name":{"kind":"Name","value":"waitingCustomer"}},{"kind":"Field","name":{"kind":"Name","value":"blockedOnIssue"}},{"kind":"Field","name":{"kind":"Name","value":"resolved"}}]}}]}}]}}]} as unknown as DocumentNode<GetTicketsQuery, GetTicketsQueryVariables>;
-export const GetTicketDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetTicket"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ticketId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getTicket"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"ticketId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ticketId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"ticket"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"ticket_ref"}},{"kind":"Field","name":{"kind":"Name","value":"channel"}},{"kind":"Field","name":{"kind":"Name","value":"source_reference"}},{"kind":"Field","name":{"kind":"Name","value":"subject"}},{"kind":"Field","name":{"kind":"Name","value":"body"}},{"kind":"Field","name":{"kind":"Name","value":"category"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"category_source"}},{"kind":"Field","name":{"kind":"Name","value":"type_source"}},{"kind":"Field","name":{"kind":"Name","value":"ai"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"suggested_category"}},{"kind":"Field","name":{"kind":"Name","value":"suggested_type"}},{"kind":"Field","name":{"kind":"Name","value":"confidence"}},{"kind":"Field","name":{"kind":"Name","value":"model"}},{"kind":"Field","name":{"kind":"Name","value":"classified_at"}},{"kind":"Field","name":{"kind":"Name","value":"error"}},{"kind":"Field","name":{"kind":"Name","value":"affected_hints"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"value"}},{"kind":"Field","name":{"kind":"Name","value":"kind"}},{"kind":"Field","name":{"kind":"Name","value":"note"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"resolution"}},{"kind":"Field","name":{"kind":"Name","value":"resolved_at"}},{"kind":"Field","name":{"kind":"Name","value":"merged_into"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}},{"kind":"Field","name":{"kind":"Name","value":"sender"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}},{"kind":"Field","name":{"kind":"Name","value":"user_affected"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}}]}},{"kind":"Field","name":{"kind":"Name","value":"assigned_admin"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}},{"kind":"Field","name":{"kind":"Name","value":"collaborators"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"role"}}]}},{"kind":"Field","name":{"kind":"Name","value":"issue"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"issue_ref"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"status"}}]}},{"kind":"Field","name":{"kind":"Name","value":"attachments"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"url"}},{"kind":"Field","name":{"kind":"Name","value":"filename"}},{"kind":"Field","name":{"kind":"Name","value":"mime"}},{"kind":"Field","name":{"kind":"Name","value":"size"}}]}},{"kind":"Field","name":{"kind":"Name","value":"resolved_by"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"messages"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"TicketTimeline_message"}}]}},{"kind":"Field","name":{"kind":"Name","value":"notes"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"TicketTimeline_note"}}]}},{"kind":"Field","name":{"kind":"Name","value":"duplicates"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"ticket_ref"}},{"kind":"Field","name":{"kind":"Name","value":"subject"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}},{"kind":"Field","name":{"kind":"Name","value":"csManager"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"TicketTimeline_message"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"TicketMessage"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"direction"}},{"kind":"Field","name":{"kind":"Name","value":"channel"}},{"kind":"Field","name":{"kind":"Name","value":"body"}},{"kind":"Field","name":{"kind":"Name","value":"from_address"}},{"kind":"Field","name":{"kind":"Name","value":"sent_at"}},{"kind":"Field","name":{"kind":"Name","value":"author_admin"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}},{"kind":"Field","name":{"kind":"Name","value":"author_user"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}},{"kind":"Field","name":{"kind":"Name","value":"delivery"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"error"}}]}},{"kind":"Field","name":{"kind":"Name","value":"match"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"signal"}},{"kind":"Field","name":{"kind":"Name","value":"conflict"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"TicketTimeline_note"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"TicketNote"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"body"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"admin"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}}]}}]} as unknown as DocumentNode<GetTicketQuery, GetTicketQueryVariables>;
+export const GetTicketDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetTicket"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ticketId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getTicket"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"ticketId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ticketId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"ticket"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"ticket_ref"}},{"kind":"Field","name":{"kind":"Name","value":"channel"}},{"kind":"Field","name":{"kind":"Name","value":"source_reference"}},{"kind":"Field","name":{"kind":"Name","value":"subject"}},{"kind":"Field","name":{"kind":"Name","value":"body"}},{"kind":"Field","name":{"kind":"Name","value":"category"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"category_source"}},{"kind":"Field","name":{"kind":"Name","value":"type_source"}},{"kind":"Field","name":{"kind":"Name","value":"ai"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"suggested_category"}},{"kind":"Field","name":{"kind":"Name","value":"suggested_type"}},{"kind":"Field","name":{"kind":"Name","value":"confidence"}},{"kind":"Field","name":{"kind":"Name","value":"model"}},{"kind":"Field","name":{"kind":"Name","value":"classified_at"}},{"kind":"Field","name":{"kind":"Name","value":"error"}},{"kind":"Field","name":{"kind":"Name","value":"affected_hints"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"value"}},{"kind":"Field","name":{"kind":"Name","value":"kind"}},{"kind":"Field","name":{"kind":"Name","value":"note"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"resolution"}},{"kind":"Field","name":{"kind":"Name","value":"resolved_at"}},{"kind":"Field","name":{"kind":"Name","value":"merged_into"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}},{"kind":"Field","name":{"kind":"Name","value":"sender"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}},{"kind":"Field","name":{"kind":"Name","value":"user_affected"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}}]}},{"kind":"Field","name":{"kind":"Name","value":"assigned_admin"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}},{"kind":"Field","name":{"kind":"Name","value":"collaborators"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"role"}}]}},{"kind":"Field","name":{"kind":"Name","value":"issue"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"issue_ref"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"status"}}]}},{"kind":"Field","name":{"kind":"Name","value":"attachments"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"url"}},{"kind":"Field","name":{"kind":"Name","value":"filename"}},{"kind":"Field","name":{"kind":"Name","value":"mime"}},{"kind":"Field","name":{"kind":"Name","value":"size"}}]}},{"kind":"Field","name":{"kind":"Name","value":"resolved_by"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"messages"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"TicketTimeline_message"}}]}},{"kind":"Field","name":{"kind":"Name","value":"notes"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"TicketTimeline_note"}}]}},{"kind":"Field","name":{"kind":"Name","value":"duplicates"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"ticket_ref"}},{"kind":"Field","name":{"kind":"Name","value":"subject"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}},{"kind":"Field","name":{"kind":"Name","value":"csManager"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"TicketTimeline_message"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"TicketMessage"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"direction"}},{"kind":"Field","name":{"kind":"Name","value":"channel"}},{"kind":"Field","name":{"kind":"Name","value":"body"}},{"kind":"Field","name":{"kind":"Name","value":"from_address"}},{"kind":"Field","name":{"kind":"Name","value":"sent_at"}},{"kind":"Field","name":{"kind":"Name","value":"author_admin"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}},{"kind":"Field","name":{"kind":"Name","value":"author_user"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}},{"kind":"Field","name":{"kind":"Name","value":"attachments"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"filename"}},{"kind":"Field","name":{"kind":"Name","value":"mime"}},{"kind":"Field","name":{"kind":"Name","value":"size"}},{"kind":"Field","name":{"kind":"Name","value":"url"}},{"kind":"Field","name":{"kind":"Name","value":"inline"}}]}},{"kind":"Field","name":{"kind":"Name","value":"delivery"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"error"}}]}},{"kind":"Field","name":{"kind":"Name","value":"match"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"signal"}},{"kind":"Field","name":{"kind":"Name","value":"conflict"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"TicketTimeline_note"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"TicketNote"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"body"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"admin"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}}]}}]} as unknown as DocumentNode<GetTicketQuery, GetTicketQueryVariables>;
 export const SuggestUsersForTicketDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"SuggestUsersForTicket"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ticketId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"suggestUsersForTicket"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"ticketId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ticketId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"reason"}},{"kind":"Field","name":{"kind":"Name","value":"confidence"}},{"kind":"Field","name":{"kind":"Name","value":"user"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}}]}}]}}]}}]} as unknown as DocumentNode<SuggestUsersForTicketQuery, SuggestUsersForTicketQueryVariables>;
 export const FindSimilarTicketsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"FindSimilarTickets"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"search"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"findSimilarTickets"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"search"},"value":{"kind":"Variable","name":{"kind":"Name","value":"search"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"ticket_ref"}},{"kind":"Field","name":{"kind":"Name","value":"subject"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"user_affected"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}}]}}]}}]} as unknown as DocumentNode<FindSimilarTicketsQuery, FindSimilarTicketsQueryVariables>;
 export const TicketCategoriesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"TicketCategories"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"ticketCategories"}}]}}]} as unknown as DocumentNode<TicketCategoriesQuery, TicketCategoriesQueryVariables>;

@@ -76,7 +76,7 @@ const GET_CS_MANAGER_DASHBOARD_QUERY = graphql(`
       }
       plans {
         planId
-        customer { id firstName lastName email }
+        customer { id firstName lastName email phone }
         priorPlansCount
         asset
         product
@@ -174,7 +174,7 @@ const GET_ALL_CS_MANAGERS_DASHBOARD_QUERY = graphql(`
       }
       plans {
         planId
-        customer { id firstName lastName email }
+        customer { id firstName lastName email phone }
         priorPlansCount
         asset
         product
