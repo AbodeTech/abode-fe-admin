@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
@@ -67,15 +67,22 @@ type CompanyEventFormValues = z.infer<typeof formSchema>;
 
 export function CompanyEventForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: assets, isLoading: assetsLoading } = useCompanyEventAssets();
   const createEvent = useCreateCompanyEvent();
+
+  // Preselects the site/type when arriving from an asset's own "Create event"
+  // shortcut (e.g. Asset Detail's Allocation events card) — read once at
+  // mount, same as every other default here.
+  const preselectedAssetId = searchParams.get("asset_id") ?? "";
+  const preselectedType = searchParams.get("type") === "allocation" ? "allocation" : "site_inspection";
 
   const form = useForm<CompanyEventFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      type: "site_inspection",
+      type: preselectedType,
       title: "",
-      asset_id: "",
+      asset_id: preselectedAssetId,
       date: "",
       time: "",
       available_size: undefined,

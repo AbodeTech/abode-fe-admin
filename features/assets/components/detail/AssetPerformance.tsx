@@ -9,6 +9,7 @@ import { useAdminPermissions } from "@/hooks/use-admin-permission";
 import { cn } from "@/lib/utils";
 
 import { useAssetAnalytics } from "../../hooks/use-asset-analytics";
+import { useEstateProfitability } from "../../hooks/use-estate-profitability";
 import type { AnalyticsFilter } from "../../schemas/asset-analytics.schema";
 import { AssetHealthBar } from "./AssetHealthBar";
 import { PaymentPlanMatrix } from "./PaymentPlanMatrix";
@@ -49,12 +50,19 @@ export function AssetPerformance({ assetId }: { assetId: string }) {
 
   const permissions = useAdminPermissions();
   const canView = permissions.has("view_asset_analytics");
+  const canViewProfitability = permissions.has("view_asset_profitability");
 
   const { data, isLoading, isFetching, error } = useAssetAnalytics(assetId, {
     filter,
     startDate: range.startDate,
     endDate: range.endDate,
     enabled: canView,
+  });
+  // The real backend has no accounting-basis toggle — one recognised number,
+  // always current (no `as_of`) — the first place this tab's data crosses
+  // with the Costs & Profitability tab's.
+  const { data: profitability } = useEstateProfitability(assetId, undefined, {
+    enabled: canViewProfitability,
   });
 
   if (!canView) {
@@ -124,7 +132,10 @@ export function AssetPerformance({ assetId }: { assetId: string }) {
       ) : (
         <div className={cn("space-y-6", isFetching && "opacity-60 transition-opacity")}>
           <AssetHealthBar data={data} />
-          <PaymentPlanMatrix data={data.size_plan_breakdown} />
+          <PaymentPlanMatrix
+            data={data.size_plan_breakdown}
+            profitability={canViewProfitability ? (profitability ?? null) : null}
+          />
           <p className="text-xs text-muted-foreground">
             Customer counts are all-time and do not move with the date range. Figures as of{" "}
             {new Date(data.as_of).toLocaleString("en-NG")}.

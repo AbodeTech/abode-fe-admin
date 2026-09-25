@@ -18,6 +18,7 @@ import {
   type AssetSizePlanBreakdown,
   type AssetSizePlanGroup,
 } from "../../schemas/asset-analytics.schema";
+import type { EstateProfitability } from "../../schemas/estate-profitability.schema";
 
 function formatNaira(amount: number | null | undefined): string {
   if (amount == null || amount === 0) return "—";
@@ -32,6 +33,46 @@ function formatNaira(amount: number | null | undefined): string {
 function formatSqm(sqm: number | null | undefined): string {
   if (sqm == null || sqm === 0) return "—";
   return `${sqm.toLocaleString()} SQM`;
+}
+
+/**
+ * Unlike `formatNaira` above (which treats a real 0 the same as unknown — fine
+ * for sold value/balance, rarely both meaningful and legitimately zero), a
+ * profit column's `0` is a genuine break-even, not missing data — this
+ * codebase's "never fake a zero" rule cuts both ways. Used only by the 4
+ * profit columns below.
+ */
+function formatProfitNaira(amount: number | null | undefined): string {
+  if (amount == null) return "—";
+  return new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(amount);
+}
+
+function formatMarginPercent(value: number | null | undefined): string {
+  if (value == null) return "—";
+  return `${value.toFixed(0)}%`;
+}
+
+/**
+ * A simple pro-rata split of the ESTATE-wide totals (`summary.revenue`/
+ * `direct_cost`/`allocated_opex`) by this row's share of revenue —
+ * deliberately NOT the real per-cost-item allocation-rule engine, which
+ * doesn't apply here: this matrix has no product/offer dimension at all
+ * (AssetAnalyticsResponseSchema carries no offer_type anywhere), so there is
+ * no product to allocate a cost *to*.
+ */
+function rowProfit(soldValue: number, profitability: EstateProfitability | null) {
+  if (!profitability || !profitability.summary.revenue) return null;
+  const share = soldValue / profitability.summary.revenue;
+  const grossProfit = soldValue - profitability.summary.direct_cost * share;
+  const allocatedOpex = profitability.summary.allocated_opex * share;
+  const netContribution = grossProfit - allocatedOpex;
+  const marginPercent = soldValue > 0 ? (netContribution / soldValue) * 100 : null;
+  return { grossProfit, allocatedOpex, netContribution, marginPercent };
 }
 
 /**
@@ -89,9 +130,11 @@ function EfficiencyBar({ efficiency, label }: { efficiency: number; label: strin
 
 interface Props {
   data: AssetSizePlanGroup[];
+  /** Present only when the viewer has view_asset_profitability — see rowProfit()'s doc comment. */
+  profitability?: EstateProfitability | null;
 }
 
-export function PaymentPlanMatrix({ data }: Props) {
+export function PaymentPlanMatrix({ data, profitability = null }: Props) {
   const [collapsed, setCollapsed] = useState<number[]>([]);
 
   // Collapsed-by-exception, so a size added to the data later starts open
@@ -105,11 +148,27 @@ export function PaymentPlanMatrix({ data }: Props) {
 
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-center gap-2 sm:mb-6">
-        <PieChart className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
-        <h3 className="text-lg font-bold tracking-tight sm:text-xl">
-          Payment plan performance
-        </h3>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2 sm:mb-6">
+        <div className="flex items-center gap-2">
+          <PieChart className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
+          <h3 className="text-lg font-bold tracking-tight sm:text-xl">
+            Payment plan performance
+          </h3>
+        </div>
+        {profitability ? (
+          <span
+            className={cn(
+              "rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider",
+              profitability.warnings.length === 0
+                ? "bg-emerald-500/10 text-emerald-600"
+                : "bg-amber-500/10 text-amber-600"
+            )}
+          >
+            {profitability.warnings.length === 0
+              ? "Profit figures complete"
+              : `Profit figures estimated — ${profitability.warnings.length} unknown`}
+          </span>
+        ) : null}
       </div>
 
       {data.length === 0 ? (
@@ -137,6 +196,14 @@ export function PaymentPlanMatrix({ data }: Props) {
                     Terminations
                   </TableHead>
                   <TableHead className="border-l py-2" />
+                  {profitability ? (
+                    <TableHead
+                      colSpan={4}
+                      className="border-l py-2 text-center text-[10px] font-bold uppercase tracking-wider text-violet-600"
+                    >
+                      Profitability
+                    </TableHead>
+                  ) : null}
                 </TableRow>
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="w-8" />
@@ -179,6 +246,22 @@ export function PaymentPlanMatrix({ data }: Props) {
                   <TableHead className="h-10 whitespace-nowrap border-l text-right text-[10px] font-bold uppercase tracking-wider">
                     Efficiency
                   </TableHead>
+                  {profitability ? (
+                    <>
+                      <TableHead className="h-10 whitespace-nowrap border-l text-right text-[10px] font-bold uppercase tracking-wider">
+                        Gross profit
+                      </TableHead>
+                      <TableHead className="h-10 whitespace-nowrap text-right text-[10px] font-bold uppercase tracking-wider">
+                        Allocated OPEX
+                      </TableHead>
+                      <TableHead className="h-10 whitespace-nowrap text-right text-[10px] font-bold uppercase tracking-wider">
+                        Net contribution
+                      </TableHead>
+                      <TableHead className="h-10 whitespace-nowrap text-right text-[10px] font-bold uppercase tracking-wider">
+                        Margin
+                      </TableHead>
+                    </>
+                  ) : null}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -270,6 +353,27 @@ export function PaymentPlanMatrix({ data }: Props) {
                             label={`${group.size} SQM`}
                           />
                         </TableCell>
+                        {profitability
+                          ? (() => {
+                              const profit = rowProfit(totals.soldValue, profitability);
+                              return (
+                                <>
+                                  <TableCell className="whitespace-nowrap border-l text-right text-xs font-bold tabular-nums">
+                                    {formatProfitNaira(profit?.grossProfit)}
+                                  </TableCell>
+                                  <TableCell className="whitespace-nowrap text-right text-xs font-bold tabular-nums">
+                                    {formatProfitNaira(profit?.allocatedOpex)}
+                                  </TableCell>
+                                  <TableCell className="whitespace-nowrap text-right text-xs font-bold tabular-nums">
+                                    {formatProfitNaira(profit?.netContribution)}
+                                  </TableCell>
+                                  <TableCell className="whitespace-nowrap text-right text-xs font-bold tabular-nums">
+                                    {formatMarginPercent(profit?.marginPercent)}
+                                  </TableCell>
+                                </>
+                              );
+                            })()
+                          : null}
                       </TableRow>
 
                       {open &&
@@ -346,6 +450,27 @@ export function PaymentPlanMatrix({ data }: Props) {
                                 label={planTenorLabel(plan.month_subscription)}
                               />
                             </TableCell>
+                            {profitability
+                              ? (() => {
+                                  const profit = rowProfit(plan.sold_value, profitability);
+                                  return (
+                                    <>
+                                      <TableCell className="whitespace-nowrap border-l text-right text-sm tabular-nums">
+                                        {formatProfitNaira(profit?.grossProfit)}
+                                      </TableCell>
+                                      <TableCell className="whitespace-nowrap text-right text-sm tabular-nums">
+                                        {formatProfitNaira(profit?.allocatedOpex)}
+                                      </TableCell>
+                                      <TableCell className="whitespace-nowrap text-right text-sm tabular-nums">
+                                        {formatProfitNaira(profit?.netContribution)}
+                                      </TableCell>
+                                      <TableCell className="whitespace-nowrap text-right text-sm tabular-nums">
+                                        {formatMarginPercent(profit?.marginPercent)}
+                                      </TableCell>
+                                    </>
+                                  );
+                                })()
+                              : null}
                           </TableRow>
                         ))}
                     </Fragment>
@@ -395,6 +520,19 @@ export function PaymentPlanMatrix({ data }: Props) {
                       value={`${totals.defaultedCount} · ${formatNaira(totals.defaultedBalance)}`}
                       tone={totals.defaultedCount > 0 ? "danger" : undefined}
                     />
+                    {profitability
+                      ? (() => {
+                          const profit = rowProfit(totals.soldValue, profitability);
+                          return (
+                            <>
+                              <Stat label="Gross profit" value={formatProfitNaira(profit?.grossProfit)} />
+                              <Stat label="Allocated OPEX" value={formatProfitNaira(profit?.allocatedOpex)} />
+                              <Stat label="Net contribution" value={formatProfitNaira(profit?.netContribution)} />
+                              <Stat label="Margin" value={formatMarginPercent(profit?.marginPercent)} />
+                            </>
+                          );
+                        })()
+                      : null}
                   </dl>
 
                   {open &&
@@ -429,6 +567,19 @@ export function PaymentPlanMatrix({ data }: Props) {
                             value={`${plan.terminated.plans || 0} · ${formatNaira(plan.terminated.amount_owing)}`}
                             tone={plan.terminated.plans > 0 ? "warning" : undefined}
                           />
+                          {profitability
+                            ? (() => {
+                                const profit = rowProfit(plan.sold_value, profitability);
+                                return (
+                                  <>
+                                    <Stat label="Gross profit" value={formatProfitNaira(profit?.grossProfit)} />
+                                    <Stat label="Allocated OPEX" value={formatProfitNaira(profit?.allocatedOpex)} />
+                                    <Stat label="Net contribution" value={formatProfitNaira(profit?.netContribution)} />
+                                    <Stat label="Margin" value={formatMarginPercent(profit?.marginPercent)} />
+                                  </>
+                                );
+                              })()
+                            : null}
                         </dl>
                       </div>
                     ))}

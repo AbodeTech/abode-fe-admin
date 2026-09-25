@@ -303,3 +303,101 @@ One exception: `useAssetIdByName` and `useAvailablePlotsForAsset` moved to
 still on GraphQL, and plot allocation is an allocation concern — moving them
 kept the assets feature GraphQL-free without holding the migration open. They
 go when allocation is rebuilt.
+
+---
+
+## 10. Land account — the physical-land model layered on top (Phase 1, 2026-09)
+
+**This section adds to the model in §1, it does not replace it.** `sales_cap`,
+`sold_units`, `reserved_units` and `available_units` keep exactly the meaning
+described there, and every purchase path still runs on them. What changed is
+that an asset can *also* carry a physical-land account — total estate sqm,
+per-product sqm pools, and non-saleable land (roads, service plots,
+recreation/utility, public use) — introduced beside the unit counters, not
+instead of them. Full spec:
+`docs/BACKEND-PHASE-1-ASSET-LAND-MODEL.md` / `docs/FRONTEND-PHASE-1-ASSET-LAND-MODEL.md`.
+
+### What's new on the existing entities
+
+```
+Asset             …unchanged fields…
+                  total_land_sqm · land_inventory_state · inventory_model_version
+                  land_configuration_version
+  └─ AssetOffer   …unchanged fields…
+       assigned_sqm         the product's commercial land pool
+       └─ Size    …unchanged fields…
+            configured_units   replaces `units_available` (deprecated, kept
+                                as an optional alias for one release —
+                                purchases never decremented the old field
+                                either, so nothing about its *behaviour*
+                                changed, only its honest name)
+```
+
+`inventory_model_version` stays `'legacy_units'` for the whole of Phase 1 —
+only a later, not-yet-built activation gate may move an asset to `'sqm_v1'`.
+`land_inventory_state` is `'not_configured'` for every asset that predates
+this work (all of §1's model), `'draft'` once Create Asset sets a total, and
+`'configured'` after the first successful land-configuration save.
+
+**`OFFER_TYPES` gained `'developer-plot'`** (hyphenated). ⚠️ This collides in
+name, not in meaning, with an existing, unrelated concept: developer plot as a
+PaymentPlan-level commission override (`features/commission`'s
+`DeveloperPlotCard.tsx`). The new type is an Asset-level saleable pool with no
+size/plan tree in Phase 1 — it exists only inside the Land Account, never as
+an addable offer on the Offers tab. See the disambiguation comment on
+`OFFER_TYPES` in `asset.schema.ts` for the full note.
+
+### New feature files
+
+```
+features/assets/
+  components/
+    create/    LandSetupSection · ReviewAndCreateSection
+               (OfferSection · PlanRow · PlanGeneratorDialog deleted — see below)
+    detail/    LandAccountCard · LandUseTable · LandAccountEditorDrawer
+               LandUseFieldArray · LandConfigurationHistory
+               AssetInventoryHeaderSummary · ComingSoonPanel
+  hooks/       use-land-configuration.ts · use-land-configuration-mutations.ts
+  schemas/     land-configuration.schema.ts
+```
+
+### Create Asset changed shape
+
+§8's build order had Create Asset require at least one offer, one size and
+one plan, atomically. That requirement is gone: `createAssetFormSchema` now
+takes `total_land_sqm` + `product_pools` instead of `sales_cap` + `offers[]`.
+Offers, sizes and plans are entirely a post-creation concern on the Offers
+tab. This was a deliberate, unflagged breaking change to the create
+contract — safe because the backend has no live traffic on the old shape yet
+(Phase 1 is greenfield) and no test suite depended on it. `OfferSection`,
+`PlanRow` and `PlanGeneratorDialog` (§5's create-time offer/size/plan UI) were
+deleted as a result — that UI now lives only on the Offers tab's existing
+`OfferEditDialogs`, unchanged.
+
+### New routes
+
+```
+/assets/[id]/site-setup      placeholder — Site Setup fieldwork is a separate epic
+/assets/[id]/costs           placeholder — Costs & Profitability is a separate epic
+```
+
+Both render `ComingSoonPanel`; the routes and nav entries exist so the target
+tab order is already in place, not because either feature is built.
+
+### What Phase 1 does not touch
+
+Product Position, Plot Inventory, allocation readiness, Site Setup fieldwork,
+Costs & Profitability, and the staff-performance system are all excluded —
+they need either the live purchase-consuming sqm ledger (backend-gated,
+unbuilt) or their own separate design pass. See the two Phase 1 docs' scope
+sections for the full boundary.
+
+### A fourth, still-unreconciled sqm concept
+
+After this work, the codebase has **four independent sqm-bearing figures**
+that do not agree with each other and are not meant to: block/plot sqm
+(`block-plot.schema.ts`), the analytics-only rollups in §4
+(`total_capacity_sqm`, `sqm_sold`), offer-size sqm
+(`size_sqm × configured_units`), and this section's `total_land_sqm` /
+product-pool sqm. None of Phase 1's work sums across them. A future pass may
+need to reconcile some of these — that reconciliation has not happened yet.

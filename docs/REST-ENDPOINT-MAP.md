@@ -124,6 +124,21 @@ Archive is the unpublish; there is no delete.
 | Publish / re-publish | `POST /admin/assets/:id/updates/:updateId/publish` | 🚧 provisional (mock-backed until the BE branch merges) |
 | Archive | `POST /admin/assets/:id/updates/:updateId/archive` | 🚧 provisional (mock-backed until the BE branch merges) |
 
+### Land configuration — the physical-land account (Phase 1)
+
+Not a GraphQL conversion, and not adapted from any BE endpoint that exists —
+`abode-be-v2` has no land-configuration module at all yet. See
+`docs/BACKEND-PHASE-1-ASSET-LAND-MODEL.md` for the target contract this mocks
+against. Reads/writes are versioned: `PUT` requires `expected_version` and
+409s `LAND_CONFIGURATION_VERSION_CONFLICT` on a stale save.
+
+| Operation | REST | Status |
+|---|---|---|
+| Read current land account | `GET /admin/assets/:assetId/land-configuration` | 🚧 provisional (mock-backed, no BE module exists) |
+| Save (complete replace, versioned) | `PUT /admin/assets/:assetId/land-configuration` | 🚧 provisional (mock-backed, no BE module exists) |
+| Configuration history | `GET /admin/assets/:assetId/land-configuration/history` | 🚧 provisional (mock-backed, no BE module exists) |
+| One revision | `GET /admin/assets/:assetId/land-configuration/history/:version` | 🚧 provisional (mock-backed, no BE module exists) |
+
 ## Roles & Permissions — `features/roles-permissions` (6 ops)
 
 | Operation | REST | Status |
