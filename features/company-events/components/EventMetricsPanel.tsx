@@ -378,6 +378,28 @@ export function EventMetricsPanel({
               </div>
             </div>
 
+            {/* And the same split one row down, for the people who have
+                actually replied. The bar above counts everyone invited; this
+                counts who has confirmed, which is the number the organiser is
+                chasing all week and previously had to reach by subtraction. */}
+            <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-slate-100 pt-3">
+              <span className="text-sm font-medium text-slate-700">
+                Registered {formatNumber(analytics.funnel.registered)}
+              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-slate-500">Getting land</span>
+                <Badge variant="secondary">
+                  {formatNumber(analytics.funnel.registered_allocated)}
+                </Badge>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-slate-500">Visitors</span>
+                <Badge variant="secondary">
+                  {formatNumber(analytics.funnel.registered_registrants)}
+                </Badge>
+              </div>
+            </div>
+
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3">
               <div className="flex items-center gap-2">
                 <span className="text-sm text-slate-500">No-show</span>

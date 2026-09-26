@@ -23,6 +23,7 @@ import {
   EventAllocatedTable,
   EventAllocationFilters,
   EventAllocationTable,
+  ConfirmationSheetPanel,
   EventMetricsPanel,
   EventRegistrationFilters,
   EventRegistrationsTable,
@@ -44,6 +45,22 @@ import {
   type EventEligibleClientRow,
   type RegistrationCategory,
 } from "@/features/company-events";
+
+/**
+ * How many rows the current filters match.
+ *
+ * Reads the same count the pagination uses. Rendered because the answer to
+ * "how many eligible people have registered" is a filter combination whose
+ * total was, until now, only visible by paging to the last page and counting.
+ */
+function RegistrationsTotal({ count, loading }: { count?: number; loading?: boolean }) {
+  if (loading || count === undefined) return null;
+  return (
+    <p className="text-sm text-muted-foreground">
+      {count.toLocaleString()} {count === 1 ? "person" : "people"} match these filters
+    </p>
+  );
+}
 
 function EventDetailContent() {
   const params = useParams<{ id: string }>();
@@ -538,7 +555,18 @@ function EventDetailContent() {
             onCategoryChange={(value) => updateParams({ reg_category: value === "all" ? null : value, reg_page: 1 })}
           />
 
-          <EventRegistrationsTable rows={registrationsData?.items} isLoading={registrationsLoading} />
+          {/* The filtered total, which the page fetched all along and spent
+              only on page numbers. With the type and status filters above, this
+              is how an admin reads "how many eligible people have registered"
+              straight off the screen instead of paging to the end to count. */}
+          <RegistrationsTotal count={registrationsData?.count} loading={registrationsLoading} />
+
+          <EventRegistrationsTable
+            rows={registrationsData?.items}
+            isLoading={registrationsLoading}
+            eventId={eventId}
+            pickupLocations={event.pickup_locations}
+          />
 
           <Pagination
             count={registrationsData?.count ?? 0}
@@ -556,6 +584,15 @@ function EventDetailContent() {
           </TabsList>
 
           <TabsContent value="allocation" className="space-y-6 pt-4">
+            {/* First on the allocation tab, because on the morning of the event
+                this is the only thing anybody opens this page for: take the
+                sheet out, bring it back in. */}
+            <ConfirmationSheetPanel
+              eventId={eventId}
+              eventTitle={event.title}
+              pickupLocations={event.pickup_locations}
+            />
+
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h2 className="text-lg font-semibold">Eligible clients</h2>
@@ -656,7 +693,14 @@ function EventDetailContent() {
               }
             />
 
-            <EventRegistrationsTable rows={registrationsData?.items} isLoading={registrationsLoading} />
+            <RegistrationsTotal count={registrationsData?.count} loading={registrationsLoading} />
+
+            <EventRegistrationsTable
+            rows={registrationsData?.items}
+            isLoading={registrationsLoading}
+            eventId={eventId}
+            pickupLocations={event.pickup_locations}
+          />
 
             <Pagination
               count={registrationsData?.count ?? 0}

@@ -19,6 +19,8 @@ const GET_COMPANY_EVENT_ANALYTICS_QUERY = parse(`
         allocated
         registrants
         registered
+        registered_allocated
+        registered_registrants
         checked_in
         confirmed
       }
@@ -63,6 +65,10 @@ interface RawEventAnalytics {
     /** And how many signed themselves up with no allocation. */
     registrants: number;
     registered: number;
+    /** Of the registered, those being given land. */
+    registered_allocated: number;
+    /** Of the registered, those who signed themselves up. */
+    registered_registrants: number;
     checked_in: number;
     confirmed: number;
   };
