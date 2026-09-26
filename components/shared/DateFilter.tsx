@@ -57,6 +57,8 @@ export function DateFilter() {
   const [selectedOption, setSelectedOption] = useState<DateOption>(initialOption);
   const [dateRange, setDateRange] = useState<DateRange>(initialRange);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  /** A first click with no second one yet — see the popover's onOpenChange. */
+  const [pendingSingleDay, setPendingSingleDay] = useState<Date | null>(null);
   const [isNarrowScreen, setIsNarrowScreen] = useState(false);
 
   useEffect(() => {
@@ -71,8 +73,13 @@ export function DateFilter() {
     const params = new URLSearchParams(searchParams.toString());
 
     if (from && to) {
-      params.set("start_date", from.toISOString().split("T")[0]);
-      params.set("end_date", to.toISOString().split("T")[0]);
+      // LOCAL calendar days, not UTC ones. The calendar hands back midnight in
+      // the reader's own timezone, and toISOString() then converts it — so in
+      // Lagos (UTC+1) picking the 20th wrote "2026-09-19", and every custom
+      // range came back shifted a day earlier at both ends. date-fns `format`
+      // reads the local fields, which is what the picker meant.
+      params.set("start_date", format(from, "yyyy-MM-dd"));
+      params.set("end_date", format(to, "yyyy-MM-dd"));
     } else {
       params.delete("start_date");
       params.delete("end_date");
@@ -132,7 +139,22 @@ export function DateFilter() {
       </Select>
 
       {selectedOption === "custom" && (
-        <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+        <Popover
+          open={isCalendarOpen}
+          onOpenChange={(open) => {
+            setIsCalendarOpen(open);
+            // Closing on a half-made range: take the one day they chose rather
+            // than discarding the interaction.
+            if (!open && pendingSingleDay) {
+              const day = pendingSingleDay;
+              setPendingSingleDay(null);
+              if (day.getTime() !== dateRange.from.getTime() || day.getTime() !== dateRange.to.getTime()) {
+                setDateRange({ from: day, to: day });
+                updateURL(day, day);
+              }
+            }
+          }}
+        >
           <PopoverTrigger asChild>
             <Button
               variant="outline"
@@ -159,6 +181,13 @@ export function DateFilter() {
                   updateURL(range.from, range.to);
                   setIsCalendarOpen(false);
                 }
+              }}
+              // A single day is a legitimate range and a common one — "what
+              // came in yesterday". Range mode leaves `to` unset after the
+              // first click, so without this the reader picks one day, closes
+              // the calendar and nothing happens at all.
+              onDayClick={(day) => {
+                setPendingSingleDay(day);
               }}
               numberOfMonths={isNarrowScreen ? 1 : 2}
             />
