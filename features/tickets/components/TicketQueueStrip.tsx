@@ -6,24 +6,31 @@ import {
   Clock,
   Hourglass,
   Inbox,
-  Link2,
   Loader2,
   UserRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useTicketQueueStats } from "../hooks/use-tickets";
+import {
+  useTicketQueueStats,
+  type TicketQueueStatsFilter,
+} from "../hooks/use-tickets";
 
 /**
- * The queue in seven numbers.
+ * The queue in seven numbers, describing whatever the list is narrowed to.
  *
  * Scoped by the BE to whatever the reader can actually open — their own work,
  * or the whole book if they hold the CS Manager role. A strip that counted
  * tickets the reader cannot reach would read as work they are failing to do
  * and cannot act on, which is worse than showing nothing.
  *
- * Only two of these change behaviour: `breaching` and `oldestOpenHours`. They
- * are the ones that go red. The rest are shape — they explain what the queue is
- * made of, so the two that matter can be read against something.
+ * Only two of these change behaviour: `awaitingReply` and `oldestAwaitingHours`.
+ * They are the ones that go red. The rest are shape — they explain what the
+ * queue is made of, so the two that matter can be read against something.
+ *
+ * Two tiles are gone on purpose. "Blocked on an issue" was a permanent zero
+ * because no ticket has ever been linked to one. "Waiting over 48h" counted 88%
+ * of the unresolved queue, so it was always lit; "awaiting our reply" is the
+ * same alarm asked usefully — whose turn it is, rather than how old the row is.
  */
 
 const formatAge = (hours?: number | null) => {
@@ -74,8 +81,8 @@ function Tile({ label, value, icon: Icon, alarming }: TileProps) {
   );
 }
 
-export function TicketQueueStrip() {
-  const { data, isLoading, isError } = useTicketQueueStats();
+export function TicketQueueStrip({ filter }: { filter?: TicketQueueStatsFilter }) {
+  const { data, isLoading, isError } = useTicketQueueStats(filter);
 
   if (isLoading) {
     return (
@@ -98,6 +105,7 @@ export function TicketQueueStrip() {
 
   return (
     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+      <Tile label="Matching" value={data.matching} icon={Inbox} />
       <Tile label="Open" value={data.open} icon={Inbox} />
       <Tile label="In progress" value={data.inProgress} icon={Hourglass} />
       <Tile
@@ -106,23 +114,19 @@ export function TicketQueueStrip() {
         icon={UserRound}
       />
       <Tile
-        label="Blocked on an issue"
-        value={data.blockedOnIssue}
-        icon={Link2}
-        alarming={data.blockedOnIssue > 0}
-      />
-      <Tile
-        label="Waiting over 48h"
-        value={data.breaching}
+        label="Awaiting our reply"
+        value={data.awaitingReply}
         icon={AlertTriangle}
-        alarming={data.breaching > 0}
+        alarming={data.awaitingReply > 0}
       />
       <Tile
-        label="Oldest still open"
-        value={formatAge(data.oldestOpenHours)}
+        label="Longest unanswered"
+        value={formatAge(data.oldestAwaitingHours)}
         icon={Clock}
-        alarming={(data.oldestOpenHours ?? 0) > 48}
+        alarming={(data.oldestAwaitingHours ?? 0) > 24}
       />
+      {/* Throughput, and the only tile that looks backwards: what the same
+          filtered set has actually cleared. */}
       <Tile
         label="Resolved this week"
         value={data.resolvedLast7Days}

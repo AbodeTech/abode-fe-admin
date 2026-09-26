@@ -59,9 +59,17 @@ export const FILTER_LABELS: Record<TicketFilter, string> = {
   resolved: "Resolved",
 };
 
+/**
+ * Newest first leads, because it is the default.
+ *
+ * An inbox is opened to see what has just come in; oldest-first is the right
+ * order for WORKING a queue and the wrong one for reading it, and "who has
+ * waited longest" is now the queue tiles rather than the row order. A list
+ * whose first entry is not the default reads as though it were one.
+ */
 export const SORT_OPTIONS: { value: TicketSort; label: string }[] = [
-  { value: TicketSort.OldestFirst, label: "Oldest first" },
   { value: TicketSort.NewestFirst, label: "Newest first" },
+  { value: TicketSort.OldestFirst, label: "Oldest first" },
   { value: TicketSort.RecentlyUpdated, label: "Recently updated" },
 ];
 

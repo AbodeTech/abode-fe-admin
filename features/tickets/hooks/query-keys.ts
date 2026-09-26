@@ -12,7 +12,10 @@ export const ticketKeys = {
     [...ticketKeys.root(), "issue-suggestions", ticketId] as const,
   similar: (search: string) =>
     [...ticketKeys.root(), "similar", search] as const,
-  queueStats: () => [...ticketKeys.root(), "queue-stats"] as const,
+  // Keyed by the filter: the tiles describe whatever the list is narrowed to,
+  // so two narrowings are two different results and must not share a cache entry.
+  queueStats: (filter?: Record<string, unknown> | object) =>
+    [...ticketKeys.root(), "queue-stats", filter ?? null] as const,
 };
 
 export const issueKeys = {

@@ -52,9 +52,17 @@ import type {
   PlanRow,
 } from "@/lib/gql/graphql";
 import {
+  LAND_CHOICE_REASONS,
   onboardingCallSchema,
   type OnboardingCallFormValues,
 } from "../../schemas/onboarding-call.schema";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   useCustomerOnboardingAttempts,
   useLogOnboardingCall,
@@ -455,18 +463,33 @@ export function PlanDetailDrawer({ plan, open, onOpenChange }: Props) {
                         )}
                       </FormLabel>
                       <FormControl>
-                        <Textarea
-                          {...field}
-                          rows={3}
-                          className="text-xs"
-                          placeholder="The intel this call exists to gather — proximity, price, referral, resale plans…"
-                        />
+                        {/* A list, not a box. The free-text version produced 162
+                            spellings of eight ideas across 556 answers — and a
+                            run of call outcomes ("didn't pick", "call dropped")
+                            typed in here, because nothing else on the form took
+                            them. Neither can be counted, which is the point of
+                            asking. */}
+                        <Select
+                          value={field.value ?? ""}
+                          onValueChange={field.onChange}
+                        >
+                          <SelectTrigger className="w-full text-xs">
+                            <SelectValue placeholder="Pick the main reason" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {LAND_CHOICE_REASONS.map((r) => (
+                              <SelectItem key={r.value} value={r.value} className="text-xs">
+                                {r.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </FormControl>
-                      {outcome !== "done" && (
-                        <FormDescription className="text-[11px]">
-                          Optional unless you mark the call done.
-                        </FormDescription>
-                      )}
+                      <FormDescription className="text-[11px]">
+                        {outcome === "done"
+                          ? "Anything that does not fit: pick Other and write it in the notes."
+                          : "Optional unless you mark the call done."}
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
