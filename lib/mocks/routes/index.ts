@@ -135,6 +135,11 @@ import { courseRoutes } from './courses';
  *               provisional — abode-be-v2 has no courses model yet. Covers
  *               design screens 1–2 (list, overview) only; modules/quiz/
  *               learners (screens 3, 5, 6, 7) are unbuilt.
+ * field-staff — unclaimed. /admin/field-staff/*, /admin/field-scorecards/*,
+ *               /admin/field-submissions/*, /admin/field-performance/* and
+ *               /admin/assets/:id/site-setup are integrated against the real
+ *               BE (abode-be-v2 phase-1) and have no mocks yet, so the Field
+ *               Performance pages 404 in mock mode.
  * ============================================================ */
 
 let registered = false;

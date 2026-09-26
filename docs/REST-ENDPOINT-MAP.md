@@ -276,6 +276,40 @@ and grading, enrolment/credential tracking (`enrolment`, `module_completion`,
 `quiz_attempt`, `credential` in the data contract). These map to screens 3–7
 of the design and are unbuilt.
 
+## Field staff (Site Managers & Surveyors) — `features/field-staff` — ✅ **integrated** (2026-09-24)
+
+Admin side of abode-be-v2 Phase 1 field operations. The field app
+(`/field/*`, its own login and token) is a separate application. Schemas mirror
+the BE presenters (`field-staff.presenter.ts`, `scorecard.presenter.ts`,
+`submission.presenter.ts`, `field-performance.service.ts`). **No mocks** — the
+pages 404 in mock mode. Admin guide: `docs/docs/PHASE-1-ADMIN-GUIDE.md`.
+
+| Operation | REST | Status | Notes |
+|---|---|---|---|
+| List staff | `GET /admin/field-staff` | ✅ | `?staff_type&status&search&page&limit` (limit ≤ 100) |
+| Invite | `POST /admin/field-staff/invite` | ✅ | `{ first_name, last_name, email, staff_type, phone_number?, employee_reference? }` — emails a 72h activation link |
+| Resend invite | `POST /admin/field-staff/:id/resend-invite` | ✅ | Invited accounts only |
+| Staff detail | `GET /admin/field-staff/:id` | ✅ | `{ field_staff, assignments[] }` (ended included) |
+| Disable / enable | `PATCH /admin/field-staff/:id/disable` · `/enable` | ✅ | Disable `{ reason }`, signs out everywhere |
+| Assignments | `GET /admin/field-staff/:id/assignments?include_ended=true` | ✅ | |
+| Assign | `POST /admin/field-staff/:id/assignments` | ✅ | `{ asset_id, responsibility?: primary\|support\|relief, starts_on?, note? }`. One open per estate |
+| End assignment | `PATCH …/assignments/:assignmentId/end` | ✅ | `{ ends_on?, reason }`. Can't be changed once ended |
+| Metrics | `GET /admin/field-scorecards/metrics` | ✅ | Builds the target picker |
+| Scorecards | `GET /admin/field-scorecards` | ✅ | Paged. `?field_staff_id&asset_id&year&month&state&current_only` |
+| Create / edit | `POST /admin/field-scorecards`, `PATCH /:id` | ✅ | Targets `{ metric_key, target, weight, note? }` — never `unit`. PATCH on draft/restated only |
+| Lifecycle | `POST /:id/publish\|revise\|finalise\|restate` | ✅ | Revise `{ reason }` returns a new **draft** that is current at once; the dialog then PATCHes and publishes it |
+| Review queue | `GET /admin/field-submissions?status=submitted` | ✅ | No staff_type filter on the BE — the queue filters by `metric_key` |
+| Submission detail | `GET /admin/field-submissions/:id` | ✅ | `{ submission, plots, warnings, effects }` |
+| Verify | `POST /:id/verify` | ✅ | `{ revision, acknowledgement?, accept_proposed_boundary?, note? }`. Already-verified returns the bare submission |
+| Reject / reverse | `POST /:id/reject` · `/reverse` | ✅ | `{ reason }` |
+| Summary | `GET /admin/field-performance/summary` | ✅ | **Active workers only** — the roster joins it onto the staff list |
+| Person's month | `GET /admin/field-performance/staff/:staffId` | ✅ | Drafts excluded; draft sites land in `sites_without_targets`. `weekly` is ISO weeks, verified only, per metric across all the person's sites |
+| Site setup | `GET /admin/assets/:assetId/site-setup` | ✅ | Estate fencing by side on the site page |
+
+Not yet used: `correct`, `link-plots`, `metrics/:metricKey`, `trend`,
+`blockers`, `source-records`, `assets/:assetId` performance, plots, field
+history and costs, boundary PUT, allocation-event ownership.
+
 ## Dashboard / Analytics / Sales / Campaigns / Allocation — 🚧 **entirely provisional**
 
 | Feature | Ops | Proposed base path |

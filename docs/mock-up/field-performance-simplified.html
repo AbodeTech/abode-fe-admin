@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Field Performance — simplified (mockup)</title>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+/* ============================================================
+ * Mockup: a simplified Field Performance page — one page, a person
+ * picker + month filter in the header, a snapshot card with an
+ * "Active target" pill and KPI tiles, then short sections.
+ * Replaces the roster → person → site click-through.
+ * Colours are the dashboard's own (#00695C / #E0F2F1 / #AD1F2A).
+ * ============================================================ */
+#fp{--ink:#111827;--muted:#6b7280;--line:#e5e7eb;--soft:#f3f4f6;--bg:#fafafa;--teal:#00695C;--tealbg:#E0F2F1;--red:#AD1F2A;--redbg:#fef2f2;--amber:#b45309;--amberbg:#fffbeb;
+  font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--bg);min-height:100vh}
+#fp *{box-sizing:border-box}
+/* Font only — colour is set per component so it can't override a button's own text colour. */
+#fp :is(button,select,input,textarea){font:inherit}
+body{margin:0}
+#fp .shell{display:grid;grid-template-columns:240px minmax(0,1fr);min-height:100vh}
+#fp .rail{background:#f5f5f5;padding:24px 12px}
+#fp .brand{font-weight:700;padding:0 12px 28px;font-size:18px}
+#fp .nav{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;color:var(--muted);font-size:14px}
+#fp .nav svg{width:18px;height:18px}
+#fp .sub{margin-left:18px;padding-left:10px;border-left:1px solid var(--line)}
+#fp .nav.active{background:var(--tealbg);color:var(--teal);font-weight:600}
+#fp .top{height:72px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 28px;font-size:22px;font-weight:700}
+#fp .page{max-width:1400px;margin:0 auto;padding:24px 28px 64px;display:grid;gap:24px}
+
+/* header */
+#fp .head{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:16px}
+#fp .head h1{font-size:24px;letter-spacing:-.02em;margin:0 0 4px}
+#fp .head p{margin:0;color:var(--muted)}
+#fp .controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+#fp .select{appearance:none;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E") no-repeat right 10px center;border:1px solid var(--line);border-radius:8px;padding:8px 34px 8px 12px;font-size:14px;min-width:150px;color:var(--ink)}
+#fp .seg{display:inline-flex;background:var(--soft);border-radius:8px;padding:3px}
+#fp .seg button{border:0;background:transparent;border-radius:6px;padding:6px 12px;font-size:13px;color:var(--muted);cursor:pointer}
+#fp .seg button.on{background:#fff;color:var(--ink);font-weight:600;box-shadow:0 1px 2px rgb(0 0 0/.08)}
+#fp .pill-btn{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:500;border:1px solid;cursor:pointer}
+#fp .pill-btn.amber{background:var(--amberbg);color:#92400e;border-color:#fde68a}
+#fp .pill-btn svg{width:14px;height:14px}
+#fp .btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:8px;padding:8px 12px;font-size:13px;cursor:pointer;white-space:nowrap}
+#fp .btn svg{width:15px;height:15px}
+#fp .btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+#fp .btn.sm{padding:6px 10px;font-size:12px}
+
+/* snapshot */
+#fp .card{background:#fff;border:1px solid var(--line);border-radius:12px}
+#fp .snap{padding:20px;display:grid;gap:20px}
+#fp .who{display:flex;align-items:center;gap:12px}
+#fp .avatar{width:40px;height:40px;border-radius:50%;background:var(--tealbg);color:var(--teal);display:grid;place-items:center;font-weight:600;font-size:14px;flex-shrink:0}
+#fp .who b{display:block;font-size:14px}
+#fp .who small{color:var(--muted);font-size:12px}
+#fp .row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+#fp .active-pill{display:inline-flex;align-items:center;gap:8px;border-radius:999px;background:var(--tealbg);color:var(--teal);padding:6px 12px;font-size:12px;font-weight:500}
+#fp .active-pill svg{width:14px;height:14px}
+#fp .warn-banner{flex:1;display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid #fde68a;background:var(--amberbg);border-radius:8px;padding:8px 12px;font-size:14px;color:#92400e}
+#fp .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+#fp .tile{border:1px solid var(--line);border-radius:12px;padding:20px;background:#fff}
+#fp .tile .ic{display:inline-grid;place-items:center;padding:10px;border-radius:10px;margin-bottom:12px}
+#fp .tile .ic svg{width:20px;height:20px}
+#fp .tile .label{font-size:14px;color:#4b5563;margin:0 0 8px}
+#fp .tile .val{display:flex;align-items:baseline;gap:6px;margin-bottom:12px}
+#fp .tile .val b{font-size:24px}
+#fp .tile .val span{font-size:14px;color:#9ca3af}
+#fp .bar{height:6px;border-radius:999px;background:var(--soft);overflow:hidden;margin-bottom:8px}
+#fp .bar i{display:block;height:100%}
+#fp .tone{display:flex;align-items:center;justify-content:space-between}
+#fp .tone .t{border-radius:999px;padding:2px 8px;font-size:12px;font-weight:500}
+#fp .tone small{font-size:12px;color:var(--muted);font-weight:500}
+#fp .hint{font-size:12px;color:var(--muted);margin:8px 0 0}
+
+/* sections */
+#fp section h2{font-size:16px;margin:0 0 12px}
+#fp .grid2{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:24px}
+#fp table{width:100%;border-collapse:collapse;font-size:14px}
+#fp th{text-align:left;font-size:12px;font-weight:500;color:var(--muted);padding:10px 16px;border-bottom:1px solid var(--line)}
+#fp td{padding:12px 16px;border-bottom:1px solid var(--line);vertical-align:middle}
+#fp tbody tr:last-child td{border-bottom:0}
+#fp tbody tr.link{cursor:pointer}#fp tbody tr.link:hover{background:#f9fafb}
+#fp .r{text-align:right}#fp .c{text-align:center}
+#fp .num{font-variant-numeric:tabular-nums}
+#fp .mini{width:90px;height:4px;border-radius:999px;background:var(--soft);overflow:hidden;margin-top:4px;margin-left:auto}
+#fp .mini i{display:block;height:100%;background:#374151}
+#fp .chip{display:inline-flex;border-radius:999px;padding:2px 8px;font-size:12px;font-weight:500;white-space:nowrap}
+#fp .chip.ok{background:var(--tealbg);color:var(--teal)}
+#fp .chip.amber{background:var(--amberbg);color:var(--amber)}
+#fp .chip.red{background:var(--redbg);color:var(--red)}
+#fp .chip.blue{background:#eff6ff;color:#1d4ed8}
+#fp .list{list-style:none;margin:0;padding:0}
+#fp .list li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line)}
+#fp .list li:last-child{border-bottom:0}
+#fp .list b{display:block;font-size:14px;font-weight:500}
+#fp .list small{color:var(--muted);font-size:12px}
+#fp .muted{color:var(--muted)}
+#fp .empty{padding:28px;text-align:center;color:var(--muted);font-size:14px}
+
+/* modals */
+#fp .overlay{position:fixed;inset:0;background:rgb(0 0 0/.4);display:none;align-items:center;justify-content:center;padding:16px;z-index:10}
+#fp .overlay.open{display:flex}
+#fp .modal{background:#fff;border-radius:12px;width:min(560px,100%);max-height:90vh;overflow:auto}
+#fp .modal header{padding:18px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px}
+#fp .modal header h3{margin:0;font-size:17px}
+#fp .modal header p{margin:4px 0 0;color:var(--muted);font-size:13px}
+#fp .modal .body{padding:18px 20px;display:grid;gap:14px}
+#fp .modal footer{padding:14px 20px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px;background:#fafafa}
+#fp .facts{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+#fp .facts div{background:#fff;padding:10px 12px}
+#fp .facts span{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+#fp .facts b{font-size:14px;font-weight:500}
+#fp .photos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+#fp .photo{aspect-ratio:4/3;background:var(--soft);border-radius:8px;display:grid;place-items:center;color:var(--muted);font-size:11px}
+#fp textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:10px;font-size:14px;resize:vertical}
+#fp .target-row{display:grid;grid-template-columns:1fr 130px 90px;gap:8px;align-items:center;font-size:14px}
+#fp .target-row input{border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%}
+#fp .tnote{font-size:12px;color:var(--muted)}
+
+@media(max-width:1000px){#fp .shell{grid-template-columns:1fr}#fp .rail{display:none}#fp .grid2{grid-template-columns:1fr}}
+@media(max-width:640px){#fp .page{padding:16px 12px 48px}#fp .hide-sm{display:none}}
+</style>
+</head>
+<body>
+<div id="fp">
+<div class="shell">
+  <aside class="rail">
+    <div class="brand">abode</div>
+    <div class="nav"><i data-lucide="layout-dashboard"></i>Dashboard</div>
+    <div class="nav"><i data-lucide="circle-dollar-sign"></i>Assets</div>
+    <div class="nav"><i data-lucide="hard-hat"></i>Field Operations</div>
+    <div class="sub">
+      <div class="nav active"><i data-lucide="gauge"></i>Performance</div>
+      <div class="nav"><i data-lucide="clipboard-check"></i>Review Queue</div>
+    </div>
+    <div class="nav"><i data-lucide="users"></i>Users</div>
+  </aside>
+
+  <main>
+    <div class="top">Hello, Root 👋</div>
+    <div class="page">
+      <div class="head">
+        <div>
+          <h1>Field Performance</h1>
+          <p id="subtitle">Monthly targets and verified field work, per person.</p>
+        </div>
+        <div class="controls">
+          <div class="seg" role="group" aria-label="Role">
+            <button class="on" data-role="site_manager">Site Managers</button>
+            <button data-role="surveyor">Surveyors</button>
+          </div>
+          <select class="select" id="person" aria-label="Person"></select>
+          <select class="select" id="site" aria-label="Site"></select>
+          <select class="select" aria-label="Month"><option>September 2026</option><option>August 2026</option><option>October 2026 · next</option></select>
+          <button class="pill-btn amber" id="queuePill"><i data-lucide="inbox"></i><span></span></button>
+          <button class="btn primary" id="inviteBtn"><i data-lucide="user-plus"></i><span>Invite</span></button>
+        </div>
+      </div>
+
+      <div class="card snap" id="snapshot"></div>
+      <div id="body"></div>
+    </div>
+  </main>
+</div>
+
+<div class="overlay" id="reviewModal">
+  <div class="modal">
+    <header><div><h3 id="rvTitle"></h3><p id="rvSub"></p></div><button class="btn sm" data-close>Close</button></header>
+    <div class="body">
+      <div class="photos"><div class="photo">Start point</div><div class="photo">End point</div><div class="photo">Receipt</div></div>
+      <div class="facts" id="rvFacts"></div>
+      <div><p class="tnote" style="margin:0 0 6px">Reason (needed to reject)</p><textarea rows="2" placeholder="What the worker needs to fix"></textarea></div>
+    </div>
+    <footer><button class="btn" data-close>Reject</button><button class="btn primary" data-close>Verify</button></footer>
+  </div>
+</div>
+
+<div class="overlay" id="targetModal">
+  <div class="modal">
+    <header><div><h3>Manage September 2026 targets</h3><p id="tgSub"></p></div><button class="btn sm" data-close>Close</button></header>
+    <div class="body" id="tgBody"></div>
+    <footer><span class="tnote" style="margin-right:auto;align-self:center" id="tgTotal"></span><button class="btn" data-close>Save draft</button><button class="btn primary" data-close>Publish</button></footer>
+  </div>
+</div>
+</div>
+
+<script>
+/* ---------------- sample data ---------------- */
+const METRIC = {
+  fence:   { label: 'New fencing', unit: 'm', icon: 'fence', color: '#00695C', bg: '#E0F2F1' },
+  alloc:   { label: 'Customers allocated', unit: 'customers', icon: 'user-check', color: '#2563eb', bg: '#eff6ff' },
+  parcel:  { label: 'Plots parcelled', unit: 'plots', icon: 'grid-3x3', color: '#00695C', bg: '#E0F2F1' },
+  clear:   { label: 'Land cleared', unit: 'sqm', icon: 'shovel', color: '#b45309', bg: '#fffbeb' },
+  boundary:{ label: 'Boundary established', unit: 'm', icon: 'ruler', color: '#7c3aed', bg: '#f5f3ff' },
+};
+
+// targets: metric → [verified, target, weight]
+const PEOPLE = {
+  site_manager: [
+    { id: 'ada', name: 'Ada Nwosu', status: 'active', sites: [
+      { name: 'Aviation City', role: 'Primary', targets: { fence: [168, 200, 60], alloc: [31, 40, 40] }, pending: 2 },
+      { name: 'Harmony Gardens', role: 'Support', targets: { fence: [60, 120, 100] }, pending: 1 },
+    ]},
+    { id: 'tunde', name: 'Tunde Ojo', status: 'active', sites: [
+      { name: 'Cornerstone Estate', role: 'Primary', targets: { fence: [150, 150, 70], alloc: [18, 20, 30] }, pending: 0 },
+    ]},
+    { id: 'kemi', name: 'Kemi Lawal', status: 'invited', sites: [] },
+  ],
+  surveyor: [
+    { id: 'chinedu', name: 'Chinedu Okafor', status: 'active', sites: [
+      { name: 'Aviation City', role: 'Primary', targets: { parcel: [54, 80, 40], clear: [15400, 20000, 35], boundary: [480, 600, 25] }, pending: 4 },
+      { name: 'Emerald Parks', role: 'Relief', targets: null, pending: 0 },
+    ]},
+    { id: 'bisi', name: 'Bisi Adeyemi', status: 'active', sites: [
+      { name: 'Cornerstone Estate', role: 'Primary', targets: { boundary: [380, 400, 50], clear: [9000, 10000, 50] }, pending: 1 },
+    ]},
+  ],
+};
+
+const REVIEWS = {
+  ada: [
+    { what: '28 m new fencing on the right side', site: 'Aviation City', when: 'Today', spent: '₦840,000' },
+    { what: '14 m new fencing on the back side', site: 'Aviation City', when: '3 days ago', spent: '₦420,000' },
+    { what: '20 m new fencing on the left side', site: 'Harmony Gardens', when: 'Yesterday', spent: '₦600,000' },
+  ],
+  chinedu: [
+    { what: '5 plots pegged out', site: 'Aviation City', when: 'Today', spent: '₦410,000' },
+    { what: '2,800 sqm cleared (mapped)', site: 'Aviation City', when: 'Yesterday', spent: '₦620,000' },
+    { what: '1,900 sqm cleared (unmapped)', site: 'Aviation City', when: '3 days ago', spent: '₦420,000' },
+    { what: '3 plots pegged out', site: 'Aviation City', when: '2 days ago', spent: '₦246,000' },
+  ],
+  bisi: [{ what: '60m of boundary established', site: 'Cornerstone Estate', when: 'Today', spent: '—' }],
+};
+
+const RECENT = {
+  ada: [['12 m new fencing on the left side', 'Aviation City', '22 Sep', 'Verified'], ['10 m repaired the left side', 'Aviation City', '16 Sep', 'Verified'], ['15 m new fencing on the front side', 'Aviation City', '6 Sep', 'Rejected']],
+  tunde: [['32 m new fencing on the back side', 'Cornerstone Estate', '17 Sep', 'Verified'], ['45 m new fencing on the right side', 'Cornerstone Estate', '11 Sep', 'Verified']],
+  chinedu: [['16 plots pegged out', 'Aviation City', '18 Sep', 'Verified'], ['130m of boundary established', 'Aviation City', '19 Sep', 'Verified'], ['2,700 sqm cleared (unmapped)', 'Aviation City', '20 Sep', 'Verified']],
+  bisi: [['180m of boundary established', 'Cornerstone Estate', '16 Sep', 'Verified']],
+};
+
+/* ---------------- scoring ---------------- */
+const pct = (a, t) => (t > 0 ? (a / t) * 100 : 0);
+const siteScore = (s) => s.targets ? Object.values(s.targets).reduce((sum, [a, t, w]) => sum + Math.min(pct(a, t), 100) * w / 100, 0) : null;
+const personScore = (p) => {
+  const scored = p.sites.map(siteScore).filter((x) => x !== null);
+  return scored.length ? scored.reduce((a, b) => a + b, 0) / scored.length : null;
+};
+const toneFor = (p) => p >= 100 ? ['Exceeded', '#00695C', '#fff', '#00695C']
+  : p >= 85 ? ['On track', '#E0F2F1', '#00695C', '#00695C']
+  : p >= 50 ? ['Approaching', '#fffbeb', '#b45309', '#f59e0b']
+  : ['Below target', '#fef2f2', '#AD1F2A', '#AD1F2A'];
+const fmt = (n) => n.toLocaleString('en-NG');
+const initials = (name) => name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
+
+/* ---------------- state ---------------- */
+let role = 'site_manager';
+let personId = 'all';
+let siteName = 'all';
+
+const $ = (sel) => document.querySelector(sel);
+const people = () => PEOPLE[role];
+const person = () => people().find((p) => p.id === personId);
+
+function fillSelects() {
+  const roleLabel = role === 'site_manager' ? 'site managers' : 'surveyors';
+  $('#person').innerHTML = `<option value="all">All ${roleLabel} (combined)</option>` +
+    people().map((p) => `<option value="${p.id}" ${p.id === personId ? 'selected' : ''}>${p.name}${p.status === 'invited' ? ' · invited' : ''}</option>`).join('');
+  const p = person();
+  $('#site').style.display = p && p.sites.length > 1 ? '' : 'none';
+  if (p) $('#site').innerHTML = `<option value="all">All ${p.sites.length} sites</option>` + p.sites.map((s) => `<option ${s.name === siteName ? 'selected' : ''}>${s.name}</option>`).join('');
+  const waiting = (personId === 'all' ? people() : [p]).reduce((n, x) => n + x.sites.reduce((m, s) => m + s.pending, 0), 0);
+  $('#queuePill').style.display = waiting ? '' : 'none';
+  $('#queuePill span').textContent = `${waiting} to review`;
+  $('#inviteBtn span').textContent = role === 'site_manager' ? 'Invite Site Manager' : 'Invite Surveyor';
+}
+
+/* One KPI tile per target. */
+function tile(key, actual, target, weight) {
+  const m = METRIC[key];
+  const p = pct(actual, target);
+  const [label, pillBg, pillText, bar] = toneFor(p);
+  return `<div class="tile">
+    <span class="ic" style="background:${m.bg};color:${m.color}"><i data-lucide="${m.icon}"></i></span>
+    <p class="label">${m.label}</p>
+    <div class="val"><b class="num">${fmt(actual)}</b><span class="num">/ ${fmt(target)} ${m.unit}</span></div>
+    <div class="bar"><i style="width:${Math.min(p, 100)}%;background:${bar}"></i></div>
+    <div class="tone"><span class="t" style="background:${pillBg};color:${pillText}">${label}</span><small class="num">${Math.round(p)}%</small></div>
+    <p class="hint">${weight}% of the score</p>
+  </div>`;
+}
+
+function scoreTile(score, sub) {
+  const [label, pillBg, pillText, bar] = toneFor(score ?? 0);
+  return `<div class="tile">
+    <span class="ic" style="background:#fffbeb;color:#b45309"><i data-lucide="star"></i></span>
+    <p class="label">Performance score</p>
+    ${score === null ? '<div class="val"><b style="color:#d1d5db">—</b></div><p class="hint">No published targets</p>' : `
+    <div class="val"><b class="num">${score.toFixed(1)}</b><span>/ 100</span></div>
+    <div class="bar"><i style="width:${Math.min(score, 100)}%;background:${bar}"></i></div>
+    <div class="tone"><span class="t" style="background:${pillBg};color:${pillText}">${label}</span><small>${sub}</small></div>`}
+  </div>`;
+}
+
+function renderSnapshot() {
+  const p = person();
+  const el = $('#snapshot');
+
+  if (!p) {
+    const scores = people().map(personScore).filter((x) => x !== null);
+    const avg = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : null;
+    const sites = people().reduce((n, x) => n + x.sites.length, 0);
+    const noTargets = people().reduce((n, x) => n + x.sites.filter((s) => !s.targets).length, 0);
+    const waiting = people().reduce((n, x) => n + x.sites.reduce((m, s) => m + s.pending, 0), 0);
+    el.innerHTML = `
+      <div class="row"><span class="active-pill"><i data-lucide="target"></i>September 2026 · 6 days remaining</span></div>
+      <div class="tiles">
+        ${scoreTile(avg, `${scores.length} with targets`)}
+        <div class="tile"><span class="ic" style="background:#E0F2F1;color:#00695C"><i data-lucide="users"></i></span><p class="label">People</p><div class="val"><b>${people().length}</b></div><p class="hint">${people().filter((x) => x.status === 'invited').length} still to activate</p></div>
+        <div class="tile"><span class="ic" style="background:#eff6ff;color:#2563eb"><i data-lucide="map-pin"></i></span><p class="label">Sites covered</p><div class="val"><b>${sites}</b></div><p class="hint" style="color:${noTargets ? '#AD1F2A' : ''}">${noTargets ? `${noTargets} without targets` : 'All have targets'}</p></div>
+        <div class="tile"><span class="ic" style="background:#fffbeb;color:#b45309"><i data-lucide="inbox"></i></span><p class="label">Awaiting review</p><div class="val"><b>${waiting}</b></div><p class="hint">Work sent in, not yet verified</p></div>
+      </div>`;
+    return;
+  }
+
+  const sites = siteName === 'all' ? p.sites : p.sites.filter((s) => s.name === siteName);
+  const withTargets = sites.filter((s) => s.targets);
+
+  // A person can do the same work on two sites — merge each metric across the sites shown.
+  const merged = {};
+  withTargets.forEach((s) => Object.entries(s.targets).forEach(([k, [a, t, w]]) => {
+    merged[k] ??= [0, 0, []];
+    merged[k][0] += a; merged[k][1] += t; merged[k][2].push(w);
+  }));
+  const scores = sites.map(siteScore).filter((x) => x !== null);
+  const score = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : null;
+  const missing = sites.filter((s) => !s.targets);
+
+  el.innerHTML = `
+    <div class="row">
+      <div class="who">
+        <span class="avatar">${initials(p.name)}</span>
+        <div><b>${p.name} ${p.status === 'invited' ? '<span class="chip blue">Invited</span>' : ''}</b>
+        <small>${p.sites.length ? `${p.sites.length} site${p.sites.length === 1 ? '' : 's'} · ${p.sites.map((s) => s.role).join(' / ')}` : 'No sites assigned'}</small></div>
+      </div>
+      <div class="controls">
+        <button class="btn sm" id="assignBtn"><i data-lucide="plus"></i>Assign site</button>
+        ${withTargets.length ? '<button class="btn sm" id="targetsBtn"><i data-lucide="target"></i>Manage targets</button>' : ''}
+      </div>
+    </div>
+    ${!p.sites.length ? `<div class="warn-banner"><span>Not assigned to a site yet. Assigning a site asks for its targets too.</span><button class="btn sm">Assign site →</button></div>`
+      : missing.length ? `<div class="warn-banner"><span>${missing.map((s) => s.name).join(', ')} ${missing.length === 1 ? 'has' : 'have'} no targets this month.</span><button class="btn sm" id="setTargets">Set targets →</button></div>`
+      : `<div><span class="active-pill"><i data-lucide="target"></i>Active target: September 2026 · 6 days remaining</span></div>`}
+    ${withTargets.length ? `<div class="tiles">
+      ${scoreTile(score, siteName === 'all' && scores.length > 1 ? `avg of ${scores.length} sites` : 'this site')}
+      ${Object.entries(merged).map(([k, [a, t, ws]]) => tile(k, a, t, ws.join(' / '))).join('')}
+    </div>` : ''}`;
+
+  $('#assignBtn')?.addEventListener('click', () => alert('Opens the two-step Assign site dialog (site, then targets).'));
+  $('#targetsBtn')?.addEventListener('click', openTargets);
+  $('#setTargets')?.addEventListener('click', openTargets);
+}
+
+function statusChip(s) {
+  return s === 'Verified' ? '<span class="chip ok">Verified</span>' : s === 'Rejected' ? '<span class="chip red">Rejected</span>' : '<span class="chip amber">Awaiting review</span>';
+}
+
+function renderBody() {
+  const el = $('#body');
+  const p = person();
+
+  if (!p) {
+    el.innerHTML = `<section><h2>Team</h2><div class="card"><table>
+      <thead><tr><th>Person</th><th class="c">Sites</th><th class="r">Score</th><th class="c hide-sm">Targets met</th><th class="c">To review</th><th></th></tr></thead>
+      <tbody>${people().map((x) => {
+        const sc = personScore(x);
+        const metrics = x.sites.flatMap((s) => s.targets ? Object.values(s.targets) : []);
+        const met = metrics.filter(([a, t]) => a >= t).length;
+        const pend = x.sites.reduce((n, s) => n + s.pending, 0);
+        return `<tr class="link" data-open="${x.id}">
+          <td><div class="who"><span class="avatar" style="width:32px;height:32px;font-size:12px">${initials(x.name)}</span><div><b>${x.name}</b><small>${x.status === 'invited' ? 'Invited · not activated' : 'Active'}</small></div></div></td>
+          <td class="c num">${x.sites.length || '—'}</td>
+          <td class="r num">${sc === null ? '<span class="muted">—</span>' : `${sc.toFixed(1)}%<div class="mini"><i style="width:${Math.min(sc, 100)}%"></i></div>`}</td>
+          <td class="c num hide-sm">${metrics.length ? `${met} / ${metrics.length}` : '—'}</td>
+          <td class="c">${pend ? `<span class="chip amber">${pend}</span>` : '<span class="muted">—</span>'}</td>
+          <td class="r"><button class="btn sm">View</button></td></tr>`;
+      }).join('')}</tbody></table></div></section>`;
+    el.querySelectorAll('[data-open]').forEach((row) => row.addEventListener('click', () => { personId = row.dataset.open; siteName = 'all'; render(); }));
+    return;
+  }
+
+  const sites = siteName === 'all' ? p.sites : p.sites.filter((s) => s.name === siteName);
+  const reviews = (REVIEWS[p.id] ?? []).filter((r) => siteName === 'all' || r.site === siteName);
+  const recent = (RECENT[p.id] ?? []).filter((r) => siteName === 'all' || r[1] === siteName);
+
+  el.innerHTML = `<div class="grid2">
+    <section><h2>Needs review</h2><div class="card">${reviews.length ? `<ul class="list">${reviews.map((r, i) => `
+      <li><div><b>${r.what}</b><small>${r.site} · ${r.when} · ${r.spent}</small></div><button class="btn sm" data-review="${i}">Review</button></li>`).join('')}</ul>`
+      : '<div class="empty">Nothing waiting. New work shows up here as soon as it\'s sent.</div>'}</div></section>
+
+    <section><h2>Sites</h2><div class="card">${p.sites.length ? `<table>
+      <thead><tr><th>Site</th><th class="r">Score</th><th class="c">Targets</th></tr></thead>
+      <tbody>${sites.map((s) => {
+        const sc = siteScore(s);
+        return `<tr class="link" data-site="${s.name}"><td><b style="font-weight:500">${s.name}</b><br><small class="muted">${s.role}</small></td>
+          <td class="r num">${sc === null ? '<span class="muted">—</span>' : `${sc.toFixed(1)}%`}</td>
+          <td class="c">${s.targets ? '<span class="chip ok">Published</span>' : '<span class="chip red">None</span>'}</td></tr>`;
+      }).join('')}</tbody></table>` : '<div class="empty">No sites assigned.</div>'}</div></section>
+  </div>
+
+  <section><h2>Recent work</h2><div class="card">${recent.length ? `<table>
+    <thead><tr><th>Work</th><th class="hide-sm">Site</th><th>Date</th><th class="r">Status</th></tr></thead>
+    <tbody>${recent.map(([w, s, d, st]) => `<tr><td>${w}</td><td class="hide-sm muted">${s}</td><td class="muted">${d}</td><td class="r">${statusChip(st)}</td></tr>`).join('')}</tbody></table>`
+    : '<div class="empty">Nothing recorded this month.</div>'}</div></section>`;
+
+  el.querySelectorAll('[data-review]').forEach((b) => b.addEventListener('click', () => openReview(reviews[Number(b.dataset.review)], p)));
+  el.querySelectorAll('[data-site]').forEach((row) => row.addEventListener('click', () => { siteName = row.dataset.site; render(); }));
+}
+
+function openReview(r, p) {
+  $('#rvTitle').textContent = r.what;
+  $('#rvSub').textContent = `${p.name} · ${r.site} · sent ${r.when.toLowerCase()}`;
+  $('#rvFacts').innerHTML = [['Site', r.site], ['Sent', r.when], ['Amount spent', r.spent], ['Counts towards target', 'Yes']]
+    .map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('');
+  $('#reviewModal').classList.add('open');
+}
+
+function openTargets() {
+  const p = person();
+  const s = (siteName === 'all' ? p.sites : p.sites.filter((x) => x.name === siteName)).find((x) => x.targets) ?? p.sites[0];
+  $('#tgSub').textContent = `${p.name} · ${s.name}`;
+  const rows = s.targets ? Object.entries(s.targets) : [];
+  $('#tgBody').innerHTML = `<div class="target-row tnote"><span>Metric</span><span>Target</span><span>Share</span></div>` +
+    rows.map(([k, [, t, w]]) => `<div class="target-row"><span>${METRIC[k].label}</span><input value="${fmt(t)} ${METRIC[k].unit}"><input value="${w}%"></div>`).join('');
+  $('#tgTotal').textContent = `Weights ${rows.reduce((n, [, [, , w]]) => n + w, 0)}% of 100%`;
+  $('#targetModal').classList.add('open');
+}
+
+function render() {
+  fillSelects();
+  const p = person();
+  $('#subtitle').textContent = p
+    ? `${p.name} · ${siteName === 'all' ? (p.sites.length > 1 ? 'all sites' : p.sites[0]?.name ?? 'no sites') : siteName} · September 2026`
+    : 'Monthly targets and verified field work, per person.';
+  renderSnapshot();
+  renderBody();
+  lucide.createIcons();
+}
+
+document.querySelectorAll('[data-role]').forEach((b) => b.addEventListener('click', () => {
+  document.querySelectorAll('[data-role]').forEach((x) => x.classList.toggle('on', x === b));
+  role = b.dataset.role; personId = 'all'; siteName = 'all'; render();
+}));
+$('#person').addEventListener('change', (e) => { personId = e.target.value; siteName = 'all'; render(); });
+$('#site').addEventListener('change', (e) => { siteName = e.target.value; render(); });
+$('#queuePill').addEventListener('click', () => alert('Opens the Review Queue.'));
+$('#inviteBtn').addEventListener('click', () => alert('Opens the Invite dialog.'));
+document.querySelectorAll('.overlay').forEach((o) => {
+  o.addEventListener('click', (e) => { if (e.target === o || e.target.closest('[data-close]')) o.classList.remove('open'); });
+});
+
+render();
+</script>
+</body>
+</html>

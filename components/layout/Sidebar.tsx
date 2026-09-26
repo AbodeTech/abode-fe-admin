@@ -16,10 +16,13 @@ import {
   CheckCircle,
   ChevronRight,
   CircleDollarSign,
+  ClipboardCheck,
   ClipboardList,
   FileText,
   Gift,
   GraduationCap,
+  Gauge,
+  HardHat,
   Inbox,
   LandPlot,
   LayoutDashboard,
@@ -116,6 +119,17 @@ const navGroups = [
       { name: "CS Manager Performance", link: "/customer-managers", icon: <ShieldCheck /> },
       { name: "Tickets", link: "/tickets", icon: <Inbox /> },
       { name: "Issues", link: "/issues", icon: <AlertOctagon /> },
+    ]
+  },
+  {
+    // Site Manager and Surveyor tracking. Gated on the BE's own permission
+    // keys so an admin without them isn't sent to a page of 403s.
+    title: "Field Performance",
+    isCollapsible: true,
+    icon: <HardHat />,
+    items: [
+      { name: "Performance", link: "/field-performance", icon: <Gauge />, requiresPermission: "view_field_performance" },
+      { name: "Review Queue", link: "/field-performance/review-queue", icon: <ClipboardCheck />, requiresPermission: "view_field_submissions" },
     ]
   },
   {
