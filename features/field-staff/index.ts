@@ -33,7 +33,19 @@ export {
   useReverseSubmission,
   DEFAULT_SUBMISSIONS_LIMIT,
 } from './hooks/use-field-submissions';
-export { useFieldPerformanceSummary, useStaffMonth, useSiteSetup } from './hooks/use-field-performance';
+export {
+  useFieldPerformanceSummary,
+  useStaffMonth,
+  useStaffTrend,
+  useSiteSetup,
+  useFieldBlockers,
+  STALE_AFTER_DAYS,
+} from './hooks/use-field-performance';
+export { NeedsAttention } from './components/NeedsAttention';
+export { WeeklyBreakdown } from './components/WeeklyBreakdown';
+export { SourceRecordsSheet, type SourceRecordsTarget } from './components/SourceRecordsSheet';
+export { StaleReviews } from './components/StaleReviews';
+export { ScoreTrend } from './components/ScoreTrend';
 export { useFieldRoster, type RosterRow } from './hooks/use-field-roster';
 export { usePerformanceParams, ALL } from './hooks/use-performance-params';
 export { fieldStaffKeys } from './hooks/query-keys';

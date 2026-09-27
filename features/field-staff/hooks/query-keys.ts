@@ -58,5 +58,12 @@ export const fieldStaffKeys = {
     [...fieldStaffKeys.performance(), 'summary', staffType, year, month] as const,
   staffMonth: (staffId: string, year: number, month: number) =>
     [...fieldStaffKeys.performance(), 'staff', staffId, year, month] as const,
+  blockers: (year: number, month: number, staleDays: number) =>
+    [...fieldStaffKeys.performance(), 'blockers', year, month, staleDays] as const,
+  staffTrend: (staffId: string, months: number) =>
+    [...fieldStaffKeys.performance(), 'trend', staffId, months] as const,
+  assetPlots: (assetId: string, block: string) =>
+    [...fieldStaffKeys.performance(), 'asset-plots', assetId, block] as const,
+  fieldCosts: (assetId: string) => [...fieldStaffKeys.performance(), 'field-costs', assetId] as const,
   siteSetup: (assetId: string) => [...fieldStaffKeys.performance(), 'site-setup', assetId] as const,
 };

@@ -15,23 +15,16 @@ import {
   useReverseSubmission,
   useVerifySubmission,
 } from "../hooks/use-field-submissions";
-import { formatDate, formatDateTime, formatNaira, formatQuantity } from "../lib/format";
-import { proposedSides, sidesText, submissionFacts, verificationPreview, workNotes } from "../lib/payload";
+import { formatDate, formatDateTime } from "../lib/format";
+import { proposedSides, sidesText, submissionFacts, workNotes } from "../lib/payload";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { EvidenceGallery } from "./EvidenceGallery";
+import { SubmissionImpact } from "./SubmissionImpact";
 import { SubmissionStatusBadge } from "./SubmissionStatusBadge";
-
-const EFFECT_LABELS: Record<SubmissionDetail["effects"][number]["effect_type"], string> = {
-  performance_actual: "Performance",
-  site_setup: "Site setup",
-  plot_history: "Plot history",
-  asset_cost: "Estate cost claim",
-  audit_timeline: "Timeline",
-};
 
 /** Codes where our copy of the submission is out of date — reload it so the admin sees the truth. */
 const RELOAD_ON = new Set(["SUBMISSION_STALE", "SUBMISSION_ALREADY_REVIEWED", "SUBMISSION_WARNING_UNACKNOWLEDGED"]);
@@ -88,7 +81,7 @@ function ReviewBody({
   onDone: () => void;
   onStale: () => void;
 }) {
-  const { submission: sub, plots, warnings, effects } = detail;
+  const { submission: sub, plots, warnings } = detail;
   const [note, setNote] = useState("");
   const [acknowledgement, setAcknowledgement] = useState("");
   const [reason, setReason] = useState("");
@@ -105,7 +98,6 @@ function ReviewBody({
   const proposed = proposedSides(sub);
   const facts = submissionFacts(sub, plots.map((p) => p.label));
   const notes = workNotes(sub);
-  const liveEffects = effects.filter((e) => !e.is_reversed);
 
   const onError = (error: Error) => {
     toast.error(error.message);
@@ -257,43 +249,7 @@ function ReviewBody({
             ))}
           </dl>
 
-          <section className="rounded-lg border">
-            <h3 className="border-b px-3 py-2 text-sm font-semibold">
-              {liveEffects.length ? "What verification changed" : "What verifying changes"}
-            </h3>
-            {liveEffects.length ? (
-              <ul className="space-y-1.5 px-3 py-2 text-sm">
-                {liveEffects.map((e, i) => (
-                  <li key={`${e.effect_type}-${i}`} className="flex justify-between gap-3">
-                    <span>{EFFECT_LABELS[e.effect_type]}</span>
-                    <span className="tabular-nums text-muted-foreground">
-                      {e.amount !== null
-                        ? formatNaira(e.amount)
-                        : e.quantity !== null && e.effect_type !== "audit_timeline"
-                          ? formatQuantity(e.quantity, sub.unit)
-                          : "Recorded"}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <>
-                <ul className="space-y-1.5 px-3 py-2 text-sm">
-                  {verificationPreview(sub).map((line) => (
-                    <li key={line} className="flex gap-2">
-                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-foreground/40" aria-hidden />
-                      {line}
-                    </li>
-                  ))}
-                </ul>
-                {waiting && (
-                  <p className="border-t px-3 py-2 text-xs text-muted-foreground">
-                    Nothing changes until you verify. Everything above then updates together.
-                  </p>
-                )}
-              </>
-            )}
-          </section>
+          <SubmissionImpact detail={detail} />
         </div>
       </div>
 

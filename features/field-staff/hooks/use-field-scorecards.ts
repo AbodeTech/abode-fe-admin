@@ -8,8 +8,10 @@ import type { FieldStaffType } from '../schemas/field-staff.schema';
 import {
   FieldMetricsSchema,
   FieldScorecardSchema,
+  HIDDEN_METRIC_KEYS,
   type CreateScorecardPayload,
   type FieldMetricDefinition,
+  type FieldMetricKey,
   type FieldScorecard,
   type ScorecardReasonPayload,
   type UpdateScorecardPayload,
@@ -24,10 +26,16 @@ export const useFieldMetrics = () =>
     queryFn: () => apiGet('/admin/field-scorecards/metrics', FieldMetricsSchema),
   });
 
-/** The metrics one role can be targeted on, in the BE's order. */
-export const useRoleMetrics = (staffType: FieldStaffType) => {
+/**
+ * The metrics one role can be targeted on, in the BE's order, minus
+ * HIDDEN_METRIC_KEYS. `keep` brings a hidden one back — pass the metrics an
+ * existing scorecard already has, so editing it doesn't drop them.
+ */
+export const useRoleMetrics = (staffType: FieldStaffType, keep: readonly FieldMetricKey[] = []) => {
   const query = useFieldMetrics();
-  const keys = query.data?.by_staff_type[staffType] ?? [];
+  const keys = (query.data?.by_staff_type[staffType] ?? []).filter(
+    (key) => !HIDDEN_METRIC_KEYS.includes(key) || keep.includes(key)
+  );
   const metrics = keys
     .map((key) => query.data?.metrics.find((m) => m.key === key))
     .filter((m): m is FieldMetricDefinition => !!m);

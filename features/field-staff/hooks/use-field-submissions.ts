@@ -34,6 +34,38 @@ export const useFieldSubmissions = (filters: SubmissionFilters = {}, options: { 
   });
 };
 
+/** Page size and a ceiling for useAllFieldSubmissions — 1,000 records is far past a normal month. */
+const ALL_PAGE_LIMIT = 100;
+const ALL_MAX_PAGES = 10;
+
+/**
+ * Every submission matching the filters, following the pages. For month-level
+ * rollups (the weekly breakdown) where one page might not hold the month.
+ * `truncated` is true if the ceiling was hit.
+ */
+export const useAllFieldSubmissions = (
+  filters: Omit<SubmissionFilters, 'page' | 'limit'>,
+  options: { enabled?: boolean } = {}
+) =>
+  useQuery({
+    queryKey: [...fieldStaffKeys.submissions(), 'all', filters],
+    enabled: options.enabled ?? true,
+    queryFn: async () => {
+      const items: FieldSubmission[] = [];
+      let page = 1;
+      let totalPages = 1;
+      do {
+        const res = await apiGetPaged('/admin/field-submissions', FieldSubmissionSchema, {
+          params: { ...filters, page, limit: ALL_PAGE_LIMIT },
+        });
+        items.push(...res.items);
+        totalPages = res.meta.totalPages ?? 1;
+        page += 1;
+      } while (page <= totalPages && page <= ALL_MAX_PAGES);
+      return { items, truncated: totalPages > ALL_MAX_PAGES };
+    },
+  });
+
 /** GET /admin/field-submissions/:id — the record, its named plots, current warnings and written effects. */
 export const useFieldSubmission = (id: string | null | undefined) =>
   useQuery({

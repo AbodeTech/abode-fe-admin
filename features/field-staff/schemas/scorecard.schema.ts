@@ -34,6 +34,14 @@ export const FieldMetricDefinitionSchema = z.object({
 });
 export type FieldMetricDefinition = z.infer<typeof FieldMetricDefinitionSchema>;
 
+/**
+ * Metrics the backend offers that this admin deliberately doesn't offer for
+ * new targets. Physical allocation (`allocation_customers`) stays parked until
+ * the product decision in docs/docs/FIELD-TRACKING-FRONTEND-TODO.md is revisited.
+ * A scorecard that already has one keeps it — see useRoleMetrics.
+ */
+export const HIDDEN_METRIC_KEYS: readonly FieldMetricKey[] = ['allocation_customers'];
+
 /** GET /admin/field-scorecards/metrics */
 export const FieldMetricsSchema = z.object({
   metrics: z.array(FieldMetricDefinitionSchema),

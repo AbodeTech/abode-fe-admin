@@ -9,13 +9,18 @@ import {
   FIELD_STAFF_TYPE_LABELS,
   FieldPerformanceHeader,
   FieldTeamTable,
+  NeedsAttention,
   PersonSnapshot,
+  STALE_AFTER_DAYS,
   PersonWork,
   TeamSnapshot,
   assetName,
   formatPeriod,
+  useFieldBlockers,
+  useFieldPerformanceSummary,
   useFieldRoster,
   useFieldScorecards,
+  useRoleMetrics,
   useFieldStaff,
   usePerformanceParams,
   useStaffMonth,
@@ -36,6 +41,18 @@ function TeamView() {
   const roster = useFieldRoster(role, year, month);
   const roleWord = role === "site_manager" ? "site managers" : "surveyors";
 
+  // Last month's summary gives every row its change in one call, not one per person.
+  const prevYear = month === 1 ? year - 1 : year;
+  const prevMonth = month === 1 ? 12 : month - 1;
+  const previousSummary = useFieldPerformanceSummary(role, prevYear, prevMonth);
+  const previous = new Map(
+    (previousSummary.data?.workers ?? [])
+      .filter((w) => w.scorecards.length > 0)
+      .map((w) => [w.field_staff.id, w.total_score] as const)
+  );
+  const offeredMetrics = useRoleMetrics(role).metrics.length;
+  const blockers = useFieldBlockers(year, month);
+
   const header = (
     <FieldPerformanceHeader
       staff={roster.rows.map((r) => r.staff)}
@@ -52,11 +69,26 @@ function TeamView() {
     <>
       {header}
       <TeamSnapshot rows={roster.rows} summary={roster.summary} year={year} month={month} />
+      <NeedsAttention
+        rows={roster.rows}
+        blockers={blockers.data}
+        staleAfterDays={STALE_AFTER_DAYS}
+        onOpen={(person, site) => update({ person, ...(site && { site }) })}
+      />
       <section className="space-y-3">
-        <h2 className="text-base font-semibold text-gray-900">Team</h2>
+        <div>
+          <h2 className="text-base font-semibold text-gray-900">Team</h2>
+          <p className="text-sm text-muted-foreground">
+            Ranked by verified score. People without targets aren&apos;t ranked. Hover Targets to see what each person is
+            measured on.
+          </p>
+        </div>
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
           <FieldTeamTable
             rows={roster.rows}
+            previous={previous}
+            previousLabel={formatPeriod(prevYear, prevMonth).split(" ")[0].slice(0, 3)}
+            offeredMetrics={offeredMetrics}
             onOpen={(id) => update({ person: id })}
             emptyState={
               <p className="p-8 text-center text-sm text-muted-foreground">

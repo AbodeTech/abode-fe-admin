@@ -9,6 +9,7 @@ import {
   DEFAULT_SUBMISSIONS_LIMIT,
   QueueMetricFilter,
   ReviewQueueTable,
+  StaleReviews,
   useFieldSubmissions,
   useQueueMetric,
 } from "@/features/field-staff";
@@ -75,6 +76,7 @@ export default function ReviewQueuePage() {
           </div>
           <QueueMetricFilter />
         </div>
+        <StaleReviews />
         <ReviewQueueContent />
       </Suspense>
     </div>

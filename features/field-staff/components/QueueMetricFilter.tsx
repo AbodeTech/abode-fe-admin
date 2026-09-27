@@ -5,7 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 import { FIELD_STAFF_TYPE_LABELS } from "../schemas/field-staff.schema";
-import { FIELD_METRIC_KEYS, type FieldMetricKey } from "../schemas/scorecard.schema";
+import { FIELD_METRIC_KEYS, HIDDEN_METRIC_KEYS, type FieldMetricKey } from "../schemas/scorecard.schema";
 import { useFieldMetrics } from "../hooks/use-field-scorecards";
 
 const ALL = "all";
@@ -39,7 +39,7 @@ export function QueueMetricFilter() {
       </SelectTrigger>
       <SelectContent>
         <SelectItem value={ALL}>All work</SelectItem>
-        {(metrics.data?.metrics ?? []).map((m) => (
+        {(metrics.data?.metrics ?? []).filter((m) => !HIDDEN_METRIC_KEYS.includes(m.key)).map((m) => (
           <SelectItem key={m.key} value={m.key}>
             {m.label}
             <span className="ml-1.5 text-xs text-muted-foreground">· {FIELD_STAFF_TYPE_LABELS[m.staff_type]}</span>

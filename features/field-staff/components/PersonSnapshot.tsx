@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { AlertCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,9 @@ import { ALL } from "../hooks/use-performance-params";
 import { AssignSiteButton } from "./AssignSiteButton";
 import { MetricTile, ScoreTile, mergeMetrics } from "./MetricTiles";
 import { ScorecardActions } from "./ScorecardActions";
+import { ScoreTrend } from "./ScoreTrend";
+import { SourceRecordsSheet, type SourceRecordsTarget } from "./SourceRecordsSheet";
+import { WeeklyBreakdown } from "./WeeklyBreakdown";
 import { StaffAccountMenu, StaffStatusBadge } from "./StaffAccountControls";
 import { PeriodPill } from "./TeamSnapshot";
 
@@ -53,6 +57,18 @@ export function PersonSnapshot({ detail, month, scorecards, siteId, onSelectSite
   const score =
     siteId === ALL ? (month.scorecards.length ? month.total_score : null) : scored[0] ? scored[0].score : null;
   const metrics = mergeMetrics(scored.flatMap((s) => s.metrics));
+
+  // The records panel is filtered exactly as the tiles are built: this person, the sites in view, this month.
+  const [records, setRecords] = useState<SourceRecordsTarget | null>(null);
+  const recordsFor = (metric?: SourceRecordsTarget["metric"]): SourceRecordsTarget => ({
+    staffId: staff.id,
+    staffName: staff.full_name,
+    assetId: siteId === ALL ? undefined : siteId,
+    siteLabel: siteId === ALL ? (allSites.length > 1 ? "All sites" : assetName(allSites[0]?.asset)) : assetName(shown[0]?.asset),
+    year: month.year,
+    month: month.month,
+    metric,
+  });
 
   const rolesText = [
     ...new Set(
@@ -145,12 +161,32 @@ export function PersonSnapshot({ detail, month, scorecards, siteId, onSelectSite
           <ScoreTile
             score={score}
             note={siteId === ALL && scored.length > 1 ? `Average of ${scored.length} sites` : "This site"}
+            onOpen={() => setRecords(recordsFor())}
           />
           {metrics.map((m) => (
-            <MetricTile key={m.metric_key} metric={m} />
+            <MetricTile
+              key={m.metric_key}
+              metric={m}
+              onOpen={() => setRecords(recordsFor({ key: m.metric_key, label: m.label }))}
+            />
           ))}
         </div>
       )}
+
+      <SourceRecordsSheet target={records} onOpenChange={(open) => !open && setRecords(null)} />
+
+      {metrics.length > 0 && (
+        <WeeklyBreakdown
+          staffId={staff.id}
+          assetId={siteId === ALL ? undefined : siteId}
+          year={month.year}
+          month={month.month}
+          metrics={metrics}
+        />
+      )}
+
+      {/* The trend is the person's overall score, so it only sits in the all-sites view. */}
+      {siteId === ALL && <ScoreTrend staffId={staff.id} year={month.year} month={month.month} />}
     </div>
   );
 }

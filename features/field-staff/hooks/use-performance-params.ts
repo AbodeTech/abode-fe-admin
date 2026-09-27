@@ -30,11 +30,12 @@ export function usePerformanceParams() {
       if (value === null || value === ALL) next.delete(key);
       else next.set(key, value);
     }
+    // A higher level clears the ones below it — unless the patch sets them too.
     if ('role' in patch) {
-      next.delete('person');
-      next.delete('site');
+      if (!('person' in patch)) next.delete('person');
+      if (!('site' in patch)) next.delete('site');
     }
-    if ('person' in patch) next.delete('site');
+    if ('person' in patch && !('site' in patch)) next.delete('site');
     router.push(`${pathname}?${next.toString()}`, { scroll: false });
   };
 

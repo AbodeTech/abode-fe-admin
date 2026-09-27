@@ -114,40 +114,24 @@ export function submissionFacts(sub: FieldSubmission, plotLabels: string[]): Fac
   return facts;
 }
 
+/**
+ * How much work was done, as a figure and unit. The BE's `quantity` is what
+ * *scores* — 0 for repairs and rework — so for those read the real amount
+ * from the work details instead.
+ */
+export function workAmount(sub: FieldSubmission): { value: number; unit: string | null } {
+  if (sub.counts_towards_target) return { value: sub.quantity, unit: sub.unit };
+  switch (sub.metric_key) {
+    case 'fencing_new_metres':
+      return { value: num(sub.payload, 'metres') ?? 0, unit: 'metres' };
+    case 'parcelation_plots':
+      return { value: sub.plot_ids.length, unit: 'plots' };
+    default:
+      return { value: sub.quantity, unit: sub.unit };
+  }
+}
+
 /** Notes the worker wrote: on the work itself, and on the submission. */
 export function workNotes(sub: FieldSubmission): string[] {
   return [str(sub.payload, 'note'), sub.note].filter((n): n is string => !!n);
-}
-
-/**
- * What verifying will write, worked out from the submission — the same
- * effects the BE writes (performance, site setup or plot history, cost claim,
- * timeline). Shown before a decision; afterwards the detail's `effects` apply.
- */
-export function verificationPreview(sub: FieldSubmission): string[] {
-  const lines: string[] = [];
-  lines.push(
-    sub.counts_towards_target
-      ? `${sub.metric_label}: +${formatQuantity(sub.quantity, sub.unit)} towards this month's target`
-      : `${sub.metric_label}: recorded, but it doesn't count towards the target`
-  );
-
-  switch (sub.metric_key) {
-    case 'fencing_new_metres':
-      lines.push('Site setup: fencing progress on that side is updated');
-      break;
-    case 'boundary_metres':
-      lines.push('Site setup: boundary established is updated');
-      break;
-    case 'parcelation_plots':
-    case 'clearing_sqm':
-      lines.push("Plot history: the plots' field records are updated. Sales and allocation status don't change");
-      break;
-  }
-
-  if (sub.amount_spent !== null && sub.amount_spent > 0) {
-    lines.push(`Estate costs: a ${formatNaira(sub.amount_spent)} claim is sent to finance to accept`);
-  }
-  lines.push('Timeline: the work is added to the estate timeline');
-  return lines;
 }

@@ -111,6 +111,68 @@ export const PerformanceSummarySchema = z.object({
 });
 export type PerformanceSummary = z.infer<typeof PerformanceSummarySchema>;
 
+/** GET /admin/field-performance/trend/:staffId?months= — one person's score month by month, oldest first. */
+export const StaffTrendSchema = z.object({
+  field_staff: z.looseObject({ id: z.string(), full_name: z.string() }),
+  points: z.array(
+    z.object({
+      year: z.number(),
+      month: z.number(),
+      label: z.string(),
+      /** 0 when the month had no targets — check `scorecards` before showing it. */
+      score: z.number(),
+      projected_score: z.number(),
+      scorecards: z.number(),
+      sites_without_targets: z.number(),
+    })
+  ),
+  /** Averaged over months that had targets only. */
+  average_score: z.number(),
+  months_compared: z.number(),
+  note: z.string(),
+});
+export type StaffTrend = z.infer<typeof StaffTrendSchema>;
+
+const BlockerStaffSchema = z.looseObject({ id: z.string(), full_name: z.string() });
+
+/**
+ * GET /admin/field-performance/blockers?year&month&stale_after_days — what's
+ * holding field performance back. Covers **every role**: stale reviews carry
+ * no staff_type, so filter them against the roster on screen.
+ */
+export const FieldBlockersSchema = z.object({
+  month: z.string(),
+  /** Oldest first, capped at 200 by the BE. Not limited to the month. */
+  stale_reviews: z.array(
+    z.object({
+      submission_id: z.string(),
+      field_staff: BlockerStaffSchema,
+      asset: z.object({ id: z.string(), name: z.string().nullable() }),
+      metric_key: z.string(),
+      submitted_at: z.string().nullable(),
+      days_waiting: z.number().nullable(),
+    })
+  ),
+  /** Active workers with no scorecard at all this month (drafts count as having one). */
+  workers_without_targets: z.array(z.object({ field_staff: BlockerStaffSchema.extend({ staff_type: z.string() }) })),
+  unpublished_scorecards: z.array(
+    z.object({
+      field_staff: BlockerStaffSchema.extend({ staff_type: z.string() }),
+      asset: z.object({ id: z.string(), name: z.string().nullable() }),
+    })
+  ),
+  stale_after_days: z.number(),
+});
+export type FieldBlockers = z.infer<typeof FieldBlockersSchema>;
+
+/** GET /admin/assets/:assetId/field-costs — verified field spending on one estate. */
+export const FieldCostsSchema = z.looseObject({
+  total_amount: z.number(),
+  /** One per verified cost; a verified submission appears here with its `submission_id`. */
+  entries: z.array(z.looseObject({ submission_id: z.string(), amount: z.number() })),
+});
+export type FieldCosts = z.infer<typeof FieldCostsSchema>;
+
 /* -------------------- site setup -------------------- */
 
 export const FENCING_SIDES = ['front', 'right', 'back', 'left'] as const;
@@ -133,6 +195,8 @@ export const SiteSetupSchema = z.looseObject({
   boundary: z
     .looseObject({
       version: z.number(),
+      /** The approved lengths per side, in metres. */
+      sides: z.record(z.string(), z.number()).nullable().optional(),
       perimeter_metres: z.number().nullable(),
       approved_at: z.string().nullable(),
     })
@@ -144,5 +208,21 @@ export const SiteSetupSchema = z.looseObject({
     approved_perimeter_metres: z.number().nullable(),
     percent_complete: z.number().nullable(),
   }),
+  clearing: z.looseObject({ cleared_sqm: z.number() }),
+  parcelation: z.looseObject({ plots_parcelled: z.number(), plots_re_pegged: z.number() }),
 });
+
+/** One plot from GET /admin/assets/:assetId/plots — just its field state. */
+export const AssetPlotSchema = z.looseObject({
+  id: z.string(),
+  label: z.string(),
+  size_sqm: z.number().nullable(),
+  parcelled: z.boolean(),
+  re_pegged_count: z.number(),
+  cleared_sqm: z.number(),
+});
+export type AssetPlot = z.infer<typeof AssetPlotSchema>;
+
+/** GET /admin/assets/:assetId/plots — the plots page, filtered. */
+export const AssetPlotsSchema = z.looseObject({ plots: z.array(AssetPlotSchema) });
 export type SiteSetup = z.infer<typeof SiteSetupSchema>;

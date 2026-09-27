@@ -53,7 +53,9 @@ interface ScorecardTargetsDialogProps {
  * Callers key this by mode + scorecard id so it remounts with fresh defaults.
  */
 export function ScorecardTargetsDialog(props: ScorecardTargetsDialogProps) {
-  const { metrics, isLoading, error } = useRoleMetrics(props.staff.staff_type);
+  // Editing keeps any metric the scorecard already has, even one hidden from new targets.
+  const existing = props.mode === "create" ? [] : (props.scorecard?.targets.map((t) => t.metric_key) ?? []);
+  const { metrics, isLoading, error } = useRoleMetrics(props.staff.staff_type, existing);
 
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>

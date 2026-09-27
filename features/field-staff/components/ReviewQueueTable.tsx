@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Paperclip } from "lucide-react";
+import { Clock, Paperclip } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,9 @@ import {
 
 import { FIELD_STAFF_TYPE_LABELS, assetName, staffName } from "../schemas/field-staff.schema";
 import type { FieldSubmission } from "../schemas/submission.schema";
-import { formatDate, formatNaira, waitingFor } from "../lib/format";
+import { daysSince, formatDate, formatDateTime, formatNaira, formatQuantity, waitingFor } from "../lib/format";
+import { workAmount } from "../lib/payload";
+import { STALE_AFTER_DAYS } from "../hooks/use-field-performance";
 import { SubmissionReviewDialog } from "./SubmissionReviewDialog";
 
 function Work({ sub }: { sub: FieldSubmission }) {
@@ -24,8 +26,18 @@ function Work({ sub }: { sub: FieldSubmission }) {
       <p className="font-medium">{sub.summary}</p>
       <p className="text-xs text-muted-foreground">
         {sub.metric_label} · work on {formatDate(sub.work_date)}
-        {!sub.counts_towards_target && " · doesn't score"}
       </p>
+    </div>
+  );
+}
+
+/** The amount of work done; repairs and rework are flagged because they don't add to the score. */
+function Quantity({ sub }: { sub: FieldSubmission }) {
+  const { value, unit } = workAmount(sub);
+  return (
+    <div className="tabular-nums">
+      <p className="font-medium">{formatQuantity(value, unit)}</p>
+      {!sub.counts_towards_target && <p className="text-xs text-muted-foreground">doesn&apos;t score</p>}
     </div>
   );
 }
@@ -37,6 +49,20 @@ function Evidence({ sub }: { sub: FieldSubmission }) {
       {sub.evidence.length + (sub.receipt_url ? 1 : 0)}
       {sub.amount_spent !== null && !sub.receipt_url && <span className="text-amber-700">· no receipt</span>}
     </span>
+  );
+}
+
+/** When it was sent, and how long it's waited — flagged in red once it's past the stale line. */
+function Submitted({ sub }: { sub: FieldSubmission }) {
+  const old = daysSince(sub.submitted_at) >= STALE_AFTER_DAYS;
+  return (
+    <div className="whitespace-nowrap">
+      <p className="text-sm">{formatDateTime(sub.submitted_at)}</p>
+      <p className={old ? "inline-flex items-center gap-1 text-xs font-medium text-[#AD1F2A]" : "text-xs text-muted-foreground"}>
+        {old && <Clock className="h-3 w-3" aria-hidden />}
+        {waitingFor(sub.submitted_at)}
+      </p>
+    </div>
   );
 }
 
@@ -66,11 +92,12 @@ export function ReviewQueueTable({ rows, emptyState }: ReviewQueueTableProps) {
           <TableHeader>
             <TableRow>
               <TableHead>Work</TableHead>
+              <TableHead>Quantity</TableHead>
               <TableHead>Submitted by</TableHead>
               <TableHead>Site</TableHead>
               <TableHead className="text-right">Spent</TableHead>
               <TableHead>Evidence</TableHead>
-              <TableHead>Waiting</TableHead>
+              <TableHead>Submitted</TableHead>
               <TableHead />
             </TableRow>
           </TableHeader>
@@ -79,6 +106,9 @@ export function ReviewQueueTable({ rows, emptyState }: ReviewQueueTableProps) {
               <TableRow key={sub.id}>
                 <TableCell className="max-w-[20rem]">
                   <Work sub={sub} />
+                </TableCell>
+                <TableCell>
+                  <Quantity sub={sub} />
                 </TableCell>
                 <TableCell>
                   <p className="text-sm">{staffName(sub.field_staff)}</p>
@@ -91,7 +121,9 @@ export function ReviewQueueTable({ rows, emptyState }: ReviewQueueTableProps) {
                 <TableCell>
                   <Evidence sub={sub} />
                 </TableCell>
-                <TableCell className="text-sm text-muted-foreground">{waitingFor(sub.submitted_at)}</TableCell>
+                <TableCell>
+                  <Submitted sub={sub} />
+                </TableCell>
                 <TableCell className="text-right">{reviewButton(sub)}</TableCell>
               </TableRow>
             ))}
@@ -102,6 +134,7 @@ export function ReviewQueueTable({ rows, emptyState }: ReviewQueueTableProps) {
       <AdminMobileStack>
         {rows.map((sub) => (
           <AdminMobileCard key={sub.id} title={<Work sub={sub} />}>
+            <AdminMobileField label="Quantity" value={<Quantity sub={sub} />} />
             <AdminMobileField
               label="Submitted by"
               value={
@@ -113,7 +146,7 @@ export function ReviewQueueTable({ rows, emptyState }: ReviewQueueTableProps) {
             <AdminMobileField label="Site" value={assetName(sub.asset)} />
             <AdminMobileField label="Spent" value={sub.amount_spent !== null ? formatNaira(sub.amount_spent) : "—"} />
             <AdminMobileField label="Evidence" value={<Evidence sub={sub} />} />
-            <AdminMobileField label="Waiting" value={waitingFor(sub.submitted_at)} />
+            <AdminMobileField label="Submitted" value={<Submitted sub={sub} />} />
             {reviewButton(sub, "mt-2 w-full")}
           </AdminMobileCard>
         ))}
