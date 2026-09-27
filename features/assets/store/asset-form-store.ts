@@ -6,8 +6,8 @@ import { create } from 'zustand';
  * React Hook Form owns the *values* — that stays the house standard and gives
  * us zodResolver validation. This store owns everything around them, which
  * would otherwise be a dozen scattered `useState` calls across a four-level
- * nested form: which sections are open, the status of each upload, and the
- * plan generator dialog.
+ * nested form: which sections are open, the status of each upload, and which
+ * offer/size/plan the detail page's Offers tab is currently editing.
  *
  * Deliberately not persisted, and `reset()` is called when the form mounts —
  * a half-filled asset from a previous visit reappearing would be worse than
@@ -40,26 +40,6 @@ export type OfferEditTarget =
   | { kind: 'delete-size'; offerType: string; sizeId: string }
   | { kind: 'delete-plan'; offerType: string; sizeId: string; tenor: number };
 
-/** Which size a generated set of plans belongs to. */
-export type GeneratorTarget = { offerIndex: number; sizeIndex: number };
-
-type GeneratorState = {
-  target: GeneratorTarget | null;
-  /** The plan the others are derived from — v1 used 36 months. */
-  baseTenor: number;
-  /** Comma-separated tenors to generate, e.g. "12, 24, 48". */
-  tenors: string;
-  /** Percentage price change per year away from the base tenor. */
-  adjustmentPct: number;
-};
-
-const INITIAL_GENERATOR: GeneratorState = {
-  target: null,
-  baseTenor: 36,
-  tenors: '',
-  adjustmentPct: 5,
-};
-
 type AssetFormState = {
   openSections: Record<string, boolean>;
   isOpen: (id: string, fallback?: boolean) => boolean;
@@ -84,11 +64,6 @@ type AssetFormState = {
   clearUpload: (key: string) => void;
   /** True while any upload is in flight — submit waits on this. */
   isUploading: () => boolean;
-
-  generator: GeneratorState;
-  openGenerator: (target: GeneratorTarget) => void;
-  closeGenerator: () => void;
-  setGenerator: (patch: Partial<Omit<GeneratorState, 'target'>>) => void;
 
   offerEdit: OfferEditTarget | null;
   openOfferEdit: (target: OfferEditTarget) => void;
@@ -154,14 +129,6 @@ export const useAssetFormStore = create<AssetFormState>((set, get) => ({
 
   isUploading: () => Object.values(get().uploads).some((entry) => entry.status === 'uploading'),
 
-  generator: INITIAL_GENERATOR,
-
-  openGenerator: (target) => set((state) => ({ generator: { ...state.generator, target } })),
-
-  closeGenerator: () => set((state) => ({ generator: { ...state.generator, target: null } })),
-
-  setGenerator: (patch) => set((state) => ({ generator: { ...state.generator, ...patch } })),
-
   offerEdit: null,
 
   openOfferEdit: (target) => set({ offerEdit: target }),
@@ -173,7 +140,6 @@ export const useAssetFormStore = create<AssetFormState>((set, get) => ({
       openSections: {},
       editingSections: {},
       uploads: {},
-      generator: INITIAL_GENERATOR,
       offerEdit: null,
     }),
 }));

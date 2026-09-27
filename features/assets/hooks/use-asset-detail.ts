@@ -26,15 +26,22 @@ export const useAssetDetail = (assetId: string) =>
 /**
  * PATCH /admin/assets/:id — asset fields only.
  *
- * `UpdateAssetDto` is `PartialType(OmitType(CreateAssetDto, ['offers']))`, so
- * offers are **not** editable here; they have their own endpoint family. And
+ * Offers are **not** editable here; they have their own endpoint family. And
  * because `forbidNonWhitelisted` is on, sending `sold`, `sold_units` or
  * `reserved_units` is a hard 400 — those are derived, never set by an admin.
+ *
+ * `total_land_sqm`/`product_pools` are excluded too, even though creation
+ * sets them here — once set, they change only through the (future)
+ * versioned `PUT /admin/assets/:assetId/land-configuration`, which guards
+ * against two admins overwriting each other with `expected_version`. This
+ * generic PATCH has no such guard.
  */
 export const useUpdateAsset = (assetId: string) => {
   const queryClient = useQueryClient();
 
-  type AssetFields = Partial<Omit<ReturnType<typeof createAssetFormToPayload>, 'offers'>>;
+  type AssetFields = Partial<
+    Omit<ReturnType<typeof createAssetFormToPayload>, 'total_land_sqm' | 'product_pools'>
+  >;
 
   return useMutation({
     mutationFn: (payload: AssetFields) =>

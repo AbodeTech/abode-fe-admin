@@ -23,6 +23,7 @@ const ALL_PERMISSIONS = [
   'edit_plan_commission_config', 'edit_plan_commission_recipients', 'send_user_email',
   'view_admin', 'manage_admins', 'manage_roles',
   'view_assets', 'manage_assets', 'delete_assets', 'buy_asset', 'delete_user_asset',
+  'view_estate_updates', 'manage_estate_updates',
   'update_asset_question', 'send_contract',
   'asset_transactions', 'approve_payments', 'withdrawals', 'manage_commission',
   'update_payment_plan',

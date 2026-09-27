@@ -41,7 +41,13 @@ export const useAssetList = (filters?: AssetListFilters) => {
   });
 };
 
-const DeleteAssetResponseSchema = z.looseObject({});
+/**
+ * `.optional()` — confirmed live against staging: the real controller
+ * returns `{success: true, message: 'Asset deleted successfully'}` with no
+ * `data` key at all, so this envelope's `data` resolves to `undefined`, not
+ * an object.
+ */
+const DeleteAssetResponseSchema = z.looseObject({}).optional();
 
 /**
  * DELETE /admin/assets/:id — a **soft delete**. The BE sets `deleted_at`; the

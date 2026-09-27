@@ -6,7 +6,6 @@ import { apiGet, apiPost } from '@/lib/api-client';
 
 import {
   CustomerOnboardingAttemptSchema,
-  MarkDeedDeliveredResultSchema,
   type LogOnboardingCallPayload,
 } from '../schemas/cs-manager.schema';
 import { csManagerKeys } from './query-keys';
@@ -37,17 +36,6 @@ export const useLogOnboardingCall = () => {
       queryClient.invalidateQueries({ queryKey: csManagerKeys.onboardingAttempts(variables.planId) });
       // A "done" call flips the plan's onboarding status, the onboarded KPI
       // and the onboarding backlog split — refetch every dashboard period.
-      queryClient.invalidateQueries({ queryKey: csManagerKeys.dashboards() });
-    },
-  });
-};
-
-export const useMarkDeedDelivered = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (planId: string) =>
-      apiPost(`/admin/payment-plans/${planId}/mark-deed-delivered`, {}, MarkDeedDeliveredResultSchema),
-    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: csManagerKeys.dashboards() });
     },
   });

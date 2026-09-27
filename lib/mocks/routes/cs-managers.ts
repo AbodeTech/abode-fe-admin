@@ -79,7 +79,8 @@ type MockTarget = {
   year: number;
   customers_allocated_target: number;
   customers_onboarded_target: number;
-  deeds_delivered_target: number;
+  /** A percentage (0-100). Replaced the deprecated deeds target. */
+  tickets_resolved_target: number;
   createdAt: string;
   updatedAt: string;
 };
@@ -92,7 +93,7 @@ const targets: MockTarget[] = [
     year: new Date().getFullYear(),
     customers_allocated_target: 40,
     customers_onboarded_target: 30,
-    deeds_delivered_target: 12,
+    tickets_resolved_target: 80,
     createdAt: daysAgo(20),
     updatedAt: daysAgo(2),
   },
@@ -152,7 +153,7 @@ const toTarget = (t: MockTarget) => ({
   year: t.year,
   customers_allocated_target: t.customers_allocated_target,
   customers_onboarded_target: t.customers_onboarded_target,
-  deeds_delivered_target: t.deeds_delivered_target,
+  tickets_resolved_target: t.tickets_resolved_target,
   createdAt: t.createdAt,
   updatedAt: t.updatedAt,
 });
@@ -520,7 +521,7 @@ export const csManagerRoutes: MockRoutes = {
     const dto = body<{
       customers_allocated_target: number;
       customers_onboarded_target: number;
-      deeds_delivered_target: number;
+      tickets_resolved_target: number;
     }>(raw);
     const year = Number(params.year);
     const month = Number(params.month);
@@ -529,7 +530,7 @@ export const csManagerRoutes: MockRoutes = {
     if (target) {
       target.customers_allocated_target = dto.customers_allocated_target;
       target.customers_onboarded_target = dto.customers_onboarded_target;
-      target.deeds_delivered_target = dto.deeds_delivered_target;
+      target.tickets_resolved_target = dto.tickets_resolved_target;
       target.updatedAt = now;
     } else {
       target = {
@@ -563,15 +564,21 @@ export const csManagerRoutes: MockRoutes = {
       allocated_so_far: managerPlans.filter((p) => p.allocation === 'allocated').length,
       onboarded_target: target?.customers_onboarded_target ?? 0,
       onboarded_so_far: managerPlans.filter((p) => p.onboarding === 'confirmed').length,
-      deeds_delivered_target: target?.deeds_delivered_target ?? 0,
-      deeds_delivered_so_far: managerPlans.filter((p) => p.doa === 'sent').length,
+      // The third component is a RATE against a rate, not a count against a
+      // count — see the note on the schema.
+      tickets_resolved_target: target?.tickets_resolved_target ?? 0,
+      ticket_resolution_rate: 62,
+      tickets_entered: 21,
+      tickets_resolved: 13,
     };
 
     const ratio = (actual: number, tgt: number) => (tgt > 0 ? Math.min(actual / tgt, 1) * 100 : 0);
     const round1 = (n: number) => Math.round(n * 10) / 10;
     const allocatedComponent = round1(ratio(targetsOut.allocated_so_far, targetsOut.allocated_target) * 0.4);
     const onboardedComponent = round1(ratio(targetsOut.onboarded_so_far, targetsOut.onboarded_target) * 0.3);
-    const deedsComponent = round1(ratio(targetsOut.deeds_delivered_so_far, targetsOut.deeds_delivered_target) * 0.3);
+    const ticketsComponent = round1(
+      ratio(targetsOut.ticket_resolution_rate ?? 0, targetsOut.tickets_resolved_target) * 0.3,
+    );
 
     let filtered = managerPlans;
     const filterKey = String(query.filter ?? 'all');
@@ -609,10 +616,10 @@ export const csManagerRoutes: MockRoutes = {
         : null,
       target: targetsOut,
       performance_score: {
-        score: round1(allocatedComponent + onboardedComponent + deedsComponent),
+        score: round1(allocatedComponent + onboardedComponent + ticketsComponent),
         allocated_component: allocatedComponent,
         onboarded_component: onboardedComponent,
-        deeds_component: deedsComponent,
+        tickets_component: ticketsComponent,
       },
       obligation: { paid_not_allocated_this_period: filter_counts.due_allocation },
       backlogs,
@@ -668,31 +675,6 @@ export const csManagerRoutes: MockRoutes = {
       notes: attempt.notes,
       called_at: attempt.called_at,
       createdAt: attempt.createdAt,
-    };
-  },
-
-  'POST /admin/payment-plans/:plan_id/mark-deed-delivered': ({ params }) => {
-    const plan = findPlan(params.plan_id);
-    const now = new Date().toISOString();
-    if (plan.doa === 'sent') {
-      return {
-        plan_id: plan.plan_id,
-        deed_delivered_at: plan.last_activity_at,
-        deed_delivered_by: plan.manager,
-        was_already_delivered: true,
-      };
-    }
-    if (plan.doa === 'not_applicable') {
-      throw new MockHttpError(400, 'This plan is not eligible for a Deed of Assignment yet', 'PLAN_NOT_ELIGIBLE_FOR_DOA');
-    }
-    plan.doa = 'sent';
-    plan.doa_label = 'Delivered';
-    plan.last_activity_at = now;
-    return {
-      plan_id: plan.plan_id,
-      deed_delivered_at: now,
-      deed_delivered_by: plan.manager,
-      was_already_delivered: false,
     };
   },
 };

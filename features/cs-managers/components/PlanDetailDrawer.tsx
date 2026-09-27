@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
   ArrowUpRight,
   CalendarClock,
+  Clock,
   CheckCircle2,
   FileText,
   Loader2,
@@ -23,17 +24,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -54,7 +44,6 @@ import {
 import {
   useCustomerOnboardingAttempts,
   useLogOnboardingCall,
-  useMarkDeedDelivered,
 } from "../hooks/use-plan-actions";
 import {
   AllocationPill,
@@ -140,7 +129,6 @@ export function PlanDetailDrawer({ plan, open, onOpenChange }: Props) {
   const planId = open ? plan?.plan_id ?? null : null;
   const { data: attempts = [], isLoading: attemptsLoading } = useCustomerOnboardingAttempts(planId);
   const logCall = useLogOnboardingCall();
-  const markDeed = useMarkDeedDelivered();
 
   // Fresh form on every (re)open, and whenever the drawer switches plan.
   useEffect(() => {
@@ -176,16 +164,6 @@ export function PlanDetailDrawer({ plan, open, onOpenChange }: Props) {
         onError: (err) => toast.error(err.message || "Couldn't log this call. Try again."),
       }
     );
-  };
-
-  const onMarkDeed = () => {
-    markDeed.mutate(plan.plan_id, {
-      onSuccess: () => {
-        toast.success(`Deed of Assignment marked delivered for ${customerName}`);
-        onOpenChange(false);
-      },
-      onError: (err) => toast.error(err.message || "Couldn't mark the deed delivered. Try again."),
-    });
   };
 
   return (
@@ -246,49 +224,29 @@ export function PlanDetailDrawer({ plan, open, onOpenChange }: Props) {
               <FileText className="h-4 w-4 text-amber-700" />
               <h3 className="text-sm font-semibold text-gray-900">Deed of Assignment</h3>
             </div>
+            {/* Read-only. The system issues the deed once the plan qualifies —
+                no CS Manager sends one, and none is scored on it. */}
 
             {deedSent ? (
               <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800">
-                {plan.doa_label ?? "Delivered"}. Marking a deed delivered can&apos;t be undone from the
-                admin.
+                {plan.doa_label ?? "Sent"} — issued automatically and emailed to the customer.
               </div>
             ) : deedEligible ? (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-2.5">
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 flex gap-2">
+                <Clock className="h-3.5 w-3.5 text-amber-700 mt-0.5 shrink-0" />
                 <p className="text-xs text-amber-900">
-                  This plan is eligible and the deed hasn&apos;t gone out yet. Send it to the customer
-                  first, then record it here.
+                  Due, and waiting on the automatic run. Nothing to do here — if this sits for more
+                  than a day or two, the issuer is stuck and it is worth raising.
                 </p>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button size="sm" className="h-8 text-xs" disabled={markDeed.isPending}>
-                      {markDeed.isPending && <Loader2 className="h-3 w-3 animate-spin" />}
-                      Mark deed delivered
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Mark the deed delivered?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This records that {customerName}&apos;s Deed of Assignment for {plan.asset} has
-                        been sent, and counts towards this period&apos;s deeds target. There is no way to
-                        undo it from the admin.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={onMarkDeed}>Yes, mark delivered</AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
               </div>
             ) : (
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 flex gap-2">
                 <Lock className="h-3.5 w-3.5 text-gray-400 mt-0.5 shrink-0" />
                 <p className="text-xs text-gray-600">
-                  Not eligible yet.{" "}
+                  Not due yet.{" "}
                   {plan.product === "flex"
-                    ? "A flex plan qualifies once the land payment is complete."
-                    : "A full-ownership plan qualifies once both the land payment and the development levy are complete."}
+                    ? "A flex plan qualifies once the plan is fully paid and the plot is allocated."
+                    : "A full-ownership plan qualifies once the land payment, the development levy and the plot allocation are all settled."}
                 </p>
               </div>
             )}

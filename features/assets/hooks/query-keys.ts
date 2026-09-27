@@ -30,7 +30,59 @@ export const assetKeys = {
   /** GET /admin/assets/:id/subscribers — keyed by id, unlike the legacy name/type key above. */
   assetSubscribers: (assetId: string, filters?: object) =>
     [...assetKeys.detail(assetId), 'subscribers', filters ?? {}] as const,
+  /**
+   * GET /admin/assets/:assetId/land-configuration — nested under detail so
+   * an asset-wide invalidate also refetches it. Note that this makes
+   * `invalidateQueries({ queryKey: assetKeys.detail(id) })` anywhere else
+   * (e.g. `useUpdateAsset`'s `onSuccess`) cascade to this key too — broad by
+   * design, not a bug.
+   */
+  landConfiguration: (assetId: string) => [...assetKeys.detail(assetId), 'land-configuration'] as const,
+  landConfigurationHistory: (assetId: string) =>
+    [...assetKeys.landConfiguration(assetId), 'history'] as const,
+  landConfigurationRevision: (assetId: string, version: number) =>
+    [...assetKeys.landConfigurationHistory(assetId), version] as const,
+  /** Cost items (the catalogue) — GET/POST/PATCH .../costs/items(/:itemId). */
+  costItems: (assetId: string) => [...assetKeys.detail(assetId), 'cost-items'] as const,
+  costItem: (assetId: string, itemId: string) => [...assetKeys.costItems(assetId), itemId] as const,
+  costItemAllocationRule: (assetId: string, itemId: string) =>
+    [...assetKeys.costItem(assetId, itemId), 'allocation-rule'] as const,
+  /** Cost obligations (the records) — GET/POST .../costs, GET .../costs/:obligationId. */
+  costObligations: (assetId: string) => [...assetKeys.detail(assetId), 'cost-obligations'] as const,
+  costObligation: (assetId: string, obligationId: string) =>
+    [...assetKeys.costObligations(assetId), obligationId] as const,
+  /** GET /admin/assets/:assetId/costs/coverage. */
+  costCoverage: (assetId: string) => [...assetKeys.detail(assetId), 'cost-coverage'] as const,
+  /** GET /admin/assets/:assetId/profitability(/matrix|/drill-down) — no accounting-basis toggle on the real model, just an optional `as_of`. */
+  estateProfitability: (assetId: string, asOf?: string) =>
+    [...assetKeys.detail(assetId), 'profitability', asOf ?? 'current'] as const,
+  profitabilityMatrix: (assetId: string, asOf?: string) =>
+    [...assetKeys.detail(assetId), 'profitability-matrix', asOf ?? 'current'] as const,
+  profitabilityDrillDown: (assetId: string, asOf?: string) =>
+    [...assetKeys.detail(assetId), 'profitability-drilldown', asOf ?? 'current'] as const,
+  /** GET/PUT /admin/assets/:assetId/selling-charges(/history). */
+  sellingCharges: (assetId: string) => [...assetKeys.detail(assetId), 'selling-charges'] as const,
+  sellingChargesHistory: (assetId: string) => [...assetKeys.sellingCharges(assetId), 'history'] as const,
+  /** GET /admin/assets/:assetId/sqm-inventory(/reconciliation) — the real ledger position + activation readiness. */
+  sqmInventory: (assetId: string) => [...assetKeys.detail(assetId), 'sqm-inventory'] as const,
+  sqmReconciliation: (assetId: string) => [...assetKeys.detail(assetId), 'sqm-reconciliation'] as const,
+  /** GET /admin/assets/:id/updates — nested under detail so an asset-wide invalidate also refetches it. */
+  estateUpdates: (assetId: string) => [...assetKeys.detail(assetId), 'estate-updates'] as const,
+  estateUpdateList: (assetId: string, params?: object) =>
+    [...assetKeys.estateUpdates(assetId), 'list', params ?? {}] as const,
+  estateUpdate: (assetId: string, updateId: string) =>
+    [...assetKeys.estateUpdates(assetId), 'detail', updateId] as const,
   analytics: (assetId: string, filter: string, startDate?: string, endDate?: string) =>
     [...assetKeys.all, 'analytics', assetId, filter, startDate, endDate] as const,
   portfolioAnalytics: () => [...assetKeys.all, 'portfolio-analytics'] as const,
+  /**
+   * GET /admin/assets/:assetId/plots — nested under detail so an asset-wide
+   * invalidate also refetches it. One real endpoint returns the list AND its
+   * totals together (see plot-inventory.schema.ts) — no separate totals key.
+   */
+  plotInventory: (assetId: string, filters?: object) =>
+    [...assetKeys.detail(assetId), 'plot-inventory', filters ?? {}] as const,
+  /** GET /admin/assets/:assetId/site-setup(/boundary) — real field-staff endpoints, not mocks. */
+  siteSetup: (assetId: string) => [...assetKeys.detail(assetId), 'site-setup'] as const,
+  boundaryHistory: (assetId: string) => [...assetKeys.detail(assetId), 'boundary-history'] as const,
 };

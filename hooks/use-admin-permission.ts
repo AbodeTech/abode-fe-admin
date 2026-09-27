@@ -66,6 +66,27 @@ export const ADMIN_PERMISSIONS = [
   'update_asset_question',
   'send_contract',
 
+  // Estate updates — the asset detail Updates tab.
+  'view_estate_updates',
+  'manage_estate_updates',
+
+  // Asset costs — the asset detail Costs & Profitability tab. Confirmed
+  // verbatim against abode-be-v2 staging's asset-cost module (PR #82).
+  'view_asset_costs',
+  'manage_asset_costs',
+  'approve_asset_costs',
+
+  // Estate profitability — the calculation surfaced by that same module.
+  // `manage_profitability_basis` (a singleton-basis idea that doesn't exist
+  // on the real backend — allocation rules are per cost item and gated by
+  // plain `manage_asset_costs`) has been retired; do not reintroduce it.
+  'view_asset_profitability',
+
+  // Site Setup — boundary + fencing progress, read from the real field-staff
+  // module (confirmed against `abode-be-v2`'s `AssetSiteSetupController`).
+  'view_field_performance',
+  'manage_asset_boundary',
+
   'asset_transactions',
   'approve_payments',
   'withdrawals',

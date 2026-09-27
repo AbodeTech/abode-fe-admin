@@ -3,6 +3,8 @@ import { z } from 'zod';
 import {
   AssetDocumentsSchema,
   AssetHistoryEntrySchema,
+  InventoryModelVersionSchema,
+  LandInventoryStateSchema,
   OfferTypeSchema,
   PaymentTypeSchema,
   TopographySchema,
@@ -34,15 +36,49 @@ export const PlanSchema = z.object({
   /** Full-ownership model only — full-ownership and commercial. */
   is_promo: z.boolean().optional(),
   is_active: z.boolean().default(true),
+  /**
+   * 🚧 Provisional additions, layered onto the real abode-be-v2 Plan contract
+   * above (tickets 18/19) — this real backend doesn't have these fields yet.
+   * Additional, separately-tracked amounts that never enter the real
+   * backend's validated plan arithmetic (`planFormSchema`'s outright/
+   * tenor-consistency rules) — only `totalSellingPrice()` below sums all
+   * three, purely for display.
+   */
+  development_levy: z.number().default(0),
+  document_levy: z.number().default(0),
 });
 
 export type Plan = z.infer<typeof PlanSchema>;
 
-export const SizeSchema = z.object({
+/** Never stored — always land_price + the two levies, so it can never disagree with its parts. */
+export function totalSellingPrice(plan: Pick<Plan, 'land_price' | 'development_levy' | 'document_levy'>): number {
+  return plan.land_price + plan.development_levy + plan.document_levy;
+}
+
+const SizeShapeSchema = z.object({
   _id: z.string(),
   offer_id: z.string().optional(),
   size_sqm: z.number(),
-  units_available: z.number(),
+  /**
+   * The real wire field — confirmed against `SizeDto`/`SizeInputDto`/
+   * `UpdateSizeDto` on abode-be-v2 staging (both read and write). This
+   * backend has never used `configured_units` for this endpoint; that name
+   * only exists as an internal, server-computed Mongoose field mirrored from
+   * `units_available` on create, never exposed here.
+   */
+  units_available: z.number().optional(),
+  /**
+   * A real, persisted Mongoose field — but only ever mirrored from
+   * `units_available` at CREATE time (`sizeFields()` in `asset.service.ts`).
+   * `updateSize()` sets `units_available` alone and never touches this field
+   * at all, so after any edit it's stale — confirmed live: setting
+   * `units_available: 2` on an existing size left this still reading its
+   * old value, showing "0 configured units" in the UI despite the save
+   * genuinely succeeding. `units_available` is the one field both create AND
+   * update actually keep current, so the transform below must prefer it,
+   * never fall back to this one first.
+   */
+  configured_units: z.number().optional(),
   /** Required on full-ownership and commercial sizes; absent on flex. */
   document_fee: z.number().optional(),
   is_active: z.boolean().default(true),
@@ -51,7 +87,31 @@ export const SizeSchema = z.object({
   updatedAt: z.string().optional(),
 });
 
+/**
+ * `size.configured_units` is this app's one internal name for "the planned
+ * catalogue quantity" (`size_sqm × configured_units` is this size's slice of
+ * its product's `assigned_sqm` pool — purchases never decrement it in Phase
+ * 1, so it is planning data, not live stock) — used throughout Offers, Land
+ * Configuration, and sqm-inventory capacity math. This transform is the one
+ * place that reconciles it against whichever field the real response
+ * actually sent, so every other reader in this app can keep using
+ * `configured_units` unconditionally.
+ */
+export const SizeSchema = SizeShapeSchema.transform((size) => ({
+  ...size,
+  // `units_available` first — it's the only one of the two the backend keeps
+  // current after an edit; `configured_units` is a stale, create-time-only
+  // mirror the moment a size is ever updated. See `configured_units`'s own
+  // doc comment above for the confirmed live bug this caused.
+  configured_units: size.units_available ?? size.configured_units ?? 0,
+}));
+
 export type Size = z.infer<typeof SizeSchema>;
+
+/** This size's slice of its product's assigned_sqm pool. */
+export function configuredSqm(size: Pick<Size, 'size_sqm' | 'configured_units'>): number {
+  return size.size_sqm * size.configured_units;
+}
 
 export const OfferSchema = z.object({
   _id: z.string(),
@@ -61,12 +121,34 @@ export const OfferSchema = z.object({
   allocation_qualification_pct: z.number(),
   /** Full-ownership model only — full-ownership and commercial. */
   payment_type: PaymentTypeSchema.optional(),
+  /** The product's commercial land pool (see land-configuration.schema.ts). Not decremented by purchases in Phase 1. */
+  assigned_sqm: z.number().default(0),
   sizes: z.array(SizeSchema).default([]),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
 });
 
 export type Offer = z.infer<typeof OfferSchema>;
+
+/** Sum of every active size's slice of this offer's assigned_sqm pool. */
+export function offerConfiguredSqm(offer: Pick<Offer, 'sizes'>): number {
+  return offer.sizes
+    .filter((size) => size.is_active)
+    .reduce((sum, size) => sum + configuredSqm(size), 0);
+}
+
+/**
+ * Mirrors the backend's `PitchPack` subdocument — a single PDF per asset,
+ * with its own endpoint family (`PUT`/`DELETE /admin/assets/:id/pitch-pack`)
+ * rather than living in `documents`. `null` means no pitch pack uploaded.
+ */
+export const PitchPackSchema = z.object({
+  url: z.string(),
+  size_bytes: z.number(),
+  uploaded_at: z.string(),
+});
+
+export type PitchPack = z.infer<typeof PitchPackSchema>;
 
 /**
  * Same asset fields as the list row, but `offers` is the full nested tree
@@ -88,12 +170,19 @@ export const AssetDetailSchema = z.object({
   hero_image: z.string().nullable().optional(),
   pictures: z.array(z.string()).default([]),
   documents: AssetDocumentsSchema.default({}),
+  pitch_pack: PitchPackSchema.nullable().optional(),
   asset_history: z.array(AssetHistoryEntrySchema).default([]),
 
   sales_cap: z.number(),
   sold_units: z.number().default(0),
   reserved_units: z.number().default(0),
   available_units: z.number().nullable().optional(),
+
+  /** See the matching fields on AssetSchema — never combined with the legacy unit fields above. */
+  total_land_sqm: z.number().nullable().default(null),
+  land_inventory_state: LandInventoryStateSchema.default('not_configured'),
+  inventory_model_version: InventoryModelVersionSchema.default('legacy_units'),
+  land_configuration_version: z.number().default(0),
 
   sold: z.boolean().default(false),
   visibility: VisibilitySchema,

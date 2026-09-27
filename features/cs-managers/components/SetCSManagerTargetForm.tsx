@@ -65,8 +65,8 @@ export function SetCSManagerTargetForm({ managerId, existing, onSaved, onCancel 
   const [onboarded, setOnboarded] = useState<string>(
     existing ? String(existing.customers_onboarded_target) : "0"
   );
-  const [deeds, setDeeds] = useState<string>(
-    existing ? String(existing.deeds_delivered_target) : "0"
+  const [tickets, setTickets] = useState<string>(
+    existing ? String(existing.tickets_resolved_target) : "0"
   );
 
   const upsertTarget = useUpsertCSManagerTarget();
@@ -85,11 +85,13 @@ export function SetCSManagerTargetForm({ managerId, existing, onSaved, onCancel 
       return;
     }
 
-    // AssignTargetDto requires all three — unlike main's GraphQL input, none are optional.
+    // AssignTargetDto requires all three — unlike main's GraphQL input, none are
+    // optional. The third is the ticket resolution RATE, which replaced the
+    // deprecated deeds target once the system started issuing deeds itself.
     const values = {
       customers_allocated_target: Number(allocated) || 0,
       customers_onboarded_target: Number(onboarded) || 0,
-      deeds_delivered_target: Number(deeds) || 0,
+      tickets_resolved_target: Number(tickets) || 0,
     };
 
     upsertTarget.mutate(
@@ -158,15 +160,19 @@ export function SetCSManagerTargetForm({ managerId, existing, onSaved, onCancel 
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="deeds">Deeds Delivered</Label>
+          <Label htmlFor="tickets">Ticket Resolution Rate</Label>
           <Input
-            id="deeds"
+            id="tickets"
             type="number"
             min={0}
-            value={deeds}
-            onChange={(e) => setDeeds(e.target.value)}
+            max={100}
+            value={tickets}
+            onChange={(e) => setTickets(e.target.value)}
             className="bg-white"
           />
+          {/* A percentage, not a count — a manager controls how many tickets
+              they close, not how many arrive. */}
+          <p className="text-xs text-gray-500">% of the month&rsquo;s tickets resolved</p>
         </div>
       </div>
 

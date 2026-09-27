@@ -35,6 +35,8 @@ const PERMISSIONS: { name: string; description: string }[] = [
   { name: 'export_associates_leaderboard', description: 'Download the associate leaderboard.' },
   { name: 'view_campaigns', description: 'See campaign performance.' },
   { name: 'manage_campaigns', description: 'Create and edit campaigns.' },
+  { name: 'view_estate_updates', description: 'View the estate updates posted on an asset' },
+  { name: 'manage_estate_updates', description: 'Create, edit, publish and archive estate updates' },
 ];
 
 type MockRole = {
