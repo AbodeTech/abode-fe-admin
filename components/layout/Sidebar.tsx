@@ -19,6 +19,7 @@ import {
   ClipboardList,
   FileText,
   Gift,
+  CalendarDays,
   GraduationCap,
   Inbox,
   LandPlot,
