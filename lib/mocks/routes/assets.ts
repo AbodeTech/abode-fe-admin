@@ -40,6 +40,7 @@ export type MockAsset = {
   hero_image: string | null;
   pictures: string[];
   documents: Record<string, string | undefined>;
+  pitch_pack: { url: string; size_bytes: number; uploaded_at: string } | null;
   asset_history: { year: number; value: number }[];
   sales_cap: number;
   sold_units: number;
@@ -81,6 +82,7 @@ const asset = (
     hero_image: null,
     pictures: [],
     documents: {},
+    pitch_pack: null,
     asset_history: [],
     total_land_sqm: null,
     land_inventory_state: 'not_configured',
@@ -114,6 +116,12 @@ const assets: MockAsset[] = [
       { offer_type: 'commercial', is_active: true, size_count: 2, plan_count: 4 },
     ],
     createdAt: daysAgo(210),
+    // Exercises the "current file" state — every other fixture is the empty state.
+    pitch_pack: {
+      url: 'https://res.cloudinary.com/abode/raw/upload/v1/assets/aviation-city-pitch-pack.pdf',
+      size_bytes: 4_200_000,
+      uploaded_at: daysAgo(14),
+    },
   }),
   asset({
     _id: '665faaaa00000000000000a2',
@@ -870,6 +878,42 @@ export const assetRoutes: MockRoutes = {
     if (!row) throw new MockHttpError(404, 'Asset not found', 'ASSET_NOT_FOUND');
 
     return { ...row, offers: offerTree(row) };
+  },
+
+  /**
+   * Upload or replace — mirrors `AssetService.setPitchPack`: replacing the
+   * same URL keeps the original `uploaded_at`, anything else resets it.
+   */
+  'PUT /admin/assets/:id/pitch-pack': ({ params, body: raw }) => {
+    const row = assets.find((candidate) => candidate._id === params.id);
+    if (!row) throw new MockHttpError(404, 'Asset not found', 'ASSET_NOT_FOUND');
+
+    const dto = body<{ url?: string; size_bytes?: number }>(raw);
+    if (!dto.url || !/^https?:\/\/\S+$/i.test(dto.url)) {
+      throw new MockHttpError(400, 'url must be an http(s) link to the uploaded file', 'VALIDATION_FAILED');
+    }
+    if (!Number.isInteger(dto.size_bytes) || dto.size_bytes! < 1) {
+      throw new MockHttpError(400, 'size_bytes must be a positive integer', 'VALIDATION_FAILED');
+    }
+
+    const current = row.pitch_pack;
+    const sameFile = current?.url === dto.url;
+    row.pitch_pack = {
+      url: dto.url,
+      size_bytes: dto.size_bytes!,
+      uploaded_at: sameFile && current ? current.uploaded_at : nowIso(),
+    };
+
+    return row.pitch_pack;
+  },
+
+  'DELETE /admin/assets/:id/pitch-pack': ({ params }) => {
+    const row = assets.find((candidate) => candidate._id === params.id);
+    if (!row) throw new MockHttpError(404, 'Asset not found', 'ASSET_NOT_FOUND');
+
+    if (!row.pitch_pack) return { removed: false };
+    row.pitch_pack = null;
+    return { removed: true };
   },
 
   /**
