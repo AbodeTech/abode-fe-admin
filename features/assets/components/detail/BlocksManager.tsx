@@ -53,6 +53,7 @@ import {
   expandPlotRanges,
   isAllocated,
   plotName,
+  PLOT_STATUS_LABELS,
   type Block,
   type Plot,
   type PlotRange,
@@ -68,6 +69,7 @@ import {
   useDeletePlot,
   useUpdatePlot,
 } from "../../hooks/use-plots";
+import { NumberInput } from "./NumberInput";
 
 /* ============================================================
  * Block inventory — the land this asset is actually made of.
@@ -120,7 +122,7 @@ export function BlocksManager({ assetId }: { assetId: string }) {
   };
 
   return (
-    <Card>
+    <Card id="blocks-manager" className="scroll-mt-4">
       <CardHeader className="flex flex-col gap-3 pb-4 md:flex-row md:items-center md:justify-between">
         <div>
           <CardTitle className="flex items-center gap-2 text-lg">
@@ -261,7 +263,7 @@ function BlockCard({
           </p>
         </div>
         <div className="rounded-md bg-amber-50 py-1.5">
-          <p className="text-[10px] uppercase tracking-wider text-amber-700">Allocated</p>
+          <p className="text-[10px] uppercase tracking-wider text-amber-700">System allocated</p>
           <p className="text-sm font-bold tabular-nums text-amber-700">
             {isLoading ? "…" : stats.allocated}
           </p>
@@ -481,7 +483,7 @@ function ManageBlockPlotsDialog({
                               : "bg-emerald-100 text-emerald-800"
                           )}
                         >
-                          {plot.status}
+                          {PLOT_STATUS_LABELS[plot.status]}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -651,31 +653,43 @@ function AddPlotsDialog({
             <div key={range.id} className="grid grid-cols-[1fr_1fr_1fr_auto] items-end gap-2">
               <div className="space-y-1">
                 {index === 0 && <Label className="text-xs">From</Label>}
-                <Input
-                  type="number"
+                <NumberInput
+                  field={{
+                    value: range.from === "" ? undefined : Number(range.from),
+                    onChange: (v) => updateRange(range.id, { from: v === undefined ? "" : String(v) }),
+                    onBlur: () => {},
+                    name: `range-${range.id}-from`,
+                    ref: () => {},
+                  }}
                   min={1}
-                  value={range.from}
-                  onChange={(event) => updateRange(range.id, { from: event.target.value })}
                   placeholder="1"
                 />
               </div>
               <div className="space-y-1">
                 {index === 0 && <Label className="text-xs">To</Label>}
-                <Input
-                  type="number"
+                <NumberInput
+                  field={{
+                    value: range.to === "" ? undefined : Number(range.to),
+                    onChange: (v) => updateRange(range.id, { to: v === undefined ? "" : String(v) }),
+                    onBlur: () => {},
+                    name: `range-${range.id}-to`,
+                    ref: () => {},
+                  }}
                   min={1}
-                  value={range.to}
-                  onChange={(event) => updateRange(range.id, { to: event.target.value })}
                   placeholder="10"
                 />
               </div>
               <div className="space-y-1">
                 {index === 0 && <Label className="text-xs">Size (sqm)</Label>}
-                <Input
-                  type="number"
+                <NumberInput
+                  field={{
+                    value: range.size === "" ? undefined : Number(range.size),
+                    onChange: (v) => updateRange(range.id, { size: v === undefined ? "" : String(v) }),
+                    onBlur: () => {},
+                    name: `range-${range.id}-size`,
+                    ref: () => {},
+                  }}
                   min={1}
-                  value={range.size}
-                  onChange={(event) => updateRange(range.id, { size: event.target.value })}
                   placeholder="500"
                 />
               </div>
@@ -786,24 +800,32 @@ function EditPlotDialog({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="plot-size">Size (sqm)</Label>
-            <Input
+            <NumberInput
               id="plot-size"
-              type="number"
+              field={{
+                value: size === "" ? plot.size : Number(size),
+                onChange: (v) => setSize(v === undefined ? "" : String(v)),
+                onBlur: () => {},
+                name: "plot-size",
+                ref: () => {},
+              }}
               min={1}
-              defaultValue={plot.size}
-              onChange={(event) => setSize(event.target.value)}
               autoFocus
               required
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="plot-number">Plot number</Label>
-            <Input
+            <NumberInput
               id="plot-number"
-              type="number"
+              field={{
+                value: plotNumber === "" ? plot.plot_number : Number(plotNumber),
+                onChange: (v) => setPlotNumber(v === undefined ? "" : String(v)),
+                onBlur: () => {},
+                name: "plot-number",
+                ref: () => {},
+              }}
               min={1}
-              defaultValue={plot.plot_number}
-              onChange={(event) => setPlotNumber(event.target.value)}
               required
             />
           </div>

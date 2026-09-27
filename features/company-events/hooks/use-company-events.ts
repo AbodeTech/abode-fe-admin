@@ -16,6 +16,8 @@ export interface CompanyEventFilters {
   status?: CompanyEventStatus | null;
   /** Sent as `q` — the real `ListCompanyEventsQueryDto`'s param name. */
   search?: string | null;
+  /** Scopes the list to one asset — used by the Asset Detail "Allocation events" card. Already supported server-side (GET /admin/company-events already filters on asset_id). */
+  assetId?: string | null;
   [key: string]: unknown;
 }
 
@@ -28,7 +30,7 @@ export const DEFAULT_COMPANY_EVENT_LIMIT = 20;
  * consumer keeps reading `.asset_name` unchanged.
  */
 export const useCompanyEvents = (filters: CompanyEventFilters = {}) => {
-  const { page = 1, limit = DEFAULT_COMPANY_EVENT_LIMIT, type, status, search } = filters;
+  const { page = 1, limit = DEFAULT_COMPANY_EVENT_LIMIT, type, status, search, assetId } = filters;
   const assetsQuery = useCompanyEventAssets();
 
   const query = useQuery({
@@ -41,6 +43,7 @@ export const useCompanyEvents = (filters: CompanyEventFilters = {}) => {
           type: type || undefined,
           status: status || undefined,
           q: search || undefined,
+          asset_id: assetId || undefined,
         },
       }),
   });

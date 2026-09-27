@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useForm, type UseFormReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -27,6 +27,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 import { TOPOGRAPHIES, VISIBILITIES, VISIBILITY_LABELS } from "../../schemas/asset.schema";
 import type { AssetDetail } from "../../schemas/asset-detail.schema";
+import { NumberInput } from "./NumberInput";
 import {
   assetAvailabilityFormSchema,
   assetDetailsFormSchema,
@@ -65,14 +66,33 @@ export type SectionForm<TValues extends Record<string, unknown>> = {
   isSaving: boolean;
 };
 
-/** Re-seed whenever editing opens, so a cancelled edit never lingers. */
+/**
+ * Re-seed whenever editing opens, so a cancelled edit never lingers.
+ *
+ * `seed` is a fresh closure every render at all three call sites below (none
+ * of them memoise it) — depending on it directly used to re-run this effect
+ * on every single render, and since `seed()` calls `form.reset()`, which
+ * itself triggers a re-render of every `FormField` reading this form's state,
+ * that re-render produced a new `seed` closure and fired the effect again:
+ * an infinite loop (confirmed live — "Maximum update depth exceeded" the
+ * moment any of Overview's three edit panels opened). A ref sidesteps it:
+ * always the latest `seed`, but never itself a reason for the effect to
+ * re-run — only an actual `editing` transition does that now.
+ */
 function useReseedOnOpen(sectionId: string, seed: () => void) {
   const editing = useAssetFormStore((state) => state.editingSections[sectionId] ?? false);
+  const seedRef = useRef(seed);
+  // Refs can't be written during render — update it in its own effect (runs
+  // after every render, commits before the effect below ever needs it) so
+  // `seedRef.current` is always the latest closure without itself being a
+  // reason for that effect to re-run.
+  useEffect(() => {
+    seedRef.current = seed;
+  });
 
   useEffect(() => {
-    if (editing) seed();
-    // `seed` closes over the asset, so this re-runs when the asset changes too.
-  }, [editing, seed]);
+    if (editing) seedRef.current();
+  }, [editing]);
 }
 
 /* -------------------- details -------------------- */
@@ -315,17 +335,7 @@ export function AssetAvailabilityFields({
             <FormItem>
               <FormLabel className="text-xs">Sales cap</FormLabel>
               <FormControl>
-                <Input
-                  type="number"
-                  min={1}
-                  value={field.value ?? ""}
-                  onChange={(e) =>
-                    field.onChange(e.target.value === "" ? undefined : e.target.valueAsNumber)
-                  }
-                  onBlur={field.onBlur}
-                  name={field.name}
-                  ref={field.ref}
-                />
+                <NumberInput field={field} min={1} />
               </FormControl>
               <FormDescription className="text-xs">
                 {committed > 0
@@ -373,6 +383,7 @@ const DOCUMENT_SLOTS = [
   { key: "survey", label: "Survey" },
   { key: "contract_of_sales", label: "Contract of sales" },
   { key: "estate_layout", label: "Estate layout" },
+  { key: "brochure", label: "Brochure" },
 ] as const;
 
 export function useAssetMediaSection(

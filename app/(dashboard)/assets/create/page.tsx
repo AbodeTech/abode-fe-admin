@@ -20,8 +20,8 @@ export default function CreateAssetPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">New asset</h1>
           <p className="text-muted-foreground">
-            One asset can sell flex, full ownership, or both. Everything below is created together —
-            if anything is rejected, nothing is saved.
+            Start with the estate&apos;s physical size and its initial product pools. Roads, services,
+            sizes, and prices can all be completed afterward on the asset&apos;s Offers tab.
           </p>
         </div>
       </div>

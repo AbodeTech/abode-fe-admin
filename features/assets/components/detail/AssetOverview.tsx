@@ -1,7 +1,7 @@
 "use client";
 
+import { useState } from "react";
 import { useParams } from "next/navigation";
-import { Ban } from "lucide-react";
 
 import { formatNaira } from "@/lib/utils/format";
 
@@ -22,6 +22,11 @@ import {
   useAssetDetailsSection,
   useAssetMediaSection,
 } from "./EditAssetSections";
+import { AssetAllocationEventsCard } from "./AssetAllocationEventsCard";
+import { LandAccountCard } from "./LandAccountCard";
+import { LandAccountEditorDrawer } from "./LandAccountEditorDrawer";
+import { LandConfigurationHistory } from "./LandConfigurationHistory";
+import { LandUseTable } from "./LandUseTable";
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -57,6 +62,7 @@ const DOCUMENT_LABELS = {
   survey: "Survey",
   contract_of_sales: "Contract of sales",
   estate_layout: "Estate layout",
+  brochure: "Brochure",
 } as const;
 
 function documentStatus(asset: AssetDetail) {
@@ -78,6 +84,13 @@ export function AssetOverview() {
   const details = useAssetDetailsSection(asset);
   const availability = useAssetAvailabilitySection(asset);
   const media = useAssetMediaSection(asset);
+
+  // One editor/history pair shared by the Land Account card and the Roads &
+  // Services table below, so "Edit breakdown" from either place opens the
+  // same drawer rather than mounting two. `focusSection` carries where a
+  // Roads & Services row click should scroll to inside that shared drawer.
+  const [landEditor, setLandEditor] = useState<{ open: boolean; focusSection?: "non-saleable" }>({ open: false });
+  const [landHistoryOpen, setLandHistoryOpen] = useState(false);
 
   if (!asset) return null;
 
@@ -160,6 +173,20 @@ export function AssetOverview() {
         </div>
       </EditablePanel>
 
+      <LandAccountCard
+        assetId={asset._id}
+        onEdit={() => setLandEditor({ open: true })}
+        onViewHistory={() => setLandHistoryOpen(true)}
+      />
+
+      <LandUseTable
+        assetId={asset._id}
+        onEdit={() => setLandEditor({ open: true })}
+        onRowClick={() => setLandEditor({ open: true, focusSection: "non-saleable" })}
+      />
+
+      <AssetAllocationEventsCard assetId={asset._id} />
+
       <EditablePanel
         id="media"
         title="Images and documents"
@@ -231,24 +258,13 @@ export function AssetOverview() {
         </Panel>
       ) : null}
 
-      {/*
-        ⛔ ticket 17a — there is no Block or Plot model on the backend. Shown
-        disabled so the slot is visible in the design, but never as a working
-        form: an admin creating blocks that vanish on reload is worse than a
-        blank space.
-      */}
-      {/*<section className="rounded-lg border border-dashed">
-        <div className="flex items-start gap-2.5 p-4">
-          <Ban className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-          <div className="min-w-0">
-            <h2 className="font-medium text-muted-foreground">Blocks and plots</h2>
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              Plot-level allocation isn&apos;t available — the backend has no Block or Plot model.
-              Whether it&apos;s part of v2 at all is an open question.
-            </p>
-          </div>
-        </div>
-      </section>*/}
+      <LandAccountEditorDrawer
+        assetId={asset._id}
+        open={landEditor.open}
+        onOpenChange={(open) => setLandEditor((current) => ({ ...current, open }))}
+        focusSection={landEditor.focusSection}
+      />
+      <LandConfigurationHistory assetId={asset._id} open={landHistoryOpen} onOpenChange={setLandHistoryOpen} />
     </div>
   );
 }

@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Loader2, MoreVertical, Pencil, Plus } from "lucide-react";
+import { History, Loader2, MoreVertical, Pencil, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -21,20 +23,33 @@ import {
 } from "@/components/shared/admin-responsive-table";
 import { formatNaira } from "@/lib/utils/format";
 import { cn } from "@/lib/utils";
+import { isMockApiEnabled } from "@/lib/mocks/config";
 
 import { OFFER_TYPES, OFFER_TYPE_LABELS, usesFoModel } from "../../schemas/asset.schema";
-import { sortedPlans, type Offer, type Plan, type Size } from "../../schemas/asset-detail.schema";
+import {
+  offerConfiguredSqm,
+  sortedPlans,
+  totalSellingPrice,
+  type Offer,
+  type Plan,
+  type Size,
+} from "../../schemas/asset-detail.schema";
+import { productCapacity } from "../../schemas/land-configuration.schema";
+import { formatSqm } from "@/lib/utils/format";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
 import { useAssetDetail } from "../../hooks/use-asset-detail";
 import { useUpdateOffer } from "../../hooks/use-offer-mutations";
 import { useAssetFormStore } from "../../store/asset-form-store";
+import { OfferConfigHistorySheet } from "./OfferConfigHistorySheet";
 import { OfferEditDialogs } from "./OfferEditDialogs";
+import { SellingChargesPanel } from "./SellingChargesPanel";
 
 const PAYMENT_TYPE_LABELS: Record<string, string> = {
   "all-inclusive": "All inclusive",
@@ -83,6 +98,11 @@ function PlansTable({ size, offerType }: { size: Size; offerType: string }) {
                 </TableCell>
                 <TableCell className="text-sm font-medium tabular-nums">
                   {formatNaira(plan.land_price)}
+                  {plan.development_levy > 0 || plan.document_levy > 0 ? (
+                    <span className="block text-xs font-normal text-muted-foreground">
+                      Total {formatNaira(totalSellingPrice(plan))}
+                    </span>
+                  ) : null}
                 </TableCell>
                 <TableCell className="text-sm tabular-nums text-muted-foreground">
                   {planTerms(plan)}
@@ -116,6 +136,7 @@ function PlansTable({ size, offerType }: { size: Size; offerType: string }) {
                       >
                         Edit
                       </DropdownMenuItem>
+                      <DropdownMenuSeparator />
                       <DropdownMenuItem
                         variant="destructive"
                         disabled={isOnlyPlan}
@@ -147,6 +168,9 @@ function PlansTable({ size, offerType }: { size: Size; offerType: string }) {
             subtitle={formatNaira(plan.land_price)}
           >
             <AdminMobileField label="Terms" value={planTerms(plan)} />
+            {plan.development_levy > 0 || plan.document_levy > 0 ? (
+              <AdminMobileField label="Total selling price" value={formatNaira(totalSellingPrice(plan))} />
+            ) : null}
             {plan.is_promo ? <AdminMobileField label="Promo" value="Yes" /> : null}
           </AdminMobileCard>
         ))}
@@ -173,7 +197,7 @@ function SizeCard({
         <p className="font-medium tabular-nums">
           {size.size_sqm.toLocaleString()} sqm
           <span className="ml-2 text-sm font-normal text-muted-foreground">
-            {size.units_available.toLocaleString()} units
+            {size.configured_units.toLocaleString()} configured units
           </span>
         </p>
 
@@ -246,6 +270,14 @@ function OfferCard({ assetId, offer }: { assetId: string; offer: Offer }) {
     );
   };
 
+  // Only asset-level product pools set up through the Land Account carry a
+  // real `assigned_sqm` — a legacy, not-yet-configured product has no
+  // capacity to report against, so nothing renders rather than showing a
+  // misleading "0 of 0 sqm" state.
+  const hasLandAccount = offer.assigned_sqm > 0;
+  const configured = offerConfiguredSqm(offer);
+  const capacity = productCapacity({ assigned_sqm: offer.assigned_sqm, configured_sqm: configured });
+
   return (
     <section className="rounded-lg border">
       <div className="flex flex-wrap items-start justify-between gap-3 border-b px-4 py-3">
@@ -255,6 +287,35 @@ function OfferCard({ assetId, offer }: { assetId: string; offer: Offer }) {
             {offer.allocation_qualification_pct}% qualifies for allocation
             {offer.payment_type ? ` · ${PAYMENT_TYPE_LABELS[offer.payment_type]}` : ""}
           </p>
+          {hasLandAccount ? (
+            <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+              <span className="text-muted-foreground">
+                {formatSqm(configured)} configured of {formatSqm(offer.assigned_sqm)} assigned
+              </span>
+              <span
+                className={cn(
+                  "rounded-full px-2 py-0.5 font-medium",
+                  capacity.isOverCapacity
+                    ? "bg-rose-500/10 text-rose-600"
+                    : capacity.unconfiguredSqm === 0
+                      ? "bg-emerald-500/10 text-emerald-600"
+                      : "bg-muted text-muted-foreground"
+                )}
+              >
+                {capacity.isOverCapacity
+                  ? `Over capacity by ${formatSqm(Math.abs(capacity.unconfiguredSqm))}`
+                  : capacity.unconfiguredSqm === 0
+                    ? "Fully configured"
+                    : `${formatSqm(capacity.unconfiguredSqm)} unconfigured`}
+              </span>
+              {/* Assigned sqm is edited in exactly one place — the Land
+                  Account editor — so this links there rather than adding a
+                  second input here that could drift from it. */}
+              <Link href={`/assets/${assetId}`} className="text-muted-foreground underline underline-offset-4 hover:text-foreground">
+                Edit assigned sqm
+              </Link>
+            </p>
+          ) : null}
         </div>
 
         <div className="flex shrink-0 items-center gap-3">
@@ -306,12 +367,7 @@ function OfferCard({ assetId, offer }: { assetId: string; offer: Offer }) {
           <p className="text-sm text-muted-foreground">No sizes on this offer.</p>
         ) : (
           offer.sizes.map((size) => (
-            <SizeCard
-              key={size._id}
-              size={size}
-              isFo={isFo}
-              offerType={offer.offer_type}
-            />
+            <SizeCard key={size._id} size={size} isFo={isFo} offerType={offer.offer_type} />
           ))
         )}
 
@@ -333,15 +389,31 @@ export function AssetOffers() {
   const params = useParams<{ id: string }>();
   const { data: asset } = useAssetDetail(params.id);
   const openOfferEdit = useAssetFormStore((state) => state.openOfferEdit);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   if (!asset) return null;
 
+  // Developer plot has no size/plan tree in Phase 1 (see asset.schema.ts's
+  // OFFER_TYPES doc comment) — it exists only as a Land Account product pool,
+  // never as an addable offer here.
   const missingOfferTypes = OFFER_TYPES.filter(
-    (offerType) => !asset.offers.some((offer) => offer.offer_type === offerType)
+    (offerType) =>
+      offerType !== 'developer-plot' && !asset.offers.some((offer) => offer.offer_type === offerType)
   );
 
   return (
     <div className="space-y-4">
+      <SellingChargesPanel assetId={params.id} />
+
+      {isMockApiEnabled() ? (
+        <div className="flex justify-end">
+          <Button type="button" variant="outline" size="sm" onClick={() => setHistoryOpen(true)}>
+            <History className="mr-1.5 h-3.5 w-3.5" />
+            History
+          </Button>
+        </div>
+      ) : null}
+
       {asset.offers.length === 0 ? (
         <div className="rounded-md border border-dashed p-8 text-center">
           <p className="font-medium">No offers</p>
@@ -369,6 +441,9 @@ export function AssetOffers() {
       ))}
 
       <OfferEditDialogs asset={asset} />
+      {isMockApiEnabled() ? (
+        <OfferConfigHistorySheet assetId={params.id} open={historyOpen} onOpenChange={setHistoryOpen} />
+      ) : null}
     </div>
   );
 }
