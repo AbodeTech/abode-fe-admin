@@ -109,6 +109,17 @@ export function usesFoModel(offerType: string): boolean {
 
 **Developer plot — no Asset addition needed:** developer plots are a PaymentPlan-side concern (ADMIN-USER-DETAIL-MUTATIONS §7.3). Admin picks any existing Asset at plan-create time and overrides size/price/units directly — the Asset row itself never changes.
 
+> **Superseded 2026-09-23** by the Asset Land Model foundation
+> (`docs/ASSETS-ADMIN-DESIGN.md` §10, `docs/BACKEND-PHASE-1-ASSET-LAND-MODEL.md`):
+> `'developer-plot'` is now also a real `AssetOffer.offer_type` — an
+> Asset-level saleable land pool, added specifically because the physical-land
+> account needs somewhere to record developer-plot sqm. This does **not**
+> contradict the note above: the PaymentPlan-side override described here is
+> unchanged and still the only way price/units are set for a developer plot
+> sale. The two are unrelated concepts that happen to share a name — the
+> Asset-level pool has no size/plan tree of its own in Phase 1. Never conflate
+> them.
+
 ---
 
 ## 4. TODO Additions

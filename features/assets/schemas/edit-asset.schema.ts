@@ -111,6 +111,7 @@ export const assetMediaFormSchema = z.object({
     survey: optionalUrl,
     contract_of_sales: optionalUrl,
     estate_layout: optionalUrl,
+    brochure: optionalUrl,
   }),
 });
 
@@ -125,6 +126,7 @@ export function assetToMediaForm(asset: AssetDetail): AssetMediaFormValues {
       survey: asset.documents?.survey ?? '',
       contract_of_sales: asset.documents?.contract_of_sales ?? '',
       estate_layout: asset.documents?.estate_layout ?? '',
+      brochure: asset.documents?.brochure ?? '',
     },
   };
 }

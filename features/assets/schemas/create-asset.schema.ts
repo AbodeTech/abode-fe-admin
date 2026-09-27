@@ -1,31 +1,36 @@
 import { z } from 'zod';
 
-import {
-  OfferTypeSchema,
-  PaymentTypeSchema,
-  TopographySchema,
-  VisibilitySchema,
-  usesFoModel,
-} from './asset.schema';
+import { TopographySchema, VisibilitySchema } from './asset.schema';
+import { productPoolFormSchema, totalAssignedSqm } from './land-configuration.schema';
 
 /* ============================================================
  * Create asset — form schema and payload mapper.
  *
- * The backend enforces six structural rules beyond field types. They are all
- * re-implemented here, because a rejection from the server arrives as a wall
- * of class-validator text an admin cannot act on, and by then they have filled
- * in a four-level form.
+ * Creation now starts the physical-land account (total estate sqm + initial
+ * per-product assigned sqm) instead of asking for a unit-count sales cap, and
+ * no longer requires offers/sizes/plans — those are completed after creation
+ * on the Offers tab, which still enforces the backend's structural rules for
+ * that tree (see `planFormSchema` below, used there via
+ * `OfferEditDialogs.tsx`).
  *
- * Rules, all mirrored below:
+ * Zero product pools is allowed at creation — an estate-only draft before
+ * products are known — confirmed against the real abode-be-v2
+ * `CreateAssetDto`, which makes `product_pools` optional. That DTO also makes
+ * `total_land_sqm` itself optional (for a pure-legacy-only asset with no land
+ * account at all), which this schema does NOT currently allow — it requires a
+ * positive `total_land_sqm` unconditionally. That's a real gap against what
+ * the backend supports, not a deliberate choice; revisit if legacy-only
+ * creation turns out to still be needed.
+ *
+ * `planFormSchema` still re-implements two of the backend's six structural
+ * plan-arithmetic rules, because a rejection from the server arrives as a
+ * wall of class-validator text an admin cannot act on:
  *   1. tenor 0 (outright)  → monthly must be 0, initial must equal land_price
  *   2. tenor ≥ 1           → |initial + monthly × (tenor−1) − land_price| ≤ max(1, tenor)
- *   3. tenors unique within a size
- *   4. flex sizes may NOT contain a tenor-0 plan — outright is FO-model only
- *   5. FO-model sizes MUST supply document_fee (0 is fine, absent is not)
- *   6. payment_type is required on FO-model offers
  *
- * "FO-model" = full-ownership or commercial — the backend's `usesFoModel()`
- * treats both the same; only flex is exempt from rules 4–6.
+ * The other four (tenor uniqueness, flex-may-not-use-outright, FO-model
+ * document_fee, FO-model payment_type) are offer/size-level rules that moved
+ * to the Offers tab's own add-offer/add-size flow along with the tree itself.
  *
  * Money is whole naira. The backend's `@IsInt()` forbids decimals, and its
  * tolerance (rule 2) exists precisely to absorb the rounding that causes —
@@ -50,9 +55,50 @@ export function expectedLandPrice(plan: {
   return plan.initial_payment + plan.monthly_installment * (plan.tenor_months - 1);
 }
 
-/** The backend's tolerance: `max(1, tenor_months)`. */
+/**
+ * The backend's real tolerance — confirmed against `isPlanMathConsistent()`
+ * (`dto/asset-plan.validators.ts`, `@ValidatePlanConsistency()`, gating
+ * `CreateAssetDto`/`OfferInputDto`/`SizeInputDto`/`UpdateSizeDto`) and
+ * `assertPlanMath()` (`plan-validation.ts`, gating `addPlan`/`updatePlan`):
+ * `max(0.01, tenor_months * 0.01)`, not `max(1, tenor_months)`. Since every
+ * amount is whole naira (`@IsInt()`), that's effectively zero tolerance for
+ * any tenor under 100 months — the old, far looser client-side check let an
+ * admin submit numbers this form accepted as valid, only for the real
+ * backend to 400 with `PLAN_MATH_INVALID` right after.
+ */
 export function planTolerance(tenorMonths: number): number {
-  return Math.max(1, tenorMonths);
+  return Math.max(0.01, tenorMonths * 0.01);
+}
+
+/**
+ * Solves for a monthly instalment (and, if whole-naira rounding leaves a
+ * remainder, a slightly adjusted initial payment) so
+ * `initial + monthly × (tenor − 1)` lands EXACTLY on `land_price` — not just
+ * within `planTolerance`. Rounding the monthly instalment alone is not
+ * enough on its own: `land_price − initial_payment` rarely divides evenly by
+ * `tenor − 1`, and the real tolerance above is too tight for that leftover
+ * remainder to survive. Folding it back into the initial payment (rather
+ * than leaving it as an invalid drift) is the same trade-off a human doing
+ * this by hand would make — front-load the odd naira into the deposit
+ * instead of an uneven final instalment.
+ *
+ * `initial_payment` in the result only ever differs from the input when
+ * whole-naira rounding required it — callers should tell the admin when
+ * that happens rather than silently overwrite what they typed.
+ */
+export function calculateExactInstalment(
+  landPrice: number,
+  initialPayment: number,
+  tenorMonths: number
+): { initial_payment: number; monthly_installment: number } {
+  if (tenorMonths <= 1) {
+    // Outright (0) or a single payment (1) — the whole price is the "initial payment", no instalment at all.
+    return { initial_payment: landPrice, monthly_installment: 0 };
+  }
+  const remaining = landPrice - initialPayment;
+  const monthly = Math.round(remaining / (tenorMonths - 1));
+  const adjustedInitial = landPrice - monthly * (tenorMonths - 1);
+  return { initial_payment: adjustedInitial, monthly_installment: monthly };
 }
 
 export const planFormSchema = z
@@ -92,68 +138,6 @@ export const planFormSchema = z
 
 export type PlanFormValues = z.infer<typeof planFormSchema>;
 
-export const sizeFormSchema = z.object({
-  size_sqm: z
-    .number({ message: 'Enter a size' })
-    .int('Whole square metres only')
-    .positive('Must be greater than zero'),
-  units_available: z
-    .number({ message: 'Enter a unit count' })
-    .int('Whole units only')
-    .min(0, 'Cannot be negative'),
-  /** Rule 5 — required for full-ownership, enforced at the offer level below. */
-  document_fee: naira.optional(),
-  plans: z.array(planFormSchema).min(1, 'Add at least one plan'),
-});
-
-export type SizeFormValues = z.infer<typeof sizeFormSchema>;
-
-export const offerFormSchema = z
-  .object({
-    offer_type: OfferTypeSchema,
-    is_active: z.boolean().optional(),
-    allocation_qualification_pct: z
-      .number({ message: 'Enter a percentage' })
-      .int('Whole percentages only')
-      .min(1, 'Must be at least 1%')
-      .max(100, 'Cannot exceed 100%'),
-    payment_type: PaymentTypeSchema.optional(),
-    sizes: z.array(sizeFormSchema).min(1, 'Add at least one size'),
-  })
-  // Rule 6 — payment type is required on FO-model offers.
-  .refine(
-    (offer) => !usesFoModel(offer.offer_type) || offer.payment_type !== undefined,
-    { message: 'Choose a payment type', path: ['payment_type'] }
-  )
-  // Rule 5 — document fee required on every FO-model size.
-  .refine(
-    (offer) =>
-      !usesFoModel(offer.offer_type) ||
-      offer.sizes.every((size) => typeof size.document_fee === 'number'),
-    { message: 'Every full-ownership or commercial size needs a document fee', path: ['sizes'] }
-  )
-  // Rule 4 — outright is full-ownership only.
-  .refine(
-    (offer) =>
-      offer.offer_type !== 'flex' ||
-      offer.sizes.every((size) => size.plans.every((plan) => plan.tenor_months >= 1)),
-    {
-      message: 'Flex plans run for at least one month — outright is full-ownership only',
-      path: ['sizes'],
-    }
-  )
-  // Rule 3 — tenors unique within each size.
-  .refine(
-    (offer) =>
-      offer.sizes.every((size) => {
-        const tenors = size.plans.map((plan) => plan.tenor_months);
-        return new Set(tenors).size === tenors.length;
-      }),
-    { message: 'Each size can only have one plan per tenor', path: ['sizes'] }
-  );
-
-export type OfferFormValues = z.infer<typeof offerFormSchema>;
-
 export const createAssetFormSchema = z.object({
   name: z.string().trim().min(1, 'Give the asset a name'),
   asset_location: z.string().trim().optional(),
@@ -180,14 +164,24 @@ export const createAssetFormSchema = z.object({
     })
     .default({}),
 
-  sales_cap: z
-    .number({ message: 'Enter a sales cap' })
-    .int('Whole units only')
-    .positive('Must be greater than zero'),
   visibility: VisibilitySchema.default('draft'),
 
-  offers: z.array(offerFormSchema).min(1, 'An asset needs at least one offer'),
-});
+  total_land_sqm: z
+    .number({ message: 'Enter the total estate size' })
+    .int('Whole square metres only')
+    .positive('Must be greater than zero'),
+  product_pools: z.array(productPoolFormSchema).default([]),
+})
+  .refine(
+    (values) =>
+      new Set(values.product_pools.map((pool) => pool.offer_type)).size ===
+      values.product_pools.length,
+    { message: 'Each product can only be assigned once', path: ['product_pools'] }
+  )
+  .refine(
+    (values) => totalAssignedSqm(values.product_pools) <= values.total_land_sqm,
+    { message: 'Assigned sqm exceeds the total estate size', path: ['product_pools'] }
+  );
 
 export type CreateAssetFormValues = z.input<typeof createAssetFormSchema>;
 export type CreateAssetFormOutput = z.output<typeof createAssetFormSchema>;
@@ -223,80 +217,11 @@ export function createAssetFormToPayload(values: CreateAssetFormOutput) {
     documents: Object.keys(omitBlank(values.documents)).length
       ? omitBlank(values.documents)
       : undefined,
-    sales_cap: values.sales_cap,
     visibility: values.visibility,
-    offers: values.offers.map((offer) =>
-      omitBlank({
-        offer_type: offer.offer_type,
-        is_active: offer.is_active ?? true,
-        allocation_qualification_pct: offer.allocation_qualification_pct,
-        // Only FO-model offers carry this; sending it on flex would 400.
-        payment_type: usesFoModel(offer.offer_type) ? offer.payment_type : undefined,
-        sizes: offer.sizes.map((size) =>
-          omitBlank({
-            size_sqm: size.size_sqm,
-            units_available: size.units_available,
-            document_fee: usesFoModel(offer.offer_type) ? (size.document_fee ?? 0) : undefined,
-            plans: size.plans.map((plan) =>
-              omitBlank({
-                tenor_months: plan.tenor_months,
-                land_price: plan.land_price,
-                initial_payment: plan.initial_payment,
-                monthly_installment: plan.monthly_installment,
-                is_promo: plan.is_promo,
-                is_active: plan.is_active ?? true,
-              })
-            ),
-          })
-        ),
-      })
-    ),
+    total_land_sqm: values.total_land_sqm,
+    product_pools: values.product_pools.map((pool) => ({
+      offer_type: pool.offer_type,
+      assigned_sqm: pool.assigned_sqm,
+    })),
   });
-}
-
-/* -------------------- plan generation -------------------- */
-
-/**
- * v1's pricing rule, carried across: shorter and longer tenors are derived
- * from a base plan by a per-year percentage adjustment.
- *
- *   yearDifference = (tenor − baseTenor) / 12
- *   price          = base × (1 + yearDifference × pct / 100)
- *
- * The instalment is then solved so the plan satisfies the backend's
- * arithmetic: `initial + monthly × (tenor − 1) = land_price`.
- */
-export function derivePlan(
-  base: { tenor_months: number; land_price: number; initial_payment: number },
-  tenorMonths: number,
-  adjustmentPctPerYear: number
-): PlanFormValues {
-  const yearDifference = (tenorMonths - base.tenor_months) / 12;
-  const landPrice = Math.round(base.land_price * (1 + (yearDifference * adjustmentPctPerYear) / 100));
-
-  // Tenor 0 and tenor 1 both mean a single payment: the backend's formula is
-  // `initial + monthly × (tenor − 1)`, which at tenor 1 is just `initial`. So
-  // a one-month plan must be paid in full, exactly like an outright one — a
-  // proportional deposit here could never satisfy the arithmetic.
-  if (tenorMonths <= 1) {
-    return {
-      tenor_months: tenorMonths,
-      land_price: landPrice,
-      initial_payment: landPrice,
-      monthly_installment: 0,
-    };
-  }
-
-  // Keep the deposit proportional to the base, then solve for the instalment
-  // so the arithmetic holds rather than leaving the admin to reconcile it.
-  const ratio = base.land_price > 0 ? base.initial_payment / base.land_price : 0;
-  const initial = Math.round(landPrice * ratio);
-  const monthly = Math.round((landPrice - initial) / (tenorMonths - 1));
-
-  return {
-    tenor_months: tenorMonths,
-    land_price: landPrice,
-    initial_payment: initial,
-    monthly_installment: monthly,
-  };
 }

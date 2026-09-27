@@ -26,6 +26,15 @@ import { agencyRoutes } from './agency';
 import { academyRoutes } from './academy';
 import { companyEventsRoutes } from './company-events';
 import { estateUpdateRoutes } from './estate-updates';
+import { landConfigurationRoutes } from './land-configuration';
+import { sqmInventoryRoutes } from './sqm-inventory';
+import { assetCostRoutes } from './asset-costs';
+import { estateProfitabilityRoutes } from './estate-profitability';
+import { sellingChargesRoutes } from './selling-charges';
+import { assetAnalyticsRoutes } from './asset-analytics';
+import { assetSubscribersRoutes } from './asset-subscribers';
+import { inventoryReconciliationRoutes } from './inventory-reconciliation';
+import { siteSetupRoutes } from './site-setup';
 import { courseRoutes } from './courses';
 
 /* ============================================================
@@ -44,9 +53,22 @@ import { courseRoutes } from './courses';
  *               /auth/logout (both are user+admin endpoints on the BE; the
  *               admin app only ever calls them for an admin session).
  * commission  — /admin/commission/* (config, overrides, audit, transactions).
- * assets      — /admin/assets/*. Currently only the list route, added for the
- *               commission override pickers; the assets feature extends it
- *               rather than re-registering when it migrates.
+ * assets      — /admin/assets/*. Started as just the list route (for the
+ *               commission override pickers) and has since grown with the
+ *               assets feature to cover: the list; the full offer/size/plan
+ *               tree (`GET .../:id`, offers, sizes, plans — the old versioned
+ *               plan-price/price-step-schedule routes layered on top of this
+ *               tree were retired in favour of the real, asset-wide Selling
+ *               Charges module, see selling-charges.ts below); blocks and
+ *               plots (`GET/POST .../blocks`, `.../plots` + `/bulk`); and the
+ *               asset-wide plot inventory (`GET .../plots`, `.../plots/summary`
+ *               — 🚧 entirely provisional. Re-verified against real staging
+ *               source: `.../plots` DOES exist for real, on the field-staff
+ *               site-setup controller — just shaped nothing like this mock
+ *               (see plot-inventory.schema.ts's header for the confirmed real
+ *               shape); `.../plots/summary` has no real route at all). GET
+ *               .../:assetId/analytics is claimed separately by
+ *               asset-analytics.ts (see below), not this file.
  * withdrawals — /admin/withdrawals/*.
  * asset-transactions — GET /admin/transactions (serves purchase rows; other
  *               types return empty pages until their screens migrate),
@@ -131,10 +153,82 @@ import { courseRoutes } from './courses';
  *               /admin/assets/* claim; no path collides because the segment
  *               after :id is the literal "updates" (assets uses "offers" /
  *               "blocks" there).
+ * land-configuration — /admin/assets/:assetId/land-configuration* (read,
+ *               versioned complete-replace, history list/detail). Real module
+ *               confirmed on abode-be-v2 staging (PR #82, "phase-1") — mirrors
+ *               `LandConfigurationService` field-for-field, not a forward
+ *               guess. Carved out of the assets domain's claim the same way
+ *               estate-updates is; the segment after :assetId is the literal
+ *               "land-configuration".
+ * sqm-inventory — /admin/assets/:assetId/sqm-inventory* (position ledger,
+ *               reconciliation dry run, activate). Real module, same PR —
+ *               mirrors `AssetSqmController`/`SqmInventoryService`/
+ *               `SqmActivationService` field-for-field. The segment after
+ *               :assetId is the literal "sqm-inventory".
+ * asset-costs — /admin/assets/:assetId/costs* (list, detail, create,
+ *               items catalogue + allocation rules, obligations, stage
+ *               events, coverage, impact-preview). Real module confirmed on
+ *               abode-be-v2 staging (PR #82, "phase-1") — mirrors
+ *               `AssetCostController`/`AssetCostEventController` field-for-
+ *               field, not a forward guess. `/admin/cost-entries/*` is a
+ *               separate top-level namespace this file also owns (matches
+ *               the real backend's own controller split). The old
+ *               estate-wide "profitability-basis" singleton this section
+ *               used to note is gone — allocation is per cost item now, via
+ *               each item's own `allocation-rule` sub-resource.
+ * estate-profitability — GET /admin/assets/:assetId/profitability(/matrix|
+ *               /drill-down). Real module, same PR. Reads asset-costs.ts,
+ *               land-configuration.ts, and asset-analytics.ts's mock stores
+ *               in-process (not HTTP) to compute the calculation; `revenue`/
+ *               `received` in the response still come from
+ *               asset-analytics.ts's `total_inventory_value`/`total_realised`
+ *               fixture. The segment after :assetId is the literal
+ *               "profitability".
+ * selling-charges — /admin/assets/:assetId/selling-charges(/history). Real
+ *               module, same PR — mirrors `SellingChargeController`/
+ *               `SellingChargeService` field-for-field, including a genuine
+ *               backend bug: the never-configured GET response is
+ *               `{data: null, message}`, not a plain `null` (see the file's
+ *               own header). Replaced the abandoned, never-wired per-plan
+ *               "plan price versioning" design entirely. No
+ *               `expected_version` guard on the PUT — a real gap, not an
+ *               omission here. The segment after :assetId is the literal
+ *               "selling-charges".
+ * asset-analytics — GET /admin/assets/:assetId/analytics. A real abode-be-v2
+ *               module exists for this ("ticket 17b, now live" per
+ *               asset-analytics.schema.ts), but it was never mocked here, so
+ *               the Performance tab 404'd in mock-mode dev until this file —
+ *               delete it once mock mode can point at the real module
+ *               instead. Claimed separately from assets.ts's /admin/assets/*
+ *               (list-only) claim; the segment after :assetId is the literal
+ *               "analytics".
+ * inventory-reconciliation — GET /admin/assets/:assetId/inventory-reconciliation.
+ *               Entirely provisional. Joins assets.ts's plot store and
+ *               asset-analytics.ts's size breakdown in-process by `size` — a
+ *               deliberately partial (by-size, not by-product) reconciliation
+ *               between the physical and commercial sides of Live Inventory.
+ *               The segment after :assetId is the literal
+ *               "inventory-reconciliation".
  * courses     — /admin/courses/* and /admin/academy-settings/*. Entirely
  *               provisional — abode-be-v2 has no courses model yet. Covers
  *               design screens 1–2 (list, overview) only; modules/quiz/
  *               learners (screens 3, 5, 6, 7) are unbuilt.
+ * asset-subscribers — GET /admin/assets/:assetId/subscribers. A real
+ *               abode-be-v2 module exists (asset-subscribers.schema.ts cites
+ *               its DTOs), but — like asset-analytics.ts before it — it was
+ *               never mocked, so the Customers tab always 404'd in mock-mode
+ *               dev. The CSV export sibling is deliberately not mocked; the
+ *               FE hook already refuses in mock mode itself. The segment
+ *               after :assetId is the literal "subscribers".
+ * site-setup  — GET/PUT /admin/assets/:assetId/boundary, GET .../site-setup.
+ *               REAL module, confirmed against `AssetSiteSetupController`/
+ *               `SiteSetupService` in `field-staff/site-setup` — not a forward
+ *               guess. Only the boundary + fencing read/write built here;
+ *               `.../plots`, `.../field-history`, `.../field-costs`, and
+ *               `.../field-performance` are also real on that same controller
+ *               but unclaimed — no FE screen calls them yet. "Roads and
+ *               services" (non-saleable land) is a DIFFERENT real module
+ *               (asset/land — see land-configuration.ts), not this one.
  * ============================================================ */
 
 let registered = false;
@@ -169,6 +263,15 @@ export function ensureRoutesRegistered(): void {
   registerRoutes(academyRoutes);
   registerRoutes(companyEventsRoutes);
   registerRoutes(estateUpdateRoutes);
+  registerRoutes(landConfigurationRoutes);
+  registerRoutes(sqmInventoryRoutes);
+  registerRoutes(assetCostRoutes);
+  registerRoutes(estateProfitabilityRoutes);
+  registerRoutes(sellingChargesRoutes);
+  registerRoutes(assetAnalyticsRoutes);
+  registerRoutes(inventoryReconciliationRoutes);
+  registerRoutes(assetSubscribersRoutes);
+  registerRoutes(siteSetupRoutes);
 
   // Only mark done after every domain registered — a throw mid-way must allow retry.
   registered = true;

@@ -6,10 +6,10 @@ import { ArrowLeft } from "lucide-react";
 
 import { PageContentLoader } from "@/components/shared/page-content-loader";
 
-import { availableUnits } from "../../schemas/asset.schema";
 import { useAssetDetail } from "../../hooks/use-asset-detail";
 import { AssetStatusBadges } from "../list/AssetStatusBadges";
 import { AssetDetailNav } from "./AssetDetailNav";
+import { AssetInventoryHeaderSummary } from "./AssetInventoryHeaderSummary";
 
 /**
  * Header, inventory summary and tab nav — shared by all four sub-routes.
@@ -47,9 +47,6 @@ export function AssetDetailShell({ children }: { children: React.ReactNode }) {
 
   if (!asset) return null;
 
-  const available = availableUnits(asset);
-  const allocated = asset.sales_cap > 0 ? 1 - available / asset.sales_cap : 0;
-
   return (
     <div className="mx-auto mt-4 w-full min-w-0 max-w-[1600px] space-y-5 px-3 pb-16 sm:px-4 sm:pb-20">
       <div className="space-y-2">
@@ -78,30 +75,11 @@ export function AssetDetailShell({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      {/* Real data — the counters are asset fields and available_units is a
-          backend virtual. Nothing here is sample. */}
-      <div className="rounded-lg border p-4">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <p className="text-sm font-medium tabular-nums">
-            {available.toLocaleString()}{" "}
-            <span className="font-normal text-muted-foreground">
-              of {asset.sales_cap.toLocaleString()} units available
-            </span>
-          </p>
-          <p className="text-xs text-muted-foreground tabular-nums">
-            {asset.sold_units.toLocaleString()} sold
-            {asset.reserved_units > 0
-              ? ` · ${asset.reserved_units.toLocaleString()} reserved`
-              : ""}
-          </p>
-        </div>
-        <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-          <div
-            className="h-full rounded-full bg-foreground/60"
-            style={{ width: `${Math.min(100, Math.max(0, allocated * 100))}%` }}
-          />
-        </div>
-      </div>
+      {/* Real data throughout — legacy counters are asset fields and
+          available_units is a backend virtual; the sqm side, when present,
+          comes from GET .../land-configuration. Nothing here is sample, and
+          the two models are never blended into one figure. */}
+      <AssetInventoryHeaderSummary asset={asset} />
 
       <AssetDetailNav assetId={assetId} />
 
