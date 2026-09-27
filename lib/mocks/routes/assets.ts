@@ -18,14 +18,16 @@ import { body, paged } from './util';
  * Money is decimal naira.
  * ============================================================ */
 
+export type MockOfferType = 'flex' | 'full-ownership' | 'commercial' | 'developer-plot';
+
 type MockOfferSummary = {
-  offer_type: 'flex' | 'full-ownership' | 'commercial';
+  offer_type: MockOfferType;
   is_active: boolean;
   size_count: number;
   plan_count: number;
 };
 
-type MockAsset = {
+export type MockAsset = {
   _id: string;
   name: string;
   asset_location: string;
@@ -40,11 +42,22 @@ type MockAsset = {
   hero_image: string | null;
   pictures: string[];
   documents: Record<string, string | undefined>;
+  pitch_pack: { url: string; size_bytes: number; uploaded_at: string } | null;
   asset_history: { year: number; value: number }[];
   sales_cap: number;
   sold_units: number;
   reserved_units: number;
   available_units: number;
+  /**
+   * The physical-land account, layered on top of the legacy fields above —
+   * see features/assets/schemas/land-configuration.schema.ts. `null`/
+   * `'not_configured'` means this fixture predates the feature and is legacy
+   * only, exactly like a real asset created before this migration.
+   */
+  total_land_sqm: number | null;
+  land_inventory_state: 'not_configured' | 'draft' | 'configured';
+  inventory_model_version: 'legacy_units' | 'sqm_v1';
+  land_configuration_version: number;
   sold: boolean;
   visibility: 'draft' | 'internal' | 'public';
   deleted_at: string | null;
@@ -71,7 +84,12 @@ const asset = (
     hero_image: null,
     pictures: [],
     documents: {},
+    pitch_pack: null,
     asset_history: [],
+    total_land_sqm: null,
+    land_inventory_state: 'not_configured',
+    inventory_model_version: 'legacy_units',
+    land_configuration_version: 0,
     sold: false,
     visibility: 'public',
     deleted_at: null,
@@ -110,6 +128,12 @@ const assets: MockAsset[] = [
       { offer_type: 'commercial', is_active: true, size_count: 2, plan_count: 4 },
     ],
     createdAt: daysAgo(210),
+    // Exercises the "current file" state — every other fixture is the empty state.
+    pitch_pack: {
+      url: 'https://res.cloudinary.com/abode/raw/upload/v1/assets/aviation-city-pitch-pack.pdf',
+      size_bytes: 4_200_000,
+      uploaded_at: daysAgo(14),
+    },
   }),
   asset({
     _id: '665faaaa00000000000000a2',
@@ -206,32 +230,78 @@ export const MOCK_ASSET_DIRECTORY: { _id: string; name: string }[] = assets.map(
 
 /* -------------------- the detail tree -------------------- */
 
-type MockPlan = {
+export type MockPlan = {
   tenor_months: number;
   land_price: number;
   initial_payment: number;
   monthly_installment: number;
   is_promo?: boolean;
   is_active: boolean;
+  /** 🚧 Provisional — layered onto the real Plan contract, see asset-detail.schema.ts's PlanSchema doc comment. */
+  development_levy: number;
+  document_levy: number;
 };
 
 type MockSize = {
   _id: string;
   offer_id: string;
   size_sqm: number;
-  units_available: number;
+  configured_units: number;
   document_fee?: number;
   is_active: boolean;
   plans: MockPlan[];
 };
 
-type MockOffer = {
+function configuredSqm(size: Pick<MockSize, 'size_sqm' | 'configured_units'>): number {
+  return size.size_sqm * size.configured_units;
+}
+
+/** Display labels for error messages only — this file is independent of the features/ schema layer. */
+const OFFER_TYPE_DISPLAY_LABELS: Record<string, string> = {
+  flex: 'Flex',
+  'full-ownership': 'Full ownership',
+  commercial: 'Commercial',
+  'developer-plot': 'Developer plot',
+};
+
+/**
+ * Server-side mirror of the backend rule: `sum(active size_sqm ×
+ * configured_units) <= product assigned_sqm`. Skipped for an asset that
+ * predates the land account (`assigned_sqm` is a placeholder 0 there, not a
+ * real pool) — legacy size editing must keep working exactly as before.
+ */
+function assertWithinProductCapacity(
+  offer: Pick<MockOffer, 'assigned_sqm' | 'sizes'>,
+  offerLabel: string,
+  excludingSizeId: string | null,
+  proposed: Pick<MockSize, 'size_sqm' | 'configured_units'>
+): void {
+  if (offer.assigned_sqm <= 0) return;
+
+  const otherConfiguredSqm = offer.sizes
+    .filter((size) => size.is_active && size._id !== excludingSizeId)
+    .reduce((sum, size) => sum + configuredSqm(size), 0);
+  const total = otherConfiguredSqm + configuredSqm(proposed);
+  const excess = total - offer.assigned_sqm;
+
+  if (excess > 0) {
+    throw new MockHttpError(
+      400,
+      `This would exceed ${offerLabel} by ${excess.toLocaleString()} sqm`,
+      'PRODUCT_SIZE_CAPACITY_EXCEEDED'
+    );
+  }
+}
+
+export type MockOffer = {
   _id: string;
   asset_id: string;
   offer_type: string;
   is_active: boolean;
   allocation_qualification_pct: number;
   payment_type?: string;
+  /** The product's commercial land pool. 0 on legacy fixtures, which predate the land account. */
+  assigned_sqm: number;
   sizes: MockSize[];
 };
 
@@ -247,6 +317,8 @@ function instalmentPlan(tenor: number, landPrice: number, depositPct = 0.3): Moc
     initial_payment: initial,
     monthly_installment: tenor > 1 ? Math.round((landPrice - initial) / (tenor - 1)) : 0,
     is_active: true,
+    development_levy: 0,
+    document_levy: 0,
   };
 }
 
@@ -256,6 +328,8 @@ const outrightPlan = (landPrice: number): MockPlan => ({
   initial_payment: landPrice,
   monthly_installment: 0,
   is_active: true,
+  development_levy: 0,
+  document_levy: 0,
 });
 
 /** Built lazily per asset and then mutated by the write routes. */
@@ -272,6 +346,45 @@ function syncCounts(assetId: string, offerType: string): void {
   summary.plan_count = offer.sizes.reduce((total, size) => total + size.plans.length, 0);
 }
 
+const MOCK_ADMIN_NAME = 'Nicholas';
+
+/**
+ * "Preserve offer configuration history" — an activity log, not a diffable
+ * version history: the six real offer/size/plan endpoints have no `reason`
+ * field and no `expected_version` guard (an already-shipped BE contract this
+ * work must not reshape), so there's no admin-authored reason and no
+ * before/after snapshot to diff. Keyed by asset id, newest appended last.
+ */
+type MockOfferConfigAction =
+  | 'add-offer'
+  | 'update-offer'
+  | 'add-size'
+  | 'update-size'
+  | 'delete-size'
+  | 'add-plan'
+  | 'update-plan'
+  | 'delete-plan';
+type MockOfferConfigRevision = {
+  version: number;
+  action: MockOfferConfigAction;
+  summary: string;
+  changed_by: string | null;
+  changed_at: string;
+};
+const offerConfigHistory: Record<string, MockOfferConfigRevision[]> = {};
+
+function recordOfferConfigChange(assetId: string, action: MockOfferConfigAction, summary: string): void {
+  const entries = offerConfigHistory[assetId] ?? [];
+  entries.push({
+    version: entries.length + 1,
+    action,
+    summary,
+    changed_by: MOCK_ADMIN_NAME,
+    changed_at: nowIso(),
+  });
+  offerConfigHistory[assetId] = entries;
+}
+
 function requireSize(assetId: string, offerType: string, sizeId: string): MockSize {
   const offer = trees[assetId]?.find((candidate) => candidate.offer_type === offerType);
   if (!offer) throw new MockHttpError(404, 'Offer not found', 'OFFER_NOT_FOUND');
@@ -280,7 +393,7 @@ function requireSize(assetId: string, offerType: string, sizeId: string): MockSi
   return size;
 }
 
-function offerTree(row: MockAsset): MockOffer[] {
+export function offerTree(row: MockAsset): MockOffer[] {
   if (trees[row._id]) return trees[row._id];
 
   trees[row._id] = row.offers.map((summary, offerIndex) => {
@@ -299,7 +412,7 @@ function offerTree(row: MockAsset): MockOffer[] {
         _id: `${offerId}-size-${sizeIndex}`,
         offer_id: offerId,
         size_sqm: sqm,
-        units_available: 12 - sizeIndex * 3,
+        configured_units: 12 - sizeIndex * 3,
         ...(isFlex ? {} : { document_fee: 150_000 }),
         is_active: true,
         plans: plans.slice(0, Math.max(1, Math.round(summary.plan_count / Math.max(1, summary.size_count)))),
@@ -313,11 +426,72 @@ function offerTree(row: MockAsset): MockOffer[] {
       is_active: summary.is_active,
       allocation_qualification_pct: isFlex ? 30 : 40,
       ...(isFlex ? {} : { payment_type: 'all-inclusive' }),
+      // This asset predates the land account (row.land_inventory_state is
+      // 'not_configured' for every seeded fixture) — 0 rather than a made-up
+      // figure, since there is no real assignment to report.
+      assigned_sqm: 0,
       sizes,
     };
   });
 
   return trees[row._id];
+}
+
+/** For lib/mocks/routes/land-configuration.ts — the same lookup every write route here uses. */
+export function findActiveAsset(assetId: string): MockAsset | undefined {
+  return assets.find((candidate) => candidate._id === assetId && !candidate.deleted_at);
+}
+
+/**
+ * Applies a Land Account editor save to the single source of truth — this
+ * asset's own `total_land_sqm`/`land_inventory_state`/
+ * `land_configuration_version` fields and its offer tree's `assigned_sqm`.
+ * Non-saleable land uses live entirely in land-configuration.ts (there is no
+ * such concept on `MockAsset`), so that file keeps its own store for those.
+ *
+ * A product pool with no existing offer gets a new offer shell — exactly
+ * what `POST /admin/assets` does for a pool at creation time — since the
+ * editor can introduce a product the asset didn't start with. There is no
+ * removal path: offers are retired via `is_active: false`, never deleted,
+ * matching every other write route in this file.
+ */
+export function applyLandConfigurationSave(
+  assetId: string,
+  patch: {
+    total_land_sqm: number;
+    land_inventory_state: MockAsset['land_inventory_state'];
+    land_configuration_version: number;
+    products: { offer_type: MockOfferType; assigned_sqm: number }[];
+  }
+): void {
+  const row = findActiveAsset(assetId);
+  if (!row) return;
+
+  row.total_land_sqm = patch.total_land_sqm;
+  row.land_inventory_state = patch.land_inventory_state;
+  row.land_configuration_version = patch.land_configuration_version;
+  row.updatedAt = new Date().toISOString();
+
+  const tree = offerTree(row);
+  for (const pool of patch.products) {
+    const existingOffer = tree.find((candidate) => candidate.offer_type === pool.offer_type);
+    if (existingOffer) {
+      existingOffer.assigned_sqm = pool.assigned_sqm;
+      continue;
+    }
+
+    const offerId = `${row._id}-offer-${tree.length}`;
+    tree.push({
+      _id: offerId,
+      asset_id: row._id,
+      offer_type: pool.offer_type,
+      is_active: true,
+      allocation_qualification_pct: 0,
+      assigned_sqm: pool.assigned_sqm,
+      sizes: [],
+    });
+    row.offers.push({ offer_type: pool.offer_type, is_active: true, size_count: 0, plan_count: 0 });
+  }
 }
 
 /* -------------------- land inventory (blocks + plots) --------------------
@@ -348,6 +522,15 @@ type MockPlot = {
   status: 'available' | 'allocated';
   payment_plan?: string | null;
   allocated_date?: string | null;
+  /**
+   * Denormalized at write time by the real backend's allocate flow — same
+   * pattern already used for `block_label` — not a cross-reference into
+   * features/allocation's own separate fixture store (its payment_plan ids
+   * use a different scheme, `pp-<userId>`, and don't correspond to this
+   * file's seeded plots).
+   */
+  customer_name?: string | null;
+  attributable_value?: number | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -387,6 +570,8 @@ const plots: MockPlot[] = [
     status: (index === 0 ? 'allocated' : 'available') as MockPlot['status'],
     payment_plan: index === 0 ? '665fpl00000000000000fo01' : null,
     allocated_date: index === 0 ? nowIso() : null,
+    customer_name: index === 0 ? 'Adaeze Okafor' : null,
+    attributable_value: index === 0 ? 92_000_000 : null,
     createdAt: nowIso(),
     updatedAt: nowIso(),
   })),
@@ -399,6 +584,8 @@ const plots: MockPlot[] = [
     status: 'available' as MockPlot['status'],
     payment_plan: null,
     allocated_date: null,
+    customer_name: null,
+    attributable_value: null,
     createdAt: nowIso(),
     updatedAt: nowIso(),
   })),
@@ -417,6 +604,141 @@ function requirePlot(plotId: string): MockPlot {
   const plot = plots.find((candidate) => candidate._id === plotId);
   if (!plot) throw new MockHttpError(404, 'One or more requested plots do not exist', 'PLOT_NOT_FOUND');
   return plot;
+}
+
+/**
+ * "Separate system allocation from ground confirmation" — a per-plot field
+ * submission distinct from `status` above (a DB flag set the instant
+ * POST .../allocate runs). "Report then verify" — same shape as Site
+ * Setup's fencing progress: an admin-verified submission is what makes a
+ * plot "Ground confirmed"; an unverified one is pending. Keyed by plot id.
+ */
+type MockGroundConfirmation = {
+  _id: string;
+  plot_id: string;
+  submitted_by: string;
+  submitted_at: string;
+  verified_by: string | null;
+  verified_at: string | null;
+  notes: string | null;
+};
+const MOCK_SITE_MANAGER_NAME = 'Chidinma Okoro';
+const groundConfirmationsByPlot: Record<string, MockGroundConfirmation[]> = {
+  // Block A plot 1 is already allocated to a real customer — a pending (not
+  // yet verified) submission here is the honest demo state: it shows the
+  // report-then-verify flow without fabricating a confirmed ground truth.
+  '665fcp000000000000000a1': [
+    {
+      _id: 'gc-0001',
+      plot_id: '665fcp000000000000000a1',
+      submitted_by: MOCK_SITE_MANAGER_NAME,
+      submitted_at: '2026-08-25T09:00:00.000Z',
+      verified_by: null,
+      verified_at: null,
+      notes: 'Plot staked and handed over to the buyer on site.',
+    },
+  ],
+};
+let groundConfirmationSeq = 1;
+
+function isGroundConfirmed(plotId: string): boolean {
+  return (groundConfirmationsByPlot[plotId] ?? []).some((entry) => entry.verified_at !== null);
+}
+
+/**
+ * Every plot across every block belonging to this asset — the flat plot
+ * store has no per-asset index, so this filters by block membership.
+ * Exported for inventory-reconciliation.ts's in-process read (not an HTTP
+ * route) — no need for that file to re-derive the same block-membership join.
+ */
+export function assetPlots(assetId: string): MockPlot[] {
+  const blockIds = new Set(blocks.filter((b) => b.asset === assetId).map((b) => b._id));
+  return plots.filter((p) => blockIds.has(p.block));
+}
+
+/** For inventory-reconciliation.ts's in-process read (not an HTTP route) — same reasoning as assetPlots's own export comment above. */
+export { isGroundConfirmed };
+
+export type { MockPlot };
+
+/**
+ * Mirrors the real `ListPlotsDto` param names (`block` label, exact `size`,
+ * `status`), not this file's older invented `block_id`/`min_size`/`max_size`.
+ * No `product`/`allocation`/`field_state` filtering — `MockPlot` carries no
+ * product reference at all (see its own doc comment), and allocation-
+ * readiness/field-state are derived per-row below rather than stored, so
+ * filtering on them isn't worth reproducing in a mock nobody sees outside
+ * dev/E2E.
+ */
+function filterAssetPlots(rows: MockPlot[], query: Record<string, unknown>): MockPlot[] {
+  let result = rows;
+
+  const block = query.block ? String(query.block).toLowerCase() : null;
+  if (block) result = result.filter((p) => p.block_label.toLowerCase() === block);
+
+  const status = query.status ? String(query.status) : null;
+  if (status) result = result.filter((p) => p.status === status);
+
+  const size = query.size != null ? Number(query.size) : null;
+  if (size != null && !Number.isNaN(size)) result = result.filter((p) => p.size === size);
+
+  const search = String(query.search ?? '').trim().toLowerCase();
+  if (search) {
+    result = result.filter((p) => `${p.block_label}-${p.plot_number}`.toLowerCase().includes(search));
+  }
+
+  return result;
+}
+
+/** Deterministic, plausible field-ops progress — `MockPlot` has no real parcelation/clearing data to read. */
+function fieldOpsFor(plot: MockPlot): {
+  parcelled: boolean;
+  cleared_sqm: number;
+  clearing_percent: number;
+  allocation_ready: boolean;
+  re_pegged_count: number;
+  field_events: number;
+} {
+  const parcelled = plot.plot_number % 3 !== 0;
+  const cleared_sqm = parcelled ? plot.size : Math.round(plot.size * 0.4);
+  const clearing_percent = plot.size > 0 ? Math.round((cleared_sqm / plot.size) * 10000) / 100 : 0;
+  return {
+    parcelled,
+    cleared_sqm,
+    clearing_percent,
+    allocation_ready: parcelled && clearing_percent >= 100,
+    re_pegged_count: 0,
+    field_events: parcelled ? 2 : clearing_percent > 0 ? 1 : 0,
+  };
+}
+
+function plotInventoryTotals(rows: MockPlot[]) {
+  let sqm = 0;
+  let parcelled = 0;
+  let fullyCleared = 0;
+  let clearedSqm = 0;
+  let allocated = 0;
+  let allocationReady = 0;
+
+  for (const row of rows) {
+    const ops = fieldOpsFor(row);
+    sqm += row.size;
+    clearedSqm += ops.cleared_sqm;
+    if (ops.parcelled) parcelled++;
+    if (ops.clearing_percent >= 100) fullyCleared++;
+    if (row.status === 'allocated') allocated++;
+    if (ops.allocation_ready) allocationReady++;
+  }
+
+  return {
+    plots: rows.length,
+    sqm,
+    parcelled,
+    fully_cleared: fullyCleared,
+    cleared_sqm: Math.round(clearedSqm * 100) / 100,
+    allocated,
+    allocation_ready: allocationReady,
+  };
 }
 
 /** Mirrors the BE: allocated plots are frozen, and so are the blocks holding them. */
@@ -465,12 +787,9 @@ export const assetRoutes: MockRoutes = {
   },
 
   /**
-   * Create — the BE builds asset, offers, sizes and plans atomically in one
-   * transaction, and returns the asset. Only the offer *summary* comes back on
-   * the asset itself, so that is what the mock derives.
-   */
-  /**
-   * Create — returns the **created document**, `offers` as the nested tree.
+   * Create — the BE builds the asset and its initial product pools
+   * atomically in one transaction, and returns the created document with
+   * `offers` as the nested tree (each pool an offer shell with no sizes yet).
    *
    * Not the list-row projection. This route used to return `size_count` /
    * `plan_count` summaries, matching what the create hook then validated
@@ -479,25 +798,21 @@ export const assetRoutes: MockRoutes = {
    * schema mismatch after succeeding on the server.
    *
    * A mock has to model the endpoint, not the schema someone wrote for it.
+   *
+   * The new contract (total_land_sqm + product_pools, replacing sales_cap +
+   * offers/sizes/plans) is confirmed on the real abode-be-v2 `CreateAssetDto`
+   * (PR #82, "phase-1"). Every new-contract asset seeds legacy
+   * sales_cap/sold_units/reserved_units at 0 and stays non-purchasable until
+   * an authorised migration process assigns real unit capacity; the public
+   * API must never infer it from sqm, and neither does this mock.
    */
   'POST /admin/assets': ({ body: raw }) => {
     const dto = body<{
       name?: string;
       asset_location?: string;
-      sales_cap?: number;
       visibility?: MockAsset['visibility'];
-      offers?: {
-        offer_type: 'flex' | 'full-ownership' | 'commercial';
-        is_active?: boolean;
-        allocation_qualification_pct?: number;
-        payment_type?: string;
-        sizes?: {
-          size_sqm: number;
-          units_available: number;
-          document_fee?: number;
-          plans?: MockPlan[];
-        }[];
-      }[];
+      total_land_sqm?: number;
+      product_pools?: { offer_type: MockOfferType; assigned_sqm: number }[];
     }>(raw);
 
     if (!dto.name?.trim()) {
@@ -506,54 +821,66 @@ export const assetRoutes: MockRoutes = {
     if (assets.some((row) => !row.deleted_at && row.name.toLowerCase() === dto.name!.toLowerCase())) {
       throw new MockHttpError(409, 'An asset with this name already exists', 'ASSET_NAME_TAKEN');
     }
+    if (!dto.total_land_sqm || dto.total_land_sqm <= 0) {
+      throw new MockHttpError(400, 'total_land_sqm must be a positive number', 'TOTAL_LAND_REQUIRED');
+    }
+    const productPools = dto.product_pools ?? [];
+    const assignedSqm = productPools.reduce((total, pool) => total + pool.assigned_sqm, 0);
+    if (assignedSqm > dto.total_land_sqm) {
+      throw new MockHttpError(
+        400,
+        `Assigned sqm (${assignedSqm}) exceeds the total estate size (${dto.total_land_sqm})`,
+        'LAND_ALLOCATION_EXCEEDS_TOTAL'
+      );
+    }
+    // Every new-contract asset starts at legacy sales_cap 0 (see the route
+    // comment above) — public would misrepresent it as available for sale.
+    if (dto.visibility === 'public') {
+      throw new MockHttpError(
+        400,
+        'A new asset has no legacy unit inventory yet — keep it draft or internal until migration assigns unit capacity.',
+        'VISIBILITY_REQUIRES_LEGACY_CAP'
+      );
+    }
+
+    const createdId = `665faaaa${String(Date.now()).slice(-16)}`;
 
     const created = asset({
-      _id: `665faaaa${String(Date.now()).slice(-16)}`,
+      _id: createdId,
       name: dto.name.trim(),
       asset_location: dto.asset_location ?? '',
-      sales_cap: dto.sales_cap ?? 0,
+      sales_cap: 0,
       visibility: dto.visibility ?? 'draft',
+      total_land_sqm: dto.total_land_sqm,
+      // Roads/services, sizes and prices are all still to come on the Offers
+      // tab — 'draft', not 'configured', reflects that honestly.
+      land_inventory_state: 'draft',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      offers: (dto.offers ?? []).map((offer) => ({
-        offer_type: offer.offer_type,
-        is_active: offer.is_active ?? true,
-        size_count: offer.sizes?.length ?? 0,
-        plan_count: (offer.sizes ?? []).reduce(
-          (total, size) => total + (size.plans?.length ?? 0),
-          0
-        ),
+      offers: productPools.map((pool) => ({
+        offer_type: pool.offer_type,
+        is_active: true,
+        size_count: 0,
+        plan_count: 0,
       })),
     });
 
     assets.unshift(created);
 
-    // Register the real tree so the detail page shows what was submitted.
-    // Without this, `offerTree` would lazily synthesize sizes and plans from
-    // the summary counts and the admin would land on an asset whose prices
-    // they never entered.
-    trees[created._id] = (dto.offers ?? []).map((offer, offerIndex) => {
-      const offerId = `${created._id}-offer-${offerIndex}`;
-      return {
-        _id: offerId,
-        asset_id: created._id,
-        offer_type: offer.offer_type,
-        is_active: offer.is_active ?? true,
-        allocation_qualification_pct: offer.allocation_qualification_pct ?? 0,
-        ...(offer.payment_type ? { payment_type: offer.payment_type } : {}),
-        sizes: (offer.sizes ?? []).map((size, sizeIndex) => ({
-          _id: `${offerId}-size-${sizeIndex}`,
-          offer_id: offerId,
-          size_sqm: size.size_sqm,
-          units_available: size.units_available,
-          ...(size.document_fee !== undefined ? { document_fee: size.document_fee } : {}),
-          is_active: true,
-          plans: (size.plans ?? []).map((plan) => ({ ...plan, is_active: plan.is_active ?? true })),
-        })),
-      };
-    });
+    // Register the real tree so the detail page shows what was submitted —
+    // an offer shell per product pool, sizes/plans added later on the
+    // Offers tab.
+    trees[createdId] = productPools.map((pool, offerIndex) => ({
+      _id: `${createdId}-offer-${offerIndex}`,
+      asset_id: createdId,
+      offer_type: pool.offer_type,
+      is_active: true,
+      allocation_qualification_pct: 0,
+      assigned_sqm: pool.assigned_sqm,
+      sizes: [],
+    }));
 
-    return { ...created, offers: trees[created._id] };
+    return { ...created, offers: trees[createdId] };
   },
 
   /**
@@ -621,6 +948,42 @@ export const assetRoutes: MockRoutes = {
   },
 
   /**
+   * Upload or replace — mirrors `AssetService.setPitchPack`: replacing the
+   * same URL keeps the original `uploaded_at`, anything else resets it.
+   */
+  'PUT /admin/assets/:id/pitch-pack': ({ params, body: raw }) => {
+    const row = assets.find((candidate) => candidate._id === params.id);
+    if (!row) throw new MockHttpError(404, 'Asset not found', 'ASSET_NOT_FOUND');
+
+    const dto = body<{ url?: string; size_bytes?: number }>(raw);
+    if (!dto.url || !/^https?:\/\/\S+$/i.test(dto.url)) {
+      throw new MockHttpError(400, 'url must be an http(s) link to the uploaded file', 'VALIDATION_FAILED');
+    }
+    if (!Number.isInteger(dto.size_bytes) || dto.size_bytes! < 1) {
+      throw new MockHttpError(400, 'size_bytes must be a positive integer', 'VALIDATION_FAILED');
+    }
+
+    const current = row.pitch_pack;
+    const sameFile = current?.url === dto.url;
+    row.pitch_pack = {
+      url: dto.url,
+      size_bytes: dto.size_bytes!,
+      uploaded_at: sameFile && current ? current.uploaded_at : nowIso(),
+    };
+
+    return row.pitch_pack;
+  },
+
+  'DELETE /admin/assets/:id/pitch-pack': ({ params }) => {
+    const row = assets.find((candidate) => candidate._id === params.id);
+    if (!row) throw new MockHttpError(404, 'Asset not found', 'ASSET_NOT_FOUND');
+
+    if (!row.pitch_pack) return { removed: false };
+    row.pitch_pack = null;
+    return { removed: true };
+  },
+
+  /**
    * Offer create landed 2026-07-28 (ticket 18); there is still no delete —
    * `is_active: false` is how an offer is taken out of use.
    */
@@ -636,7 +999,7 @@ export const assetRoutes: MockRoutes = {
       payment_type?: string;
       sizes?: {
         size_sqm: number;
-        units_available: number;
+        configured_units: number;
         document_fee?: number;
         plans?: MockPlan[];
       }[];
@@ -657,11 +1020,14 @@ export const assetRoutes: MockRoutes = {
       is_active: dto.is_active ?? true,
       allocation_qualification_pct: dto.allocation_qualification_pct ?? 0,
       ...(dto.payment_type ? { payment_type: dto.payment_type } : {}),
+      // This route predates the land account and has no assigned-sqm input
+      // of its own (see the Land Account editor milestone for that).
+      assigned_sqm: 0,
       sizes: dto.sizes.map((size, sizeIndex) => ({
         _id: `${offerId}-size-${sizeIndex}`,
         offer_id: offerId,
         size_sqm: size.size_sqm,
-        units_available: size.units_available,
+        configured_units: size.configured_units,
         ...(size.document_fee !== undefined ? { document_fee: size.document_fee } : {}),
         is_active: true,
         plans: (size.plans ?? []).map((plan) => ({ ...plan, is_active: plan.is_active ?? true })),
@@ -676,6 +1042,7 @@ export const assetRoutes: MockRoutes = {
       plan_count: offer.sizes.reduce((total, size) => total + size.plans.length, 0),
     });
 
+    recordOfferConfigChange(params.assetId, 'add-offer', `Added the ${dto.offer_type} offer with ${offer.sizes.length} size(s)`);
     return offer;
   },
 
@@ -690,6 +1057,17 @@ export const assetRoutes: MockRoutes = {
       payment_type?: string;
     }>(raw);
 
+    const changes: string[] = [];
+    if (dto.is_active !== undefined && dto.is_active !== offer.is_active) {
+      changes.push(dto.is_active ? 'reactivated' : 'deactivated');
+    }
+    if (dto.allocation_qualification_pct !== undefined && dto.allocation_qualification_pct !== offer.allocation_qualification_pct) {
+      changes.push(`allocation qualification set to ${dto.allocation_qualification_pct}%`);
+    }
+    if (dto.payment_type !== undefined && dto.payment_type !== offer.payment_type) {
+      changes.push(`payment type set to ${dto.payment_type}`);
+    }
+
     if (dto.is_active !== undefined) offer.is_active = dto.is_active;
     if (dto.allocation_qualification_pct !== undefined) {
       offer.allocation_qualification_pct = dto.allocation_qualification_pct;
@@ -702,6 +1080,9 @@ export const assetRoutes: MockRoutes = {
       ?.offers.find((candidate) => candidate.offer_type === params.offerType);
     if (summary) summary.is_active = offer.is_active;
 
+    if (changes.length > 0) {
+      recordOfferConfigChange(params.assetId, 'update-offer', `${OFFER_TYPE_DISPLAY_LABELS[params.offerType] ?? params.offerType}: ${changes.join(', ')}`);
+    }
     return offer;
   },
 
@@ -713,7 +1094,7 @@ export const assetRoutes: MockRoutes = {
 
     const dto = body<{
       size_sqm: number;
-      units_available: number;
+      configured_units: number;
       document_fee?: number;
       plans?: MockPlan[];
     }>(raw);
@@ -721,12 +1102,16 @@ export const assetRoutes: MockRoutes = {
     if (offer.sizes.some((candidate) => candidate.size_sqm === dto.size_sqm)) {
       throw new MockHttpError(409, 'This offer already has that size', 'SIZE_ALREADY_EXISTS');
     }
+    assertWithinProductCapacity(offer, OFFER_TYPE_DISPLAY_LABELS[params.offerType] ?? params.offerType, null, {
+      size_sqm: dto.size_sqm,
+      configured_units: dto.configured_units,
+    });
 
     const size: MockSize = {
       _id: `${offer._id}-size-${offer.sizes.length}-${Date.now() % 10_000}`,
       offer_id: offer._id,
       size_sqm: dto.size_sqm,
-      units_available: dto.units_available,
+      configured_units: dto.configured_units,
       ...(dto.document_fee !== undefined ? { document_fee: dto.document_fee } : {}),
       is_active: true,
       plans: (dto.plans ?? []).map((plan) => ({ ...plan, is_active: plan.is_active ?? true })),
@@ -734,21 +1119,46 @@ export const assetRoutes: MockRoutes = {
 
     offer.sizes.push(size);
     syncCounts(params.assetId, params.offerType);
+    recordOfferConfigChange(
+      params.assetId,
+      'add-size',
+      `Added a ${dto.size_sqm} sqm size to ${OFFER_TYPE_DISPLAY_LABELS[params.offerType] ?? params.offerType}`
+    );
     return size;
   },
 
   'PATCH /admin/assets/:assetId/offers/:offerType/sizes/:sizeId': ({ params, body: raw }) => {
+    const offer = trees[params.assetId]?.find(
+      (candidate) => candidate.offer_type === params.offerType
+    );
+    if (!offer) throw new MockHttpError(404, 'Offer not found', 'OFFER_NOT_FOUND');
     const size = requireSize(params.assetId, params.offerType, params.sizeId);
     const dto = body<{
       size_sqm?: number;
-      units_available?: number;
+      configured_units?: number;
       document_fee?: number;
       is_active?: boolean;
       plans?: MockPlan[];
     }>(raw);
 
+    if (dto.size_sqm !== undefined || dto.configured_units !== undefined) {
+      assertWithinProductCapacity(offer, OFFER_TYPE_DISPLAY_LABELS[params.offerType] ?? params.offerType, size._id, {
+        size_sqm: dto.size_sqm ?? size.size_sqm,
+        configured_units: dto.configured_units ?? size.configured_units,
+      });
+    }
+
+    const label = OFFER_TYPE_DISPLAY_LABELS[params.offerType] ?? params.offerType;
+    const changes: string[] = [];
+    if (dto.size_sqm !== undefined && dto.size_sqm !== size.size_sqm) changes.push(`size ${size.size_sqm} → ${dto.size_sqm} sqm`);
+    if (dto.configured_units !== undefined && dto.configured_units !== size.configured_units) {
+      changes.push(`configured units ${size.configured_units} → ${dto.configured_units}`);
+    }
+    if (dto.document_fee !== undefined && dto.document_fee !== size.document_fee) changes.push('document fee updated');
+    if (dto.is_active !== undefined && dto.is_active !== size.is_active) changes.push(dto.is_active ? 'reactivated' : 'deactivated');
+
     if (dto.size_sqm !== undefined) size.size_sqm = dto.size_sqm;
-    if (dto.units_available !== undefined) size.units_available = dto.units_available;
+    if (dto.configured_units !== undefined) size.configured_units = dto.configured_units;
     if (dto.document_fee !== undefined) size.document_fee = dto.document_fee;
     if (dto.is_active !== undefined) size.is_active = dto.is_active;
     // A full replacement, exactly like the BE — this is the tenor-edit path.
@@ -757,6 +1167,11 @@ export const assetRoutes: MockRoutes = {
     }
 
     syncCounts(params.assetId, params.offerType);
+    if (dto.plans !== undefined) {
+      recordOfferConfigChange(params.assetId, 'update-plan', `${label}, ${size.size_sqm} sqm: tenor changed, replacing the size's plans`);
+    } else if (changes.length > 0) {
+      recordOfferConfigChange(params.assetId, 'update-size', `${label}, ${size.size_sqm} sqm: ${changes.join(', ')}`);
+    }
     return size;
   },
 
@@ -765,10 +1180,15 @@ export const assetRoutes: MockRoutes = {
       (candidate) => candidate.offer_type === params.offerType
     );
     if (!offer) throw new MockHttpError(404, 'Offer not found', 'OFFER_NOT_FOUND');
-    requireSize(params.assetId, params.offerType, params.sizeId);
+    const size = requireSize(params.assetId, params.offerType, params.sizeId);
 
     offer.sizes = offer.sizes.filter((candidate) => candidate._id !== params.sizeId);
     syncCounts(params.assetId, params.offerType);
+    recordOfferConfigChange(
+      params.assetId,
+      'delete-size',
+      `Deleted the ${size.size_sqm} sqm size from ${OFFER_TYPE_DISPLAY_LABELS[params.offerType] ?? params.offerType}`
+    );
     return { message: 'Size deleted' };
   },
 
@@ -784,6 +1204,11 @@ export const assetRoutes: MockRoutes = {
     size.plans.push({ ...dto, is_active: dto.is_active ?? true });
     size.plans.sort((a, b) => a.tenor_months - b.tenor_months);
     syncCounts(params.assetId, params.offerType);
+    recordOfferConfigChange(
+      params.assetId,
+      'add-plan',
+      `Added a ${dto.tenor_months === 0 ? 'outright' : `${dto.tenor_months}-month`} plan to ${OFFER_TYPE_DISPLAY_LABELS[params.offerType] ?? params.offerType}, ${size.size_sqm} sqm`
+    );
     return size;
   },
 
@@ -793,12 +1218,24 @@ export const assetRoutes: MockRoutes = {
     if (!plan) throw new MockHttpError(404, 'Plan not found', 'PLAN_NOT_FOUND');
 
     const dto = body<Partial<MockPlan>>(raw);
+    const changes: string[] = [];
+    if (dto.land_price !== undefined && dto.land_price !== plan.land_price) changes.push('land price updated');
+    if (dto.initial_payment !== undefined && dto.initial_payment !== plan.initial_payment) changes.push('initial payment updated');
+    if (dto.monthly_installment !== undefined && dto.monthly_installment !== plan.monthly_installment) changes.push('monthly instalment updated');
+    if (dto.is_promo !== undefined && dto.is_promo !== plan.is_promo) changes.push(dto.is_promo ? 'marked promo' : 'unmarked promo');
+    if (dto.is_active !== undefined && dto.is_active !== plan.is_active) changes.push(dto.is_active ? 'reactivated' : 'deactivated');
+
     if (dto.land_price !== undefined) plan.land_price = dto.land_price;
     if (dto.initial_payment !== undefined) plan.initial_payment = dto.initial_payment;
     if (dto.monthly_installment !== undefined) plan.monthly_installment = dto.monthly_installment;
     if (dto.is_promo !== undefined) plan.is_promo = dto.is_promo;
     if (dto.is_active !== undefined) plan.is_active = dto.is_active;
 
+    if (changes.length > 0) {
+      const label = OFFER_TYPE_DISPLAY_LABELS[params.offerType] ?? params.offerType;
+      const tenorLabel = plan.tenor_months === 0 ? 'outright' : `${plan.tenor_months}-month`;
+      recordOfferConfigChange(params.assetId, 'update-plan', `${label} ${tenorLabel} plan: ${changes.join(', ')}`);
+    }
     return plan;
   },
 
@@ -814,6 +1251,11 @@ export const assetRoutes: MockRoutes = {
 
     size.plans = size.plans.filter((candidate) => candidate.tenor_months !== tenor);
     syncCounts(params.assetId, params.offerType);
+    recordOfferConfigChange(
+      params.assetId,
+      'delete-plan',
+      `Deleted the ${tenor === 0 ? 'outright' : `${tenor}-month`} plan from ${OFFER_TYPE_DISPLAY_LABELS[params.offerType] ?? params.offerType}, ${size.size_sqm} sqm`
+    );
     return { message: 'Plan deleted' };
   },
 
@@ -950,6 +1392,118 @@ export const assetRoutes: MockRoutes = {
     refuseIfAllocated(plot);
     plots.splice(plots.indexOf(plot), 1);
     return plot;
+  },
+
+  /* -------------------- ground confirmation -------------------- */
+
+  'GET /admin/plots/:plotId/ground-confirmation': ({ params }) => {
+    requirePlot(params.plotId);
+    return [...(groundConfirmationsByPlot[params.plotId] ?? [])].sort((a, b) =>
+      a.submitted_at < b.submitted_at ? 1 : -1
+    );
+  },
+
+  'POST /admin/plots/:plotId/ground-confirmation': ({ params, body: raw }) => {
+    const plot = requirePlot(params.plotId);
+    const dto = body<{ notes?: string }>(raw);
+
+    groundConfirmationSeq += 1;
+    const confirmation: MockGroundConfirmation = {
+      _id: `gc-${String(groundConfirmationSeq).padStart(4, '0')}`,
+      plot_id: plot._id,
+      submitted_by: MOCK_SITE_MANAGER_NAME,
+      submitted_at: nowIso(),
+      verified_by: null,
+      verified_at: null,
+      notes: dto.notes?.trim() || null,
+    };
+    groundConfirmationsByPlot[plot._id] = [...(groundConfirmationsByPlot[plot._id] ?? []), confirmation];
+    return confirmation;
+  },
+
+  /** An admin confirms a field submission in person — this is what makes a plot "Ground confirmed", not the submission alone. */
+  'POST /admin/plots/:plotId/ground-confirmation/:confirmationId/verify': ({ params }) => {
+    const plot = requirePlot(params.plotId);
+    const confirmation = (groundConfirmationsByPlot[plot._id] ?? []).find(
+      (candidate) => candidate._id === params.confirmationId
+    );
+    if (!confirmation) throw new MockHttpError(404, 'Ground confirmation not found', 'GROUND_CONFIRMATION_NOT_FOUND');
+    if (confirmation.verified_at) {
+      throw new MockHttpError(409, 'This confirmation has already been verified', 'ALREADY_VERIFIED');
+    }
+
+    confirmation.verified_by = MOCK_ADMIN_NAME;
+    confirmation.verified_at = nowIso();
+    return confirmation;
+  },
+
+  /* -------------------- asset-wide plot inventory -------------------- */
+
+  /**
+   * GET /admin/assets/:assetId/plots — confirmed REAL against `abode-be-v2`
+   * staging's field-staff module (`AssetSiteSetupController`'s `plots()`,
+   * `SiteSetupService.plotInventory()`) — see plot-inventory.schema.ts's
+   * header for the full shape this mirrors. One response carries the list,
+   * BOTH totals (unfiltered and filtered), and allocation-readiness together
+   * — there is no separate `/plots/summary` endpoint on the real backend;
+   * that was this app's own earlier invention and has been removed. An asset
+   * with no blocks (e.g. Harmony Gardens) returns a genuinely empty list, not
+   * an error.
+   */
+  'GET /admin/assets/:assetId/plots': ({ params, query }) => {
+    const asset = findActiveAsset(params.assetId);
+    if (!asset) throw new MockHttpError(404, 'Asset not found', 'FIELD_SITE_NOT_FOUND');
+
+    const all = assetPlots(params.assetId);
+    const filtered = filterAssetPlots(all, query).sort(
+      (a, b) => a.block_label.localeCompare(b.block_label) || a.plot_number - b.plot_number
+    );
+
+    const page = Number(query.page ?? 1) || 1;
+    const limit = Math.min(200, Number(query.limit ?? 50) || 50);
+    const rows = filtered.slice((page - 1) * limit, page * limit);
+
+    return {
+      data: {
+        asset: { id: params.assetId, name: asset.name },
+        plots: rows.map((p) => {
+          const ops = fieldOpsFor(p);
+          return {
+            id: p._id,
+            label: `${p.block_label}-${p.plot_number}`,
+            block: p.block_label,
+            plot_number: p.plot_number,
+            size_sqm: p.size,
+            commercial_status: p.status,
+            product: null,
+            payment_plan_id: p.payment_plan ?? null,
+            allocated_date: p.allocated_date ?? null,
+            parcelled: ops.parcelled,
+            re_pegged_count: ops.re_pegged_count,
+            cleared_sqm: ops.cleared_sqm,
+            clearing_percent: ops.clearing_percent,
+            allocation_ready: ops.allocation_ready,
+            field_events: ops.field_events,
+          };
+        }),
+        totals: plotInventoryTotals(all),
+        filtered_totals: plotInventoryTotals(filtered),
+        allocation_readiness: {
+          plots_ready: filtered.filter((p) => fieldOpsFor(p).allocation_ready).length,
+          plots_not_ready: filtered.filter((p) => !fieldOpsFor(p).allocation_ready).length,
+          upcoming_event: null,
+          latest_completed_event: null,
+          note: 'No allocation event is scheduled, so there is no event capacity to report',
+        },
+      },
+      meta: { total: filtered.length, page, limit, totalPages: Math.max(1, Math.ceil(filtered.length / limit)) },
+    };
+  },
+
+  /** "Preserve offer configuration history" — newest first, like every other history route in this feature. */
+  'GET /admin/assets/:assetId/offers/history': ({ params, query }) => {
+    const revisions = [...(offerConfigHistory[params.assetId] ?? [])].sort((a, b) => b.version - a.version);
+    return paged(revisions, query, 50);
   },
 
   /** Soft delete — sets `deleted_at`, keeps the row. */

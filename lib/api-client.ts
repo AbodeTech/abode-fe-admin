@@ -304,11 +304,21 @@ export const MetaSchema = z
 
 export type PageMeta = z.infer<typeof MetaSchema>;
 
+/**
+ * `data` is optional here — confirmed against the real `TransformInterceptor`
+ * on abode-be-v2: when a controller's own return value already has a
+ * `success` key (e.g. `{success: true, message: 'Asset deleted successfully'}`
+ * from `DELETE /admin/assets/:id`), the interceptor passes it through
+ * completely unwrapped rather than guaranteeing a `data` key exists. Making
+ * the whole envelope reject a response with no `data` at all was too strict
+ * for that real, reproducible shape — the per-call inner `schema` is what
+ * should decide whether an absent `data` is actually acceptable.
+ */
 const envelope = <T extends z.ZodTypeAny>(data: T) =>
   z.object({
     success: z.boolean(),
     message: z.string().optional(),
-    data,
+    data: data.optional(),
     meta: MetaSchema.optional(),
   });
 
@@ -425,6 +435,41 @@ export function apiDelete<T extends z.ZodTypeAny>(
   config?: RequestConfig
 ): Promise<z.infer<T>> {
   return request('DELETE', path, schema, { config });
+}
+
+/**
+ * Like `apiGet`, but also returns the envelope's `meta` — for endpoints whose
+ * `data` is a single object (not a list) that still carries pagination info
+ * as a sibling of `data` (e.g. a filtered detail view with `meta.totalPages`
+ * over the filtered set). `apiGetPaged` doesn't fit here: it requires `data`
+ * itself to be an array. Mock routes for these endpoints return
+ * `{ data: <object>, meta? }` directly, matching the real envelope shape.
+ */
+export async function apiGetWithMeta<T extends z.ZodTypeAny>(
+  path: string,
+  schema: T,
+  config?: RequestConfig
+): Promise<{ data: z.infer<T>; meta: PageMeta }> {
+  try {
+    if (isMockApiEnabled()) {
+      const payload = await dispatchMockRequest({
+        method: 'GET',
+        path,
+        query: config?.params ?? {},
+        body: undefined,
+      });
+      // Same Zod v4 mapped-type cast `unwrap()` needs — see its own comment.
+      const parsed = z.object({ data: schema, meta: MetaSchema.optional() }).parse(payload) as {
+        data: z.infer<T>;
+        meta?: PageMeta;
+      };
+      return { data: parsed.data, meta: parsed.meta ?? {} };
+    }
+    const res = await apiClient.request({ method: 'GET', url: path, params: config?.params });
+    return unwrap(schema, res.data);
+  } catch (err) {
+    throw toApiClientError(err, 'GET', path);
+  }
 }
 
 /**

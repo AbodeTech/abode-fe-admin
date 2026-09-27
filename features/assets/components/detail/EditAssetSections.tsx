@@ -28,6 +28,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { TOPOGRAPHIES, VISIBILITIES, VISIBILITY_LABELS } from "../../schemas/asset.schema";
 import { NIGERIAN_STATES, stateLabel } from "../../lib/nigerian-states";
 import type { AssetDetail } from "../../schemas/asset-detail.schema";
+import { NumberInput } from "./NumberInput";
 import {
   assetAvailabilityFormSchema,
   assetDetailsFormSchema,
@@ -367,17 +368,7 @@ export function AssetAvailabilityFields({
             <FormItem>
               <FormLabel className="text-xs">Sales cap</FormLabel>
               <FormControl>
-                <Input
-                  type="number"
-                  min={1}
-                  value={field.value ?? ""}
-                  onChange={(e) =>
-                    field.onChange(e.target.value === "" ? undefined : e.target.valueAsNumber)
-                  }
-                  onBlur={field.onBlur}
-                  name={field.name}
-                  ref={field.ref}
-                />
+                <NumberInput field={field} min={1} />
               </FormControl>
               <FormDescription className="text-xs">
                 {committed > 0
@@ -425,6 +416,7 @@ const DOCUMENT_SLOTS = [
   { key: "survey", label: "Survey" },
   { key: "contract_of_sales", label: "Contract of sales" },
   { key: "estate_layout", label: "Estate layout" },
+  { key: "brochure", label: "Brochure" },
 ] as const;
 
 export function useAssetMediaSection(
