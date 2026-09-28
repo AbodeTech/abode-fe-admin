@@ -158,6 +158,17 @@ export const ADMIN_PERMISSIONS = [
   'view_allocations',
   'allocate_land',
   'deallocate_land',
+
+  // Field operations — Site Managers and Surveyors (features/field-staff).
+  'view_field_staff',
+  'manage_field_staff',
+  'assign_field_staff',
+  'view_field_scorecards',
+  'manage_field_scorecards',
+  'view_field_submissions',
+  'verify_field_submissions',
+  'view_field_performance',
+  'manage_asset_boundary',
 ] as const;
 
 export type AdminPermission = (typeof ADMIN_PERMISSIONS)[number];
