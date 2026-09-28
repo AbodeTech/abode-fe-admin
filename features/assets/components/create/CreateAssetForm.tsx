@@ -2,18 +2,12 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { FormProvider, useFieldArray, useForm, useWatch } from "react-hook-form";
+import { FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Plus } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   FormControl,
   FormDescription,
@@ -33,13 +27,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
-import {
-  OFFER_TYPES,
-  OFFER_TYPE_LABELS,
-  TOPOGRAPHIES,
-  VISIBILITIES,
-  VISIBILITY_LABELS,
-} from "../../schemas/asset.schema";
+import { TOPOGRAPHIES, VISIBILITIES, VISIBILITY_LABELS } from "../../schemas/asset.schema";
 import {
   createAssetFormSchema,
   createAssetFormToPayload,
@@ -48,9 +36,10 @@ import {
 import { useCreateAsset } from "../../hooks/use-create-asset-v2";
 import { useAssetFormStore } from "../../store/asset-form-store";
 import { FormSection } from "./FormSection";
-import { OfferSection, emptySize } from "./OfferSection";
-import { PlanGeneratorDialog } from "./PlanGeneratorDialog";
+import { emptyProductPool, LandSetupSection } from "./LandSetupSection";
+import { ReviewAndCreateSection } from "./ReviewAndCreateSection";
 import { GalleryUploadField, SingleUploadField } from "./UploadFields";
+import { NIGERIAN_STATES, stateLabel } from "../../lib/nigerian-states";
 
 const DOCUMENT_SLOTS = [
   { key: "deed_of_assignment", label: "Deed of assignment" },
@@ -58,14 +47,6 @@ const DOCUMENT_SLOTS = [
   { key: "contract_of_sales", label: "Contract of sales" },
   { key: "estate_layout", label: "Estate layout" },
 ] as const;
-
-const emptyOffer = (offerType: (typeof OFFER_TYPES)[number]) => ({
-  offer_type: offerType,
-  is_active: true,
-  allocation_qualification_pct: undefined as unknown as number,
-  payment_type: undefined,
-  sizes: [emptySize()],
-});
 
 export function CreateAssetForm() {
   const router = useRouter();
@@ -94,26 +75,20 @@ export function CreateAssetForm() {
       hero_image: "",
       pictures: [],
       documents: {},
-      sales_cap: undefined as unknown as number,
       visibility: "draft",
-      offers: [emptyOffer("flex")],
+      total_land_sqm: undefined as unknown as number,
+      product_pools: [emptyProductPool("flex")],
     },
   });
-
-  const offers = useFieldArray({ control: form.control, name: "offers" });
-
-  // `useWatch` rather than `form.watch()` — the latter returns a fresh function
-  // each render, which makes React Compiler skip memoising this component.
-  const watchedOffers = useWatch({ control: form.control, name: "offers" });
-  const usedOfferTypes = watchedOffers?.map((offer) => offer?.offer_type) ?? [];
-  const availableOfferTypes = OFFER_TYPES.filter((type) => !usedOfferTypes.includes(type));
 
   function onSubmit(values: CreateAssetFormValues) {
     const parsed = createAssetFormSchema.parse(values);
 
     createAsset.mutate(createAssetFormToPayload(parsed), {
       onSuccess: (asset) => {
-        toast.success(`${asset.name} created`);
+        toast.success(`${asset.name} created`, {
+          description: "Complete roads, services, sizes, and prices when they're available.",
+        });
         router.push(`/assets/${asset._id}`);
       },
       onError: (error) => toast.error(error.message || "Failed to create asset"),
@@ -155,6 +130,36 @@ export function CreateAssetForm() {
                     <FormControl>
                       <Input placeholder="Ibeju-Lekki, Lagos" {...field} value={field.value ?? ""} />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="state"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs">State</FormLabel>
+                    <Select value={field.value ?? ""} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select a state" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {NIGERIAN_STATES.map((state) => (
+                          <SelectItem key={state} value={state}>
+                            {stateLabel(state)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {/* Not just a filter: this is what the Deed of Assignment
+                        reads to name the Governor it is submitted under. */}
+                    <p className="text-[11px] text-gray-500">
+                      Named on the Deed of Assignment. Left unset, the deed prints a blank there.
+                    </p>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -281,66 +286,46 @@ export function CreateAssetForm() {
         </FormSection>
 
         <FormSection
+          id="land-setup"
+          title="Land setup"
+          description="The estate's total physical size and its initial product pools."
+        >
+          <LandSetupSection />
+        </FormSection>
+
+        <FormSection
           id="availability"
           title="Availability"
-          description="How many units can be sold, and who can see this asset."
+          description="Who can see this asset."
         >
-          <div className="grid gap-3 sm:grid-cols-2">
-            <FormField
-              control={form.control}
-              name="sales_cap"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-xs">Sales cap</FormLabel>
+          <FormField
+            control={form.control}
+            name="visibility"
+            render={({ field }) => (
+              <FormItem className="sm:max-w-xs">
+                <FormLabel className="text-xs">Visibility</FormLabel>
+                <Select value={field.value} onValueChange={field.onChange}>
                   <FormControl>
-                    <Input
-                      type="number"
-                      min={1}
-                      value={field.value ?? ""}
-                      onChange={(e) =>
-                        field.onChange(e.target.value === "" ? undefined : e.target.valueAsNumber)
-                      }
-                      onBlur={field.onBlur}
-                      name={field.name}
-                      ref={field.ref}
-                    />
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
                   </FormControl>
-                  <FormDescription className="text-xs">
-                    Total units available across every offer. Selling stops when it&apos;s reached.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="visibility"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-xs">Visibility</FormLabel>
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <FormControl>
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {VISIBILITIES.map((visibility) => (
-                        <SelectItem key={visibility} value={visibility}>
-                          {VISIBILITY_LABELS[visibility]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormDescription className="text-xs">
-                    Draft keeps it off the app entirely.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
+                  <SelectContent>
+                    {VISIBILITIES.map((visibility) => (
+                      <SelectItem key={visibility} value={visibility}>
+                        {VISIBILITY_LABELS[visibility]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormDescription className="text-xs">
+                  Draft keeps it off the app entirely. A newly created asset stays non-purchasable
+                  until legacy unit inventory is assigned, regardless of visibility.
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         </FormSection>
 
         <FormSection
@@ -412,50 +397,13 @@ export function CreateAssetForm() {
           </div>
         </FormSection>
 
-        <div className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <h2 className="font-medium">Offers</h2>
-              <p className="text-sm text-muted-foreground">
-                An asset needs at least one. It can sell flex, full ownership, commercial, or a mix.
-              </p>
-            </div>
-
-            {availableOfferTypes.length > 0 ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button type="button" variant="outline" size="sm">
-                    <Plus className="mr-1 h-3.5 w-3.5" />
-                    Add offer
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {availableOfferTypes.map((offerType) => (
-                    <DropdownMenuItem
-                      key={offerType}
-                      onClick={() => offers.append(emptyOffer(offerType))}
-                    >
-                      {OFFER_TYPE_LABELS[offerType]}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : null}
-          </div>
-
-          {offers.fields.map((offer, offerIndex) => (
-            <OfferSection
-              key={offer.id}
-              offerIndex={offerIndex}
-              canRemove={offers.fields.length > 1}
-              onRemove={() => offers.remove(offerIndex)}
-            />
-          ))}
-
-          {form.formState.errors.offers?.message ? (
-            <p className="text-sm text-destructive">{form.formState.errors.offers.message}</p>
-          ) : null}
-        </div>
+        <FormSection
+          id="review"
+          title="Review and create"
+          description="A last look before the asset and its land account are created."
+        >
+          <ReviewAndCreateSection />
+        </FormSection>
 
         <div className="flex flex-wrap items-center justify-end gap-3 border-t pt-4">
           {isUploading ? (
@@ -478,8 +426,6 @@ export function CreateAssetForm() {
           </Button>
         </div>
       </form>
-
-      <PlanGeneratorDialog />
     </FormProvider>
   );
 }

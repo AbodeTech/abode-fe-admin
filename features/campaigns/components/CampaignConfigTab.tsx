@@ -45,7 +45,7 @@ export function CampaignConfigTab({ campaign }: { campaign: Campaign }) {
         <Row
           label="Target"
           value={
-            campaign.total_sqm_target != null ? `${campaign.total_sqm_target.toLocaleString()} sqm` : "None"
+            campaign.total_sqm_target ? `${campaign.total_sqm_target.toLocaleString()} sqm` : "None"
           }
         />
       </section>

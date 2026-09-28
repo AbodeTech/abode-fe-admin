@@ -57,9 +57,13 @@ export function TransitionDialog({
   const { mutateAsync: transition, isPending } = useTransitionCampaign(campaign.id);
 
   const handleConfirm = async () => {
-    await transition({ status: newStatus });
-    toast.success(`Campaign ${newStatus}`);
-    onClose();
+    try {
+      await transition({ status: newStatus });
+      toast.success(`Campaign ${newStatus}`);
+      onClose();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not change campaign status");
+    }
   };
 
   if (!copy.title) return null;

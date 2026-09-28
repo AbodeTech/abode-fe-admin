@@ -41,10 +41,15 @@ function formatDate(value: string | undefined): string {
  * Allocation from the asset's own counters — `sales_cap`, `sold_units` and
  * `reserved_units` are real fields and `available_units` is a backend virtual.
  * Unlike the analytics panels above the table, none of this is sample data.
+ *
+ * The "sqm" chip is a state flag, not a second inventory figure — it says
+ * this asset also has a land account (see the detail page's Land Account
+ * card), without mixing its numbers into this unit-based column.
  */
 function Inventory({ asset }: { asset: Asset }) {
   const available = availableUnits(asset);
   const allocated = asset.sales_cap > 0 ? 1 - available / asset.sales_cap : 0;
+  const hasLandAccount = asset.land_inventory_state !== "not_configured";
 
   return (
     <div className="min-w-0 space-y-1">
@@ -53,6 +58,14 @@ function Inventory({ asset }: { asset: Asset }) {
         <span className="font-normal text-muted-foreground">
           of {asset.sales_cap.toLocaleString()} left
         </span>
+        {hasLandAccount ? (
+          <span
+            className="ml-1.5 rounded-full bg-emerald-500/10 px-1.5 py-0.5 align-middle text-[10px] font-medium text-emerald-600"
+            title="This asset also has a land account (sqm)"
+          >
+            sqm
+          </span>
+        ) : null}
       </p>
 
       <div className="h-1 w-full max-w-[9rem] overflow-hidden rounded-full bg-muted">
@@ -81,9 +94,6 @@ function RowActions({ asset, onDelete }: { asset: Asset; onDelete: (asset: Asset
       <DropdownMenuContent align="end">
         <DropdownMenuItem asChild>
           <Link href={`/assets/${asset._id}`}>View</Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href={`/assets/${asset._id}/edit`}>Edit</Link>
         </DropdownMenuItem>
         <DropdownMenuItem variant="destructive" onClick={() => onDelete(asset)}>
           Delete

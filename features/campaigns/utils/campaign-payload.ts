@@ -93,9 +93,10 @@ export function toUpdateCampaignBody(values: Partial<CreateCampaignDto> | Limite
     if (prefix) body.ticket_id_prefix = prefix;
   }
 
+  // null clears the target; 0 would be stored as a real target of zero.
   if ('total_sqm_target' in values) {
     body.total_sqm_target =
-      values.total_sqm_target == null ? 0 : Math.trunc(values.total_sqm_target);
+      values.total_sqm_target == null ? null : Math.trunc(values.total_sqm_target);
   }
 
   return body;

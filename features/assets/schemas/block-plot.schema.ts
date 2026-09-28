@@ -26,6 +26,19 @@ export const PLOT_STATUSES = ['available', 'allocated'] as const;
 export const PlotStatusSchema = z.enum(PLOT_STATUSES);
 export type PlotStatus = z.infer<typeof PlotStatusSchema>;
 
+/**
+ * Display labels — "allocated" reads as "System allocated" everywhere it's
+ * shown, distinguishing this DB-level status (set the moment
+ * POST .../allocate runs) from "Ground confirmed" — now a real, independent
+ * per-plot field submission (see ground-confirmation.schema.ts), not just a
+ * relabel. A plot can be "System allocated" without ever being ground
+ * confirmed, and the two are tracked and rendered separately everywhere.
+ */
+export const PLOT_STATUS_LABELS: Record<PlotStatus, string> = {
+  available: 'Available',
+  allocated: 'System allocated',
+};
+
 export const BlockSchema = z.looseObject({
   _id: z.string(),
   asset: z.string(),

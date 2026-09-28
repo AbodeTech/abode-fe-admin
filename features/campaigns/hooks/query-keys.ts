@@ -3,6 +3,7 @@ import type { RewardRole } from '../schemas/reward.schema';
 
 export const DEFAULT_CAMPAIGNS_LIMIT = 20;
 export const DEFAULT_REWARDS_LIMIT = 20;
+export const DEFAULT_PURCHASES_LIMIT = 20;
 
 export type CampaignListFilters = {
   status?: CampaignStatus | null;
@@ -19,6 +20,13 @@ export type CampaignRewardFilters = {
   limit?: number;
 };
 
+export type CampaignPurchaseFilters = {
+  search?: string | null;
+  asset_id?: string | null;
+  page?: number;
+  limit?: number;
+};
+
 export const campaignKeys = {
   all: ['campaigns'] as const,
   lists: () => [...campaignKeys.all, 'list'] as const,
@@ -29,4 +37,7 @@ export const campaignKeys = {
   dashboard: (id: string) => [...campaignKeys.dashboards(), id] as const,
   rewards: (id: string, params?: CampaignRewardFilters) =>
     [...campaignKeys.all, 'rewards', id, params ?? {}] as const,
+  revenue: (id: string) => [...campaignKeys.all, 'revenue', id] as const,
+  purchases: (id: string, params?: CampaignPurchaseFilters) =>
+    [...campaignKeys.all, 'purchases', id, params ?? {}] as const,
 };

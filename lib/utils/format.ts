@@ -44,3 +44,20 @@ export function formatNairaCompact(amount: number | null | undefined): string {
   if (abs >= 1_000) return `₦${(amount / 1_000).toFixed(1)}K`;
   return formatNaira(amount);
 }
+
+/**
+ * Land area at a glance: `41250` → `"41k SQM"`. Same rounding tradeoff as
+ * `formatNairaCompact` — for stat cards and sub-lines, never a value an
+ * admin needs to type back in exactly. Matches the thresholds every
+ * asset-feature component already reimplements locally (InventoryHealthBar,
+ * AssetHealthBar, AssetCategoryHealth, PaymentPlanMatrix) — this is the
+ * canonical version new code should import instead of copying again.
+ */
+export function formatSqm(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(value)) return '—';
+  if (value === 0) return '0 SQM';
+  const abs = Math.abs(value);
+  if (abs >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M SQM`;
+  if (abs >= 1_000) return `${(value / 1_000).toFixed(0)}k SQM`;
+  return `${value.toFixed(0)} SQM`;
+}
