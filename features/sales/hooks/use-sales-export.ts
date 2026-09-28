@@ -44,6 +44,7 @@ const EXPORT_SALES_QUERY = graphql(`
         plot
         land_payment_completed_date
         name_on_document
+        address_on_document
       }
     }
   }

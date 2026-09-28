@@ -114,6 +114,7 @@ const FIELD_CONFIG = {
       email: { label: 'Email', default: true },
       phone: { label: 'Phone', default: true },
       nameOnDocument: { label: 'Name on Document', default: false },
+      addressOnDocument: { label: 'Address on Document', default: false },
     }
   },
   referrer: {
@@ -262,7 +263,7 @@ const PRESETS: Record<string, { label: string; fields: string[] }> = {
   },
   documentation: {
     label: 'Documentation & Allocation',
-    fields: ['id', 'paymentPlanId', 'name', 'nameOnDocument', 'email', 'assetName', 'assetType', 'block', 'plot', 'blockPlotPairs', 'plotCount', 'landPaymentCompletedDate', 'landBalance', 'paymentStatus']
+    fields: ['id', 'paymentPlanId', 'name', 'nameOnDocument', 'addressOnDocument', 'email', 'assetName', 'assetType', 'block', 'plot', 'blockPlotPairs', 'plotCount', 'landPaymentCompletedDate', 'landBalance', 'paymentStatus']
   },
 }
 
@@ -543,11 +544,13 @@ export function SalesExport({ filters }: { filters: SalesFilters }) {
       allocationStatus: record.allocation_status || '',
       planCreatedAt: formatDate(record.payment_plan_created_at),
       planUpdatedAt: formatDate(record.payment_plan_updated_at),
-      // Deliberately no fallbacks below. name_on_document is reconciled
-      // against, so falling back to the account name would hide a missing
-      // answer, and a missing land_payment_completed_date is not "unpaid" —
-      // it is an absent completion stamp. Blanks stay blank.
+      // Deliberately no fallbacks below. name_on_document and
+      // address_on_document are reconciled against, so falling back to the
+      // account name or address would hide a missing answer, and a missing
+      // land_payment_completed_date is not "unpaid" — it is an absent
+      // completion stamp. Blanks stay blank.
       nameOnDocument: record.name_on_document || '',
+      addressOnDocument: record.address_on_document || '',
       block: record.block || '',
       plot: record.plot || '',
       blockPlotPairs,
