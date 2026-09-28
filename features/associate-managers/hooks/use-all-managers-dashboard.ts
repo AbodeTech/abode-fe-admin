@@ -52,6 +52,7 @@ const GET_ALL_MANAGERS_DASHBOARD_QUERY = graphql(`
         initialSalesRevenue
         recurringRevenue
         revenuePerSellingPro
+        contractSize
         salesCountBySource { managed unassigned users associate }
         revenueBySource { managed unassigned users associate }
         topSellingContributors { proId firstName lastName email amount }
