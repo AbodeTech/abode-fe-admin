@@ -50,7 +50,20 @@ export function BacklogsSection({
           label="Onboarding Pipeline"
           pillLabel="Chase"
           rows={[
-            { label: "New purchases · call pending", value: backlogs.onboarding.callPending, tone: "fresh" },
+            // The call-pending number split by when the obligation started.
+            // "Seventy to onboard" is not a month's work and reads as an
+            // impossible target; "nine this month, sixty-one carried over" is
+            // two problems, and only the first is this month's performance.
+            {
+              label: "Bought this month · call pending",
+              value: backlogs.onboarding.dueThisPeriod ?? 0,
+              tone: "fresh",
+            },
+            {
+              label: "Carried over · call pending",
+              value: backlogs.onboarding.dueCarriedOver ?? 0,
+              tone: "warn",
+            },
             { label: "Called · confirmation pending", value: backlogs.onboarding.confirmPending, tone: "warn" },
             { label: "Disputed by buyer", value: backlogs.onboarding.disputed, tone: "crit" },
           ]}

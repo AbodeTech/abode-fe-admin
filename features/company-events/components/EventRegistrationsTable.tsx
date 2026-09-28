@@ -1,5 +1,14 @@
 "use client";
 
+import { useState } from "react";
+import { MoreHorizontal, UserCheck, MapPin } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   AdminDesktopTableWrap,
   AdminMobileCard,
@@ -18,6 +27,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
+import { RegisterAttendeeDialog, type EventPickupOption } from "./dialogs/RegisterAttendeeDialog";
+import { ChangePickupDialog } from "./dialogs/ChangePickupDialog";
 import type { EventRegistrationRow } from "../hooks/use-event-registrations";
 import type {
   EventAllocationStatus,
@@ -80,9 +91,27 @@ function CategoryCell({ category }: { category: RegistrationCategory | null }) {
 interface EventRegistrationsTableProps {
   rows?: EventRegistrationRow[] | null;
   isLoading?: boolean;
+  /**
+   * Both optional, and the row actions appear only with them. The same table
+   * renders on the site-inspection tab, which has neither an allocation day's
+   * pickup points nor anybody to register on behalf of.
+   */
+  eventId?: string;
+  pickupLocations?: EventPickupOption[];
 }
 
-export function EventRegistrationsTable({ rows, isLoading }: EventRegistrationsTableProps) {
+export function EventRegistrationsTable({
+  rows,
+  isLoading,
+  eventId,
+  pickupLocations,
+}: EventRegistrationsTableProps) {
+  // Held as rows rather than ids: the dialogs show the person's own details,
+  // and re-deriving them from a refetched page would blank the dialog mid-edit.
+  const [registering, setRegistering] = useState<EventRegistrationRow | null>(null);
+  const [movingPickup, setMovingPickup] = useState<EventRegistrationRow | null>(null);
+  const canAct = !!eventId;
+  const stops = pickupLocations ?? [];
   if (isLoading) {
     return (
       <Card className="min-w-0 border-none shadow-sm">
@@ -157,13 +186,14 @@ export function EventRegistrationsTable({ rows, isLoading }: EventRegistrationsT
                 <TableHead className="min-w-40 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Registered
                 </TableHead>
+                {canAct && <TableHead className="w-12 px-4 py-3.5" />}
               </TableRow>
             </TableHeader>
             <TableBody>
               {safeRows.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={7}
+                    colSpan={canAct ? 8 : 7}
                     className="whitespace-normal px-4 py-12 text-center text-sm text-muted-foreground"
                   >
                     Nobody is on this event yet.
@@ -174,6 +204,13 @@ export function EventRegistrationsTable({ rows, isLoading }: EventRegistrationsT
                   <TableRow key={row.id}>
                     <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed">
                       <span className="block wrap-break-word font-medium">{orDash(row.name)}</span>
+                      {/* Said plainly rather than left to be assumed: this
+                          person has not filled the form, and these are their
+                          account details — which is exactly why the row is
+                          worth ringing. */}
+                      {row.contact_source === "account" && (
+                        <span className="block text-xs text-muted-foreground">from their account</span>
+                      )}
                     </TableCell>
                     <TableCell className="align-top whitespace-nowrap px-4 py-4">
                       <AttendeeTypeBadge type={row.attendee_type} />
@@ -194,12 +231,62 @@ export function EventRegistrationsTable({ rows, isLoading }: EventRegistrationsT
                     <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed wrap-break-word">
                       {formatDateTime(row.registered_at)}
                     </TableCell>
+                    {canAct && (
+                      <TableCell className="align-top px-4 py-4">
+                        {row.status !== "cancelled" && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreHorizontal className="h-4 w-4" />
+                                <span className="sr-only">Actions for {row.name ?? "this attendee"}</span>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              {/* Only somebody who has not replied can be
+                                  registered; for everyone else the form has
+                                  already been filled in and is single-use. */}
+                              {row.status === "invited" && (
+                                <DropdownMenuItem onClick={() => setRegistering(row)}>
+                                  <UserCheck className="h-4 w-4" />
+                                  Register on their behalf
+                                </DropdownMenuItem>
+                              )}
+                              {stops.length > 0 && (
+                                <DropdownMenuItem onClick={() => setMovingPickup(row)}>
+                                  <MapPin className="h-4 w-4" />
+                                  Change pickup point
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))
               )}
             </TableBody>
           </Table>
         </AdminDesktopTableWrap>
+
+        {canAct && (
+          <>
+            <RegisterAttendeeDialog
+              open={!!registering}
+              onOpenChange={(o) => !o && setRegistering(null)}
+              eventId={eventId as string}
+              attendee={registering}
+              pickupLocations={stops}
+            />
+            <ChangePickupDialog
+              open={!!movingPickup}
+              onOpenChange={(o) => !o && setMovingPickup(null)}
+              eventId={eventId as string}
+              attendee={movingPickup}
+              pickupLocations={stops}
+            />
+          </>
+        )}
       </CardContent>
     </Card>
   );

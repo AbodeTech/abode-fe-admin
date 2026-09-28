@@ -20,6 +20,7 @@ import { PLAN_SORTS, effectivePlanSort } from "../lib/plan-sort";
 import {
   AllocationPill,
   DoaPill,
+  LastAttemptNote,
   OnboardingPill,
   PaymentPill,
   formatShortDate,
@@ -44,7 +45,8 @@ interface Props {
 const FILTERS: {
   key: CsPlanFilter;
   label: string;
-  count: (c: CsPlanFilterCounts) => number;
+  /** Undefined where the server has not shipped that count yet — see the render. */
+  count: (c: CsPlanFilterCounts) => number | undefined;
 }[] = [
   { key: CsPlanFilter.All, label: "All", count: (c) => c.all },
   {
@@ -56,6 +58,24 @@ const FILTERS: {
     key: CsPlanFilter.OnboardingPending,
     label: "Onboarding pending",
     count: (c) => c.onboardingPending,
+  },
+  // The three states inside that chip. One number for all of them hid the
+  // difference between a plan nobody has rung, one the customer did not pick
+  // up, and one with a call booked — three different jobs.
+  {
+    key: CsPlanFilter.NeverAttempted,
+    label: "Never rung",
+    count: (c) => c.neverAttempted,
+  },
+  {
+    key: CsPlanFilter.NoAnswer,
+    label: "Didn't pick",
+    count: (c) => c.noAnswer,
+  },
+  {
+    key: CsPlanFilter.Rescheduled,
+    label: "Call booked",
+    count: (c) => c.rescheduled,
   },
   { key: CsPlanFilter.DueDoa, label: "Due DoA", count: (c) => c.dueDoa },
   {
@@ -219,7 +239,11 @@ export function CustomersTable({
                       active ? "opacity-90" : "text-gray-400"
                     )}
                   >
-                    {f.count(filterCounts).toLocaleString()}
+                    {/* Nullish-guarded because a chip can outlive its count:
+                        a FE deployed ahead of the BE asks for a field the
+                        server does not return yet, and a missing number must
+                        read as zero rather than blanking the whole table. */}
+                    {(f.count(filterCounts) ?? 0).toLocaleString()}
                   </span>
                 </button>
               );
@@ -362,8 +386,11 @@ export function CustomersTable({
                         label={r.paymentLabel}
                       />
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 align-top">
                       <OnboardingPill status={r.onboarding} />
+                      {/* What was already tried, so the next call is an
+                          informed one rather than a repeat of the last. */}
+                      <LastAttemptNote attempt={r.lastAttempt} />
                     </td>
                     <td className="px-4 py-3">
                       <AllocationPill

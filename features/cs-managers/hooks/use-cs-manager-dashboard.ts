@@ -53,6 +53,7 @@ const GET_CS_MANAGER_DASHBOARD_QUERY = graphql(`
         ticketsEntered
         ticketsResolved
         ticketResolutionRate
+        ticketFlow { month created resolved }
       }
       performanceScore {
         score
@@ -65,7 +66,7 @@ const GET_CS_MANAGER_DASHBOARD_QUERY = graphql(`
       }
       backlogs {
         allocation { total thisMonth lastMonth older }
-        onboarding { total callPending confirmPending disputed }
+        onboarding { total callPending confirmPending disputed dueThisPeriod dueCarriedOver }
         doa { total thisMonth lastMonth older }
       }
       portfolio {
@@ -84,6 +85,7 @@ const GET_CS_MANAGER_DASHBOARD_QUERY = graphql(`
         paymentStatus
         paymentLabel
         onboarding
+        lastAttempt { outcome calledAt attempts }
         allocation
         allocationLabel
         doa
@@ -95,6 +97,9 @@ const GET_CS_MANAGER_DASHBOARD_QUERY = graphql(`
         all
         dueAllocation
         onboardingPending
+        neverAttempted
+        noAnswer
+        rescheduled
         dueDoa
         defaultingSoon
         completedPayment
@@ -151,6 +156,7 @@ const GET_ALL_CS_MANAGERS_DASHBOARD_QUERY = graphql(`
         ticketsEntered
         ticketsResolved
         ticketResolutionRate
+        ticketFlow { month created resolved }
       }
       performanceScore {
         score
@@ -163,7 +169,7 @@ const GET_ALL_CS_MANAGERS_DASHBOARD_QUERY = graphql(`
       }
       backlogs {
         allocation { total thisMonth lastMonth older }
-        onboarding { total callPending confirmPending disputed }
+        onboarding { total callPending confirmPending disputed dueThisPeriod dueCarriedOver }
         doa { total thisMonth lastMonth older }
       }
       portfolio {
@@ -182,6 +188,7 @@ const GET_ALL_CS_MANAGERS_DASHBOARD_QUERY = graphql(`
         paymentStatus
         paymentLabel
         onboarding
+        lastAttempt { outcome calledAt attempts }
         allocation
         allocationLabel
         doa
@@ -193,6 +200,9 @@ const GET_ALL_CS_MANAGERS_DASHBOARD_QUERY = graphql(`
         all
         dueAllocation
         onboardingPending
+        neverAttempted
+        noAnswer
+        rescheduled
         dueDoa
         defaultingSoon
         completedPayment

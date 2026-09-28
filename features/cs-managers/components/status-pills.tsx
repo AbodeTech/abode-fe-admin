@@ -45,6 +45,43 @@ export function OnboardingPill({ status }: { status: OnboardingStatus }) {
   }
 }
 
+/**
+ * What was already tried on this plan.
+ *
+ * Sits under the onboarding pill because "call pending" says the same thing
+ * about a plan nobody has rung and one rung three times without an answer —
+ * and those are different jobs. The CSMs were recording it anyway: a run of
+ * "didn't pick" and "call dropped" ended up typed into the land-choice reason,
+ * because that was the only box on the form that took free text.
+ */
+const ATTEMPT_LABELS: Record<string, string> = {
+  no_answer: "Didn't pick",
+  rescheduled: "Call booked",
+  spoke: "Spoke",
+  done: "Call done",
+};
+
+export function LastAttemptNote({
+  attempt,
+}: {
+  attempt?: { outcome: string; calledAt: string; attempts: number } | null;
+}) {
+  if (!attempt) return null;
+  const label = ATTEMPT_LABELS[attempt.outcome] ?? attempt.outcome;
+  const days = Math.floor(
+    (Date.now() - new Date(attempt.calledAt).getTime()) / 86_400_000
+  );
+  const when = days < 1 ? "today" : days === 1 ? "yesterday" : `${days}d ago`;
+  return (
+    <span className="mt-1 block text-[11px] text-gray-500">
+      {label} · {when}
+      {/* Only worth saying once it is more than one: "1 try" is noise, and
+          "3 tries" is the reason to pick up the phone differently. */}
+      {attempt.attempts > 1 ? ` · ${attempt.attempts} tries` : ""}
+    </span>
+  );
+}
+
 export function AllocationPill({
   status,
   label,

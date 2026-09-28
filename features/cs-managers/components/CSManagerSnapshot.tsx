@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import {
+  ChevronRight,
   Home,
   Phone,
   LifeBuoy,
@@ -9,8 +11,10 @@ import {
   Target,
   Users,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { KpiTile } from "@/components/shared/KpiTile";
+import { MonthlyFlowChart, flowRatio } from "@/components/shared/MonthlyFlowChart";
 import type {
   Admin,
   CsManagerPeriod as CSManagerPeriod,
@@ -32,6 +36,13 @@ interface Props {
   target: CSManagerTargets;
   score: CSManagerPerformanceScore;
   obligation: CSManagerObligation;
+  /**
+   * The onboarding backlog, for the demand behind the onboarding target: how
+   * many customers are waiting for a call, split by whether they bought this
+   * period or earlier. Optional so the tile degrades to its old form against a
+   * server that does not send the split yet.
+   */
+  onboardingBacklog?: { dueThisPeriod?: number | null; dueCarriedOver?: number | null } | null;
   totalAssigned: number;
   onManageTargets?: () => void;
 }
@@ -86,9 +97,18 @@ export function CSManagerSnapshot({
   target,
   score,
   obligation,
+  onboardingBacklog,
   totalAssigned,
   onManageTargets,
 }: Props) {
+  const dueThisMonth = onboardingBacklog?.dueThisPeriod ?? 0;
+  const dueCarriedOver = onboardingBacklog?.dueCarriedOver ?? 0;
+  // Six months of intake against clearance for this manager, straight off the
+  // same target block the rate comes from.
+  const [flowOpen, setFlowOpen] = useState(false);
+  const flow = target.ticketFlow ?? [];
+  const flowTotals = flowRatio(flow);
+
   const active = hasActiveTarget(target);
   const periodLabel = formatPeriod(period);
   const remaining = daysRemaining(period.end);
@@ -216,6 +236,29 @@ export function CSManagerSnapshot({
           }
           percent={onboardedPct}
           tooltip="Onboarding calls logged this period. Every new purchase needs an onboarding call to gather intel on why the customer chose the land."
+          // The demand behind the target. A tile that says "12 of 20" answers
+          // how much was done against what was asked for, and not the question
+          // a CSM actually opens this page with — how many people are waiting
+          // for a call, and how many of those are this month's problem.
+          footer={
+            dueThisMonth + dueCarriedOver > 0 ? (
+              <p className="text-xs text-gray-500">
+                <span className="font-semibold tabular-nums text-gray-700">
+                  {dueThisMonth.toLocaleString()}
+                </span>{" "}
+                bought this month still need a call
+                {dueCarriedOver > 0 && (
+                  <>
+                    {" · "}
+                    <span className="font-semibold tabular-nums text-gray-700">
+                      {dueCarriedOver.toLocaleString()}
+                    </span>{" "}
+                    carried over
+                  </>
+                )}
+              </p>
+            ) : undefined
+          }
         />
 
         <KpiTile
@@ -240,6 +283,24 @@ export function CSManagerSnapshot({
           noData={target.ticketsEntered === 0}
           noDataLabel="No tickets came in"
           tooltip={`Of the tickets assigned to this manager that were raised this period, how many are now resolved — ${target.ticketsResolved} of ${target.ticketsEntered}. Measured as of now, not month-end, so a ticket raised on the 30th still counts once it closes.`}
+          // The two counts the rate is made of, on the tile rather than hidden
+          // in the tooltip: 60% of five tickets and 60% of two hundred are the
+          // same percentage and not the same month, and nobody hovers a number
+          // they have no reason to doubt yet.
+          footer={
+            target.ticketsEntered > 0 ? (
+              <p className="text-xs text-gray-500">
+                <span className="font-semibold tabular-nums text-gray-700">
+                  {target.ticketsResolved.toLocaleString()}
+                </span>{" "}
+                resolved of{" "}
+                <span className="font-semibold tabular-nums text-gray-700">
+                  {target.ticketsEntered.toLocaleString()}
+                </span>{" "}
+                that came in
+              </p>
+            ) : undefined
+          }
         />
 
         <KpiTile
@@ -253,6 +314,67 @@ export function CSManagerSnapshot({
           tooltip={scoreTooltip}
         />
       </div>
+
+      {/* Under the rate, and for the same reason the counts are on the tile:
+          one month's percentage is not a direction. Six months of the two
+          numbers behind it says whether this manager is gaining on their
+          intake or losing to it. Same attribution as the tile (assigned_admin),
+          so the chart and the percentage cannot disagree. */}
+      {flow.length > 0 && (
+        <div className="mt-4 rounded-xl border border-gray-200 bg-white">
+          {/* Folded away, like the inbox's. The performance page is read for
+              the tiles; the trend is what somebody opens when a tile prompts
+              the question. The headline rides on the toggle either way. */}
+          <button
+            type="button"
+            onClick={() => setFlowOpen((v) => !v)}
+            aria-expanded={flowOpen}
+            className="flex w-full flex-wrap items-center gap-2 px-5 py-3.5 text-left"
+          >
+            <ChevronRight
+              className={cn(
+                "h-4 w-4 shrink-0 text-gray-400 transition-transform",
+                flowOpen && "rotate-90"
+              )}
+            />
+            <span className="text-sm font-semibold text-gray-900">
+              Tickets came in vs resolved
+            </span>
+            <span className="text-xs text-gray-500">Last six months</span>
+            {flowTotals.ratio !== null && (
+              <span className="ml-auto text-xs text-gray-600">
+                <span className="font-semibold tabular-nums text-gray-900">
+                  {flowTotals.totalOut.toLocaleString()}
+                </span>{" "}
+                resolved of{" "}
+                <span className="font-semibold tabular-nums text-gray-900">
+                  {flowTotals.totalIn.toLocaleString()}
+                </span>{" "}
+                ·{" "}
+                <span
+                  className={
+                    flowTotals.ratio >= 1
+                      ? "font-semibold text-[#1baf7a]"
+                      : "font-semibold text-[#AD1F2A]"
+                  }
+                >
+                  {flowTotals.ratio >= 1 ? "keeping up" : "falling behind"}
+                </span>
+              </span>
+            )}
+          </button>
+
+          {flowOpen && (
+            <div className="border-t border-gray-100 p-5 pt-4">
+              <p className="mb-3 text-xs text-gray-500">
+                Counted in the month each happened — a ticket resolved this month
+                usually arrived in an earlier one.
+              </p>
+              <MonthlyFlowChart points={flow} height="h-48" />
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

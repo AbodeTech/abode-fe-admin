@@ -34,6 +34,7 @@ export const GET_EVENT_REGISTRATIONS_QUERY = parse(`
         name
         phone
         email
+        contact_source
         category
         status
         pickup_location
@@ -63,10 +64,12 @@ export const GET_EVENT_REGISTRATIONS_QUERY = parse(`
 /**
  * As it comes off the wire.
  *
- * Name, phone, email and category are nullable, and that is not defensiveness
- * — a row is created the moment somebody is allocated, which is before the
- * invite is sent and long before they fill anything in. An invited attendee who
- * has not replied genuinely has none of these yet.
+ * A row is created the moment somebody is allocated, which is before the invite
+ * is sent and long before they fill anything in. Those rows now carry the
+ * ACCOUNT's name, phone and email instead of nothing, so the list of people to
+ * chase is a list you can actually ring; `contact_source` says which it is.
+ * Category stays null until they tell us, and name/phone/email are still
+ * nullable for a row with no account behind it.
  */
 interface RawEventRegistrationRow {
   id: string;
@@ -76,6 +79,8 @@ interface RawEventRegistrationRow {
   name: string | null;
   phone: string | null;
   email: string | null;
+  /** form | account | none — where the three fields above came from. */
+  contact_source: string;
   category: string | null;
   status: string;
   pickup_location: string | null;

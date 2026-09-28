@@ -1,6 +1,8 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import type { TypedDocumentNode } from "@graphql-typed-document-node/core";
+import { parse } from "graphql";
 import { execute } from "@/lib/graphql-client";
 import { graphql } from "@/lib/gql";
 import type { TicketListFilterInput } from "@/lib/gql/graphql";
@@ -192,19 +194,59 @@ const TICKET_CATEGORIES = graphql(`
  * book, everyone else reads their own work — so the strip can never advertise a
  * backlog the reader has no way to open.
  */
-const TICKET_QUEUE_STATS = graphql(`
-  query TicketQueueStats {
-    ticketQueueStats {
+// NOTE: parsed by hand rather than through codegen, because the filter
+// argument and the awaitingReply/matching fields are not on the schema codegen
+// introspects until the BE change ships. Same convention as the company-events
+// hooks; switch it back to graphql() once it is on staging.
+const TICKET_QUEUE_STATS = parse(`
+  query TicketQueueStats($filter: TicketListFilterInput) {
+    ticketQueueStats(filter: $filter) {
+      matching
       open
       inProgress
       waitingCustomer
-      blockedOnIssue
-      breaching
-      oldestOpenHours
+      awaitingReply
+      oldestAwaitingHours
       resolvedLast7Days
     }
   }
-`);
+`) as unknown as TypedDocumentNode<
+  { ticketQueueStats: TicketQueueStats },
+  { filter?: TicketQueueStatsFilter | null }
+>;
+
+/**
+ * What the tiles report, and what they mean.
+ *
+ * `awaitingReply` is whose court the ticket is in — never answered, or the
+ * customer has written since we last did — and replaces a tile that counted
+ * everything unresolved for more than 48 hours. On production that was 88% of
+ * the queue, so it was always lit and pointed at nothing.
+ */
+export interface TicketQueueStats {
+  /** Tickets the current filters match, so the strip and the table agree. */
+  matching: number;
+  open: number;
+  inProgress: number;
+  waitingCustomer: number;
+  awaitingReply: number;
+  oldestAwaitingHours: number | null;
+  resolvedLast7Days: number;
+}
+
+/** The narrowing half of the list's filter — the chip is ignored server-side. */
+export interface TicketQueueStatsFilter {
+  category?: string | null;
+  type?: string | null;
+  channel?: string | null;
+  assignedAdminId?: string | null;
+  csManagerId?: string | null;
+  issueId?: string | null;
+  search?: string | null;
+  /** Inclusive day bounds on when the ticket came in, as yyyy-mm-dd. */
+  from?: string | null;
+  to?: string | null;
+}
 
 /** Candidate issues by keyword overlap. Suggestion only — nothing is linked. */
 const SUGGEST_ISSUES_FOR_TICKET = graphql(`
@@ -277,11 +319,58 @@ export const useSimilarTickets = (search: string, enabled = true) => {
 // operation types.
 void TICKET_ROW_FIELDS;
 
-export const useTicketQueueStats = () =>
+// NOTE: parsed by hand for the same reason as TICKET_QUEUE_STATS — the query
+// is not on the schema codegen introspects until the BE change ships.
+const TICKET_MONTHLY_FLOW = parse(`
+  query TicketMonthlyFlow($months: Int) {
+    ticketMonthlyFlow(months: $months) {
+      month
+      created
+      resolved
+    }
+  }
+`) as unknown as TypedDocumentNode<
+  { ticketMonthlyFlow: TicketMonthlyFlowPoint[] },
+  { months?: number }
+>;
+
+/** One month: what arrived, and what was cleared — not the same tickets. */
+export interface TicketMonthlyFlowPoint {
+  /** yyyy-mm, in Lagos time. */
+  month: string;
+  created: number;
+  resolved: number;
+}
+
+/**
+ * `ticketMonthlyFlow` — the shape that says whether support is keeping up.
+ *
+ * Scoped by the BE to what the reader can open, like every other ticket read.
+ */
+export const useTicketMonthlyFlow = (months = 6, enabled = true) =>
   useQuery({
-    queryKey: ticketKeys.queueStats(),
-    queryFn: () => execute(TICKET_QUEUE_STATS, {}),
+    queryKey: [...ticketKeys.root(), "monthly-flow", months] as const,
+    queryFn: () => execute(TICKET_MONTHLY_FLOW, { months }),
+    select: (data) => data.ticketMonthlyFlow,
+    // Two aggregations over every ticket the reader can see. Nobody should pay
+    // for them on a screen they opened to answer a customer.
+    enabled,
+  });
+
+/**
+ * The tiles, narrowed the same way the list is.
+ *
+ * The filter is part of the query key, so narrowing refetches rather than
+ * serving the whole book's numbers from cache under a filtered table.
+ */
+export const useTicketQueueStats = (filter?: TicketQueueStatsFilter | null) =>
+  useQuery({
+    queryKey: ticketKeys.queueStats(filter ?? undefined),
+    queryFn: () => execute(TICKET_QUEUE_STATS, { filter: filter ?? null }),
     select: (data) => data.ticketQueueStats,
+    // Keeps the previous numbers on screen while a narrowed set loads, instead
+    // of blanking the strip on every keystroke of the search box.
+    placeholderData: (prev) => prev,
   });
 
 export const useTicketCategories = (enabled = true) =>

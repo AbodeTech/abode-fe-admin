@@ -234,6 +234,7 @@ function CustomerManagersContent() {
           target={data.target}
           score={data.performanceScore}
           obligation={data.obligation}
+          onboardingBacklog={data.backlogs.onboarding}
           totalAssigned={data.portfolio.totalAssigned}
           // Setting targets is super-admin only (assignCSManagerTarget),
           // so a CS Manager gets the read-only snapshot with no CTA.
