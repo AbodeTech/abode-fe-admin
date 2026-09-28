@@ -43,7 +43,6 @@ export {
 export type { OfferConfigAction, OfferConfigRevision } from './schemas/offer-config-history.schema';
 export { SampleDataBanner } from './components/detail/SampleDataBanner';
 export { EditablePanel } from './components/detail/EditablePanel';
-export { OfferEditDialogs } from './components/detail/OfferEditDialogs';
 export { PitchPackPanel } from './components/detail/PitchPackPanel';
 export { BackendGapNotice } from './components/detail/BackendGapNotice';
 export { OfferEditDialogs, NumberInput } from './components/detail/OfferEditDialogs';

@@ -20,7 +20,6 @@ import {
   FileText,
   Gem,
   Gift,
-  CalendarDays,
   GraduationCap,
   Inbox,
   LandPlot,

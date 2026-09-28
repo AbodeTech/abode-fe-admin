@@ -19,12 +19,12 @@ const TABS = [
   { segment: "blocks", label: "Blocks & Plots" },
   { segment: "site-setup", label: "Site Setup" },
   { segment: "costs", label: "Costs & Profitability" },
-  // These three call real-backend routes confirmed live not to exist at all —
+  // Performance and Customers call real-backend routes confirmed live not to exist —
   // see docs/ASSET-LAND-INVENTORY-BACKEND-GAPS.md. Hidden from the nav
   // outside mock mode rather than linking to a tab that can only ever error.
   { segment: "performance", label: "Performance", mockOnly: true },
   { segment: "customers", label: "Customers", mockOnly: true },
-  { segment: "updates", label: "Updates", mockOnly: true },
+  { segment: "updates", label: "Updates" },
 ] as const;
 
 export function AssetDetailNav({ assetId }: { assetId: string }) {
