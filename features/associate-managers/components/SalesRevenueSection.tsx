@@ -1,4 +1,4 @@
-import { Briefcase, CircleDollarSign, BarChart3 } from "lucide-react";
+import { Briefcase, CircleDollarSign, BarChart3, FileSignature } from "lucide-react";
 import { StatCard } from "./StatCard";
 import { ProRosterGroup, type ManagerDashboardSalesRevenue } from "@/lib/gql/graphql";
 import {
@@ -36,6 +36,7 @@ export function SalesRevenueSection({
     initialSalesRevenue,
     recurringRevenue,
     revenuePerSellingPro,
+    contractSize,
   } = data;
   const isAssociate = roster === "associate";
   const perPro = isPerProAttribution(attributionMode);
@@ -65,7 +66,7 @@ export function SalesRevenueSection({
   return (
     <section className="space-y-3">
       <h2 className="text-base font-semibold text-gray-900">Sales & Revenue</h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           icon={Briefcase}
           iconColor="text-blue-600"
@@ -78,6 +79,13 @@ export function SalesRevenueSection({
           }
           onClick={onOpenGroup ? () => onOpenGroup(ProRosterGroup.SellingInPeriod) : undefined}
           breakdown={sellingBreakdown}
+        />
+        <StatCard
+          icon={FileSignature}
+          iconColor="text-purple-600"
+          label="Contract Size"
+          value={formatCurrencyShort(contractSize)}
+          hint={`${formatCurrency(contractSize)} in land price on plans opened this period`}
         />
         <StatCard
           icon={CircleDollarSign}
