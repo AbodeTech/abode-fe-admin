@@ -25,6 +25,7 @@ import {
   Gauge,
   HardHat,
   Inbox,
+  Landmark,
   LandPlot,
   LayoutDashboard,
   LogOut,
@@ -128,6 +129,16 @@ const navGroups = [
       { name: "CS Manager Performance", link: "/customer-managers", icon: <ShieldCheck /> },
       { name: "Tickets", link: "/tickets", icon: <Inbox /> },
       { name: "Issues", link: "/issues", icon: <AlertOctagon /> },
+    ]
+  },
+  {
+    // No permission gate, same as CS Manager Performance: the page itself
+    // admits only super admins and promoted Financial Officers.
+    title: "Finance",
+    isCollapsible: true,
+    icon: <Landmark />,
+    items: [
+      { name: "Financial Officers", link: "/financial-officers", icon: <Gauge /> },
     ]
   },
   {

@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CSPeriodFilter } from "./CSPeriodFilter";
+import { MonthPeriodFilter } from "@/components/shared/MonthPeriodFilter";
 import { ManageCSManagersMenu } from "./ManageCSManagersMenu";
 import { UnassignedCustomersDialog } from "./UnassignedCustomersDialog";
 import { useUnassignedCustomers } from "../hooks/use-cs-managers";
@@ -85,7 +85,7 @@ export function CSPerformanceHeader({
             </Select>
           )}
 
-          <CSPeriodFilter />
+          <MonthPeriodFilter />
 
           {isSuperAdmin && (
             <>

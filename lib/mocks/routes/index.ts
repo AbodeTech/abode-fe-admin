@@ -19,6 +19,7 @@ import { dashboardRoutes } from './dashboard';
 import { marketplaceRoutes } from './marketplace';
 import { meetingRoutes } from './meetings';
 import { csManagerRoutes } from './cs-managers';
+import { financialOfficerRoutes } from './financial-officers';
 import { purchaseConfirmationRoutes } from './purchase-confirmations';
 import { campaignEngineRoutes } from './campaigns-engine';
 import { paymentPlanRoutes } from './payment-plans';
@@ -121,6 +122,9 @@ import { standingRoutes } from './standing';
  *               — ticket in docs/BACKEND-REQUESTS.md) and no onboarding-
  *               attempts routes (nothing in this
  *               scoped UI reaches a plan_id to call them with).
+ * financial-officers — /admin/financial-officers/* (role, targets, officer and
+ *               team dashboards, recovery-plan detail + reassign). 🚧 Provisional:
+ *               no BE module exists — ticket 33 in docs/BACKEND-REQUESTS.md.
  * payment-plans — GET /admin/payment-plans, /summary, /export. Distinct from
  *               CS-manager plan actions under
  *               GET/POST /admin/payment-plans/:plan_id/*.
@@ -270,6 +274,7 @@ export function ensureRoutesRegistered(): void {
   registerRoutes(marketplaceRoutes);
   registerRoutes(meetingRoutes);
   registerRoutes(csManagerRoutes);
+  registerRoutes(financialOfficerRoutes);
   registerRoutes(purchaseConfirmationRoutes);
   registerRoutes(campaignEngineRoutes);
   registerRoutes(paymentPlanRoutes);

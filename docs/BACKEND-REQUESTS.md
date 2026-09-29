@@ -2605,3 +2605,78 @@ Fully mock-backed (`lib/mocks/routes/land-configuration.ts`, plus additions
 to `lib/mocks/routes/assets.ts`). Flipping `NEXT_PUBLIC_USE_MOCKS=false`
 404s every hook this feature uses — there is no live fallback, by design,
 until the above ships.
+
+## 33. Financial Officer tracking — greenfield, plus two data gaps that block it
+
+**Priority: medium, but one piece is urgent.** The FE (`/financial-officers`,
+`features/financial-officers/`) is built and runs entirely against mocks
+(`lib/mocks/routes/financial-officers.ts`). With mocks off, every hook 404s.
+The full proposed contract is the Zod schemas in
+`features/financial-officers/schemas/financial-officer.schema.ts`; the HTML
+design is `docs/mock-up/financial-officer-performance.html`.
+
+### Product rules (agreed)
+
+- **Role**: promoted by a super admin, like CS Managers and Associate
+  Managers. Many officers at once.
+- **Approval speed**: average time from submission to approve/decline,
+  reported separately for asset payments and Associate Pro upgrades. Only
+  bank-transfer payments (Paystack, wallet and admin-created payments are
+  automatic). Declines count. Saturday and Sunday (Africa/Lagos) don't count;
+  a weekend submission starts the clock Monday 00:00. Public holidays DO
+  count — there's no holiday calendar to pause on. Target: 24 weekday
+  hours, platform-wide. The queue is shared: speed is credited to whoever
+  decided (`reviewed_by`), officer or not.
+- **Recovery book**: a payment plan is assigned automatically to the officer
+  with the fewest open plans when it is **30 days or less from its final due
+  date** (tenor end) with a balance, **or** when it goes overdue. It leaves
+  the book when cleared, suspended or cancelled. Super admins can reassign.
+- **Debt recovered**: money paid on a plan while it is in an officer's book,
+  up to the day it is suspended. Attribute each payment to the officer who
+  held the plan **when it was paid** (assignment window, like
+  `CustomerToCSManager`), so reassignment never moves past recovery.
+- **Score** (proposed, not yet signed off): asset speed 25 + Associate Pro
+  speed 25 + recovery 50. Speed = 25 × min(1, 24 / avg); recovery = 50 ×
+  min(1, recovered / target); no recovery target → 0.
+
+### Gap 1 (urgent): asset approvals record neither who nor when
+
+`POST /admin/acquisitions/transactions/:txId/approve|decline`
+(`acquisition-admin.controller.ts:15-32`) doesn't pass `@CurrentUser()`
+into the service, so `approveTransfer` / `declineTransfer` never set
+`Transaction.reviewed_by` / `reviewed_at` (the fields already exist on the
+schema), and no `AdminLogs` entry is written. v1 did log these; v2 regressed.
+**Every approval made before this ships is unmeasurable**, so it should land
+ahead of the rest. Upgrades are fine: `ReferralUpgrade.reviewed_by` /
+`reviewed_at` are already set.
+
+### Gap 2: plan state at payment time isn't recorded
+
+A settled installment resets `status` / `months_overdue`, and nothing
+snapshots the plan's due date or lateness at the moment of payment, so "was
+this plan overdue or due-soon when paid?" can only be rebuilt approximately
+(and breaks on due-date overrides and v1-migrated rows). Proposed: in every
+settle path (flex, FO, dev-levy) add to `purchase_snapshot`:
+`status_before`, `next_date_of_payment_before`, `days_to_due_at_payment`,
+and set a `settled_at` on the Transaction (`createdAt` is initiation time).
+
+### Endpoints the FE calls
+
+| Method + path | Notes |
+|---|---|
+| `GET /admin/financial-officers` | `FinancialOfficerSummary[]` |
+| `POST /admin/financial-officers` | `{ admin_id }` — super admin |
+| `DELETE /admin/financial-officers/:officer_id` | super admin; redistribute open plans |
+| `GET /admin/financial-officers/:officer_id/targets` | every month |
+| `PUT /admin/financial-officers/:officer_id/targets/:year/:month` | `{ recovery_target }` (naira) — super admin |
+| `GET /admin/financial-officers/:officer_id/dashboard` | `?month&year&page&limit&filter&search` |
+| `GET /admin/financial-officers/team-dashboard` | `?month&year` — super admin |
+| `GET /admin/financial-officers/recovery-plans/:plan_id` | drawer detail + payments |
+| `POST /admin/financial-officers/recovery-plans/:plan_id/reassign` | `{ officer_id }` — super admin |
+| `GET /admin/financial-officers/:officer_id/exports/recovery-plans` | streamed CSV |
+
+### Open questions
+
+1. Should a period with no decisions score full speed marks or zero? (Mock: zero.)
+2. Commercial plans: `daysToDue` treats them like flex, the FO cron like full
+   ownership. The book's "final due date" needs one answer.
