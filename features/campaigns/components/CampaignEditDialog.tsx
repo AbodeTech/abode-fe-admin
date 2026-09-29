@@ -26,6 +26,7 @@ import {
 } from "../schemas/create-campaign.schema";
 import { applyCampaignWriteError } from "../utils/campaign-write-error";
 import { CheckpointEditorSubsection } from "./steps/CheckpointEditorSubsection";
+import { RafflePrizeEditorSubsection } from "./steps/RafflePrizeEditorSubsection";
 import { LeaderboardMaskingField } from "./steps/LeaderboardMaskingField";
 
 export function CampaignEditDialog({ campaign, onClose }: { campaign: Campaign; onClose: () => void }) {
@@ -39,10 +40,14 @@ export function CampaignEditDialog({ campaign, onClose }: { campaign: Campaign; 
         ...checkpoint,
         prize_media_url: checkpoint.prize_media_url ?? "",
       })),
+      raffle_prizes: (campaign.raffle_prizes ?? []).map(({ label, kind }) => ({ label, kind })),
     },
   });
   const { mutateAsync: update, isPending } = useUpdateCampaign(campaign.id);
   const checkpointsLocked = campaign.status !== "draft";
+  // Only a raffle has a draw to put prizes in. Unlike checkpoints these stay
+  // editable once live — see MUTABLE_WHEN_LIVE on the backend.
+  const hasDraw = campaign.reward_type === "ticket";
 
   const onSubmit = async (values: LimitedCampaignEditDto) => {
     try {
@@ -50,6 +55,11 @@ export function CampaignEditDialog({ campaign, onClose }: { campaign: Campaign; 
         description: values.description,
         total_sqm_target: values.total_sqm_target,
         leaderboard_masking_enabled: values.leaderboard_masking_enabled,
+        // Checkpoints were editable here on a draft but never sent, so a save
+        // reported "Campaign updated" and kept the old track. Sent only while
+        // a draft — the backend locks them once live and would reject the save.
+        ...(!checkpointsLocked && { checkpoints: values.checkpoints }),
+        ...(hasDraw && { raffle_prizes: values.raffle_prizes ?? [] }),
       });
       toast.success("Campaign updated");
       onClose();
@@ -127,6 +137,8 @@ export function CampaignEditDialog({ campaign, onClose }: { campaign: Campaign; 
               ) : (
                 <CheckpointEditorSubsection />
               )}
+
+              {hasDraw ? <RafflePrizeEditorSubsection /> : null}
 
               <DialogFooter>
                 <Button variant="outline" type="button" onClick={onClose}>

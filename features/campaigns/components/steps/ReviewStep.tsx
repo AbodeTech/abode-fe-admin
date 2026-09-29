@@ -53,6 +53,16 @@ export function ReviewStep() {
               : "None"}
           </dd>
         </div>
+        {values.reward_type === "ticket" ? (
+          <div>
+            <dt className="text-muted-foreground">Raffle prizes</dt>
+            <dd>
+              {(values.raffle_prizes ?? []).length
+                ? (values.raffle_prizes ?? []).map((prize) => prize.label).join(", ")
+                : "None announced"}
+            </dd>
+          </div>
+        ) : null}
       </dl>
       {values.description ? <p className="text-muted-foreground">{values.description}</p> : null}
     </div>

@@ -46,6 +46,8 @@ type StoreCampaign = {
     sqm_required: number;
     prize_media_url?: string;
   }[];
+  /** The draw's prize pool — ticket campaigns only. Optional so older fixtures need no edit. */
+  raffle_prizes?: { label: string; kind: string }[];
   leaderboard_masking_enabled: boolean;
   createdAt: string;
   updatedAt: string;
@@ -123,6 +125,12 @@ const campaigns: StoreCampaign[] = [
       { key: 'starter', label: 'Starter', prize: 'Branded kit', sqm_required: 300 },
       { key: 'builder', label: 'Builder', prize: 'Generator', sqm_required: 1500 },
       { key: 'closer', label: 'Closer', prize: 'Car raffle entry', sqm_required: 5000 },
+    ],
+    raffle_prizes: [
+      { label: 'All-expense-paid trip to Nairobi', kind: 'trip' },
+      { label: 'Plot of land', kind: 'land' },
+      { label: 'Half plot of land', kind: 'land' },
+      { label: 'Microwave oven', kind: 'appliance' },
     ],
     leaderboard_masking_enabled: true,
     createdAt: iso(-120),
@@ -377,6 +385,7 @@ function toApiCampaign(campaign: StoreCampaign) {
       ...checkpoint,
       prize_media_url: checkpoint.prize_media_url ?? null,
     })),
+    raffle_prizes: campaign.raffle_prizes ?? [],
     leaderboard_masking_enabled: campaign.leaderboard_masking_enabled,
     status: campaign.status,
     is_legacy: campaign.name === HAMPER_LEGACY_NAME || campaign.name === PLOTS_LEGACY_NAME,
@@ -822,6 +831,16 @@ export const campaignEngineRoutes: MockRoutes = {
   'PATCH /admin/campaigns/:id': ({ params, body: raw }) => {
     const campaign = findCampaign(params.id);
     const dto = body<Partial<StoreCampaign>>(raw);
+    // Mirrors RAFFLE_PRIZES_NOT_APPLICABLE: a hamper campaign has no draw.
+    const nextType = dto.reward_type ?? campaign.reward_type;
+    const nextPrizes = dto.raffle_prizes ?? campaign.raffle_prizes ?? [];
+    if (nextType === 'hamper' && nextPrizes.length > 0) {
+      throw new MockHttpError(
+        400,
+        'Only ticket campaigns have a raffle draw to put prizes in',
+        'RAFFLE_PRIZES_NOT_APPLICABLE'
+      );
+    }
     if (campaign.status === 'draft') {
       if (dto.checkpoints) assertCheckpoints(dto.checkpoints);
       Object.assign(campaign, dto, { updatedAt: iso(0) });
@@ -838,6 +857,8 @@ export const campaignEngineRoutes: MockRoutes = {
       if (dto.leaderboard_masking_enabled !== undefined) {
         campaign.leaderboard_masking_enabled = dto.leaderboard_masking_enabled;
       }
+      // Editable while live, unlike checkpoints — MUTABLE_WHEN_LIVE on the backend.
+      if (dto.raffle_prizes !== undefined) campaign.raffle_prizes = dto.raffle_prizes;
       campaign.updatedAt = iso(0);
     }
     return toApiCampaign(campaign);
