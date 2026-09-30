@@ -82,7 +82,8 @@ function FinancialOfficersContent() {
   const filter = (searchParams.get("filter") as RecoveryFilterKey | null) ?? undefined;
   const search = searchParams.get("search") ?? undefined;
 
-  const officersQuery = useFinancialOfficers();
+  // The full list needs the view permission, so only super admins fetch it.
+  const officersQuery = useFinancialOfficers(isSuperAdmin);
   const officers = officersQuery.data ?? [];
 
   const teamQuery = useFinancialOfficersTeamDashboard({ month, year, enabled: isAuthorized && isTeamView });

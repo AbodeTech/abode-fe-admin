@@ -69,7 +69,15 @@ export const useUpsertFinancialOfficerTarget = () => {
   });
 };
 
-/** POST /admin/financial-officers/recovery-plans/:plan_id/reassign — [Super admin]. */
+/**
+ * POST /admin/financial-officers/recovery-plans/:plan_id/reassign — [Super admin].
+ *
+ * Returns the detail for the NEW assignment. The old one is now closed as
+ * `reassigned` and 404s, so this seeds the new detail and refreshes the
+ * dashboards, but deliberately leaves recovery-plan queries alone: refetching
+ * the drawer's old assignment would flash an error right after the toast.
+ * The caller moves the drawer to `updated.assignment_id`.
+ */
 export const useReassignRecoveryPlan = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -79,8 +87,11 @@ export const useReassignRecoveryPlan = () => {
         { officer_id: officerId },
         RecoveryPlanDetailSchema
       ),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: financialOfficerKeys.all });
+    onSuccess: (updated, { planId }) => {
+      queryClient.setQueryData(financialOfficerKeys.recoveryPlan(planId, updated.assignment_id), updated);
+      queryClient.invalidateQueries({ queryKey: financialOfficerKeys.dashboards() });
+      queryClient.invalidateQueries({ queryKey: financialOfficerKeys.teamDashboards() });
+      queryClient.invalidateQueries({ queryKey: financialOfficerKeys.list() });
     },
   });
 };

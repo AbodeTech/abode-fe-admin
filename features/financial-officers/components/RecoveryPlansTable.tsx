@@ -44,16 +44,16 @@ interface Props {
 
 const FILTERS: { key: RecoveryFilterKey; label: string; urgent?: boolean }[] = [
   { key: "in_book", label: "In book" },
-  { key: "due_soon", label: "Due within 30 days" },
-  { key: "overdue", label: "Overdue" },
+  { key: "final_month", label: "Final month, behind" },
+  { key: "past_due", label: "Past final due date" },
   { key: "suspending_soon", label: "Suspends within 14 days", urgent: true },
   { key: "cleared", label: "Cleared" },
   { key: "suspended", label: "Suspended" },
 ];
 
 const ENTRY_REASON: Record<RecoveryPlanRow["entry_reason"], string> = {
-  due_soon: "30 days to final due date",
-  overdue: "went overdue",
+  final_month_behind: "behind in final month",
+  past_final_due: "past final due date",
 };
 
 export function RecoveryPlansTable({
@@ -69,7 +69,7 @@ export function RecoveryPlansTable({
   const router = useRouter();
   const searchParams = useSearchParams();
   const exportPlans = useExportRecoveryPlans();
-  const [openPlanId, setOpenPlanId] = useState<string | null>(null);
+  const [openRow, setOpenRow] = useState<{ planId: string; assignmentId: string } | null>(null);
 
   const activeFilter = (searchParams.get("filter") as RecoveryFilterKey | null) ?? "in_book";
   const searchParam = searchParams.get("search") ?? "";
@@ -130,7 +130,7 @@ export function RecoveryPlansTable({
       <div className="flex items-baseline justify-between gap-3 flex-wrap">
         <h2 className="text-base font-semibold text-gray-900">Recovery book</h2>
         <span className="text-xs text-gray-500">
-          Plans enter automatically 30 days before their final due date, or when they go overdue.
+          Plans enter automatically when they&apos;re behind in their final month, or past their final due date.
         </span>
       </div>
 
@@ -215,7 +215,7 @@ export function RecoveryPlansTable({
                 plans.map((p) => {
                   const suspension = suspensionDisplay(p);
                   return (
-                    <tr key={p.plan_id} className="border-t border-gray-100 hover:bg-gray-50/60">
+                    <tr key={p.assignment_id} className="border-t border-gray-100 hover:bg-gray-50/60">
                       <td className="px-4 py-3 whitespace-nowrap">
                         <div className="flex items-center gap-2.5">
                           <div className="h-8 w-8 rounded-full bg-[#E0F2F1] text-[#00695C] flex items-center justify-center text-[11px] font-semibold shrink-0">
@@ -256,7 +256,7 @@ export function RecoveryPlansTable({
                       <td className="px-4 py-3">
                         <button
                           type="button"
-                          onClick={() => setOpenPlanId(p.plan_id)}
+                          onClick={() => setOpenRow({ planId: p.plan_id, assignmentId: p.assignment_id })}
                           className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-[#00695C] border border-gray-200 rounded-md px-2 py-1"
                           aria-label={`Open ${customerName(p.customer)}'s plan`}
                         >
@@ -281,8 +281,10 @@ export function RecoveryPlansTable({
       </div>
 
       <RecoveryPlanDrawer
-        planId={openPlanId}
-        onOpenChange={(o) => !o && setOpenPlanId(null)}
+        planId={openRow?.planId ?? null}
+        assignmentId={openRow?.assignmentId ?? null}
+        onAssignmentChange={(id) => setOpenRow((row) => (row ? { ...row, assignmentId: id } : row))}
+        onOpenChange={(o) => !o && setOpenRow(null)}
         canReassign={canReassign}
       />
     </section>

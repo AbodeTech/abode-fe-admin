@@ -8,17 +8,17 @@ import { z } from 'zod';
  *      upgrades. Saturday and Sunday (WAT) don't count; public holidays do
  *      (no holiday calendar exists). Declines count. The
  *      queue is shared; speed is credited to whoever decided.
- *   2. Debt recovered: a payment plan enters an officer's recovery book
- *      automatically when it is 30 days or less from its FINAL due date with
- *      a balance, or when it goes overdue. Money paid on it while it is in
- *      the book, up to the day it is suspended, is that officer's recovery.
+ *   2. Debt recovered: a payment plan (flex, full ownership or commercial)
+ *      enters an officer's recovery book automatically when it is in its
+ *      FINAL month and owes more than one installment, or when its final due
+ *      date has passed with any balance. Falling behind mid-tenor doesn't
+ *      enter. Plans go to the officer with the fewest open plans. Land
+ *      payments settled while it is in the book, up to suspension, are that
+ *      officer's recovery; development levy doesn't count.
  *
- * 🚧 Entirely provisional. `abode-be-v2` has no financial-officer module;
- * every shape below is the FE's proposed contract under
- * /admin/financial-officers/* and runs against lib/mocks only. See
- * docs/BACKEND-REQUESTS.md ticket 33 for the BE work, including the two gaps
- * that block real data: asset approvals don't record reviewed_by/reviewed_at,
- * and settled payments don't record the plan's state at payment time.
+ * 🚧 Provisional. `abode-be-v2` has no financial-officer module yet; the BE
+ * design is abode-be-v2/docs/FINANCIAL-OFFICER-DESIGN.md, and these shapes
+ * follow its §6. Runs against lib/mocks only (docs/BACKEND-REQUESTS.md #33).
  * ============================================================ */
 
 export const AdminMinSchema = z
@@ -187,7 +187,8 @@ export type RecentDecision = z.infer<typeof RecentDecisionSchema>;
 export const RECOVERY_PRODUCTS = ['flex', 'full_ownership', 'commercial'] as const;
 export type RecoveryProduct = (typeof RECOVERY_PRODUCTS)[number];
 
-export const RECOVERY_STATES = ['due_soon', 'overdue', 'cleared', 'suspended'] as const;
+/** `final_month`: open, before the final due date. `past_due`: open, after it. */
+export const RECOVERY_STATES = ['final_month', 'past_due', 'cleared', 'suspended'] as const;
 export type RecoveryState = (typeof RECOVERY_STATES)[number];
 
 const RecoveryCustomerSchema = z.object({
@@ -200,17 +201,23 @@ const RecoveryCustomerSchema = z.object({
 
 export const RecoveryPlanRowSchema = z.object({
   plan_id: z.string(),
+  /**
+   * The officer's own assignment row. A plan can have several (reassigned, or
+   * back after an unsuspension); each table row is one of them, and the drawer
+   * opens that one.
+   */
+  assignment_id: z.string(),
   customer: RecoveryCustomerSchema,
   asset: z.string(),
   product: z.enum(RECOVERY_PRODUCTS),
   tenor_months: z.number(),
   entered_book_at: z.string(),
-  /** Why it entered: 30 days to the final due date, or it went overdue. */
-  entry_reason: z.enum(['due_soon', 'overdue']),
+  /** Behind in the final month, or already past the final due date. */
+  entry_reason: z.enum(['final_month_behind', 'past_final_due']),
   state: z.enum(RECOVERY_STATES),
   final_due_date: z.string(),
-  /** Flex only — missed monthly installments. 0 elsewhere. */
-  months_overdue: z.number(),
+  /** The monthly installment. In the final month, `balance − installment_amount` is how far behind. */
+  installment_amount: z.number(),
   /** Days past the final due date. 0 until it passes. */
   days_past_due: z.number(),
   /** Projected while open; the actual date once suspended; null when cleared. */
@@ -225,8 +232,8 @@ export type RecoveryPlanRow = z.infer<typeof RecoveryPlanRowSchema>;
 
 export const RECOVERY_FILTER_KEYS = [
   'in_book',
-  'due_soon',
-  'overdue',
+  'final_month',
+  'past_due',
   'suspending_soon',
   'cleared',
   'suspended',
@@ -251,8 +258,8 @@ export const FinancialOfficerDashboardSchema = z.object({
     payments_count: z.number(),
     plans_paid_count: z.number(),
     in_book: z.number(),
-    due_soon: z.number(),
-    overdue: z.number(),
+    final_month: z.number(),
+    past_due: z.number(),
     outstanding: z.number(),
     cleared: z.number(),
     suspended: z.number(),
@@ -277,8 +284,8 @@ export const FinancialOfficerDashboardSchema = z.object({
   /** Book-wide, unaffected by the active filter. */
   filter_counts: z.object({
     in_book: z.number(),
-    due_soon: z.number(),
-    overdue: z.number(),
+    final_month: z.number(),
+    past_due: z.number(),
     suspending_soon: z.number(),
     cleared: z.number(),
     suspended: z.number(),
@@ -292,6 +299,8 @@ export type FinancialOfficerDashboard = z.infer<typeof FinancialOfficerDashboard
 export const OfficerLeagueRowSchema = z.object({
   officer: AdminMinSchema,
   active_since: z.string(),
+  /** Set when they were removed; the team view lists anyone who held the role that month. */
+  role_ended_at: z.string().nullable(),
   in_book: z.number(),
   suspending_within_14_days: z.number(),
   recovered: z.number(),
@@ -315,6 +324,8 @@ export const FinancialOfficersTeamDashboardSchema = z.object({
   queue: ApprovalQueueSchema,
   /** Upgrades cancelled after sitting 24h+ with nobody deciding them. */
   expired_unreviewed_upgrades: z.number(),
+  /** Plans that qualify for a book but have no officer, because none exist. */
+  unassigned_eligible: z.number(),
   recovery: z.object({
     recovered: z.number(),
     target: z.number(),
@@ -352,7 +363,8 @@ export type RecoveryPayment = z.infer<typeof RecoveryPaymentSchema>;
 export const RecoveryPlanDetailSchema = RecoveryPlanRowSchema.extend({
   plan_price: z.number(),
   amount_paid: z.number(),
-  start_date: z.string(),
+  /** Null on some migrated plans; full-ownership plans can still enter via `tenor_end_date`. */
+  start_date: z.string().nullable(),
   /** Default-penalty date, when one is still ahead. */
   penalty_at: z.string().nullable(),
   assignment: z.object({

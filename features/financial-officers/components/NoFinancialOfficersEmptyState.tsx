@@ -18,8 +18,8 @@ export function NoFinancialOfficersEmptyState() {
           <div className="space-y-1.5">
             <h2 className="text-lg font-semibold text-gray-900">No Financial Officers yet</h2>
             <p className="text-sm text-gray-600">
-              Promote an admin to start tracking approval speed and debt recovery. Plans close to
-              their final due date are assigned to officers automatically.
+              Promote an admin to start tracking approval speed and debt recovery. Plans that fall
+              behind in their final month are assigned to officers automatically.
             </p>
           </div>
           <Button onClick={() => setAddOpen(true)} className="mt-2">

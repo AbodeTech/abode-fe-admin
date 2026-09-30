@@ -7,7 +7,7 @@ export function RecoveryStrip({ recovery }: { recovery: FinancialOfficerDashboar
     {
       label: "Plans in book",
       value: recovery.in_book.toLocaleString(),
-      hint: `${recovery.due_soon} due within 30 days · ${recovery.overdue} overdue`,
+      hint: `${recovery.final_month} in final month · ${recovery.past_due} past due`,
     },
     { label: "Outstanding in book", value: formatNairaCompact(recovery.outstanding), hint: "balances still owed" },
     {

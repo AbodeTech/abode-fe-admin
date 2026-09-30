@@ -64,11 +64,16 @@ export const useFinancialOfficersTeamDashboard = ({
     placeholderData: keepPreviousData,
   });
 
-/** GET /admin/financial-officers/recovery-plans/:plan_id — the drawer. */
-export const useRecoveryPlan = (planId: string | null) =>
+/**
+ * GET /admin/financial-officers/recovery-plans/:plan_id?assignment_id= — the
+ * drawer, for one assignment of the plan (the latest when omitted).
+ */
+export const useRecoveryPlan = (planId: string | null, assignmentId: string | null = null) =>
   useQuery({
-    queryKey: financialOfficerKeys.recoveryPlan(planId ?? ''),
+    queryKey: financialOfficerKeys.recoveryPlan(planId ?? '', assignmentId),
     queryFn: () =>
-      apiGet(`/admin/financial-officers/recovery-plans/${planId}`, RecoveryPlanDetailSchema),
+      apiGet(`/admin/financial-officers/recovery-plans/${planId}`, RecoveryPlanDetailSchema, {
+        params: { assignment_id: assignmentId ?? undefined },
+      }),
     enabled: !!planId,
   });

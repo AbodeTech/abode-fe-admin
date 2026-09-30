@@ -168,10 +168,12 @@ type MockPlan = {
   product: 'flex' | 'full_ownership' | 'commercial';
   tenor_months: number;
   entered_book_at: string;
-  entry_reason: 'due_soon' | 'overdue';
-  state: 'due_soon' | 'overdue' | 'cleared' | 'suspended';
+  entry_reason: 'final_month_behind' | 'past_final_due';
+  state: 'final_month' | 'past_due' | 'cleared' | 'suspended';
   final_due_date: string;
-  months_overdue: number;
+  installment_amount: number;
+  /** Bumped on every reassign, so each assignment gets its own id. */
+  assignment_no: number;
   days_past_due: number;
   suspends_at: string | null;
   penalty_at: string | null;
@@ -201,36 +203,82 @@ const customer = (id: string, first: string, last: string, phone: string | null 
   phone,
 });
 
-const plans: MockPlan[] = [
-  // ---- O1 ----
-  { plan_id: 'fopl01', officer: O1, assigned_at: daysAgo(93), auto: true, customer: customer('0001', 'Chinedu', 'Eze', '+2348030000001'), asset: 'Palm Grove Estate', product: 'flex', tenor_months: 18, entered_book_at: daysAgo(93), entry_reason: 'overdue', state: 'overdue', final_due_date: daysFromNow(200), months_overdue: 3, days_past_due: 0, suspends_at: daysFromNow(12), penalty_at: null, balance: 3_200_000, plan_price: 7_200_000, amount_paid: 4_000_000, start_date: daysAgo(330), left_book_at: null, payments: [] },
-  { plan_id: 'fopl02', officer: O1, assigned_at: daysAgo(51), auto: true, customer: customer('0002', 'Funke', 'Adeyemi', '+2348030000002'), asset: 'Riverside Commercial', product: 'commercial', tenor_months: 12, entered_book_at: daysAgo(51), entry_reason: 'due_soon', state: 'overdue', final_due_date: daysAgo(21), months_overdue: 0, days_past_due: 21, suspends_at: daysFromNow(35), penalty_at: daysFromNow(7), balance: 4_800_000, plan_price: 12_000_000, amount_paid: 7_200_000, start_date: daysAgo(386), left_book_at: null, payments: [pay(40, 700_000, 'transfer', O1, 5.2), pay(12, 500_000, 'transfer', O2, 26.4)] },
-  { plan_id: 'fopl03', officer: O1, assigned_at: daysAgo(12), auto: true, customer: customer('0003', 'Amaka', 'Obi', '+2348030000003'), asset: 'Palm Grove Estate', product: 'full_ownership', tenor_months: 24, entered_book_at: daysAgo(12), entry_reason: 'due_soon', state: 'due_soon', final_due_date: daysFromNow(18), months_overdue: 0, days_past_due: 0, suspends_at: daysFromNow(74), penalty_at: daysFromNow(46), balance: 1_500_000, plan_price: 9_000_000, amount_paid: 7_500_000, start_date: daysAgo(712), left_book_at: null, payments: [pay(5, 500_000, 'paystack')] },
-  { plan_id: 'fopl04', officer: O1, assigned_at: daysAgo(24), auto: true, customer: customer('0004', 'Tunde', 'Bakare', null), asset: 'Oak Ridge Gardens', product: 'flex', tenor_months: 12, entered_book_at: daysAgo(24), entry_reason: 'due_soon', state: 'due_soon', final_due_date: daysFromNow(6), months_overdue: 0, days_past_due: 0, suspends_at: daysFromNow(126), penalty_at: null, balance: 600_000, plan_price: 4_800_000, amount_paid: 4_200_000, start_date: daysAgo(359), left_book_at: null, payments: [] },
-  { plan_id: 'fopl05', officer: O1, assigned_at: daysAgo(26), auto: true, customer: customer('0005', 'Ibrahim', 'Musa', '+2348030000005'), asset: 'Oak Ridge Gardens', product: 'flex', tenor_months: 24, entered_book_at: daysAgo(26), entry_reason: 'overdue', state: 'overdue', final_due_date: daysFromNow(400), months_overdue: 1, days_past_due: 0, suspends_at: daysFromNow(92), penalty_at: daysFromNow(4), balance: 2_100_000, plan_price: 4_800_000, amount_paid: 2_700_000, start_date: daysAgo(330), left_book_at: null, payments: [] },
-  { plan_id: 'fopl06', officer: O1, assigned_at: daysAgo(46), auto: true, customer: customer('0006', 'Emeka', 'Nwosu', '+2348030000006'), asset: 'Palm Grove Estate', product: 'flex', tenor_months: 12, entered_book_at: daysAgo(46), entry_reason: 'due_soon', state: 'cleared', final_due_date: daysAgo(16), months_overdue: 0, days_past_due: 0, suspends_at: null, penalty_at: null, balance: 0, plan_price: 6_000_000, amount_paid: 6_000_000, start_date: daysAgo(381), left_book_at: daysAgo(5), payments: [pay(20, 900_000, 'transfer', O1, 3.4), pay(5, 750_000, 'wallet')] },
-  { plan_id: 'fopl07', officer: O1, assigned_at: daysAgo(95), auto: true, customer: customer('0007', 'Halima', 'Bello', '+2348030000007'), asset: 'Cedar Court', product: 'full_ownership', tenor_months: 18, entered_book_at: daysAgo(95), entry_reason: 'due_soon', state: 'suspended', final_due_date: daysAgo(65), months_overdue: 0, days_past_due: 56, suspends_at: daysAgo(9), penalty_at: null, balance: 2_300_000, plan_price: 8_100_000, amount_paid: 5_800_000, start_date: daysAgo(612), left_book_at: daysAgo(9), payments: [pay(70, 400_000, 'transfer', O1, 11.0)] },
-  { plan_id: 'fopl08', officer: O1, assigned_at: daysAgo(8), auto: true, customer: customer('0008', 'Grace', 'Etim', '+2348030000008'), asset: 'Cedar Court', product: 'flex', tenor_months: 18, entered_book_at: daysAgo(8), entry_reason: 'overdue', state: 'overdue', final_due_date: daysFromNow(150), months_overdue: 1, days_past_due: 0, suspends_at: daysFromNow(112), penalty_at: daysFromNow(22), balance: 1_800_000, plan_price: 5_400_000, amount_paid: 3_600_000, start_date: daysAgo(390), left_book_at: null, payments: [pay(3, 300_000, 'transfer', O1, 8.3)] },
-  { plan_id: 'fopl09', officer: O1, assigned_at: daysAgo(20), auto: true, customer: customer('0009', 'Kemi', 'Salako', '+2348030000009'), asset: 'Riverside Commercial', product: 'commercial', tenor_months: 12, entered_book_at: daysAgo(20), entry_reason: 'due_soon', state: 'due_soon', final_due_date: daysFromNow(10), months_overdue: 0, days_past_due: 0, suspends_at: daysFromNow(66), penalty_at: daysFromNow(38), balance: 2_700_000, plan_price: 10_800_000, amount_paid: 8_100_000, start_date: daysAgo(355), left_book_at: null, payments: [pay(9, 450_000, 'transfer', O1, 2.5)] },
-  { plan_id: 'fopl10', officer: O1, assigned_at: daysAgo(110), auto: false, customer: customer('0010', 'Musa', 'Danladi', '+2348030000010'), asset: 'Palm Grove Estate', product: 'flex', tenor_months: 12, entered_book_at: daysAgo(110), entry_reason: 'overdue', state: 'overdue', final_due_date: daysFromNow(60), months_overdue: 3, days_past_due: 0, suspends_at: daysFromNow(9), penalty_at: null, balance: 1_450_000, plan_price: 4_200_000, amount_paid: 2_750_000, start_date: daysAgo(305), left_book_at: null, payments: [pay(60, 350_000, 'transfer', O1, 6.1)] },
-  // ---- O2 ----
-  { plan_id: 'fopl11', officer: O2, assigned_at: daysAgo(15), auto: true, customer: customer('0011', 'Chioma', 'Nnadi', '+2348030000011'), asset: 'Oak Ridge Gardens', product: 'flex', tenor_months: 12, entered_book_at: daysAgo(15), entry_reason: 'due_soon', state: 'due_soon', final_due_date: daysFromNow(15), months_overdue: 0, days_past_due: 0, suspends_at: daysFromNow(135), penalty_at: null, balance: 900_000, plan_price: 4_800_000, amount_paid: 3_900_000, start_date: daysAgo(350), left_book_at: null, payments: [pay(7, 600_000, 'transfer', O2, 9.9)] },
-  { plan_id: 'fopl12', officer: O2, assigned_at: daysAgo(60), auto: true, customer: customer('0012', 'Segun', 'Afolabi', '+2348030000012'), asset: 'Riverside Commercial', product: 'commercial', tenor_months: 12, entered_book_at: daysAgo(60), entry_reason: 'due_soon', state: 'overdue', final_due_date: daysAgo(30), months_overdue: 0, days_past_due: 30, suspends_at: daysFromNow(26), penalty_at: null, balance: 3_600_000, plan_price: 12_000_000, amount_paid: 8_400_000, start_date: daysAgo(395), left_book_at: null, payments: [pay(25, 1_400_000, 'transfer', O2, 12.2), pay(4, 1_000_000, 'paystack')] },
-  { plan_id: 'fopl13', officer: O2, assigned_at: daysAgo(62), auto: true, customer: customer('0013', 'Ngozi', 'Umeh', null), asset: 'Palm Grove Estate', product: 'flex', tenor_months: 18, entered_book_at: daysAgo(62), entry_reason: 'overdue', state: 'overdue', final_due_date: daysFromNow(180), months_overdue: 2, days_past_due: 0, suspends_at: daysFromNow(58), penalty_at: null, balance: 2_500_000, plan_price: 6_300_000, amount_paid: 3_800_000, start_date: daysAgo(360), left_book_at: null, payments: [] },
-  { plan_id: 'fopl14', officer: O2, assigned_at: daysAgo(28), auto: true, customer: customer('0014', 'Yakubu', 'Sani', '+2348030000014'), asset: 'Cedar Court', product: 'full_ownership', tenor_months: 18, entered_book_at: daysAgo(28), entry_reason: 'due_soon', state: 'cleared', final_due_date: daysFromNow(2), months_overdue: 0, days_past_due: 0, suspends_at: null, penalty_at: null, balance: 0, plan_price: 8_100_000, amount_paid: 8_100_000, start_date: daysAgo(545), left_book_at: daysAgo(3), payments: [pay(3, 2_200_000, 'transfer', O3, 4.0)] },
-  // ---- O3 ----
-  { plan_id: 'fopl15', officer: O3, assigned_at: daysAgo(8), auto: true, customer: customer('0015', 'Tobi', 'Oladipo', '+2348030000015'), asset: 'Oak Ridge Gardens', product: 'flex', tenor_months: 12, entered_book_at: daysAgo(8), entry_reason: 'due_soon', state: 'due_soon', final_due_date: daysFromNow(22), months_overdue: 0, days_past_due: 0, suspends_at: daysFromNow(142), penalty_at: null, balance: 750_000, plan_price: 4_800_000, amount_paid: 4_050_000, start_date: daysAgo(343), left_book_at: null, payments: [] },
-  { plan_id: 'fopl16', officer: O3, assigned_at: daysAgo(95), auto: true, customer: customer('0016', 'Hauwa', 'Garba', '+2348030000016'), asset: 'Palm Grove Estate', product: 'flex', tenor_months: 24, entered_book_at: daysAgo(95), entry_reason: 'overdue', state: 'overdue', final_due_date: daysFromNow(300), months_overdue: 3, days_past_due: 0, suspends_at: daysFromNow(5), penalty_at: null, balance: 3_900_000, plan_price: 7_200_000, amount_paid: 3_300_000, start_date: daysAgo(430), left_book_at: null, payments: [pay(18, 400_000, 'transfer', O3, 3.1)] },
-  { plan_id: 'fopl17', officer: O3, assigned_at: daysAgo(70), auto: true, customer: customer('0017', 'Obinna', 'Chukwu', null), asset: 'Riverside Commercial', product: 'commercial', tenor_months: 12, entered_book_at: daysAgo(70), entry_reason: 'due_soon', state: 'suspended', final_due_date: daysAgo(60), months_overdue: 0, days_past_due: 56, suspends_at: daysAgo(4), penalty_at: null, balance: 5_100_000, plan_price: 12_000_000, amount_paid: 6_900_000, start_date: daysAgo(425), left_book_at: daysAgo(4), payments: [] },
+// Every open plan obeys the entry rule: `final_month` ones owe more than one
+// installment with the final due date still ahead; `past_due` ones are past it.
+type Row = [
+  id: string, officer: string, cust: ReturnType<typeof customer>, asset: string, product: MockPlan['product'],
+  tenor: number, enteredDaysAgo: number, state: MockPlan['state'], finalDue: string, installment: number,
+  balance: number, suspendsAt: string | null, penaltyAt: string | null, price: number, leftDaysAgo: number | null,
+  payments: Payment[], auto?: boolean,
 ];
+
+const DAYS_PAST = (finalDue: string) => Math.max(0, Math.floor((Date.now() - new Date(finalDue).getTime()) / DAY));
+
+const rows: Row[] = [
+  // ---- O1 ----
+  ['fopl01', O1, customer('0001', 'Chinedu', 'Eze', '+2348030000001'), 'Palm Grove Estate', 'flex', 18, 10, 'final_month', daysFromNow(20), 400_000, 1_600_000, daysFromNow(12), null, 7_200_000, null, []],
+  ['fopl02', O1, customer('0002', 'Funke', 'Adeyemi', '+2348030000002'), 'Riverside Commercial', 'commercial', 12, 51, 'past_due', daysAgo(21), 600_000, 4_800_000, daysFromNow(35), daysFromNow(7), 12_000_000, null, [pay(40, 700_000, 'transfer', O1, 5.2), pay(12, 500_000, 'transfer', O2, 26.4)]],
+  ['fopl03', O1, customer('0003', 'Amaka', 'Obi', '+2348030000003'), 'Palm Grove Estate', 'full_ownership', 24, 12, 'final_month', daysFromNow(18), 500_000, 1_500_000, daysFromNow(74), daysFromNow(46), 12_000_000, null, [pay(5, 500_000, 'paystack')]],
+  ['fopl04', O1, customer('0004', 'Tunde', 'Bakare', null), 'Oak Ridge Gardens', 'flex', 12, 24, 'final_month', daysFromNow(6), 400_000, 1_200_000, daysFromNow(66), null, 4_800_000, null, []],
+  ['fopl05', O1, customer('0005', 'Ibrahim', 'Musa', '+2348030000005'), 'Oak Ridge Gardens', 'flex', 24, 40, 'past_due', daysAgo(10), 700_000, 2_100_000, daysFromNow(20), daysFromNow(4), 16_800_000, null, []],
+  ['fopl06', O1, customer('0006', 'Emeka', 'Nwosu', '+2348030000006'), 'Palm Grove Estate', 'flex', 12, 46, 'cleared', daysAgo(16), 500_000, 0, null, null, 6_000_000, 5, [pay(20, 900_000, 'transfer', O1, 3.4), pay(5, 750_000, 'wallet')]],
+  ['fopl07', O1, customer('0007', 'Halima', 'Bello', '+2348030000007'), 'Cedar Court', 'full_ownership', 18, 95, 'suspended', daysAgo(65), 450_000, 2_300_000, daysAgo(9), null, 8_100_000, 9, [pay(70, 400_000, 'transfer', O1, 11.0)]],
+  ['fopl08', O1, customer('0008', 'Grace', 'Etim', '+2348030000008'), 'Cedar Court', 'flex', 18, 5, 'final_month', daysFromNow(25), 300_000, 900_000, daysFromNow(55), null, 5_400_000, null, [pay(3, 300_000, 'transfer', O1, 8.3)]],
+  ['fopl09', O1, customer('0009', 'Kemi', 'Salako', '+2348030000009'), 'Riverside Commercial', 'commercial', 12, 20, 'final_month', daysFromNow(10), 900_000, 2_700_000, daysFromNow(66), daysFromNow(38), 10_800_000, null, [pay(9, 450_000, 'transfer', O1, 2.5)]],
+  ['fopl10', O1, customer('0010', 'Musa', 'Danladi', '+2348030000010'), 'Palm Grove Estate', 'flex', 12, 70, 'past_due', daysAgo(40), 350_000, 1_450_000, daysFromNow(9), null, 4_200_000, null, [pay(60, 350_000, 'transfer', O1, 6.1)], false],
+  // ---- O2 ----
+  ['fopl11', O2, customer('0011', 'Chioma', 'Nnadi', '+2348030000011'), 'Oak Ridge Gardens', 'flex', 12, 15, 'final_month', daysFromNow(15), 450_000, 900_000, daysFromNow(75), null, 5_400_000, null, [pay(7, 600_000, 'transfer', O2, 9.9)]],
+  ['fopl12', O2, customer('0012', 'Segun', 'Afolabi', '+2348030000012'), 'Riverside Commercial', 'commercial', 12, 60, 'past_due', daysAgo(30), 1_000_000, 3_600_000, daysFromNow(26), null, 12_000_000, null, [pay(25, 1_400_000, 'transfer', O2, 12.2), pay(4, 1_000_000, 'paystack')]],
+  ['fopl13', O2, customer('0013', 'Ngozi', 'Umeh', null), 'Palm Grove Estate', 'flex', 18, 2, 'final_month', daysFromNow(28), 350_000, 1_050_000, daysFromNow(58), null, 6_300_000, null, []],
+  ['fopl14', O2, customer('0014', 'Yakubu', 'Sani', '+2348030000014'), 'Cedar Court', 'full_ownership', 18, 28, 'cleared', daysFromNow(2), 1_100_000, 0, null, null, 8_100_000, 3, [pay(3, 2_200_000, 'transfer', O3, 4.0)]],
+  // ---- O3 ----
+  ['fopl15', O3, customer('0015', 'Tobi', 'Oladipo', '+2348030000015'), 'Oak Ridge Gardens', 'flex', 12, 8, 'final_month', daysFromNow(22), 375_000, 750_000, daysFromNow(80), null, 4_500_000, null, []],
+  ['fopl16', O3, customer('0016', 'Hauwa', 'Garba', '+2348030000016'), 'Palm Grove Estate', 'flex', 24, 42, 'past_due', daysAgo(12), 300_000, 1_200_000, daysFromNow(5), null, 7_200_000, null, [pay(18, 400_000, 'transfer', O3, 3.1)]],
+  ['fopl17', O3, customer('0017', 'Obinna', 'Chukwu', null), 'Riverside Commercial', 'commercial', 12, 70, 'suspended', daysAgo(60), 1_000_000, 5_100_000, daysAgo(4), null, 12_000_000, 4, []],
+];
+
+const plans: MockPlan[] = rows.map(
+  ([plan_id, officer, cust, asset, product, tenor, entered, state, finalDue, installment, balance, suspendsAt, penaltyAt, price, left, payments, auto = true]) => {
+    const enteredAt = daysAgo(entered);
+    // A plan entered before its final due date came in behind in its final month.
+    const entryReason: MockPlan['entry_reason'] = enteredAt < finalDue ? 'final_month_behind' : 'past_final_due';
+    const startDate = new Date(new Date(finalDue).getTime());
+    startDate.setMonth(startDate.getMonth() - tenor);
+    return {
+      plan_id,
+      officer,
+      assigned_at: enteredAt,
+      auto,
+      customer: cust,
+      asset,
+      product,
+      tenor_months: tenor,
+      entered_book_at: enteredAt,
+      entry_reason: entryReason,
+      state,
+      final_due_date: finalDue,
+      installment_amount: installment,
+      assignment_no: 1,
+      days_past_due: state === 'cleared' ? 0 : Math.min(DAYS_PAST(finalDue), state === 'suspended' ? 56 : Infinity),
+      suspends_at: suspendsAt,
+      penalty_at: penaltyAt,
+      balance,
+      plan_price: price,
+      amount_paid: price - balance,
+      start_date: startDate.toISOString(),
+      left_book_at: left == null ? null : daysAgo(left),
+      payments,
+    };
+  }
+);
 
 /* -------------------- derivations -------------------- */
 
 const RECOVERY_WINDOW_DAYS = 30;
 const inWindow = (iso: string) => Date.now() - new Date(iso).getTime() <= RECOVERY_WINDOW_DAYS * DAY;
-const isOpen = (p: MockPlan) => p.state === 'due_soon' || p.state === 'overdue';
+const isOpen = (p: MockPlan) => p.state === 'final_month' || p.state === 'past_due';
 const suspendingSoon = (p: MockPlan) =>
-  p.state === 'overdue' && !!p.suspends_at && new Date(p.suspends_at).getTime() - Date.now() <= 14 * DAY;
+  isOpen(p) && !!p.suspends_at && new Date(p.suspends_at).getTime() - Date.now() <= 14 * DAY;
 
 /** Payments counted as recovery: in the window, and before the plan was suspended. */
 const recoveredPayments = (p: MockPlan) =>
@@ -268,8 +316,8 @@ function officerRecovery(adminId: string, period: { month: number; year: number 
     payments_count: counted.reduce((s, c) => s + c.payments.length, 0),
     plans_paid_count: counted.filter((c) => c.payments.length > 0).length,
     in_book: open.length,
-    due_soon: open.filter((p) => p.state === 'due_soon').length,
-    overdue: open.filter((p) => p.state === 'overdue').length,
+    final_month: open.filter((p) => p.state === 'final_month').length,
+    past_due: open.filter((p) => p.state === 'past_due').length,
     outstanding: open.reduce((s, p) => s + p.balance, 0),
     cleared: mine.filter((p) => p.state === 'cleared' && p.left_book_at && inWindow(p.left_book_at)).length,
     suspended: suspended.length,
@@ -292,19 +340,30 @@ function officerScore(o: MockOfficer, recovery: ReturnType<typeof officerRecover
 
 const FILTERS: Record<string, (p: MockPlan) => boolean> = {
   in_book: isOpen,
-  due_soon: (p) => p.state === 'due_soon',
-  overdue: (p) => p.state === 'overdue',
+  final_month: (p) => p.state === 'final_month',
+  past_due: (p) => p.state === 'past_due',
   suspending_soon: suspendingSoon,
   cleared: (p) => p.state === 'cleared' && !!p.left_book_at && inWindow(p.left_book_at),
   suspended: (p) => p.state === 'suspended' && !!p.left_book_at && inWindow(p.left_book_at),
 };
 
+/** Payments inside the current assignment's window, up to suspension — what the drawer lists and its heading sums. */
+const paymentsSinceAssigned = (p: MockPlan) =>
+  p.payments.filter(
+    (pay) => pay.paid_at >= p.assigned_at && (p.state !== 'suspended' || !p.left_book_at || pay.paid_at <= p.left_book_at)
+  );
+
 const recoveredSinceAssigned = (p: MockPlan) =>
-  p.payments.filter((pay) => pay.paid_at >= p.assigned_at).reduce((s, pay) => s + pay.amount, 0);
+  paymentsSinceAssigned(p).reduce((s, pay) => s + pay.amount, 0);
+
+// A plan's current assignment id. Earlier ones (closed as `reassigned`) 404,
+// as on the BE, so the drawer's switch to the new id after a reassign is exercised.
+const assignmentIdOf = (p: MockPlan) => `${p.plan_id}-a${p.assignment_no}`;
 
 function toRow(p: MockPlan) {
   return {
     plan_id: p.plan_id,
+    assignment_id: assignmentIdOf(p),
     customer: p.customer,
     asset: p.asset,
     product: p.product,
@@ -313,7 +372,7 @@ function toRow(p: MockPlan) {
     entry_reason: p.entry_reason,
     state: p.state,
     final_due_date: p.final_due_date,
-    months_overdue: p.months_overdue,
+    installment_amount: p.installment_amount,
     days_past_due: p.days_past_due,
     suspends_at: p.suspends_at,
     balance: p.balance,
@@ -330,7 +389,7 @@ function toDetail(p: MockPlan) {
     start_date: p.start_date,
     penalty_at: p.penalty_at,
     assignment: { officer: toAdminMin(findAdmin(p.officer)), assigned_at: p.assigned_at, auto: p.auto },
-    payments: [...p.payments]
+    payments: paymentsSinceAssigned(p)
       .sort((a, b) => b.paid_at.localeCompare(a.paid_at))
       .map((pay) => ({ ...pay, approved_by: pay.approved_by ? toAdminMin(findAdmin(pay.approved_by)) : null })),
   };
@@ -354,6 +413,10 @@ const leastLoadedOfficer = (exclude?: string) =>
 /* -------------------- routes -------------------- */
 
 export const financialOfficerRoutes: MockRoutes = {
+  // Mock routes can't see who's calling, and the mock login is a super admin
+  // who isn't an officer — so null, as the BE returns for a non-officer.
+  'GET /admin/financial-officers/me': () => null,
+
   'GET /admin/financial-officers': () => {
     const period = thisMonth();
     return officers.map((o) => {
@@ -429,6 +492,8 @@ export const financialOfficerRoutes: MockRoutes = {
       return {
         officer: toAdminMin(findAdmin(o.adminId)),
         active_since: o.assigned_from,
+        // Removed officers leave `officers` in this mock; the BE keeps them for the month.
+        role_ended_at: null,
         in_book: recovery.in_book,
         suspending_within_14_days: recovery.suspending_within_14_days,
         recovered: recovery.recovered,
@@ -459,6 +524,7 @@ export const financialOfficerRoutes: MockRoutes = {
       },
       queue: QUEUE,
       expired_unreviewed_upgrades: 2,
+      unassigned_eligible: 0,
       recovery: {
         recovered: sum((r) => r._recovery.recovered),
         target: sum((r) => r._recovery.target),
@@ -520,8 +586,8 @@ export const financialOfficerRoutes: MockRoutes = {
       plans_total: matching.length,
       filter_counts: {
         in_book: mine.filter(FILTERS.in_book).length,
-        due_soon: mine.filter(FILTERS.due_soon).length,
-        overdue: mine.filter(FILTERS.overdue).length,
+        final_month: mine.filter(FILTERS.final_month).length,
+        past_due: mine.filter(FILTERS.past_due).length,
         suspending_soon: mine.filter(FILTERS.suspending_soon).length,
         cleared: mine.filter(FILTERS.cleared).length,
         suspended: mine.filter(FILTERS.suspended).length,
@@ -529,9 +595,12 @@ export const financialOfficerRoutes: MockRoutes = {
     };
   },
 
-  'GET /admin/financial-officers/recovery-plans/:plan_id': ({ params }) => {
+  'GET /admin/financial-officers/recovery-plans/:plan_id': ({ params, query }) => {
     const p = plans.find((x) => x.plan_id === params.plan_id);
     if (!p) throw new MockHttpError(404, 'Recovery plan not found', 'NOT_FOUND');
+    if (query.assignment_id && query.assignment_id !== assignmentIdOf(p)) {
+      throw new MockHttpError(404, 'Assignment not found for this plan', 'NOT_FOUND');
+    }
     return toDetail(p);
   },
 
@@ -544,6 +613,7 @@ export const financialOfficerRoutes: MockRoutes = {
     p.officer = officer_id as string;
     p.assigned_at = new Date().toISOString();
     p.auto = false;
+    p.assignment_no += 1;
     return toDetail(p);
   },
 };

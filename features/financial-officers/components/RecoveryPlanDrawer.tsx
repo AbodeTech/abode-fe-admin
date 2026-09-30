@@ -39,6 +39,10 @@ import { RecoveryStatePill } from "./recovery-pills";
 
 interface Props {
   planId: string | null;
+  /** The assignment row the drawer was opened from; the latest when null. */
+  assignmentId: string | null;
+  /** Called after a reassign, with the new assignment the drawer should show. */
+  onAssignmentChange: (assignmentId: string) => void;
   onOpenChange: (open: boolean) => void;
   canReassign: boolean;
 }
@@ -58,31 +62,26 @@ function Countdown({ plan }: { plan: RecoveryPlanDetail }) {
   if (plan.state === "cleared" || plan.state === "suspended") return null;
 
   const lines: { icon: React.ElementType; text: React.ReactNode }[] = [];
-  if (plan.state === "due_soon") {
+  if (plan.state === "final_month") {
     lines.push({
       icon: CalendarX,
       text: (
         <>
-          Final payment due <b>{formatShortDate(plan.final_due_date)}</b> ({inDays(plan.final_due_date)}) with{" "}
-          {formatNaira(plan.balance)} still owed.
+          <b>Final month, {formatNaira(Math.max(0, plan.balance - plan.installment_amount))} behind.</b> Owes{" "}
+          {formatNaira(plan.balance)} against a {formatNaira(plan.installment_amount)} installment; everything is due{" "}
+          <b>{formatShortDate(plan.final_due_date)}</b> ({inDays(plan.final_due_date)}).
         </>
       ),
     });
   } else {
     lines.push({
       icon: CalendarX,
-      text:
-        plan.months_overdue > 0 ? (
-          <>
-            <b>{plan.months_overdue} month{plan.months_overdue === 1 ? "" : "s"} of installments missed</b>, with{" "}
-            {formatNaira(plan.balance)} still owed.
-          </>
-        ) : (
-          <>
-            <b>{plan.days_past_due} days past the final due date</b> ({formatShortDate(plan.final_due_date)}) with{" "}
-            {formatNaira(plan.balance)} still owed.
-          </>
-        ),
+      text: (
+        <>
+          <b>{plan.days_past_due} days past the final due date</b> ({formatShortDate(plan.final_due_date)}) with{" "}
+          {formatNaira(plan.balance)} still owed.
+        </>
+      ),
     });
   }
   if (plan.penalty_at) {
@@ -100,14 +99,14 @@ function Countdown({ plan }: { plan: RecoveryPlanDetail }) {
       icon: Ban,
       text: (
         <>
-          {plan.state === "due_soon" ? "Earliest suspension" : "Suspended on"} <b>{formatShortDate(plan.suspends_at)}</b>{" "}
+          Suspension on <b>{formatShortDate(plan.suspends_at)}</b>{" "}
           ({inDays(plan.suspends_at)}) if not paid. Recovery stops counting then.
         </>
       ),
     });
   }
 
-  const urgent = plan.state === "overdue";
+  const urgent = plan.state === "past_due";
   return (
     <div
       className={cn(
@@ -125,7 +124,13 @@ function Countdown({ plan }: { plan: RecoveryPlanDetail }) {
   );
 }
 
-function Reassign({ plan }: { plan: RecoveryPlanDetail }) {
+function Reassign({
+  plan,
+  onAssignmentChange,
+}: {
+  plan: RecoveryPlanDetail;
+  onAssignmentChange: (assignmentId: string) => void;
+}) {
   const { data: officers = [] } = useFinancialOfficers();
   const reassign = useReassignRecoveryPlan();
   const currentId = plan.assignment.officer?.id ?? null;
@@ -141,6 +146,8 @@ function Reassign({ plan }: { plan: RecoveryPlanDetail }) {
         onSuccess: (updated) => {
           toast.success(`Moved to ${adminMinName(updated.assignment.officer)}`);
           setPicked("");
+          // The old assignment is closed now; show the new one.
+          onAssignmentChange(updated.assignment_id);
         },
         onError: (err) => toast.error(err.message || "Failed to reassign plan"),
       }
@@ -171,8 +178,8 @@ function Reassign({ plan }: { plan: RecoveryPlanDetail }) {
   );
 }
 
-export function RecoveryPlanDrawer({ planId, onOpenChange, canReassign }: Props) {
-  const { data: plan, isLoading, error } = useRecoveryPlan(planId);
+export function RecoveryPlanDrawer({ planId, assignmentId, onAssignmentChange, onOpenChange, canReassign }: Props) {
+  const { data: plan, isLoading, error } = useRecoveryPlan(planId, assignmentId);
 
   return (
     <Sheet open={!!planId} onOpenChange={onOpenChange}>
@@ -239,7 +246,7 @@ export function RecoveryPlanDrawer({ planId, onOpenChange, canReassign }: Props)
                     </div>
                   </div>
                   {canReassign && plan.state !== "cleared" && plan.state !== "suspended" && (
-                    <Reassign plan={plan} />
+                    <Reassign plan={plan} onAssignmentChange={onAssignmentChange} />
                   )}
                 </div>
               </section>

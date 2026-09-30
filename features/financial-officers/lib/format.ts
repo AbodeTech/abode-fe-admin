@@ -47,37 +47,26 @@ export const customerName = (c: RecoveryPlanRow['customer']) => `${c.first_name}
 export const customerInitials = (c: RecoveryPlanRow['customer']) =>
   `${c.first_name[0] ?? ''}${c.last_name[0] ?? ''}`.toUpperCase() || '?';
 
-/** What the plan looks like today: "3 months overdue", "due in 18 days". */
+/** What the plan looks like today: "Final month · ₦1,000,000 behind", "21 days past final due date". */
 export function recoveryStateLabel(plan: RecoveryPlanRow): string {
   switch (plan.state) {
     case 'cleared':
       return `Cleared ${formatShortDate(plan.left_book_at)}`;
     case 'suspended':
       return `Suspended ${formatShortDate(plan.left_book_at)}`;
-    case 'overdue':
-      if (plan.months_overdue > 0) {
-        return `${plan.months_overdue} month${plan.months_overdue === 1 ? '' : 's'} overdue`;
-      }
+    case 'past_due':
       return `${plan.days_past_due} day${plan.days_past_due === 1 ? '' : 's'} past final due date`;
-    case 'due_soon': {
-      const d = daysUntil(plan.final_due_date);
-      return d <= 0 ? 'Due today' : `Due in ${d} day${d === 1 ? '' : 's'}`;
-    }
+    case 'final_month':
+      return `Final month · ${formatNaira(Math.max(0, plan.balance - plan.installment_amount))} behind`;
   }
 }
 
 export type SuspensionTone = 'urgent' | 'soon' | 'later' | 'none';
 
-/**
- * How close suspension is. A due-soon plan hasn't started its default clock,
- * so its date is only a projection — shown as "after", never as urgent.
- */
+/** How close suspension is, from the date the defaulting crons would suspend it. */
 export function suspensionDisplay(plan: RecoveryPlanRow): { label: string; tone: SuspensionTone } {
   if (plan.state === 'cleared' || plan.state === 'suspended' || !plan.suspends_at) {
     return { label: '—', tone: 'none' };
-  }
-  if (plan.state === 'due_soon') {
-    return { label: `After ${formatShortDate(plan.suspends_at)}`, tone: 'later' };
   }
   const d = Math.max(0, daysUntil(plan.suspends_at));
   const label = d === 0 ? 'Today' : `In ${d} day${d === 1 ? '' : 's'}`;

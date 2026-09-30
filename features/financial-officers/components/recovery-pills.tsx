@@ -10,8 +10,8 @@ import type { RecoveryState } from "../schemas/financial-officer.schema";
 const PILL_BASE = "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium whitespace-nowrap";
 
 const STATE_STYLES: Record<RecoveryState, { label: string; cls: string }> = {
-  due_soon: { label: "Due soon", cls: "bg-amber-50 text-amber-700" },
-  overdue: { label: "Overdue", cls: "bg-red-50 text-[#AD1F2A]" },
+  final_month: { label: "Final month", cls: "bg-amber-50 text-amber-700" },
+  past_due: { label: "Past due", cls: "bg-red-50 text-[#AD1F2A]" },
   cleared: { label: "Cleared", cls: "bg-[#00695C] text-white" },
   suspended: { label: "Suspended", cls: "bg-gray-100 text-gray-700" },
 };

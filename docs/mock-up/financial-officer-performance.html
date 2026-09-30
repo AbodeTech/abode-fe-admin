@@ -282,9 +282,9 @@ body{margin:0}
 
     <!-- recovery book -->
     <section class="sec">
-      <div class="sec-h"><h2>Recovery book</h2><span>Plans enter automatically 30 days before their final due date, or when they go overdue.</span></div>
+      <div class="sec-h"><h2>Recovery book</h2><span>Plans enter automatically when they're behind in their final month, or past their final due date.</span></div>
       <div class="card strip">
-        <div><div class="k">Plans in book</div><div class="v" style="margin-top:4px">64</div><div class="k">27 due within 30 days · 37 overdue</div></div>
+        <div><div class="k">Plans in book</div><div class="v" style="margin-top:4px">64</div><div class="k">27 in final month · 37 past due</div></div>
         <div><div class="k">Outstanding in book</div><div class="v" style="margin-top:4px">₦96.3m</div><div class="k">balances still owed</div></div>
         <div><div class="k">Recovered this month</div><div class="v" style="margin-top:4px;color:var(--teal)">₦18.45m</div><div class="k">paid before any suspension</div></div>
         <div><div class="k">Cleared this month</div><div class="v" style="margin-top:4px">6</div><div class="k">paid off, left the book</div></div>
@@ -295,8 +295,8 @@ body{margin:0}
         <div class="tbl-head">
           <div class="chips" role="group" aria-label="Filter plans">
             <button class="chip on">In book · 64</button>
-            <button class="chip">Due within 30 days · 27</button>
-            <button class="chip">Overdue · 37</button>
+            <button class="chip">Final month, behind · 27</button>
+            <button class="chip">Past final due date · 37</button>
             <button class="chip urgent">Suspends within 14 days · 5</button>
             <button class="chip">Cleared · 6</button>
             <button class="chip">Suspended · 3</button>
@@ -309,13 +309,13 @@ body{margin:0}
         <table>
           <thead><tr><th>Customer</th><th>Plan</th><th>Entered book</th><th>Now</th><th>Suspends</th><th>Balance</th><th>Recovered since assigned</th><th>Status</th></tr></thead>
           <tbody>
-            <tr><td><button class="name-btn" data-open>Chinedu Eze</button><div class="s">chinedu.e@example.com</div></td><td>Palm Grove Estate<div class="s">Flex · 18 months</div></td><td>28 Jun 2026<div class="s">went overdue</div></td><td>3 months overdue</td><td><span class="pill bad">in 12 days</span></td><td class="num">₦3,200,000</td><td class="num" style="color:var(--muted)">₦0</td><td><span class="pill bad">Overdue</span></td></tr>
-            <tr><td><button class="name-btn" data-open>Funke Adeyemi</button><div class="s">funke.a@example.com</div></td><td>Riverside Commercial<div class="s">Commercial · 12 months</div></td><td>9 Aug 2026<div class="s">30 days to final due date</div></td><td>21 days past final due date</td><td><span class="pill warn">in 35 days</span></td><td class="num">₦4,800,000</td><td class="num" style="color:var(--teal);font-weight:600">₦1,200,000</td><td><span class="pill bad">Overdue</span></td></tr>
-            <tr><td><button class="name-btn" data-open>Amaka Obi</button><div class="s">amaka.o@example.com</div></td><td>Palm Grove Estate<div class="s">Full ownership · 24 months</div></td><td>17 Sep 2026<div class="s">30 days to final due date</div></td><td>due in 18 days</td><td class="s">after 12 Dec</td><td class="num">₦1,500,000</td><td class="num" style="color:var(--teal);font-weight:600">₦500,000</td><td><span class="pill warn">Due soon</span></td></tr>
-            <tr><td><button class="name-btn" data-open>Tunde Bakare</button><div class="s">tunde.b@example.com</div></td><td>Oak Ridge Gardens<div class="s">Flex · 12 months</div></td><td>5 Sep 2026<div class="s">30 days to final due date</div></td><td>due in 6 days</td><td class="s">after 5 Feb</td><td class="num">₦600,000</td><td class="num" style="color:var(--muted)">₦0</td><td><span class="pill warn">Due soon</span></td></tr>
-            <tr><td><button class="name-btn" data-open>Ibrahim Musa</button><div class="s">ibrahim.m@example.com</div></td><td>Oak Ridge Gardens<div class="s">Flex · 24 months</div></td><td>3 Sep 2026<div class="s">went overdue</div></td><td>1 month overdue</td><td class="s">in ~3 months</td><td class="num">₦2,100,000</td><td class="num" style="color:var(--muted)">₦0</td><td><span class="pill bad">Overdue</span></td></tr>
-            <tr><td><button class="name-btn" data-open>Emeka Nwosu</button><div class="s">emeka.n@example.com</div></td><td>Palm Grove Estate<div class="s">Flex · 12 months</div></td><td>14 Aug 2026<div class="s">30 days to final due date</div></td><td>cleared 24 Sep</td><td class="s">—</td><td class="num">₦0</td><td class="num" style="color:var(--teal);font-weight:600">₦1,650,000</td><td><span class="pill solid">Cleared</span></td></tr>
-            <tr><td><button class="name-btn" data-open>Halima Bello</button><div class="s">halima.b@example.com</div></td><td>Cedar Court<div class="s">Full ownership · 18 months</div></td><td>26 Jun 2026<div class="s">30 days to final due date</div></td><td>suspended 20 Sep</td><td class="s">—</td><td class="num">₦2,300,000</td><td class="num" style="color:var(--teal);font-weight:600">₦400,000</td><td><span class="pill neutral">Suspended</span></td></tr>
+            <tr><td><button class="name-btn" data-open>Chinedu Eze</button><div class="s">chinedu.e@example.com</div></td><td>Palm Grove Estate<div class="s">Flex · 18 months</div></td><td>20 Sep 2026<div class="s">behind in final month</div></td><td>Final month · ₦1,200,000 behind</td><td><span class="pill bad">in 12 days</span></td><td class="num">₦1,600,000</td><td class="num" style="color:var(--muted)">₦0</td><td><span class="pill warn">Final month</span></td></tr>
+            <tr><td><button class="name-btn" data-open>Funke Adeyemi</button><div class="s">funke.a@example.com</div></td><td>Riverside Commercial<div class="s">Commercial · 12 months</div></td><td>9 Aug 2026<div class="s">behind in final month</div></td><td>21 days past final due date</td><td><span class="pill warn">in 35 days</span></td><td class="num">₦4,800,000</td><td class="num" style="color:var(--teal);font-weight:600">₦1,200,000</td><td><span class="pill bad">Past due</span></td></tr>
+            <tr><td><button class="name-btn" data-open>Amaka Obi</button><div class="s">amaka.o@example.com</div></td><td>Palm Grove Estate<div class="s">Full ownership · 24 months</div></td><td>17 Sep 2026<div class="s">behind in final month</div></td><td>Final month · ₦1,000,000 behind</td><td class="s">in 74 days</td><td class="num">₦1,500,000</td><td class="num" style="color:var(--teal);font-weight:600">₦500,000</td><td><span class="pill warn">Final month</span></td></tr>
+            <tr><td><button class="name-btn" data-open>Tunde Bakare</button><div class="s">tunde.b@example.com</div></td><td>Oak Ridge Gardens<div class="s">Flex · 12 months</div></td><td>5 Sep 2026<div class="s">behind in final month</div></td><td>Final month · ₦800,000 behind</td><td class="s">in 66 days</td><td class="num">₦1,200,000</td><td class="num" style="color:var(--muted)">₦0</td><td><span class="pill warn">Final month</span></td></tr>
+            <tr><td><button class="name-btn" data-open>Ibrahim Musa</button><div class="s">ibrahim.m@example.com</div></td><td>Oak Ridge Gardens<div class="s">Flex · 24 months</div></td><td>20 Aug 2026<div class="s">behind in final month</div></td><td>10 days past final due date</td><td><span class="pill warn">in 20 days</span></td><td class="num">₦2,100,000</td><td class="num" style="color:var(--muted)">₦0</td><td><span class="pill bad">Past due</span></td></tr>
+            <tr><td><button class="name-btn" data-open>Emeka Nwosu</button><div class="s">emeka.n@example.com</div></td><td>Palm Grove Estate<div class="s">Flex · 12 months</div></td><td>14 Aug 2026<div class="s">behind in final month</div></td><td>cleared 24 Sep</td><td class="s">—</td><td class="num">₦0</td><td class="num" style="color:var(--teal);font-weight:600">₦1,650,000</td><td><span class="pill solid">Cleared</span></td></tr>
+            <tr><td><button class="name-btn" data-open>Halima Bello</button><div class="s">halima.b@example.com</div></td><td>Cedar Court<div class="s">Full ownership · 18 months</div></td><td>26 Jun 2026<div class="s">behind in final month</div></td><td>suspended 20 Sep</td><td class="s">—</td><td class="num">₦2,300,000</td><td class="num" style="color:var(--teal);font-weight:600">₦400,000</td><td><span class="pill neutral">Suspended</span></td></tr>
           </tbody>
         </table>
         <div class="pager"><span>Showing 1–7 of 64 plans in book</span><div style="display:flex;gap:8px"><button class="btn sm">Previous</button><button class="btn sm">Next</button></div></div>
@@ -400,7 +400,7 @@ body{margin:0}
 <aside class="drawer" aria-label="Plan detail">
   <div class="dr-head">
     <div>
-      <h3>Funke Adeyemi <span class="pill bad">Overdue</span></h3>
+      <h3>Funke Adeyemi <span class="pill bad">Past due</span></h3>
       <div class="foot">Riverside Commercial · Commercial · 12 months</div>
     </div>
     <button class="icon-btn" data-close aria-label="Close"><i data-lucide="x"></i></button>
@@ -429,7 +429,7 @@ body{margin:0}
       <div class="spread" style="border:1px solid var(--line);border-radius:10px;padding:12px 14px">
         <div style="display:flex;align-items:center;gap:10px">
           <div style="width:34px;height:34px;border-radius:50%;background:var(--tealbg);color:var(--teal);display:grid;place-items:center;font-weight:600;font-size:12px">TA</div>
-          <div><b style="font-size:14px">Tolu Adebayo</b><div class="foot">Auto-assigned 9 Aug 2026 · 30 days to final due date</div></div>
+          <div><b style="font-size:14px">Tolu Adebayo</b><div class="foot">Auto-assigned 9 Aug 2026 · behind in final month</div></div>
         </div>
         <button class="btn sm">Reassign</button>
       </div>
@@ -459,7 +459,7 @@ body{margin:0}
         <div class="hot">₦500,000 recovered<small>17 Sep 2026</small></div>
         <div class="red">Passed final due date<small>8 Sep 2026</small></div>
         <div class="hot">₦700,000 recovered<small>20 Aug 2026</small></div>
-        <div>Entered Tolu's recovery book<small>9 Aug 2026 · 30 days to final due date</small></div>
+        <div>Entered Tolu's recovery book<small>9 Aug 2026 · behind in final month</small></div>
       </div>
     </div>
 

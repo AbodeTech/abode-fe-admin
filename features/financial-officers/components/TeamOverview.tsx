@@ -1,10 +1,10 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { BadgeCheck, Banknote, Building2, FolderOpen } from "lucide-react";
+import { BadgeCheck, Banknote, Building2, FolderOpen, TriangleAlert } from "lucide-react";
 import { KpiTile } from "@/components/shared/KpiTile";
 import { cn } from "@/lib/utils";
-import { formatHours, formatNairaCompact } from "../lib/format";
+import { formatHours, formatNairaCompact, formatShortDate } from "../lib/format";
 import {
   adminMinName,
   type FinancialOfficersTeamDashboard,
@@ -43,6 +43,16 @@ export function TeamOverview({ team }: { team: FinancialOfficersTeamDashboard })
 
   return (
     <div className="space-y-6">
+      {team.unassigned_eligible > 0 && (
+        <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <TriangleAlert className="h-4 w-4 shrink-0 text-amber-700" />
+          <span>
+            {team.unassigned_eligible} plan{team.unassigned_eligible === 1 ? " qualifies" : "s qualify"} for a recovery
+            book but no officer is available to take {team.unassigned_eligible === 1 ? "it" : "them"}.
+          </span>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <ApprovalTimeTile
           icon={Building2}
@@ -127,6 +137,9 @@ export function TeamOverview({ team }: { team: FinancialOfficersTeamDashboard })
                           </button>
                         ) : (
                           <span className="font-medium text-gray-900">Unknown</span>
+                        )}
+                        {o.role_ended_at && (
+                          <p className="text-[11px] text-gray-500">Removed {formatShortDate(o.role_ended_at)}</p>
                         )}
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums">{o.in_book}</td>
