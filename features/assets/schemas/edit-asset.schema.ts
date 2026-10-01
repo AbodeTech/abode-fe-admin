@@ -15,6 +15,8 @@ import type { AssetDetail } from './asset-detail.schema';
  * `sold_units`, `reserved_units`) is a hard 400 — none of them appear here.
  * ============================================================ */
 
+import { NIGERIAN_STATES } from '../lib/nigerian-states';
+
 const optionalUrl = z.union([z.url('Must be a valid URL'), z.literal('')]).optional();
 
 /* -------------------- details -------------------- */
@@ -22,6 +24,13 @@ const optionalUrl = z.union([z.url('Must be a valid URL'), z.literal('')]).optio
 export const assetDetailsFormSchema = z.object({
   name: z.string().trim().min(1, 'Give the asset a name'),
   asset_location: z.string().trim().optional(),
+  /**
+   * Empty is allowed so existing assets can be edited without being forced to
+   * set it, but it should be filled: a Deed of Assignment names this state as
+   * the one whose Governor's consent it is submitted for, and without it the
+   * deed prints a blank rule there.
+   */
+  state: z.union([z.enum(NIGERIAN_STATES), z.literal('')]).optional(),
   asset_purpose: z.string().trim().optional(),
   topography: TopographySchema.optional(),
   // `string[]` in the form as well as on the wire — see create-asset.schema.ts.
@@ -37,6 +46,7 @@ export function assetToDetailsForm(asset: AssetDetail): AssetDetailsFormValues {
   return {
     name: asset.name,
     asset_location: asset.asset_location ?? '',
+    state: (asset.state ?? '') as AssetDetailsFormValues['state'],
     asset_purpose: asset.asset_purpose ?? '',
     topography: asset.topography ?? undefined,
     amenities: asset.amenities ?? [],
@@ -52,6 +62,9 @@ export function detailsFormToPayload(values: AssetDetailsFormValues) {
     // Empty string clears a field; `undefined` would leave it untouched, and
     // an admin blanking a location means they want it gone.
     asset_location: values.asset_location ?? '',
+    // Only sent when set: the BE validates against the state enum, and '' is
+    // not a member of it. Clearing a state is not a thing an admin should want.
+    ...(values.state ? { state: values.state } : {}),
     asset_purpose: values.asset_purpose ?? '',
     ...(values.topography ? { topography: values.topography } : {}),
     // Sent even when empty — this is a PATCH, and clearing every amenity has
@@ -111,6 +124,7 @@ export const assetMediaFormSchema = z.object({
     survey: optionalUrl,
     contract_of_sales: optionalUrl,
     estate_layout: optionalUrl,
+    brochure: optionalUrl,
   }),
 });
 
@@ -125,6 +139,7 @@ export function assetToMediaForm(asset: AssetDetail): AssetMediaFormValues {
       survey: asset.documents?.survey ?? '',
       contract_of_sales: asset.documents?.contract_of_sales ?? '',
       estate_layout: asset.documents?.estate_layout ?? '',
+      brochure: asset.documents?.brochure ?? '',
     },
   };
 }

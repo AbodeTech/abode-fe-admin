@@ -70,6 +70,23 @@ export const ADMIN_PERMISSIONS = [
   'view_estate_updates',
   'manage_estate_updates',
 
+  // Asset costs — the asset detail Costs & Profitability tab. Confirmed
+  // verbatim against abode-be-v2 staging's asset-cost module (PR #82).
+  'view_asset_costs',
+  'manage_asset_costs',
+  'approve_asset_costs',
+
+  // Estate profitability — the calculation surfaced by that same module.
+  // `manage_profitability_basis` (a singleton-basis idea that doesn't exist
+  // on the real backend — allocation rules are per cost item and gated by
+  // plain `manage_asset_costs`) has been retired; do not reintroduce it.
+  'view_asset_profitability',
+
+  // Site Setup — boundary + fencing progress, read from the real field-staff
+  // module (confirmed against `abode-be-v2`'s `AssetSiteSetupController`).
+  'view_field_performance',
+  'manage_asset_boundary',
+
   'asset_transactions',
   'approve_payments',
   'withdrawals',
@@ -109,6 +126,22 @@ export const ADMIN_PERMISSIONS = [
 
   'view_payment_plans',
   'export_payment_plans',
+
+  // Sales (BE `src/modules/sales`). The campaign revenue card and Purchases tab
+  // also require it on top of view_campaigns — money is sales data.
+  'view_sales',
+
+  // Portfolio standing (features/standing/). Live on the BE in
+  // `src/modules/standing/standing-admin.controller.ts`; these were missing
+  // here, so the Sidebar's `requiresPermission` filter resolved false for
+  // every non-super-admin and hid the nav entry from the people who own it.
+  'view_standing',
+  'manage_standing',
+
+  // Division — the associate season ladder (features/division/). Sidebar entry
+  // sits in the Associates group and gates on `view_division`.
+  'view_division',
+  'manage_division',
 
   // In-house recruitment / Academy Admin (ABO-5–28 FE). BE keys land with ABO-82.
   'view_academy',

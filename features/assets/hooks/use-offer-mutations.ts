@@ -5,7 +5,6 @@ import { z } from 'zod';
 
 import { apiDelete, apiPatch, apiPost } from '@/lib/api-client';
 
-import type { Plan } from '../schemas/asset-detail.schema';
 import type { OfferType } from '../schemas/asset.schema';
 import { assetKeys } from './query-keys';
 
@@ -98,11 +97,36 @@ export const useAddOffer = (assetId: string) =>
 
 /* -------------------- size -------------------- */
 
+/**
+ * Exactly `PlanInputDto` on the real backend — NOT the full `Plan` read type.
+ * `Plan` carries `development_levy`/`document_levy` (this app's own
+ * FE-invented, display-only additions — see asset-detail.schema.ts's
+ * `PlanSchema` doc comment) and the real `SizeInputDto`/`UpdateSizeDto`
+ * both 400 on any extra property, confirmed live against staging:
+ * `"property development_levy should not exist"`. Never send more than this.
+ */
+type SizePlanInput = {
+  tenor_months: number;
+  land_price: number;
+  initial_payment: number;
+  monthly_installment: number;
+  is_promo?: boolean;
+  is_active?: boolean;
+};
+
 export type AddSizePayload = {
   size_sqm: number;
+  /**
+   * `units_available`, not `configured_units` — confirmed against the real
+   * `SizeInputDto`/`SizeDto` (both create and read): this backend has never
+   * used `configured_units` on the wire for this endpoint at all. That name
+   * only exists as an internal, server-computed Mongoose field mirrored from
+   * `units_available` on create; the Land Configuration module's OWN size
+   * sub-object is a separate real DTO and may legitimately differ.
+   */
   units_available: number;
   document_fee?: number;
-  plans: Plan[];
+  plans: SizePlanInput[];
 };
 
 /** A size is created together with its plans — `AddSizeDto` extends `SizeInputDto`. */
@@ -113,6 +137,7 @@ export const useAddSize = (assetId: string, offerType: OfferType) =>
 
 export type UpdateSizePayload = {
   size_sqm?: number;
+  /** See `AddSizePayload.units_available`'s doc comment — same real field, same reason. */
   units_available?: number;
   document_fee?: number;
   is_active?: boolean;
@@ -124,7 +149,7 @@ export type UpdateSizePayload = {
    * didn't touch, or they are dropped. Two admins editing different plans on
    * the same size will lose one of the edits — ticket 19.
    */
-  plans?: Plan[];
+  plans?: SizePlanInput[];
 };
 
 export const useUpdateSize = (assetId: string, offerType: OfferType) =>
@@ -206,3 +231,4 @@ export const useDeletePlan = (assetId: string, offerType: OfferType) =>
       WriteResultSchema
     )
   );
+

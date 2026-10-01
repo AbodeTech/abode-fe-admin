@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useForm, useWatch, type UseFormReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AlertTriangle, Loader2 } from "lucide-react";
+import { AlertTriangle, Calculator, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -35,7 +35,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -51,13 +50,20 @@ import {
   usesFoModel,
   type OfferType,
 } from "../../schemas/asset.schema";
-import type { AssetDetail, Plan, Size } from "../../schemas/asset-detail.schema";
 import {
+  configuredSqm,
+  totalSellingPrice,
+  type AssetDetail,
+  type Size,
+} from "../../schemas/asset-detail.schema";
+import {
+  calculateExactInstalment,
   expectedLandPrice,
   planFormSchema,
   planTolerance,
   type PlanFormValues,
 } from "../../schemas/create-asset.schema";
+import { formatSqm } from "@/lib/utils/format";
 import {
   useAddOffer,
   useAddPlan,
@@ -69,62 +75,14 @@ import {
   useUpdateSize,
 } from "../../hooks/use-offer-mutations";
 import { useAssetFormStore } from "../../store/asset-form-store";
+import { NumberInput, type NumberFieldLike } from "./NumberInput";
 
 const PAYMENT_TYPE_LABELS: Record<string, string> = {
   "all-inclusive": "All inclusive",
   "partially-inclusive": "Partially inclusive",
 };
 
-type NumberFieldLike = {
-  value: unknown;
-  onChange: (value: number | undefined) => void;
-  onBlur: () => void;
-  name: string;
-  ref: React.Ref<HTMLInputElement>;
-};
-
-/**
- * `value` and `onChange` are replaced so an empty input yields `undefined`
- * rather than `NaN`; the rest of the field (including `ref`) is spread through
- * untouched — reading `field.ref` directly counts as accessing a ref during
- * render.
- */
-function NumberInput({
-  field,
-  prefix,
-  suffix,
-  min = 0,
-}: {
-  field: NumberFieldLike;
-  prefix?: string;
-  suffix?: string;
-  min?: number;
-}) {
-  const { value, onChange, ...rest } = field;
-
-  return (
-    <div className="relative">
-      {prefix ? (
-        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-          {prefix}
-        </span>
-      ) : null}
-      <Input
-        {...rest}
-        type="number"
-        min={min}
-        className={`${prefix ? "pl-6" : ""} ${suffix ? "pr-10" : ""}`}
-        value={(value as number | undefined) ?? ""}
-        onChange={(e) => onChange(e.target.value === "" ? undefined : e.target.valueAsNumber)}
-      />
-      {suffix ? (
-        <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-          {suffix}
-        </span>
-      ) : null}
-    </div>
-  );
-}
+export { NumberInput, type NumberFieldLike };
 
 /* ==================== offer ==================== */
 
@@ -260,7 +218,7 @@ const addOfferSchema = z.object({
     .max(100, "At most 100%"),
   payment_type: z.enum(PAYMENT_TYPES).optional(),
   size_sqm: z.number({ message: "Enter a size" }).int("Whole square metres").positive("Must be above zero"),
-  units_available: z.number({ message: "Enter a unit count" }).int("Whole units").min(0, "Cannot be negative"),
+  configured_units: z.number({ message: "Enter a unit count" }).int("Whole units").min(0, "Cannot be negative"),
   document_fee: z.number().int("Whole naira only").min(0, "Cannot be negative").optional(),
 });
 
@@ -286,7 +244,7 @@ function AddOfferDialog({ asset, offerType }: { asset: AssetDetail; offerType: O
       allocation_qualification_pct: 30,
       payment_type: undefined,
       size_sqm: undefined as unknown as number,
-      units_available: undefined as unknown as number,
+      configured_units: undefined as unknown as number,
       document_fee: undefined,
     },
   });
@@ -306,7 +264,7 @@ function AddOfferDialog({ asset, offerType }: { asset: AssetDetail; offerType: O
         sizes: [
           {
             size_sqm: values.size_sqm,
-            units_available: values.units_available,
+            units_available: values.configured_units,
             ...(isFo ? { document_fee: values.document_fee ?? 0 } : {}),
             plans: [
               {
@@ -402,10 +360,10 @@ function AddOfferDialog({ asset, offerType }: { asset: AssetDetail; offerType: O
               />
               <FormField
                 control={form.control}
-                name="units_available"
+                name="configured_units"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs">Units available</FormLabel>
+                    <FormLabel className="text-xs">Configured units</FormLabel>
                     <FormControl>
                       <NumberInput field={field} min={0} />
                     </FormControl>
@@ -456,7 +414,7 @@ function AddOfferDialog({ asset, offerType }: { asset: AssetDetail; offerType: O
 
 const sizeFieldsSchema = z.object({
   size_sqm: z.number({ message: "Enter a size" }).int("Whole square metres").positive("Must be above zero"),
-  units_available: z.number({ message: "Enter a unit count" }).int("Whole units").min(0, "Cannot be negative"),
+  configured_units: z.number({ message: "Enter a unit count" }).int("Whole units").min(0, "Cannot be negative"),
   document_fee: z.number().int("Whole naira only").min(0, "Cannot be negative").optional(),
 });
 
@@ -485,12 +443,36 @@ function SizeDialog({
     resolver: zodResolver(sizeFieldsSchema),
     defaultValues: {
       size_sqm: size?.size_sqm ?? (undefined as unknown as number),
-      units_available: size?.units_available ?? (undefined as unknown as number),
+      configured_units: size?.configured_units ?? (undefined as unknown as number),
       document_fee: size?.document_fee,
     },
   });
 
+  // A capacity preview, not a server round-trip — mirrors the backend's
+  // `sum(active size_sqm × configured_units) <= assigned_sqm` rule (see
+  // land-configuration.schema.ts's `productCapacity`). Skipped when the
+  // product has no land account yet (`assigned_sqm` is a 0 placeholder), so
+  // legacy size editing keeps behaving exactly as before.
+  const watchedSizeSqm = useWatch({ control: form.control, name: "size_sqm" });
+  const watchedConfiguredUnits = useWatch({ control: form.control, name: "configured_units" });
+  const hasLandAccount = Boolean(offer && offer.assigned_sqm > 0);
+  const otherConfiguredSqm =
+    offer?.sizes
+      .filter((candidate) => candidate.is_active && candidate._id !== sizeId)
+      .reduce((sum, candidate) => sum + configuredSqm(candidate), 0) ?? 0;
+  const proposedConfiguredSqm = (Number(watchedSizeSqm) || 0) * (Number(watchedConfiguredUnits) || 0);
+  const capacityExcess = hasLandAccount
+    ? otherConfiguredSqm + proposedConfiguredSqm - (offer?.assigned_sqm ?? 0)
+    : 0;
+
   const submit = form.handleSubmit((values) => {
+    if (capacityExcess > 0) {
+      form.setError("configured_units", {
+        message: `This would exceed ${OFFER_TYPE_LABELS[offerType]} by ${formatSqm(capacityExcess)}`,
+      });
+      return;
+    }
+
     const document_fee = isFo ? (values.document_fee ?? 0) : undefined;
 
     if (isEdit && sizeId) {
@@ -498,7 +480,7 @@ function SizeDialog({
         {
           sizeId,
           size_sqm: values.size_sqm,
-          units_available: values.units_available,
+          units_available: values.configured_units,
           ...(document_fee === undefined ? {} : { document_fee }),
         },
         {
@@ -519,7 +501,7 @@ function SizeDialog({
     addSize.mutate(
       {
         size_sqm: values.size_sqm,
-        units_available: values.units_available,
+        units_available: values.configured_units,
         ...(document_fee === undefined ? {} : { document_fee }),
         plans: [
           {
@@ -573,13 +555,23 @@ function SizeDialog({
 
             <FormField
               control={form.control}
-              name="units_available"
+              name="configured_units"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-xs">Units available</FormLabel>
+                  <FormLabel className="text-xs">Configured units</FormLabel>
                   <FormControl>
                     <NumberInput field={field} />
                   </FormControl>
+                  {hasLandAccount ? (
+                    <FormDescription className="text-xs">
+                      {formatSqm(proposedConfiguredSqm)} of this offer&apos;s{" "}
+                      {formatSqm(offer?.assigned_sqm ?? 0)} pool
+                      {capacityExcess > 0 ? (
+                        <span className="text-destructive"> — exceeds it by {formatSqm(capacityExcess)}</span>
+                      ) : null}
+                      .
+                    </FormDescription>
+                  ) : null}
                   <FormMessage />
                 </FormItem>
               )}
@@ -711,6 +703,34 @@ function PlanDialog({
     .filter((candidate) => candidate.tenor_months !== tenor)
     .map((candidate) => candidate.tenor_months);
 
+  /**
+   * Fills in a monthly instalment that makes the plan's arithmetic land
+   * exactly on the land price, per the real backend's own (near-zero)
+   * tolerance — see `calculateExactInstalment`'s doc comment for why a plain
+   * rounded instalment usually isn't enough on its own.
+   */
+  function calculateInstalment() {
+    const values = form.getValues();
+    const landPrice = Number(values.land_price);
+    const tenorMonths = Number(values.tenor_months);
+    if (!landPrice || !Number.isFinite(tenorMonths) || tenorMonths < 0) {
+      toast.error("Enter the land price and tenor first");
+      return;
+    }
+    const initialPayment = Number(values.initial_payment) || 0;
+    const result = calculateExactInstalment(landPrice, initialPayment, tenorMonths);
+
+    form.setValue("monthly_installment", result.monthly_installment, { shouldValidate: true });
+    if (result.initial_payment !== initialPayment) {
+      form.setValue("initial_payment", result.initial_payment, { shouldValidate: true });
+      toast.success(
+        `Instalment calculated — initial payment adjusted to ${formatNaira(result.initial_payment)} so the total is exact`
+      );
+    } else {
+      toast.success("Instalment calculated");
+    }
+  }
+
   const submit = form.handleSubmit((values) => {
     if (!size) return;
 
@@ -772,8 +792,23 @@ function PlanDialog({
     // the size's whole plans[] is replaced. That is a read-modify-write: it
     // sends the list as it was when this page loaded, and can drop a plan
     // another admin added in the meantime.
-    const next: Plan[] = [
-      ...(size.plans ?? []).filter((candidate) => candidate.tenor_months !== tenor),
+    //
+    // The real `UpdateSizeDto.plans` only accepts `PlanInputDto`'s own fields
+    // — confirmed live against staging (`"property development_levy should
+    // not exist"`) — so every carried-over plan (read as the full `Plan`
+    // type, which does carry this app's FE-only development_levy/document_levy)
+    // must be re-mapped down to exactly that shape, not just the new one.
+    const next = [
+      ...(size.plans ?? [])
+        .filter((candidate) => candidate.tenor_months !== tenor)
+        .map((plan) => ({
+          tenor_months: plan.tenor_months,
+          land_price: plan.land_price,
+          initial_payment: plan.initial_payment,
+          monthly_installment: plan.monthly_installment,
+          is_active: plan.is_active,
+          ...(isFo ? { is_promo: plan.is_promo ?? false } : {}),
+        })),
       {
         tenor_months: values.tenor_months,
         land_price: values.land_price,
@@ -830,6 +865,9 @@ function PlanDialog({
                     <FormControl>
                       <NumberInput field={field} prefix="₦" />
                     </FormControl>
+                    {isEdit && !tenorChanged ? (
+                      <FormDescription>Total selling price {formatNaira(totalSellingPrice(plan!))}</FormDescription>
+                    ) : null}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -852,7 +890,19 @@ function PlanDialog({
                 name="monthly_installment"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs">Monthly instalment</FormLabel>
+                    <div className="flex items-center justify-between gap-2">
+                      <FormLabel className="text-xs">Monthly instalment</FormLabel>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-5 px-1.5 text-xs text-muted-foreground"
+                        onClick={calculateInstalment}
+                      >
+                        <Calculator className="mr-1 h-3 w-3" />
+                        Calculate
+                      </Button>
+                    </div>
                     <FormControl>
                       <NumberInput field={field} prefix="₦" />
                     </FormControl>

@@ -35,7 +35,8 @@ export function AdminMobileCard({
       {hasHeader && (
         <CardHeader className="space-y-1 pb-2">
           {title != null && <CardTitle className="text-base font-semibold leading-tight">{title}</CardTitle>}
-          {subtitle != null && <p className="text-sm text-muted-foreground">{subtitle}</p>}
+          {/* A <div>, not a <p> — several callers pass block-level JSX (badges, etc.) as subtitle, which a <p> can't legally contain. */}
+          {subtitle != null && <div className="text-sm text-muted-foreground">{subtitle}</div>}
         </CardHeader>
       )}
       <CardContent className={cn(hasHeader ? "pt-0" : "pt-4", "space-y-2")}>{children}</CardContent>

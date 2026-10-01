@@ -2532,3 +2532,76 @@ is `z.boolean().optional().default(false)` in
 absence unambiguously means "not already cancelled" either way. Cleaner fix
 on the backend: add `already_cancelled: false` to the success-path return so
 the shape is the same on both branches.
+
+## 32. Asset Land Model — greenfield, no BE module exists at all
+
+**Priority: none yet — this is a status report, not a blocker.** The FE
+foundation slice (Create Asset land setup, the Overview Land Account
+card/editor/history, non-saleable land uses, and Offers-tab capacity
+relabelling) is built and shipping entirely against mocks. Nothing is
+waiting on the backend today; this entry exists so a backend engineer
+picking this up has one place to start, and so nobody assumes any of this
+already exists on `abode-be-v2` because the FE screens look finished.
+
+### What exists
+
+Confirmed via direct grep of `abode-be-v2/src` (not the legacy GraphQL repo):
+`Asset.sales_cap` / `sold_units` / `reserved_units` and the `available_units`
+virtual are real, shipped fields (`src/modules/asset/schemas/asset.schema.ts`).
+Nothing else does: no `total_land_sqm`, `assigned_sqm`, `configured_units`,
+`land_configuration_version`, `AssetLandUse`, or any land-configuration
+endpoint exists anywhere in the module, and no branch for this work exists
+on the backend repo either (checked `abode-be-v2`'s full remote branch list).
+
+### What we need
+
+Full target contract: `docs/BACKEND-PHASE-1-ASSET-LAND-MODEL.md`. In order of
+what the FE mock currently stands in for:
+
+1. **Asset additions**: `total_land_sqm` (nullable int), `land_inventory_state`
+   (`'not_configured' | 'draft' | 'configured'`), `inventory_model_version`
+   (stays `'legacy_units'` for all of Phase 1), `land_configuration_version`
+   (int, increments only on a successful land-configuration save).
+2. **AssetOffer**: `assigned_sqm` (the product's commercial pool, not
+   decremented by purchases in Phase 1). Extend the offer-type enum with
+   `developer-plot` (hyphenated) — see the naming-collision note in
+   `docs/ASSETS-ADMIN-DESIGN.md` §10 before wiring this up; it must map
+   explicitly to the existing PaymentPlan-side `developer_plot` (underscored)
+   value, never store both spellings interchangeably.
+3. **Size**: rename `units_available` to `configured_units` (same meaning,
+   honester name — purchases never decremented either one). The FE schema
+   already accepts both, reading `configured_units` and treating
+   `units_available` as a deprecated fallback.
+4. **New `AssetLandUse` collection**: non-saleable land rows — category
+   (`road-circulation | service-plot | recreation-utility | public-use |
+   other`), label, `allocated_sqm`, `is_active`, audit fields. `other`
+   requires a label.
+5. **New `AssetLandConfigurationRevision` collection**: append-only, one row
+   per successful save — version, reason, actor, timestamp, before/after
+   snapshots.
+6. **Endpoints** (see `docs/REST-ENDPOINT-MAP.md`'s "Land configuration"
+   section for the exact routes the FE mock already implements):
+   `GET`/`PUT /admin/assets/:assetId/land-configuration` (the `PUT` is a
+   complete-replacement, versioned save — `expected_version` required, 409
+   `LAND_CONFIGURATION_VERSION_CONFLICT` on a stale write) and
+   `GET .../land-configuration/history[/:version]`.
+7. **Business error codes** the FE already branches on:
+   `TOTAL_LAND_REQUIRED`, `INVALID_LAND_QUANTITY`,
+   `LAND_ALLOCATION_EXCEEDS_TOTAL`, `PRODUCT_SIZE_CAPACITY_EXCEEDED`,
+   `LAND_CONFIGURATION_VERSION_CONFLICT`, `DEVELOPER_PLOT_MAPPING_REQUIRED`,
+   `LAND_CONFIGURATION_INCOMPLETE`, `SQM_INVENTORY_NOT_ACTIVE`.
+
+### Explicitly not needed yet
+
+Everything gated behind the live purchase-consuming sqm ledger — Product
+Position, Plot Inventory, allocation-event readiness — plus Site Setup
+fieldwork, Costs & Profitability, and the staff-performance system. All are
+separate, larger epics per the two Phase 1 docs' own scope sections; none of
+the FE work described above depends on them.
+
+### Current FE state
+
+Fully mock-backed (`lib/mocks/routes/land-configuration.ts`, plus additions
+to `lib/mocks/routes/assets.ts`). Flipping `NEXT_PUBLIC_USE_MOCKS=false`
+404s every hook this feature uses — there is no live fallback, by design,
+until the above ships.
