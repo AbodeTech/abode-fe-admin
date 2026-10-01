@@ -16,11 +16,16 @@ import {
   CheckCircle,
   ChevronRight,
   CircleDollarSign,
+  ClipboardCheck,
   ClipboardList,
   FileText,
+  Gem,
   Gift,
   GraduationCap,
+  Gauge,
+  HardHat,
   Inbox,
+  Landmark,
   LandPlot,
   LayoutDashboard,
   LogOut,
@@ -32,6 +37,7 @@ import {
   Store,
   Tags,
   TrendingUp,
+  Trophy,
   Upload,
   UserCog,
   UserPlus,
@@ -86,6 +92,9 @@ const navGroups = [
       { name: "All Users", link: "/users", icon: <Users /> },
       { name: "Suspended Users", link: "/users/suspended", icon: <ShieldCheck /> },
       { name: "Completed Asset Payments", link: "/users/completed-asset-payments", icon: <CheckCircle /> },
+      // Standing lives under Users, not in a settings area: it is mostly read
+      // as "who are my biggest landholders", and only occasionally edited.
+      { name: "Portfolio Standing", link: "/standing", icon: <Trophy />, requiresPermission: "view_standing" },
     ]
   },
   {
@@ -97,6 +106,10 @@ const navGroups = [
       { name: "Top associates", link: "/associates", icon: <TrendingUp /> },
       { name: "Associate Performance", link: "/associates/performance", icon: <Activity />, requiresSuperAdmin: true },
       { name: "Manager Performance", link: "/associates/managers", icon: <ShieldCheck />, requiresAdminOrManager: true },
+      // Division sits with the associates rather than beside Portfolio Standing:
+      // the two screens are built the same way, but this one is read as "how is
+      // the sales floor doing this season", which is an associates question.
+      { name: "Division", link: "/division", icon: <Gem />, requiresPermission: "view_division" },
     ]
   },
   {
@@ -116,6 +129,27 @@ const navGroups = [
       { name: "CS Manager Performance", link: "/customer-managers", icon: <ShieldCheck /> },
       { name: "Tickets", link: "/tickets", icon: <Inbox /> },
       { name: "Issues", link: "/issues", icon: <AlertOctagon /> },
+    ]
+  },
+  {
+    // No permission gate, same as CS Manager Performance: the page itself
+    // admits only super admins and promoted Financial Officers.
+    title: "Finance",
+    isCollapsible: true,
+    icon: <Landmark />,
+    items: [
+      { name: "Financial Officers", link: "/financial-officers", icon: <Gauge /> },
+    ]
+  },
+  {
+    // Site Manager and Surveyor tracking. Gated on the BE's own permission
+    // keys so an admin without them isn't sent to a page of 403s.
+    title: "Field Performance",
+    isCollapsible: true,
+    icon: <HardHat />,
+    items: [
+      { name: "Performance", link: "/field-performance", icon: <Gauge />, requiresPermission: "view_field_performance" },
+      { name: "Review Queue", link: "/field-performance/review-queue", icon: <ClipboardCheck />, requiresPermission: "view_field_submissions" },
     ]
   },
   {

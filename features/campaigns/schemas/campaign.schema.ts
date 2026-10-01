@@ -29,6 +29,49 @@ export const CampaignCheckpointSchema = z.object({
 
 export type CampaignCheckpoint = z.infer<typeof CampaignCheckpointSchema>;
 
+/**
+ * What a raffle prize is, so the realtor page can draw a fitting icon. Mirrors
+ * `RAFFLE_PRIZE_KINDS` in abode-be-v2 `campaign.schema.ts` — ops picks the
+ * category, the app owns how it looks.
+ */
+export const RAFFLE_PRIZE_KINDS = [
+  'trip',
+  'land',
+  'vehicle',
+  'cash',
+  'appliance',
+  'gadget',
+  'hamper',
+  'other',
+] as const;
+export const RafflePrizeKindSchema = z.enum(RAFFLE_PRIZE_KINDS);
+export type RafflePrizeKind = z.infer<typeof RafflePrizeKindSchema>;
+
+export const RAFFLE_PRIZE_KIND_LABELS: Record<RafflePrizeKind, string> = {
+  trip: 'Trip',
+  land: 'Land',
+  vehicle: 'Vehicle',
+  cash: 'Cash',
+  appliance: 'Appliance',
+  gadget: 'Gadget',
+  hamper: 'Hamper',
+  other: 'Other',
+};
+
+/**
+ * One prize in the end-of-campaign draw. Not the same thing as a checkpoint
+ * prize: a checkpoint prize is ASSURED on reaching its sqm, a raffle prize is
+ * drawn from all tickets. Order is display order, top prize first.
+ */
+export const RafflePrizeSchema = z.object({
+  label: z.string(),
+  // `.catch` rather than a hard enum failure: a kind the admin does not know yet
+  // should render as "Other", not break the whole campaign page.
+  kind: RafflePrizeKindSchema.catch('other'),
+});
+
+export type RafflePrize = z.infer<typeof RafflePrizeSchema>;
+
 export const CampaignSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -50,6 +93,8 @@ export const CampaignSchema = z.object({
   eligible_asset_types: z.array(z.string()).optional().default([]),
   total_sqm_target: z.number().nullable(),
   checkpoints: z.array(CampaignCheckpointSchema),
+  /** Defaulted so a backend deployed before the field existed still parses. */
+  raffle_prizes: z.array(RafflePrizeSchema).optional().default([]),
   leaderboard_masking_enabled: z.boolean(),
   is_legacy: z.boolean().optional(),
   completed_at: z.string().nullable().optional(),

@@ -19,6 +19,7 @@ import { dashboardRoutes } from './dashboard';
 import { marketplaceRoutes } from './marketplace';
 import { meetingRoutes } from './meetings';
 import { csManagerRoutes } from './cs-managers';
+import { financialOfficerRoutes } from './financial-officers';
 import { purchaseConfirmationRoutes } from './purchase-confirmations';
 import { campaignEngineRoutes } from './campaigns-engine';
 import { paymentPlanRoutes } from './payment-plans';
@@ -37,6 +38,8 @@ import { inventoryReconciliationRoutes } from './inventory-reconciliation';
 import { siteSetupRoutes } from './site-setup';
 import { fieldOperationsRoutes } from './field-operations';
 import { courseRoutes } from './courses';
+import { divisionRoutes } from './division';
+import { standingRoutes } from './standing';
 
 /* ============================================================
  * Route registration. Importing this module (via lib/mocks/index.ts)
@@ -120,6 +123,9 @@ import { courseRoutes } from './courses';
  *               — ticket in docs/BACKEND-REQUESTS.md) and no onboarding-
  *               attempts routes (nothing in this
  *               scoped UI reaches a plan_id to call them with).
+ * financial-officers — /admin/financial-officers/* (role, targets, officer and
+ *               team dashboards, recovery-plan detail + reassign). 🚧 Provisional:
+ *               no BE module exists — ticket 33 in docs/BACKEND-REQUESTS.md.
  * payment-plans — GET /admin/payment-plans, /summary, /export. Distinct from
  *               CS-manager plan actions under
  *               GET/POST /admin/payment-plans/:plan_id/*.
@@ -214,6 +220,18 @@ import { courseRoutes } from './courses';
  *               provisional — abode-be-v2 has no courses model yet. Covers
  *               design screens 1–2 (list, overview) only; modules/quiz/
  *               learners (screens 3, 5, 6, 7) are unbuilt.
+ * field-staff — unclaimed. /admin/field-staff/*, /admin/field-scorecards/*,
+ *               /admin/field-submissions/*, /admin/field-performance/* and
+ *               /admin/assets/:id/site-setup are integrated against the real
+ *               BE (abode-be-v2 phase-1) and have no mocks yet, so the Field
+ *               Performance pages 404 in mock mode.
+ * standing    — /admin/standing/* (config, summary, members). Membership is
+ *               derived from a holdings fixture rather than stored, so moving
+ *               a threshold in the editor moves buyers on the next read.
+ * division    — /admin/division/* (config, summary, members). The associate
+ *               season ladder. Two seasons of fixtures (2026 live, 2025
+ *               closed) so the year picker demonstrably changes the answer,
+ *               and one opted-out associate so the "Hidden" marker has a case.
  * asset-subscribers — GET /admin/assets/:assetId/subscribers. A real
  *               abode-be-v2 module exists (asset-subscribers.schema.ts cites
  *               its DTOs), but — like asset-analytics.ts before it — it was
@@ -262,6 +280,7 @@ export function ensureRoutesRegistered(): void {
   registerRoutes(marketplaceRoutes);
   registerRoutes(meetingRoutes);
   registerRoutes(csManagerRoutes);
+  registerRoutes(financialOfficerRoutes);
   registerRoutes(purchaseConfirmationRoutes);
   registerRoutes(campaignEngineRoutes);
   registerRoutes(paymentPlanRoutes);
@@ -269,6 +288,12 @@ export function ensureRoutesRegistered(): void {
   registerRoutes(academyRoutes);
   registerRoutes(companyEventsRoutes);
   registerRoutes(estateUpdateRoutes);
+  // `courseRoutes` was registering AFTER the `registered = true` below, which
+  // defeated the retry the comment promises: a throw in it left the flag set
+  // and every later attempt short-circuited. Moved above the flag with the rest.
+  registerRoutes(courseRoutes);
+  registerRoutes(standingRoutes);
+  registerRoutes(divisionRoutes);
   registerRoutes(landConfigurationRoutes);
   registerRoutes(sqmInventoryRoutes);
   registerRoutes(assetCostRoutes);
@@ -282,6 +307,5 @@ export function ensureRoutesRegistered(): void {
 
   // Only mark done after every domain registered — a throw mid-way must allow retry.
   registered = true;
-  registerRoutes(courseRoutes);
   // ...added per feature as it migrates
 }

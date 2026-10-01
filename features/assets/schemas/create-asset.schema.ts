@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { NIGERIAN_STATES } from '../lib/nigerian-states';
 
 import { TopographySchema, VisibilitySchema } from './asset.schema';
 import { productPoolFormSchema, totalAssignedSqm } from './land-configuration.schema';
@@ -141,6 +142,12 @@ export type PlanFormValues = z.infer<typeof planFormSchema>;
 export const createAssetFormSchema = z.object({
   name: z.string().trim().min(1, 'Give the asset a name'),
   asset_location: z.string().trim().optional(),
+  /**
+   * Optional to keep the create form forgiving, but it should be set on a new
+   * estate: the Deed of Assignment names this state as the one whose Governor's
+   * consent it is submitted for, and without it the deed prints a blank there.
+   */
+  state: z.union([z.enum(NIGERIAN_STATES), z.literal('')]).optional(),
   google_map: optionalUrl,
   description: z.string().trim().optional(),
   topography: TopographySchema.optional(),
@@ -206,6 +213,9 @@ export function createAssetFormToPayload(values: CreateAssetFormOutput) {
   return omitBlank({
     name: values.name,
     asset_location: values.asset_location,
+    // `omitBlank` drops '' for us, so an unset state is simply not sent —
+    // which is what the BE wants, since '' is not a member of the state enum.
+    state: values.state,
     google_map: values.google_map,
     description: values.description,
     topography: values.topography,

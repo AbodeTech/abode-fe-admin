@@ -5,11 +5,13 @@ import { useParams, usePathname } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { PageContentLoader } from "@/components/shared/page-content-loader";
 import { cn } from "@/lib/utils";
 
-import { DUMMY_COURSES } from "../../dummy-data";
-import { getQuizModuleForCourse } from "../../dummy-modules";
-import { getQuizForModule } from "../../dummy-quiz";
+import { useAcademySettings, useCourseDetail } from "../../hooks/use-course-detail";
+import { useCourseLearners } from "../../hooks/use-learners";
+import { useCourseQuiz } from "../../hooks/use-quiz";
+import { getErrorMessage } from "../../utils/error-message";
 
 type Tab = {
   key: string;
@@ -20,8 +22,10 @@ type Tab = {
 
 /**
  * Header, status badges and tab nav — shared by every course sub-route.
- * Design preview: reads the same static fixtures as the pages beneath it, so
- * the badges/counts here reflect fixture state, not any edits made on a page.
+ * Everything here is real: course record, module count, quiz question count
+ * (derived via `useCourseQuiz` — the BE ties a quiz to a module, not a
+ * course, so this scans the course's modules for the first one with a quiz),
+ * and learner count.
  *
  * Only wraps the four tab routes (overview/modules/quiz/learners) — the
  * module editor is a drill-down from Modules with its own breadcrumb-only
@@ -30,8 +34,30 @@ type Tab = {
 export function CourseDetailShell({ children }: { children: React.ReactNode }) {
   const params = useParams<{ id: string }>();
   const pathname = usePathname();
-  const course =
-    DUMMY_COURSES.find((c) => c.id === params.id) ?? DUMMY_COURSES[0];
+  const { data: course, isLoading, error } = useCourseDetail(params.id);
+  const { data: academySettings } = useAcademySettings();
+  const { data: learners } = useCourseLearners(course?.id ?? "", { page: 1, limit: 1 });
+  const { data: courseQuiz } = useCourseQuiz(course?.id ?? "");
+
+  if (isLoading) return <PageContentLoader label="Loading course…" />;
+
+  if (error || !course) {
+    return (
+      <div className="mx-auto mt-4 w-full min-w-0 max-w-[1200px] px-3 sm:px-4">
+        <Link
+          href="/academy/courses"
+          className="inline-flex items-center text-sm text-muted-foreground transition-colors hover:text-primary"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to courses
+        </Link>
+        <div className="mt-4 rounded-md border border-red-200 bg-red-50 p-4 text-red-500">
+          <h3 className="font-bold">Couldn&apos;t load this course</h3>
+          <p>{getErrorMessage(error, "It may have been deleted.")}</p>
+        </div>
+      </div>
+    );
+  }
 
   const tabs: Tab[] = [
     {
@@ -44,22 +70,19 @@ export function CourseDetailShell({ children }: { children: React.ReactNode }) {
       key: "modules",
       label: "Modules",
       href: (id) => `/academy/courses/${id}/modules`,
-      count: course.modules_count,
+      count: course.modules.length,
     },
     {
       key: "quiz",
       label: "Quiz",
       href: (id) => `/academy/courses/${id}/quiz`,
-      count: (() => {
-        const quizModule = getQuizModuleForCourse(course.id, course.modules_count);
-        return quizModule ? getQuizForModule(quizModule.id).length : 0;
-      })(),
+      count: courseQuiz?.settings.question_count ?? 0,
     },
     {
       key: "learners",
       label: "Learners",
       href: (id) => `/academy/courses/${id}/learners`,
-      count: course.learners_count,
+      count: learners?.meta.total ?? 0,
     },
   ];
 
@@ -82,7 +105,9 @@ export function CourseDetailShell({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex shrink-0 gap-2">
-            {course.is_first_sale_path ? <Badge>First sale path</Badge> : null}
+            {academySettings?.first_sale_path_course_id === course.id ? (
+              <Badge>First sale path</Badge>
+            ) : null}
             {course.grants_credential ? (
               <Badge variant="outline">Grants a credential</Badge>
             ) : null}

@@ -25,7 +25,6 @@ export { UnassignedCustomersTable } from './components/UnassignedCustomersTable'
 export { UnassignedCustomersDialog } from './components/UnassignedCustomersDialog';
 export { NoCSManagersEmptyState } from './components/NoCSManagersEmptyState';
 export { CSPerformanceHeader } from './components/CSPerformanceHeader';
-export { CSPeriodFilter } from './components/CSPeriodFilter';
 export { CSManagerSnapshot } from './components/CSManagerSnapshot';
 export { BacklogsSection } from './components/BacklogsSection';
 export { PortfolioHealthStrip } from './components/PortfolioHealthStrip';

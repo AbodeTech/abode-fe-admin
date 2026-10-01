@@ -133,6 +133,22 @@ export const ADMIN_PERMISSIONS = [
   'view_payment_plans',
   'export_payment_plans',
 
+  // Sales (BE `src/modules/sales`). The campaign revenue card and Purchases tab
+  // also require it on top of view_campaigns — money is sales data.
+  'view_sales',
+
+  // Portfolio standing (features/standing/). Live on the BE in
+  // `src/modules/standing/standing-admin.controller.ts`; these were missing
+  // here, so the Sidebar's `requiresPermission` filter resolved false for
+  // every non-super-admin and hid the nav entry from the people who own it.
+  'view_standing',
+  'manage_standing',
+
+  // Division — the associate season ladder (features/division/). Sidebar entry
+  // sits in the Associates group and gates on `view_division`.
+  'view_division',
+  'manage_division',
+
   // In-house recruitment / Academy Admin (ABO-5–28 FE). BE keys land with ABO-82.
   'view_academy',
   'manage_academy',
@@ -148,6 +164,17 @@ export const ADMIN_PERMISSIONS = [
   'view_allocations',
   'allocate_land',
   'deallocate_land',
+
+  // Field operations — Site Managers and Surveyors (features/field-staff).
+  'view_field_staff',
+  'manage_field_staff',
+  'assign_field_staff',
+  'view_field_scorecards',
+  'manage_field_scorecards',
+  'view_field_submissions',
+  'verify_field_submissions',
+  'view_field_performance',
+  'manage_asset_boundary',
 ] as const;
 
 export type AdminPermission = (typeof ADMIN_PERMISSIONS)[number];

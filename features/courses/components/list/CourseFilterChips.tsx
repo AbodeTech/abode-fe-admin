@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { cn } from "@/lib/utils";
 
-import type { CourseSummary } from "../../schemas/course.schema";
+import type { CourseSummary } from "../../hooks/use-course-list";
 
 type Chip = {
   key: string;

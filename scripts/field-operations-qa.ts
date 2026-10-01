@@ -283,7 +283,9 @@ async function main() {
   results.push(
     await run('FO-the-pitch-pack-is-set-replaced-and-removed-on-its-own-endpoints', async () => {
       const path = `/admin/assets/${A1}/pitch-pack`;
-      assert(AssetDetailSchema.parse(await get(`/admin/assets/${A1}`)).pitch_pack == null, 'the estate starts with no pitch pack');
+      // The mock estate is seeded with a pitch pack; start from none.
+      await send('DELETE', path);
+      assert(AssetDetailSchema.parse(await get(`/admin/assets/${A1}`)).pitch_pack == null, 'after removal the estate has no pitch pack');
       assert((await refusal(() => send('PUT', path, { url: 'not-a-link', size_bytes: 10 }))) === 'VALIDATION_FAILED', 'the url must be a link');
       assert((await refusal(() => send('PUT', path, { url: 'https://files.abode.test/p.pdf', size_bytes: 200 * 1024 * 1024 }))) === 'VALIDATION_FAILED', '100 MB is the limit');
 

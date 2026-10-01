@@ -46,6 +46,8 @@ type StoreCampaign = {
     sqm_required: number;
     prize_media_url?: string;
   }[];
+  /** The draw's prize pool — ticket campaigns only. Optional so older fixtures need no edit. */
+  raffle_prizes?: { label: string; kind: string }[];
   leaderboard_masking_enabled: boolean;
   createdAt: string;
   updatedAt: string;
@@ -123,6 +125,12 @@ const campaigns: StoreCampaign[] = [
       { key: 'starter', label: 'Starter', prize: 'Branded kit', sqm_required: 300 },
       { key: 'builder', label: 'Builder', prize: 'Generator', sqm_required: 1500 },
       { key: 'closer', label: 'Closer', prize: 'Car raffle entry', sqm_required: 5000 },
+    ],
+    raffle_prizes: [
+      { label: 'All-expense-paid trip to Nairobi', kind: 'trip' },
+      { label: 'Plot of land', kind: 'land' },
+      { label: 'Half plot of land', kind: 'land' },
+      { label: 'Microwave oven', kind: 'appliance' },
     ],
     leaderboard_masking_enabled: true,
     createdAt: iso(-120),
@@ -377,6 +385,7 @@ function toApiCampaign(campaign: StoreCampaign) {
       ...checkpoint,
       prize_media_url: checkpoint.prize_media_url ?? null,
     })),
+    raffle_prizes: campaign.raffle_prizes ?? [],
     leaderboard_masking_enabled: campaign.leaderboard_masking_enabled,
     status: campaign.status,
     is_legacy: campaign.name === HAMPER_LEGACY_NAME || campaign.name === PLOTS_LEGACY_NAME,
@@ -421,78 +430,321 @@ function toApiReward(row: CampaignReward) {
   };
 }
 
-function dashboardFor(campaign: StoreCampaign) {
-  const rows = rewards.filter((row) => row.campaign_id === campaign.id);
-  const active = rows.filter((row) => row.is_active);
-  const byDate = new Map<string, { rewards: number; sqm: number }>();
-  for (const row of rows) {
-    const day = row.createdAt.slice(0, 10);
-    const current = byDate.get(day) ?? { rewards: 0, sqm: 0 };
-    current.rewards += 1;
-    current.sqm += row.sqm_purchased;
-    byDate.set(day, current);
+const DAY_MS = 86_400_000;
+
+type PurchaseParty = { id: string; name: string; email: string };
+
+type StorePurchase = {
+  plan_id: string;
+  purchased_at: string;
+  buyer: PurchaseParty;
+  referrer: PurchaseParty | null;
+  asset_id: string;
+  asset_name: string;
+  asset_type: string;
+  size_sqm: number;
+  units: number;
+  asset_price: number;
+  amount_paid: number;
+  balance: number;
+  status: 'active' | 'overdue' | 'completed' | 'cancelled';
+  is_defaulted: boolean;
+  months: number;
+  next_payment_date: string | null;
+  buyer_tickets: string[];
+  buyer_rewards: number;
+  referrer_tickets: string[];
+  referrer_rewards: number;
+};
+
+const MOCK_ASSETS = [
+  { id: '665fa00000000000000000a1', name: 'Oasis Gardens, Epe', type: 'flex', price_per_sqm: 5_500 },
+  { id: '665fa00000000000000000a2', name: 'Palm Springs, Ibeju-Lekki', type: 'flex', price_per_sqm: 7_200 },
+  { id: '665fa00000000000000000a3', name: 'Crest View, Abuja', type: 'full-ownership', price_per_sqm: 9_800 },
+  { id: '665fa00000000000000000a4', name: 'Green Acres, Ogun', type: 'flex', price_per_sqm: 3_900 },
+  { id: '665fa00000000000000000a5', name: 'Harbour Point, Lekki', type: 'commercial', price_per_sqm: 14_000 },
+];
+const FIRST_NAMES = ['Ngozi', 'Tunde', 'Amaka', 'Chidi', 'Funke', 'Emeka', 'Aisha', 'Segun', 'Bola', 'Ifeoma', 'Kunle', 'Zainab'];
+const LAST_NAMES = ['Adeola', 'Bello', 'Okafor', 'Eze', 'Balogun', 'Nwosu', 'Ibrahim', 'Adeyemi', 'Okonkwo', 'Lawal'];
+const PLOT_SIZES = [150, 300, 300, 450, 500, 500, 600, 1000];
+
+/** FNV-1a — a stable seed per campaign, so mock numbers survive a reload. */
+function hashSeed(value: string) {
+  let hash = 2166136261;
+  for (const char of value) {
+    hash ^= char.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+/** mulberry32 — tiny deterministic PRNG. */
+function seededRandom(seed: number) {
+  let state = seed;
+  return () => {
+    state = (state + 0x6d2b79f5) | 0;
+    let t = Math.imul(state ^ (state >>> 15), 1 | state);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const purchaseCache = new Map<string, StorePurchase[]>();
+
+/**
+ * Every purchase in the campaign window, rewarded or not — the mock twin of
+ * the BE's plan-backed land figure. Rewards per purchase follow the engine's
+ * divisor rule, so a purchase below the threshold shows zero.
+ */
+function purchasesFor(campaign: StoreCampaign): StorePurchase[] {
+  const cached = purchaseCache.get(campaign.id);
+  if (cached) return cached;
+
+  const seed = hashSeed(campaign.id);
+  const rand = seededRandom(seed);
+  const pick = <T,>(items: readonly T[]) => items[Math.floor(rand() * items.length)];
+  const start = new Date(campaign.start_date).getTime();
+  const until = Math.min(Date.now(), new Date(campaign.end_date).getTime());
+  const days = Math.max(0, Math.floor((until - start) / DAY_MS));
+  const count = Math.min(150, Math.round(days * 0.7));
+  const party = (kind: string, index: number): PurchaseParty => {
+    const first = FIRST_NAMES[index % FIRST_NAMES.length];
+    const last = LAST_NAMES[(index * 7 + (kind === 'r' ? 3 : 0)) % LAST_NAMES.length];
+    return {
+      id: `665fb${kind === 'r' ? '2' : '1'}${seed.toString(16).padStart(8, '0')}${index.toString(16).padStart(10, '0')}`,
+      name: `${first} ${last}`,
+      email: `${first}.${last}${index}@example.com`.toLowerCase(),
+    };
+  };
+  const tickets = (n: number) =>
+    campaign.reward_type === 'ticket'
+      ? Array.from({ length: n }, () => `${campaign.ticket_id_prefix ?? 'TKT'}${String(Math.floor(rand() * 1_000_000)).padStart(6, '0')}`)
+      : [];
+
+  const rows: StorePurchase[] = [];
+  for (let index = 0; index < count; index += 1) {
+    // Skewed towards the first assets, so the breakdown has a clear leader.
+    const asset = MOCK_ASSETS[Math.floor(rand() ** 1.6 * MOCK_ASSETS.length)];
+    const size = pick(PLOT_SIZES);
+    const units = rand() < 0.7 ? 1 : rand() < 0.66 ? 2 : 3;
+    const totalSqm = size * units;
+    const price = totalSqm * asset.price_per_sqm;
+    const outright = rand() < 0.25;
+    const paid = outright ? price : Math.round(price * (0.1 + rand() * 0.75));
+    const roll = rand();
+    const status: StorePurchase['status'] =
+      paid >= price ? 'completed' : roll < 0.04 ? 'cancelled' : roll < 0.14 ? 'overdue' : 'active';
+    const purchasedAt = start + rand() * (until - start);
+    const referrer = rand() < 0.7 ? party('r', Math.floor(rand() * 8)) : null;
+    const perRecipient = Math.floor(totalSqm / campaign.trigger_threshold) * campaign.rewards_per_threshold;
+    const buyerRewards = campaign.recipient_buyer ? perRecipient : 0;
+    const referrerRewards = campaign.recipient_referrer && referrer ? perRecipient : 0;
+
+    rows.push({
+      plan_id: `665fc0${seed.toString(16).padStart(8, '0')}${index.toString(16).padStart(10, '0')}`,
+      purchased_at: new Date(purchasedAt).toISOString(),
+      buyer: party('b', Math.floor(rand() * 40)),
+      referrer,
+      asset_id: asset.id,
+      asset_name: asset.name,
+      asset_type: asset.type,
+      size_sqm: size,
+      units,
+      asset_price: price,
+      amount_paid: paid,
+      balance: price - paid,
+      status,
+      is_defaulted: status === 'overdue',
+      months: outright ? 0 : pick([6, 12, 18, 24]),
+      next_payment_date:
+        status === 'active' || status === 'overdue'
+          ? new Date(Date.now() + (status === 'overdue' ? -1 : 1) * Math.ceil(rand() * 28) * DAY_MS).toISOString()
+          : null,
+      buyer_rewards: buyerRewards,
+      buyer_tickets: tickets(buyerRewards),
+      referrer_rewards: referrerRewards,
+      referrer_tickets: tickets(referrerRewards),
+    });
   }
 
-  const rank = (role: RewardRole) => {
-    const earners = new Map<
-      string,
-      { user_id: string; first_name: string; last_name: string; email: string | null; rewards: number; total_sqm: number }
-    >();
-    for (const row of active.filter((item) => item.role === role)) {
-      const id = row.recipient.id ?? row.recipient.email ?? row.recipient.first_name;
-      const current = earners.get(id) ?? {
-        user_id: id,
-        first_name: row.recipient.first_name,
-        last_name: row.recipient.last_name,
-        email: row.recipient.email ?? null,
+  rows.sort((a, b) => b.purchased_at.localeCompare(a.purchased_at));
+  purchaseCache.set(campaign.id, rows);
+  return rows;
+}
+
+const sqmOf = (row: StorePurchase) => row.size_sqm * row.units;
+const OUTSTANDING_EXCLUDED = new Set(['suspended', 'completed', 'cancelled']);
+
+function moneyOf(rows: StorePurchase[]) {
+  return {
+    purchases: rows.length,
+    sqm_sold: rows.reduce((sum, row) => sum + sqmOf(row), 0),
+    value_sold: rows.reduce((sum, row) => sum + row.asset_price, 0),
+    amount_collected: rows.reduce((sum, row) => sum + row.amount_paid, 0),
+    balance_outstanding: rows.reduce(
+      (sum, row) => sum + (OUTSTANDING_EXCLUDED.has(row.status) ? 0 : row.balance),
+      0
+    ),
+  };
+}
+
+function groupByAsset(rows: StorePurchase[]) {
+  const groups = new Map<string, StorePurchase[]>();
+  for (const row of rows) groups.set(row.asset_id, [...(groups.get(row.asset_id) ?? []), row]);
+  return [...groups.values()];
+}
+
+function toApiPurchase(row: StorePurchase) {
+  return {
+    plan_id: row.plan_id,
+    purchased_at: row.purchased_at,
+    buyer: row.buyer,
+    referrer: row.referrer,
+    asset_id: row.asset_id,
+    asset_name: row.asset_name,
+    asset_type: row.asset_type,
+    size_sqm: row.size_sqm,
+    units: row.units,
+    total_sqm: sqmOf(row),
+    asset_price: row.asset_price,
+    amount_paid: row.amount_paid,
+    balance: row.balance,
+    status: row.status,
+    is_defaulted: row.is_defaulted,
+    months: row.months,
+    next_payment_date: row.next_payment_date,
+    rewards: {
+      buyer: { count: row.buyer_rewards, ticket_ids: row.buyer_tickets },
+      referrer: { count: row.referrer_rewards, ticket_ids: row.referrer_tickets },
+    },
+  };
+}
+
+function dashboardFor(campaign: StoreCampaign) {
+  const purchases = purchasesFor(campaign);
+  const now = Date.now();
+  const start = new Date(campaign.start_date).getTime();
+  const end = new Date(campaign.end_date).getTime();
+  const span = Math.max(0, end - start);
+  const totalDays = Math.max(1, Math.ceil(span / DAY_MS));
+  const elapsed = Math.min(Math.max(now - start, 0), span);
+  const daysRemaining = Math.max(0, Math.ceil((end - now) / DAY_MS));
+  const hasEnded = end < now;
+
+  const sold = purchases.reduce((sum, row) => sum + sqmOf(row), 0);
+  const target = campaign.total_sqm_target ?? null;
+  const remaining = target ? Math.max(0, target - sold) : null;
+  const daysLeft = Math.min(daysRemaining, totalDays);
+
+  const invalidated = rewards.filter((row) => row.campaign_id === campaign.id && !row.is_active).length;
+  const totalRewards = purchases.reduce((sum, row) => sum + row.buyer_rewards + row.referrer_rewards, 0);
+
+  const days = new Map<string, { date: string; purchases: number; sqm_sold: number; rewards: number }>();
+  for (let t = start; t <= Math.min(now, end); t += DAY_MS) {
+    const date = new Date(t).toISOString().slice(0, 10);
+    days.set(date, { date, purchases: 0, sqm_sold: 0, rewards: 0 });
+  }
+  for (const row of purchases) {
+    const day = days.get(row.purchased_at.slice(0, 10));
+    if (!day) continue;
+    day.purchases += 1;
+    day.sqm_sold += sqmOf(row);
+    day.rewards += row.buyer_rewards + row.referrer_rewards;
+  }
+
+  const rank = (role: 'buyer' | 'referrer') => {
+    const earners = new Map<string, { user_id: string; first_name: string; last_name: string; email: string; rewards: number; total_sqm: number }>();
+    for (const row of purchases) {
+      const person = role === 'buyer' ? row.buyer : row.referrer;
+      const count = role === 'buyer' ? row.buyer_rewards : row.referrer_rewards;
+      if (!person || count === 0) continue;
+      const [first_name, ...rest] = person.name.split(' ');
+      const current = earners.get(person.id) ?? {
+        user_id: person.id,
+        first_name,
+        last_name: rest.join(' '),
+        email: person.email,
         rewards: 0,
         total_sqm: 0,
       };
-      current.rewards += 1;
-      current.total_sqm += row.sqm_purchased;
-      earners.set(id, current);
+      current.rewards += count;
+      current.total_sqm += sqmOf(row);
+      earners.set(person.id, current);
     }
-    return [...earners.values()].sort((a, b) => b.rewards - a.rewards).slice(0, 5);
+    return [...earners.values()]
+      .sort((a, b) => b.rewards - a.rewards || b.total_sqm - a.total_sqm)
+      .slice(0, 10);
   };
+  const buyerRecipients = new Set(purchases.filter((row) => row.buyer_rewards > 0).map((row) => row.buyer.id));
+  const referrerRecipients = new Set(
+    purchases.filter((row) => row.referrer && row.referrer_rewards > 0).map((row) => row.referrer!.id)
+  );
 
-  const now = Date.now();
-  const end = new Date(campaign.end_date).getTime();
-  const target = campaign.total_sqm_target ?? null;
-  const totalSqm = campaign.sqm_sold ?? 0;
+  const rewardedRows = purchases.filter((row) => row.buyer_rewards + row.referrer_rewards > 0);
 
   return {
     period: {
       start_date: campaign.start_date,
       end_date: campaign.end_date,
-      days_remaining: Math.max(0, Math.ceil((end - now) / 86_400_000)),
-      has_ended: end < now,
+      total_days: totalDays,
+      days_elapsed: Math.min(totalDays, Math.floor(elapsed / DAY_MS)),
+      days_remaining: daysRemaining,
+      percent_elapsed: span > 0 ? elapsed / span : 1,
+      has_started: now >= start,
+      has_ended: hasEnded,
     },
     progress: {
-      total_sqm_sold: totalSqm,
+      total_sqm_sold: sold,
       total_sqm_target: target,
-      percent: target && target > 0 ? Math.min(1, totalSqm / target) : null,
+      percent: target && target > 0 ? Math.min(1, sold / target) : null,
+      sqm_remaining: remaining,
+      daily_sqm_required: remaining === null || hasEnded || daysLeft === 0 ? null : remaining / daysLeft,
     },
+    sales: {
+      purchases: purchases.length,
+      buyers: new Set(purchases.map((row) => row.buyer.id)).size,
+      sqm_sold: sold,
+    },
+    assets: groupByAsset(purchases)
+      .map((rows) => ({
+        asset_id: rows[0].asset_id,
+        asset_name: rows[0].asset_name,
+        purchases: rows.length,
+        sqm_sold: rows.reduce((sum, row) => sum + sqmOf(row), 0),
+        share: sold > 0 ? rows.reduce((sum, row) => sum + sqmOf(row), 0) / sold : 0,
+        rewards: rows.reduce((sum, row) => sum + row.buyer_rewards + row.referrer_rewards, 0),
+      }))
+      .sort((a, b) => b.sqm_sold - a.sqm_sold),
     participants: {
-      total_recipients: campaign.participant_count,
-      buyer_recipients: new Set(active.filter((row) => row.role === 'buyer').map((row) => row.recipient.email)).size,
-      referrer_recipients: new Set(
-        active.filter((row) => row.role === 'referrer').map((row) => row.recipient.email)
-      ).size,
+      total_recipients: new Set([...buyerRecipients, ...referrerRecipients]).size,
+      buyer_recipients: buyerRecipients.size,
+      referrer_recipients: referrerRecipients.size,
     },
     issuance: {
-      total_rewards: rows.length,
-      active_rewards: active.length,
-      invalidated_rewards: rows.length - active.length,
-      total_sqm: totalSqm,
-      purchases: new Set(active.map((row) => `${row.asset.name}-${row.sqm_purchased}`)).size,
+      total_rewards: totalRewards,
+      active_rewards: Math.max(0, totalRewards - invalidated),
+      invalidated_rewards: invalidated,
+      total_sqm: rewardedRows.reduce((sum, row) => sum + sqmOf(row), 0),
+      purchases: rewardedRows.length,
     },
-    timeline: [...byDate.entries()]
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, stats]) => ({ date, ...stats })),
+    timeline: [...days.values()],
     top_earners: {
       buyers: rank('buyer'),
       referrers: rank('referrer'),
     },
+  };
+}
+
+function revenueFor(campaign: StoreCampaign) {
+  const purchases = purchasesFor(campaign);
+  const totals = moneyOf(purchases);
+  return {
+    ...totals,
+    avg_price_per_sqm: totals.sqm_sold > 0 ? totals.value_sold / totals.sqm_sold : null,
+    collected_percent: totals.value_sold > 0 ? totals.amount_collected / totals.value_sold : null,
+    assets: groupByAsset(purchases)
+      .map((rows) => ({ asset_id: rows[0].asset_id, asset_name: rows[0].asset_name, ...moneyOf(rows) }))
+      .sort((a, b) => b.value_sold - a.value_sold),
   };
 }
 
@@ -516,7 +768,7 @@ function assertCheckpoints(checkpoints: StoreCampaign['checkpoints'] | undefined
 let createCounter = 0;
 
 function allowedTransition(from: CampaignStatus, to: CampaignStatus) {
-  if (to === 'completed') return from !== 'completed';
+  if (to === 'completed') return from === 'active' || from === 'paused';
   if (from === 'draft' && to === 'active') return true;
   if (from === 'active' && to === 'paused') return true;
   if (from === 'paused' && to === 'active') return true;
@@ -579,6 +831,16 @@ export const campaignEngineRoutes: MockRoutes = {
   'PATCH /admin/campaigns/:id': ({ params, body: raw }) => {
     const campaign = findCampaign(params.id);
     const dto = body<Partial<StoreCampaign>>(raw);
+    // Mirrors RAFFLE_PRIZES_NOT_APPLICABLE: a hamper campaign has no draw.
+    const nextType = dto.reward_type ?? campaign.reward_type;
+    const nextPrizes = dto.raffle_prizes ?? campaign.raffle_prizes ?? [];
+    if (nextType === 'hamper' && nextPrizes.length > 0) {
+      throw new MockHttpError(
+        400,
+        'Only ticket campaigns have a raffle draw to put prizes in',
+        'RAFFLE_PRIZES_NOT_APPLICABLE'
+      );
+    }
     if (campaign.status === 'draft') {
       if (dto.checkpoints) assertCheckpoints(dto.checkpoints);
       Object.assign(campaign, dto, { updatedAt: iso(0) });
@@ -595,6 +857,8 @@ export const campaignEngineRoutes: MockRoutes = {
       if (dto.leaderboard_masking_enabled !== undefined) {
         campaign.leaderboard_masking_enabled = dto.leaderboard_masking_enabled;
       }
+      // Editable while live, unlike checkpoints — MUTABLE_WHEN_LIVE on the backend.
+      if (dto.raffle_prizes !== undefined) campaign.raffle_prizes = dto.raffle_prizes;
       campaign.updatedAt = iso(0);
     }
     return toApiCampaign(campaign);
@@ -613,6 +877,22 @@ export const campaignEngineRoutes: MockRoutes = {
   },
 
   'GET /admin/campaigns/:id/dashboard': ({ params }) => dashboardFor(findCampaign(params.id)),
+
+  'GET /admin/campaigns/:id/revenue': ({ params }) => revenueFor(findCampaign(params.id)),
+
+  'GET /admin/campaigns/:id/purchases': ({ params, query }) => {
+    const search = typeof query.search === 'string' ? query.search.toLowerCase() : '';
+    const assetId = typeof query.asset_id === 'string' ? query.asset_id : '';
+    const rows = purchasesFor(findCampaign(params.id)).filter((row) => {
+      if (assetId && row.asset_id !== assetId) return false;
+      if (!search) return true;
+      return [row.buyer.name, row.buyer.email, row.referrer?.name ?? '', row.asset_name]
+        .join(' ')
+        .toLowerCase()
+        .includes(search);
+    });
+    return paged(rows.map(toApiPurchase), query, 20);
+  },
 
   'GET /admin/campaigns/:id/rewards': ({ params, query }) => {
     findCampaign(params.id);

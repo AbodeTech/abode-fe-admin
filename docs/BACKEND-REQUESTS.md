@@ -2605,3 +2605,52 @@ Fully mock-backed (`lib/mocks/routes/land-configuration.ts`, plus additions
 to `lib/mocks/routes/assets.ts`). Flipping `NEXT_PUBLIC_USE_MOCKS=false`
 404s every hook this feature uses — there is no live fallback, by design,
 until the above ships.
+
+## 33. Financial Officer tracking — greenfield, plus data gaps that block it
+
+**Priority: medium, but PRE-1 is urgent.** The FE (`/financial-officers`,
+`features/financial-officers/`) is built and runs entirely against mocks
+(`lib/mocks/routes/financial-officers.ts`). With mocks off, every hook 404s.
+
+**The BE design is written: `abode-be-v2/docs/FINANCIAL-OFFICER-DESIGN.md`**
+(v1.0, 2026-09-30). It carries the agreed rules (FO-1 … FO-16), the changes
+needed in `acquisition` / `referral` / `wallet` (PRE-1 … PRE-4), schemas,
+endpoints, the book cron and sizing (~14 engineering days). The FE schemas
+already follow its §6 contract. HTML design:
+`docs/mock-up/financial-officer-performance.html`.
+
+### Agreed rules, in short
+
+- **Role**: promoted by a super admin, like CS Managers.
+- **Approval speed, per officer**: average weekday hours (Mon–Fri,
+  Africa/Lagos; public holidays count) from submission to the officer's
+  approve/decline, split asset vs Associate Pro. Transfer payments only.
+  Declines count. 24h target. The queue stays shared.
+- **Score**: asset speed 25 + Pro speed 25 + recovery 50. No decisions in the
+  month scores 0 for speed.
+- **Recovery book** (flex, full ownership, commercial alike): a plan enters
+  when it is **in its final month and owes more than one installment**, or
+  **past its final due date with any balance**. Falling behind mid-tenor
+  doesn't enter. Auto-assigned to the officer with the fewest open plans.
+  Leaves when cleared, suspended, closed or deleted.
+- **Debt recovered**: land payments settled while the plan is in the book, up
+  to suspension, credited to whoever held it when the money landed.
+  Development levy and `developer_plot` plans are excluded.
+
+### What blocks real data
+
+- **PRE-1 (urgent)**: asset transfer approvals record no decider and no
+  decision time, and write no audit row. There is no history to rebuild, so
+  the asset metric starts the day this ships. Includes a double-approval race
+  fix.
+- **PRE-2**: no `settled_at` on payments; `createdAt` is submission time.
+- **PRE-4**: customer-bought flex plans have no `tenor_end_date`; the final
+  due date is computed three different ways today.
+
+### Still open (design doc §10)
+
+1. Flex plans can be suspended (4 months overdue) before they ever reach
+   their final month, so no officer works them. Rec: also enter flex plans one
+   month before suspension.
+2. Do admin balance adjustments count as recovery? Rec: no in v1.
+3. Should officers see the team view? Rec: no in v1.

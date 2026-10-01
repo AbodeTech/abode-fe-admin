@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { ELIGIBLE_ASSET_TYPES, REWARD_TYPES } from './campaign.schema';
+import { ELIGIBLE_ASSET_TYPES, RAFFLE_PRIZE_KINDS, REWARD_TYPES } from './campaign.schema';
 
 export const ELIGIBLE_STATUSES = [
   'guest',
@@ -27,6 +27,14 @@ const CheckpointInputSchema = z.object({
   prize_media_url: z.string().max(500).optional().or(z.literal('')),
 });
 
+/** One prize in the end-of-campaign draw. Order is display order, top prize first. */
+export const RafflePrizeInputSchema = z.object({
+  label: z.string().trim().min(1, 'Describe the prize').max(120),
+  kind: z.enum(RAFFLE_PRIZE_KINDS),
+});
+
+export type RafflePrizeInput = z.infer<typeof RafflePrizeInputSchema>;
+
 export const CreateCampaignSchema = z
   .object({
     name: z.string().min(1, 'Name is required').max(200),
@@ -47,6 +55,7 @@ export const CreateCampaignSchema = z
     eligible_asset_types: z.array(z.enum(ELIGIBLE_ASSET_TYPES)),
     total_sqm_target: z.union([z.number().int().nonnegative(), z.null()]),
     checkpoints: z.array(CheckpointInputSchema).max(20),
+    raffle_prizes: z.array(RafflePrizeInputSchema).max(20),
     leaderboard_masking_enabled: z.boolean(),
   })
   .refine((data) => data.recipient_buyer || data.recipient_referrer, {
@@ -95,6 +104,7 @@ export const LimitedCampaignEditSchema = z.object({
   total_sqm_target: z.union([z.number().int().nonnegative(), z.null()]),
   leaderboard_masking_enabled: z.boolean(),
   checkpoints: z.array(CheckpointInputSchema).optional(),
+  raffle_prizes: z.array(RafflePrizeInputSchema).max(20).optional(),
 });
 
 export type LimitedCampaignEditDto = z.infer<typeof LimitedCampaignEditSchema>;
@@ -111,6 +121,7 @@ export const STEP_FIELDS: Record<
     'recipient_referrer',
     'ticket_id_prefix',
     'checkpoints',
+    'raffle_prizes',
     'leaderboard_masking_enabled',
   ],
   eligibility: ['buyer_eligible_statuses', 'referrer_eligible_statuses', 'eligible_asset_types'],
@@ -137,5 +148,6 @@ export const CREATE_CAMPAIGN_DEFAULTS: CreateCampaignDto = {
   eligible_asset_types: [],
   total_sqm_target: null,
   checkpoints: [],
+  raffle_prizes: [],
   leaderboard_masking_enabled: true,
 };

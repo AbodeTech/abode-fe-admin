@@ -47,7 +47,7 @@ import {
   type DeclineUpgradeValues,
   type Upgrade,
 } from "../schemas/upgrade.schema";
-import { useApproveUpgrade, useDeclineUpgrade } from "../hooks/use-upgrade-review";
+import { isUpgradeNoLongerPending, useApproveUpgrade, useDeclineUpgrade } from "../hooks/use-upgrade-review";
 
 function Summary({ upgrade }: { upgrade: Upgrade }) {
   return (
@@ -86,7 +86,11 @@ export function ApproveUpgradeDialog({
         toast.success("Upgrade approved");
         onOpenChange(false);
       },
-      onError: (error) => toast.error(error.message || "Failed to approve upgrade"),
+      onError: (error) => {
+        toast.error(error.message || "Failed to approve upgrade");
+        // Someone else decided it first; nothing left to decide here.
+        if (isUpgradeNoLongerPending(error)) onOpenChange(false);
+      },
     });
   };
 
@@ -174,7 +178,10 @@ export function DeclineUpgradeDialog({
           toast.success("Upgrade declined");
           onOpenChange(false);
         },
-        onError: (error) => toast.error(error.message || "Failed to decline upgrade"),
+        onError: (error) => {
+          toast.error(error.message || "Failed to decline upgrade");
+          if (isUpgradeNoLongerPending(error)) onOpenChange(false);
+        },
       }
     );
   }

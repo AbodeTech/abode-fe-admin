@@ -26,6 +26,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 
 import { TOPOGRAPHIES, VISIBILITIES, VISIBILITY_LABELS } from "../../schemas/asset.schema";
+import { NIGERIAN_STATES, stateLabel } from "../../lib/nigerian-states";
 import type { AssetDetail } from "../../schemas/asset-detail.schema";
 import { NumberInput } from "./NumberInput";
 import {
@@ -71,10 +72,9 @@ import { GalleryUploadField, SingleUploadField } from "../create/UploadFields";
 function useReseedOnOpen(sectionId: string, seed: () => void) {
   const editing = useAssetFormStore((state) => state.editingSections[sectionId] ?? false);
   const seedRef = useRef(seed);
-  // Refs can't be written during render — update it in its own effect (runs
-  // after every render, commits before the effect below ever needs it) so
-  // `seedRef.current` is always the latest closure without itself being a
-  // reason for that effect to re-run.
+  // Written in an effect, not during render — React's compiler rules forbid
+  // touching a ref while rendering, and this one only has to be current by the
+  // time the `editing` effect below reads it.
   useEffect(() => {
     seedRef.current = seed;
   });
@@ -113,6 +113,39 @@ export function AssetDetailsFields({ form }: { form: UseFormReturn<AssetDetailsF
                 <FormControl>
                   <Input {...field} value={field.value ?? ""} />
                 </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <FormField
+            control={form.control}
+            name="state"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-xs">State</FormLabel>
+                <Select value={field.value ?? ""} onValueChange={field.onChange}>
+                  <FormControl>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Not set" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {NIGERIAN_STATES.map((state) => (
+                      <SelectItem key={state} value={state}>
+                        {stateLabel(state)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {/* Worth saying plainly: this field is what a legal document
+                    reads, not just a filter. */}
+                <p className="text-[11px] text-gray-500">
+                  Named on the Deed of Assignment as the state whose Governor&apos;s consent it
+                  is submitted for. Left unset, the deed prints a blank there.
+                </p>
                 <FormMessage />
               </FormItem>
             )}

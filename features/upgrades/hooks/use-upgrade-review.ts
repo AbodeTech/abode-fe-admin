@@ -2,10 +2,14 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { apiPatch } from '@/lib/api-client';
+import { ApiClientError, apiPatch } from '@/lib/api-client';
 
 import { UpgradeSchema } from '../schemas/upgrade.schema';
 import { upgradeKeys } from './query-keys';
+
+/** The upgrade was already decided (by someone else, or it expired); the list we're showing is stale. */
+export const isUpgradeNoLongerPending = (error: unknown) =>
+  error instanceof ApiClientError && error.statusCode === 409;
 
 /**
  * PATCH /admin/referrals/upgrades/:id/approve.
@@ -15,7 +19,8 @@ import { upgradeKeys } from './query-keys';
  * the referrer. Commission is skipped when the upgrade used a coupon.
  *
  * Only `pending` upgrades can be approved; anything else returns
- * `UPGRADE_NOT_PENDING`.
+ * `UPGRADE_NOT_PENDING` (409), including when another admin approved or
+ * declined it a moment earlier.
  */
 export const useApproveUpgrade = () => {
   const queryClient = useQueryClient();
@@ -25,6 +30,9 @@ export const useApproveUpgrade = () => {
       apiPatch(`/admin/referrals/upgrades/${upgradeId}/approve`, {}, UpgradeSchema),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: upgradeKeys.lists() });
+    },
+    onError: (error) => {
+      if (isUpgradeNoLongerPending(error)) queryClient.invalidateQueries({ queryKey: upgradeKeys.lists() });
     },
   });
 };
@@ -48,6 +56,9 @@ export const useDeclineUpgrade = () => {
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: upgradeKeys.lists() });
+    },
+    onError: (error) => {
+      if (isUpgradeNoLongerPending(error)) queryClient.invalidateQueries({ queryKey: upgradeKeys.lists() });
     },
   });
 };

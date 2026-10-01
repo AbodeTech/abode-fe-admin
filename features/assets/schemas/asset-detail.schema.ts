@@ -138,21 +138,29 @@ export function offerConfiguredSqm(offer: Pick<Offer, 'sizes'>): number {
 }
 
 /**
- * Same asset fields as the list row, but `offers` is the full nested tree
- * rather than a counts summary — so this is its own schema rather than an
- * extension of `AssetSchema`.
+ * Mirrors the backend's `PitchPack` subdocument — a single PDF per asset,
+ * with its own endpoint family (`PUT`/`DELETE /admin/assets/:id/pitch-pack`)
+ * rather than living in `documents`. `null` means no pitch pack uploaded.
  */
-/** The estate's pitch pack — set and cleared through PUT / DELETE .../pitch-pack, never the asset PATCH. */
 export const PitchPackSchema = z.object({
   url: z.string(),
   size_bytes: z.number(),
   uploaded_at: z.string(),
 });
 
+export type PitchPack = z.infer<typeof PitchPackSchema>;
+
+/**
+ * Same asset fields as the list row, but `offers` is the full nested tree
+ * rather than a counts summary — so this is its own schema rather than an
+ * extension of `AssetSchema`.
+ */
 export const AssetDetailSchema = z.object({
   _id: z.string(),
   name: z.string(),
   asset_location: z.string().nullable().optional(),
+  /** The estate's state. Null on assets that predate the field. */
+  state: z.string().nullable().optional(),
   google_map: z.string().nullable().optional(),
   description: z.string().nullable().optional(),
 
@@ -164,6 +172,7 @@ export const AssetDetailSchema = z.object({
   hero_image: z.string().nullable().optional(),
   pictures: z.array(z.string()).default([]),
   documents: AssetDocumentsSchema.default({}),
+  pitch_pack: PitchPackSchema.nullable().optional(),
   asset_history: z.array(AssetHistoryEntrySchema).default([]),
 
   sales_cap: z.number(),
@@ -182,9 +191,6 @@ export const AssetDetailSchema = z.object({
   deleted_at: z.string().nullable().optional(),
 
   offers: z.array(OfferSchema).default([]),
-
-  /** Absent on an estate that has never had one; `null` after it is removed. */
-  pitch_pack: PitchPackSchema.nullable().optional(),
 
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),

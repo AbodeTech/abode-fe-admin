@@ -160,7 +160,6 @@ export {
   useAssignEventOwner,
   useRemoveEventOwner,
 } from './hooks/use-field-operations';
-export { useSetPitchPack, useRemovePitchPack } from './hooks/use-pitch-pack';
 export {
   FENCING_SIDES,
   FENCING_SIDE_LABELS,
@@ -186,6 +185,7 @@ export type { SqmInventory, SqmPosition } from './schemas/sqm-inventory.schema';
 export type { SqmReconciliation, SqmActivationResult } from './schemas/sqm-reconciliation.schema';
 
 export { useAssetDetail, useUpdateAsset } from './hooks/use-asset-detail';
+export { useSetPitchPack, useRemovePitchPack } from './hooks/use-pitch-pack';
 export { useAssetBlocks, useCreateBlock, useUpdateBlock, useDeleteBlock } from './hooks/use-blocks';
 export {
   useBlockPlots,
@@ -201,8 +201,8 @@ export {
   useUpdatePlan,
   useDeletePlan,
 } from './hooks/use-offer-mutations';
+export type { AssetDetail, Offer, Size, Plan, PitchPack } from './schemas/asset-detail.schema';
 export { totalSellingPrice } from './schemas/asset-detail.schema';
-export type { AssetDetail, Offer, Size, Plan } from './schemas/asset-detail.schema';
 
 // ── selling charges — the real, asset-wide replacement for per-plan price safety, on the Offers tab ──
 export { SellingChargesPanel } from './components/detail/SellingChargesPanel';

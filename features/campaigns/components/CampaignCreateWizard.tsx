@@ -83,6 +83,7 @@ export default function CampaignCreateWizard() {
         ...checkpoint,
         prize_media_url: checkpoint.prize_media_url ?? "",
       })),
+      raffle_prizes: (draft.raffle_prizes ?? []).map(({ label, kind }) => ({ label, kind })),
       leaderboard_masking_enabled: draft.leaderboard_masking_enabled ?? true,
     });
   }, [draft, form]);

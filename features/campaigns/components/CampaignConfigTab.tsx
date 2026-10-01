@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 
-import type { Campaign } from "../schemas/campaign.schema";
+import { RAFFLE_PRIZE_KIND_LABELS, type Campaign } from "../schemas/campaign.schema";
 import { formatPeriod } from "../utils/format-period";
 import { rewardTypeClassName } from "../utils/status-color";
 
@@ -45,7 +45,7 @@ export function CampaignConfigTab({ campaign }: { campaign: Campaign }) {
         <Row
           label="Target"
           value={
-            campaign.total_sqm_target != null ? `${campaign.total_sqm_target.toLocaleString()} sqm` : "None"
+            campaign.total_sqm_target ? `${campaign.total_sqm_target.toLocaleString()} sqm` : "None"
           }
         />
       </section>
@@ -98,6 +98,30 @@ export function CampaignConfigTab({ campaign }: { campaign: Campaign }) {
           </ul>
         )}
       </section>
+      {campaign.reward_type === "ticket" ? (
+        <section className="space-y-3">
+          <h2 className="font-semibold">Raffle prizes</h2>
+          {(campaign.raffle_prizes ?? []).length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              None announced. Realtors see no prize list until one is added.
+            </p>
+          ) : (
+            <ol className="space-y-2">
+              {(campaign.raffle_prizes ?? []).map((prize, index) => (
+                <li
+                  key={`${index}-${prize.label}`}
+                  className="flex items-center justify-between gap-3 rounded-md border p-3"
+                >
+                  <span className="font-medium">{prize.label}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {RAFFLE_PRIZE_KIND_LABELS[prize.kind]}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          )}
+        </section>
+      ) : null}
       <section className="space-y-3">
         <h2 className="font-semibold">Leaderboard settings</h2>
         <Row

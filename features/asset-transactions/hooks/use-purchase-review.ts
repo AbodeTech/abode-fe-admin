@@ -3,7 +3,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
 
-import { apiPost } from '@/lib/api-client';
+import { ApiClientError, apiPost } from '@/lib/api-client';
 
 import { purchaseKeys } from './query-keys';
 
@@ -17,7 +17,14 @@ import { purchaseKeys } from './query-keys';
  * same motion. Flex returns `{ payment_plan_id }`; FO returns `{ plan_id }`.
  * Decline marks the transaction failed and, on an initial purchase, releases
  * the units it was holding. Decline body is `{ reason }` (min 20 chars).
+ *
+ * Both return 409 `TRANSACTION_ALREADY_DECIDED` when another admin approved or
+ * declined the same transaction a moment earlier (FINANCIAL-OFFICER PRE-1).
  */
+
+/** Someone else decided this transaction first; the list we're showing is stale. */
+export const isAlreadyDecided = (error: unknown) =>
+  error instanceof ApiClientError && error.statusCode === 409;
 const ApproveResultSchema = z.looseObject({
   payment_plan_id: z.string().optional(),
   plan_id: z.string().optional(),
@@ -34,6 +41,9 @@ function useInvalidatingMutation<TVariables, TData>(
     mutationFn,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: purchaseKeys.all });
+    },
+    onError: (error) => {
+      if (isAlreadyDecided(error)) queryClient.invalidateQueries({ queryKey: purchaseKeys.all });
     },
   });
 }
