@@ -16,7 +16,7 @@ import {
   useVerifySubmission,
 } from "../hooks/use-field-submissions";
 import { formatDate, formatDateTime } from "../lib/format";
-import { proposedSides, sidesText, submissionFacts, workNotes } from "../lib/payload";
+import { proposedSides, receiptsOf, sidesText, submissionFacts, workNotes } from "../lib/payload";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -230,7 +230,7 @@ function ReviewBody({
 
       <div className="grid gap-5 md:grid-cols-2">
         <div className="space-y-4">
-          <EvidenceGallery evidence={sub.evidence} receiptUrl={sub.receipt_url} />
+          <EvidenceGallery evidence={sub.evidence} receipts={receiptsOf(sub)} />
           {notes.map((n, i) => (
             <div key={i}>
               <p className="text-xs font-medium text-muted-foreground">Note from the worker</p>

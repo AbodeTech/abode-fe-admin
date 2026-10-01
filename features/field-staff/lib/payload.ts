@@ -1,5 +1,21 @@
-import type { FieldSubmission } from '../schemas/submission.schema';
+import type { FieldSubmission, SubmissionReceipt } from '../schemas/submission.schema';
 import { formatNaira, formatQuantity } from './format';
+
+/**
+ * Every receipt on a submission, once each: the `receipts` array, then the
+ * legacy `receipt_url` and any evidence tagged as a receipt (older records
+ * stored them there). Duplicates by URL are dropped.
+ */
+export function receiptsOf(sub: Pick<FieldSubmission, 'receipts' | 'receipt_url' | 'evidence'>): SubmissionReceipt[] {
+  const bare = (url: string): SubmissionReceipt => ({ url, caption: null, reference: null, amount: null });
+  const all = [
+    ...sub.receipts,
+    ...(sub.receipt_url ? [bare(sub.receipt_url)] : []),
+    ...sub.evidence.filter((e) => e.kind === 'receipt').map((e) => ({ ...bare(e.url), caption: e.caption })),
+  ];
+  const seen = new Set<string>();
+  return all.filter((r) => !seen.has(r.url) && !!seen.add(r.url));
+}
 
 /* ============================================================
  * Reading a submission's `payload`, which differs per metric
@@ -110,6 +126,14 @@ export function submissionFacts(sub: FieldSubmission, plotLabels: string[]): Fac
       { label: 'Vendor', value: sub.vendor ?? '—' },
       { label: 'Payment reference', value: sub.payment_reference ?? '—' }
     );
+    const count = receiptsOf(sub).length;
+    facts.push({
+      label: 'Receipts',
+      value:
+        count === 0
+          ? 'None attached'
+          : `${count}${sub.receipts_total !== null ? ` · ${formatNaira(sub.receipts_total)} itemised` : ''}`,
+    });
   }
   return facts;
 }
