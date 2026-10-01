@@ -3,12 +3,19 @@ import { z } from 'zod';
 import { OfferTypeSchema } from './asset.schema';
 
 /* ============================================================
- * Selling charges — GET/PUT /admin/assets/:assetId/selling-charges(/history),
- * confirmed field-for-field against `SellingChargeController`/
- * `SellingChargeService`/`asset-selling-charge.schema.ts` on abode-be-v2
- * staging (PR #82). This is what replaced the old, never-wired plan-price
- * design: an asset-wide, versioned list of buyer-facing charges rather than
- * a per-plan land price. Gated `view_asset_costs`/`manage_asset_costs`.
+ * Selling charges — GET/PUT /admin/assets/:assetId/selling-charges(/history).
+ * An asset-wide, versioned list of buyer-facing charges. Gated
+ * `view_asset_costs`/`manage_asset_costs`.
+ *
+ * Transcribed from `SellingChargeService`/`SetSellingChargesDto` on
+ * abode-be-v2 staging as of commit 0f042ef (28 Sep 2026). That commit changed
+ * the contract this file was first written against:
+ *   - GET returns `{as_of, in_force, scheduled, latest_version}` rather than
+ *     one bare version — a version can now be approved for a future date, so
+ *     "what buyers pay today" and "what was saved last" are different things;
+ *   - a version row carries `is_latest` (it used to be `is_current`);
+ *   - PUT requires `expected_version` and refuses a stale save with 409
+ *     `SELLING_CHARGE_VERSION_CONFLICT`.
  * ============================================================ */
 
 export const SELLING_CHARGE_TYPES = [
@@ -51,50 +58,68 @@ export const SellingChargeLineSchema = z.object({
 
 export type SellingChargeLine = z.infer<typeof SellingChargeLineSchema>;
 
-const SellingChargesShapeSchema = z.object({
+/** One approved version — the shape of `in_force`, each `scheduled` row and each history row. */
+export const SellingChargeVersionSchema = z.object({
   version: z.number(),
   charges: z.array(SellingChargeLineSchema),
   effective_date: z.string(),
+  /** The most recently SAVED version — which is not the one in force when a later one is still scheduled. */
+  is_latest: z.boolean(),
   reason: z.string(),
   approved_by: z.string(),
+  approved_at: z.string().nullable(),
 });
 
+export type SellingChargeVersion = z.infer<typeof SellingChargeVersionSchema>;
+
 /**
- * GET /admin/assets/:assetId/selling-charges. A real backend bug in
- * `SellingChargeService.current()`, confirmed reading `transform.interceptor.ts`
- * alongside it: when no charges have ever been approved, the service returns
- * `{data: null, message: '...'}`, and the interceptor's own
- * `data?.data ?? data` treats that explicit inner `null` as falsy and falls
- * back to the WHOLE `{data, message}` object — so the wire response's outer
- * `data` field is that nested object, never a plain `null`, even though the
- * service's intent was clearly "no charges yet". This schema accepts both the
- * real shape and a plain `null` and normalises either to `null`; the bug
- * itself belongs on the backend team's plate, not papered over silently here.
+ * GET /admin/assets/:assetId/selling-charges.
+ *
+ *  - `in_force`        the version buyers are charged under right now: the
+ *                      newest one whose `effective_date` has arrived. `null`
+ *                      until one has.
+ *  - `scheduled`       versions approved for a future date, soonest first.
+ *  - `latest_version`  the highest version number saved (0 when none). This
+ *                      is what the next save must send as `expected_version`.
  */
-export const SellingChargesSchema = z
-  .union([SellingChargesShapeSchema, z.object({ data: z.null(), message: z.string().optional() }), z.null()])
-  .transform((value) => (value && 'version' in value ? value : null));
+export const SellingChargesSchema = z.object({
+  as_of: z.string(),
+  in_force: SellingChargeVersionSchema.nullable(),
+  scheduled: z.array(SellingChargeVersionSchema).default([]),
+  latest_version: z.number(),
+});
 
 export type SellingCharges = z.infer<typeof SellingChargesSchema>;
 
-/** GET .../selling-charges/history — always an array, oldest first. */
-export const SellingChargesHistoryEntrySchema = SellingChargesShapeSchema.extend({
-  is_current: z.boolean(),
-  approved_at: z.string().nullable(),
-});
+/** GET .../selling-charges/history — every version ever approved, oldest first. */
+export const SellingChargesHistoryEntrySchema = SellingChargeVersionSchema;
 
 export type SellingChargesHistoryEntry = z.infer<typeof SellingChargesHistoryEntrySchema>;
 
 /**
- * PUT's own response shape — narrower than `current()`'s: no `reason` or
- * `approved_by` echoed back (confirmed from `setCharges()`'s return). Refetch
- * `current()` after saving rather than trying to read those two fields off
- * the mutation result.
+ * The newest version saved — the last scheduled one if any, otherwise the one
+ * in force. This is what the editor starts from, so an edit builds on the
+ * latest approved list rather than on one a scheduled version is about to
+ * replace.
  */
-export const SetSellingChargesResultSchema = SellingChargesShapeSchema.pick({
-  version: true,
-  charges: true,
-  effective_date: true,
+export function latestSellingChargeVersion(charges: SellingCharges | null | undefined): SellingChargeVersion | null {
+  if (!charges) return null;
+  const all = [...charges.scheduled, ...(charges.in_force ? [charges.in_force] : [])];
+  return all.reduce<SellingChargeVersion | null>(
+    (latest, version) => (!latest || version.version > latest.version ? version : latest),
+    null
+  );
+}
+
+/**
+ * PUT's response — just the new version, plus `starts_in_future` when its
+ * effective date hasn't arrived (it was scheduled, not put in force).
+ */
+export const SetSellingChargesResultSchema = z.object({
+  version: z.number(),
+  charges: z.array(SellingChargeLineSchema),
+  effective_date: z.string(),
+  starts_in_future: z.boolean().default(false),
 });
 
 export type SetSellingChargesResult = z.infer<typeof SetSellingChargesResultSchema>;
@@ -115,13 +140,13 @@ export type SellingChargeLineFormValues = z.infer<typeof sellingChargeLineFormSc
 
 /**
  * PUT /admin/assets/:assetId/selling-charges — a complete replacement,
- * approved as a new version from `effective_date`. No `expected_version`
- * field: the real PUT has no optimistic-concurrency guard at all (last write
- * always wins) — see this schema's own note wherever it's edited, and the
- * gap this leaves has been flagged to the backend team rather than invented
- * client-side.
+ * approved as a new version from `effective_date` (a future date schedules
+ * it). `expected_version` is the `latest_version` the editor loaded: if
+ * someone else has saved since, the backend answers 409 instead of
+ * overwriting them.
  */
 export const setSellingChargesFormSchema = z.object({
+  expected_version: z.number(),
   charges: z.array(sellingChargeLineFormSchema).min(1, 'Add at least one charge'),
   effective_date: z.string().min(1, 'Choose an effective date'),
   reason: z.string().trim().min(1, 'Say why this is changing').max(500),

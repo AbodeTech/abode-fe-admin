@@ -38,6 +38,9 @@ function useBlockMutation<TVariables, TData>(
     mutationFn,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: assetKeys.blocks(assetId) });
+      // Deleting a block removes its plots from the asset-wide figures too.
+      queryClient.invalidateQueries({ queryKey: assetKeys.plotInventory(assetId) });
+      queryClient.invalidateQueries({ queryKey: assetKeys.plotSummary(assetId) });
     },
   });
 }

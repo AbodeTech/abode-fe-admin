@@ -21,11 +21,11 @@ test.describe.serial('Land Configuration', () => {
     await page.close();
   });
 
-  test('shows the seeded land account and roads & services breakdown', async () => {
+  test('shows the seeded land account', async () => {
     await expect(page.getByRole('heading', { name: 'Land account' })).toBeVisible();
-    await expect(page.getByText('350k SQM').first()).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Roads & services' })).toBeVisible();
-    await expect(page.getByText('Internal roads').first()).toBeVisible();
+    await expect(page.getByText('350,000 sqm').first()).toBeVisible();
+    // The named roads & services rows live in the editor drawer now, not on the Overview itself.
+    await expect(page.getByText('Roads & services').first()).toBeVisible();
   });
 
   test('edits a product pool and saves — proves the real `products` request key round-trips', async () => {
@@ -34,10 +34,8 @@ test.describe.serial('Land Configuration', () => {
     const sheet = page.getByRole('dialog');
     await expect(sheet.getByRole('heading', { name: 'Land account' })).toBeVisible();
 
-    const commercialRow = sheet
-      .getByText('Commercial', { exact: true })
-      .locator('xpath=ancestor::div[contains(@class,"rounded-lg")][1]');
-    await commercialRow.getByLabel('Assigned sqm', { exact: true }).fill('50000');
+    await expect(sheet.getByText('Internal roads').first()).toBeVisible();
+    await sheet.getByLabel('Commercial — assigned sqm', { exact: true }).fill('50000');
 
     await sheet.getByLabel('Reason for this change', { exact: true }).fill('E2E test edit');
     await sheet.getByRole('button', { name: 'Save changes' }).click();
@@ -48,7 +46,7 @@ test.describe.serial('Land Configuration', () => {
     await waitForBodyUnlocked(page);
 
     // 126,000 (flex) + 95,000 (full-ownership) + 50,000 (commercial, just raised) = 271,000
-    await expect(page.getByText('271k SQM').first()).toBeVisible();
+    await expect(page.getByText('271,000 sqm').first()).toBeVisible();
   });
 
   test('history shows every version and expands a row to fetch its diff on demand', async () => {

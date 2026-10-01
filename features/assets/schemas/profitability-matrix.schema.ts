@@ -39,3 +39,36 @@ export const ProfitabilityMatrixSchema = z.object({
   warnings: z.array(z.string()).default([]),
 });
 export type ProfitabilityMatrix = z.infer<typeof ProfitabilityMatrixSchema>;
+
+/* -------------------- rows for the screen -------------------- */
+
+export type PlanProfitRow = ProfitabilityMatrixRow & {
+  /** `null` when the row's size is no longer on the asset (or the sale has no size). */
+  size_sqm: number | null;
+};
+
+const OFFER_ORDER = OfferTypeSchema.options as readonly string[];
+
+/**
+ * The matrix rows, labelled and ordered for display: by product, then size,
+ * then tenor (outright first).
+ *
+ * The backend sends a size's id, not its area, so the area is looked up in
+ * the asset's own offers. A row whose size cannot be found keeps `null`.
+ * Nothing else is derived: every figure is the backend's.
+ */
+export function planProfitRows(
+  rows: ProfitabilityMatrixRow[],
+  offers: { offer_type: string; sizes: { _id: string; size_sqm: number }[] }[]
+): PlanProfitRow[] {
+  const sqmBySize = new Map(offers.flatMap((offer) => offer.sizes.map((size) => [size._id, size.size_sqm] as const)));
+
+  return rows
+    .map((row) => ({ ...row, size_sqm: row.size_id ? (sqmBySize.get(row.size_id) ?? null) : null }))
+    .sort(
+      (a, b) =>
+        OFFER_ORDER.indexOf(a.offer_type) - OFFER_ORDER.indexOf(b.offer_type) ||
+        (a.size_sqm ?? Number.POSITIVE_INFINITY) - (b.size_sqm ?? Number.POSITIVE_INFINITY) ||
+        (a.tenor_months ?? 0) - (b.tenor_months ?? 0)
+    );
+}

@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { Banknote, ChartPie, TriangleAlert, type LucideIcon } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,6 +15,9 @@ import { useEstateProfitability } from "../../hooks/use-estate-profitability";
 import type { AnalyticsFilter } from "../../schemas/asset-analytics.schema";
 import { AssetHealthBar } from "./AssetHealthBar";
 import { PaymentPlanMatrix } from "./PaymentPlanMatrix";
+import { PlanProfitabilityTable } from "./PlanProfitabilityTable";
+import { ProductProfitabilityComparison } from "./ProductProfitabilityComparison";
+import { ProfitabilityCalculationDrawer } from "./ProfitabilityCalculationDrawer";
 
 function DateRange({
   startDate,
@@ -44,9 +49,31 @@ function DateRange({
   );
 }
 
+function SectionTitle({ icon: Icon, children }: { icon: LucideIcon; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-2 pt-2">
+      <Icon className="h-5 w-5 text-muted-foreground" aria-hidden />
+      <h3 className="text-lg font-semibold tracking-tight">{children}</h3>
+    </div>
+  );
+}
+
+/**
+ * The Performance tab, in the asset-detail design's order:
+ *
+ *   date filter → summary / defaults / customer health → payment plan
+ *   performance → profitability by product
+ *
+ * Two endpoints feed it. Everything down to the plan table is
+ * GET /admin/assets/:id/analytics, which the date filter narrows (customer
+ * counts stay all-time — the backend's rule, repeated in the footnote). The
+ * profitability section is GET .../profitability, always current: the
+ * backend has no date range for it, so the filter above does not move it.
+ */
 export function AssetPerformance({ assetId }: { assetId: string }) {
   const [filter, setFilter] = useState<AnalyticsFilter>("all_time");
   const [range, setRange] = useState({ startDate: "", endDate: "" });
+  const [calcOpen, setCalcOpen] = useState(false);
 
   const permissions = useAdminPermissions();
   const canView = permissions.has("view_asset_analytics");
@@ -58,9 +85,6 @@ export function AssetPerformance({ assetId }: { assetId: string }) {
     endDate: range.endDate,
     enabled: canView,
   });
-  // The real backend has no accounting-basis toggle — one recognised number,
-  // always current (no `as_of`) — the first place this tab's data crosses
-  // with the Costs & Profitability tab's.
   const { data: profitability } = useEstateProfitability(assetId, undefined, {
     enabled: canViewProfitability,
   });
@@ -84,29 +108,45 @@ export function AssetPerformance({ assetId }: { assetId: string }) {
   const rangeIncomplete =
     filter === "custom" && !(range.startDate && range.endDate);
 
+  // The backend's own list of what makes the profit figure incomplete.
+  const profitWarnings = profitability?.warnings ?? [];
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {(["all_time", "custom"] as const).map((option) => (
             <button
               key={option}
               type="button"
               onClick={() => setFilter(option)}
+              aria-pressed={filter === option}
               className={cn(
-                "rounded-full border px-3 py-1.5 text-sm",
+                "rounded-full border px-3 py-1.5 text-xs",
                 filter === option
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-background text-foreground hover:bg-muted"
+                  ? "border-foreground bg-foreground text-background"
+                  : "bg-background hover:bg-muted"
               )}
             >
               {option === "all_time" ? "All time" : "Custom range"}
             </button>
           ))}
+          {filter === "custom" && (
+            <DateRange startDate={range.startDate} endDate={range.endDate} onChange={setRange} />
+          )}
         </div>
-        {filter === "custom" && (
-          <DateRange startDate={range.startDate} endDate={range.endDate} onChange={setRange} />
-        )}
+        {data ? (
+          <span className="text-[11px] text-muted-foreground">
+            Figures as of{" "}
+            {new Date(data.as_of).toLocaleString("en-GB", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </span>
+        ) : null}
       </div>
 
       {rangeIncomplete && (
@@ -125,23 +165,51 @@ export function AssetPerformance({ assetId }: { assetId: string }) {
           </CardContent>
         </Card>
       ) : isLoading || !data ? (
-        <div className="space-y-6">
-          <Skeleton className="h-64 w-full rounded-xl" />
-          <Skeleton className="h-72 w-full rounded-xl" />
+        <div className="space-y-4">
+          <Skeleton className="h-64 w-full rounded-lg" />
+          <Skeleton className="h-72 w-full rounded-lg" />
         </div>
       ) : (
-        <div className={cn("space-y-6", isFetching && "opacity-60 transition-opacity")}>
+        <div className={cn("space-y-4", isFetching && "opacity-60 transition-opacity")}>
           <AssetHealthBar data={data} />
-          <PaymentPlanMatrix
-            data={data.size_plan_breakdown}
-            profitability={canViewProfitability ? (profitability ?? null) : null}
-          />
-          <p className="text-xs text-muted-foreground">
-            Customer counts are all-time and do not move with the date range. Figures as of{" "}
-            {new Date(data.as_of).toLocaleString("en-NG")}.
-          </p>
+
+          <SectionTitle icon={ChartPie}>Payment plan performance</SectionTitle>
+          <PaymentPlanMatrix data={data.size_plan_breakdown} />
         </div>
       )}
+
+      {canViewProfitability ? (
+        <>
+          <SectionTitle icon={Banknote}>Profitability</SectionTitle>
+
+          {profitWarnings.length > 0 ? (
+            <aside className="flex flex-col items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3.5 py-3 sm:flex-row">
+              <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" aria-hidden />
+              <div className="min-w-0">
+                <strong className="block text-[13px] font-semibold">Profit is provisional</strong>
+                <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                  {profitWarnings.join(" ")} A missing value stays unknown and is not treated as zero.
+                </p>
+              </div>
+              <Link
+                href={`/assets/${assetId}/costs`}
+                className="shrink-0 whitespace-nowrap text-xs font-medium hover:underline sm:ml-auto"
+              >
+                Review cost coverage →
+              </Link>
+            </aside>
+          ) : null}
+
+          <ProductProfitabilityComparison assetId={assetId} onViewCalculation={() => setCalcOpen(true)} />
+          <PlanProfitabilityTable assetId={assetId} />
+          <ProfitabilityCalculationDrawer assetId={assetId} open={calcOpen} onOpenChange={setCalcOpen} />
+        </>
+      ) : null}
+
+      <p className="text-[11px] text-muted-foreground">
+        Customer counts remain all-time when a custom date range is selected. Profitability is always
+        current and does not move with the date range.
+      </p>
     </div>
   );
 }

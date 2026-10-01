@@ -2,13 +2,14 @@ import { type Page, type Browser } from '@playwright/test';
 import { test, expect, login, closeDialog, waitForToastsToClear, waitForBodyUnlocked, assetTabUrl, ASSET_WITH_FULL_TREE } from './fixtures';
 
 /**
- * Costs & Profitability tab, rewired this session to the real abode-be-v2
- * 3-layer model (cost item -> obligation -> stage event, PR #82) — replaces
- * the old flat "one record, five stage snapshots" model and the deleted
- * estate-wide "profitability basis" singleton (allocation is per shared
- * cost item now).
+ * Costs tab, as the asset-detail design draws it: a summary strip, the cost
+ * table (one row per cost item, with budget / committed / incurred / paid),
+ * "How shared cost is distributed" and "Recent cost changes". Backed by the
+ * real abode-be-v2 3-layer model (cost item -> record -> staged entry).
+ * Profit lives on the Performance tab; its calculation drawer is checked there
+ * at the end of this file.
  */
-test.describe.serial('Costs & Profitability', () => {
+test.describe.serial('Costs', () => {
   let page: Page;
 
   test.beforeAll(async ({ browser }: { browser: Browser }) => {
@@ -21,70 +22,67 @@ test.describe.serial('Costs & Profitability', () => {
     await page.close();
   });
 
-  test('shows the cost table and estate profitability card', async () => {
+  /** The table row for a cost item, found by its name cell. */
+  const itemRow = (name: string) => page.locator('tr').filter({ has: page.getByText(name, { exact: true }) }).first();
+
+  test('shows the summary strip, cost table and the two side panels', async () => {
+    await expect(page.getByText('Approved budget')).toBeVisible();
+    await expect(page.getByText('Forecast remaining')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Asset costs' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Estate profitability' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Cost coverage' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'How shared cost is distributed' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Recent cost changes' })).toBeVisible();
     await expect(page.getByText('Perimeter fencing', { exact: true }).first()).toBeVisible();
   });
 
-  test('adds a cost item to the catalogue', async () => {
-    await page.getByRole('button', { name: 'Add cost item' }).click();
+  test('adds a new cost item and its first cost from the one "Add cost" form', async () => {
+    await page.getByRole('button', { name: 'Add cost', exact: true }).click();
 
     const dialog = page.getByRole('dialog');
-    await expect(dialog.getByRole('heading', { name: 'Add a cost item' })).toBeVisible();
-    await dialog.getByLabel('Name', { exact: true }).fill('E2E test item');
-    await dialog.getByRole('button', { name: 'Add item' }).click();
+    await expect(dialog.getByRole('heading', { name: 'Add asset cost' })).toBeVisible();
 
-    await expect(page.getByText('Cost item added')).toBeVisible({ timeout: 10_000 });
+    await dialog.getByRole('combobox', { name: /Cost group/ }).click();
+    await page.getByRole('option', { name: 'New cost item…' }).click();
+    await dialog.getByLabel(/Cost title/).fill('E2E test cost record');
+    await dialog.getByLabel(/New cost item name/).fill('E2E test item');
+    await dialog.getByRole('combobox', { name: /Scope/ }).click();
+    await page.getByRole('option', { name: 'Shared across products' }).click();
+    await dialog.getByRole('combobox', { name: /Allocation basis/ }).click();
+    await page.getByRole('option', { name: 'By saleable sqm' }).click();
+
+    // No amount yet: it can only be saved as a draft, which writes the item and the record.
+    await dialog.getByRole('button', { name: 'Save draft' }).click();
+
+    await expect(page.getByText(/Saved as a draft/)).toBeVisible({ timeout: 10_000 });
     await expect(dialog).toBeHidden();
     await waitForToastsToClear(page);
-    await expect(page.getByText('E2E test item', { exact: true }).first()).toBeVisible();
+    await waitForBodyUnlocked(page);
+
+    // The new row exists, with nothing recorded against it yet.
+    await expect(itemRow('E2E test item').getByText('Cost missing')).toBeVisible();
   });
 
-  test('adds a cost record against that item', async () => {
-    const itemRow = page
-      .getByText('E2E test item', { exact: true })
-      .first()
-      .locator('xpath=ancestor::div[contains(@class,"py-3")][1]');
-    await itemRow.getByRole('button', { name: 'Add cost' }).click();
+  test('records an invoice from the Revise modal, then reverses it', async () => {
+    // One record on the item, so "View" opens it directly.
+    await itemRow('E2E test item').getByRole('button', { name: 'View' }).click();
 
-    const drawer = page.getByRole('dialog');
-    await expect(drawer.getByRole('heading', { name: 'Add cost' })).toBeVisible();
-    // The item is pre-selected from the shortcut — just fill in the rest.
-    await drawer.getByLabel('Title', { exact: true }).fill('E2E test cost record');
-    await drawer.getByRole('button', { name: 'Add cost' }).click();
+    const modal = page.getByRole('dialog');
+    await expect(modal.getByRole('heading', { name: 'E2E test cost record' })).toBeVisible({ timeout: 10_000 });
+    await modal.getByRole('radio', { name: 'Record invoice' }).click();
+    await modal.getByLabel(/^Amount/).fill('1000000');
+    await modal.getByLabel(/^Effective date/).fill('2026-01-01');
+    // The primary button saves the entry and approves it in one go.
+    await modal.getByRole('button', { name: 'Record invoice' }).click();
 
-    await expect(page.getByText('Cost record added')).toBeVisible({ timeout: 10_000 });
-    await expect(drawer).toBeHidden();
+    await expect(page.getByText('Record invoice: saved and approved')).toBeVisible({ timeout: 10_000 });
+    await expect(modal).toBeHidden();
     await waitForToastsToClear(page);
     await waitForBodyUnlocked(page);
-    await expect(page.getByText('E2E test cost record', { exact: true })).toBeVisible();
-  });
 
-  test('records a stage, approves it, then reverses it', async () => {
-    await page.getByText('E2E test cost record', { exact: true }).click();
+    // Reopen it: the entry is listed as approved, and can be reversed with a reason.
+    await itemRow('E2E test item').getByRole('button', { name: 'View' }).click();
+    await expect(modal.getByText('Approved', { exact: true }).first()).toBeVisible({ timeout: 10_000 });
+    await modal.getByRole('button', { name: 'Reverse' }).click();
 
-    const sheet = page.getByRole('dialog');
-    await expect(sheet.getByRole('heading', { name: 'E2E test cost record' })).toBeVisible({ timeout: 10_000 });
-    await sheet.getByRole('button', { name: 'Add stage' }).click();
-    await page.getByRole('menuitem', { name: 'Incurred' }).click();
-
-    const recordDialog = page.getByRole('dialog').last();
-    await expect(recordDialog.getByRole('heading', { name: 'Record incurred' })).toBeVisible();
-    await recordDialog.getByLabel('Amount', { exact: true }).fill('1000000');
-    await recordDialog.getByLabel('Effective date', { exact: true }).fill('2026-01-01');
-    await recordDialog.getByRole('button', { name: 'Record' }).click();
-
-    await expect(page.getByText('Incurred recorded')).toBeVisible({ timeout: 10_000 });
-    await waitForToastsToClear(page);
-
-    await sheet.getByRole('button', { name: 'Approve' }).click();
-    await expect(page.getByText('Incurred approved')).toBeVisible({ timeout: 10_000 });
-    await waitForToastsToClear(page);
-    await expect(sheet.getByText('approved', { exact: true }).first()).toBeVisible();
-
-    await sheet.getByRole('button', { name: 'Reverse' }).click();
     const reverseDialog = page.getByRole('dialog').last();
     await expect(reverseDialog.getByRole('heading', { name: 'Reverse incurred' })).toBeVisible();
     await reverseDialog.getByLabel('Reason', { exact: true }).fill('E2E reversal reason');
@@ -92,22 +90,27 @@ test.describe.serial('Costs & Profitability', () => {
 
     await expect(page.getByText('Incurred reversed')).toBeVisible({ timeout: 10_000 });
     await waitForToastsToClear(page);
-    await expect(sheet.getByText('reversed', { exact: true }).first()).toBeVisible();
+    await expect(modal.getByText('Reversed', { exact: true }).first()).toBeVisible();
 
     await closeDialog(page);
   });
 
-  test('cost coverage shows the new item and its recognised total', async () => {
-    const coverage = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Cost coverage' }) });
-    await expect(coverage.getByText('E2E test item', { exact: true })).toBeVisible();
+  test('cost history lists the entries just made, including the reversal', async () => {
+    await page.getByRole('button', { name: 'Cost history' }).click();
+
+    const sheet = page.getByRole('dialog');
+    await expect(sheet.getByRole('heading', { name: 'Cost history' })).toBeVisible();
+    await expect(sheet.getByText('E2E test cost record').first()).toBeVisible();
+    await expect(sheet.getByText('E2E reversal reason').first()).toBeVisible();
+
+    await closeDialog(page);
   });
 
   test('sets an allocation rule on a shared cost item', async () => {
-    const fencingRow = page
-      .getByText('Perimeter fencing', { exact: true })
-      .first()
-      .locator('xpath=ancestor::div[contains(@class,"py-3")][1]');
-    await fencingRow.getByRole('button', { name: 'Allocation' }).click();
+    await page.getByRole('button', { name: 'Edit basis' }).click();
+    // With several shared items the button opens a menu of them; with one it opens the rule directly.
+    const option = page.getByRole('menuitem', { name: 'Perimeter fencing' });
+    if (await option.isVisible().catch(() => false)) await option.click();
 
     const dialog = page.getByRole('dialog');
     await expect(dialog.getByRole('heading', { name: 'Set allocation rule' })).toBeVisible();
@@ -124,22 +127,15 @@ test.describe.serial('Costs & Profitability', () => {
     await waitForBodyUnlocked(page);
   });
 
-  test('product profitability comparison expands to show its size breakdown', async () => {
-    const comparison = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Product profitability comparison' }) });
-    await expect(comparison).toBeVisible();
-
-    const firstRow = comparison.locator('button').first();
-    await firstRow.click();
-    await expect(comparison.getByText(/sqm ·/i).first()).toBeVisible();
-  });
-
-  test('the calculation drawer shows the real drill-down breakdown', async () => {
-    await page.getByRole('button', { name: 'View calculation' }).first().click();
+  test('the calculation drawer on Performance shows the real drill-down breakdown', async () => {
+    await page.goto(assetTabUrl(ASSET_WITH_FULL_TREE, 'performance'));
+    await page.getByRole('button', { name: 'View calculation' }).click();
 
     const sheet = page.getByRole('dialog');
-    await expect(sheet.getByRole('heading', { name: 'Profitability calculation' })).toBeVisible();
-    await expect(sheet.getByText('E2E test item', { exact: true })).toBeVisible();
-    await expect(sheet.getByText('Net profit', { exact: true })).toBeVisible();
+    await expect(sheet.getByRole('heading', { name: 'How the profit is worked out' })).toBeVisible();
+    // The sum at the top, then the sections it is built from.
+    await expect(sheet.getByText('Gross profit', { exact: true })).toBeVisible();
+    await expect(sheet.getByRole('heading', { name: 'Shared costs' })).toBeVisible();
 
     await closeDialog(page);
   });

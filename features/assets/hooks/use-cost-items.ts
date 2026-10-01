@@ -8,7 +8,9 @@ import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from '@/lib/api-client';
 import {
   AllocationRuleHistorySchema,
   AssetCostItemSchema,
+  CostGroupSchema,
   SetAllocationRuleResultSchema,
+  type CostGroup,
   type CreateCostItemFormOutput,
   type SetAllocationRuleFormOutput,
   type UpdateCostItemFormValues,
@@ -31,6 +33,27 @@ export const useCostItems = (
         params: options.includeInactive ? { include_inactive: 'true' } : undefined,
       }),
     enabled: Boolean(assetId) && (options.enabled ?? true),
+  });
+
+/** GET .../costs/catalogue — the finance sheet's cost groups and the backend's own labels for them. */
+export const CostCatalogueSchema = z.object({
+  groups: z.array(z.object({ group: z.string(), label: z.string() })),
+});
+
+/**
+ * The cost groups a new cost item can be filed under, in the backend's order
+ * and wording. Until it answers (or if it fails) the form falls back to the
+ * copy of the list compiled into this app, so Add cost is never blocked on it.
+ * A group this app's schema doesn't know yet is left out: the create request
+ * would be validated against the same list.
+ */
+export const useCostCatalogue = (assetId: string, options: { enabled?: boolean } = {}) =>
+  useQuery({
+    queryKey: assetKeys.costCatalogue(assetId),
+    queryFn: () => apiGet(`/admin/assets/${assetId}/costs/catalogue`, CostCatalogueSchema),
+    enabled: Boolean(assetId) && (options.enabled ?? true),
+    staleTime: Infinity,
+    select: (data) => data.groups.filter((row): row is { group: CostGroup; label: string } => CostGroupSchema.safeParse(row.group).success),
   });
 
 /**

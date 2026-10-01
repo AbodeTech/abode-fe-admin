@@ -1,62 +1,78 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { formatNairaCompact } from "@/lib/utils/format";
 
-import type { AssetAnalyticsResponse } from "../../schemas/asset-analytics.schema";
+import type { AssetAnalyticsResponse, LifecycleBucket } from "../../schemas/asset-analytics.schema";
 
-function formatNaira(value: number | null | undefined): string {
-  if (value == null || value === 0) return "₦0";
-  return new Intl.NumberFormat("en-NG", {
-    style: "currency",
-    currency: "NGN",
-    notation: "compact",
-    maximumFractionDigits: 2,
-  }).format(value);
-}
+const percent = (part: number, whole: number) => (whole > 0 ? (part / whole) * 100 : 0);
 
-function formatSqm(value: number | null | undefined): string {
-  if (value == null || value === 0) return "0 SQM";
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M SQM`;
-  if (value >= 1_000) return `${(value / 1_000).toFixed(0)}k SQM`;
-  return `${value.toFixed(0)} SQM`;
-}
-
-interface MetricProps {
+function Metric({
+  label,
+  value,
+  note,
+  noteClass,
+}: {
   label: string;
-  value: string | number;
-  subValue?: string;
-  subValueVariant?: "positive" | "warning" | "danger" | "neutral";
+  value: string;
+  note: string;
+  noteClass?: string;
+}) {
+  return (
+    <div className="px-4 py-3.5">
+      <span className="mb-1.5 block text-[10px] uppercase tracking-wider text-muted-foreground">{label}</span>
+      <strong className="text-base font-semibold tabular-nums">{value}</strong>
+      <small className={cn("mt-1 block text-[10px] text-muted-foreground", noteClass)}>{note}</small>
+    </div>
+  );
 }
 
-function Metric({ label, value, subValue, subValueVariant = "neutral" }: MetricProps) {
-  const subValueStyles = {
-    positive: "text-emerald-600 bg-emerald-500/10",
-    warning: "text-amber-600 bg-amber-500/10",
-    danger: "text-rose-600 bg-rose-500/10",
-    neutral: "text-muted-foreground bg-muted",
-  };
+function HealthValue({ label, value, valueClass }: { label: string; value: string; valueClass?: string }) {
+  return (
+    <div className="min-w-0">
+      <div className="text-[11px] text-muted-foreground">{label}</div>
+      <div className={cn("mt-1 text-sm font-semibold tabular-nums", valueClass)}>{value}</div>
+    </div>
+  );
+}
+
+/**
+ * One side of the defaults / terminations block. `landLabel` is the design's
+ * third figure ("Land retained" / "Land released"); the analytics endpoint
+ * reports these buckets in customers, plans and naira only — no sqm — so it
+ * is drawn as an em-dash rather than left out or guessed.
+ */
+function LifecycleSide({
+  title,
+  bucket,
+  valueLabel,
+  landLabel,
+  tone,
+}: {
+  title: string;
+  bucket: LifecycleBucket;
+  valueLabel: string;
+  landLabel: string;
+  tone: "bad" | "warn";
+}) {
+  const text = tone === "bad" ? "text-rose-600" : "text-amber-600";
 
   return (
-    <div className="flex min-w-0 flex-col gap-1">
-      <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-        {label}
-      </span>
-      <div className="flex min-w-0 flex-wrap items-baseline gap-2">
-        <span className="text-lg font-bold tracking-tight tabular-nums wrap-break-word sm:text-xl">
-          {value}
-        </span>
-        {subValue && (
-          <span className={cn("rounded px-1.5 py-0.5 text-xs font-medium", subValueStyles[subValueVariant])}>
-            {subValue}
-          </span>
-        )}
+    <div className={cn("p-4", tone === "bad" ? "bg-rose-500/5" : "bg-amber-500/5")}>
+      <div className={cn("mb-3 text-[10px] font-bold uppercase tracking-wider", text)}>
+        {title} · {bucket.customers.toLocaleString()} customer{bucket.customers === 1 ? "" : "s"}
+      </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <HealthValue label={valueLabel} value={formatNairaCompact(bucket.value)} />
+        <HealthValue label="Outstanding balance" value={formatNairaCompact(bucket.amount_owing)} valueClass={text} />
+        <HealthValue label={landLabel} value="—" />
       </div>
     </div>
   );
 }
 
 /**
- * The slice of `GET /admin/assets/:id/analytics` this bar reads. A contract,
+ * The slice of `GET /admin/assets/:id/analytics` this panel reads. A contract,
  * not a fetch shape — the tab passes the response straight through.
  */
 type AssetHealth = Pick<
@@ -64,145 +80,105 @@ type AssetHealth = Pick<
   | "total_inventory_value"
   | "total_realised"
   | "remaining_value"
+  | "total_capacity_sqm"
   | "sqm_sold"
   | "sqm_remaining"
   | "efficiency_rate"
-  | "occupancy_rate"
   | "active_customers"
   | "total_customers"
   | "defaulting"
   | "terminated"
 >;
 
-interface Props {
-  data: AssetHealth;
-}
-
-export function AssetHealthBar({ data }: Props) {
+/**
+ * The Performance tab's top panel, in three bands as the design draws it:
+ *
+ *  1. Summary strip — starting inventory value, cash realised (and what share
+ *     of the starting value that is), remaining value, sqm sold (and what
+ *     share of capacity), sqm remaining.
+ *  2. Defaults and terminations — how many customers, the asset value tied up
+ *     in those plans, and what is still owed on them.
+ *  3. Customer health — active / defaulted / terminated as shares of all
+ *     customers, plus collection efficiency.
+ *
+ * Every figure is read as-is from the analytics response; the only arithmetic
+ * here is turning two of its numbers into a percentage.
+ */
+export function AssetHealthBar({ data }: { data: AssetHealth }) {
   const { defaulting, terminated } = data;
 
   // `total_customers` is the BE's own all-time figure, not active + defaulted +
   // terminated: a customer can sit in more than one bucket across plans, so
   // summing the three would over-count and push the bar past 100%.
-  const totalCustomers = data.total_customers;
-  const pct = (n: number) => (totalCustomers > 0 ? (n / totalCustomers) * 100 : 0);
-
-  const activePct = pct(data.active_customers);
-  const defaultedPct = pct(defaulting.customers);
-  const terminatedPct = pct(terminated.customers);
-
-  const soldPct =
-    data.total_inventory_value > 0
-      ? `${((data.total_realised / data.total_inventory_value) * 100).toFixed(1)}% sold`
-      : undefined;
+  const share = (count: number) => percent(count, data.total_customers);
+  const activePct = share(data.active_customers);
+  const defaultedPct = share(defaulting.customers);
+  const terminatedPct = share(terminated.customers);
 
   return (
-    <div className="w-full overflow-hidden rounded-xl border">
-      {/* Asset overview */}
-      <div className="bg-muted/30 px-4 py-4 sm:px-6 sm:py-5">
-        <div className="mb-4 flex flex-wrap items-center gap-2">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-            Asset Overview
-          </p>
-        </div>
-        <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-6">
-          <Metric label="Starting Inventory" value={formatNaira(data.total_inventory_value)} />
-          <Metric
-            label="Total Realized"
-            value={formatNaira(data.total_realised)}
-            subValue={soldPct}
-            subValueVariant="positive"
-          />
-          <Metric label="Remaining Value" value={formatNaira(data.remaining_value)} />
-          <Metric label="Total SQM Sold" value={formatSqm(data.sqm_sold)} />
-          <Metric label="SQM Remaining" value={formatSqm(data.sqm_remaining)} />
-          <Metric
-            label="Collection Efficiency"
-            value={`${data.efficiency_rate.toFixed(1)}%`}
-            subValue={`${data.occupancy_rate.toFixed(1)}% occupied`}
-            subValueVariant="neutral"
-          />
-        </div>
+    <section className="overflow-hidden rounded-lg border">
+      <div className="grid grid-cols-1 divide-y bg-muted/40 sm:grid-cols-3 sm:divide-x sm:divide-y-0 lg:grid-cols-5">
+        <Metric
+          label="Starting inventory"
+          value={formatNairaCompact(data.total_inventory_value)}
+          note="Current product pricing"
+        />
+        <Metric
+          label="Total realized"
+          value={formatNairaCompact(data.total_realised)}
+          note={`${percent(data.total_realised, data.total_inventory_value).toFixed(1)}% sold`}
+          noteClass="font-semibold text-emerald-600"
+        />
+        <Metric label="Remaining value" value={formatNairaCompact(data.remaining_value)} note="Current unsold value" />
+        <Metric
+          label="Total sqm sold"
+          value={data.sqm_sold.toLocaleString()}
+          note={`${percent(data.sqm_sold, data.total_capacity_sqm).toFixed(1)}% of capacity`}
+        />
+        <Metric label="Sqm remaining" value={data.sqm_remaining.toLocaleString()} note="Available inventory" />
       </div>
 
-      {/* Defaults + terminations */}
-      <div className="grid grid-cols-1 border-t md:grid-cols-2">
-        <div className="border-b border-rose-200/50 bg-rose-500/5 px-4 py-4 sm:px-6 sm:py-5 md:border-b-0 md:border-r">
-          <p className="mb-4 text-[10px] font-bold uppercase tracking-widest text-rose-600">
-            Defaults
-            <span className="ml-2 font-medium normal-case tracking-normal text-rose-500/80">
-              ({defaulting.customers} customers)
-            </span>
-          </p>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-6">
-            <Metric label="Defaulted Asset Value" value={formatNaira(defaulting.value)} />
-            <Metric
-              label="Outstanding Balance"
-              value={formatNaira(defaulting.amount_owing)}
-              subValue="Unrecovered"
-              subValueVariant="danger"
-            />
-          </div>
-        </div>
-
-        <div className="bg-amber-500/5 px-4 py-4 sm:px-6 sm:py-5">
-          <p className="mb-4 text-[10px] font-bold uppercase tracking-widest text-amber-600">
-            Terminations
-            <span className="ml-2 font-medium normal-case tracking-normal text-amber-500/80">
-              ({terminated.customers} customers)
-            </span>
-          </p>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-6">
-            <Metric label="Terminated Asset Value" value={formatNaira(terminated.value)} />
-            <Metric
-              label="Outstanding Balance"
-              value={formatNaira(terminated.amount_owing)}
-              subValue="Unrecovered"
-              subValueVariant="warning"
-            />
-          </div>
-        </div>
+      <div className="grid grid-cols-1 border-t md:grid-cols-2 md:divide-x">
+        <LifecycleSide
+          title="Defaults"
+          bucket={defaulting}
+          valueLabel="Defaulted asset value"
+          landLabel="Land retained"
+          tone="bad"
+        />
+        <LifecycleSide
+          title="Terminations"
+          bucket={terminated}
+          valueLabel="Terminated value"
+          landLabel="Land released"
+          tone="warn"
+        />
       </div>
 
-      {/* Customer health */}
-      <div className="border-t px-4 py-4 sm:px-6 sm:py-5">
-        <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-          Customer Health
-        </p>
-        <div className="flex flex-col gap-2">
-          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs font-bold">
-            <span className="text-emerald-600">Active: {data.active_customers}</span>
-            <span className="text-rose-600">Defaulted: {defaulting.customers}</span>
-            <span className="text-amber-600">Terminated: {terminated.customers}</span>
-          </div>
-          <div
-            className="flex h-2 w-full overflow-hidden rounded-full bg-muted"
-            role="progressbar"
-            aria-valuenow={Math.round(activePct)}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-label="Customer health breakdown"
-          >
-            <div className="h-full bg-emerald-500" style={{ width: `${activePct}%` }} />
-            <div className="h-full bg-rose-500" style={{ width: `${defaultedPct}%` }} />
-            <div className="h-full bg-amber-400" style={{ width: `${terminatedPct}%` }} />
-          </div>
-          <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1.5">
-            {[
-              { dot: "bg-emerald-500", label: "Active", value: activePct },
-              { dot: "bg-rose-500", label: "Defaulted", value: defaultedPct },
-              { dot: "bg-amber-400", label: "Terminated", value: terminatedPct },
-            ].map((legend) => (
-              <div key={legend.label} className="flex items-center gap-1.5">
-                <div className={cn("size-2 rounded-full", legend.dot)} />
-                <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                  {legend.label} ({legend.value.toFixed(0)}%)
-                </span>
-              </div>
-            ))}
-          </div>
+      <div className="border-t p-4">
+        <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Customer health</div>
+        <div
+          className="my-2 flex h-2 overflow-hidden rounded-full bg-muted"
+          role="img"
+          aria-label={`Active ${activePct.toFixed(0)}%, defaulted ${defaultedPct.toFixed(0)}%, terminated ${terminatedPct.toFixed(0)}%`}
+        >
+          <div className="h-full bg-emerald-500" style={{ width: `${activePct}%` }} />
+          <div className="h-full bg-rose-500" style={{ width: `${defaultedPct}%` }} />
+          <div className="h-full bg-amber-500" style={{ width: `${terminatedPct}%` }} />
+        </div>
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-muted-foreground">
+          <span className="font-semibold text-emerald-600">
+            ● Active {data.active_customers.toLocaleString()} · {activePct.toFixed(0)}%
+          </span>
+          <span className="font-semibold text-rose-600">
+            ● Defaulted {defaulting.customers.toLocaleString()} · {defaultedPct.toFixed(0)}%
+          </span>
+          <span className="font-semibold text-amber-600">
+            ● Terminated {terminated.customers.toLocaleString()} · {terminatedPct.toFixed(0)}%
+          </span>
+          <span>Collection efficiency {data.efficiency_rate.toFixed(1)}%</span>
         </div>
       </div>
-    </div>
+    </section>
   );
 }

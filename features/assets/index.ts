@@ -23,7 +23,7 @@ export { useAssetList, useDeleteAsset, DEFAULT_ASSET_LIMIT } from './hooks/use-a
 export { AssetDetailShell } from './components/detail/AssetDetailShell';
 export { AssetDetailNav } from './components/detail/AssetDetailNav';
 export { AssetOverview } from './components/detail/AssetOverview';
-export { AssetAllocationEventsCard } from './components/detail/AssetAllocationEventsCard';
+export { AssetHistory, AssetUpdates } from './components/detail/AssetHistory';
 export { useAssetAllocationEvents } from './hooks/use-asset-allocation-events';
 export {
   ASSET_ALLOCATION_EVENT_STATUSES,
@@ -43,10 +43,10 @@ export {
 export type { OfferConfigAction, OfferConfigRevision } from './schemas/offer-config-history.schema';
 export { SampleDataBanner } from './components/detail/SampleDataBanner';
 export { EditablePanel } from './components/detail/EditablePanel';
-export { BackendGapNotice } from './components/detail/BackendGapNotice';
 export { OfferEditDialogs, NumberInput } from './components/detail/OfferEditDialogs';
 export type { NumberFieldLike } from './components/detail/OfferEditDialogs';
 
+export { AssetBlocksAndPlots } from './components/detail/AssetBlocksAndPlots';
 export { BlocksManager } from './components/detail/BlocksManager';
 export { PlotInventoryPanel } from './components/detail/PlotInventoryPanel';
 export { CommercialStatusMatrix } from './components/detail/CommercialStatusMatrix';
@@ -107,7 +107,6 @@ export type {
 
 // ── land account — the physical-land account layered on Overview ──────────
 export { LandAccountCard } from './components/detail/LandAccountCard';
-export { LandUseTable } from './components/detail/LandUseTable';
 export { LandAccountEditorDrawer } from './components/detail/LandAccountEditorDrawer';
 export { LandConfigurationHistory } from './components/detail/LandConfigurationHistory';
 export {
@@ -143,6 +142,25 @@ export { EditBoundaryDialog } from './components/detail/EditBoundaryDialog';
 export { BoundaryHistorySheet } from './components/detail/BoundaryHistorySheet';
 export { useSiteSetup, useBoundaryHistory } from './hooks/use-site-setup';
 export { useSetBoundary } from './hooks/use-site-setup-mutations';
+export { FieldSubmissionsPanel } from './components/detail/FieldSubmissionsPanel';
+export { FieldSubmissionSheet } from './components/detail/FieldSubmissionSheet';
+export { FieldCostsPanel, FieldTeamPanel, GroundAllocationPanel } from './components/detail/FieldSitePanels';
+export {
+  useFieldSubmissions,
+  useFieldSubmission,
+  useVerifySubmission,
+  useRejectSubmission,
+  useCorrectSubmission,
+  useReverseSubmission,
+  useLinkSubmissionPlots,
+  useFieldCosts,
+  useAssetFieldStaff,
+  useAssetFieldPerformance,
+  useFieldAllocation,
+  useAssignEventOwner,
+  useRemoveEventOwner,
+} from './hooks/use-field-operations';
+export { useSetPitchPack, useRemovePitchPack } from './hooks/use-pitch-pack';
 export {
   FENCING_SIDES,
   FENCING_SIDE_LABELS,
@@ -171,7 +189,7 @@ export { useAssetDetail, useUpdateAsset } from './hooks/use-asset-detail';
 export { useAssetBlocks, useCreateBlock, useUpdateBlock, useDeleteBlock } from './hooks/use-blocks';
 export {
   useBlockPlots,
-  useBulkCreatePlots,
+  useCreatePlots,
   useUpdatePlot,
   useDeletePlot,
 } from './hooks/use-plots';

@@ -5,6 +5,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
+import { ApiClientError } from "@/lib/api-client";
+
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -41,19 +43,17 @@ import {
   SELLING_CHARGE_TYPES,
   SELLING_CHARGE_TYPE_LABELS,
   setSellingChargesFormSchema,
-  type SellingCharges,
+  type SellingChargeVersion,
   type SetSellingChargesFormValues,
 } from "../../schemas/selling-charges.schema";
 import { useSetSellingCharges } from "../../hooks/use-selling-charges-mutations";
 
 const ANY_PRODUCT = "any";
 
-function toFormValues(current: SellingCharges): SetSellingChargesFormValues {
-  if (!current) {
-    return { charges: [], effective_date: new Date().toISOString().slice(0, 10), reason: "" };
-  }
+function toFormValues(seed: SellingChargeVersion | null, latestVersion: number): SetSellingChargesFormValues {
   return {
-    charges: current.charges.map((c) => ({
+    expected_version: latestVersion,
+    charges: (seed?.charges ?? []).map((c) => ({
       charge_type: c.charge_type,
       label: c.label,
       offer_type: c.offer_type ?? undefined,
@@ -69,16 +69,19 @@ function toFormValues(current: SellingCharges): SetSellingChargesFormValues {
 
 interface FormProps {
   assetId: string;
-  current: SellingCharges;
+  /** The newest saved version, which the editor starts from. `null` for a first version. */
+  seed: SellingChargeVersion | null;
+  /** Sent back as `expected_version`, so a save made on stale data is refused. */
+  latestVersion: number;
   onClose: () => void;
 }
 
-function SellingChargesForm({ assetId, current, onClose }: FormProps) {
+function SellingChargesForm({ assetId, seed, latestVersion, onClose }: FormProps) {
   const save = useSetSellingCharges(assetId);
 
   const form = useForm<SetSellingChargesFormValues>({
     resolver: zodResolver(setSellingChargesFormSchema),
-    defaultValues: toFormValues(current),
+    defaultValues: toFormValues(seed, latestVersion),
   });
 
   const charges = useFieldArray({ control: form.control, name: "charges" });
@@ -86,11 +89,22 @@ function SellingChargesForm({ assetId, current, onClose }: FormProps) {
   const submit = form.handleSubmit((values) => {
     const parsed = setSellingChargesFormSchema.parse(values);
     save.mutate(parsed, {
-      onSuccess: () => {
-        toast.success("Selling charges saved");
+      onSuccess: (result) => {
+        toast.success(
+          result.starts_in_future
+            ? `Version ${result.version} scheduled — it takes effect on ${parsed.effective_date}`
+            : "Selling charges saved"
+        );
         onClose();
       },
-      onError: (error) => toast.error(error.message || "Couldn't save these charges"),
+      onError: (error) => {
+        if (error instanceof ApiClientError && error.statusCode === 409) {
+          toast.error("Someone else saved these charges first. Reopen the editor to work from the latest version.");
+          onClose();
+          return;
+        }
+        toast.error(error.message || "Couldn't save these charges");
+      },
     });
   });
 
@@ -99,8 +113,8 @@ function SellingChargesForm({ assetId, current, onClose }: FormProps) {
       <DialogHeader>
         <DialogTitle>Edit selling charges</DialogTitle>
         <DialogDescription>
-          Every save approves a brand-new version, effective from the date below — the previous version stays in
-          history.
+          Every save approves a brand-new version, effective from the date below. A future date schedules it:
+          buyers keep the version in force until then.
         </DialogDescription>
       </DialogHeader>
 
@@ -309,27 +323,28 @@ function SellingChargesForm({ assetId, current, onClose }: FormProps) {
 
 interface Props {
   assetId: string;
-  current: SellingCharges;
+  seed: SellingChargeVersion | null;
+  latestVersion: number;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
 /**
  * The full-replacement editor for one asset's selling charges — approving
- * this creates a brand-new version, dated from `effective_date`. No
- * `expected_version` field: the real PUT has no optimistic-concurrency guard
- * at all (see the schema's own doc comment), so there is nothing to send —
- * this is a flagged backend gap, not an FE oversight.
+ * this creates a brand-new version, dated from `effective_date`. Remounted
+ * per `latestVersion`, so reopening after someone else's save starts from
+ * their version, not a stale one.
  */
-export function SellingChargesDialog({ assetId, current, open, onOpenChange }: Props) {
+export function SellingChargesDialog({ assetId, seed, latestVersion, open, onOpenChange }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl">
         {open ? (
           <SellingChargesForm
-            key={current?.version ?? "new"}
+            key={latestVersion}
             assetId={assetId}
-            current={current}
+            seed={seed}
+            latestVersion={latestVersion}
             onClose={() => onOpenChange(false)}
           />
         ) : null}

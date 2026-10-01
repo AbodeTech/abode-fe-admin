@@ -40,18 +40,20 @@ function toParams(filters: PlotInventoryFilters) {
 /**
  * GET /admin/assets/:assetId/plots — the asset-wide, filtered plot list, with
  * server-computed totals (both unfiltered and filtered) and allocation-event
- * readiness in the SAME response. There is no separate `/plots/summary`
- * endpoint on the real backend — that was this app's own invention; render
- * `data.totals`/`data.filtered_totals` directly rather than calling a second
- * hook for them (see plot-inventory.schema.ts's header for the full,
- * confirmed-real shape this replaced).
+ * readiness in the SAME response. When only the totals are needed, use
+ * `usePlotSummary` instead — the backend's `.../plots/summary` returns this
+ * response without the rows.
  */
-export const usePlotInventory = (assetId: string, filters: PlotInventoryFilters = {}) =>
+export const usePlotInventory = (
+  assetId: string,
+  filters: PlotInventoryFilters = {},
+  options: { enabled?: boolean } = {}
+) =>
   useQuery({
     queryKey: assetKeys.plotInventory(assetId, filters),
     queryFn: () =>
       apiGetWithMeta(`/admin/assets/${assetId}/plots`, PlotInventoryResponseSchema, {
         params: toParams(filters),
       }),
-    enabled: Boolean(assetId),
+    enabled: Boolean(assetId) && (options.enabled ?? true),
   });

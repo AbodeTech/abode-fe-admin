@@ -35,6 +35,7 @@ import { assetAnalyticsRoutes } from './asset-analytics';
 import { assetSubscribersRoutes } from './asset-subscribers';
 import { inventoryReconciliationRoutes } from './inventory-reconciliation';
 import { siteSetupRoutes } from './site-setup';
+import { fieldOperationsRoutes } from './field-operations';
 import { courseRoutes } from './courses';
 
 /* ============================================================
@@ -220,6 +221,11 @@ import { courseRoutes } from './courses';
  *               dev. The CSV export sibling is deliberately not mocked; the
  *               FE hook already refuses in mock mode itself. The segment
  *               after :assetId is the literal "subscribers".
+ * field-operations — /admin/field-submissions/*, /admin/field-allocation/*,
+ *               and GET /admin/assets/:assetId/field-costs | field-staff |
+ *               field-performance. All real (`abode-be-v2`'s field-staff
+ *               module); shares its data with site-setup through
+ *               field-store.ts, so reviewing a submission moves site progress.
  * site-setup  — GET/PUT /admin/assets/:assetId/boundary, GET .../site-setup.
  *               REAL module, confirmed against `AssetSiteSetupController`/
  *               `SiteSetupService` in `field-staff/site-setup` — not a forward
@@ -272,6 +278,7 @@ export function ensureRoutesRegistered(): void {
   registerRoutes(inventoryReconciliationRoutes);
   registerRoutes(assetSubscribersRoutes);
   registerRoutes(siteSetupRoutes);
+  registerRoutes(fieldOperationsRoutes);
 
   // Only mark done after every domain registered — a throw mid-way must allow retry.
   registered = true;

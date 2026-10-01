@@ -142,6 +142,13 @@ export function offerConfiguredSqm(offer: Pick<Offer, 'sizes'>): number {
  * rather than a counts summary — so this is its own schema rather than an
  * extension of `AssetSchema`.
  */
+/** The estate's pitch pack — set and cleared through PUT / DELETE .../pitch-pack, never the asset PATCH. */
+export const PitchPackSchema = z.object({
+  url: z.string(),
+  size_bytes: z.number(),
+  uploaded_at: z.string(),
+});
+
 export const AssetDetailSchema = z.object({
   _id: z.string(),
   name: z.string(),
@@ -175,6 +182,9 @@ export const AssetDetailSchema = z.object({
   deleted_at: z.string().nullable().optional(),
 
   offers: z.array(OfferSchema).default([]),
+
+  /** Absent on an estate that has never had one; `null` after it is removed. */
+  pitch_pack: PitchPackSchema.nullable().optional(),
 
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),

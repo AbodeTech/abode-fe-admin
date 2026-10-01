@@ -34,7 +34,9 @@ test.describe.serial('Offers', () => {
 
   test('adds a missing offer type to an asset that doesn\'t sell it yet', async () => {
     await page.goto(assetTabUrl(ASSET_EMPTY, 'offers'));
-    await page.getByRole('button', { name: /Add commercial/i }).click();
+    // "Add offer" lives in the Offer land pools header now, as a menu of the offer types this asset lacks.
+    await page.getByRole('button', { name: 'Add offer' }).click();
+    await page.getByRole('menuitem', { name: 'Commercial' }).click();
 
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
@@ -90,7 +92,7 @@ test.describe.serial('Offers', () => {
   test('offer configuration history records every write made on this asset so far', async () => {
     // Still on Harmony Gardens (ASSET_EMPTY) — history is per-asset, so this
     // must run before the next test switches to Aviation City, not after.
-    await page.getByRole('button', { name: 'History' }).last().click();
+    await page.getByRole('button', { name: 'History' }).first().click();
     await expect(page.getByRole('heading', { name: 'Offer configuration history' })).toBeVisible();
     await expect(page.getByText(/Added the commercial offer/i)).toBeVisible();
     await expect(page.getByText(/Added a .*sqm size/i)).toBeVisible();
@@ -127,12 +129,15 @@ test.describe.serial('Offers', () => {
   });
 
   test('selling charges: sets up the estate\'s first version, then sees it in history', async () => {
-    await expect(page.getByRole('heading', { name: 'Selling charges' })).toBeVisible();
-    await expect(page.getByText('No selling charges approved yet')).toBeVisible();
+    // Selling charges live in the "Price versions" side sheet, not on the page.
+    await page.getByRole('button', { name: 'Price versions' }).click();
+    const sheet = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Price versions' }) });
+    await expect(sheet.getByRole('heading', { name: 'Selling charges' })).toBeVisible();
+    await expect(sheet.getByText('No selling charges approved yet')).toBeVisible();
 
-    await page.getByRole('button', { name: 'Set up charges' }).click();
-    const dialog = page.getByRole('dialog');
-    await expect(dialog.getByRole('heading', { name: 'Edit selling charges' })).toBeVisible();
+    await sheet.getByRole('button', { name: 'Set up charges' }).click();
+    const dialog = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Edit selling charges' }) });
+    await expect(dialog).toBeVisible();
 
     await dialog.getByRole('button', { name: 'Add charge' }).click();
     await dialog.getByLabel('Label', { exact: true }).fill('Estate development levy');
@@ -146,19 +151,21 @@ test.describe.serial('Offers', () => {
     await waitForToastsToClear(page);
     await waitForBodyUnlocked(page);
 
-    await expect(page.getByText('Estate development levy', { exact: true })).toBeVisible();
-    await expect(page.getByText('Version 1', { exact: false })).toBeVisible();
+    await expect(sheet.getByText('Estate development levy', { exact: true })).toBeVisible();
+    await expect(sheet.getByText('Version 1', { exact: false })).toBeVisible();
 
-    await page.getByRole('button', { name: 'History' }).first().click();
+    await sheet.getByRole('button', { name: 'History' }).click();
     await expect(page.getByRole('heading', { name: 'Selling charges history' })).toBeVisible();
     await expect(page.getByText('E2E selling charges setup')).toBeVisible();
     await closeDialog(page);
+    await closeDialog(page);
+
+    // The plan rows now carry the version just approved.
+    await expect(page.getByText(/^v1 · /).first()).toBeVisible();
   });
 
   test('offer configuration history stays scoped to Aviation City, not Harmony Gardens\' earlier writes', async () => {
-    // "History" now matches both the offer-config log button and the selling
-    // charges panel's own — the offer-config one is the one further down.
-    await page.getByRole('button', { name: 'History' }).last().click();
+    await page.getByRole('button', { name: 'History' }).first().click();
     await expect(page.getByRole('heading', { name: 'Offer configuration history' })).toBeVisible();
     await expect(page.getByText(/Added the commercial offer/i)).toHaveCount(0);
     await closeDialog(page);

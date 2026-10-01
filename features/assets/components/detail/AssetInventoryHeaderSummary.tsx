@@ -1,8 +1,10 @@
 "use client";
 
 import { availableUnits, type Asset } from "../../schemas/asset.schema";
-import { formatSqm } from "@/lib/utils/format";
+import { formatSqm, formatSqmExact } from "@/lib/utils/format";
 import { useLandConfiguration } from "../../hooks/use-land-configuration";
+import { useSqmInventory } from "../../hooks/use-sqm-inventory";
+import { ledgerTotals, productPositions } from "../../schemas/sqm-inventory.schema";
 
 /**
  * The header's inventory summary — one of three honest states, never a
@@ -15,9 +17,8 @@ import { useLandConfiguration } from "../../hooks/use-land-configuration";
  *    shown stacked, each clearly labelled, never combined into one
  *    percentage.
  *  - sqm-only: `inventory_model_version === 'sqm_v1'` — the live ledger has
- *    activated and legacy counters are retired. Unreachable in Phase 1 (the
- *    activation gate hasn't been built), kept here so the header is honest
- *    the moment it does.
+ *    activated (the Overview's "Activate sqm inventory" notice) and legacy
+ *    counters are retired. This is the state the asset-detail design draws.
  */
 
 type HeaderAsset = Pick<
@@ -59,6 +60,47 @@ function LegacyUnitBar({ asset }: { asset: HeaderAsset }) {
   );
 }
 
+/**
+ * The design's header bar, for an estate on the live sqm ledger: "X of Y
+ * saleable sqm available", split into sold, selling and available. Figures
+ * are the per-product roll-up of GET .../sqm-inventory (not its `totals`
+ * block, which double-counts — see `ProductPosition`).
+ *
+ * Defaulted-retained is named in the caption but has no segment of its own:
+ * the backend reports it as a subset of selling/sold, not a separate bucket,
+ * so drawing it as a fourth slice would make the bar add up to more than the
+ * estate.
+ */
+function LedgerAvailabilityBar({ assetId }: { assetId: string }) {
+  const { data } = useSqmInventory(assetId);
+  if (!data) return null;
+
+  const totals = ledgerTotals(productPositions(data.positions));
+  // Active, but nothing on the ledger yet — fall back to the land account.
+  if (totals.capacity_sqm <= 0) return <SqmSummaryBar assetId={assetId} />;
+
+  const width = (value: number) => `${Math.min(100, Math.max(0, (value / totals.capacity_sqm) * 100))}%`;
+
+  return (
+    <section className="rounded-lg border px-4 py-3.5">
+      <div className="flex flex-col gap-1 text-[13px] sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
+        <strong className="font-semibold tabular-nums">
+          {totals.available_sqm.toLocaleString()} of {totals.capacity_sqm.toLocaleString()} saleable sqm available
+        </strong>
+        <span className="text-xs text-muted-foreground tabular-nums">
+          {formatSqmExact(totals.sold_sqm)} sold · {formatSqmExact(totals.selling_sqm)} selling
+          {totals.defaulted_sqm > 0 ? ` · ${formatSqmExact(totals.defaulted_sqm)} defaulted-retained` : ""}
+        </span>
+      </div>
+      <div className="mt-2.5 flex h-1.5 overflow-hidden rounded-full bg-muted" role="img" aria-label="Inventory position">
+        <div className="h-full bg-muted-foreground/50" style={{ width: width(totals.sold_sqm) }} />
+        <div className="h-full bg-amber-500" style={{ width: width(totals.selling_sqm) }} />
+        <div className="h-full bg-foreground/75" style={{ width: width(totals.available_sqm) }} />
+      </div>
+    </section>
+  );
+}
+
 /** A condensed, header-scale version of the Land Account card's reconciliation. */
 function SqmSummaryBar({ assetId }: { assetId: string }) {
   const { data } = useLandConfiguration(assetId);
@@ -97,7 +139,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 export function AssetInventoryHeaderSummary({ asset }: { asset: HeaderAsset }) {
   if (asset.inventory_model_version === "sqm_v1") {
-    return <SqmSummaryBar assetId={asset._id} />;
+    return <LedgerAvailabilityBar assetId={asset._id} />;
   }
 
   if (asset.land_inventory_state === "not_configured") {

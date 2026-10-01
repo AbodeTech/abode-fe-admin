@@ -12,12 +12,14 @@ import { assetKeys } from './query-keys';
  * Plots within one block.
  *
  *   GET    /admin/blocks/:block_id/plots
+ *   POST   /admin/blocks/:block_id/plots        { plot_number, size }
  *   POST   /admin/blocks/:block_id/plots/bulk   { plots: [{ plot_number, size }] }
  *   PATCH  /admin/plots/:plot_id                { plot_number?, size? }
  *   DELETE /admin/plots/:plot_id
  *
- * The single-plot POST exists too, but the form always works in ranges, so
- * everything goes through /bulk — one request whether it is 1 plot or 40.
+ * The form works in ranges. A range that comes to exactly one plot goes to
+ * the single-plot POST; anything more goes to /bulk. Either way it is one
+ * request.
  *
  * PATCH and DELETE are refused outright on an allocated plot (400
  * PLOT_ALLOCATED). The UI doesn't offer them there; this is the second guard.
@@ -51,13 +53,18 @@ function usePlotMutation<TVariables, TData>(
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: assetKeys.plots(blockId) });
       queryClient.invalidateQueries({ queryKey: assetKeys.blocks(assetId) });
+      // The tab's summary strip and plot table read the asset-wide endpoints.
+      queryClient.invalidateQueries({ queryKey: assetKeys.plotInventory(assetId) });
+      queryClient.invalidateQueries({ queryKey: assetKeys.plotSummary(assetId) });
     },
   });
 }
 
-export const useBulkCreatePlots = (ids: { blockId: string; assetId: string }) =>
+export const useCreatePlots = (ids: { blockId: string; assetId: string }) =>
   usePlotMutation(ids, (plots: PlotDraft[]) =>
-    apiPost(`/admin/blocks/${ids.blockId}/plots/bulk`, { plots }, WriteResultSchema)
+    plots.length === 1
+      ? apiPost(`/admin/blocks/${ids.blockId}/plots`, plots[0], WriteResultSchema)
+      : apiPost(`/admin/blocks/${ids.blockId}/plots/bulk`, { plots }, WriteResultSchema)
   );
 
 export const useUpdatePlot = (ids: { blockId: string; assetId: string }) =>

@@ -105,3 +105,82 @@ export function paymentPercentage(row: Pick<SubscriberRow, 'payment_percentage'>
   if (!Number.isFinite(parsed)) return 0;
   return Math.min(Math.max(parsed, 0), 100);
 }
+
+/* -------------------- customer land position -------------------- */
+
+/**
+ * The design's "Customer land position" row, read from one subscriber row
+ * plus the plots allocated to its plan.
+ *
+ * What the backend gives and doesn't:
+ *  - Purchase state — from the plan's `status` and `is_defaulted`.
+ *  - Land treatment — a plan that is still live holds its land ("Retained").
+ *    For a cancelled or closed plan the admin chooses, at closing, whether to
+ *    free the land or keep it, and this endpoint doesn't return that choice,
+ *    so it is `null` (shown as a dash) rather than guessed.
+ *  - Allocation — not on the subscriber row at all. It comes from the plot
+ *    inventory (GET .../plots?allocation=allocated), matched by plan id.
+ */
+export type PurchaseTone = 'good' | 'warn' | 'bad' | 'neutral';
+
+export type CustomerLandPosition = {
+  product: string | null;
+  purchaseState: { label: string; tone: PurchaseTone };
+  landTreatment: 'Retained' | null;
+  /** Plot labels held by the plan, `'awaiting'`, or `null` when it can't be known. */
+  allocation: string[] | 'awaiting' | null;
+};
+
+/** A plan whose life ended without completing — the backend's own `TERMINATED_STATUSES`. */
+const TERMINATED = new Set(['cancelled', 'closed']);
+
+const PRODUCT_LABELS: Record<string, string> = {
+  flex: 'Flex',
+  'full-ownership': 'Full ownership',
+  commercial: 'Commercial',
+  // The plan stores Developer Plot with an underscore; the catalogue uses a hyphen.
+  developer_plot: 'Developer plot',
+  'developer-plot': 'Developer plot',
+};
+
+function purchaseState(row: Pick<SubscriberRow, 'status' | 'is_defaulted'>): CustomerLandPosition['purchaseState'] {
+  if (row.status === 'cancelled') return { label: 'Cancelled', tone: 'warn' };
+  if (row.status === 'closed') return { label: 'Closed', tone: 'warn' };
+  if (row.is_defaulted) return { label: 'Defaulted', tone: 'bad' };
+  if (row.status === 'completed') return { label: 'Sold', tone: 'good' };
+  if (row.status === 'suspended') return { label: 'Suspended', tone: 'warn' };
+  if (row.status === 'overdue') return { label: 'Overdue', tone: 'warn' };
+  // Still being paid for — the same word the product position table uses.
+  return { label: 'Selling', tone: 'neutral' };
+}
+
+/**
+ * @param plotsByPlan  plan id → labels of the plots allocated to it.
+ * @param plotsKnown   false when the allocated plots couldn't be read, or only
+ *                     partly — a plan with no match is then unknown, not "awaiting".
+ */
+export function customerLandPosition(
+  row: Pick<SubscriberRow, 'plan_id' | 'asset_type' | 'status' | 'is_defaulted'>,
+  plotsByPlan: ReadonlyMap<string, string[]>,
+  plotsKnown: boolean
+): CustomerLandPosition {
+  const terminated = TERMINATED.has(row.status);
+  const plots = plotsByPlan.get(row.plan_id);
+
+  return {
+    product: row.asset_type ? (PRODUCT_LABELS[row.asset_type] ?? row.asset_type) : null,
+    purchaseState: purchaseState(row),
+    landTreatment: terminated ? null : 'Retained',
+    allocation: plots && plots.length > 0 ? plots : terminated || !plotsKnown ? null : 'awaiting',
+  };
+}
+
+/** Groups allocated plots by the plan that holds them. */
+export function plotsByPlanId(plots: { label: string; payment_plan_id: string | null }[]): Map<string, string[]> {
+  const byPlan = new Map<string, string[]>();
+  for (const plot of plots) {
+    if (!plot.payment_plan_id) continue;
+    byPlan.set(plot.payment_plan_id, [...(byPlan.get(plot.payment_plan_id) ?? []), plot.label]);
+  }
+  return byPlan;
+}

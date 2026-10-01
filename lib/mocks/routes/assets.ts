@@ -40,6 +40,7 @@ export type MockAsset = {
   hero_image: string | null;
   pictures: string[];
   documents: Record<string, string | undefined>;
+  pitch_pack?: { url: string; size_bytes: number; uploaded_at: string } | null;
   asset_history: { year: number; value: number }[];
   sales_cap: number;
   sold_units: number;
@@ -663,6 +664,19 @@ function filterAssetPlots(rows: MockPlot[], query: Record<string, unknown>): Moc
     result = result.filter((p) => `${p.block_label}-${p.plot_number}`.toLowerCase().includes(search));
   }
 
+  // `ListPlotsDto.allocation` / `.field_state` on the real backend.
+  const allocation = query.allocation ? String(query.allocation) : null;
+  if (allocation === 'allocated') result = result.filter((p) => p.status === 'allocated');
+  if (allocation === 'unallocated') result = result.filter((p) => p.status !== 'allocated');
+  if (allocation === 'allocation_ready') result = result.filter((p) => fieldOpsFor(p).allocation_ready);
+  if (allocation === 'not_ready') result = result.filter((p) => !fieldOpsFor(p).allocation_ready);
+
+  const fieldState = query.field_state ? String(query.field_state) : null;
+  if (fieldState === 'parcelled') result = result.filter((p) => fieldOpsFor(p).parcelled);
+  if (fieldState === 'not_parcelled') result = result.filter((p) => !fieldOpsFor(p).parcelled);
+  if (fieldState === 'cleared') result = result.filter((p) => fieldOpsFor(p).clearing_percent >= 100);
+  if (fieldState === 'not_cleared') result = result.filter((p) => fieldOpsFor(p).clearing_percent < 100);
+
   return result;
 }
 
@@ -870,6 +884,35 @@ export const assetRoutes: MockRoutes = {
     if (!row) throw new MockHttpError(404, 'Asset not found', 'ASSET_NOT_FOUND');
 
     return { ...row, offers: offerTree(row) };
+  },
+
+  /** PUT /admin/assets/:id/pitch-pack — `SetPitchPackDto`; the same link keeps its upload date. */
+  'PUT /admin/assets/:id/pitch-pack': ({ params, body: raw }) => {
+    const row = assets.find((candidate) => candidate._id === params.id && !candidate.deleted_at);
+    if (!row) throw new MockHttpError(404, 'Asset not found', 'ASSET_NOT_FOUND');
+    const dto = body<{ url?: string; size_bytes?: number }>(raw);
+    if (!dto.url || !/^https?:\/\/\S+$/i.test(dto.url)) {
+      throw new MockHttpError(400, 'url must be an http(s) link to the uploaded file', 'VALIDATION_FAILED');
+    }
+    const size = Number(dto.size_bytes);
+    if (!Number.isInteger(size) || size < 1 || size > 100 * 1024 * 1024) {
+      throw new MockHttpError(400, 'size_bytes must be between 1 and 104857600', 'VALIDATION_FAILED');
+    }
+    const current = row.pitch_pack ?? null;
+    row.pitch_pack = {
+      url: dto.url,
+      size_bytes: size,
+      uploaded_at: current?.url === dto.url ? current.uploaded_at : new Date().toISOString(),
+    };
+    return row.pitch_pack;
+  },
+
+  'DELETE /admin/assets/:id/pitch-pack': ({ params }) => {
+    const row = assets.find((candidate) => candidate._id === params.id && !candidate.deleted_at);
+    if (!row) throw new MockHttpError(404, 'Asset not found', 'ASSET_NOT_FOUND');
+    if (!row.pitch_pack) return { removed: false };
+    row.pitch_pack = null;
+    return { removed: true };
   },
 
   /**
@@ -1210,6 +1253,34 @@ export const assetRoutes: MockRoutes = {
       .filter((plot) => plot.block === params.blockId)
       .sort((a, b) => a.plot_number - b.plot_number),
 
+  /** POST /admin/blocks/:block_id/plots — one plot (`CreatePlotDto`), same rules as a bulk row. */
+  'POST /admin/blocks/:blockId/plots': ({ params, body: raw }) => {
+    const block = requireBlock(params.blockId);
+    const dto = body<{ plot_number?: number; size?: number }>(raw);
+    const plotNumber = Number(dto.plot_number);
+    const size = Number(dto.size);
+    if (!Number.isInteger(plotNumber) || plotNumber < 1 || !Number.isInteger(size) || size < 1) {
+      throw new MockHttpError(400, 'plot_number and size must be integers of at least 1', 'VALIDATION_FAILED');
+    }
+    if (plots.some((plot) => plot.block === block._id && plot.plot_number === plotNumber)) {
+      throw new MockHttpError(409, `Plot ${plotNumber} already exists in this block`, 'DUPLICATE_PLOT');
+    }
+
+    plotSeq += 1;
+    const plot: MockPlot = {
+      _id: `665fcp00000000000000n${String(plotSeq).padStart(2, '0')}`,
+      block: block._id,
+      block_label: block.label,
+      plot_number: plotNumber,
+      size,
+      status: 'available',
+      createdAt: nowIso(),
+      updatedAt: nowIso(),
+    };
+    plots.push(plot);
+    return plot;
+  },
+
   'POST /admin/blocks/:blockId/plots/bulk': ({ params, body: raw }) => {
     const block = requireBlock(params.blockId);
     const dto = body<{ plots?: Array<{ plot_number?: number; size?: number }> }>(raw);
@@ -1333,10 +1404,8 @@ export const assetRoutes: MockRoutes = {
    * staging's field-staff module (`AssetSiteSetupController`'s `plots()`,
    * `SiteSetupService.plotInventory()`) — see plot-inventory.schema.ts's
    * header for the full shape this mirrors. One response carries the list,
-   * BOTH totals (unfiltered and filtered), and allocation-readiness together
-   * — there is no separate `/plots/summary` endpoint on the real backend;
-   * that was this app's own earlier invention and has been removed. An asset
-   * with no blocks (e.g. Harmony Gardens) returns a genuinely empty list, not
+   * BOTH totals (unfiltered and filtered), and allocation-readiness together.
+   * An asset with no blocks (e.g. Harmony Gardens) returns a genuinely empty list, not
    * an error.
    */
   'GET /admin/assets/:assetId/plots': ({ params, query }) => {
@@ -1386,6 +1455,32 @@ export const assetRoutes: MockRoutes = {
         },
       },
       meta: { total: filtered.length, page, limit, totalPages: Math.max(1, Math.ceil(filtered.length / limit)) },
+    };
+  },
+
+  /**
+   * GET /admin/assets/:assetId/plots/summary — real since abode-be-v2 commit
+   * 0f042ef (`SiteSetupService.plotSummary()`): the response above without
+   * the `plots` rows, under the same filters.
+   */
+  'GET /admin/assets/:assetId/plots/summary': ({ params, query }) => {
+    const asset = findActiveAsset(params.assetId);
+    if (!asset) throw new MockHttpError(404, 'Asset not found', 'FIELD_SITE_NOT_FOUND');
+
+    const all = assetPlots(params.assetId);
+    const filtered = filterAssetPlots(all, query);
+
+    return {
+      asset: { id: params.assetId, name: asset.name },
+      totals: plotInventoryTotals(all),
+      filtered_totals: plotInventoryTotals(filtered),
+      allocation_readiness: {
+        plots_ready: all.filter((p) => fieldOpsFor(p).allocation_ready).length,
+        plots_not_ready: all.filter((p) => !fieldOpsFor(p).allocation_ready).length,
+        upcoming_event: null,
+        latest_completed_event: null,
+        note: 'No allocation event is scheduled, so there is no event capacity to report',
+      },
     };
   },
 
