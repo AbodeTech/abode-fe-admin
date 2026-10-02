@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -36,14 +36,22 @@ import { cn } from "@/lib/utils";
 import { formatNaira, formatNairaCompact } from "@/lib/utils/format";
 
 import { useAcceptClaim } from "../../hooks/use-cost-events";
-import { useArchiveObligation, useCostObligation } from "../../hooks/use-cost-obligations";
+import {
+  useArchiveObligation,
+  useCostObligation,
+  useUpdateObligation,
+} from "../../hooks/use-cost-obligations";
+import { useAssetDetail } from "../../hooks/use-asset-detail";
 import { useReviseCost } from "../../hooks/use-revise-cost";
 import {
   COST_GROUP_LABELS,
   COST_SOURCE_TYPE_LABELS,
+  updateObligationFormSchema,
   type AssetCostEvent,
   type ObligationDetail,
+  type UpdateObligationFormValues,
 } from "../../schemas/asset-cost.schema";
+import { OFFER_TYPE_LABELS, type OfferType } from "../../schemas/asset.schema";
 import {
   REVISE_MODES,
   REVISE_MODE_LABELS,
@@ -56,7 +64,6 @@ import {
   forecastImpact,
   isStageMode,
   lastChangedAt,
-  planBudgetRevision,
   recordFigures,
   stageEntryFormSchema,
   stageEntryPayload,
@@ -76,8 +83,15 @@ import { ReverseAdjustDialog } from "./ReverseAdjustDialog";
 const LABEL = "text-[11px] font-semibold";
 const today = () => new Date().toISOString().slice(0, 10);
 const shortDate = (value: string | null) =>
-  value ? new Date(value).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—";
-const money = (value: number | null) => (value == null ? "—" : formatNairaCompact(value));
+  value
+    ? new Date(value).toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })
+    : "—";
+const money = (value: number | null) =>
+  value == null ? "—" : formatNairaCompact(value);
 
 function Required() {
   return <span className="text-rose-600"> *</span>;
@@ -87,7 +101,7 @@ function Required() {
 const MODE_NOTES: Record<ReviseMode, { title: string; body: string }> = {
   correct: {
     title: "Correct details",
-    body: "Only an entry still waiting for approval can be corrected. An approved amount is never edited: reverse it and record it again, so the earlier figure stays in the history.",
+    body: "Correct the record name, scope, supplier or reference without changing its financial entries. Draft financial entries can also be corrected below.",
   },
   revision: {
     title: "Create revision",
@@ -120,7 +134,13 @@ function FormFooter({
 }) {
   return (
     <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
-      <Button type="button" variant="outline" size="sm" onClick={onCancel} disabled={pending}>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={onCancel}
+        disabled={pending}
+      >
         Cancel
       </Button>
       {children}
@@ -143,18 +163,34 @@ function ImpactPreview({
       <h3 className="mb-3 text-xs font-semibold">Impact preview</h3>
       <div className="grid grid-cols-1 items-center gap-3 sm:grid-cols-[1fr_auto_1fr]">
         <div className="rounded-lg border p-2.5">
-          <span className="block text-[10px] text-muted-foreground">Previous remaining forecast</span>
-          <strong className="mt-1 block text-sm tabular-nums">{previous == null ? "Unknown" : formatNaira(previous)}</strong>
+          <span className="block text-[10px] text-muted-foreground">
+            Previous remaining forecast
+          </span>
+          <strong className="mt-1 block text-sm tabular-nums">
+            {previous == null ? "Unknown" : formatNaira(previous)}
+          </strong>
         </div>
-        <ArrowRight className="mx-auto hidden h-4 w-4 text-muted-foreground sm:block" aria-hidden />
+        <ArrowRight
+          className="mx-auto hidden h-4 w-4 text-muted-foreground sm:block"
+          aria-hidden
+        />
         <div className="rounded-lg border p-2.5">
-          <span className="block text-[10px] text-muted-foreground">Revised remaining forecast</span>
-          <strong className={cn("mt-1 block text-sm tabular-nums", worse && "text-amber-600")}>
+          <span className="block text-[10px] text-muted-foreground">
+            Revised remaining forecast
+          </span>
+          <strong
+            className={cn(
+              "mt-1 block text-sm tabular-nums",
+              worse && "text-amber-600",
+            )}
+          >
             {revised == null ? "Unknown" : formatNaira(revised)}
           </strong>
         </div>
       </div>
-      <p className="mt-2 text-[10px] leading-snug text-muted-foreground">{children}</p>
+      <p className="mt-2 text-[10px] leading-snug text-muted-foreground">
+        {children}
+      </p>
     </section>
   );
 }
@@ -173,7 +209,6 @@ function RevisionForm({
   onCancel: () => void;
 }) {
   const { reviseBudget } = useReviseCost(assetId, record.obligation.id);
-  const progress = useRef<ReviseProgress>({});
   const figures = recordFigures(record);
 
   const form = useForm<BudgetRevisionFormValues>({
@@ -191,23 +226,16 @@ function RevisionForm({
   const impact = forecastImpact(record, "revision", form.watch("amount"));
 
   const submit = form.handleSubmit((values) => {
-    const plan = planBudgetRevision(record, budgetRevisionFormSchema.parse(values));
+    const payload = budgetRevisionFormSchema.parse(values);
     reviseBudget.mutate(
-      { plan, progress: progress.current },
+      payload,
       {
         onSuccess: () => {
           toast.success("Budget revised");
           onDone();
         },
-        onError: (error) => {
-          const step = error instanceof ReviseStepError ? error.step : "add";
-          toast.error(
-            step === "add"
-              ? error.message || "Couldn't save the revision"
-              : `The revised budget is saved but not in force yet: ${error.message} Press Save revision again to finish — nothing will be entered twice.`
-          );
-        },
-      }
+        onError: (error) => toast.error(error.message || "Couldn't save the revision"),
+      },
     );
   });
 
@@ -298,7 +326,11 @@ function RevisionForm({
                   <Required />
                 </FormLabel>
                 <FormControl>
-                  <Textarea rows={2} placeholder="What changed, and who agreed it" {...field} />
+                  <Textarea
+                    rows={2}
+                    placeholder="What changed, and who agreed it"
+                    {...field}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -327,16 +359,26 @@ function RevisionForm({
 
       {impact ? (
         <div className="mt-4">
-          <ImpactPreview previous={impact.previousRemaining} revised={impact.revisedRemaining}>
-            Remaining forecast is the budget less what has been incurred. Profit is not affected by a budget: it uses
-            incurred cost only.
+          <ImpactPreview
+            previous={impact.previousRemaining}
+            revised={impact.revisedRemaining}
+          >
+            Remaining forecast is the budget less what has been incurred. Profit
+            is not affected by a budget: it uses incurred cost only.
           </ImpactPreview>
         </div>
       ) : null}
 
       <FormFooter onCancel={onCancel} pending={reviseBudget.isPending}>
-        <Button type="button" size="sm" onClick={submit} disabled={reviseBudget.isPending}>
-          {reviseBudget.isPending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
+        <Button
+          type="button"
+          size="sm"
+          onClick={submit}
+          disabled={reviseBudget.isPending}
+        >
+          {reviseBudget.isPending ? (
+            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+          ) : null}
           Save revision
         </Button>
       </FormFooter>
@@ -381,23 +423,32 @@ function StageForm({
 
   function save(approve: boolean) {
     return form.handleSubmit((values) => {
-      const payload = stageEntryPayload(mode, stageEntryFormSchema.parse(values));
+      const payload = stageEntryPayload(
+        mode,
+        stageEntryFormSchema.parse(values),
+      );
       addEntry.mutate(
         { payload, approve, progress: progress.current },
         {
           onSuccess: () => {
-            toast.success(approve ? `${label}: saved and approved` : "Saved as a draft — it counts once it is approved");
+            toast.success(
+              approve
+                ? `${label}: saved and approved`
+                : "Saved as a draft — it counts once it is approved",
+            );
             onDone();
           },
           onError: (error) => {
             if (error instanceof ReviseStepError && error.step === "approve") {
-              toast.warning(`Saved as a draft, but it could not be approved: ${error.message}`);
+              toast.warning(
+                `Saved as a draft, but it could not be approved: ${error.message}`,
+              );
               onDone();
               return;
             }
             toast.error(error.message || "Couldn't save this entry");
           },
-        }
+        },
       );
     })();
   }
@@ -459,7 +510,10 @@ function StageForm({
               <FormItem>
                 <FormLabel className={LABEL}>Reference</FormLabel>
                 <FormControl>
-                  <Input placeholder="Contract, invoice or payment reference" {...field} />
+                  <Input
+                    placeholder="Contract, invoice or payment reference"
+                    {...field}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -501,8 +555,12 @@ function StageForm({
 
       {impact ? (
         <div className="mt-4">
-          <ImpactPreview previous={impact.previousRemaining} revised={impact.revisedRemaining}>
-            Once approved, profit decreases by {formatNaira(-impact.profitChange)}. Sales already completed are not
+          <ImpactPreview
+            previous={impact.previousRemaining}
+            revised={impact.revisedRemaining}
+          >
+            Once approved, profit decreases by{" "}
+            {formatNaira(-impact.profitChange)}. Sales already completed are not
             changed.
           </ImpactPreview>
         </div>
@@ -519,8 +577,15 @@ function StageForm({
           Save draft
         </Button>
         {canApprove ? (
-          <Button type="button" size="sm" onClick={() => save(true)} disabled={addEntry.isPending}>
-            {addEntry.isPending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => save(true)}
+            disabled={addEntry.isPending}
+          >
+            {addEntry.isPending ? (
+              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+            ) : null}
             {label}
           </Button>
         ) : null}
@@ -531,18 +596,242 @@ function StageForm({
 
 /* -------------------- correct details -------------------- */
 
+const NO_PRODUCT = "none";
+const NO_SIZE = "none";
+
+function RecordDetailsForm({
+  assetId,
+  record,
+  onDone,
+  onCancel,
+}: {
+  assetId: string;
+  record: ObligationDetail;
+  onDone: () => void;
+  onCancel: () => void;
+}) {
+  const update = useUpdateObligation(assetId, record.obligation.id);
+  const { data: asset } = useAssetDetail(assetId);
+  const form = useForm<UpdateObligationFormValues>({
+    resolver: zodResolver(updateObligationFormSchema),
+    defaultValues: {
+      title: record.obligation.title,
+      description: record.obligation.description ?? "",
+      product: record.obligation.product,
+      size_id: record.obligation.size_id,
+      vendor: record.obligation.vendor ?? "",
+      reference: record.obligation.reference ?? "",
+      effective_date: record.obligation.effective_date?.slice(0, 10) ?? today(),
+      reason: "",
+    },
+  });
+  const product = useWatch({ control: form.control, name: "product" });
+  const sizes =
+    asset?.offers.find((offer) => offer.offer_type === product)?.sizes ?? [];
+
+  const submit = form.handleSubmit((values) => {
+    update.mutate(updateObligationFormSchema.parse(values), {
+      onSuccess: () => {
+        toast.success("Cost record details corrected");
+        onDone();
+      },
+      onError: (error) =>
+        toast.error(error.message || "Couldn't correct this cost record"),
+    });
+  });
+
+  return (
+    <Form {...form}>
+      <section>
+        <h3 className="mb-3 text-xs font-semibold">Cost record details</h3>
+        <div className="grid gap-3.5 sm:grid-cols-2">
+          <FormField
+            control={form.control}
+            name="title"
+            render={({ field }) => (
+              <FormItem className="sm:col-span-2">
+                <FormLabel className={LABEL}>
+                  Title
+                  <Required />
+                </FormLabel>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="description"
+            render={({ field }) => (
+              <FormItem className="sm:col-span-2">
+                <FormLabel className={LABEL}>Description</FormLabel>
+                <FormControl>
+                  <Textarea rows={2} {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="product"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className={LABEL}>Product</FormLabel>
+                <Select
+                  value={field.value ?? NO_PRODUCT}
+                  onValueChange={(value) => {
+                    field.onChange(
+                      value === NO_PRODUCT ? null : (value as OfferType),
+                    );
+                    form.setValue("size_id", null);
+                  }}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value={NO_PRODUCT}>Whole asset</SelectItem>
+                    {asset?.offers.map((offer) => (
+                      <SelectItem
+                        key={offer.offer_type}
+                        value={offer.offer_type}
+                      >
+                        {OFFER_TYPE_LABELS[offer.offer_type]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="size_id"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className={LABEL}>Size</FormLabel>
+                <Select
+                  disabled={!product || sizes.length === 0}
+                  value={field.value ?? NO_SIZE}
+                  onValueChange={(value) =>
+                    field.onChange(value === NO_SIZE ? null : value)
+                  }
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Whole product" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value={NO_SIZE}>Whole product</SelectItem>
+                    {sizes.map((size) => (
+                      <SelectItem key={size._id} value={size._id}>
+                        {size.size_sqm.toLocaleString()} sqm
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="vendor"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className={LABEL}>Vendor or payee</FormLabel>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="reference"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className={LABEL}>Reference</FormLabel>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="effective_date"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className={LABEL}>
+                  Effective date
+                  <Required />
+                </FormLabel>
+                <FormControl>
+                  <Input type="date" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="reason"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className={LABEL}>
+                  Reason for correction
+                  <Required />
+                </FormLabel>
+                <FormControl>
+                  <Input placeholder="What was wrong?" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+      </section>
+      <FormFooter onCancel={onCancel} pending={update.isPending}>
+        <Button
+          type="button"
+          size="sm"
+          onClick={submit}
+          disabled={update.isPending}
+        >
+          {update.isPending ? (
+            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+          ) : null}
+          Save record details
+        </Button>
+      </FormFooter>
+    </Form>
+  );
+}
+
 function draftValues(entry: AssetCostEvent): CorrectDraftFormValues {
   return {
     entry_id: entry.id,
     amount: entry.amount ?? (undefined as unknown as number),
-    effective_date: entry.effective_date ? entry.effective_date.slice(0, 10) : today(),
+    effective_date: entry.effective_date
+      ? entry.effective_date.slice(0, 10)
+      : today(),
     vendor: entry.vendor ?? "",
     reference: entry.reference ?? "",
     note: entry.note ?? "",
   };
 }
 
-function CorrectForm({
+function CorrectDraftEntryForm({
   assetId,
   record,
   onDone,
@@ -560,15 +849,20 @@ function CorrectForm({
     resolver: zodResolver(correctDraftFormSchema),
     defaultValues: drafts[0]
       ? draftValues(drafts[0])
-      : { entry_id: "", amount: undefined as unknown as number, effective_date: today() },
+      : {
+          entry_id: "",
+          amount: undefined as unknown as number,
+          effective_date: today(),
+        },
   });
 
   if (drafts.length === 0) {
     return (
       <>
         <p className="rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground">
-          Nothing on this record is waiting for approval, so there is nothing to correct. To change an approved amount,
-          reverse it under Entries below and record it again.
+          Nothing on this record is waiting for approval, so there is nothing to
+          correct. To change an approved amount, reverse it under Entries below
+          and record it again.
         </p>
         <FormFooter onCancel={onCancel} pending={false}>
           {null}
@@ -583,7 +877,8 @@ function CorrectForm({
         toast.success("Entry corrected");
         onDone();
       },
-      onError: (error) => toast.error(error.message || "Couldn't save the correction"),
+      onError: (error) =>
+        toast.error(error.message || "Couldn't save the correction"),
     });
   });
 
@@ -604,7 +899,9 @@ function CorrectForm({
                 <Select
                   value={field.value}
                   onValueChange={(value) => {
-                    const entry = drafts.find((candidate) => candidate.id === value);
+                    const entry = drafts.find(
+                      (candidate) => candidate.id === value,
+                    );
                     if (entry) form.reset(draftValues(entry));
                   }}
                 >
@@ -616,8 +913,11 @@ function CorrectForm({
                   <SelectContent>
                     {drafts.map((entry) => (
                       <SelectItem key={entry.id} value={entry.id}>
-                        {entry.stage_label} · {entry.amount == null ? "no amount" : formatNaira(entry.amount)} ·{" "}
-                        {shortDate(entry.effective_date)}
+                        {entry.stage_label} ·{" "}
+                        {entry.amount == null
+                          ? "no amount"
+                          : formatNaira(entry.amount)}{" "}
+                        · {shortDate(entry.effective_date)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -701,8 +1001,15 @@ function CorrectForm({
       </section>
 
       <FormFooter onCancel={onCancel} pending={correctDraft.isPending}>
-        <Button type="button" size="sm" onClick={submit} disabled={correctDraft.isPending}>
-          {correctDraft.isPending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
+        <Button
+          type="button"
+          size="sm"
+          onClick={submit}
+          disabled={correctDraft.isPending}
+        >
+          {correctDraft.isPending ? (
+            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+          ) : null}
           Save correction
         </Button>
       </FormFooter>
@@ -710,11 +1017,42 @@ function CorrectForm({
   );
 }
 
+function CorrectForm(props: {
+  assetId: string;
+  record: ObligationDetail;
+  onDone: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="space-y-5">
+      <RecordDetailsForm {...props} />
+      <div className="border-t pt-5">
+        <h3 className="mb-1 text-xs font-semibold">
+          Correct a draft financial entry
+        </h3>
+        <p className="mb-3 text-[11px] text-muted-foreground">
+          This changes an entry that has not been approved yet.
+        </p>
+        <CorrectDraftEntryForm {...props} />
+      </div>
+    </div>
+  );
+}
+
 /* -------------------- entries on the record -------------------- */
 
-const ENTRY_STATUS: Record<AssetCostEvent["status"], { label: string; className: string }> = {
-  draft: { label: "Awaiting approval", className: "bg-amber-500/10 text-amber-600" },
-  approved: { label: "Approved", className: "bg-emerald-500/10 text-emerald-600" },
+const ENTRY_STATUS: Record<
+  AssetCostEvent["status"],
+  { label: string; className: string }
+> = {
+  draft: {
+    label: "Awaiting approval",
+    className: "bg-amber-500/10 text-amber-600",
+  },
+  approved: {
+    label: "Approved",
+    className: "bg-emerald-500/10 text-emerald-600",
+  },
   reversed: { label: "Reversed", className: "bg-rose-500/10 text-rose-600" },
   archived: { label: "Archived", className: "bg-muted text-muted-foreground" },
 };
@@ -730,13 +1068,20 @@ function Entries({
 }) {
   const { approve } = useReviseCost(assetId, record.obligation.id);
   const acceptClaim = useAcceptClaim(assetId, record.obligation.id);
-  const [reverseTarget, setReverseTarget] = useState<AssetCostEvent | null>(null);
-  const hasClaim = record.events.some((entry) => entry.financial_stage === "claimed" && entry.status === "approved");
+  const [reverseTarget, setReverseTarget] = useState<AssetCostEvent | null>(
+    null,
+  );
+  const hasClaim = record.events.some(
+    (entry) =>
+      entry.financial_stage === "claimed" && entry.status === "approved",
+  );
 
   return (
     <section className="border-t pt-4">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <h3 className="text-xs font-semibold">Entries on this record · {record.events.length}</h3>
+        <h3 className="text-xs font-semibold">
+          Entries on this record · {record.events.length}
+        </h3>
         {canApprove && hasClaim ? (
           <Button
             type="button"
@@ -747,9 +1092,13 @@ function Entries({
               acceptClaim.mutate(
                 {},
                 {
-                  onSuccess: () => toast.success("Claim accepted — it now counts against profit"),
-                  onError: (error) => toast.error(error.message || "Couldn't accept this claim"),
-                }
+                  onSuccess: () =>
+                    toast.success(
+                      "Claim accepted — it now counts against profit",
+                    ),
+                  onError: (error) =>
+                    toast.error(error.message || "Couldn't accept this claim"),
+                },
               )
             }
           >
@@ -767,16 +1116,32 @@ function Entries({
           {record.events.map((entry) => {
             const status = ENTRY_STATUS[entry.status];
             return (
-              <li key={entry.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-xs">
-                <span className="w-20 shrink-0 font-semibold">{entry.stage_label}</span>
+              <li
+                key={entry.id}
+                className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-xs"
+              >
+                <span className="w-20 shrink-0 font-semibold">
+                  {entry.stage_label}
+                </span>
                 <span className="w-28 shrink-0 tabular-nums">
-                  {entry.amount == null ? "No amount" : formatNaira(entry.amount)}
+                  {entry.amount == null
+                    ? "No amount"
+                    : formatNaira(entry.amount)}
                 </span>
                 <span className="min-w-0 flex-1 truncate text-muted-foreground">
                   {shortDate(entry.effective_date)}
-                  {entry.reversal_reason ? ` · ${entry.reversal_reason}` : entry.note ? ` · ${entry.note}` : ""}
+                  {entry.reversal_reason
+                    ? ` · ${entry.reversal_reason}`
+                    : entry.note
+                      ? ` · ${entry.note}`
+                      : ""}
                 </span>
-                <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", status.className)}>
+                <span
+                  className={cn(
+                    "rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                    status.className,
+                  )}
+                >
                   {status.label}
                 </span>
                 {canApprove && entry.status === "draft" ? (
@@ -785,19 +1150,34 @@ function Entries({
                     variant="outline"
                     size="sm"
                     disabled={approve.isPending || entry.amount == null}
-                    title={entry.amount == null ? "Enter an amount first, under Correct details" : undefined}
+                    title={
+                      entry.amount == null
+                        ? "Enter an amount first, under Correct details"
+                        : undefined
+                    }
                     onClick={() =>
                       approve.mutate(entry.id, {
-                        onSuccess: () => toast.success(`${entry.stage_label} approved`),
-                        onError: (error) => toast.error(error.message || "Couldn't approve this entry"),
+                        onSuccess: () =>
+                          toast.success(`${entry.stage_label} approved`),
+                        onError: (error) =>
+                          toast.error(
+                            error.message || "Couldn't approve this entry",
+                          ),
                       })
                     }
                   >
                     Approve
                   </Button>
                 ) : null}
-                {canApprove && entry.status === "approved" && entry.financial_stage !== "reversal" ? (
-                  <Button type="button" variant="outline" size="sm" onClick={() => setReverseTarget(entry)}>
+                {canApprove &&
+                entry.status === "approved" &&
+                entry.financial_stage !== "reversal" ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setReverseTarget(entry)}
+                  >
                     Reverse
                   </Button>
                 ) : null}
@@ -845,10 +1225,23 @@ interface Props {
  * it, but approving a waiting entry and reversing an approved one have to
  * happen somewhere, and this is the record they belong to.
  */
-export function ReviseCostModal({ assetId, obligationId, open, onOpenChange, canManage, canApprove }: Props) {
-  const { data: record, isLoading, error } = useCostObligation(assetId, obligationId, { enabled: open });
+export function ReviseCostModal({
+  assetId,
+  obligationId,
+  open,
+  onOpenChange,
+  canManage,
+  canApprove,
+}: Props) {
+  const {
+    data: record,
+    isLoading,
+    error,
+  } = useCostObligation(assetId, obligationId, { enabled: open });
   // A budget revision reverses the old budget, which needs approval rights.
-  const [mode, setMode] = useState<ReviseMode>(canApprove ? "revision" : "committed");
+  const [mode, setMode] = useState<ReviseMode>(
+    canApprove ? "revision" : "committed",
+  );
   const [editItemOpen, setEditItemOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const archive = useArchiveObligation(assetId, obligationId ?? "");
@@ -863,15 +1256,21 @@ export function ReviseCostModal({ assetId, obligationId, open, onOpenChange, can
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="gap-0 p-0 sm:max-w-[720px]">
         <DialogHeader className="border-b px-5 py-4 text-left">
-          <DialogTitle>{record ? record.obligation.title : "Cost record"}</DialogTitle>
+          <DialogTitle>
+            {record ? record.obligation.title : "Cost record"}
+          </DialogTitle>
           <DialogDescription className="text-[11px]">
             {record
               ? [
-                  item ? `${item.name} · ${COST_GROUP_LABELS[item.group]}` : null,
+                  item
+                    ? `${item.name} · ${COST_GROUP_LABELS[item.group]}`
+                    : null,
                   record.obligation.source_type !== "manual"
                     ? COST_SOURCE_TYPE_LABELS[record.obligation.source_type]
                     : null,
-                  changed ? `last changed ${shortDate(changed)}` : "nothing recorded yet",
+                  changed
+                    ? `last changed ${shortDate(changed)}`
+                    : "nothing recorded yet",
                 ]
                   .filter(Boolean)
                   .join(" · ")
@@ -881,7 +1280,9 @@ export function ReviseCostModal({ assetId, obligationId, open, onOpenChange, can
 
         <div className="max-h-[72vh] space-y-4 overflow-y-auto px-5 py-5">
           {error ? (
-            <p className="text-sm text-rose-600">Couldn&apos;t load this cost record: {error.message}</p>
+            <p className="text-sm text-rose-600">
+              Couldn&apos;t load this cost record: {error.message}
+            </p>
           ) : isLoading || !record || !figures ? (
             <Skeleton className="h-56 w-full" />
           ) : (
@@ -896,17 +1297,27 @@ export function ReviseCostModal({ assetId, obligationId, open, onOpenChange, can
                   ] as const
                 ).map(([label, value]) => (
                   <div key={label}>
-                    <span className="mb-1 block text-[9px] uppercase text-muted-foreground">{label}</span>
-                    <strong className="text-xs tabular-nums">{money(value)}</strong>
+                    <span className="mb-1 block text-[9px] uppercase text-muted-foreground">
+                      {label}
+                    </span>
+                    <strong className="text-xs tabular-nums">
+                      {money(value)}
+                    </strong>
                   </div>
                 ))}
               </div>
 
-              {canManage ? (
+              {canManage && record.obligation.status !== "archived" ? (
                 <>
                   <section>
-                    <h3 className="mb-3 text-xs font-semibold">Choose the change</h3>
-                    <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-5" role="radiogroup" aria-label="Choose the change">
+                    <h3 className="mb-3 text-xs font-semibold">
+                      Choose the change
+                    </h3>
+                    <div
+                      className="grid grid-cols-2 gap-1.5 sm:grid-cols-5"
+                      role="radiogroup"
+                      aria-label="Choose the change"
+                    >
                       {REVISE_MODES.map((option) => {
                         const blocked = option === "revision" && !canApprove;
                         return (
@@ -916,12 +1327,18 @@ export function ReviseCostModal({ assetId, obligationId, open, onOpenChange, can
                             role="radio"
                             aria-checked={mode === option}
                             disabled={blocked}
-                            title={blocked ? "Revising a budget needs approval rights" : undefined}
+                            title={
+                              blocked
+                                ? "Revising a budget needs approval rights"
+                                : undefined
+                            }
                             onClick={() => setMode(option)}
                             className={cn(
                               "rounded-md border px-2 py-2.5 text-center text-[10px]",
-                              mode === option ? "border-foreground bg-muted font-semibold" : "bg-background hover:bg-muted/40",
-                              blocked && "cursor-not-allowed opacity-50"
+                              mode === option
+                                ? "border-foreground bg-muted font-semibold"
+                                : "bg-background hover:bg-muted/40",
+                              blocked && "cursor-not-allowed opacity-50",
                             )}
                           >
                             {REVISE_MODE_LABELS[option]}
@@ -939,9 +1356,21 @@ export function ReviseCostModal({ assetId, obligationId, open, onOpenChange, can
 
                   {/* Keyed by mode so each form starts clean, with its own save progress. */}
                   {mode === "revision" ? (
-                    <RevisionForm key="revision" assetId={assetId} record={record} onDone={close} onCancel={close} />
+                    <RevisionForm
+                      key="revision"
+                      assetId={assetId}
+                      record={record}
+                      onDone={close}
+                      onCancel={close}
+                    />
                   ) : mode === "correct" ? (
-                    <CorrectForm key="correct" assetId={assetId} record={record} onDone={close} onCancel={close} />
+                    <CorrectForm
+                      key="correct"
+                      assetId={assetId}
+                      record={record}
+                      onDone={close}
+                      onCancel={close}
+                    />
                   ) : isStageMode(mode) ? (
                     <StageForm
                       key={mode}
@@ -957,7 +1386,11 @@ export function ReviseCostModal({ assetId, obligationId, open, onOpenChange, can
               ) : null}
 
               <div className={cn(canManage && "pt-5")}>
-                <Entries assetId={assetId} record={record} canApprove={canApprove} />
+                <Entries
+                  assetId={assetId}
+                  record={record}
+                  canApprove={canApprove}
+                />
               </div>
 
               {canManage && item ? (
@@ -973,8 +1406,10 @@ export function ReviseCostModal({ assetId, obligationId, open, onOpenChange, can
               {record.obligation.status === "archived" ? (
                 <p className="rounded-md border bg-muted/40 px-3 py-2 text-[11px] text-muted-foreground">
                   This record is archived
-                  {record.obligation.archived_reason ? `: ${record.obligation.archived_reason}` : ""}. No further
-                  entries can be added to it.
+                  {record.obligation.archived_reason
+                    ? `: ${record.obligation.archived_reason}`
+                    : ""}
+                  . No further entries can be added to it.
                 </p>
               ) : canManage ? (
                 <button
@@ -990,7 +1425,12 @@ export function ReviseCostModal({ assetId, obligationId, open, onOpenChange, can
         </div>
 
         {item ? (
-          <EditCostMetadataDialog assetId={assetId} item={item} open={editItemOpen} onOpenChange={setEditItemOpen} />
+          <EditCostMetadataDialog
+            assetId={assetId}
+            item={item}
+            open={editItemOpen}
+            onOpenChange={setEditItemOpen}
+          />
         ) : null}
 
         <ReasonDialog
@@ -1011,7 +1451,7 @@ export function ReviseCostModal({ assetId, obligationId, open, onOpenChange, can
                   setArchiveOpen(false);
                 },
                 onError: (err: Error) => toast.error(err.message),
-              }
+              },
             )
           }
         />

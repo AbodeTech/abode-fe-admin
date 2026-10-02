@@ -4,11 +4,10 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { apiPatch, apiPost } from '@/lib/api-client';
 
-import { AssetCostEventSchema } from '../schemas/asset-cost.schema';
+import { AssetCostEventSchema, ObligationDetailSchema } from '../schemas/asset-cost.schema';
 import {
-  runBudgetRevision,
   runStageEntry,
-  type BudgetRevisionPlan,
+  type BudgetRevisionFormOutput,
   type CorrectDraftFormOutput,
   type ReviseCostApi,
   type ReviseProgress,
@@ -33,7 +32,9 @@ export function useReviseCost(assetId: string, obligationId: string) {
   };
 
   const refresh = () => {
+    queryClient.invalidateQueries({ queryKey: assetKeys.costObligation(assetId, obligationId) });
     queryClient.invalidateQueries({ queryKey: assetKeys.costObligations(assetId) });
+    queryClient.invalidateQueries({ queryKey: assetKeys.costSummary(assetId) });
     queryClient.invalidateQueries({ queryKey: assetKeys.costCoverage(assetId) });
     queryClient.invalidateQueries({ queryKey: [...assetKeys.detail(assetId), 'profitability'] });
     queryClient.invalidateQueries({ queryKey: [...assetKeys.detail(assetId), 'profitability-drilldown'] });
@@ -46,8 +47,21 @@ export function useReviseCost(assetId: string, obligationId: string) {
   });
 
   const reviseBudget = useMutation({
-    mutationFn: (input: { plan: BudgetRevisionPlan; progress: ReviseProgress }) =>
-      runBudgetRevision(api, input.plan, input.progress),
+    mutationFn: (values: BudgetRevisionFormOutput) =>
+      apiPost(
+        `/admin/assets/${assetId}/costs/${obligationId}/revise-budget`,
+        {
+          amount: values.amount,
+          effective_date: values.effective_date,
+          source: values.source,
+          reason: values.reason,
+          reference: values.reference || undefined,
+          evidence: values.evidence_url
+            ? [{ url: values.evidence_url, caption: 'Budget revision evidence' }]
+            : [],
+        },
+        ObligationDetailSchema,
+      ),
     onSettled: refresh,
   });
 

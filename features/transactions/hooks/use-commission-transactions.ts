@@ -2,9 +2,12 @@
 
 import { useQuery } from '@tanstack/react-query';
 
-import { apiGetPaged } from '@/lib/api-client';
+import { apiGetPagedWithAggregates } from '@/lib/api-client';
 
-import { CommissionTransactionRowSchema } from '../schemas/commission-transaction.schema';
+import {
+  CommissionAggregatesSchema,
+  CommissionTransactionRowSchema,
+} from '../schemas/commission-transaction.schema';
 import { transactionKeys } from './query-keys';
 
 /** BE default 25, max 100. */
@@ -79,25 +82,30 @@ export const useCommissionTransactions = (filters?: CommissionTransactionsFilter
       sort_dir,
     }),
     queryFn: () =>
-      apiGetPaged('/admin/commission/transactions', CommissionTransactionRowSchema, {
-        params: {
-          page,
-          limit,
-          from: from || undefined,
-          to: to || undefined,
-          source_type: sourceType,
-          q: q || undefined,
-          referrer_id: referrer_id || undefined,
-          source_user: source_user || undefined,
-          source_asset: source_asset || undefined,
-          override_source: override_source || undefined,
-          tier_at_creation: tier_at_creation || undefined,
-          min_amount: min_amount ?? undefined,
-          max_amount: max_amount ?? undefined,
-          sort_by: sort_by || undefined,
-          sort_dir: sort_dir || undefined,
-        },
-      }),
+      apiGetPagedWithAggregates(
+        '/admin/commission/transactions',
+        CommissionTransactionRowSchema,
+        CommissionAggregatesSchema,
+        {
+          params: {
+            page,
+            limit,
+            from: from || undefined,
+            to: to || undefined,
+            source_type: sourceType,
+            q: q || undefined,
+            referrer_id: referrer_id || undefined,
+            source_user: source_user || undefined,
+            source_asset: source_asset || undefined,
+            override_source: override_source || undefined,
+            tier_at_creation: tier_at_creation || undefined,
+            min_amount: min_amount ?? undefined,
+            max_amount: max_amount ?? undefined,
+            sort_by: sort_by || undefined,
+            sort_dir: sort_dir || undefined,
+          },
+        }
+      ),
   });
 };
 

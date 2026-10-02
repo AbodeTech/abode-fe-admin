@@ -124,7 +124,7 @@ function HistoryRow({ entry, exact = false }: { entry: CostHistoryEntry; exact?:
   );
 }
 
-/** The newest few entries across every record. Nothing is overwritten on the backend: a reversal is its own entry. */
+/** The newest few entries across every record. Reversed entries remain visible with their reason. */
 export function RecentCostChangesPanel({
   history,
   onViewAll,

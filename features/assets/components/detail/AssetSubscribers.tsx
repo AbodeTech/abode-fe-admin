@@ -179,6 +179,7 @@ export function AssetSubscribers({ assetId }: { assetId: string }) {
 
   const rows = data?.items ?? [];
   const total = data?.meta?.total ?? 0;
+  const aggregates = data?.aggregates;
 
   const plotsByPlan = plotsByPlanId(allocated.data?.data.plots ?? []);
   // Known only when every allocated plot was read: with more than one page, a
@@ -220,6 +221,23 @@ export function AssetSubscribers({ assetId }: { assetId: string }) {
           ) : null
         }
       >
+        {aggregates ? (
+          <div className="grid grid-cols-2 gap-px border-b bg-border sm:grid-cols-3 xl:grid-cols-6">
+            {[
+              ["Customers", aggregates.total_subscribers.toLocaleString()],
+              ["Units sold", aggregates.units_sold.toLocaleString()],
+              ["Land sold", `${aggregates.total_sqm.toLocaleString()} sqm`],
+              ["Expected", formatNairaCompact(aggregates.earnings_expected)],
+              ["Received", formatNairaCompact(aggregates.earnings_received)],
+              ["Defaulted / suspended", `${aggregates.defaulted_count} / ${aggregates.suspended_count}`],
+            ].map(([label, value]) => (
+              <div key={label} className="bg-background px-4 py-3">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+                <p className="mt-1 text-sm font-semibold tabular-nums">{value}</p>
+              </div>
+            ))}
+          </div>
+        ) : null}
         <div className="flex min-w-0 flex-col gap-2 border-b px-4 py-2.5 sm:flex-row sm:flex-wrap sm:items-center">
           <div className="relative w-full sm:max-w-xs sm:flex-1">
             <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

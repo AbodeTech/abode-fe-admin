@@ -204,27 +204,6 @@ export {
 export type { AssetDetail, Offer, Size, Plan, PitchPack } from './schemas/asset-detail.schema';
 export { totalSellingPrice } from './schemas/asset-detail.schema';
 
-// ── selling charges — the real, asset-wide replacement for per-plan price safety, on the Offers tab ──
-export { SellingChargesPanel } from './components/detail/SellingChargesPanel';
-export { SellingChargesDialog } from './components/detail/SellingChargesDialog';
-export { SellingChargesHistorySheet } from './components/detail/SellingChargesHistorySheet';
-export { useSellingCharges, useSellingChargesHistory } from './hooks/use-selling-charges';
-export { useSetSellingCharges } from './hooks/use-selling-charges-mutations';
-export {
-  SELLING_CHARGE_TYPES,
-  SELLING_CHARGE_TYPE_LABELS,
-  CHARGE_BASES,
-  CHARGE_BASIS_LABELS,
-  setSellingChargesFormSchema,
-} from './schemas/selling-charges.schema';
-export type {
-  SellingCharges,
-  SellingChargeLine,
-  SellingChargesHistoryEntry,
-  SetSellingChargesFormValues,
-  SetSellingChargesFormOutput,
-} from './schemas/selling-charges.schema';
-
 export {
   PLOT_STATUSES,
   PLOT_STATUS_LABELS,
@@ -468,4 +447,3 @@ export type { ProfitabilityDrillDown, DrillDownRevenueRow, DrillDownCostRow } fr
 export type { CostCoverage, CostCoverageItem } from './schemas/cost-coverage.schema';
 export { impactPreviewInputSchema } from './schemas/cost-impact-preview.schema';
 export type { ImpactPreviewInput, CostImpactPreview } from './schemas/cost-impact-preview.schema';
-

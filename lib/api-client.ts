@@ -502,3 +502,48 @@ export async function apiGetPaged<T extends z.ZodTypeAny>(
     throw toApiClientError(err, 'GET', path);
   }
 }
+
+/** Paginated analytical lists whose envelope also carries filtered-set totals. */
+export async function apiGetPagedWithAggregates<
+  T extends z.ZodTypeAny,
+  A extends z.ZodTypeAny,
+>(
+  path: string,
+  itemSchema: T,
+  aggregatesSchema: A,
+  config?: RequestConfig
+): Promise<{ items: z.infer<T>[]; meta: PageMeta; aggregates: z.infer<A> | null }> {
+  try {
+    const responseSchema = z.object({
+      data: z.array(itemSchema),
+      meta: MetaSchema.optional(),
+      aggregates: aggregatesSchema.optional(),
+    });
+    if (isMockApiEnabled()) {
+      const payload = await dispatchMockRequest({
+        method: 'GET',
+        path,
+        query: config?.params ?? {},
+        body: undefined,
+      });
+      const parsed = responseSchema.parse(payload);
+      return {
+        items: parsed.data,
+        meta: parsed.meta ?? {},
+        aggregates: parsed.aggregates ?? null,
+      };
+    }
+    const res = await apiClient.request({ method: 'GET', url: path, params: config?.params });
+    const parsed = z
+      .object({
+        success: z.boolean(),
+        data: z.array(itemSchema),
+        meta: MetaSchema.optional(),
+        aggregates: aggregatesSchema,
+      })
+      .parse(res.data);
+    return { items: parsed.data, meta: parsed.meta ?? {}, aggregates: parsed.aggregates };
+  } catch (err) {
+    throw toApiClientError(err, 'GET', path);
+  }
+}

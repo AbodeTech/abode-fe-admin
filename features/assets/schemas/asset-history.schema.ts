@@ -3,7 +3,6 @@ import { z } from 'zod';
 import type { AssetAllocationEvent } from './allocation-event.schema';
 import type { CostHistoryEntry } from './cost-ledger.schema';
 import type { LandConfigurationHistoryEntry } from './land-configuration.schema';
-import type { SellingChargesHistoryEntry } from './selling-charges.schema';
 import type { BoundaryVersion } from './site-setup.schema';
 
 /* ============================================================
@@ -15,7 +14,6 @@ import type { BoundaryVersion } from './site-setup.schema';
  * shape and merges them by date:
  *
  *   land      GET .../land-configuration/history   land account versions
- *   price     GET .../selling-charges/history      price versions
  *   boundary  GET .../boundary                     approved boundary versions
  *   field     GET .../field-history                verified field work
  *   cost      the cost records' entries            (see cost-ledger.schema.ts)
@@ -67,12 +65,11 @@ export type FieldHistoryRow = z.infer<typeof FieldHistoryRowSchema>;
 
 /* -------------------- the common entry -------------------- */
 
-export const ASSET_HISTORY_KINDS = ['land', 'price', 'boundary', 'field', 'cost', 'event'] as const;
+export const ASSET_HISTORY_KINDS = ['land', 'boundary', 'field', 'cost', 'event'] as const;
 export type AssetHistoryKind = (typeof ASSET_HISTORY_KINDS)[number];
 
 export const ASSET_HISTORY_KIND_LABELS: Record<AssetHistoryKind, string> = {
   land: 'Land account',
-  price: 'Price version',
   boundary: 'Boundary',
   field: 'Field work',
   cost: 'Cost',
@@ -105,22 +102,6 @@ export function landHistoryEntries(rows: LandConfigurationHistoryEntry[]): Asset
       sqm(row.summary.total_land_sqm) && `${sqm(row.summary.total_land_sqm)} total`,
       row.summary.unclassified_sqm > 0 && `${sqm(row.summary.unclassified_sqm)} unclassified`,
       row.changed_by_email ?? null,
-    ]),
-  }));
-}
-
-export function priceHistoryEntries(rows: SellingChargesHistoryEntry[]): AssetHistoryEntry[] {
-  return rows.map((row) => ({
-    id: `price-${row.version}`,
-    kind: 'price',
-    // Approval is when the change was made; the effective date can be in the future.
-    at: row.approved_at ?? row.effective_date,
-    title: `Price version v${row.version} approved`,
-    detail: present([
-      row.reason,
-      `effective ${new Date(row.effective_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`,
-      `${row.charges.length} charge${row.charges.length === 1 ? '' : 's'}`,
-      row.approved_by,
     ]),
   }));
 }

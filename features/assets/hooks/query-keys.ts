@@ -51,6 +51,8 @@ export const assetKeys = {
   costObligations: (assetId: string) => [...assetKeys.detail(assetId), 'cost-obligations'] as const,
   costObligation: (assetId: string, obligationId: string) =>
     [...assetKeys.costObligations(assetId), obligationId] as const,
+  /** GET /admin/assets/:assetId/costs/summary. */
+  costSummary: (assetId: string) => [...assetKeys.detail(assetId), 'cost-summary'] as const,
   /** GET /admin/assets/:assetId/costs/coverage. */
   costCoverage: (assetId: string) => [...assetKeys.detail(assetId), 'cost-coverage'] as const,
   /** GET /admin/assets/:assetId/profitability(/matrix|/drill-down) — no accounting-basis toggle on the real model, just an optional `as_of`. */

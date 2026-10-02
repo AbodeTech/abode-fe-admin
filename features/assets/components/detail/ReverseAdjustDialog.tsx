@@ -45,10 +45,9 @@ interface Props {
 
 /**
  * POST /admin/cost-entries/:eventId/reverse — the only way to undo an
- * approved event. The real backend writes a matching reversal event of the
- * same amount rather than editing this one in place, so both stay in the
- * record; 409 `COST_EVENT_ALREADY_REVERSED` if this event was already
- * reversed.
+ * approved event. The backend keeps the original entry in the record, marks
+ * it reversed and stores the reason; 409 `COST_EVENT_ALREADY_REVERSED` if it
+ * was already reversed.
  */
 export function ReverseAdjustDialog({ assetId, obligationId, eventId, stage, currentAmount, open, onOpenChange }: Props) {
   const reverse = useReverseEvent(assetId, obligationId, eventId);
@@ -79,8 +78,8 @@ export function ReverseAdjustDialog({ assetId, obligationId, eventId, stage, cur
         <DialogHeader>
           <DialogTitle>Reverse {FINANCIAL_STAGE_LABELS[stage].toLowerCase()}</DialogTitle>
           <DialogDescription>
-            This undoes an already-approved amount ({formatNaira(currentAmount)}) without erasing it — a
-            matching reversal is added, and both stay in the record.
+            This undoes an already-approved amount ({formatNaira(currentAmount)}) without erasing it. The
+            original stays in the record as reversed and stops counting.
           </DialogDescription>
         </DialogHeader>
 

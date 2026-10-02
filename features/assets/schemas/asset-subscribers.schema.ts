@@ -7,15 +7,9 @@ import { z } from 'zod';
  * `asset-analytics/dto/asset-analytics-responses.dto.ts` (`SubscriberRowDto`)
  * and `asset-analytics-requests.dto.ts` (`SubscribersQueryDto`).
  *
- * ⚠ The BE also computes an `aggregates` block over the filtered set
- * (`SubscribersAggregateDto` — subscriber/plan counts, earnings, plots, sqm),
- * but the global `TransformInterceptor` rebuilds the envelope from `data`,
- * `message` and `meta` only, so `aggregates` is dropped before it reaches the
- * client. The same thing happens to the commission ledger — see the note on
- * `features/transactions/schemas/commission-transaction.schema.ts`. It is
- * therefore NOT modelled here: the summary strip above the table is computed
- * from `meta.total` plus the rows on the current page, and is labelled as
- * page-scoped. Model it for real once the BE forwards the block.
+ * The response also carries an `aggregates` block over the complete filtered
+ * set: subscriber/plan counts, earnings, plots and sqm. These figures are not
+ * calculated from the current page.
  *
  * Amounts are decimal naira. `payment_percentage` is a **string** on purpose
  * (v1 compatibility), so it is parsed as one and coerced at the display edge.
@@ -98,6 +92,22 @@ export const SubscriberRowSchema = z.object({
 });
 
 export type SubscriberRow = z.infer<typeof SubscriberRowSchema>;
+
+export const SubscriberAggregatesSchema = z.object({
+  total_subscribers: z.number(),
+  total_plans: z.number(),
+  units_sold: z.number(),
+  earnings_received: z.number(),
+  earnings_expected: z.number(),
+  defaulted_count: z.number(),
+  suspended_count: z.number(),
+  completed_count: z.number(),
+  thirty_percent_count: z.number(),
+  total_plots: z.number(),
+  total_sqm: z.number(),
+});
+
+export type SubscriberAggregates = z.infer<typeof SubscriberAggregatesSchema>;
 
 /** `payment_percentage` arrives as a string; parse defensively for the bar. */
 export function paymentPercentage(row: Pick<SubscriberRow, 'payment_percentage'>): number {

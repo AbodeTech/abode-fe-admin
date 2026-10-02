@@ -6,9 +6,7 @@ import { z } from 'zod';
  * Rows are denormalized payout legs (not the old GraphQL AdminTransactions
  * shape). Money is decimal naira. `rate_applied` is a fraction (0.05 = 5%).
  *
- * The BE also computes `aggregates` over the filtered set, but the global
- * TransformInterceptor only forwards `data` + `meta`, so aggregates never
- * reach the client — do not model them here until that changes.
+ * The response also carries aggregates over the complete filtered set.
  * ============================================================ */
 
 export const COMMISSION_SOURCE_TYPES = [
@@ -56,3 +54,11 @@ export const CommissionTransactionRowSchema = z.object({
 });
 
 export type CommissionTransactionRow = z.infer<typeof CommissionTransactionRowSchema>;
+
+export const CommissionAggregatesSchema = z.object({
+  total_gross: z.number(),
+  total_wht: z.number(),
+  total_net: z.number(),
+  row_count: z.number(),
+  distinct_referrers: z.number(),
+});

@@ -33,6 +33,19 @@ export const PlanSchema = z.object({
   land_price: z.number(),
   initial_payment: z.number(),
   monthly_installment: z.number(),
+  price_version: z.number().int().positive().default(1),
+  price_effective_at: z.string().nullable().optional(),
+  price_history: z.array(z.object({
+    change_type: z.enum(['correction', 'new-price']),
+    reason: z.string(),
+    previous_version: z.number(),
+    version: z.number(),
+    before: z.record(z.string(), z.number()),
+    after: z.record(z.string(), z.number()),
+    changed_by: z.string(),
+    changed_by_email: z.string().optional(),
+    changed_at: z.union([z.string(), z.date()]),
+  })).default([]),
   /** Full-ownership model only — full-ownership and commercial. */
   is_promo: z.boolean().optional(),
   is_active: z.boolean().default(true),
@@ -99,11 +112,9 @@ const SizeShapeSchema = z.object({
  */
 export const SizeSchema = SizeShapeSchema.transform((size) => ({
   ...size,
-  // `units_available` first — it's the only one of the two the backend keeps
-  // current after an edit; `configured_units` is a stale, create-time-only
-  // mirror the moment a size is ever updated. See `configured_units`'s own
-  // doc comment above for the confirmed live bug this caused.
-  configured_units: size.units_available ?? size.configured_units ?? 0,
+  // New writes keep both fields synchronized. Prefer the field whose name
+  // describes the value; retain the legacy fallback for older records.
+  configured_units: size.configured_units ?? size.units_available ?? 0,
 }));
 
 export type Size = z.infer<typeof SizeSchema>;

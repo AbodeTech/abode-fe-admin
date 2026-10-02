@@ -27,9 +27,17 @@ export const useSetPitchPack = (assetId: string) => {
 
       const uploaded = await uploadToCloudinary(file, 'assets/pitch-packs');
       const url: string | undefined = uploaded?.secure_url;
+      const uploadedBytes: number = uploaded?.bytes ?? file.size;
       if (!url) throw new Error('Upload succeeded but returned no URL');
+      if (uploadedBytes > MAX_PITCH_PACK_BYTES) {
+        throw new Error('The uploaded pitch pack must be 100 MB or smaller');
+      }
 
-      return apiPut(`/admin/assets/${assetId}/pitch-pack`, { url, size_bytes: file.size }, PitchPackSchema);
+      return apiPut(
+        `/admin/assets/${assetId}/pitch-pack`,
+        { url, size_bytes: uploadedBytes },
+        PitchPackSchema
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: assetKeys.detail(assetId), exact: true });

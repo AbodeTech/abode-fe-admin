@@ -11,17 +11,13 @@ import {
 } from './asset-cost.schema';
 
 /* ============================================================
- * The one-form "Add cost" (asset-detail design), over a backend that needs
- * up to three calls to do what the form shows as one action:
+ * The one-form "Add cost" (asset-detail design). `planAddCost` converts the
+ * form into one payload. The live hook sends it to one transactional backend
+ * endpoint, including a new cost item when the admin defines one.
  *
- *   1. POST .../costs/items             only when the cost item is new
- *   2. POST .../costs                   the record, plus its first entry
- *   3. POST /admin/cost-entries/:id/approve   only for "Add cost" (not a draft)
- *
- * This file is the part with no React in it: the form's shape and rules,
- * `planAddCost` (form values → the calls to make) and `runAddCost` (make
- * them in order, remembering what already succeeded so a retry never
- * repeats a finished step).
+ * The older runner below remains only for the standalone QA script while
+ * that script is migrated; the application no longer uses its multi-request
+ * workflow.
  * ============================================================ */
 
 /** What an admin can record. The backend also has `claimed` (staff claims) and the system-made `reversal`/`adjustment`. */

@@ -138,7 +138,8 @@ const navGroups = [
     isCollapsible: true,
     icon: <Landmark />,
     items: [
-      { name: "Financial Officers", link: "/financial-officers", icon: <Gauge /> },
+      { name: "Financial Officer Performance", link: "/financial-officers", icon: <Gauge /> },
+      { name: "Finance Automation", link: "/finance-automation", icon: <ClipboardCheck />, requiresPermission: "view_finance_runs" },
     ]
   },
   {

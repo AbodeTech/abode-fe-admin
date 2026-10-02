@@ -29,6 +29,7 @@ function useEventMutation<TVariables, TData>(assetId: string, obligationId: stri
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: assetKeys.costObligation(assetId, obligationId) });
       queryClient.invalidateQueries({ queryKey: assetKeys.costObligations(assetId) });
+      queryClient.invalidateQueries({ queryKey: assetKeys.costSummary(assetId) });
       queryClient.invalidateQueries({ queryKey: assetKeys.costCoverage(assetId) });
       queryClient.invalidateQueries({ queryKey: [...assetKeys.detail(assetId), 'profitability'] });
     },

@@ -2,10 +2,11 @@
 
 import { useQuery } from '@tanstack/react-query';
 
-import { apiGetPaged } from '@/lib/api-client';
+import { apiGetPagedWithAggregates } from '@/lib/api-client';
 
 import {
   DEFAULT_SUBSCRIBER_SORT,
+  SubscriberAggregatesSchema,
   SubscriberRowSchema,
   type SubscriberSortField,
   type SubscriberType,
@@ -52,8 +53,7 @@ export function buildSubscribersParams(filters: AssetSubscribersFilters) {
  * GET /admin/assets/:id/subscribers — who bought into this asset.
  * `view_asset_subscribers`.
  *
- * The BE's `aggregates` block does not survive the response envelope (see the
- * note on `asset-subscribers.schema.ts`), so only rows and `meta` come back.
+ * Rows, pagination and filtered-set aggregates are returned together.
  */
 export const useAssetSubscribers = (
   assetId: string,
@@ -66,6 +66,11 @@ export const useAssetSubscribers = (
     queryKey: assetKeys.assetSubscribers(assetId, params),
     enabled: Boolean(assetId) && enabled,
     queryFn: () =>
-      apiGetPaged(`/admin/assets/${assetId}/subscribers`, SubscriberRowSchema, { params }),
+      apiGetPagedWithAggregates(
+        `/admin/assets/${assetId}/subscribers`,
+        SubscriberRowSchema,
+        SubscriberAggregatesSchema,
+        { params }
+      ),
   });
 };

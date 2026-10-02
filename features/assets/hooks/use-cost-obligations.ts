@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { apiGet, apiGetPaged, apiPatch, apiPost } from '@/lib/api-client';
+import { apiGet, apiGetPaged, apiPatch, apiPost } from "@/lib/api-client";
 
 import {
   AssetCostObligationSchema,
@@ -10,8 +10,9 @@ import {
   type ArchiveObligationFormValues,
   type CreateObligationFormOutput,
   type ObligationStatus,
-} from '../schemas/asset-cost.schema';
-import { assetKeys } from './query-keys';
+  type UpdateObligationFormOutput,
+} from "../schemas/asset-cost.schema";
+import { assetKeys } from "./query-keys";
 
 const LIST_LIMIT = 100;
 
@@ -26,7 +27,7 @@ export type ListObligationsFilters = {
 export const useCostObligations = (
   assetId: string,
   filters: ListObligationsFilters = {},
-  options: { enabled?: boolean } = {}
+  options: { enabled?: boolean } = {},
 ) =>
   useQuery({
     queryKey: [...assetKeys.costObligations(assetId), filters] as const,
@@ -46,27 +47,40 @@ export const useCostObligations = (
 export const useCostObligation = (
   assetId: string,
   obligationId: string | null | undefined,
-  options: { enabled?: boolean } = {}
+  options: { enabled?: boolean } = {},
 ) =>
   useQuery({
-    queryKey: assetKeys.costObligation(assetId, obligationId ?? ''),
-    queryFn: () => apiGet(`/admin/assets/${assetId}/costs/${obligationId}`, ObligationDetailSchema),
+    queryKey: assetKeys.costObligation(assetId, obligationId ?? ""),
+    queryFn: () =>
+      apiGet(
+        `/admin/assets/${assetId}/costs/${obligationId}`,
+        ObligationDetailSchema,
+      ),
     enabled: Boolean(assetId && obligationId) && (options.enabled ?? true),
   });
 
 function useObligationMutation<TVariables, TData>(
   assetId: string,
   obligationId: string | undefined,
-  mutationFn: (variables: TVariables) => Promise<TData>
+  mutationFn: (variables: TVariables) => Promise<TData>,
 ) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: assetKeys.costObligations(assetId) });
-      queryClient.invalidateQueries({ queryKey: assetKeys.costCoverage(assetId) });
+      queryClient.invalidateQueries({
+        queryKey: assetKeys.costObligations(assetId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: assetKeys.costSummary(assetId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: assetKeys.costCoverage(assetId),
+      });
       if (obligationId) {
-        queryClient.invalidateQueries({ queryKey: assetKeys.costObligation(assetId, obligationId) });
+        queryClient.invalidateQueries({
+          queryKey: assetKeys.costObligation(assetId, obligationId),
+        });
       }
     },
   });
@@ -83,12 +97,39 @@ function useObligationMutation<TVariables, TData>(
  * endpoints return. Read the created record from the result's `.obligation`.
  */
 export const useCreateObligation = (assetId: string) =>
-  useObligationMutation(assetId, undefined, (payload: CreateObligationFormOutput) =>
-    apiPost(`/admin/assets/${assetId}/costs`, payload, ObligationDetailSchema)
+  useObligationMutation(
+    assetId,
+    undefined,
+    (payload: CreateObligationFormOutput) =>
+      apiPost(
+        `/admin/assets/${assetId}/costs`,
+        payload,
+        ObligationDetailSchema,
+      ),
   );
 
 /** PATCH .../costs/:obligationId/archive — the only way to retire a cost record; always carries a reason. */
 export const useArchiveObligation = (assetId: string, obligationId: string) =>
-  useObligationMutation(assetId, obligationId, (payload: ArchiveObligationFormValues) =>
-    apiPatch(`/admin/assets/${assetId}/costs/${obligationId}/archive`, payload, AssetCostObligationSchema)
+  useObligationMutation(
+    assetId,
+    obligationId,
+    (payload: ArchiveObligationFormValues) =>
+      apiPatch(
+        `/admin/assets/${assetId}/costs/${obligationId}/archive`,
+        payload,
+        AssetCostObligationSchema,
+      ),
+  );
+
+/** PATCH .../costs/:obligationId — descriptive record fields only; stage entries are unchanged. */
+export const useUpdateObligation = (assetId: string, obligationId: string) =>
+  useObligationMutation(
+    assetId,
+    obligationId,
+    (payload: UpdateObligationFormOutput) =>
+      apiPatch(
+        `/admin/assets/${assetId}/costs/${obligationId}`,
+        payload,
+        ObligationDetailSchema,
+      ),
   );

@@ -143,7 +143,7 @@ export function AssetCosts({ assetId }: { assetId: string }) {
 
       {ledger.truncated ? (
         <p className="text-xs text-amber-700">
-          This estate has more than 100 cost records. The figures here cover the newest 100.
+          Totals cover every cost record. Recent changes show the newest 100 entries.
         </p>
       ) : null}
 

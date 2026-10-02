@@ -82,6 +82,7 @@ function useCostItemsMutation<TVariables, TData>(assetId: string, mutationFn: (v
     mutationFn,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: assetKeys.costItems(assetId) });
+      queryClient.invalidateQueries({ queryKey: assetKeys.costSummary(assetId) });
       queryClient.invalidateQueries({ queryKey: assetKeys.costCoverage(assetId) });
     },
   });

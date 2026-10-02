@@ -52,6 +52,7 @@ function useTreeMutation<TVariables, TData>(
     mutationFn,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: assetKeys.detail(assetId) });
+      queryClient.invalidateQueries({ queryKey: assetKeys.sqmInventory(assetId) });
       // Offer/size/plan counts show on the list row's offers cell.
       queryClient.invalidateQueries({ queryKey: assetKeys.lists() });
     },
@@ -137,6 +138,8 @@ export const useAddSize = (assetId: string, offerType: OfferType) =>
 
 export type UpdateSizePayload = {
   size_sqm?: number;
+  /** Total catalogue units. Live availability is calculated by the sqm ledger. */
+  configured_units?: number;
   /** See `AddSizePayload.units_available`'s doc comment — same real field, same reason. */
   units_available?: number;
   document_fee?: number;
@@ -206,6 +209,8 @@ export type UpdatePlanPayload = {
   monthly_installment?: number;
   is_promo?: boolean;
   is_active?: boolean;
+  price_edit_type?: 'correction' | 'new-price';
+  price_edit_reason?: string;
 };
 
 export const useUpdatePlan = (assetId: string, offerType: OfferType) =>
@@ -231,4 +236,3 @@ export const useDeletePlan = (assetId: string, offerType: OfferType) =>
       WriteResultSchema
     )
   );
-

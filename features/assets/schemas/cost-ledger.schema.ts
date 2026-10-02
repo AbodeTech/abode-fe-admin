@@ -1,12 +1,16 @@
-import type {
-  AssetCostEvent,
-  AssetCostItem,
-  FinancialStage,
-  ObligationDetail,
+import { z } from 'zod';
+
+import {
+  AssetCostEventSchema,
+  AssetCostObligationSchema,
+  type AssetCostEvent,
+  type AssetCostItem,
+  type FinancialStage,
+  type ObligationDetail,
 } from './asset-cost.schema';
 
 /* ============================================================
- * The Costs tab's figures, built from what the backend returns today.
+ * The Costs tab's figures and the backend summary contract.
  *
  * The backend's model has three layers:
  *
@@ -16,12 +20,9 @@ import type {
  *                  incurred → paid (plus reversal / adjustment). An entry
  *                  counts only once it is APPROVED.
  *
- * Approved amounts by stage are only returned per record
- * (`GET .../costs/:obligationId` → `stages`, `recognised_cost`). There is no
- * endpoint for the same totals per cost item or for the estate, so this file
- * adds the records up. It is pure arithmetic over those responses — nothing
- * is estimated — and it is the one place that would be replaced if the
- * backend exposed its own summary.
+ * `GET .../costs/summary` returns complete estate, item and record rollups.
+ * The older pure helpers remain below for deterministic calculation tests and
+ * compatibility with any caller that already holds full obligation details.
  * ============================================================ */
 
 /** `null` means "no approved entry at that stage", which is not the same as zero. */
@@ -37,7 +38,7 @@ export type CostRowStatus = 'missing' | 'pending' | 'over_budget' | 'complete' |
 
 export type CostLedgerRow = {
   item: AssetCostItem;
-  records: ObligationDetail[];
+  records: CostSummaryRecord[];
   totals: StageTotals;
   /** Budget minus incurred. `null` when there is no approved budget to measure against. Negative = over budget. */
   remaining: number | null;
@@ -45,6 +46,52 @@ export type CostLedgerRow = {
   pending: number;
   status: CostRowStatus;
 };
+
+const NullableStageTotalsSchema = z.object({
+  budget: z.number().nullable(),
+  committed: z.number().nullable(),
+  incurred: z.number().nullable(),
+  paid: z.number().nullable(),
+});
+
+export const CostSummaryRecordSchema = z.object({
+  obligation: AssetCostObligationSchema,
+  stages: NullableStageTotalsSchema,
+  recognised_cost: z.number().nullable(),
+  pending_entries: z.number(),
+  unknown_amounts: z.number(),
+  entry_count: z.number(),
+});
+export type CostSummaryRecord = z.infer<typeof CostSummaryRecordSchema>;
+
+export const CostSummarySchema = z.object({
+  totals: z.object({
+    budget: z.number().nullable(),
+    committed: z.number().nullable(),
+    incurred: z.number().nullable(),
+    paid: z.number().nullable(),
+    remaining: z.number().nullable(),
+    without_budget: z.number(),
+  }),
+  items: z.array(z.object({
+    cost_item_id: z.string(),
+    is_active: z.boolean(),
+    stages: NullableStageTotalsSchema,
+    remaining: z.number().nullable(),
+    pending_entries: z.number(),
+    unknown_amounts: z.number(),
+    entry_count: z.number(),
+    record_count: z.number(),
+    records: z.array(CostSummaryRecordSchema),
+  })),
+  recent_entries: z.array(z.object({
+    event: AssetCostEventSchema,
+    record_title: z.string().nullable(),
+    cost_item_name: z.string().nullable(),
+  })),
+  recent_entries_truncated: z.boolean(),
+});
+export type CostSummary = z.infer<typeof CostSummarySchema>;
 
 const RECOGNISED: readonly FinancialStage[] = ['incurred', 'reversal', 'adjustment'];
 
@@ -70,8 +117,8 @@ function recognised(records: ObligationDetail[]): number | null {
   }, null);
 }
 
-function statusFor(records: ObligationDetail[], totals: StageTotals, remaining: number | null, pending: number): CostRowStatus {
-  const hasAnyEntry = records.some((record) => record.events.length > 0);
+function statusFor(records: CostSummaryRecord[], totals: StageTotals, remaining: number | null, pending: number): CostRowStatus {
+  const hasAnyEntry = records.some((record) => record.entry_count > 0);
   if (!hasAnyEntry) return 'missing';
   if (pending > 0) return 'pending';
   if (remaining != null && remaining < 0) return 'over_budget';
@@ -96,7 +143,33 @@ export function costLedger(items: AssetCostItem[], records: ObligationDetail[]):
       (count, record) => count + record.events.filter((event) => event.status === 'draft').length,
       0
     );
-    return { item, records: own, totals, remaining, pending, status: statusFor(own, totals, remaining, pending) };
+    const summaries: CostSummaryRecord[] = own.map((record) => ({
+      obligation: record.obligation,
+      stages: {
+        budget: record.stages.budget ?? null,
+        committed: record.stages.committed ?? null,
+        incurred: recognisedCost(record),
+        paid: record.stages.paid ?? null,
+      },
+      recognised_cost: recognisedCost(record),
+      pending_entries: record.events.filter((event) => event.status === 'draft').length,
+      unknown_amounts: record.events.filter((event) => event.amount == null).length,
+      entry_count: record.events.length,
+    }));
+    return { item, records: summaries, totals, remaining, pending, status: statusFor(summaries, totals, remaining, pending) };
+  });
+}
+
+/** Joins the endpoint's financial rollups to the existing item metadata. */
+export function costLedgerFromSummary(items: AssetCostItem[], summary: CostSummary): CostLedgerRow[] {
+  const byItem = new Map(summary.items.map((row) => [row.cost_item_id, row]));
+  return items.map((item) => {
+    const source = byItem.get(item.id);
+    const totals: StageTotals = source?.stages ?? { budget: null, committed: null, incurred: null, paid: null };
+    const records = source?.records ?? [];
+    const remaining = source?.remaining ?? null;
+    const pending = source?.pending_entries ?? 0;
+    return { item, records, totals, remaining, pending, status: statusFor(records, totals, remaining, pending) };
   });
 }
 
@@ -145,4 +218,13 @@ export function costHistory(records: ObligationDetail[]): CostHistoryEntry[] {
       }))
     )
     .sort((a, b) => time(b.at) - time(a.at));
+}
+
+export function costHistoryFromSummary(summary: CostSummary): CostHistoryEntry[] {
+  return summary.recent_entries.map((row) => ({
+    event: row.event,
+    recordTitle: row.record_title ?? 'Cost record',
+    itemName: row.cost_item_name,
+    at: row.event.approved_at ?? row.event.created_at ?? row.event.effective_date,
+  }));
 }

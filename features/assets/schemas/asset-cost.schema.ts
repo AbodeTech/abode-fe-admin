@@ -1,6 +1,6 @@
-import { z } from 'zod';
+import { z } from "zod";
 
-import { OfferTypeSchema } from './asset.schema';
+import { OfferTypeSchema } from "./asset.schema";
 
 /* ============================================================
  * Asset costs — the real abode-be-v2 model (confirmed field-for-field
@@ -29,80 +29,117 @@ import { OfferTypeSchema } from './asset.schema';
  * the real backend at all).
  * ============================================================ */
 
-export const COST_GROUPS = ['acquisition', 'development', 'documentation_finance', 'direct_cost_of_sale', 'opex'] as const;
+export const COST_GROUPS = [
+  "acquisition",
+  "development",
+  "documentation_finance",
+  "direct_cost_of_sale",
+  "opex",
+] as const;
 export const CostGroupSchema = z.enum(COST_GROUPS);
 export type CostGroup = z.infer<typeof CostGroupSchema>;
 
 export const COST_GROUP_LABELS: Record<CostGroup, string> = {
-  acquisition: 'Acquisition',
-  development: 'Development',
-  documentation_finance: 'Documentation & Finance',
-  direct_cost_of_sale: 'Direct Cost of Sale',
-  opex: 'OPEX',
+  acquisition: "Acquisition",
+  development: "Development",
+  documentation_finance: "Documentation & Finance",
+  direct_cost_of_sale: "Direct Cost of Sale",
+  opex: "OPEX",
 };
 
 /** Items are free text — the backend has no closed item-name list, only the five groups above. */
 export const COST_ITEM_SUGGESTIONS: Record<CostGroup, string[]> = {
-  acquisition: ['Land purchase', 'Acquisition legal fees', 'Agency commission'],
-  development: ['Perimeter fencing', 'Road construction', 'Drainage', 'Electrification'],
-  documentation_finance: ['Survey and legal fees', 'C of O application', 'Registered survey'],
-  direct_cost_of_sale: ['Sales commission accrual', 'Marketing spend'],
-  opex: ['Site security', 'Site management', 'Maintenance'],
+  acquisition: ["Land purchase", "Acquisition legal fees", "Agency commission"],
+  development: [
+    "Perimeter fencing",
+    "Road construction",
+    "Drainage",
+    "Electrification",
+  ],
+  documentation_finance: [
+    "Survey and legal fees",
+    "C of O application",
+    "Registered survey",
+  ],
+  direct_cost_of_sale: ["Sales commission accrual", "Marketing spend"],
+  opex: ["Site security", "Site management", "Maintenance"],
 };
 
 export const ALLOCATION_BASES = [
-  'total_sqm',
-  'saleable_sqm',
-  'product_sqm',
-  'sqm_sold',
-  'revenue',
-  'units',
-  'equal',
-  'manual',
-  'amount',
-  'direct',
+  "total_sqm",
+  "saleable_sqm",
+  "product_sqm",
+  "sqm_sold",
+  "revenue",
+  "units",
+  "equal",
+  "manual",
+  "amount",
+  "direct",
 ] as const;
 export const AllocationBasisSchema = z.enum(ALLOCATION_BASES);
 export type AllocationBasis = z.infer<typeof AllocationBasisSchema>;
 
 export const ALLOCATION_BASIS_LABELS: Record<AllocationBasis, string> = {
-  total_sqm: 'By total sqm',
-  saleable_sqm: 'By saleable sqm',
-  product_sqm: 'By product sqm',
-  sqm_sold: 'By sqm sold',
-  revenue: 'By revenue',
-  units: 'By units',
-  equal: 'Equally',
-  manual: 'Manual percentages',
-  amount: 'Manual amounts',
-  direct: 'Direct (one product)',
+  total_sqm: "By total sqm",
+  saleable_sqm: "By saleable sqm",
+  product_sqm: "By product sqm",
+  sqm_sold: "By sqm sold",
+  revenue: "By revenue",
+  units: "By units",
+  equal: "Equally",
+  manual: "Manual percentages",
+  amount: "Manual amounts",
+  direct: "Direct (one product)",
 };
 
-export const FINANCIAL_STAGES = ['budget', 'committed', 'claimed', 'incurred', 'paid', 'reversal', 'adjustment'] as const;
+export const FINANCIAL_STAGES = [
+  "budget",
+  "committed",
+  "claimed",
+  "incurred",
+  "paid",
+  "reversal",
+  "adjustment",
+] as const;
 export const FinancialStageSchema = z.enum(FINANCIAL_STAGES);
 export type FinancialStage = z.infer<typeof FinancialStageSchema>;
 
 export const FINANCIAL_STAGE_LABELS: Record<FinancialStage, string> = {
-  budget: 'Budget',
-  committed: 'Committed',
-  claimed: 'Claimed',
-  incurred: 'Incurred',
-  paid: 'Paid',
-  reversal: 'Reversal',
-  adjustment: 'Adjustment',
+  budget: "Budget",
+  committed: "Committed",
+  claimed: "Claimed",
+  incurred: "Incurred",
+  paid: "Paid",
+  reversal: "Reversal",
+  adjustment: "Adjustment",
 };
 
 /** Only these, once APPROVED, count toward profitability — everything else is planning data. */
-export const RECOGNISED_STAGES: readonly FinancialStage[] = ['incurred', 'reversal', 'adjustment'];
+export const RECOGNISED_STAGES: readonly FinancialStage[] = [
+  "incurred",
+  "reversal",
+  "adjustment",
+];
 export function countsAsCost(stage: FinancialStage): boolean {
   return RECOGNISED_STAGES.includes(stage);
 }
 
-export const OBLIGATION_STATUSES = ['open', 'settled', 'reversed', 'archived'] as const;
+export const OBLIGATION_STATUSES = [
+  "open",
+  "settled",
+  "reversed",
+  "archived",
+] as const;
 export const ObligationStatusSchema = z.enum(OBLIGATION_STATUSES);
 export type ObligationStatus = z.infer<typeof ObligationStatusSchema>;
 
-export const COST_EVENT_STATUSES = ['draft', 'approved', 'reversed', 'archived'] as const;
+export const COST_EVENT_STATUSES = [
+  "draft",
+  "approved",
+  "reversed",
+  "archived",
+] as const;
 export const CostEventStatusSchema = z.enum(COST_EVENT_STATUSES);
 export type CostEventStatus = z.infer<typeof CostEventStatusSchema>;
 
@@ -111,15 +148,20 @@ export type CostEventStatus = z.infer<typeof CostEventStatusSchema>;
  * mock-invented source types) — that field-ops domain is owned by another
  * team now; this codebase only ever sees the resulting obligation/event.
  */
-export const COST_SOURCE_TYPES = ['manual', 'field_submission', 'commission_transaction', 'work_order'] as const;
+export const COST_SOURCE_TYPES = [
+  "manual",
+  "field_submission",
+  "commission_transaction",
+  "work_order",
+] as const;
 export const CostSourceTypeSchema = z.enum(COST_SOURCE_TYPES);
 export type CostSourceType = z.infer<typeof CostSourceTypeSchema>;
 
 export const COST_SOURCE_TYPE_LABELS: Record<CostSourceType, string> = {
-  manual: 'Manual entry',
-  field_submission: 'Field submission',
-  commission_transaction: 'Commission transaction',
-  work_order: 'Work order',
+  manual: "Manual entry",
+  field_submission: "Field submission",
+  commission_transaction: "Commission transaction",
+  work_order: "Work order",
 };
 
 export const EvidenceItemSchema = z.object({
@@ -129,7 +171,7 @@ export const EvidenceItemSchema = z.object({
 export type EvidenceItem = z.infer<typeof EvidenceItemSchema>;
 
 const evidenceFormItemSchema = z.object({
-  url: z.string().trim().min(1, 'Enter a URL'),
+  url: z.string().trim().min(1, "Enter a URL"),
   caption: z.string().trim().max(200).optional(),
 });
 
@@ -165,17 +207,19 @@ export type AssetCostItem = z.infer<typeof AssetCostItemSchema>;
 
 export const createCostItemFormSchema = z.object({
   group: CostGroupSchema,
-  name: z.string().trim().min(1, 'Name this cost item').max(120),
+  name: z.string().trim().min(1, "Name this cost item").max(120),
   description: z.string().trim().max(500).optional(),
   is_shared: z.boolean().default(false),
   applies_to_products: z.array(OfferTypeSchema).default([]),
   excluded_products: z.array(OfferTypeSchema).default([]),
 });
 export type CreateCostItemFormValues = z.input<typeof createCostItemFormSchema>;
-export type CreateCostItemFormOutput = z.output<typeof createCostItemFormSchema>;
+export type CreateCostItemFormOutput = z.output<
+  typeof createCostItemFormSchema
+>;
 
 export const updateCostItemFormSchema = z.object({
-  name: z.string().trim().min(1, 'Name this cost item').max(120).optional(),
+  name: z.string().trim().min(1, "Name this cost item").max(120).optional(),
   description: z.string().trim().max(500).optional(),
   is_shared: z.boolean().optional(),
   applies_to_products: z.array(OfferTypeSchema).optional(),
@@ -247,7 +291,9 @@ export const SetAllocationRuleResultSchema = z.object({
   effective_date: z.string(),
   reason: z.string(),
 });
-export type SetAllocationRuleResult = z.infer<typeof SetAllocationRuleResultSchema>;
+export type SetAllocationRuleResult = z.infer<
+  typeof SetAllocationRuleResultSchema
+>;
 
 /**
  * PUT .../items/:itemId/allocation-rule. `percentages` is required (and
@@ -261,21 +307,29 @@ export const setAllocationRuleFormSchema = z
     method: AllocationBasisSchema,
     applies_to_products: z.array(OfferTypeSchema).default([]),
     excluded_products: z.array(OfferTypeSchema).default([]),
-    percentages: z.array(z.object({ offer_type: OfferTypeSchema, percent: z.number() })).default([]),
-    amounts: z.array(z.object({ offer_type: OfferTypeSchema, amount: z.number() })).default([]),
-    effective_date: z.string().trim().min(1, 'Enter an effective date'),
-    reason: z.string().trim().min(1, 'Say why this is changing'),
+    percentages: z
+      .array(z.object({ offer_type: OfferTypeSchema, percent: z.number() }))
+      .default([]),
+    amounts: z
+      .array(z.object({ offer_type: OfferTypeSchema, amount: z.number() }))
+      .default([]),
+    effective_date: z.string().trim().min(1, "Enter an effective date"),
+    reason: z.string().trim().min(1, "Say why this is changing"),
   })
-  .refine((v) => v.method !== 'manual' || v.percentages.length > 0, {
-    message: 'Add at least one product percentage',
-    path: ['percentages'],
+  .refine((v) => v.method !== "manual" || v.percentages.length > 0, {
+    message: "Add at least one product percentage",
+    path: ["percentages"],
   })
-  .refine((v) => v.method !== 'amount' || v.amounts.length > 0, {
-    message: 'Add at least one product amount',
-    path: ['amounts'],
+  .refine((v) => v.method !== "amount" || v.amounts.length > 0, {
+    message: "Add at least one product amount",
+    path: ["amounts"],
   });
-export type SetAllocationRuleFormValues = z.input<typeof setAllocationRuleFormSchema>;
-export type SetAllocationRuleFormOutput = z.output<typeof setAllocationRuleFormSchema>;
+export type SetAllocationRuleFormValues = z.input<
+  typeof setAllocationRuleFormSchema
+>;
+export type SetAllocationRuleFormOutput = z.output<
+  typeof setAllocationRuleFormSchema
+>;
 
 /* -------------------- obligation (a cost record) -------------------- */
 
@@ -305,26 +359,57 @@ export const AssetCostObligationSchema = z.object({
 export type AssetCostObligation = z.infer<typeof AssetCostObligationSchema>;
 
 export const createObligationFormSchema = z.object({
-  cost_item_id: z.string().min(1, 'Choose a cost item'),
-  title: z.string().trim().min(1, 'Give this a title').max(160),
+  cost_item_id: z.string().min(1, "Choose a cost item"),
+  title: z.string().trim().min(1, "Give this a title").max(160),
   description: z.string().trim().max(500).optional(),
   product: OfferTypeSchema.optional(),
   size_id: z.string().optional(),
   vendor: z.string().trim().max(120).optional(),
   reference: z.string().trim().max(120).optional(),
-  effective_date: z.string().trim().min(1, 'Enter an effective date'),
+  effective_date: z.string().trim().min(1, "Enter an effective date"),
   /** Omit entirely when unknown — never defaults to 0, a known-zero and an unknown amount mean different things. */
-  amount: z.number().int('Whole naira only').min(0, 'Cannot be negative').optional(),
-  stage: FinancialStageSchema.default('budget'),
+  amount: z
+    .number()
+    .int("Whole naira only")
+    .min(0, "Cannot be negative")
+    .optional(),
+  stage: FinancialStageSchema.default("budget"),
   note: z.string().trim().max(500).optional(),
 });
-export type CreateObligationFormValues = z.input<typeof createObligationFormSchema>;
-export type CreateObligationFormOutput = z.output<typeof createObligationFormSchema>;
+export type CreateObligationFormValues = z.input<
+  typeof createObligationFormSchema
+>;
+export type CreateObligationFormOutput = z.output<
+  typeof createObligationFormSchema
+>;
+
+export const updateObligationFormSchema = z.object({
+  title: z.string().trim().min(1, "Give this a title").max(160),
+  description: z.string().trim().max(500),
+  product: OfferTypeSchema.nullable(),
+  size_id: z.string().nullable(),
+  vendor: z.string().trim().max(120),
+  reference: z.string().trim().max(120),
+  effective_date: z.string().trim().min(1, "Enter an effective date"),
+  reason: z
+    .string()
+    .trim()
+    .min(1, "Say why these details are changing")
+    .max(500),
+});
+export type UpdateObligationFormValues = z.input<
+  typeof updateObligationFormSchema
+>;
+export type UpdateObligationFormOutput = z.output<
+  typeof updateObligationFormSchema
+>;
 
 export const archiveObligationFormSchema = z.object({
-  reason: z.string().trim().min(1, 'Say why this is being archived').max(500),
+  reason: z.string().trim().min(1, "Say why this is being archived").max(500),
 });
-export type ArchiveObligationFormValues = z.infer<typeof archiveObligationFormSchema>;
+export type ArchiveObligationFormValues = z.infer<
+  typeof archiveObligationFormSchema
+>;
 
 /* -------------------- event (one financial-stage row) -------------------- */
 
@@ -346,6 +431,7 @@ export const AssetCostEventSchema = z.object({
   source_id: z.string().nullable(),
   revision: z.number().default(1),
   reverses_event_id: z.string().nullable(),
+  replaces_event_ids: z.array(z.string()).optional(),
   reversal_reason: z.string().nullable(),
   approved_at: z.string().nullable(),
   created_at: z.string().nullable(),
@@ -354,7 +440,10 @@ export type AssetCostEvent = z.infer<typeof AssetCostEventSchema>;
 
 export const addStageFormSchema = z.object({
   stage: FinancialStageSchema,
-  amount: z.number({ message: 'Enter an amount' }).int('Whole naira only').min(0, 'Cannot be negative'),
+  amount: z
+    .number({ message: "Enter an amount" })
+    .int("Whole naira only")
+    .min(0, "Cannot be negative"),
   effective_date: z.string().trim().optional(),
   vendor: z.string().trim().max(120).optional(),
   reference: z.string().trim().max(120).optional(),
@@ -365,7 +454,7 @@ export type AddStageFormValues = z.input<typeof addStageFormSchema>;
 export type AddStageFormOutput = z.output<typeof addStageFormSchema>;
 
 export const updateEventFormSchema = z.object({
-  amount: z.number().int('Whole naira only').min(0).optional(),
+  amount: z.number().int("Whole naira only").min(0).optional(),
   effective_date: z.string().trim().optional(),
   vendor: z.string().trim().max(120).optional(),
   reference: z.string().trim().max(120).optional(),
@@ -379,13 +468,13 @@ export const approveEventFormSchema = z.object({
 export type ApproveEventFormValues = z.infer<typeof approveEventFormSchema>;
 
 export const reverseEventFormSchema = z.object({
-  reason: z.string().trim().min(1, 'Say why this is being reversed').max(500),
+  reason: z.string().trim().min(1, "Say why this is being reversed").max(500),
 });
 export type ReverseEventFormValues = z.infer<typeof reverseEventFormSchema>;
 
 /** POST .../:obligationId/accept-claim — turns a field-submission-sourced claim into a real cost. */
 export const acceptClaimFormSchema = z.object({
-  amount: z.number().int('Whole naira only').min(0).optional(),
+  amount: z.number().int("Whole naira only").min(0).optional(),
   effective_date: z.string().trim().optional(),
   note: z.string().trim().max(500).optional(),
 });
@@ -413,22 +502,22 @@ export type ObligationDetail = z.infer<typeof ObligationDetailSchema>;
 /* -------------------- errors -------------------- */
 
 export const COST_ERROR_CODES = [
-  'COST_ASSET_NOT_FOUND',
-  'COST_ITEM_NOT_FOUND',
-  'COST_ITEM_NAME_TAKEN',
-  'COST_ITEM_IN_USE',
-  'COST_ALLOCATION_INVALID',
-  'OBLIGATION_NOT_FOUND',
-  'OBLIGATION_ARCHIVED',
-  'COST_EVENT_NOT_FOUND',
-  'COST_EVENT_NOT_DRAFT',
-  'COST_EVENT_ALREADY_APPROVED',
-  'COST_EVENT_NOT_APPROVED',
-  'COST_EVENT_ALREADY_REVERSED',
-  'COST_STAGE_DUPLICATE',
-  'COST_AMOUNT_REQUIRED',
-  'COST_NO_CLAIM_TO_ACCEPT',
-  'COST_CLAIM_ALREADY_ACCEPTED',
-  'COST_PRODUCT_NOT_ON_ASSET',
+  "COST_ASSET_NOT_FOUND",
+  "COST_ITEM_NOT_FOUND",
+  "COST_ITEM_NAME_TAKEN",
+  "COST_ITEM_IN_USE",
+  "COST_ALLOCATION_INVALID",
+  "OBLIGATION_NOT_FOUND",
+  "OBLIGATION_ARCHIVED",
+  "COST_EVENT_NOT_FOUND",
+  "COST_EVENT_NOT_DRAFT",
+  "COST_EVENT_ALREADY_APPROVED",
+  "COST_EVENT_NOT_APPROVED",
+  "COST_EVENT_ALREADY_REVERSED",
+  "COST_STAGE_DUPLICATE",
+  "COST_AMOUNT_REQUIRED",
+  "COST_NO_CLAIM_TO_ACCEPT",
+  "COST_CLAIM_ALREADY_ACCEPTED",
+  "COST_PRODUCT_NOT_ON_ASSET",
 ] as const;
 export type CostErrorCode = (typeof COST_ERROR_CODES)[number];

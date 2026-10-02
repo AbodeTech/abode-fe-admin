@@ -15,14 +15,12 @@ import {
   fieldHistoryEntries,
   landHistoryEntries,
   mergeAssetHistory,
-  priceHistoryEntries,
   type AssetHistoryKind,
 } from '../schemas/asset-history.schema';
 import { assetKeys } from './query-keys';
 import { useAssetAllocationEvents } from './use-asset-allocation-events';
 import { useCostLedger } from './use-cost-ledger';
 import { useLandConfigurationHistory } from './use-land-configuration';
-import { useSellingChargesHistory } from './use-selling-charges';
 import { useBoundaryHistory } from './use-site-setup';
 
 /** The field-history endpoint's own default and maximum useful page. */
@@ -40,7 +38,7 @@ export const useFieldHistory = (assetId: string, options: { enabled?: boolean } 
   });
 
 /**
- * The estate's history, merged from the six places the backend keeps it (see
+ * The estate's history, merged from the active backend history sources (see
  * `asset-history.schema.ts`).
  *
  * Each source has its own permission and can fail on its own, so they are
@@ -58,7 +56,6 @@ export function useAssetHistory(assetId: string) {
   };
 
   const land = useLandConfigurationHistory(assetId, { enabled: can.assets });
-  const price = useSellingChargesHistory(assetId, { enabled: can.costs });
   const boundary = useBoundaryHistory(assetId, { enabled: can.field });
   const field = useFieldHistory(assetId, { enabled: can.field });
   const costs = useCostLedger(assetId, { enabled: can.costs });
@@ -66,7 +63,6 @@ export function useAssetHistory(assetId: string) {
 
   const sources: { kind: AssetHistoryKind; allowed: boolean; isLoading: boolean; error: unknown }[] = [
     { kind: 'land', allowed: can.assets, isLoading: land.isLoading, error: land.error },
-    { kind: 'price', allowed: can.costs, isLoading: price.isLoading, error: price.error },
     { kind: 'boundary', allowed: can.field, isLoading: boundary.isLoading, error: boundary.error },
     { kind: 'field', allowed: can.field, isLoading: field.isLoading, error: field.error },
     { kind: 'cost', allowed: can.costs, isLoading: costs.isLoading, error: costs.error },
@@ -75,7 +71,6 @@ export function useAssetHistory(assetId: string) {
 
   const entries = mergeAssetHistory(
     landHistoryEntries(land.data?.items ?? []),
-    priceHistoryEntries(price.data ?? []),
     boundaryHistoryEntries(boundary.data ?? []),
     fieldHistoryEntries(field.data ?? []),
     costHistoryEntries(costs.history),

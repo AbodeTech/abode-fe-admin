@@ -33,8 +33,6 @@ import {
   type Plan,
   type Size,
 } from "../../schemas/asset-detail.schema";
-import { useAdminPermissions } from "@/hooks/use-admin-permission";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,12 +43,10 @@ import {
 
 import { useAssetDetail } from "../../hooks/use-asset-detail";
 import { useUpdateOffer } from "../../hooks/use-offer-mutations";
-import { useSellingCharges } from "../../hooks/use-selling-charges";
 import { useAssetFormStore } from "../../store/asset-form-store";
 import { OfferConfigHistorySheet } from "./OfferConfigHistorySheet";
 import { OfferEditDialogs } from "./OfferEditDialogs";
 import { OfferLandPoolsPanel } from "./OfferLandPoolsPanel";
-import { SellingChargesPanel } from "./SellingChargesPanel";
 
 const PAYMENT_TYPE_LABELS: Record<string, string> = {
   "all-inclusive": "All inclusive",
@@ -63,17 +59,12 @@ function planTerms(plan: Plan): string {
   return `${formatNaira(plan.initial_payment)} then ${formatNaira(plan.monthly_installment)}/mo`;
 }
 
-/** What the Price version column shows, and how to open the charges behind it. */
-type PriceVersion = { label: string | null; onOpen: () => void };
-
 function PlansTable({
   size,
   offerType,
-  priceVersion,
 }: {
   size: Size;
   offerType: string;
-  priceVersion: PriceVersion;
 }) {
   const openOfferEdit = useAssetFormStore((state) => state.openOfferEdit);
   const plans = sortedPlans(size.plans);
@@ -94,7 +85,6 @@ function PlansTable({
               <TableHead>Tenor</TableHead>
               <TableHead>Land price</TableHead>
               <TableHead>Terms</TableHead>
-              <TableHead>Price version</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="w-px" />
             </TableRow>
@@ -119,19 +109,6 @@ function PlansTable({
                 </TableCell>
                 <TableCell className="text-sm tabular-nums text-muted-foreground">
                   {planTerms(plan)}
-                </TableCell>
-                <TableCell className="text-sm whitespace-nowrap">
-                  {priceVersion.label ? (
-                    <button
-                      type="button"
-                      onClick={priceVersion.onOpen}
-                      className="tabular-nums underline-offset-4 hover:underline"
-                    >
-                      {priceVersion.label}
-                    </button>
-                  ) : (
-                    <span className="text-muted-foreground">—</span>
-                  )}
                 </TableCell>
                 <TableCell className="text-sm">
                   {plan.is_active === false ? (
@@ -196,7 +173,6 @@ function PlansTable({
             subtitle={formatNaira(plan.land_price)}
           >
             <AdminMobileField label="Terms" value={planTerms(plan)} />
-            {priceVersion.label ? <AdminMobileField label="Price version" value={priceVersion.label} /> : null}
             {plan.development_levy > 0 || plan.document_levy > 0 ? (
               <AdminMobileField label="Total selling price" value={formatNaira(totalSellingPrice(plan))} />
             ) : null}
@@ -212,13 +188,11 @@ function SizeCard({
   size,
   isFo,
   offerType,
-  priceVersion,
 }: {
   size: Size;
   /** Full-ownership model — full ownership and commercial carry a document fee. */
   isFo: boolean;
   offerType: string;
-  priceVersion: PriceVersion;
 }) {
   const openOfferEdit = useAssetFormStore((state) => state.openOfferEdit);
 
@@ -263,7 +237,7 @@ function SizeCard({
       </div>
 
       <div className="space-y-3 p-4">
-        <PlansTable size={size} offerType={offerType} priceVersion={priceVersion} />
+        <PlansTable size={size} offerType={offerType} />
 
         <Button
           type="button"
@@ -282,11 +256,9 @@ function SizeCard({
 function OfferCard({
   assetId,
   offer,
-  priceVersion,
 }: {
   assetId: string;
   offer: Offer;
-  priceVersion: PriceVersion;
 }) {
   const isFo = usesFoModel(offer.offer_type);
   const updateOffer = useUpdateOffer(assetId, offer.offer_type);
@@ -379,7 +351,6 @@ function OfferCard({
               size={size}
               isFo={isFo}
               offerType={offer.offer_type}
-              priceVersion={priceVersion}
             />
           ))
         )}
@@ -388,31 +359,15 @@ function OfferCard({
   );
 }
 
-/** `2026-09-12T…` → `"12 Sep 2026"`. */
-function shortDate(value: string): string {
-  return new Date(value).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-}
-
 /**
  * The Offers tab, in the asset-detail design's order: the "Offer land pools"
  * table, then one card per offer with its sizes and payment plans.
- *
- * "Price version" on every plan row is the selling-charges version in force
- * today (GET .../selling-charges, `in_force`) — the backend versions buyer-facing
- * prices once per estate, not per plan, so every row shows the same version.
- * The charges themselves, their editor and their history open in a side
- * sheet from that cell or from the "Price versions" button; the design has
- * no panel for them on the page.
  */
 export function AssetOffers() {
   const params = useParams<{ id: string }>();
   const { data: asset } = useAssetDetail(params.id);
   const openOfferEdit = useAssetFormStore((state) => state.openOfferEdit);
-  const permissions = useAdminPermissions();
-  const canViewCharges = permissions.has("view_asset_costs");
-  const { data: charges } = useSellingCharges(params.id, { enabled: canViewCharges });
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [chargesOpen, setChargesOpen] = useState(false);
 
   if (!asset) return null;
 
@@ -424,13 +379,6 @@ export function AssetOffers() {
       offerType !== 'developer-plot' && !asset.offers.some((offer) => offer.offer_type === offerType)
   );
 
-  const priceVersion: PriceVersion = {
-    label: charges?.in_force
-      ? `v${charges.in_force.version} · ${shortDate(charges.in_force.effective_date)}`
-      : null,
-    onOpen: () => setChargesOpen(true),
-  };
-
   return (
     <div className="space-y-4">
       <OfferLandPoolsPanel
@@ -441,11 +389,6 @@ export function AssetOffers() {
               <Button type="button" variant="outline" size="sm" onClick={() => setHistoryOpen(true)}>
                 <History className="mr-1.5 h-3.5 w-3.5" />
                 History
-              </Button>
-            ) : null}
-            {canViewCharges ? (
-              <Button type="button" variant="outline" size="sm" onClick={() => setChargesOpen(true)}>
-                Price versions
               </Button>
             ) : null}
             {missingOfferTypes.length > 0 ? (
@@ -478,23 +421,9 @@ export function AssetOffers() {
         </div>
       ) : (
         asset.offers.map((offer) => (
-          <OfferCard key={offer._id} assetId={params.id} offer={offer} priceVersion={priceVersion} />
+          <OfferCard key={offer._id} assetId={params.id} offer={offer} />
         ))
       )}
-
-      <Sheet open={chargesOpen} onOpenChange={setChargesOpen}>
-        <SheetContent side="right" className="flex w-full flex-col gap-0 overflow-y-auto p-0 sm:max-w-xl">
-          <SheetHeader className="border-b px-6 py-5 text-left">
-            <SheetTitle>Price versions</SheetTitle>
-            <SheetDescription>
-              The buyer-facing charges in force for this estate. Each save creates a new version.
-            </SheetDescription>
-          </SheetHeader>
-          <div className="p-4">
-            <SellingChargesPanel assetId={params.id} />
-          </div>
-        </SheetContent>
-      </Sheet>
 
       <OfferEditDialogs asset={asset} />
       {isMockApiEnabled() ? (

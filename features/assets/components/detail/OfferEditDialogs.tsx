@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm, useWatch, type UseFormReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertTriangle, Calculator, Loader2 } from "lucide-react";
@@ -18,6 +18,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -74,6 +77,7 @@ import {
   useUpdatePlan,
   useUpdateSize,
 } from "../../hooks/use-offer-mutations";
+import { useSqmInventory } from "../../hooks/use-sqm-inventory";
 import { useAssetFormStore } from "../../store/asset-form-store";
 import { NumberInput, type NumberFieldLike } from "./NumberInput";
 
@@ -432,12 +436,13 @@ function SizeDialog({
   const close = useAssetFormStore((state) => state.closeOfferEdit);
   const addSize = useAddSize(asset._id, offerType);
   const updateSize = useUpdateSize(asset._id, offerType);
+  const isEdit = Boolean(sizeId);
+  const inventory = useSqmInventory(asset._id, { enabled: isEdit });
 
   const offer = asset.offers.find((candidate) => candidate.offer_type === offerType);
   const size = offer?.sizes.find((candidate) => candidate._id === sizeId);
   const isFlex = offerType === "flex";
   const isFo = usesFoModel(offerType);
-  const isEdit = Boolean(sizeId);
 
   const form = useForm<SizeFieldsValues>({
     resolver: zodResolver(sizeFieldsSchema),
@@ -464,11 +469,33 @@ function SizeDialog({
   const capacityExcess = hasLandAccount
     ? otherConfiguredSqm + proposedConfiguredSqm - (offer?.assigned_sqm ?? 0)
     : 0;
+  const sizePosition = inventory.data?.positions.find(
+    (position) => position.offer_type === offerType && position.size_id === sizeId
+  );
+  const currentSizeSqm = sizePosition?.size_sqm ?? size?.size_sqm ?? 0;
+  const soldUnits = currentSizeSqm > 0 ? (sizePosition?.sold_sqm ?? 0) / currentSizeSqm : 0;
+  const sellingUnits = currentSizeSqm > 0 ? (sizePosition?.selling_sqm ?? 0) / currentSizeSqm : 0;
+  const occupiedUnits = soldUnits + sellingUnits;
+  const nextAvailableUnits = Math.max(0, (Number(watchedConfiguredUnits) || 0) - occupiedUnits);
+  const currentAvailableUnits = currentSizeSqm > 0
+    ? (sizePosition?.available_sqm ?? 0) / currentSizeSqm
+    : Math.max(0, (size?.configured_units ?? 0) - occupiedUnits);
+  const newlyAvailableUnits = nextAvailableUnits - currentAvailableUnits;
+  const remainingUnconfiguredSqm = Math.max(
+    0,
+    (offer?.assigned_sqm ?? 0) - otherConfiguredSqm - proposedConfiguredSqm
+  );
 
   const submit = form.handleSubmit((values) => {
     if (capacityExcess > 0) {
       form.setError("configured_units", {
         message: `This would exceed ${OFFER_TYPE_LABELS[offerType]} by ${formatSqm(capacityExcess)}`,
+      });
+      return;
+    }
+    if (isEdit && values.configured_units < occupiedUnits) {
+      form.setError("configured_units", {
+        message: `At least ${occupiedUnits.toLocaleString()} units are already sold or selling`,
       });
       return;
     }
@@ -480,7 +507,7 @@ function SizeDialog({
         {
           sizeId,
           size_sqm: values.size_sqm,
-          units_available: values.configured_units,
+          configured_units: values.configured_units,
           ...(document_fee === undefined ? {} : { document_fee }),
         },
         {
@@ -538,6 +565,21 @@ function SizeDialog({
         </DialogHeader>
 
         <Form {...form}>
+          {isEdit ? (
+            <div className="mb-4 grid grid-cols-2 gap-2 rounded-lg border bg-muted/30 p-3 sm:grid-cols-4">
+              {[
+                ["Configured", size?.configured_units ?? 0],
+                ["Sold", soldUnits],
+                ["Selling", sellingUnits],
+                ["Available", currentAvailableUnits],
+              ].map(([label, value]) => (
+                <div key={String(label)}>
+                  <p className="text-[11px] text-muted-foreground">{label}</p>
+                  <p className="text-sm font-semibold">{Number(value).toLocaleString()}</p>
+                </div>
+              ))}
+            </div>
+          ) : null}
           <div className="grid gap-4 sm:grid-cols-2">
             <FormField
               control={form.control}
@@ -546,8 +588,13 @@ function SizeDialog({
                 <FormItem>
                   <FormLabel className="text-xs">Size</FormLabel>
                   <FormControl>
-                    <NumberInput field={field} suffix="sqm" min={1} />
+                    <NumberInput field={field} suffix="sqm" min={1} disabled={isEdit && occupiedUnits > 0} />
                   </FormControl>
+                  {isEdit && occupiedUnits > 0 ? (
+                    <FormDescription className="text-xs">
+                      The sqm size cannot change while customers hold these units.
+                    </FormDescription>
+                  ) : null}
                   <FormMessage />
                 </FormItem>
               )}
@@ -570,6 +617,17 @@ function SizeDialog({
                         <span className="text-destructive"> — exceeds it by {formatSqm(capacityExcess)}</span>
                       ) : null}
                       .
+                    </FormDescription>
+                  ) : null}
+                  {isEdit && watchedConfiguredUnits !== undefined ? (
+                    <FormDescription className="text-xs">
+                      After saving: {nextAvailableUnits.toLocaleString()} available
+                      {newlyAvailableUnits > 0
+                        ? ` · ${newlyAvailableUnits.toLocaleString()} additional`
+                        : newlyAvailableUnits < 0
+                          ? ` · ${Math.abs(newlyAvailableUnits).toLocaleString()} fewer`
+                          : " · no availability change"}
+                      {hasLandAccount ? ` · ${formatSqm(remainingUnconfiguredSqm)} unconfigured in the product pool` : ""}.
                     </FormDescription>
                   ) : null}
                   <FormMessage />
@@ -684,6 +742,8 @@ function PlanDialog({
   const isFlex = offerType === "flex";
   const isFo = usesFoModel(offerType);
   const isEdit = tenor !== undefined;
+  const [priceEditType, setPriceEditType] = useState<"correction" | "new-price" | null>(null);
+  const [priceEditReason, setPriceEditReason] = useState("");
 
   const form = useForm<PlanFormValues>({
     resolver: zodResolver(planFormSchema),
@@ -697,7 +757,18 @@ function PlanDialog({
   });
 
   const nextTenor = Number(useWatch({ control: form.control, name: "tenor_months" }));
+  const watchedLandPrice = Number(useWatch({ control: form.control, name: "land_price" }));
+  const watchedInitial = Number(useWatch({ control: form.control, name: "initial_payment" }));
+  const watchedMonthly = Number(useWatch({ control: form.control, name: "monthly_installment" }));
   const tenorChanged = isEdit && Number.isFinite(nextTenor) && nextTenor !== tenor;
+  const moneyChanged = Boolean(
+    isEdit &&
+      plan &&
+      (watchedLandPrice !== plan.land_price ||
+        watchedInitial !== plan.initial_payment ||
+        watchedMonthly !== plan.monthly_installment)
+  );
+  const priceDifference = plan ? watchedLandPrice - plan.land_price : 0;
 
   const otherTenors = (size?.plans ?? [])
     .filter((candidate) => candidate.tenor_months !== tenor)
@@ -746,6 +817,14 @@ function PlanDialog({
       form.setError("tenor_months", { message: "This size already has a plan at that tenor" });
       return;
     }
+    if (moneyChanged && !tenorChanged && !priceEditType) {
+      toast.error("Choose whether this is a correction or a new selling price");
+      return;
+    }
+    if (moneyChanged && !tenorChanged && priceEditReason.trim().length < 5) {
+      toast.error("Explain why the plan money is changing");
+      return;
+    }
 
     const done = (message: string) => () => {
       toast.success(message);
@@ -762,6 +841,12 @@ function PlanDialog({
           land_price: values.land_price,
           initial_payment: values.initial_payment,
           monthly_installment: values.monthly_installment,
+          ...(moneyChanged
+            ? {
+                price_edit_type: priceEditType!,
+                price_edit_reason: priceEditReason.trim(),
+              }
+            : {}),
           ...(isFo ? { is_promo: values.is_promo ?? false } : {}),
         },
         { onSuccess: done("Plan saved"), onError: fail }
@@ -913,6 +998,56 @@ function PlanDialog({
             </div>
 
             <PlanMathHint form={form} />
+
+            {moneyChanged && !tenorChanged ? (
+              <div className="space-y-3 rounded-lg border p-3">
+                <div>
+                  <p className="text-sm font-semibold">What kind of price edit is this?</p>
+                  <p className="text-xs text-muted-foreground">
+                    Existing customer plans keep the price captured when they purchased.
+                  </p>
+                </div>
+                <RadioGroup
+                  value={priceEditType ?? ""}
+                  onValueChange={(value) => setPriceEditType(value as "correction" | "new-price")}
+                  className="grid gap-2"
+                >
+                  <Label className="flex cursor-pointer items-start gap-2 rounded-md border p-3 font-normal">
+                    <RadioGroupItem value="correction" className="mt-0.5" />
+                    <span>
+                      <strong className="block text-sm">Correction</strong>
+                      <span className="text-xs text-muted-foreground">
+                        Fix a mistake without creating a new selling-price version.
+                      </span>
+                    </span>
+                  </Label>
+                  <Label className="flex cursor-pointer items-start gap-2 rounded-md border p-3 font-normal">
+                    <RadioGroupItem value="new-price" className="mt-0.5" />
+                    <span>
+                      <strong className="block text-sm">New selling price</strong>
+                      <span className="text-xs text-muted-foreground">
+                        Create version {(plan?.price_version ?? 1) + 1} for future purchases.
+                      </span>
+                    </span>
+                  </Label>
+                </RadioGroup>
+                <div className="grid grid-cols-3 gap-2 rounded-md bg-muted/40 p-2 text-xs tabular-nums">
+                  <div><span className="block text-muted-foreground">Current</span>{formatNaira(plan?.land_price ?? 0)}</div>
+                  <div><span className="block text-muted-foreground">New</span>{formatNaira(watchedLandPrice)}</div>
+                  <div><span className="block text-muted-foreground">Difference</span>{priceDifference >= 0 ? "+" : ""}{formatNaira(priceDifference)}</div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="price-edit-reason" className="text-xs">Reason</Label>
+                  <Textarea
+                    id="price-edit-reason"
+                    rows={2}
+                    value={priceEditReason}
+                    onChange={(event) => setPriceEditReason(event.target.value)}
+                    placeholder={priceEditType === "correction" ? "What was entered incorrectly?" : "Why is the selling price changing?"}
+                  />
+                </div>
+              </div>
+            ) : null}
 
             {/*
               A tenor change isn't an edit — the API addresses plans by tenor,

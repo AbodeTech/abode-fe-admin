@@ -12,9 +12,8 @@ import {
   COST_GROUP_LABELS,
   COST_SOURCE_TYPE_LABELS,
   type AssetCostItem,
-  type ObligationDetail,
 } from "../../schemas/asset-cost.schema";
-import { recognisedCost, type CostLedgerRow, type CostRowStatus } from "../../schemas/cost-ledger.schema";
+import { type CostLedgerRow, type CostRowStatus, type CostSummaryRecord } from "../../schemas/cost-ledger.schema";
 
 const HEAD =
   "whitespace-nowrap border-b px-2.5 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider text-muted-foreground first:text-left";
@@ -36,7 +35,7 @@ const names = (products: readonly string[]) =>
  * scope field; it has what a cost item is limited to and which product each
  * record is booked against, and this reads those.
  */
-function scopeLabel(item: AssetCostItem, records: ObligationDetail[]): string {
+function scopeLabel(item: AssetCostItem, records: CostSummaryRecord[]): string {
   if (item.applies_to_products.length > 0) return names(item.applies_to_products);
   if (item.is_shared) {
     return item.excluded_products.length > 0 ? `All except ${names(item.excluded_products)}` : "Whole asset";
@@ -206,7 +205,7 @@ export function AssetCostsTable({ rows, canManage, onOpenRecord, onAddRecord, on
                         </td>
                         <td className={CELL}>{money(record.stages.budget)}</td>
                         <td className={CELL}>{money(record.stages.committed)}</td>
-                        <td className={CELL}>{money(recognisedCost(record))}</td>
+                        <td className={CELL}>{money(record.recognised_cost)}</td>
                         <td className={CELL}>{money(record.stages.paid)}</td>
                         <td className={CELL} />
                         <td className={cn(CELL, "capitalize text-muted-foreground")}>{record.obligation.status}</td>

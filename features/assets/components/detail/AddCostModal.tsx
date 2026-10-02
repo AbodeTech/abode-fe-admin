@@ -1,6 +1,5 @@
 "use client";
 
-import { useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
@@ -42,7 +41,6 @@ import { useCostCatalogue, useCostItems } from "../../hooks/use-cost-items";
 import {
   ADD_COST_STAGES,
   ADD_COST_STAGE_LABELS,
-  AddCostStepError,
   NEW_COST_ITEM,
   NEW_ITEM_BASES,
   SHARED_SCOPE,
@@ -51,7 +49,6 @@ import {
   isPlanError,
   planAddCost,
   type AddCostFormValues,
-  type AddCostProgress,
 } from "../../schemas/add-cost.schema";
 import { OFFER_TYPE_LABELS } from "../../schemas/asset.schema";
 import {
@@ -93,10 +90,8 @@ interface FormProps {
 
 /**
  * The design's single "Add cost" form. What it does on save is three backend
- * steps at most — create the cost item (if new), create the record with its
- * first entry, approve that entry — planned by `planAddCost` and run by
- * `runAddCost`. `progress` remembers which steps have already succeeded, so
- * pressing the button again after a failure only repeats what failed.
+ * action. The backend transaction creates a new category when needed, the
+ * record, its opening entry, and its approval together.
  *
  * Three design fields have no backend equivalent and are adapted:
  *  - "Forecast" is not offered: there is no forecast stage.
@@ -116,7 +111,6 @@ function AddCostForm({ assetId, initialItemId, onClose }: FormProps) {
     : COST_GROUPS.map((group) => ({ group, label: COST_GROUP_LABELS[group] }));
   const { data: asset } = useAssetDetail(assetId);
   const addCost = useAddCost(assetId);
-  const progress = useRef<AddCostProgress>({});
 
   const form = useForm<AddCostFormValues>({
     resolver: zodResolver(addCostFormSchema),
@@ -157,31 +151,13 @@ function AddCostForm({ assetId, initialItemId, onClose }: FormProps) {
       }
 
       addCost.mutate(
-        { plan, progress: progress.current },
+        plan,
         {
           onSuccess: () => {
             toast.success(plan.approve ? "Cost added" : "Saved as a draft — it counts once it is approved");
             onClose();
           },
-          onError: (error) => {
-            const step = error instanceof AddCostStepError ? error.step : "record";
-            if (step === "approve") {
-              // Everything is saved; only the approval didn't go through.
-              toast.warning(`Saved as a draft, but it could not be approved: ${error.message}`);
-              onClose();
-              return;
-            }
-            if (step === "record" && progress.current.itemId) {
-              // The new item exists now. Point the form at it so the next
-              // attempt only saves the record.
-              form.setValue("cost_item_id", progress.current.itemId);
-              toast.error(
-                `The cost item was created, but the cost itself was not saved: ${error.message} Try again — the item will not be created twice.`
-              );
-              return;
-            }
-            toast.error(error.message || "Couldn't add this cost");
-          },
+          onError: (error) => toast.error(error.message || "Couldn't add this cost"),
         }
       );
     })();
