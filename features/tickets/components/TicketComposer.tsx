@@ -179,8 +179,14 @@ export function TicketComposer({ ticketId, channel, mergedInto }: Props) {
             ? "Write to the customer — this is sent as an email"
             : "Internal note — visible to admins only"
         }
+        // The shared Textarea grows with its content (field-sizing-content) and
+        // has no ceiling, while this composer is shrink-0 at the foot of a
+        // fixed-height column. A long reply grew the box past the bottom of the
+        // panel and took the Send button with it. Capped here, so it still
+        // grows for an ordinary reply and scrolls inside itself after that —
+        // the button below stays on screen however much is written.
         className={cn(
-          "text-sm resize-none bg-white",
+          "text-sm resize-none bg-white max-h-[40vh] overflow-y-auto",
           activeMode === "note" && "border-amber-200 focus-visible:ring-amber-400"
         )}
       />
@@ -245,7 +251,7 @@ export function TicketComposer({ ticketId, channel, mergedInto }: Props) {
             ) : (
               <Send className="h-3.5 w-3.5 mr-1.5" />
             )}
-            {activeMode === "reply" ? "Send reply" : "Add note"}
+            {activeMode === "reply" ? "Send" : "Add note"}
           </Button>
         </div>
       </div>
