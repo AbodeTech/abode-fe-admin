@@ -7720,7 +7720,8 @@ export type ResolvePurchaseDisputeResponse = {
 };
 
 export type ResolveTicketInput = {
-  resolution: Scalars['String']['input'];
+  /** Optional. A short note on how it was resolved; leave it out or blank to resolve without one. */
+  resolution?: InputMaybe<Scalars['String']['input']>;
   ticketId: Scalars['ID']['input'];
 };
 
@@ -8357,7 +8358,8 @@ export type TicketAffectedHint = {
 export enum TicketAssignmentSource {
   CustomerManager = 'customer_manager',
   FallbackLeastLoaded = 'fallback_least_loaded',
-  Human = 'human'
+  Human = 'human',
+  SenderManager = 'sender_manager'
 }
 
 export type TicketAttachment = {
