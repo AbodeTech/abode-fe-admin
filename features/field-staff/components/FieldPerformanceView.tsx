@@ -75,6 +75,12 @@ function TeamView() {
             measured on.
           </p>
         </div>
+        {roster.notShown > 0 && (
+          <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            Showing the first {roster.rows.length} {roleWord}. {roster.notShown} more aren&apos;t in this table or the
+            person menu yet — the team has outgrown a single page.
+          </p>
+        )}
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
           <FieldTeamTable
             rows={roster.rows}

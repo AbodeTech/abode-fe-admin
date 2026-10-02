@@ -62,6 +62,7 @@ export { PersonWork } from './components/PersonWork';
 export { MetricTile, ScoreTile, mergeMetrics } from './components/MetricTiles';
 export { ReviewQueueTable } from './components/ReviewQueueTable';
 export { QueueMetricFilter, useQueueMetric } from './components/QueueMetricFilter';
+export { QueueStatusTabs, useQueueTab, QUEUE_TABS, type QueueTab } from './components/QueueStatusTabs';
 export { ScorecardActions } from './components/ScorecardActions';
 export { ScorecardTargetsDialog, TargetContext, type TargetsDialogMode } from './components/ScorecardTargetsDialog';
 export { TargetCards, WeightMeter } from './components/TargetEditor';
