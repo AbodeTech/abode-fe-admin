@@ -86,6 +86,12 @@ export const ADMIN_PERMISSIONS = [
   // module (confirmed against `abode-be-v2`'s `AssetSiteSetupController`).
   'view_field_performance',
   'manage_asset_boundary',
+  // The rest of the field-staff module the Site Setup tab reads and writes:
+  // the review queue, who covers a site, and allocation event owners.
+  'view_field_submissions',
+  'verify_field_submissions',
+  'view_field_staff',
+  'assign_field_staff',
 
   'asset_transactions',
   'approve_payments',

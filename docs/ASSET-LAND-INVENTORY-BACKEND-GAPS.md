@@ -2,7 +2,7 @@
 
 For the `abode-be-v2` team. Everything below was confirmed either by reading the current `asset`, `asset-cost`, and `asset/land` module source directly, or reproduced live against `https://api-v2-staging.abodeflex.ng` during a manual QA pass of the Land Inventory & Field Performance sprint. Each item says which.
 
-The admin FE (`abode-fe-admin`) hides every widget/tab listed in §1 outside mock-mode dev, rather than show it permanently broken against the real API — see `lib/mocks/config.ts`'s `isMockApiEnabled()` and its call sites in `app/(dashboard)/assets/[id]/blocks/page.tsx`, `.../performance/page.tsx`, `.../customers/page.tsx`, `.../updates/page.tsx`, `AssetOffers.tsx`, and `AssetDetailNav.tsx` (which drops the Performance/Customers/Updates tabs from the nav entirely outside mock mode).
+The admin FE (`abode-fe-admin`) hides every widget/tab listed in §1 outside mock-mode dev, rather than show it permanently broken against the real API — see `lib/mocks/config.ts`'s `isMockApiEnabled()` and its call sites in `app/(dashboard)/assets/[id]/blocks/page.tsx` and `AssetOffers.tsx`.
 
 ---
 
@@ -33,7 +33,7 @@ GET /admin/assets/:assetId/offers/history
 
 ```
 GET /admin/assets/:assetId/plots        ✅ real (field-staff module)
-GET /admin/assets/:assetId/plots/summary ❌ genuinely doesn't exist
+GET /admin/assets/:assetId/plots/summary ✅ real too (same controller; totals and readiness without the rows) — corrected 2026-10-01, not consumed by the FE yet
 ```
 
 Re-verified directly against `abode-be-v2` staging source: `GET .../plots` is real, on `AssetSiteSetupController`/`SiteSetupService.plotInventory()` — the original "no asset-wide listing exists" claim here was wrong. What actually broke it was a shape mismatch, not a missing route: the real endpoint returns a field-ops readiness view (parcelation/clearing/allocation-readiness, nested as `{asset, plots, totals, filtered_totals, allocation_readiness}`) rather than the flat, customer/ground-confirmed-shaped paginated array this app had invented — and its params are `search/block/size/product/status/allocation/field_state`, not this app's old `block_id/min_size/max_size`. `PlotInventoryPanel` has been rebuilt against the real shape (see `plot-inventory.schema.ts`'s header) and now renders in real mode too, not just mock mode. `.../plots/summary` was this app's own invention and has been removed — the real endpoint returns its totals inline instead.
@@ -61,41 +61,17 @@ A deliberately partial (by-size, not by-product) join between physical plot stat
 
 **Why it matters**: this is separate from, and does not duplicate, §3 below (the real sqm-inventory reconciliation) — this one is about physical plots vs. commercial sales counts, not sqm capacity readiness. If wanted for real, it's new backend work; the FE's `InventoryReconciliationPanel` is otherwise usable as a spec for the shape (per-size physical/commercial rows, estate totals, exception codes for oversold/no-physical-plots/no-sales-data).
 
-### 1.5 Asset subscribers (customer list per estate)
+### 1.5–1.7 Subscribers, estate updates, per-asset analytics — RESOLVED, were never missing
 
 ```
-GET /admin/assets/:assetId/subscribers
+GET  /admin/assets/:id/subscribers (+ /export)                    ✅ real (asset-analytics module)
+GET  /admin/assets/:id/analytics                                  ✅ real (asset-analytics module)
+GET/POST/PATCH /admin/assets/:id/updates (+ /publish, /archive)   ✅ real (estate-update module)
 ```
 
-**Confirmed live**: 404. **Confirmed via source**: there is no controller anywhere that serves this. The only trace of the idea on the real backend is two unused permission keys, `view_asset_subscribers` and `export_asset_subscribers` (`src/common/permissions.ts`, seeded onto roles in `role.seed.ts`) — never referenced by any `@AdminAuth(...)` on any controller. This was never built, not merely renamed or moved; there's no alternate real route for "list the customers who bought into this specific asset" anywhere (checked every controller under `admin/assets/...`).
+Corrected 2026-10-01. Earlier versions of this section said all three 404'd and had no backend module; that was wrong. Re-verified against `abode-be-v2` staging source (`asset-analytics.controller.ts`, on staging since 1 Sep; `estate-update-admin.controller.ts`, since 17 Sep) and the live OpenAPI document at `https://api-v2-staging.abodeflex.ng/api/docs-json`, which lists every route above. The FE schemas (`asset-analytics.schema.ts`, `asset-subscribers.schema.ts`, `estate-update.schema.ts`) match the backend DTOs field for field, so the Performance, Customers and Updates tabs are no longer gated behind mock mode.
 
-**Why it matters**: the Customers tab on an asset's detail page has nothing to call at all. If this is still wanted, it needs a new controller/route built from scratch — the two permission keys already exist and are already seeded, so at minimum the access-control half is halfway done.
-
-### 1.6 Estate updates (per-asset announcement feed)
-
-```
-GET/POST /admin/assets/:assetId/updates
-```
-
-**Confirmed live**: 404. **Confirmed via source**: no "estate-update"/"asset-update"/"announcement" module exists anywhere in `src/modules/` (the full module list has 45+ entries and none is update/announcement-shaped), and `AssetAdminController` has no such routes. Nothing to build on top of — this would be new backend work end to end if still wanted.
-
-**Why it matters**: the Updates tab on an asset's detail page has nothing to call at all.
-
-### 1.7 Per-asset analytics — the whole Performance tab
-
-```
-GET /admin/assets/:assetId/analytics?filter=all_time
-```
-
-**Confirmed live**: 404. **Confirmed via source**: this route is entirely fictitious. The real, and only, analytics endpoint is:
-
-```
-GET /admin/assets/analytics/portfolio
-```
-
-— note `analytics` is a fixed path segment before `portfolio`, not `:assetId/analytics`. It takes **no query params at all** (`filter` included — the FE's assumed param doesn't exist either) and is **portfolio-wide**: every asset rolled up, plus a breakdown by category (flex/full-ownership/commercial/developer-plot). It does carry an `asset_details[]` array with one row per asset (`asset_id, name, location, available_sizes, total_units, min_price, max_price`), but that's a flat inventory summary, not the per-asset time-series/health data this tab needs — there is no per-asset analytics endpoint on the real backend at all, in any shape.
-
-**Why it matters**: this is the single biggest gap in this document. The entire Performance tab — health bar, date-range filters, the payment plan matrix's size/plan breakdown — is built on this one fictitious call; nothing on the tab can render without it, including the profit columns this sprint added on top (those come from the real Costs & Profitability endpoint and would still need something to merge into). If a real per-asset analytics endpoint is ever built, it should probably reuse `admin/assets/analytics/portfolio`'s existing metric definitions (`gross_revenue`, `total_capacity_sqm`, `collection_efficiency`, `occupancy_rate`, `defaulting{...}`, etc.) scoped to one asset rather than inventing a new shape.
+One real gap remains here: the subscribers `aggregates` block is dropped by the global `TransformInterceptor` (see `asset-subscribers.schema.ts`'s header), so the Customers summary strip is still page-scoped.
 
 ---
 
@@ -143,3 +119,32 @@ This wouldn't matter if `configured_units` weren't visible to API consumers — 
 **Confirmed live**: editing an existing size's units (`PATCH .../sizes/:sizeId` with a new `units_available`) succeeds and genuinely updates `units_available`, but the size's `configured_units` in the very next `GET /admin/assets/:id` still reads the old, pre-edit value — because it was never touched by the update. Any client (this one included, until now) that happens to read `configured_units` instead of `units_available` will show stale capacity data after every single size edit, with no error or signal that anything is wrong.
 
 **Suggested fix**: either (a) serialize sizes through the real `SizeDto` on this endpoint too, so the unofficial internal field stops being visible to clients at all, or (b) have `updateSize()` mirror `configured_units` from `units_available` the same way creation does, so the two never diverge in the first place. Either closes the gap; (a) is probably the more correct one, since `configured_units` was never meant to be a public field.
+
+---
+
+## 6. Found while rebuilding the Overview tab against the asset-detail design (2026-10-01)
+
+### 6.1 `GET .../sqm-inventory` — `totals` double-counts every sized purchase
+
+**Confirmed via source**, `sqm-inventory.service.ts`: `keysFor()` returns `[poolKey, key]` for a sized purchase, so `move()` takes the same sqm out of both the product's pool row (`size_id: null`) and the size's own row. `positionFor()` then builds `totals` by reducing over **every** row, pool and size alike — so `totals.capacity_sqm`, `selling_sqm`, `sold_sqm` and `available_sqm` count each sized sale twice (and add size capacity on top of the pool capacity that already contains it).
+
+The FE no longer reads `totals` for these; it rolls up the pool rows itself (`productPositions()`/`ledgerTotals()` in `sqm-inventory.schema.ts`, covered by `scripts/product-position-qa.ts`). **Suggested fix**: sum pool rows only for the commercial totals.
+
+### 6.2 Design figures with no backend source
+
+Each is drawn in the design and left out (or shown as an em-dash) on the Overview rather than faked:
+
+- **Event reserved, per product** (Product position table) — an allocation event carries one `reserved_size` total, not a per-product split.
+- **Value lens and per-status units** (Product position table) — the ledger reports one `purchase_snapshot_value` and one `units` figure per row across all live plans, not one per status (available/selling/sold/defaulted).
+- **Defaulted-retained as its own bucket** (header bar) — `defaulted_sqm` is an overlay on live plans, a subset of selling/sold, so it can't be drawn as a separate slice of capacity.
+- **Cost paid / committed cost totals** (Financial position) — profitability recognises one cost number; there is no estate-level total per financial stage. (The Costs tab's summary strip needs the same thing: budget, committed, incurred, paid.)
+- **State** (Asset details) — the asset has `asset_location` only, no separate state field.
+- **A single asset history feed** (the design's Updates tab) — history exists per module (`land-configuration/history`, `selling-charges/history`, `field-history`) but nothing merges land, price, cost and field changes into one timeline.
+
+### 6.3 Sections 2, 3 and 4 above are resolved on the backend (commit 0f042ef, 28 Sep 2026)
+
+- **Section 2** (land configuration PUT returning `id: null`): the response is now recomputed from a fresh read.
+- **Section 3** (selling charges PUT with no concurrency guard): `expected_version` is now required; a stale save is a 409 `SELLING_CHARGE_VERSION_CONFLICT`.
+- **Section 4** (no scheduled future price change): a version can now be approved for a future `effective_date`; `GET .../selling-charges` returns `in_force`, `scheduled[]` and `latest_version`.
+
+The frontend was only brought up to this selling-charges contract on 2026-10-01. Until then every selling-charges read failed schema validation against the real API and was shown as an empty state. Other schemas (asset costs, profitability, site setup, plot inventory, land configuration) have not been re-compared with the backend since that commit.

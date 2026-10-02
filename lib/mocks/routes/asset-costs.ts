@@ -201,7 +201,8 @@ function presentItem(item: MockCostItem, currentRule: MockAllocationRule | undef
     manual_shares: item.manual_shares,
     applicability_version: item.applicability_version,
     is_active: item.is_active,
-    needs_allocation_rule: item.is_shared && !currentRule,
+    // The real `presentItem()` keys this on the item's own basis; a saved rule also sets one.
+    needs_allocation_rule: item.is_shared && !item.allocation_basis && !currentRule,
     created_at: item.createdAt,
   };
 }
@@ -527,6 +528,17 @@ export function getCurrentAllocationRule(assetId: string, itemId: string): MockA
 export { countsAsCost, signFor, DIRECT_GROUPS, COST_GROUPS };
 
 export const assetCostRoutes: MockRoutes = {
+  /** GET .../costs/catalogue — `COST_GROUPS` with `COST_GROUP_LABELS`, as `AssetCostService.catalogue()` sends them. */
+  'GET /admin/assets/:assetId/costs/catalogue': () => ({
+    groups: [
+      { group: 'acquisition', label: 'Acquisition' },
+      { group: 'development', label: 'Development' },
+      { group: 'documentation_finance', label: 'Documentation & Finance' },
+      { group: 'direct_cost_of_sale', label: 'Direct Cost of Sale' },
+      { group: 'opex', label: 'OPEX' },
+    ],
+  }),
+
   'GET /admin/assets/:assetId/costs/items': ({ params, query }) => {
     seedIfNeeded(params.assetId);
     requireAsset(params.assetId);
@@ -543,9 +555,15 @@ export const assetCostRoutes: MockRoutes = {
       name?: string;
       description?: string;
       is_shared?: boolean;
+      allocation_basis?: MockAllocationBasis;
       applies_to_products?: MockOfferType[];
       excluded_products?: MockOfferType[];
     }>(raw);
+
+    // The real `checkAllocation()`: a split rule is only allowed on a shared item.
+    if (dto.allocation_basis && dto.allocation_basis !== 'direct' && !dto.is_shared) {
+      throw new MockHttpError(400, 'These allocation rules cannot be saved as they are', 'COST_ALLOCATION_INVALID');
+    }
 
     if (!dto.group || !COST_GROUPS.includes(dto.group)) {
       throw new MockHttpError(400, `group must be one of: ${COST_GROUPS.join(', ')}`, 'VALIDATION_FAILED');
@@ -565,6 +583,7 @@ export const assetCostRoutes: MockRoutes = {
       name: dto.name.trim(),
       description: dto.description?.trim() || null,
       is_shared: dto.is_shared ?? false,
+      allocation_basis: dto.allocation_basis ?? null,
       applies_to_products: dto.applies_to_products ?? [],
       excluded_products: dto.excluded_products ?? [],
     });
@@ -858,12 +877,12 @@ export const assetCostRoutes: MockRoutes = {
     if (!dto.stage) throw new MockHttpError(400, 'stage should not be empty', 'VALIDATION_FAILED');
     if (dto.amount === undefined) throw new MockHttpError(400, 'This stage needs an amount', 'COST_AMOUNT_REQUIRED');
 
-    const alreadyExists = (eventsByObligation[obligation._id] ?? []).some(
-      (e) => e.source_type === 'manual' && e.financial_stage === dto.stage && e.status !== 'reversed'
-    );
-    if (alreadyExists) {
-      throw new MockHttpError(409, 'That stage has already been recorded for this cost record from that source', 'COST_STAGE_DUPLICATE');
-    }
+    // No duplicate check for a manual entry. The real `writeEvent()` keys a manual entry on
+    // `${obligationId}-${Date.now()}`, so every one is distinct: a record can carry several
+    // entries at the same stage, and they add up. `COST_STAGE_DUPLICATE` only protects
+    // automated sources (a field submission or commission written twice), which this
+    // admin route never is. An earlier version of this mock refused a second manual
+    // entry at a stage, which the real backend does not.
 
     const event = writeEvent(obligation, {
       financial_stage: dto.stage,

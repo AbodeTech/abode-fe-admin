@@ -53,6 +53,16 @@ export function formatNairaCompact(amount: number | null | undefined): string {
  * AssetHealthBar, AssetCategoryHealth, PaymentPlanMatrix) — this is the
  * canonical version new code should import instead of copying again.
  */
+/**
+ * Land area in full: `136830` → `"136,830 sqm"`. For land-account and ledger
+ * figures an admin reconciles against each other, where `formatSqm`'s rounding
+ * ("137k SQM") would hide the difference being checked.
+ */
+export function formatSqmExact(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(value)) return '—';
+  return `${value.toLocaleString('en-NG', { maximumFractionDigits: 2 })} sqm`;
+}
+
 export function formatSqm(value: number | null | undefined): string {
   if (value == null || Number.isNaN(value)) return '—';
   if (value === 0) return '0 SQM';

@@ -403,6 +403,21 @@ function createEvent(input: {
   return event;
 }
 
+/**
+ * For field-operations.ts's in-process read (not an HTTP route): one
+ * allocation event with its live (not cancelled) allocations — what the real
+ * `FieldAllocationRepository.findEvent()` + `allocationsForEvent()` return.
+ */
+export function allocationEventForField(eventId: string) {
+  seedIfNeeded();
+  const event = events.find((candidate) => candidate.id === eventId && candidate.type === 'allocation');
+  if (!event) return null;
+  return {
+    event,
+    allocations: allocations.filter((row) => row.event_id === eventId && row.status !== 'cancelled'),
+  };
+}
+
 export const companyEventsRoutes: MockRoutes = {
   'GET /admin/company-events': ({ query }) => {
     seedIfNeeded();

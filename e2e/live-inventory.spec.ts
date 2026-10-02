@@ -2,10 +2,13 @@ import { type Page, type Browser } from '@playwright/test';
 import { test, expect, login, closeDialog, waitForToastsToClear, waitForBodyUnlocked, assetTabUrl, ASSET_WITH_FULL_TREE } from './fixtures';
 
 /**
- * Blocks & Plots tab: create a block, bulk-add plots to it, filter the
- * asset-wide plot inventory, submit + verify a ground confirmation on the
- * seeded allocated plot, and check the physical/commercial status matrices
- * and inventory reconciliation panel all render with the estate's real data.
+ * Blocks & Plots tab, as the asset-detail design draws it: the summary strip,
+ * block cards and the plot table. Creates a block, bulk-adds plots through
+ * the block's editor, and filters the plot table.
+ *
+ * Ground confirmation, the physical/commercial status matrices and the
+ * inventory reconciliation panel are no longer on this tab: none is in the
+ * design and none has a backend. Sqm activation moved to the Overview.
  */
 test.describe.serial('Live Inventory', () => {
   let page: Page;
@@ -25,15 +28,11 @@ test.describe.serial('Live Inventory', () => {
     await page.close();
   });
 
-  test('shows blocks, plot inventory, status matrices, and reconciliation', async () => {
-    // BlocksManager wraps its title in shadcn's <CardTitle>, a plain <div>
-    // with no heading role — unlike this file's other panels, which use a
-    // real <h2>.
-    await expect(page.getByText('Block inventory')).toBeVisible();
+  test('shows the summary strip, block inventory and plot inventory', async () => {
+    await expect(page.getByText('Total physical plots')).toBeVisible();
+    await expect(page.getByText('Event capacity remaining')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Block inventory' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Plot inventory' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Physical status' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Commercial status' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Inventory reconciliation' })).toBeVisible();
   });
 
   test('creates a new block', async () => {
@@ -51,13 +50,8 @@ test.describe.serial('Live Inventory', () => {
   });
 
   test('bulk-adds plots to the new block', async () => {
-    // The block's own name label is a leaf <p>; its card is the closest
-    // bordered ancestor — safer than filtering all <div>s by text, which
-    // would also match every wrapping container that happens to contain it.
-    const blockCard = page
-      .getByText(`Block ${newBlockLabel}`, { exact: true })
-      .locator('xpath=ancestor::div[contains(@class,"rounded-xl")][1]');
-    await blockCard.getByRole('button', { name: 'Manage plots' }).click();
+    // Each block card is itself the button that opens that block's plot editor.
+    await page.getByRole('button', { name: `Manage plots in Block ${newBlockLabel}` }).click();
 
     const manageDialog = page.getByRole('dialog');
     await expect(manageDialog.getByRole('heading', { name: `Block ${newBlockLabel}` })).toBeVisible();
@@ -85,53 +79,14 @@ test.describe.serial('Live Inventory', () => {
     await panel.getByPlaceholder('Search plot (e.g. A-12)').fill('');
   });
 
-  test('ground confirmation: verify the seeded pending submission on an allocated plot', async () => {
+  test('"Manage plots" on the plot table opens the same block editor', async () => {
     const panel = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Plot inventory' }) });
-    await panel.getByPlaceholder('Search plot (e.g. A-12)').fill('A-1');
+    await panel.getByRole('button', { name: 'Manage plots' }).click();
+    await page.getByRole('menuitem', { name: `Block ${newBlockLabel}` }).click();
 
-    await expect(panel.getByText('Not ground confirmed')).toBeVisible();
-    await panel.getByText('Not ground confirmed').click();
-
-    const dialog = page.getByRole('dialog');
-    await expect(dialog.getByRole('heading', { name: 'Ground confirmation' })).toBeVisible();
-    await expect(dialog.getByText('Pending verification')).toBeVisible();
-    await dialog.getByRole('button', { name: 'Verify' }).click();
-
-    await expect(page.getByText('Ground confirmation verified')).toBeVisible({ timeout: 10_000 });
-    await waitForToastsToClear(page);
+    const manageDialog = page.getByRole('dialog');
+    await expect(manageDialog.getByRole('heading', { name: `Block ${newBlockLabel}` })).toBeVisible();
+    await expect(manageDialog.getByRole('button', { name: 'Delete block' })).toBeVisible();
     await closeDialog(page);
-
-    await expect(panel.getByText('Ground confirmed', { exact: true })).toBeVisible();
-    await panel.getByPlaceholder('Search plot (e.g. A-12)').fill('');
-  });
-
-  test('inventory reconciliation shows estate totals and an actionable exception', async () => {
-    const reconciliation = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Inventory reconciliation' }) });
-    await expect(reconciliation.getByText(/ground confirmed/i).first()).toBeVisible();
-    await expect(reconciliation.getByText(/more unit\(s\) sold than physically allocated/i).first()).toBeVisible();
-
-    await reconciliation.getByRole('link', { name: 'Manage plots' }).first().click();
-    await expect(page).toHaveURL(/#blocks-manager$/);
-  });
-
-  test('inventory reconciliation is flagged as demo data, not a live system', async () => {
-    const reconciliation = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Inventory reconciliation' }) });
-    await expect(reconciliation.getByText('Demo data — not backed by a live system')).toBeVisible();
-  });
-
-  test('sqm inventory: reads the real ledger position, then activates it', async () => {
-    const panel = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Sqm inventory' }) });
-    await expect(panel.getByText('Legacy units', { exact: true })).toBeVisible();
-    await expect(panel.getByText('Ready to activate')).toBeVisible();
-
-    await panel.getByRole('button', { name: 'Activate sqm inventory' }).click();
-
-    const dialog = page.getByRole('alertdialog');
-    await expect(dialog.getByRole('heading', { name: 'Activate sqm inventory?' })).toBeVisible();
-    await dialog.getByRole('button', { name: 'Activate' }).click();
-
-    await expect(page.getByText('Sqm inventory activated')).toBeVisible({ timeout: 10_000 });
-    await waitForToastsToClear(page);
-    await expect(panel.getByText('Active', { exact: true })).toBeVisible();
   });
 });

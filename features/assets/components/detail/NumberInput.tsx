@@ -149,10 +149,29 @@ export function NumberInput({
   // ("5.") is left alone — only a genuinely external change (form.reset,
   // switching rows in a field array) ever disagrees with what `draft` parses
   // to, and that's the only case this should overwrite it for.
+  //
+  // One value must NOT count as an external change: the echo of a clear.
+  // Emptying the field sends `undefined` up, and react-hook-form's
+  // `useController` answers an `undefined` field with the value it had when
+  // it mounted (its memoised `defaultValue` fallback) instead of `undefined`.
+  // Without the guard below that echo was written straight back into the
+  // box: deleting the last digit made the original number reappear, while
+  // the form itself still held "empty" — so the field showed a figure and a
+  // "required" error at the same time and the form could never be saved.
+  // `mountValue` is that fallback (this input mounts with its controller),
+  // so while the user has the field cleared, seeing it come back means
+  // "still empty".
+  const [mountValue] = useState(numericValue);
+  const [cleared, setCleared] = useState(false);
+  const effectiveValue = cleared && numericValue === mountValue ? undefined : numericValue;
+
   const parsedDraft =
     draft === "" || draft === "." ? undefined : Number(draft.replace(/,/g, ""));
-  if (parsedDraft !== numericValue) {
-    setDraft(toDisplay(numericValue));
+  if (parsedDraft !== effectiveValue) {
+    setDraft(toDisplay(effectiveValue));
+    // A real external value arrived (form.reset, a row swap) — the field is
+    // no longer in its cleared state.
+    if (cleared) setCleared(false);
   }
 
   // Runs synchronously right after React commits `draft`'s new value to the
@@ -188,8 +207,10 @@ export function NumberInput({
           const cleaned = sanitize(raw);
           const formatted = formatWithCommas(cleaned);
           pendingCaretRef.current = positionAtDigitIndex(formatted, caretDigitIndex);
+          const empty = cleaned === "" || cleaned === ".";
           setDraft(formatted);
-          onChange(cleaned === "" || cleaned === "." ? undefined : Number(cleaned));
+          setCleared(empty);
+          onChange(empty ? undefined : Number(cleaned));
         }}
       />
       {suffix ? (

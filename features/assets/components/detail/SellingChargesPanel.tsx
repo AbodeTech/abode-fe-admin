@@ -11,17 +11,21 @@ import { useAdminPermissions } from "@/hooks/use-admin-permission";
 import { formatNaira } from "@/lib/utils/format";
 
 import { OFFER_TYPE_LABELS } from "../../schemas/asset.schema";
-import { CHARGE_BASIS_LABELS, SELLING_CHARGE_TYPE_LABELS } from "../../schemas/selling-charges.schema";
+import {
+  CHARGE_BASIS_LABELS,
+  SELLING_CHARGE_TYPE_LABELS,
+  latestSellingChargeVersion,
+} from "../../schemas/selling-charges.schema";
 import { useSellingCharges } from "../../hooks/use-selling-charges";
 import { SellingChargesDialog } from "./SellingChargesDialog";
 import { SellingChargesHistorySheet } from "./SellingChargesHistorySheet";
 
 /**
- * The real, asset-wide replacement for the abandoned per-plan "plan price
- * versioning" design — `GET/PUT /admin/assets/:assetId/selling-charges`,
- * confirmed on abode-be-v2 staging (PR #82). A buyer-facing charge here
- * (land price, development levy, documentation levy, survey fee, or a custom
- * one) applies estate-wide, optionally scoped to one product.
+ * The estate's buyer-facing charges (land price, levies, fees, or a custom
+ * one), each applying estate-wide or to one product — `GET/PUT
+ * /admin/assets/:assetId/selling-charges`. Shows the version in force today
+ * and, beneath it, any versions approved for a future date. Editing always
+ * starts from the newest saved version.
  */
 export function SellingChargesPanel({ assetId }: { assetId: string }) {
   const permissions = useAdminPermissions();
@@ -30,7 +34,9 @@ export function SellingChargesPanel({ assetId }: { assetId: string }) {
   const [editOpen, setEditOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
 
-  const { data: current, isLoading } = useSellingCharges(assetId, { enabled: canView });
+  const { data, isLoading, error } = useSellingCharges(assetId, { enabled: canView });
+  const current = data?.in_force ?? null;
+  const scheduled = data?.scheduled ?? [];
 
   if (!canView) {
     return (
@@ -75,13 +81,20 @@ export function SellingChargesPanel({ assetId }: { assetId: string }) {
         </div>
       </div>
 
-      {!current ? (
+      {error ? (
+        // A failed read must not look like "nothing set up yet".
+        <p className="p-6 text-center text-sm text-rose-600">Couldn&apos;t load selling charges: {error.message}</p>
+      ) : !current ? (
         <div className="p-6 text-center">
-          <p className="font-medium">No selling charges approved yet</p>
-          <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
-            Set up at least a land price so buyers see a real total on offers here.
+          <p className="font-medium">
+            {scheduled.length > 0 ? "No selling charges in force yet" : "No selling charges approved yet"}
           </p>
-          {canManage ? (
+          <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
+            {scheduled.length > 0
+              ? "The first version is scheduled for a future date — see below."
+              : "Set up at least a land price so buyers see a real total on offers here."}
+          </p>
+          {canManage && scheduled.length === 0 ? (
             <Button className="mt-4" size="sm" onClick={() => setEditOpen(true)}>
               Set up charges
             </Button>
@@ -120,7 +133,34 @@ export function SellingChargesPanel({ assetId }: { assetId: string }) {
         </>
       )}
 
-      <SellingChargesDialog assetId={assetId} current={current ?? null} open={editOpen} onOpenChange={setEditOpen} />
+      {scheduled.length > 0 ? (
+        <div className="border-t">
+          <p className="px-4 pt-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground sm:px-6">
+            Scheduled
+          </p>
+          {scheduled.map((version) => (
+            <div key={version.version} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-sm sm:px-6">
+              <span>
+                Version {version.version}
+                <span className="ml-2 text-xs text-muted-foreground">
+                  {version.charges.length} charge{version.charges.length === 1 ? "" : "s"} · {version.reason}
+                </span>
+              </span>
+              <span className="text-xs text-amber-600">
+                Takes effect {new Date(version.effective_date).toLocaleDateString("en-NG")}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      <SellingChargesDialog
+        assetId={assetId}
+        seed={latestSellingChargeVersion(data)}
+        latestVersion={data?.latest_version ?? 0}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+      />
       <SellingChargesHistorySheet assetId={assetId} open={historyOpen} onOpenChange={setHistoryOpen} />
     </section>
   );

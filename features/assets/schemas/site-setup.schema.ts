@@ -15,12 +15,9 @@ import { z } from 'zod';
  * part of Site Setup at all. Confirmed by reading the real backend: no
  * fieldwork-tracking data model exists for those categories.
  *
- * Scope of this rebuild: read the current boundary + fencing progress, and
- * set the approved boundary (`PUT .../boundary`). Reviewing/verifying
- * individual field-crew submissions (`POST /field/me/submissions`,
- * `POST /admin/field-submissions/:id/verify|correct|reverse`) is a separate,
- * larger admin workflow not built here — a deliberate scope decision, not an
- * oversight.
+ * This file covers the boundary and the progress read. The rest of what the
+ * Site Setup tab does (reviewing field-crew submissions, field costs, the
+ * field team and allocation-event owners) is in field-operations.schema.ts.
  * ============================================================ */
 
 export const FENCING_SIDES = ['front', 'right', 'back', 'left'] as const;
