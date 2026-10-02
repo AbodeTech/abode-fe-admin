@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowDown, ArrowRight, ArrowUp, Repeat } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { ArrowDown, ArrowRight, ArrowUp, LandPlot, Repeat } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -14,8 +15,16 @@ import {
 import { Pagination } from "@/components/shared/Pagination";
 import { useDebounce } from "@/hooks/use-debounce";
 import { cn } from "@/lib/utils";
-import { CsPlanFilter, CsPlanSort } from "@/lib/gql/graphql";
-import type { CsPlanFilterCounts, PlanRow } from "@/lib/gql/graphql";
+import { makeFragmentData } from "@/lib/gql";
+import {
+  AllocationStatus,
+  CsPlanFilter,
+  CsPlanSort,
+  FlexOrFullownership,
+} from "@/lib/gql/graphql";
+import type { CsEstateOption, CsPlanFilterCounts, PlanRow } from "@/lib/gql/graphql";
+import { AllocationModal, AllocationTableRowFragment } from "@/features/allocation";
+import { csManagerKeys } from "../hooks/use-cs-manager-dashboard";
 import { PLAN_SORTS, effectivePlanSort } from "../lib/plan-sort";
 import {
   AllocationPill,
@@ -35,8 +44,10 @@ interface Props {
   totalAssigned: number;
   /** Rows matching the active filter + search, before pagination. */
   totalPlans: number;
-  /** Book-wide per-chip counts — unaffected by the active filter. */
+  /** Per-chip counts — unaffected by the active chip, narrowed by the estate. */
   filterCounts: CsPlanFilterCounts;
+  /** Every estate in the book, for the estate filter. */
+  estates: CsEstateOption[];
   page: number;
   limit: number;
   isFetching?: boolean;
@@ -122,12 +133,55 @@ export function CustomersTable({
   totalAssigned,
   totalPlans,
   filterCounts,
+  estates,
   page,
   limit,
   isFetching = false,
 }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
+  const estateParam = searchParams.get("estate") ?? "";
+
+  // Allocating from the table opens the same window the Allocation page uses.
+  // Only for plans fully paid and still without a plot ("awaiting") — the
+  // dashboard's 100% rule, flex and full-ownership alike.
+  const [allocatingPlanId, setAllocatingPlanId] = useState<string | null>(null);
+  const allocatingRow = allocatingPlanId
+    ? plans.find((p) => p.planId === allocatingPlanId) ?? null
+    : null;
+  const allocationClient = useMemo(
+    () =>
+      allocatingRow
+        ? makeFragmentData(
+            {
+              __typename: "EligibleClient",
+              paymentPlan: allocatingRow.planId,
+              assetName: allocatingRow.asset,
+              assetType:
+                allocatingRow.product === FlexOrFullownership.Flex ? "flex" : "full-ownership",
+              assetSize: allocatingRow.size ?? null,
+              unit: allocatingRow.units,
+              location: allocatingRow.location ?? null,
+              allocation: null,
+              allocationStatus: allocatingRow.allocationStatus ?? "pending",
+              email: allocatingRow.customer.email,
+              firstName: allocatingRow.customer.firstName,
+              lastName: allocatingRow.customer.lastName,
+              phoneNumber: allocatingRow.customer.phone,
+              paymentPercentage: "100",
+            },
+            AllocationTableRowFragment
+          )
+        : null,
+    [allocatingRow]
+  );
+  const closeAllocation = (open: boolean) => {
+    if (open) return;
+    setAllocatingPlanId(null);
+    // The row leaves "Due allocation" once a plot is assigned.
+    queryClient.invalidateQueries({ queryKey: csManagerKeys.dashboards() });
+  };
 
   // Hold the id, not the row: mutations in the drawer invalidate the dashboard,
   // and deriving from the refetched page keeps the drawer's pills live.
@@ -184,6 +238,13 @@ export function CustomersTable({
     });
 
   const setSort = (next: CsPlanSort) => pushParams((p) => p.set("sort", next));
+
+  const ALL_ESTATES = "__all__";
+  const setEstate = (name: string) =>
+    pushParams((p) => {
+      if (name === ALL_ESTATES) p.delete("estate");
+      else p.set("estate", name);
+    });
 
   const boughtSortActive =
     activeSort === CsPlanSort.PurchaseDateAsc ||
@@ -250,6 +311,30 @@ export function CustomersTable({
             })}
           </div>
           <div className="flex items-center gap-2">
+            <Select value={estateParam || ALL_ESTATES} onValueChange={setEstate}>
+              <SelectTrigger className="h-8 text-xs w-fit min-w-40 bg-white">
+                <SelectValue placeholder="All estates" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_ESTATES} className="text-xs">
+                  All estates
+                </SelectItem>
+                {estates.map((e) => (
+                  <SelectItem key={e.name} value={e.name} className="text-xs">
+                    {e.name}
+                    <span className="ml-1.5 text-gray-400 tabular-nums">{e.plans}</span>
+                  </SelectItem>
+                ))}
+                {/* An estate in the URL that this book does not hold (say,
+                    after switching manager) still needs an item to show. */}
+                {estateParam && !estates.some((e) => e.name === estateParam) && (
+                  <SelectItem value={estateParam} className="text-xs">
+                    {estateParam}
+                    <span className="ml-1.5 text-gray-400 tabular-nums">0</span>
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
             <Input
               value={q}
               onChange={(e) => setQ(e.target.value)}
@@ -405,14 +490,26 @@ export function CustomersTable({
                       {timeAgo(r.lastActivityAt)}
                     </td>
                     <td className="px-4 py-3">
-                      <button
-                        type="button"
-                        onClick={() => setOpenPlanId(r.planId)}
-                        className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-[#00695C] border border-gray-200 rounded-md px-2 py-1"
-                      >
-                        Open
-                        <ArrowRight className="h-3 w-3" />
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        {r.allocation === AllocationStatus.Awaiting && (
+                          <button
+                            type="button"
+                            onClick={() => setAllocatingPlanId(r.planId)}
+                            className="inline-flex items-center gap-1 text-xs text-white bg-[#00695C] hover:bg-[#00574d] rounded-md px-2 py-1"
+                          >
+                            <LandPlot className="h-3 w-3" />
+                            Allocate
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setOpenPlanId(r.planId)}
+                          className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-[#00695C] border border-gray-200 rounded-md px-2 py-1"
+                        >
+                          Open
+                          <ArrowRight className="h-3 w-3" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -434,6 +531,13 @@ export function CustomersTable({
         plan={openPlan}
         open={!!openPlan}
         onOpenChange={(o) => !o && setOpenPlanId(null)}
+      />
+
+      <AllocationModal
+        open={!!allocationClient}
+        mode="send"
+        client={allocationClient}
+        onOpenChange={closeAllocation}
       />
     </section>
   );

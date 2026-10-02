@@ -19,6 +19,7 @@ const GET_CS_MANAGER_DASHBOARD_QUERY = graphql(`
     $limit: Int
     $filter: CSPlanFilter
     $search: String
+    $estate: String
     $sort: CSPlanSort
   ) {
     getCSManagerDashboard(
@@ -29,6 +30,7 @@ const GET_CS_MANAGER_DASHBOARD_QUERY = graphql(`
       limit: $limit
       filter: $filter
       search: $search
+      estate: $estate
       sort: $sort
     ) {
       period {
@@ -80,6 +82,11 @@ const GET_CS_MANAGER_DASHBOARD_QUERY = graphql(`
         customer { id firstName lastName email phone }
         priorPlansCount
         asset
+        assetId
+        location
+        size
+        units
+        allocationStatus
         product
         purchaseDate
         paymentStatus
@@ -103,6 +110,11 @@ const GET_CS_MANAGER_DASHBOARD_QUERY = graphql(`
         dueDoa
         defaultingSoon
         completedPayment
+      }
+      estates {
+        name
+        plans
+        dueAllocation
       }
     }
   }
@@ -123,6 +135,7 @@ const GET_ALL_CS_MANAGERS_DASHBOARD_QUERY = graphql(`
     $limit: Int
     $filter: CSPlanFilter
     $search: String
+    $estate: String
     $sort: CSPlanSort
   ) {
     getAllCSManagersDashboard(
@@ -132,6 +145,7 @@ const GET_ALL_CS_MANAGERS_DASHBOARD_QUERY = graphql(`
       limit: $limit
       filter: $filter
       search: $search
+      estate: $estate
       sort: $sort
     ) {
       period {
@@ -183,6 +197,11 @@ const GET_ALL_CS_MANAGERS_DASHBOARD_QUERY = graphql(`
         customer { id firstName lastName email phone }
         priorPlansCount
         asset
+        assetId
+        location
+        size
+        units
+        allocationStatus
         product
         purchaseDate
         paymentStatus
@@ -207,6 +226,11 @@ const GET_ALL_CS_MANAGERS_DASHBOARD_QUERY = graphql(`
         defaultingSoon
         completedPayment
       }
+      estates {
+        name
+        plans
+        dueAllocation
+      }
     }
   }
 `);
@@ -221,6 +245,7 @@ export const csManagerKeys = {
     limit?: number;
     filter?: CsPlanFilter;
     search?: string;
+    estate?: string;
     sort?: CsPlanSort;
   }) =>
     [
@@ -232,6 +257,7 @@ export const csManagerKeys = {
       params.limit ?? null,
       params.filter ?? null,
       params.search ?? null,
+      params.estate ?? null,
       params.sort ?? null,
     ] as const,
   /** The combined view has no manager id — a sentinel keeps it off the same key. */
@@ -242,6 +268,7 @@ export const csManagerKeys = {
     limit?: number;
     filter?: CsPlanFilter;
     search?: string;
+    estate?: string;
     sort?: CsPlanSort;
   }) =>
     [
@@ -253,6 +280,7 @@ export const csManagerKeys = {
       params.limit ?? null,
       params.filter ?? null,
       params.search ?? null,
+      params.estate ?? null,
       params.sort ?? null,
     ] as const,
 };
@@ -267,6 +295,8 @@ export interface UseCSManagerDashboardParams {
    * book-wide, per the BE's schema docs. */
   filter?: CsPlanFilter;
   search?: string;
+  /** Estate name. Narrows the table and its chips, like `filter`. */
+  estate?: string;
   sort?: CsPlanSort;
   enabled?: boolean;
 }
@@ -279,6 +309,7 @@ export const useCSManagerDashboard = ({
   limit,
   filter,
   search,
+  estate,
   sort,
   enabled = true,
 }: UseCSManagerDashboardParams) => {
@@ -291,6 +322,7 @@ export const useCSManagerDashboard = ({
       limit,
       filter,
       search,
+      estate,
       sort,
     }),
     queryFn: () =>
@@ -302,6 +334,7 @@ export const useCSManagerDashboard = ({
         limit: limit ?? null,
         filter: filter ?? null,
         search: search?.trim() ? search.trim() : null,
+        estate: estate?.trim() ? estate.trim() : null,
         sort: sort ?? null,
       }),
     select: (data) => data.getCSManagerDashboard,
@@ -329,6 +362,7 @@ export const useAllCSManagersDashboard = ({
   limit,
   filter,
   search,
+  estate,
   sort,
   enabled = true,
 }: UseAllCSManagersDashboardParams = {}) => {
@@ -340,6 +374,7 @@ export const useAllCSManagersDashboard = ({
       limit,
       filter,
       search,
+      estate,
       sort,
     }),
     queryFn: () =>
@@ -350,6 +385,7 @@ export const useAllCSManagersDashboard = ({
         limit: limit ?? null,
         filter: filter ?? null,
         search: search?.trim() ? search.trim() : null,
+        estate: estate?.trim() ? estate.trim() : null,
         sort: sort ?? null,
       }),
     select: (data) => data.getAllCSManagersDashboard,
