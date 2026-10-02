@@ -87,6 +87,7 @@ function CustomerManagersContent() {
   // the rest of the dashboard state.
   const filter = (searchParams.get("filter") as CsPlanFilter | null) ?? undefined;
   const search = searchParams.get("search") ?? undefined;
+  const estate = searchParams.get("estate") ?? undefined;
   // Unsorted URLs take the queue's own default rather than the BE's — see
   // defaultPlanSort. CustomersTable derives the same value for its controls.
   const sort = effectivePlanSort(
@@ -122,6 +123,7 @@ function CustomerManagersContent() {
     limit: PLANS_PER_PAGE,
     filter,
     search,
+    estate,
     sort,
     enabled: isAuthorized && !isAllManagers && !!activeManagerId,
   });
@@ -133,6 +135,7 @@ function CustomerManagersContent() {
     limit: PLANS_PER_PAGE,
     filter,
     search,
+    estate,
     sort,
     enabled: isAuthorized && isAllManagers,
   });
@@ -254,6 +257,7 @@ function CustomerManagersContent() {
           totalAssigned={data.portfolio.totalAssigned}
           totalPlans={data.plansTotal}
           filterCounts={data.filterCounts}
+          estates={data.estates ?? []}
           page={page}
           limit={PLANS_PER_PAGE}
           isFetching={dashboardQuery.isFetching}
