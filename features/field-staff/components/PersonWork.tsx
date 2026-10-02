@@ -1,13 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
+import Link from "next/link";
+import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 
 import { FIELD_RESPONSIBILITY_LABELS, assetName, type FieldStaffDetail } from "../schemas/field-staff.schema";
 import type { FieldScorecard } from "../schemas/scorecard.schema";
+import type { SubmissionStatus } from "../schemas/submission.schema";
 import type { StaffMonth } from "../schemas/performance.schema";
 import { ALL } from "../hooks/use-performance-params";
 import { useFieldSubmissions } from "../hooks/use-field-submissions";
@@ -42,6 +45,139 @@ const Loading = () => (
   </div>
 );
 
+/** Past this, Needs review links to the queue rather than paging here too. */
+const WAITING_LIMIT = 20;
+const RECENT_LIMIT = 10;
+const RECENT_TABS = [
+  { key: "verified", label: "Verified" },
+  { key: "rejected", label: "Rejected" },
+  { key: "reversed", label: "Reversed" },
+] as const satisfies readonly { key: SubmissionStatus; label: string }[];
+
+/**
+ * The month's reviewed work, one decision per tab. The list endpoint filters by
+ * a single status and returns drafts when unfiltered, so "everything reviewed"
+ * can't be one paged request. Remount (via `key`) to reset on site or month.
+ */
+function RecentWork({
+  staffId,
+  assetId,
+  year,
+  month,
+  onOpen,
+}: {
+  staffId: string;
+  assetId: string | undefined;
+  year: number;
+  month: number;
+  onOpen: (id: string) => void;
+}) {
+  const [status, setStatus] = useState<(typeof RECENT_TABS)[number]["key"]>("verified");
+  const [page, setPage] = useState(1);
+  const recent = useFieldSubmissions({
+    field_staff_id: staffId,
+    asset_id: assetId,
+    year,
+    month,
+    status,
+    page,
+    limit: RECENT_LIMIT,
+  });
+  const rows = recent.data?.items ?? [];
+  const total = recent.data?.meta.total ?? 0;
+  const pages = Math.max(1, Math.ceil(total / RECENT_LIMIT));
+
+  return (
+    <Section
+      title="Recent work"
+      aside={
+        <div className="inline-flex rounded-lg bg-muted p-1" role="tablist" aria-label="Decision">
+          {RECENT_TABS.map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              role="tab"
+              aria-selected={status === t.key}
+              onClick={() => {
+                setStatus(t.key);
+                setPage(1);
+              }}
+              className={cn(
+                "rounded-md px-2.5 py-1 text-xs transition-colors",
+                status === t.key ? "bg-white font-semibold shadow-sm" : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      }
+    >
+      {recent.isLoading ? (
+        <Loading />
+      ) : recent.error ? (
+        <Empty>{recent.error.message}</Empty>
+      ) : rows.length === 0 ? (
+        <Empty>Nothing {status} this month.</Empty>
+      ) : (
+        <>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Work</TableHead>
+                <TableHead className="hidden sm:table-cell">Site</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead className="text-right">Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((sub) => (
+                <TableRow key={sub.id} className="cursor-pointer" onClick={() => onOpen(sub.id)}>
+                  <TableCell>{sub.summary}</TableCell>
+                  <TableCell className="hidden text-muted-foreground sm:table-cell">{assetName(sub.asset)}</TableCell>
+                  <TableCell className="text-muted-foreground">{formatDate(sub.work_date)}</TableCell>
+                  <TableCell className="text-right">
+                    <SubmissionStatusBadge status={sub.status} />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          {pages > 1 && (
+            <div className="flex items-center justify-between gap-3 border-t px-4 py-2 text-xs text-muted-foreground">
+              <span>
+                {(page - 1) * RECENT_LIMIT + 1}–{Math.min(page * RECENT_LIMIT, total)} of {total}
+              </span>
+              <div className="flex gap-1">
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-7 w-7"
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => p - 1)}
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-7 w-7"
+                  disabled={page >= pages}
+                  onClick={() => setPage((p) => p + 1)}
+                  aria-label="Next page"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </Section>
+  );
+}
+
 const Empty = ({ children }: { children: React.ReactNode }) => (
   <p className="p-6 text-center text-sm text-muted-foreground">{children}</p>
 );
@@ -53,15 +189,13 @@ export function PersonWork({ detail, month, scorecards, siteId, onSelectSite }: 
   const assetFilter = siteId === ALL ? undefined : siteId;
 
   // Waiting work from any month — a submission shouldn't vanish because the month changed.
-  const waiting = useFieldSubmissions({ status: "submitted", field_staff_id: staff.id, asset_id: assetFilter, limit: 20 });
-  const recent = useFieldSubmissions({
+  const waiting = useFieldSubmissions({
+    status: "submitted",
     field_staff_id: staff.id,
     asset_id: assetFilter,
-    year: month.year,
-    month: month.month,
-    limit: 10,
+    limit: WAITING_LIMIT,
   });
-  const recentRows = (recent.data?.items ?? []).filter((s) => s.status !== "draft" && s.status !== "submitted");
+  const waitingTotal = waiting.data?.meta.total ?? 0;
 
   const sites = [...month.scorecards, ...month.sites_without_targets];
   const roleFor = (assetId: string) =>
@@ -73,9 +207,9 @@ export function PersonWork({ detail, month, scorecards, siteId, onSelectSite }: 
         <Section
           title="Needs review"
           aside={
-            (waiting.data?.meta.total ?? 0) > 0 ? (
+            waitingTotal > 0 ? (
               <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
-                {waiting.data?.meta.total}
+                {waitingTotal}
               </span>
             ) : undefined
           }
@@ -102,6 +236,17 @@ export function PersonWork({ detail, month, scorecards, siteId, onSelectSite }: 
                   </Button>
                 </li>
               ))}
+              {waitingTotal > waiting.data.items.length && (
+                <li className="px-4 py-2.5">
+                  <Link
+                    href={`/field-performance/review-queue?staff=${staff.id}`}
+                    className="text-xs font-medium text-[#00695C] hover:underline"
+                  >
+                    Showing {waiting.data.items.length} of {waitingTotal} · see all of {staff.full_name}&apos;s waiting work
+                    in the review queue →
+                  </Link>
+                </li>
+              )}
             </ul>
           )}
         </Section>
@@ -159,38 +304,14 @@ export function PersonWork({ detail, month, scorecards, siteId, onSelectSite }: 
         </Section>
       </div>
 
-      <Section title="Recent work">
-        {recent.isLoading ? (
-          <Loading />
-        ) : recent.error ? (
-          <Empty>{recent.error.message}</Empty>
-        ) : recentRows.length === 0 ? (
-          <Empty>Nothing reviewed this month yet.</Empty>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Work</TableHead>
-                <TableHead className="hidden sm:table-cell">Site</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead className="text-right">Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {recentRows.map((sub) => (
-                <TableRow key={sub.id} className="cursor-pointer" onClick={() => setReviewing(sub.id)}>
-                  <TableCell>{sub.summary}</TableCell>
-                  <TableCell className="hidden text-muted-foreground sm:table-cell">{assetName(sub.asset)}</TableCell>
-                  <TableCell className="text-muted-foreground">{formatDate(sub.work_date)}</TableCell>
-                  <TableCell className="text-right">
-                    <SubmissionStatusBadge status={sub.status} />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </Section>
+      <RecentWork
+        key={`${assetFilter ?? ALL}-${month.year}-${month.month}`}
+        staffId={staff.id}
+        assetId={assetFilter}
+        year={month.year}
+        month={month.month}
+        onOpen={setReviewing}
+      />
 
       <AssignmentHistory staff={staff} />
 

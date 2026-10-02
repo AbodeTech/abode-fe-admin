@@ -19,6 +19,7 @@ import { daysSince, formatDate, formatDateTime, formatNaira, formatQuantity, wai
 import { receiptsOf, workAmount } from "../lib/payload";
 import { STALE_AFTER_DAYS } from "../hooks/use-field-performance";
 import { SubmissionReviewDialog } from "./SubmissionReviewDialog";
+import { SubmissionStatusBadge } from "./SubmissionStatusBadge";
 
 function Work({ sub }: { sub: FieldSubmission }) {
   return (
@@ -67,20 +68,47 @@ function Submitted({ sub }: { sub: FieldSubmission }) {
   );
 }
 
+/**
+ * The decision and when it was made, with the reason for a rejection or
+ * reversal. `reviewed_at` is the original decision, so a reversed row dates
+ * its verification, not the reversal.
+ */
+function Decision({ sub }: { sub: FieldSubmission }) {
+  const reason = sub.status === "reversed" ? sub.reversal_reason : sub.status === "rejected" ? sub.review_note : null;
+  return (
+    <div className="max-w-[16rem] space-y-1">
+      <SubmissionStatusBadge status={sub.status} />
+      {sub.reviewed_at && (
+        <p className="whitespace-nowrap text-xs text-muted-foreground">
+          {sub.status === "reversed" ? "Verified" : "On"} {formatDateTime(sub.reviewed_at)}
+        </p>
+      )}
+      {reason && (
+        <p className="line-clamp-2 text-xs text-muted-foreground" title={reason}>
+          &ldquo;{reason}&rdquo;
+        </p>
+      )}
+    </div>
+  );
+}
+
 interface ReviewQueueTableProps {
   rows: FieldSubmission[];
   emptyState?: React.ReactNode;
+  /** `history` swaps the waiting time for the decision, and Review for View. */
+  mode?: "queue" | "history";
 }
 
-/** Submissions waiting on a decision. Review opens the full record. */
-export function ReviewQueueTable({ rows, emptyState }: ReviewQueueTableProps) {
+/** Submissions waiting on a decision, or past decisions. Each row opens the full record. */
+export function ReviewQueueTable({ rows, emptyState, mode = "queue" }: ReviewQueueTableProps) {
   const [reviewing, setReviewing] = useState<string | null>(null);
+  const history = mode === "history";
 
   if (rows.length === 0) return <>{emptyState}</>;
 
   const reviewButton = (sub: FieldSubmission, className?: string) => (
     <Button size="sm" variant="outline" className={className} onClick={() => setReviewing(sub.id)}>
-      Review
+      {history ? "View" : "Review"}
     </Button>
   );
 
@@ -98,7 +126,7 @@ export function ReviewQueueTable({ rows, emptyState }: ReviewQueueTableProps) {
               <TableHead>Site</TableHead>
               <TableHead className="text-right">Spent</TableHead>
               <TableHead>Evidence</TableHead>
-              <TableHead>Submitted</TableHead>
+              <TableHead>{history ? "Decision" : "Submitted"}</TableHead>
               <TableHead />
             </TableRow>
           </TableHeader>
@@ -122,9 +150,7 @@ export function ReviewQueueTable({ rows, emptyState }: ReviewQueueTableProps) {
                 <TableCell>
                   <Evidence sub={sub} />
                 </TableCell>
-                <TableCell>
-                  <Submitted sub={sub} />
-                </TableCell>
+                <TableCell>{history ? <Decision sub={sub} /> : <Submitted sub={sub} />}</TableCell>
                 <TableCell className="text-right">{reviewButton(sub)}</TableCell>
               </TableRow>
             ))}
@@ -147,7 +173,11 @@ export function ReviewQueueTable({ rows, emptyState }: ReviewQueueTableProps) {
             <AdminMobileField label="Site" value={assetName(sub.asset)} />
             <AdminMobileField label="Spent" value={sub.amount_spent !== null ? formatNaira(sub.amount_spent) : "—"} />
             <AdminMobileField label="Evidence" value={<Evidence sub={sub} />} />
-            <AdminMobileField label="Submitted" value={<Submitted sub={sub} />} />
+            {history ? (
+              <AdminMobileField label="Decision" value={<Decision sub={sub} />} />
+            ) : (
+              <AdminMobileField label="Submitted" value={<Submitted sub={sub} />} />
+            )}
             {reviewButton(sub, "mt-2 w-full")}
           </AdminMobileCard>
         ))}

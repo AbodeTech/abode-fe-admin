@@ -18,11 +18,11 @@ import {
   CircleDollarSign,
   ClipboardCheck,
   ClipboardList,
+  Compass,
   FileText,
   Gem,
   Gift,
   GraduationCap,
-  Gauge,
   HardHat,
   Inbox,
   Landmark,
@@ -149,7 +149,8 @@ const navGroups = [
     isCollapsible: true,
     icon: <HardHat />,
     items: [
-      { name: "Performance", link: "/field-performance", icon: <Gauge />, requiresPermission: "view_field_performance" },
+      { name: "Site Manager Performance", link: "/field-performance/site-managers", icon: <HardHat />, requiresPermission: "view_field_performance" },
+      { name: "Surveyor Performance", link: "/field-performance/surveyors", icon: <Compass />, requiresPermission: "view_field_performance" },
       { name: "Review Queue", link: "/field-performance/review-queue", icon: <ClipboardCheck />, requiresPermission: "view_field_submissions" },
     ]
   },
