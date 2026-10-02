@@ -15,9 +15,18 @@ import { Card, CardContent } from "@/components/ui/card";
 interface ViewTransactionEvidenceProps {
   image?: string;
   trigger: React.ReactNode;
+  /** Dialog title and the image's alt text. Defaults to "Transaction Evidence". */
+  title?: string;
+  /** Shown under the title and used as the download name. */
+  fileName?: string;
 }
 
-export function ViewTransactionEvidence({ image, trigger }: ViewTransactionEvidenceProps) {
+export function ViewTransactionEvidence({
+  image,
+  trigger,
+  title = "Transaction Evidence",
+  fileName,
+}: ViewTransactionEvidenceProps) {
   const isImageFile = useMemo(
     () => !!image && !image.toLowerCase().endsWith(".pdf"),
     [image]
@@ -51,7 +60,7 @@ export function ViewTransactionEvidence({ image, trigger }: ViewTransactionEvide
     if (!image) return;
     const link = document.createElement("a");
     link.href = image;
-    link.download = `transaction-evidence-${Date.now()}`;
+    link.download = fileName ?? `transaction-evidence-${Date.now()}`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -107,7 +116,12 @@ export function ViewTransactionEvidence({ image, trigger }: ViewTransactionEvide
               ) : (
                 <FileText className="h-5 w-5 shrink-0" />
               )}
-              <span className="min-w-0 wrap-break-word">Transaction Evidence</span>
+              <span className="min-w-0 wrap-break-word">
+                {title}
+                {fileName && (
+                  <span className="block truncate text-xs font-normal text-muted-foreground">{fileName}</span>
+                )}
+              </span>
             </DialogTitle>
             <div className="flex min-w-0 flex-wrap items-center gap-1.5 sm:gap-2">
               <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={handleZoomOut} disabled={zoom <= 0.5} aria-label="Zoom out">
@@ -166,7 +180,7 @@ export function ViewTransactionEvidence({ image, trigger }: ViewTransactionEvide
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={image}
-                      alt="Transaction Evidence"
+                      alt={title}
                       className="max-h-[min(70dvh,800px)] w-auto max-w-[min(100%,calc(100vw-3rem))] rounded-lg border border-gray-200 object-contain shadow-lg sm:max-w-full"
                       onError={handleImageError}
                       onLoad={handleImageLoad}
@@ -176,7 +190,7 @@ export function ViewTransactionEvidence({ image, trigger }: ViewTransactionEvide
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={image.replace(".pdf", ".webp")}
-                      alt="PDF Preview"
+                      alt={`${title} (PDF preview)`}
                       className="max-h-[min(75dvh,800px)] w-full max-w-[min(100%,calc(100vw-3rem))] rounded-lg border border-gray-200 object-contain shadow-lg sm:max-w-[min(100%,600px)]"
                       onError={handleImageError}
                       onLoad={handleImageLoad}

@@ -16,7 +16,7 @@ import {
 import { FIELD_STAFF_TYPE_LABELS, assetName, staffName } from "../schemas/field-staff.schema";
 import type { FieldSubmission } from "../schemas/submission.schema";
 import { daysSince, formatDate, formatDateTime, formatNaira, formatQuantity, waitingFor } from "../lib/format";
-import { workAmount } from "../lib/payload";
+import { receiptsOf, workAmount } from "../lib/payload";
 import { STALE_AFTER_DAYS } from "../hooks/use-field-performance";
 import { SubmissionReviewDialog } from "./SubmissionReviewDialog";
 
@@ -43,11 +43,12 @@ function Quantity({ sub }: { sub: FieldSubmission }) {
 }
 
 function Evidence({ sub }: { sub: FieldSubmission }) {
+  const receipts = receiptsOf(sub).length;
   return (
     <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
       <Paperclip className="h-3.5 w-3.5" aria-hidden />
-      {sub.evidence.length + (sub.receipt_url ? 1 : 0)}
-      {sub.amount_spent !== null && !sub.receipt_url && <span className="text-amber-700">· no receipt</span>}
+      {sub.evidence.filter((e) => e.kind !== "receipt").length + receipts}
+      {sub.amount_spent !== null && receipts === 0 && <span className="text-amber-700">· no receipt</span>}
     </span>
   );
 }

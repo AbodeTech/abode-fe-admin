@@ -30,6 +30,15 @@ export const SubmissionEvidenceSchema = z.object({
 });
 export type SubmissionEvidence = z.infer<typeof SubmissionEvidenceSchema>;
 
+/** One receipt for the spending. `amount` is optional — when every receipt has one, the BE checks they add up. */
+export const SubmissionReceiptSchema = z.object({
+  url: z.string(),
+  caption: z.string().nullable(),
+  reference: z.string().nullable(),
+  amount: z.number().nullable(),
+});
+export type SubmissionReceipt = z.infer<typeof SubmissionReceiptSchema>;
+
 export const FieldSubmissionSchema = z.object({
   id: z.string(),
   field_staff: FieldStaffRefSchema.nullable(),
@@ -53,7 +62,11 @@ export const FieldSubmissionSchema = z.object({
   amount_spent: z.number().nullable(),
   vendor: z.string().nullable(),
   payment_reference: z.string().nullable(),
+  receipts: z.array(SubmissionReceiptSchema).default([]),
+  /** Deprecated — the first receipt, kept for older clients. Read through `receiptsOf()`. */
   receipt_url: z.string().nullable(),
+  /** Sum of the receipts that carry an amount; null when none do. */
+  receipts_total: z.number().nullable().default(null),
   note: z.string().nullable(),
   /** Stored at verification time. For work still waiting, read the detail's `warnings`. */
   warnings: z.array(z.string()),
