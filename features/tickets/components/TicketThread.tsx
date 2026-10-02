@@ -16,6 +16,7 @@ import {
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -82,11 +83,12 @@ export function TicketThread({ ticketId, onBack }: Props) {
   const ticket = data?.ticket;
 
   const handleResolve = async () => {
-    if (!resolutionText.trim() || !ticketId) return;
+    if (!ticketId) return;
     try {
+      // The summary is optional; blank is sent as null, not "".
       await resolveTicket.mutateAsync({
         ticketId,
-        resolution: resolutionText.trim(),
+        resolution: resolutionText.trim() || null,
       });
       setResolveOpen(false);
       setResolutionText("");
@@ -275,17 +277,23 @@ export function TicketThread({ ticketId, onBack }: Props) {
           <DialogHeader>
             <DialogTitle>Resolve ticket</DialogTitle>
             <DialogDescription>
-              A short note explaining how it was resolved — kept on the record
-              for future reference.
+              You can add a short note on how it was resolved for whoever picks
+              this up next. It is optional, so you can resolve without one.
             </DialogDescription>
           </DialogHeader>
-          <Input
-            value={resolutionText}
-            onChange={(e) => setResolutionText(e.target.value)}
-            placeholder="e.g. Refund issued via Paystack (ref: …)"
-            className="text-sm"
-            autoFocus
-          />
+          <div className="space-y-1.5">
+            <Label htmlFor="resolution-summary" className="text-xs text-gray-700">
+              Resolution summary <span className="font-normal text-gray-500">(optional)</span>
+            </Label>
+            <Input
+              id="resolution-summary"
+              value={resolutionText}
+              onChange={(e) => setResolutionText(e.target.value)}
+              placeholder="Optional, e.g. Refund issued via Paystack (ref: …)"
+              className="text-sm"
+              autoFocus
+            />
+          </div>
           <DialogFooter>
             <Button
               variant="ghost"
@@ -298,7 +306,7 @@ export function TicketThread({ ticketId, onBack }: Props) {
             <Button
               size="sm"
               onClick={handleResolve}
-              disabled={!resolutionText.trim() || resolveTicket.isPending}
+              disabled={resolveTicket.isPending}
             >
               {resolveTicket.isPending && (
                 <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
