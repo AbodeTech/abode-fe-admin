@@ -12,8 +12,9 @@ import {
 } from "@/components/ui/select";
 
 /**
- * Period control for the CS dashboard. Month/year only — the BE endpoint
- * accepts nothing else.
+ * Month/year period control for the manager-style dashboards (CS Managers,
+ * Financial Officers). Month/year only — their BE endpoints
+ * accept nothing else.
  *
  * Writes `?month=&year=`; "This month" clears both and lets the BE default.
  */
@@ -28,7 +29,7 @@ const CURRENT = "current";
 
 const HISTORY_LENGTH = 12;
 
-export function CSPeriodFilter() {
+export function MonthPeriodFilter() {
   const router = useRouter();
   const searchParams = useSearchParams();
 

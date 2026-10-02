@@ -16,7 +16,7 @@ import { findPerson } from './people';
 
 const daysAgo = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString();
 
-type MockAdmin = {
+export type MockAdmin = {
   _id: string;
   userName: string | null;
   firstName: string | null;
@@ -25,7 +25,7 @@ type MockAdmin = {
   role: 'admin' | 'subadmin' | 'moderator' | 'viewer';
 };
 
-const ADMINS: MockAdmin[] = [
+export const ADMINS: MockAdmin[] = [
   { _id: '665fadmn00000000000000d1', userName: 'ngozi.eze', firstName: 'Ngozi', lastName: 'Eze', email: 'ngozi.eze@abodeflex.com', role: 'admin' },
   { _id: '665fadmn00000000000000d2', userName: 'chuka.obi', firstName: 'Chuka', lastName: 'Obi', email: 'chuka.obi@abodeflex.com', role: 'subadmin' },
   { _id: '665fadmn00000000000000d3', userName: 'amina.bello', firstName: 'Amina', lastName: 'Bello', email: 'amina.bello@abodeflex.com', role: 'subadmin' },
@@ -33,7 +33,7 @@ const ADMINS: MockAdmin[] = [
   { _id: '665fadmn00000000000000d5', userName: 'femi.oke', firstName: 'Femi', lastName: 'Oke', email: 'femi.oke@abodeflex.com', role: 'subadmin' },
 ];
 
-const findAdmin = (id: string) => ADMINS.find((a) => a._id === id);
+export const findAdmin = (id: string) => ADMINS.find((a) => a._id === id);
 
 type MockCSManager = {
   _id: string;

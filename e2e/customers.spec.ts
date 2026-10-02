@@ -2,10 +2,10 @@ import { type Page, type Browser } from '@playwright/test';
 import { test, expect, login, assetTabUrl, ASSET_WITH_FULL_TREE, ASSET_EMPTY } from './fixtures';
 
 /**
- * Customers tab (AssetSubscribers) — pre-existing feature, not part of the
- * Sprint 3 Land/Inventory backlog, but never had a mock route for
- * GET /admin/assets/:assetId/subscribers until now (see
- * lib/mocks/routes/asset-subscribers.ts). Covers the list, search, the four
+ * Customers tab (AssetSubscribers) — the asset-detail design's "Customer land
+ * position" table: customer, product, size, purchase state, land treatment
+ * and allocation, with the payment figures as a second line in each cell.
+ * Covers the list, search, the four
  * SUBSCRIBER_TYPES filter buckets, sorting, the honest-empty state, and the
  * CSV export's deliberate mock-mode refusal.
  *
@@ -34,6 +34,11 @@ test.describe.serial('Customers', () => {
     await expect(rows.first()).toContainText('Amaka Obi');
     await expect(page.getByText('John Okafor').first()).toBeVisible();
     await expect(page.getByText('Ibrahim Musa').first()).toBeVisible();
+
+    await expect(page.getByRole('heading', { name: 'Customer land position' })).toBeVisible();
+    for (const column of ['Customer', 'Product', 'Size', 'Purchase state', 'Land treatment', 'Allocation']) {
+      await expect(page.getByRole('columnheader', { name: column, exact: true })).toBeVisible();
+    }
   });
 
   test('searches by buyer name', async () => {

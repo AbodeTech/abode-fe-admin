@@ -3,20 +3,10 @@ import { findActiveAsset, type MockAsset, type MockOfferType } from './assets';
 import { body } from './util';
 
 /* ============================================================
- * Selling charges — GET/PUT /admin/assets/:assetId/selling-charges(/history),
- * confirmed field-for-field against `SellingChargeController`/
- * `SellingChargeService` on abode-be-v2 staging (PR #82). The real
- * replacement for the abandoned, never-wired "plan price versioning" design
- * — an asset-wide, versioned charge list rather than a per-plan land price.
- *
- * Reproduces a real backend quirk on purpose: `SellingChargeService.current()`
- * returns `{data: null, message}` when nothing has ever been approved, and
- * `TransformInterceptor`'s `data?.data ?? data` treats that explicit `null`
- * as falsy and falls back to the WHOLE `{data, message}` object — so a
- * never-configured estate's GET response is that nested object, not a plain
- * `null` (see selling-charges.schema.ts's `SellingChargesSchema` doc comment,
- * which parses both shapes). This mock returns exactly that shape so the
- * empty state is exercised faithfully in mock mode too, not smoothed over.
+ * Selling charges — GET/PUT /admin/assets/:assetId/selling-charges(/history).
+ * Mirrors `SellingChargeService` on abode-be-v2 staging as of commit 0f042ef
+ * (28 Sep 2026): GET returns the version in force plus any scheduled ones,
+ * rows carry `is_latest`, and PUT enforces `expected_version` with a 409.
  * ============================================================ */
 
 type ChargeLine = {
@@ -50,53 +40,51 @@ function requireAsset(assetId: string): MockAsset {
   return row;
 }
 
-function currentFor(assetId: string): StoredVersion | undefined {
-  return (versions[assetId] ?? []).find((v) => v.is_current);
+function present(v: StoredVersion) {
+  return {
+    version: v.version,
+    charges: v.charges,
+    effective_date: new Date(v.effective_date).toISOString(),
+    is_latest: v.is_current,
+    reason: v.reason,
+    approved_by: v.approved_by,
+    approved_at: v.approved_at,
+  };
 }
 
 export const sellingChargesRoutes: MockRoutes = {
   'GET /admin/assets/:assetId/selling-charges': ({ params }) => {
     requireAsset(params.assetId);
-    const current = currentFor(params.assetId);
+    const all = versions[params.assetId] ?? [];
+    const now = Date.now();
+    const startsAt = (v: StoredVersion) => new Date(v.effective_date).getTime();
 
-    if (!current) {
-      // Faithfully reproduces the real backend's own bug — see this file's header.
-      return { data: null, message: 'No selling charges have been approved for this estate yet' };
-    }
+    // In force: the newest version whose effective date has arrived.
+    const inForce = all
+      .filter((v) => startsAt(v) <= now)
+      .sort((a, b) => startsAt(b) - startsAt(a) || b.version - a.version)[0];
+    const scheduled = all.filter((v) => startsAt(v) > now).sort((a, b) => startsAt(a) - startsAt(b));
 
     return {
-      version: current.version,
-      charges: current.charges,
-      effective_date: current.effective_date,
-      reason: current.reason,
-      approved_by: current.approved_by,
+      as_of: new Date(now).toISOString(),
+      in_force: inForce ? present(inForce) : null,
+      scheduled: scheduled.map(present),
+      latest_version: all.length > 0 ? Math.max(...all.map((v) => v.version)) : 0,
     };
   },
 
   'GET /admin/assets/:assetId/selling-charges/history': ({ params }) => {
     requireAsset(params.assetId);
-    return [...(versions[params.assetId] ?? [])].sort((a, b) => a.version - b.version).map((v) => ({
-      version: v.version,
-      charges: v.charges,
-      effective_date: v.effective_date,
-      is_current: v.is_current,
-      reason: v.reason,
-      approved_by: v.approved_by,
-      approved_at: v.approved_at,
-    }));
+    return [...(versions[params.assetId] ?? [])].sort((a, b) => a.version - b.version).map(present);
   },
 
-  /**
-   * No `expected_version` guard on the real PUT — last write always wins.
-   * Confirmed from `setCharges()`'s source directly: it reads the highest
-   * version and blindly supersedes it, with no conflict check at all. Not an
-   * oversight in this mock — a real gap, flagged to the backend team rather
-   * than invented here.
-   */
   'PUT /admin/assets/:assetId/selling-charges': ({ params, body: raw }) => {
     requireAsset(params.assetId);
-    const dto = body<{ charges?: ChargeLine[]; effective_date?: string; reason?: string }>(raw);
+    const dto = body<{ expected_version?: number; charges?: ChargeLine[]; effective_date?: string; reason?: string }>(raw);
 
+    if (!Number.isInteger(dto.expected_version)) {
+      throw new MockHttpError(400, 'expected_version must be a whole number', 'VALIDATION_FAILED');
+    }
     if (!dto.reason?.trim()) {
       throw new MockHttpError(400, 'A reason is required', 'VALIDATION_FAILED');
     }
@@ -116,11 +104,18 @@ export const sellingChargesRoutes: MockRoutes = {
     }
 
     const existing = versions[params.assetId] ?? [];
-    for (const v of existing) v.is_current = false;
+    const currentVersion = existing.length > 0 ? Math.max(...existing.map((v) => v.version)) : 0;
+    if (dto.expected_version !== currentVersion) {
+      throw new MockHttpError(
+        409,
+        'These selling charges were changed by someone else. Reload and try again.',
+        'SELLING_CHARGE_VERSION_CONFLICT'
+      );
+    }
 
-    const nextVersion = existing.length > 0 ? Math.max(...existing.map((v) => v.version)) + 1 : 1;
+    for (const v of existing) v.is_current = false;
     const created: StoredVersion = {
-      version: nextVersion,
+      version: currentVersion + 1,
       charges: dto.charges.map((c) => ({ ...c, basis: c.basis ?? 'per_unit' })),
       effective_date: dto.effective_date,
       is_current: true,
@@ -133,7 +128,8 @@ export const sellingChargesRoutes: MockRoutes = {
     return {
       version: created.version,
       charges: created.charges,
-      effective_date: created.effective_date,
+      effective_date: new Date(created.effective_date).toISOString(),
+      starts_in_future: new Date(created.effective_date).getTime() > Date.now(),
     };
   },
 };

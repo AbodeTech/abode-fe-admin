@@ -8,7 +8,7 @@ import { apiGet } from '@/lib/api-client';
 import { SellingChargesHistoryEntrySchema, SellingChargesSchema } from '../schemas/selling-charges.schema';
 import { assetKeys } from './query-keys';
 
-/** GET /admin/assets/:assetId/selling-charges — `null` until a first version has ever been approved. */
+/** GET /admin/assets/:assetId/selling-charges — the version in force, any scheduled ones, and the latest version number. */
 export const useSellingCharges = (assetId: string, options: { enabled?: boolean } = {}) =>
   useQuery({
     queryKey: assetKeys.sellingCharges(assetId),

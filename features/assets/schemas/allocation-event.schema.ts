@@ -29,3 +29,19 @@ export const AssetAllocationEventSchema = z.object({
 });
 
 export type AssetAllocationEvent = z.infer<typeof AssetAllocationEventSchema>;
+
+/** The soonest event that hasn't happened or been closed yet, or `null` when there is none. */
+export function nextAllocationEvent(
+  events: AssetAllocationEvent[],
+  now: number = Date.now()
+): AssetAllocationEvent | null {
+  const upcoming = events
+    .filter((event) => event.status !== 'closed' && new Date(event.starts_at).getTime() >= now)
+    .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
+  return upcoming[0] ?? null;
+}
+
+/** `2026-10-03T…` → `"3 Oct 2026"`. */
+export function formatEventDate(startsAt: string): string {
+  return new Date(startsAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}

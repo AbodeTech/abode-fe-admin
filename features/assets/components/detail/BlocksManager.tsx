@@ -1,22 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import {
-  AlertTriangle,
-  Boxes,
-  Layers,
-  Loader2,
-  Lock,
-  Pencil,
-  Plus,
-  Trash2,
-  X,
-} from "lucide-react";
+import { AlertTriangle, Layers, Loader2, Lock, Pencil, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -62,20 +51,24 @@ import {
   useAssetBlocks,
   useCreateBlock,
   useDeleteBlock,
+  useUpdateBlock,
 } from "../../hooks/use-blocks";
 import {
   useBlockPlots,
-  useBulkCreatePlots,
+  useCreatePlots,
   useDeletePlot,
   useUpdatePlot,
 } from "../../hooks/use-plots";
+import { DetailPanel } from "./DetailPanel";
 import { NumberInput } from "./NumberInput";
 
 /* ============================================================
  * Block inventory — the land this asset is actually made of.
  *
  * Blocks group plots; plots are what the allocation screen hands to a buyer.
- * The asset id comes from the route, so there is no name→id lookup any more.
+ * Each block is a card showing its plot counts; clicking a card opens that
+ * block's plot editor (which block is open is owned by the parent, so the
+ * plot table's "Manage plots" opens the same one).
  *
  * Both destructive paths are gated on the same rule the BE enforces: anything
  * allocated is frozen. An allocated plot cannot be resized, renumbered or
@@ -84,13 +77,22 @@ import { NumberInput } from "./NumberInput";
  * rather than kept as a button that always fails.
  * ============================================================ */
 
-export function BlocksManager({ assetId }: { assetId: string }) {
+export function BlocksManager({
+  assetId,
+  managingBlockId,
+  onManageBlock,
+}: {
+  assetId: string;
+  /** The block whose plot editor is open, or `null`. */
+  managingBlockId: string | null;
+  onManageBlock: (blockId: string | null) => void;
+}) {
   const { data: blocks = [], isLoading, isError, error } = useAssetBlocks(assetId);
   const createBlock = useCreateBlock(assetId);
   const deleteBlock = useDeleteBlock(assetId);
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [managingBlock, setManagingBlock] = useState<Block | null>(null);
+  const managingBlock = blocks.find((block) => block._id === managingBlockId) ?? null;
   const [deletingBlock, setDeletingBlock] = useState<Block | null>(null);
 
   const handleCreateBlock = (label: string, description: string) => {
@@ -116,69 +118,47 @@ export function BlocksManager({ assetId }: { assetId: string }) {
       onSuccess: () => {
         toast.success(`Block "${block.label}" deleted`);
         setDeletingBlock(null);
+        onManageBlock(null);
       },
       onError: (err: Error) => toast.error(err.message),
     });
   };
 
   return (
-    <Card id="blocks-manager" className="scroll-mt-4">
-      <CardHeader className="flex flex-col gap-3 pb-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Boxes className="h-5 w-5 text-muted-foreground" />
-            Block inventory
-          </CardTitle>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Blocks and their plots. Allocated plots are frozen — the backend
-            refuses to resize or remove them.
-          </p>
-        </div>
-        <Button size="sm" onClick={() => setIsCreateOpen(true)} disabled={isLoading}>
-          <Plus className="mr-1 h-4 w-4" />
+    <DetailPanel
+      title="Block inventory"
+      description="Each block and its physical plots. Select a block to add, resize or remove its plots."
+      action={
+        <Button variant="outline" size="sm" onClick={() => setIsCreateOpen(true)} disabled={isLoading}>
           Add block
         </Button>
-      </CardHeader>
-
-      <CardContent>
-        {isLoading ? (
-          <div className="rounded-lg border border-dashed py-12 text-center">
-            <Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin text-muted-foreground/60" />
-            <p className="text-sm text-muted-foreground">Loading block inventory…</p>
-          </div>
-        ) : isError ? (
-          <div className="rounded-lg border border-rose-200 bg-rose-50 py-8 text-center">
-            <AlertTriangle className="mx-auto mb-2 h-6 w-6 text-rose-500" />
-            <p className="text-sm text-rose-700">
-              {error?.message ?? "Could not load blocks."}
-            </p>
-          </div>
-        ) : blocks.length === 0 ? (
-          <div className="rounded-lg border border-dashed py-12 text-center">
-            <Layers className="mx-auto mb-2 h-8 w-8 text-muted-foreground/50" />
-            <p className="text-sm text-muted-foreground">No blocks seeded yet.</p>
-            <Button
-              variant="link"
-              size="sm"
-              className="mt-2"
-              onClick={() => setIsCreateOpen(true)}
-            >
-              Add your first block
-            </Button>
-          </div>
-        ) : (
-          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-            {blocks.map((block) => (
-              <BlockCard
-                key={block._id}
-                block={block}
-                onManage={() => setManagingBlock(block)}
-                onDelete={() => setDeletingBlock(block)}
-              />
-            ))}
-          </div>
-        )}
-      </CardContent>
+      }
+    >
+      {isLoading ? (
+        <div className="py-10 text-center">
+          <Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin text-muted-foreground/60" />
+          <p className="text-sm text-muted-foreground">Loading block inventory…</p>
+        </div>
+      ) : isError ? (
+        <div className="rounded-lg border border-rose-200 bg-rose-50 py-8 text-center">
+          <AlertTriangle className="mx-auto mb-2 h-6 w-6 text-rose-500" />
+          <p className="text-sm text-rose-700">{error?.message ?? "Could not load blocks."}</p>
+        </div>
+      ) : blocks.length === 0 ? (
+        <div className="py-10 text-center">
+          <Layers className="mx-auto mb-2 h-8 w-8 text-muted-foreground/50" />
+          <p className="text-sm text-muted-foreground">No blocks yet.</p>
+          <Button variant="link" size="sm" className="mt-2" onClick={() => setIsCreateOpen(true)}>
+            Add your first block
+          </Button>
+        </div>
+      ) : (
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+          {blocks.map((block) => (
+            <BlockCard key={block._id} block={block} onManage={() => onManageBlock(block._id)} />
+          ))}
+        </div>
+      )}
 
       <CreateBlockDialog
         open={isCreateOpen}
@@ -190,7 +170,8 @@ export function BlocksManager({ assetId }: { assetId: string }) {
       <ManageBlockPlotsDialog
         assetId={assetId}
         block={managingBlock}
-        onClose={() => setManagingBlock(null)}
+        onClose={() => onManageBlock(null)}
+        onDeleteBlock={setDeletingBlock}
       />
 
       <AlertDialog
@@ -219,78 +200,58 @@ export function BlocksManager({ assetId }: { assetId: string }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Card>
+    </DetailPanel>
   );
 }
 
-function BlockCard({
-  block,
-  onManage,
-  onDelete,
-}: {
-  block: Block;
-  onManage: () => void;
-  onDelete: () => void;
-}) {
+function BlockStat({ label, value, good = false }: { label: string; value: React.ReactNode; good?: boolean }) {
+  return (
+    <div className="rounded-md bg-muted p-2">
+      <span className="block text-[9px] uppercase text-muted-foreground">{label}</span>
+      <b className={cn("text-xs font-semibold tabular-nums", good && "text-emerald-600")}>{value}</b>
+    </div>
+  );
+}
+
+/**
+ * One block, as the design draws it: name, a status pill, and three counts.
+ * The counts come from that block's own plot list
+ * (GET /admin/blocks/:block_id/plots). The whole card is the button that
+ * opens the block's plot editor.
+ */
+function BlockCard({ block, onManage }: { block: Block; onManage: () => void }) {
   const { data: plots = [], isLoading } = useBlockPlots({ blockId: block._id });
   const stats = useMemo(() => blockStats(plots), [plots]);
 
-  const blocked = stats.allocated > 0;
+  const status = isLoading
+    ? null
+    : stats.total === 0
+      ? { label: "No plots yet", className: "bg-muted text-muted-foreground" }
+      : stats.available > 0
+        ? { label: "Plots available", className: "bg-emerald-500/10 text-emerald-600" }
+        : { label: "Fully allocated", className: "bg-amber-500/10 text-amber-600" };
 
   return (
-    <div className="space-y-3 rounded-xl border p-4">
-      <div className="flex min-w-0 items-center gap-2">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-sm font-bold text-primary">
-          {block.label}
-        </div>
-        <div className="min-w-0">
-          <p className="truncate font-semibold leading-none">Block {block.label}</p>
-          <p className="mt-0.5 truncate text-xs text-muted-foreground">
-            {block.description || "No description"}
-          </p>
-        </div>
+    <button
+      type="button"
+      onClick={onManage}
+      aria-label={`Manage plots in Block ${block.label}`}
+      className="rounded-[10px] border p-3.5 text-left transition-colors hover:bg-muted/40"
+    >
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <strong className="truncate text-[13px] font-semibold">Block {block.label}</strong>
+        {status ? (
+          <span className={cn("shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold", status.className)}>
+            {status.label}
+          </span>
+        ) : null}
       </div>
-
-      <div className="grid grid-cols-3 gap-2 text-center">
-        <div className="rounded-md bg-muted/40 py-1.5">
-          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Plots</p>
-          <p className="text-sm font-bold tabular-nums">{isLoading ? "…" : stats.total}</p>
-        </div>
-        <div className="rounded-md bg-emerald-50 py-1.5">
-          <p className="text-[10px] uppercase tracking-wider text-emerald-700">Free</p>
-          <p className="text-sm font-bold tabular-nums text-emerald-700">
-            {isLoading ? "…" : stats.available}
-          </p>
-        </div>
-        <div className="rounded-md bg-amber-50 py-1.5">
-          <p className="text-[10px] uppercase tracking-wider text-amber-700">System allocated</p>
-          <p className="text-sm font-bold tabular-nums text-amber-700">
-            {isLoading ? "…" : stats.allocated}
-          </p>
-        </div>
+      <div className="grid grid-cols-3 gap-1.5">
+        <BlockStat label="Plots" value={isLoading ? "…" : stats.total} />
+        <BlockStat label="Available" value={isLoading ? "…" : stats.available} good={stats.available > 0} />
+        <BlockStat label="Allocated" value={isLoading ? "…" : stats.allocated} />
       </div>
-
-      <p className="text-center text-xs text-muted-foreground">
-        Total: <span className="font-semibold tabular-nums">{stats.totalSqm.toLocaleString()}</span> sqm
-      </p>
-
-      <div className="flex items-center gap-2 pt-1">
-        <Button variant="outline" size="sm" className="h-8 flex-1 text-xs" onClick={onManage}>
-          <Pencil className="mr-1 h-3 w-3" />
-          Manage plots
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-8 w-8 p-0 text-rose-600 hover:bg-rose-50 hover:text-rose-700"
-          onClick={onDelete}
-          disabled={isLoading || blocked}
-          title={blocked ? "Cannot delete — this block has allocated plots" : "Delete block"}
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </Button>
-      </div>
-    </div>
+    </button>
   );
 }
 
@@ -360,20 +321,26 @@ function ManageBlockPlotsDialog({
   assetId,
   block,
   onClose,
+  onDeleteBlock,
 }: {
   assetId: string;
   block: Block | null;
   onClose: () => void;
+  /** Asks the parent to confirm deleting this block. */
+  onDeleteBlock: (block: Block) => void;
 }) {
   const blockId = block?._id ?? "";
   const ids = { blockId, assetId };
 
   const { data: plots = [], isLoading } = useBlockPlots({ blockId, enabled: !!blockId });
-  const createPlots = useBulkCreatePlots(ids);
+  const createPlots = useCreatePlots(ids);
   const updatePlot = useUpdatePlot(ids);
   const deletePlot = useDeletePlot(ids);
 
+  const updateBlock = useUpdateBlock(assetId);
+
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isEditingDetails, setIsEditingDetails] = useState(false);
   const [editingPlot, setEditingPlot] = useState<Plot | null>(null);
   const [deletingPlot, setDeletingPlot] = useState<Plot | null>(null);
 
@@ -395,6 +362,36 @@ function ManageBlockPlotsDialog({
       },
       onError: (err: Error) => toast.error(err.message),
     });
+  };
+
+  const handleUpdateBlock = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const label = String(formData.get("label") ?? block.label).trim().toUpperCase();
+    const description = String(formData.get("description") ?? "").trim();
+    if (!label) {
+      toast.error("Block label is required");
+      return;
+    }
+
+    const changes: { label?: string; description?: string } = {};
+    if (label !== block.label) changes.label = label;
+    if (description !== (block.description ?? "")) changes.description = description;
+    if (Object.keys(changes).length === 0) {
+      setIsEditingDetails(false);
+      return;
+    }
+
+    updateBlock.mutate(
+      { blockId: block._id, ...changes },
+      {
+        onSuccess: () => {
+          toast.success("Block details saved");
+          setIsEditingDetails(false);
+        },
+        onError: (err: Error) => toast.error(err.message),
+      }
+    );
   };
 
   const handleUpdatePlot = (plot: Plot, changes: { plot_number?: number; size?: number }) => {
@@ -431,9 +428,60 @@ function ManageBlockPlotsDialog({
             </Badge>
           </DialogTitle>
           <DialogDescription>
-            {block.description || "Add plots and edit their sizes."}
+            {block.description || "Add plots and edit their sizes."}{" "}
+            {!isEditingDetails ? (
+              <button
+                type="button"
+                className="underline underline-offset-4 hover:text-foreground"
+                onClick={() => setIsEditingDetails(true)}
+              >
+                Edit details
+              </button>
+            ) : null}
           </DialogDescription>
         </DialogHeader>
+
+        {isEditingDetails ? (
+          <form onSubmit={handleUpdateBlock} className="space-y-3 rounded-md border bg-muted/40 p-3">
+            <div className="grid gap-3 sm:grid-cols-[110px_1fr]">
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-block-label">Label</Label>
+                {/* Plots carry a copy of their block's label, and the backend does not
+                    rewrite those copies on a rename — so a block with plots keeps its label. */}
+                <Input
+                  id="edit-block-label"
+                  name="label"
+                  defaultValue={block.label}
+                  maxLength={5}
+                  disabled={plots.length > 0 || isLoading}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-block-description">Description</Label>
+                <Input id="edit-block-description" name="description" defaultValue={block.description ?? ""} />
+              </div>
+            </div>
+            {plots.length > 0 ? (
+              <p className="text-[11px] text-muted-foreground">
+                The label can only be changed while the block has no plots: existing plots would keep the old one.
+              </p>
+            ) : null}
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={updateBlock.isPending}
+                onClick={() => setIsEditingDetails(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" size="sm" disabled={updateBlock.isPending}>
+                {updateBlock.isPending ? "Saving…" : "Save details"}
+              </Button>
+            </div>
+          </form>
+        ) : null}
 
         <div className="flex items-center justify-between gap-3">
           <p className="text-xs text-muted-foreground">
@@ -526,7 +574,18 @@ function ManageBlockPlotsDialog({
           )}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="sm:justify-between">
+          {/* The backend refuses to delete a block that holds an allocated plot. */}
+          <Button
+            variant="ghost"
+            className="text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+            onClick={() => onDeleteBlock(block)}
+            disabled={isLoading || stats.allocated > 0}
+            title={stats.allocated > 0 ? "Cannot delete — this block has allocated plots" : undefined}
+          >
+            <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+            Delete block
+          </Button>
           <Button variant="outline" onClick={onClose}>
             Close
           </Button>

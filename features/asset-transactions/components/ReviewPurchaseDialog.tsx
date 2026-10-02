@@ -33,6 +33,7 @@ import {
   type Purchase,
 } from "../schemas/purchase.schema";
 import {
+  isAlreadyDecided,
   useApprovePurchase,
   useDeclinePurchase,
 } from "../hooks/use-purchase-review";
@@ -107,7 +108,11 @@ export function ReviewPurchaseDialog({
           );
           close();
         },
-        onError: (error) => toast.error(error.message || "Couldn't approve"),
+        onError: (error) => {
+          toast.error(error.message || "Couldn't approve");
+          // Another admin decided it first; nothing left to decide here.
+          if (isAlreadyDecided(error)) close();
+        },
       }
     );
   };
@@ -129,7 +134,10 @@ export function ReviewPurchaseDialog({
           );
           close();
         },
-        onError: (error) => toast.error(error.message || "Couldn't decline"),
+        onError: (error) => {
+          toast.error(error.message || "Couldn't decline");
+          if (isAlreadyDecided(error)) close();
+        },
       }
     );
   };

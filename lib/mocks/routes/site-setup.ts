@@ -1,33 +1,32 @@
 import { MockHttpError, type MockRoutes } from '../router';
 import { findActiveAsset, type MockAsset } from './assets';
+import {
+  SIDES,
+  approveBoundary,
+  boundaryVersions,
+  currentBoundary,
+  fieldStaff,
+  liveEffects,
+  round2,
+  submissions,
+  unitFor,
+  type Sides,
+} from './field-store';
 import { body } from './util';
 
 /* ============================================================
- * Site Setup — GET/PUT /admin/assets/:assetId/boundary, GET .../site-setup.
+ * Site Setup — GET/PUT /admin/assets/:assetId/boundary, GET .../site-setup,
+ * GET .../field-history.
  *
  * Confirmed REAL against `abode-be-v2` staging's field-staff module
  * (`AssetSiteSetupController`/`SiteSetupService`) — this mock exists only
- * for offline/E2E parity, not because the real endpoint is missing. Fencing/
- * clearing/parcelation figures come from verified field-crew submissions on
- * the real backend; this mock fakes plausible progress numbers instead of
- * modelling the whole submission/verification pipeline, since only the
- * boundary + fencing READ view and the boundary WRITE are built here.
+ * for offline/E2E parity, not because the real endpoint is missing.
+ *
+ * Progress is worked out the way the real service does it: from the effects
+ * of verified field work (field-store.ts), never from made-up figures. So
+ * verifying, correcting or reversing a submission through
+ * field-operations.ts moves what this file returns.
  * ============================================================ */
-
-type Sides = { front: number; right: number; back: number; left: number };
-
-type BoundaryVersion = {
-  version: number;
-  sides: Sides;
-  perimeter_metres: number;
-  is_current: boolean;
-  source: 'admin' | 'surveyor_submission';
-  submission_id: string | null;
-  approved_at: string;
-  note: string | null;
-};
-
-const boundaries: Record<string, BoundaryVersion[]> = {};
 
 function requireAsset(assetId: string): MockAsset {
   const row = findActiveAsset(assetId);
@@ -35,45 +34,65 @@ function requireAsset(assetId: string): MockAsset {
   return row;
 }
 
-function perimeterOf(sides: Sides): number {
-  return Math.round((sides.front + sides.right + sides.back + sides.left) * 100) / 100;
-}
-
-function currentBoundary(assetId: string): BoundaryVersion | undefined {
-  return (boundaries[assetId] ?? []).find((v) => v.is_current);
-}
-
-/** Deterministic, plausible fencing progress against whatever boundary is currently approved. */
-function fencedMetresFor(side: keyof Sides, approved: number | null): number {
-  if (!approved) return 0;
-  const fractions: Record<keyof Sides, number> = { front: 1, right: 0.6, back: 0.35, left: 0 };
-  return Math.round(approved * fractions[side] * 100) / 100;
-}
-
 export const siteSetupRoutes: MockRoutes = {
+  /** `SiteSetupService.siteSetup()`. */
   'GET /admin/assets/:assetId/site-setup': ({ params }) => {
     const asset = requireAsset(params.assetId);
     const boundary = currentBoundary(params.assetId);
 
-    const sides = (['front', 'right', 'back', 'left'] as const).map((side) => {
+    const fencing: Record<keyof Sides, { new_metres: number; repair_metres: number }> = {
+      front: { new_metres: 0, repair_metres: 0 },
+      right: { new_metres: 0, repair_metres: 0 },
+      back: { new_metres: 0, repair_metres: 0 },
+      left: { new_metres: 0, repair_metres: 0 },
+    };
+    let boundaryEstablished = 0;
+    let clearedSqm = 0;
+    let parcelledPlots = 0;
+    let reworkPlots = 0;
+    const plotsTouched = new Set<string>();
+
+    for (const effect of liveEffects(params.assetId)) {
+      const detail = effect.detail;
+      if (effect.effect_type === 'site_setup' && detail.kind === 'fencing') {
+        const side = detail.side as keyof Sides;
+        if (SIDES.includes(side)) {
+          if (detail.work_type === 'repair') fencing[side].repair_metres += Number(detail.metres ?? 0);
+          else fencing[side].new_metres += Number(detail.metres ?? 0);
+        }
+      }
+      if (effect.effect_type === 'site_setup' && detail.kind === 'boundary') boundaryEstablished += effect.quantity;
+      if (effect.effect_type === 'plot_history' && detail.kind === 'clearing') {
+        clearedSqm += effect.quantity;
+        for (const id of effect.plot_ids) plotsTouched.add(id);
+      }
+      if (effect.effect_type === 'plot_history' && detail.kind === 'parcelation') {
+        if (detail.is_rework) reworkPlots += effect.plot_ids.length;
+        else parcelledPlots += effect.plot_ids.length;
+        for (const id of effect.plot_ids) plotsTouched.add(id);
+      }
+    }
+
+    const sides = SIDES.map((side) => {
       const approved = boundary?.sides[side] ?? null;
-      const fenced = fencedMetresFor(side, approved);
+      const done = round2(fencing[side].new_metres);
       return {
         side,
         approved_metres: approved,
-        fenced_metres: fenced,
-        repaired_metres: 0,
-        remaining_metres: approved === null ? null : Math.max(0, approved - fenced),
-        over_by_metres: approved === null ? null : Math.max(0, fenced - approved),
-        percent_complete: approved && approved > 0 ? Math.min(100, Math.round((fenced / approved) * 10000) / 100) : null,
+        fenced_metres: done,
+        repaired_metres: round2(fencing[side].repair_metres),
+        remaining_metres: approved === null ? null : round2(Math.max(0, approved - done)),
+        over_by_metres: approved === null ? null : round2(Math.max(0, done - approved)),
+        percent_complete: approved && approved > 0 ? round2(Math.min(100, (done / approved) * 100)) : null,
       };
     });
 
     const approvedPerimeter = boundary?.perimeter_metres ?? null;
-    const totalFenced = Math.round(sides.reduce((sum, row) => sum + row.fenced_metres, 0) * 100) / 100;
+    const totalFenced = round2(sides.reduce((sum, row) => sum + row.fenced_metres, 0));
+    const totalLand = asset.total_land_sqm ?? null;
 
     return {
-      asset: { id: params.assetId, name: asset.name, total_land_sqm: asset.total_land_sqm ?? null },
+      asset: { id: params.assetId, name: asset.name, total_land_sqm: totalLand },
       boundary: boundary
         ? {
             version: boundary.version,
@@ -84,37 +103,69 @@ export const siteSetupRoutes: MockRoutes = {
             note: boundary.note,
           }
         : null,
-      boundary_established_metres: approvedPerimeter ?? 0,
+      boundary_established_metres: round2(boundaryEstablished),
       fencing: {
         sides,
         total_fenced_metres: totalFenced,
         approved_perimeter_metres: approvedPerimeter,
         percent_complete:
-          approvedPerimeter && approvedPerimeter > 0
-            ? Math.min(100, Math.round((totalFenced / approvedPerimeter) * 10000) / 100)
-            : null,
+          approvedPerimeter && approvedPerimeter > 0 ? round2(Math.min(100, (totalFenced / approvedPerimeter) * 100)) : null,
       },
-      clearing: { cleared_sqm: 0, percent_of_estate: 0 },
-      parcelation: { plots_parcelled: 0, plots_re_pegged: 0, distinct_plots_worked: 0 },
+      clearing: {
+        cleared_sqm: round2(clearedSqm),
+        percent_of_estate: totalLand && totalLand > 0 ? round2(Math.min(100, (clearedSqm / totalLand) * 100)) : null,
+      },
+      parcelation: {
+        plots_parcelled: parcelledPlots,
+        plots_re_pegged: reworkPlots,
+        distinct_plots_worked: plotsTouched.size,
+      },
       readiness: {
         has_boundary: Boolean(boundary),
         fencing_started: totalFenced > 0,
-        clearing_started: false,
-        parcelation_started: false,
+        clearing_started: clearedSqm > 0,
+        parcelation_started: parcelledPlots > 0,
       },
     };
   },
 
+  /**
+   * GET /admin/assets/:assetId/field-history — field work that has been
+   * verified (or later reversed), newest first (`SiteSetupService.fieldHistory()`).
+   */
+  'GET /admin/assets/:assetId/field-history': ({ params, query }) => {
+    requireAsset(params.assetId);
+    const limit = Number(query.limit) || 100;
+    return submissions
+      .filter((row) => row.asset_id === params.assetId && ['verified', 'corrected', 'reversed'].includes(row.status))
+      .sort((a, b) => new Date(b.work_date).getTime() - new Date(a.work_date).getTime())
+      .slice(0, limit)
+      .map((row) => {
+        const staff = fieldStaff.find((candidate) => candidate.id === row.staff_id);
+        return {
+          submission_id: row.id,
+          metric_key: row.metric_key,
+          summary: row.payload,
+          quantity: row.quantity,
+          unit: unitFor(row.metric_key),
+          status: row.status,
+          work_date: row.work_date,
+          amount_spent: row.amount_spent,
+          field_staff: staff ? { id: staff.id, full_name: `${staff.first_name} ${staff.last_name}` } : null,
+        };
+      });
+  },
+
   'GET /admin/assets/:assetId/boundary': ({ params }) => {
     requireAsset(params.assetId);
-    return [...(boundaries[params.assetId] ?? [])].sort((a, b) => b.version - a.version);
+    return boundaryVersions(params.assetId);
   },
 
   'PUT /admin/assets/:assetId/boundary': ({ params, body: raw }) => {
     requireAsset(params.assetId);
     const dto = body<{ front?: number; right?: number; back?: number; left?: number; note?: string }>(raw);
 
-    for (const key of ['front', 'right', 'back', 'left'] as const) {
+    for (const key of SIDES) {
       const value = dto[key];
       if (typeof value !== 'number' || value < 0.01 || value > 100_000) {
         throw new MockHttpError(400, `${key} must be a number of metres above zero`, 'VALIDATION_FAILED');
@@ -122,21 +173,7 @@ export const siteSetupRoutes: MockRoutes = {
     }
 
     const sides: Sides = { front: dto.front!, right: dto.right!, back: dto.back!, left: dto.left! };
-    const existing = boundaries[params.assetId] ?? [];
-    for (const v of existing) v.is_current = false;
-
-    const nextVersion = existing.length > 0 ? Math.max(...existing.map((v) => v.version)) + 1 : 1;
-    const created: BoundaryVersion = {
-      version: nextVersion,
-      sides,
-      perimeter_metres: perimeterOf(sides),
-      is_current: true,
-      source: 'admin',
-      submission_id: null,
-      approved_at: new Date().toISOString(),
-      note: dto.note?.trim() || null,
-    };
-    boundaries[params.assetId] = [...existing, created];
+    const created = approveBoundary(params.assetId, sides, 'admin', dto.note?.trim() || null);
 
     return { version: created.version, sides: created.sides, perimeter_metres: created.perimeter_metres };
   },

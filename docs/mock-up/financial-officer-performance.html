@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Financial Officer Performance (mockup)</title>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+/* ============================================================
+ * Mockup: Financial Officer Performance. Two scopes, same pattern
+ * as CS Manager / Associate Manager:
+ *   - one officer (person picker + month): KPI tiles, approvals,
+ *     recovery book table, plan drawer
+ *   - all officers (super admin): team tiles + officer league table
+ * Colours are the dashboard's own (#00695C / #E0F2F1 / #AD1F2A).
+ * All numbers are sample data.
+ * ============================================================ */
+#fo{--ink:#111827;--muted:#6b7280;--line:#e5e7eb;--soft:#f3f4f6;--bg:#fafafa;--teal:#00695C;--tealbg:#E0F2F1;--red:#AD1F2A;--redbg:#fef2f2;--amber:#b45309;--amberbg:#fffbeb;--blue:#1d4ed8;--bluebg:#eff6ff;--violet:#6d28d9;--violetbg:#f5f3ff;
+  font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--bg);min-height:100vh}
+#fo *{box-sizing:border-box}
+#fo :is(button,select,input){font:inherit}
+body{margin:0}
+#fo .shell{display:grid;grid-template-columns:240px minmax(0,1fr);min-height:100vh}
+#fo .rail{background:#f5f5f5;padding:24px 12px}
+#fo .brand{font-weight:700;padding:0 12px 28px;font-size:18px}
+#fo .nav{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;color:var(--muted);font-size:14px}
+#fo .nav svg{width:18px;height:18px}
+#fo .sub-nav{margin-left:18px;padding-left:10px;border-left:1px solid var(--line)}
+#fo .nav.active{background:var(--tealbg);color:var(--teal);font-weight:600}
+#fo .top{height:72px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 28px;font-size:22px;font-weight:700}
+#fo .page{max-width:1400px;margin:0 auto;padding:24px 28px 64px;display:grid;gap:24px}
+
+/* header */
+#fo .head{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:16px}
+#fo .head h1{font-size:24px;letter-spacing:-.02em;margin:0 0 4px;display:flex;align-items:center;gap:10px}
+#fo .head p{margin:0;color:var(--muted)}
+#fo .controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+#fo .select{appearance:none;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E") no-repeat right 10px center;border:1px solid var(--line);border-radius:8px;padding:8px 34px 8px 12px;font-size:14px;min-width:170px;color:var(--ink)}
+#fo .btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:8px;padding:8px 12px;font-size:13px;cursor:pointer;white-space:nowrap}
+#fo .btn svg{width:15px;height:15px}
+#fo .btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+#fo .btn.sm{padding:6px 10px;font-size:12px}
+#fo .sample{font-size:11px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;background:var(--amberbg);color:#92400e;border:1px solid #fde68a;border-radius:999px;padding:2px 8px}
+
+/* banner */
+#fo .banner{display:flex;align-items:center;gap:12px;border:1px solid #fde68a;background:var(--amberbg);border-radius:10px;padding:12px 16px;font-size:14px;color:#78350f}
+#fo .banner svg{width:18px;height:18px;flex-shrink:0;color:var(--amber)}
+#fo .banner span{flex:1}
+#fo .banner a{color:#92400e;font-weight:600;text-decoration:none}
+
+/* cards + tiles */
+#fo .card{background:#fff;border:1px solid var(--line);border-radius:12px}
+#fo .tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+#fo .tile{padding:20px;display:grid;gap:10px;align-content:start}
+#fo .tile .ic{width:40px;height:40px;border-radius:10px;display:grid;place-items:center}
+#fo .tile .ic svg{width:20px;height:20px}
+#fo .tile .lbl{font-size:14px;color:#4b5563;display:flex;align-items:center;gap:6px}
+#fo .tile .lbl svg{width:14px;height:14px;color:#9ca3af}
+#fo .tile .val{display:flex;align-items:baseline;gap:6px}
+#fo .tile .val b{font-size:28px;font-weight:700;font-variant-numeric:tabular-nums}
+#fo .tile .val small{font-size:14px;color:var(--muted)}
+#fo .bar{height:6px;border-radius:999px;background:var(--soft);overflow:hidden}
+#fo .bar i{display:block;height:100%}
+#fo .foot{font-size:12px;color:var(--muted)}
+#fo .spread{display:flex;justify-content:space-between;align-items:center;gap:12px}
+
+/* pills */
+#fo .pill{display:inline-block;font-size:12px;font-weight:500;padding:3px 9px;border-radius:999px;white-space:nowrap}
+#fo .ok{background:var(--tealbg);color:var(--teal)}
+#fo .bad{background:var(--redbg);color:var(--red)}
+#fo .warn{background:var(--amberbg);color:var(--amber)}
+#fo .neutral{background:var(--soft);color:#374151}
+#fo .solid{background:var(--teal);color:#fff}
+
+/* sections */
+#fo .sec{display:grid;gap:14px}
+#fo .sec-h{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px}
+#fo .sec-h h2{margin:0;font-size:18px}
+#fo .sec-h span{font-size:13px;color:var(--muted)}
+#fo .three{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+#fo .stat3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+#fo .k{font-size:12px;color:var(--muted)}
+#fo .v{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
+#fo .num{font-variant-numeric:tabular-nums}
+#fo .strip{display:grid;grid-template-columns:repeat(5,minmax(0,1fr))}
+#fo .strip>div{padding:18px 20px;border-right:1px solid var(--soft)}
+#fo .strip>div:last-child{border-right:0}
+#fo .stack{display:flex;height:10px;border-radius:999px;overflow:hidden;gap:2px}
+#fo .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:#4b5563}
+#fo .legend span{display:inline-flex;align-items:center;gap:6px}
+#fo .legend i{width:8px;height:8px;border-radius:2px}
+
+/* tables */
+#fo .tbl-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;padding:16px}
+#fo table{width:100%;border-collapse:collapse}
+#fo th{font-size:12px;font-weight:500;color:var(--muted);text-align:left;padding:10px 16px;border-bottom:1px solid var(--line);background:#f9fafb;white-space:nowrap}
+#fo td{font-size:13px;padding:12px 16px;border-bottom:1px solid var(--soft);vertical-align:middle;white-space:nowrap}
+#fo tbody tr:last-child td{border-bottom:0}
+#fo td .s{font-size:12px;color:var(--muted)}
+#fo tr.dim td{color:var(--muted);background:#fcfcfc}
+#fo tr.total td{font-weight:600;background:#f9fafb;border-top:1px solid var(--line)}
+#fo .name-btn{border:0;background:none;padding:0;font-weight:500;color:var(--ink);cursor:pointer;text-align:left}
+#fo .name-btn:hover{color:var(--teal);text-decoration:underline}
+#fo .chips{display:flex;flex-wrap:wrap;gap:8px}
+#fo .chip{border:1px solid var(--line);background:#fff;color:#374151;border-radius:999px;padding:6px 12px;font-size:13px;font-weight:500;cursor:pointer}
+#fo .chip.on{background:var(--ink);border-color:var(--ink);color:#fff}
+#fo .chip.urgent{color:var(--red)}
+#fo .search{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:8px;padding:0 10px;height:34px;width:230px;background:#fff}
+#fo .search svg{width:15px;height:15px;color:var(--muted)}
+#fo .search input{border:0;outline:0;width:100%;font-size:13px;background:transparent}
+#fo .pager{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
+#fo .mini{height:5px;width:90px;border-radius:999px;background:var(--soft);overflow:hidden;display:inline-block;vertical-align:middle;margin-left:8px}
+#fo .mini i{display:block;height:100%}
+
+/* drawer */
+#fo .scrim{position:fixed;inset:0;background:rgb(17 24 39/.35);display:none;z-index:40}
+#fo .drawer{position:fixed;top:0;right:0;bottom:0;width:560px;max-width:100vw;background:#fff;border-left:1px solid var(--line);box-shadow:-12px 0 32px rgb(0 0 0/.08);z-index:50;transform:translateX(100%);transition:transform .2s ease;overflow-y:auto}
+#fo.drawer-open .scrim{display:block}
+#fo.drawer-open .drawer{transform:none}
+#fo .dr-head{position:sticky;top:0;background:#fff;border-bottom:1px solid var(--line);padding:20px 24px;display:flex;justify-content:space-between;gap:12px;z-index:1}
+#fo .dr-head h3{margin:0 0 4px;font-size:18px;display:flex;align-items:center;gap:8px}
+#fo .dr-body{padding:20px 24px 32px;display:grid;gap:22px}
+#fo .dr-sec h4{margin:0 0 10px;font-size:13px;font-weight:600;color:#374151;text-transform:uppercase;letter-spacing:.04em}
+#fo .facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 20px}
+#fo .facts div b{display:block;font-size:14px;font-weight:600;margin-top:2px}
+#fo .countdown{border:1px solid #fecaca;background:var(--redbg);border-radius:10px;padding:14px 16px;display:grid;gap:12px}
+#fo .countdown .line{display:flex;gap:10px;align-items:flex-start;font-size:13px;color:#7f1d1d}
+#fo .countdown svg{width:16px;height:16px;flex-shrink:0;margin-top:1px}
+#fo .pay{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--soft)}
+#fo .pay:last-child{border-bottom:0}
+#fo .dot{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:var(--tealbg);color:var(--teal)}
+#fo .dot svg{width:16px;height:16px}
+#fo .timeline{display:grid;gap:0;border-left:2px solid var(--line);margin-left:6px}
+#fo .timeline div{position:relative;padding:0 0 14px 18px;font-size:13px}
+#fo .timeline div::before{content:"";position:absolute;left:-7px;top:4px;width:12px;height:12px;border-radius:50%;background:#fff;border:2px solid var(--line)}
+#fo .timeline div.hot::before{border-color:var(--teal);background:var(--teal)}
+#fo .timeline div.red::before{border-color:var(--red)}
+#fo .timeline small{display:block;color:var(--muted);font-size:12px}
+#fo .icon-btn{border:1px solid var(--line);background:#fff;border-radius:8px;width:36px;height:36px;display:grid;place-items:center;cursor:pointer;flex-shrink:0}
+#fo .icon-btn svg{width:18px;height:18px}
+
+#fo [hidden]{display:none !important}
+</style>
+</head>
+<body>
+<div id="fo">
+<div class="shell">
+<aside class="rail">
+  <div class="brand">Abode Admin</div>
+  <div class="nav"><i data-lucide="layout-dashboard"></i>Dashboard</div>
+  <div class="nav"><i data-lucide="arrow-left-right"></i>Transactions</div>
+  <div class="nav"><i data-lucide="headset"></i>Customer Success</div>
+  <div class="nav"><i data-lucide="users"></i>Associates</div>
+  <div class="nav"><i data-lucide="hard-hat"></i>Field Performance</div>
+  <div class="nav"><i data-lucide="landmark"></i>Finance</div>
+  <div class="sub-nav">
+    <div class="nav active">Financial Officers</div>
+    <div class="nav">Approval queue</div>
+  </div>
+</aside>
+
+<main>
+<div class="top">Financial Officers</div>
+<div class="page">
+
+  <!-- ================= HEADER ================= -->
+  <div class="head">
+    <div>
+      <h1>Financial Officer Performance <span class="sample">Sample data</span></h1>
+      <p>How fast payments get approved, and how much debt is recovered before plans are suspended.</p>
+    </div>
+    <div class="controls">
+      <label class="sr" hidden for="officer">Officer</label>
+      <select id="officer" class="select" aria-label="Officer">
+        <option value="team">All officers</option>
+        <option value="tolu" selected>Tolu Adebayo</option>
+        <option value="ngozi">Ngozi Okeke</option>
+        <option value="bisi">Bisi Lawal</option>
+        <option value="sani">Sani Garba</option>
+      </select>
+      <select class="select" aria-label="Month">
+        <option>September 2026</option><option>August 2026</option><option>July 2026</option>
+      </select>
+      <button class="btn"><i data-lucide="user-cog"></i>Manage officers</button>
+      <button class="btn primary"><i data-lucide="target"></i>Set targets</button>
+    </div>
+  </div>
+
+  <!-- ================= ONE OFFICER ================= -->
+  <div id="view-officer" class="sec" style="gap:24px">
+
+    <div class="banner">
+      <i data-lucide="triangle-alert"></i>
+      <span><b>4 payments</b> in the approval queue have waited over 24 hours, and <b>5 plans</b> in Tolu's book will be suspended within 14 days.</span>
+      <a href="#queue">View queue</a>
+    </div>
+
+    <div class="tiles">
+      <div class="card tile">
+        <div class="spread"><div class="ic" style="background:var(--bluebg);color:var(--blue)"><i data-lucide="building-2"></i></div><span class="pill ok">Under target</span></div>
+        <div class="lbl">Avg approval time · Asset <i data-lucide="info" title="Submission to approve/decline on bank-transfer asset payments. Saturday and Sunday excluded (WAT)."></i></div>
+        <div class="val"><b>8.6 h</b><small>/ 24 h target</small></div>
+        <div class="bar"><i style="width:35.8%;background:var(--blue)"></i></div>
+        <div class="foot">142 decided · 128 approved · 14 declined</div>
+      </div>
+      <div class="card tile">
+        <div class="spread"><div class="ic" style="background:var(--tealbg);color:var(--teal)"><i data-lucide="badge-check"></i></div><span class="pill ok">Under target</span></div>
+        <div class="lbl">Avg approval time · Associate Pro <i data-lucide="info" title="Submission to approve/decline on Associate Pro upgrade payments made by bank transfer. Saturday and Sunday excluded (WAT)."></i></div>
+        <div class="val"><b>14.2 h</b><small>/ 24 h target</small></div>
+        <div class="bar"><i style="width:59.2%;background:var(--teal)"></i></div>
+        <div class="foot">38 decided · 35 approved · 3 declined</div>
+      </div>
+      <div class="card tile">
+        <div class="spread"><div class="ic" style="background:var(--amberbg);color:var(--amber)"><i data-lucide="banknote"></i></div><span class="pill warn">Approaching</span></div>
+        <div class="lbl">Debt recovered</div>
+        <div class="val"><b>₦18.45m</b><small>/ ₦25m target</small></div>
+        <div class="bar"><i style="width:73.8%;background:#f59e0b"></i></div>
+        <div class="foot">41 payments on 29 plans in the book</div>
+      </div>
+      <div class="card tile">
+        <div class="spread"><div class="ic" style="background:var(--violetbg);color:var(--violet)"><i data-lucide="gauge"></i></div><span class="pill ok">On track</span></div>
+        <div class="lbl">Performance score <i data-lucide="info" title="Asset speed 25 + Associate Pro speed 25 + recovery 50. Speed earns full marks at or under 24 h; recovery is capped at its target."></i></div>
+        <div class="val"><b>86.9</b><small>/ 100</small></div>
+        <div class="bar"><i style="width:86.9%;background:var(--teal)"></i></div>
+        <div class="foot">Asset 25 · Pro 25 · Recovery 36.9 of 50</div>
+      </div>
+    </div>
+
+    <!-- approvals -->
+    <section class="sec">
+      <div class="sec-h"><h2>Payment approvals</h2><span>Bank-transfer payments only. The clock pauses Saturday and Sunday (WAT).</span></div>
+      <div class="three">
+        <div class="card" style="padding:20px;display:grid;gap:16px">
+          <b style="font-size:15px">Asset payments</b>
+          <div class="stat3">
+            <div><div class="k">Decided</div><div class="v">142</div><div class="k">128 approved · 14 declined</div></div>
+            <div><div class="k">Average time</div><div class="v">8.6 h</div><div class="k">median 5.1 h</div></div>
+            <div><div class="k">Slowest</div><div class="v">30.3 h</div><div class="k">Zainab Aliyu, 15 Sep</div></div>
+          </div>
+          <div class="foot">Flex, full ownership and commercial, every installment type.</div>
+        </div>
+        <div class="card" style="padding:20px;display:grid;gap:16px">
+          <b style="font-size:15px">Associate Pro upgrades</b>
+          <div class="stat3">
+            <div><div class="k">Decided</div><div class="v">38</div><div class="k">35 approved · 3 declined</div></div>
+            <div><div class="k">Average time</div><div class="v">14.2 h</div><div class="k">median 11.0 h</div></div>
+            <div><div class="k">Slowest</div><div class="v">29.5 h</div><div class="k">Obinna Uche, 17 Sep</div></div>
+          </div>
+          <div class="foot">Upgrade payments made by bank transfer.</div>
+        </div>
+        <div id="queue" class="card" style="padding:20px;display:grid;gap:14px">
+          <div class="spread"><b style="font-size:15px">Waiting now (shared queue)</b><span class="v">30</span></div>
+          <div class="stack"><i style="width:60%;background:var(--teal)"></i><i style="width:26.7%;background:#f59e0b"></i><i style="width:13.3%;background:var(--red)"></i></div>
+          <div class="legend">
+            <span><i style="background:var(--teal)"></i>Under 12 h · 18</span>
+            <span><i style="background:#f59e0b"></i>12–24 h · 8</span>
+            <span><i style="background:var(--red)"></i>Over 24 h · 4</span>
+          </div>
+          <div style="display:grid;gap:6px;font-size:13px">
+            <div class="spread"><span>Asset payments</span><span class="k">23 waiting · 3 over 24 h</span></div>
+            <div class="spread"><span>Associate Pro upgrades</span><span class="k">7 waiting · 1 over 24 h</span></div>
+          </div>
+          <a href="#" style="font-size:13px;font-weight:600;color:var(--teal);text-decoration:none">Open approval queue →</a>
+        </div>
+      </div>
+
+      <div class="card" style="overflow:hidden">
+        <div class="tbl-head"><b style="font-size:15px">Tolu's recent decisions</b><button class="btn sm"><i data-lucide="download"></i>Export CSV</button></div>
+        <table>
+          <thead><tr><th>Payment</th><th>Customer</th><th>Amount</th><th>Submitted</th><th>Decided</th><th>Time counted</th><th>Outcome</th></tr></thead>
+          <tbody>
+            <tr><td>Asset · Flex installment</td><td>Kemi Salako</td><td class="num">₦450,000</td><td>Mon 21 Sep, 09:12</td><td>Mon 21 Sep, 11:40</td><td class="num">2.5 h</td><td><span class="pill neutral">Approved</span></td></tr>
+            <tr><td>Associate Pro upgrade</td><td>Yusuf Danjuma</td><td class="num">₦50,000</td><td>Fri 18 Sep, 17:10</td><td>Mon 21 Sep, 10:05</td><td><div class="num">16.9 h</div><div class="s">weekend not counted</div></td><td><span class="pill neutral">Approved</span></td></tr>
+            <tr><td>Asset · Flex installment</td><td>Grace Etim</td><td class="num">₦300,000</td><td>Sat 19 Sep, 11:00</td><td>Mon 21 Sep, 08:15</td><td><div class="num">8.3 h</div><div class="s">clock started Mon 00:00</div></td><td><span class="pill neutral">Approved</span></td></tr>
+            <tr><td>Associate Pro upgrade</td><td>Obinna Uche</td><td class="num">₦50,000</td><td>Thu 17 Sep, 10:00</td><td>Fri 18 Sep, 15:30</td><td class="num" style="color:var(--red)">29.5 h</td><td><span class="pill neutral">Approved</span></td></tr>
+            <tr><td>Asset · Commercial outright</td><td>Femi Ojo</td><td class="num">₦1,200,000</td><td>Wed 16 Sep, 13:00</td><td>Wed 16 Sep, 16:20</td><td class="num">3.3 h</td><td><span class="pill bad">Declined</span></td></tr>
+            <tr><td>Asset · Full ownership</td><td>Zainab Aliyu</td><td class="num">₦2,400,000</td><td>Tue 15 Sep, 08:30</td><td>Wed 16 Sep, 14:45</td><td class="num" style="color:var(--red)">30.3 h</td><td><span class="pill neutral">Approved</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- recovery book -->
+    <section class="sec">
+      <div class="sec-h"><h2>Recovery book</h2><span>Plans enter automatically when they're behind in their final month, or past their final due date.</span></div>
+      <div class="card strip">
+        <div><div class="k">Plans in book</div><div class="v" style="margin-top:4px">64</div><div class="k">27 in final month · 37 past due</div></div>
+        <div><div class="k">Outstanding in book</div><div class="v" style="margin-top:4px">₦96.3m</div><div class="k">balances still owed</div></div>
+        <div><div class="k">Recovered this month</div><div class="v" style="margin-top:4px;color:var(--teal)">₦18.45m</div><div class="k">paid before any suspension</div></div>
+        <div><div class="k">Cleared this month</div><div class="v" style="margin-top:4px">6</div><div class="k">paid off, left the book</div></div>
+        <div><div class="k">Suspended this month</div><div class="v" style="margin-top:4px;color:var(--red)">3</div><div class="k">₦4.1m left unrecovered</div></div>
+      </div>
+
+      <div class="card" style="overflow:hidden">
+        <div class="tbl-head">
+          <div class="chips" role="group" aria-label="Filter plans">
+            <button class="chip on">In book · 64</button>
+            <button class="chip">Final month, behind · 27</button>
+            <button class="chip">Past final due date · 37</button>
+            <button class="chip urgent">Suspends within 14 days · 5</button>
+            <button class="chip">Cleared · 6</button>
+            <button class="chip">Suspended · 3</button>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <label class="search"><i data-lucide="search"></i><input placeholder="Search customer or plan" aria-label="Search customer or plan"></label>
+            <button class="btn sm"><i data-lucide="download"></i>Export</button>
+          </div>
+        </div>
+        <table>
+          <thead><tr><th>Customer</th><th>Plan</th><th>Entered book</th><th>Now</th><th>Suspends</th><th>Balance</th><th>Recovered since assigned</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td><button class="name-btn" data-open>Chinedu Eze</button><div class="s">chinedu.e@example.com</div></td><td>Palm Grove Estate<div class="s">Flex · 18 months</div></td><td>20 Sep 2026<div class="s">behind in final month</div></td><td>Final month · ₦1,200,000 behind</td><td><span class="pill bad">in 12 days</span></td><td class="num">₦1,600,000</td><td class="num" style="color:var(--muted)">₦0</td><td><span class="pill warn">Final month</span></td></tr>
+            <tr><td><button class="name-btn" data-open>Funke Adeyemi</button><div class="s">funke.a@example.com</div></td><td>Riverside Commercial<div class="s">Commercial · 12 months</div></td><td>9 Aug 2026<div class="s">behind in final month</div></td><td>21 days past final due date</td><td><span class="pill warn">in 35 days</span></td><td class="num">₦4,800,000</td><td class="num" style="color:var(--teal);font-weight:600">₦1,200,000</td><td><span class="pill bad">Past due</span></td></tr>
+            <tr><td><button class="name-btn" data-open>Amaka Obi</button><div class="s">amaka.o@example.com</div></td><td>Palm Grove Estate<div class="s">Full ownership · 24 months</div></td><td>17 Sep 2026<div class="s">behind in final month</div></td><td>Final month · ₦1,000,000 behind</td><td class="s">in 74 days</td><td class="num">₦1,500,000</td><td class="num" style="color:var(--teal);font-weight:600">₦500,000</td><td><span class="pill warn">Final month</span></td></tr>
+            <tr><td><button class="name-btn" data-open>Tunde Bakare</button><div class="s">tunde.b@example.com</div></td><td>Oak Ridge Gardens<div class="s">Flex · 12 months</div></td><td>5 Sep 2026<div class="s">behind in final month</div></td><td>Final month · ₦800,000 behind</td><td class="s">in 66 days</td><td class="num">₦1,200,000</td><td class="num" style="color:var(--muted)">₦0</td><td><span class="pill warn">Final month</span></td></tr>
+            <tr><td><button class="name-btn" data-open>Ibrahim Musa</button><div class="s">ibrahim.m@example.com</div></td><td>Oak Ridge Gardens<div class="s">Flex · 24 months</div></td><td>20 Aug 2026<div class="s">behind in final month</div></td><td>10 days past final due date</td><td><span class="pill warn">in 20 days</span></td><td class="num">₦2,100,000</td><td class="num" style="color:var(--muted)">₦0</td><td><span class="pill bad">Past due</span></td></tr>
+            <tr><td><button class="name-btn" data-open>Emeka Nwosu</button><div class="s">emeka.n@example.com</div></td><td>Palm Grove Estate<div class="s">Flex · 12 months</div></td><td>14 Aug 2026<div class="s">behind in final month</div></td><td>cleared 24 Sep</td><td class="s">—</td><td class="num">₦0</td><td class="num" style="color:var(--teal);font-weight:600">₦1,650,000</td><td><span class="pill solid">Cleared</span></td></tr>
+            <tr><td><button class="name-btn" data-open>Halima Bello</button><div class="s">halima.b@example.com</div></td><td>Cedar Court<div class="s">Full ownership · 18 months</div></td><td>26 Jun 2026<div class="s">behind in final month</div></td><td>suspended 20 Sep</td><td class="s">—</td><td class="num">₦2,300,000</td><td class="num" style="color:var(--teal);font-weight:600">₦400,000</td><td><span class="pill neutral">Suspended</span></td></tr>
+          </tbody>
+        </table>
+        <div class="pager"><span>Showing 1–7 of 64 plans in book</span><div style="display:flex;gap:8px"><button class="btn sm">Previous</button><button class="btn sm">Next</button></div></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ================= ALL OFFICERS ================= -->
+  <div id="view-team" class="sec" style="gap:24px" hidden>
+
+    <div class="tiles">
+      <div class="card tile">
+        <div class="spread"><div class="ic" style="background:var(--bluebg);color:var(--blue)"><i data-lucide="building-2"></i></div><span class="pill ok">Under target</span></div>
+        <div class="lbl">Avg approval time · Asset</div>
+        <div class="val"><b>10.5 h</b><small>/ 24 h target</small></div>
+        <div class="bar"><i style="width:43.8%;background:var(--blue)"></i></div>
+        <div class="foot">453 decided · weekdays only</div>
+      </div>
+      <div class="card tile">
+        <div class="spread"><div class="ic" style="background:var(--tealbg);color:var(--teal)"><i data-lucide="badge-check"></i></div><span class="pill ok">Under target</span></div>
+        <div class="lbl">Avg approval time · Associate Pro</div>
+        <div class="val"><b>16.7 h</b><small>/ 24 h target</small></div>
+        <div class="bar"><i style="width:69.6%;background:var(--teal)"></i></div>
+        <div class="foot">132 decided · weekdays only</div>
+      </div>
+      <div class="card tile">
+        <div class="spread"><div class="ic" style="background:var(--amberbg);color:var(--amber)"><i data-lucide="banknote"></i></div><span class="pill warn">Approaching</span></div>
+        <div class="lbl">Debt recovered</div>
+        <div class="val"><b>₦63.55m</b><small>/ ₦95m</small></div>
+        <div class="bar"><i style="width:66.9%;background:#f59e0b"></i></div>
+        <div class="foot">sum of officer targets</div>
+      </div>
+      <div class="card tile">
+        <div class="spread"><div class="ic" style="background:var(--violetbg);color:var(--violet)"><i data-lucide="folder-open"></i></div></div>
+        <div class="lbl">Plans in recovery books</div>
+        <div class="val"><b>238</b><small>₦358.9m outstanding</small></div>
+        <div class="stack" style="height:6px"><i style="width:26.9%;background:var(--teal)"></i><i style="width:24.4%;background:#0d9488"></i><i style="width:23.1%;background:#5eead4"></i><i style="width:25.6%;background:#99f6e4"></i></div>
+        <div class="foot">auto-assigned to the officer with the fewest open plans</div>
+      </div>
+    </div>
+
+    <div class="card" style="overflow:hidden">
+      <div class="tbl-head"><b style="font-size:15px">Officers · September 2026</b><button class="btn sm"><i data-lucide="download"></i>Export CSV</button></div>
+      <table>
+        <thead><tr><th>Officer</th><th>Plans in book</th><th>Suspend ≤14 days</th><th>Recovered / target</th><th>Avg approval · Asset</th><th>Avg approval · Pro</th><th>Decisions</th><th>Score</th></tr></thead>
+        <tbody>
+          <tr><td><b>Ngozi Okeke</b><div class="s">officer since Mar 2026</div></td><td class="num">58</td><td class="num">2</td><td class="num">₦21.10m / ₦25m<span class="mini"><i style="width:84%;background:var(--teal)"></i></span></td><td class="num">11.4 h</td><td class="num">17.0 h</td><td class="num">150</td><td><span class="pill ok">92.2</span></td></tr>
+          <tr><td><b>Tolu Adebayo</b><div class="s">officer since Jan 2026</div></td><td class="num">64</td><td class="num">5</td><td class="num">₦18.45m / ₦25m<span class="mini"><i style="width:73.8%;background:#f59e0b"></i></span></td><td class="num">8.6 h</td><td class="num">14.2 h</td><td class="num">180</td><td><span class="pill ok">86.9</span></td></tr>
+          <tr><td><b>Bisi Lawal</b><div class="s">officer since Jun 2026</div></td><td class="num">55</td><td class="num">3</td><td class="num">₦14.20m / ₦20m<span class="mini"><i style="width:71%;background:#f59e0b"></i></span></td><td class="num">6.8 h</td><td class="num">9.4 h</td><td class="num">136</td><td><span class="pill ok">85.5</span></td></tr>
+          <tr><td><b>Sani Garba</b><div class="s">officer since Jul 2026</div></td><td class="num">61</td><td class="num" style="color:var(--red);font-weight:600">7</td><td class="num">₦9.80m / ₦25m<span class="mini"><i style="width:39.2%;background:var(--red)"></i></span></td><td class="num">16.2 h</td><td class="num" style="color:var(--red)">27.2 h</td><td class="num">98</td><td><span class="pill bad">66.7</span></td></tr>
+          <tr class="dim"><td>Other admins<div class="s">approve permission, not officers</div></td><td>—</td><td>—</td><td>—</td><td class="num">20.1 h</td><td class="num">28.2 h</td><td class="num">21</td><td>—</td></tr>
+          <tr class="total"><td>Total</td><td class="num">238</td><td class="num">17</td><td class="num">₦63.55m / ₦95m</td><td class="num">10.5 h</td><td class="num">16.7 h</td><td class="num">585</td><td></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="three">
+      <div class="card" style="padding:20px;display:grid;gap:14px">
+        <div class="spread"><b style="font-size:15px">Waiting now (shared queue)</b><span class="v">30</span></div>
+        <div class="stack"><i style="width:60%;background:var(--teal)"></i><i style="width:26.7%;background:#f59e0b"></i><i style="width:13.3%;background:var(--red)"></i></div>
+        <div class="legend"><span><i style="background:var(--teal)"></i>Under 12 h · 18</span><span><i style="background:#f59e0b"></i>12–24 h · 8</span><span><i style="background:var(--red)"></i>Over 24 h · 4</span></div>
+      </div>
+      <div class="card" style="padding:20px;display:grid;gap:10px">
+        <b style="font-size:15px">Expired without review</b>
+        <div class="v" style="color:var(--red)">2</div>
+        <div class="foot">Associate Pro upgrades cancelled after sitting 24 h+ unreviewed. Nobody decided them, so they aren't in any officer's average.</div>
+      </div>
+      <div class="card" style="padding:20px;display:grid;gap:10px">
+        <b style="font-size:15px">Lost to suspension</b>
+        <div class="v">11 plans · ₦17.6m</div>
+        <div class="foot">Plans suspended this month while in a recovery book. Recovery stops counting at suspension.</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</main>
+</div>
+
+<!-- ================= PLAN DRAWER ================= -->
+<div class="scrim" data-close></div>
+<aside class="drawer" aria-label="Plan detail">
+  <div class="dr-head">
+    <div>
+      <h3>Funke Adeyemi <span class="pill bad">Past due</span></h3>
+      <div class="foot">Riverside Commercial · Commercial · 12 months</div>
+    </div>
+    <button class="icon-btn" data-close aria-label="Close"><i data-lucide="x"></i></button>
+  </div>
+  <div class="dr-body">
+    <div class="countdown">
+      <div class="line"><i data-lucide="calendar-x"></i><span><b>21 days past the final due date</b> (8 Sep 2026) with ₦4,800,000 still owed.</span></div>
+      <div class="line"><i data-lucide="percent"></i><span>20% default penalty on <b>6 Oct</b> (in 7 days).</span></div>
+      <div class="line"><i data-lucide="ban"></i><span>Suspended on <b>3 Nov</b> (in 35 days) if not paid. Recovery stops counting then.</span></div>
+    </div>
+
+    <div class="dr-sec">
+      <h4>Plan</h4>
+      <div class="facts">
+        <div><span class="k">Plan price</span><b class="num">₦12,000,000</b></div>
+        <div><span class="k">Paid to date</span><b class="num">₦7,200,000</b></div>
+        <div><span class="k">Balance</span><b class="num">₦4,800,000</b></div>
+        <div><span class="k">Final due date</span><b>8 Sep 2026</b></div>
+        <div><span class="k">Started</span><b>8 Sep 2025</b></div>
+        <div><span class="k">Customer phone</span><b>+234 800 000 0000</b></div>
+      </div>
+    </div>
+
+    <div class="dr-sec">
+      <h4>Assignment</h4>
+      <div class="spread" style="border:1px solid var(--line);border-radius:10px;padding:12px 14px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:34px;height:34px;border-radius:50%;background:var(--tealbg);color:var(--teal);display:grid;place-items:center;font-weight:600;font-size:12px">TA</div>
+          <div><b style="font-size:14px">Tolu Adebayo</b><div class="foot">Auto-assigned 9 Aug 2026 · behind in final month</div></div>
+        </div>
+        <button class="btn sm">Reassign</button>
+      </div>
+    </div>
+
+    <div class="dr-sec">
+      <h4>Recovered since assigned · ₦1,200,000</h4>
+      <div>
+        <div class="pay">
+          <div class="dot"><i data-lucide="arrow-down-left"></i></div>
+          <div><b class="num" style="font-size:14px">₦500,000</b><div class="foot">17 Sep 2026 · bank transfer · approved by Ngozi Okeke</div></div>
+          <span class="num foot" style="color:var(--red)">26.4 h</span>
+        </div>
+        <div class="pay">
+          <div class="dot"><i data-lucide="arrow-down-left"></i></div>
+          <div><b class="num" style="font-size:14px">₦700,000</b><div class="foot">20 Aug 2026 · bank transfer · approved by Tolu Adebayo</div></div>
+          <span class="num foot">5.2 h</span>
+        </div>
+      </div>
+      <div class="foot" style="margin-top:8px">Both payments count toward Tolu's recovery. Approval speed goes to whoever approved.</div>
+    </div>
+
+    <div class="dr-sec">
+      <h4>History</h4>
+      <div class="timeline">
+        <div class="red">Default penalty due<small>6 Oct 2026 (upcoming)</small></div>
+        <div class="hot">₦500,000 recovered<small>17 Sep 2026</small></div>
+        <div class="red">Passed final due date<small>8 Sep 2026</small></div>
+        <div class="hot">₦700,000 recovered<small>20 Aug 2026</small></div>
+        <div>Entered Tolu's recovery book<small>9 Aug 2026 · behind in final month</small></div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px">
+      <button class="btn"><i data-lucide="external-link"></i>Open payment plan</button>
+      <button class="btn"><i data-lucide="phone"></i>Copy phone</button>
+    </div>
+  </div>
+</aside>
+</div>
+
+<script>
+lucide.createIcons();
+const root = document.getElementById('fo');
+const officer = document.getElementById('officer');
+const showView = () => {
+  const team = officer.value === 'team';
+  document.getElementById('view-team').hidden = !team;
+  document.getElementById('view-officer').hidden = team;
+};
+officer.addEventListener('change', showView);
+showView();
+document.querySelectorAll('[data-open]').forEach((b) => b.addEventListener('click', () => root.classList.add('drawer-open')));
+document.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => root.classList.remove('drawer-open')));
+document.querySelectorAll('.chip').forEach((c) => c.addEventListener('click', () => {
+  document.querySelectorAll('.chip').forEach((x) => x.classList.remove('on'));
+  c.classList.add('on');
+}));
+</script>
+</body>
+</html>

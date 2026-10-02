@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import { Badge } from "@/components/ui/badge";
 import {
   Sheet,
@@ -31,7 +33,9 @@ interface Props {
  * `LandConfigurationHistory`'s per-version fetch.
  */
 export function SellingChargesHistorySheet({ assetId, open, onOpenChange }: Props) {
-  const { data, isLoading } = useSellingChargesHistory(assetId, { enabled: open });
+  const { data, isLoading, error } = useSellingChargesHistory(assetId, { enabled: open });
+  // Read once per mount: a render must not call Date.now() itself.
+  const [now] = useState(() => Date.now());
   const revisions = [...(data ?? [])].sort((a, b) => b.version - a.version);
 
   return (
@@ -48,6 +52,10 @@ export function SellingChargesHistorySheet({ assetId, open, onOpenChange }: Prop
               <Skeleton className="h-24 w-full" />
               <Skeleton className="h-24 w-full" />
             </div>
+          ) : error ? (
+            // Said out loud on purpose: a failed read used to fall through to
+            // "No versions have been approved yet", which hid a real fault.
+            <p className="p-6 text-sm text-rose-600">Couldn&apos;t load the history: {error.message}</p>
           ) : revisions.length === 0 ? (
             <p className="p-6 text-sm text-muted-foreground">No versions have been approved yet.</p>
           ) : (
@@ -57,9 +65,13 @@ export function SellingChargesHistorySheet({ assetId, open, onOpenChange }: Prop
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium">Version {revision.version}</span>
-                      {revision.is_current ? (
+                      {new Date(revision.effective_date).getTime() > now ? (
+                        <Badge variant="outline" className="text-amber-600">
+                          Scheduled
+                        </Badge>
+                      ) : revision.is_latest ? (
                         <Badge variant="outline" className="text-emerald-600">
-                          Current
+                          Latest
                         </Badge>
                       ) : null}
                     </div>

@@ -27,6 +27,11 @@ function mapCheckpoints(checkpoints: CreateCampaignDto['checkpoints'] | undefine
   });
 }
 
+function mapRafflePrizes(prizes: CreateCampaignDto['raffle_prizes'] | undefined) {
+  if (!prizes) return undefined;
+  return prizes.map((prize) => ({ label: prize.label.trim(), kind: prize.kind }));
+}
+
 /**
  * CreateCampaignDto keeps wizard-only fields (locked trigger event/unit/mode).
  * The BE ValidationPipe forbids anything not on CreateCampaignDto / UpdateCampaignDto.
@@ -52,6 +57,10 @@ export function toCreateCampaignBody(values: CreateCampaignDto) {
   if (values.reward_type === 'ticket') {
     const prefix = values.ticket_id_prefix?.trim();
     if (prefix) body.ticket_id_prefix = prefix;
+    // Only a ticket campaign has a draw. Sent here rather than unconditionally
+    // because the backend rejects prizes on a hamper campaign, and an admin who
+    // filled some in and then switched to hampers should not hit that error.
+    body.raffle_prizes = mapRafflePrizes(values.raffle_prizes) ?? [];
   }
 
   if (values.total_sqm_target != null) {
@@ -84,6 +93,14 @@ export function toUpdateCampaignBody(values: Partial<CreateCampaignDto> | Limite
   }
   if (draft.eligible_asset_types !== undefined) body.eligible_asset_types = draft.eligible_asset_types;
   if (draft.checkpoints !== undefined) body.checkpoints = mapCheckpoints(draft.checkpoints);
+  // A hamper campaign has no draw. Switching a draft to hampers clears any
+  // prizes it had, rather than being refused with RAFFLE_PRIZES_NOT_APPLICABLE
+  // for a list the admin can no longer see once the editor hides.
+  if (draft.reward_type === 'hamper') {
+    body.raffle_prizes = [];
+  } else if (draft.raffle_prizes !== undefined) {
+    body.raffle_prizes = mapRafflePrizes(draft.raffle_prizes);
+  }
   if (draft.leaderboard_masking_enabled !== undefined) {
     body.leaderboard_masking_enabled = draft.leaderboard_masking_enabled;
   }

@@ -1,85 +1,22 @@
 "use client";
 
 import { Fragment, useState } from "react";
-import { ChevronDown, ChevronRight, PieChart } from "lucide-react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { formatNairaCompact } from "@/lib/utils/format";
 
 import {
   planTenorLabel,
   type AssetSizePlanBreakdown,
   type AssetSizePlanGroup,
 } from "../../schemas/asset-analytics.schema";
-import type { EstateProfitability } from "../../schemas/estate-profitability.schema";
-
-function formatNaira(amount: number | null | undefined): string {
-  if (amount == null || amount === 0) return "—";
-  return new Intl.NumberFormat("en-NG", {
-    style: "currency",
-    currency: "NGN",
-    notation: "compact",
-    maximumFractionDigits: 1,
-  }).format(amount);
-}
-
-function formatSqm(sqm: number | null | undefined): string {
-  if (sqm == null || sqm === 0) return "—";
-  return `${sqm.toLocaleString()} SQM`;
-}
 
 /**
- * Unlike `formatNaira` above (which treats a real 0 the same as unknown — fine
- * for sold value/balance, rarely both meaningful and legitimately zero), a
- * profit column's `0` is a genuine break-even, not missing data — this
- * codebase's "never fake a zero" rule cuts both ways. Used only by the 4
- * profit columns below.
- */
-function formatProfitNaira(amount: number | null | undefined): string {
-  if (amount == null) return "—";
-  return new Intl.NumberFormat("en-NG", {
-    style: "currency",
-    currency: "NGN",
-    notation: "compact",
-    maximumFractionDigits: 1,
-  }).format(amount);
-}
-
-function formatMarginPercent(value: number | null | undefined): string {
-  if (value == null) return "—";
-  return `${value.toFixed(0)}%`;
-}
-
-/**
- * A simple pro-rata split of the ESTATE-wide totals (`summary.revenue`/
- * `direct_cost`/`allocated_opex`) by this row's share of revenue —
- * deliberately NOT the real per-cost-item allocation-rule engine, which
- * doesn't apply here: this matrix has no product/offer dimension at all
- * (AssetAnalyticsResponseSchema carries no offer_type anywhere), so there is
- * no product to allocate a cost *to*.
- */
-function rowProfit(soldValue: number, profitability: EstateProfitability | null) {
-  if (!profitability || !profitability.summary.revenue) return null;
-  const share = soldValue / profitability.summary.revenue;
-  const grossProfit = soldValue - profitability.summary.direct_cost * share;
-  const allocatedOpex = profitability.summary.allocated_opex * share;
-  const netContribution = grossProfit - allocatedOpex;
-  const marginPercent = soldValue > 0 ? (netContribution / soldValue) * 100 : null;
-  return { grossProfit, allocatedOpex, netContribution, marginPercent };
-}
-
-/**
- * `sold_value`, `sqm_sold`, `units_sold` and `efficiency` come from the group
- * itself — the BE measures them against the size's capacity, so re-deriving
- * them by summing tenor rows would disagree with the API. The lifecycle and
- * cash columns have no group-level equivalent and are summed from the rows.
+ * `sold_value`, `sqm_sold` and `efficiency` come from the group itself — the
+ * BE measures them against the size's capacity, so re-deriving them by summing
+ * tenor rows would disagree with the API. The cash and lifecycle columns have
+ * no group-level equivalent and are summed from the rows.
  */
 function totalsFor(group: AssetSizePlanGroup) {
   const sum = (pick: (plan: AssetSizePlanBreakdown) => number) =>
@@ -89,533 +26,211 @@ function totalsFor(group: AssetSizePlanGroup) {
     soldValue: group.sold_value,
     sqmSold: group.sqm_sold,
     efficiency: group.efficiency,
-    moneyReceived: sum((p) => p.money_received),
-    balanceOwed: sum((p) => p.balance_owed),
+    received: sum((p) => p.money_received),
+    balance: sum((p) => p.balance_owed),
     transactions: sum((p) => p.plan_count),
-    defaultedCount: sum((p) => p.defaulting.customers),
-    defaultedValue: sum((p) => p.defaulting.value),
-    defaultedBalance: sum((p) => p.defaulting.amount_owing),
-    terminatedCount: sum((p) => p.terminated.plans),
+    defaults: sum((p) => p.defaulting.customers),
+    defaultValue: sum((p) => p.defaulting.value),
+    defaultOwed: sum((p) => p.defaulting.amount_owing),
+    terminated: sum((p) => p.terminated.plans),
     terminatedValue: sum((p) => p.terminated.value),
-    terminatedBalance: sum((p) => p.terminated.amount_owing),
+    terminatedOwed: sum((p) => p.terminated.amount_owing),
   };
 }
 
-function efficiencyColour(efficiency: number): string {
-  if (efficiency > 90) return "bg-emerald-500";
-  if (efficiency > 75) return "bg-amber-500";
-  return "bg-rose-500";
+const HEAD =
+  "whitespace-nowrap border-b px-2.5 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider text-muted-foreground first:text-left";
+const CELL = "whitespace-nowrap px-2.5 py-2.5 text-right align-top tabular-nums";
+
+/** A second, smaller line under a cell's main figure. Left out when there is nothing behind it. */
+function Sub({ children }: { children: React.ReactNode }) {
+  return <span className="block text-[10px] font-normal text-muted-foreground">{children}</span>;
 }
 
-function EfficiencyBar({ efficiency, label }: { efficiency: number; label: string }) {
+/** "Default value" — the asset value in default, and what is still owed on it. */
+function DefaultValueCell({ count, value, owed }: { count: number; value: number; owed: number }) {
   return (
-    <div className="flex items-center justify-end gap-2">
-      <span className="text-xs font-bold tabular-nums">{efficiency.toFixed(0)}%</span>
-      <div
-        className="h-1.5 w-16 overflow-hidden rounded-full bg-muted"
-        role="progressbar"
-        aria-valuenow={Math.round(efficiency)}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-label={`${label} collection efficiency`}
-      >
-        <div
-          className={cn("h-full rounded-full", efficiencyColour(efficiency))}
-          style={{ width: `${Math.min(Math.max(efficiency, 0), 100)}%` }}
-        />
-      </div>
-    </div>
+    <>
+      {formatNairaCompact(value)}
+      {count > 0 ? <Sub>{formatNairaCompact(owed)} owed</Sub> : null}
+    </>
   );
 }
 
-interface Props {
-  data: AssetSizePlanGroup[];
-  /** Present only when the viewer has view_asset_profitability — see rowProfit()'s doc comment. */
-  profitability?: EstateProfitability | null;
+/** "Terminated" — how many plans, with their asset value and what is still owed. */
+function TerminatedCell({ count, value, owed }: { count: number; value: number; owed: number }) {
+  return (
+    <>
+      {count.toLocaleString()}
+      {count > 0 ? (
+        <Sub>
+          {formatNairaCompact(value)} · {formatNairaCompact(owed)} owed
+        </Sub>
+      ) : null}
+    </>
+  );
 }
 
-export function PaymentPlanMatrix({ data, profitability = null }: Props) {
+function EfficiencyBar({ efficiency }: { efficiency: number }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      {efficiency.toFixed(0)}%
+      <i className="block h-1.25 w-10 overflow-hidden rounded-full bg-muted" aria-hidden>
+        <i
+          className="block h-full bg-emerald-500"
+          style={{ width: `${Math.min(Math.max(efficiency, 0), 100)}%` }}
+        />
+      </i>
+    </span>
+  );
+}
+
+/**
+ * Payment plan performance — one group row per plot size, opening to one row
+ * per tenor (outright, 6 months, …), from `size_plan_breakdown` on
+ * GET /admin/assets/:id/analytics.
+ *
+ * What each column means:
+ *  - Sold value    the price of everything sold on that size / tenor.
+ *  - Received      cash actually collected against it.
+ *  - Balance       what is still to be paid.
+ *  - Sqm sold      land those sales cover.
+ *  - Transactions  number of plans.
+ *  - Defaults / Default value   customers in default, and the asset value
+ *                  tied up in their plans, with what they still owe beneath.
+ *  - Terminated    plans that were terminated, with their asset value and
+ *                  outstanding balance beneath.
+ *
+ * The design has ten columns and no separate ones for those three balances,
+ * so they sit as a second line inside the Default value and Terminated cells
+ * rather than widening the table.
+ *  - Efficiency    the backend's collection measure for that row.
+ *
+ * Profit is deliberately not a column here. An earlier version split the
+ * estate's total cost across these rows by share of revenue, which is an
+ * estimate the backend never made. Real profit has its own tables below: by
+ * product (`ProductProfitabilityComparison`) and by product, size and tenor
+ * (`PlanProfitabilityTable`). The second is not merged into this table
+ * because these rows follow the date range and cover every product at once,
+ * while profit is always current and is per product.
+ */
+export function PaymentPlanMatrix({ data }: { data: AssetSizePlanGroup[] }) {
   const [collapsed, setCollapsed] = useState<number[]>([]);
 
   // Collapsed-by-exception, so a size added to the data later starts open
   // rather than silently hidden.
   const isOpen = (size: number) => !collapsed.includes(size);
+  const toggle = (size: number) =>
+    setCollapsed((prev) => (prev.includes(size) ? prev.filter((s) => s !== size) : [...prev, size]));
 
-  const toggleSize = (size: number) =>
-    setCollapsed((prev) =>
-      prev.includes(size) ? prev.filter((s) => s !== size) : [...prev, size]
+  if (data.length === 0) {
+    return (
+      <section className="rounded-lg border p-8 text-center text-sm text-muted-foreground">
+        No plan performance for this asset.
+      </section>
     );
+  }
 
   return (
-    <div>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2 sm:mb-6">
-        <div className="flex items-center gap-2">
-          <PieChart className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
-          <h3 className="text-lg font-bold tracking-tight sm:text-xl">
-            Payment plan performance
-          </h3>
-        </div>
-        {profitability ? (
-          <span
-            className={cn(
-              "rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider",
-              profitability.warnings.length === 0
-                ? "bg-emerald-500/10 text-emerald-600"
-                : "bg-amber-500/10 text-amber-600"
-            )}
-          >
-            {profitability.warnings.length === 0
-              ? "Profit figures complete"
-              : `Profit figures estimated — ${profitability.warnings.length} unknown`}
-          </span>
-        ) : null}
-      </div>
-
-      {data.length === 0 ? (
-        <div className="rounded-xl border p-8 text-center text-sm text-muted-foreground">
-          No plan performance for this asset.
-        </div>
-      ) : (
-        <>
-          {/* ── desktop ─────────────────────────────────────────────── */}
-          <div className="hidden overflow-x-auto rounded-xl border md:block">
-            <Table>
-              <TableHeader className="bg-muted/30">
-                <TableRow className="border-b-0 hover:bg-transparent">
-                  <TableHead colSpan={7} className="py-2" />
-                  <TableHead
-                    colSpan={3}
-                    className="border-l py-2 text-center text-[10px] font-bold uppercase tracking-wider text-rose-600"
-                  >
-                    Defaults
-                  </TableHead>
-                  <TableHead
-                    colSpan={3}
-                    className="border-l py-2 text-center text-[10px] font-bold uppercase tracking-wider text-amber-600"
-                  >
-                    Terminations
-                  </TableHead>
-                  <TableHead className="border-l py-2" />
-                  {profitability ? (
-                    <TableHead
-                      colSpan={4}
-                      className="border-l py-2 text-center text-[10px] font-bold uppercase tracking-wider text-violet-600"
-                    >
-                      Profitability
-                    </TableHead>
-                  ) : null}
-                </TableRow>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="w-8" />
-                  <TableHead className="h-10 whitespace-nowrap text-[10px] font-bold uppercase tracking-wider">
-                    Plan / Size
-                  </TableHead>
-                  <TableHead className="h-10 whitespace-nowrap text-[10px] font-bold uppercase tracking-wider">
-                    Sold Value
-                  </TableHead>
-                  <TableHead className="h-10 whitespace-nowrap text-[10px] font-bold uppercase tracking-wider">
-                    Received
-                  </TableHead>
-                  <TableHead className="h-10 whitespace-nowrap text-[10px] font-bold uppercase tracking-wider">
-                    Balance
-                  </TableHead>
-                  <TableHead className="h-10 whitespace-nowrap text-[10px] font-bold uppercase tracking-wider">
-                    SQM Sold
-                  </TableHead>
-                  <TableHead className="h-10 whitespace-nowrap text-[10px] font-bold uppercase tracking-wider">
-                    Transactions
-                  </TableHead>
-                  <TableHead className="h-10 whitespace-nowrap border-l text-[10px] font-bold uppercase tracking-wider">
-                    Count
-                  </TableHead>
-                  <TableHead className="h-10 whitespace-nowrap text-[10px] font-bold uppercase tracking-wider">
-                    Value
-                  </TableHead>
-                  <TableHead className="h-10 whitespace-nowrap text-[10px] font-bold uppercase tracking-wider">
-                    Balance
-                  </TableHead>
-                  <TableHead className="h-10 whitespace-nowrap border-l text-[10px] font-bold uppercase tracking-wider">
-                    Count
-                  </TableHead>
-                  <TableHead className="h-10 whitespace-nowrap text-[10px] font-bold uppercase tracking-wider">
-                    Value
-                  </TableHead>
-                  <TableHead className="h-10 whitespace-nowrap text-[10px] font-bold uppercase tracking-wider">
-                    Balance
-                  </TableHead>
-                  <TableHead className="h-10 whitespace-nowrap border-l text-right text-[10px] font-bold uppercase tracking-wider">
-                    Efficiency
-                  </TableHead>
-                  {profitability ? (
-                    <>
-                      <TableHead className="h-10 whitespace-nowrap border-l text-right text-[10px] font-bold uppercase tracking-wider">
-                        Gross profit
-                      </TableHead>
-                      <TableHead className="h-10 whitespace-nowrap text-right text-[10px] font-bold uppercase tracking-wider">
-                        Allocated OPEX
-                      </TableHead>
-                      <TableHead className="h-10 whitespace-nowrap text-right text-[10px] font-bold uppercase tracking-wider">
-                        Net contribution
-                      </TableHead>
-                      <TableHead className="h-10 whitespace-nowrap text-right text-[10px] font-bold uppercase tracking-wider">
-                        Margin
-                      </TableHead>
-                    </>
-                  ) : null}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.map((group) => {
-                  const open = isOpen(group.size);
-                  const totals = totalsFor(group);
-
-                  return (
-                    <Fragment key={group.size}>
-                      <TableRow
-                        className="cursor-pointer bg-muted/20 hover:bg-muted/40"
-                        onClick={() => toggleSize(group.size)}
-                      >
-                        <TableCell>
-                          {open ? (
-                            <ChevronDown className="h-4 w-4" aria-hidden />
-                          ) : (
-                            <ChevronRight className="h-4 w-4" aria-hidden />
-                          )}
-                          <span className="sr-only">
-                            {open ? "Collapse" : "Expand"} {group.size} SQM
-                          </span>
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap">
-                          <div className="flex flex-col">
-                            <span className="text-xs font-black uppercase tracking-widest">
-                              {group.size} SQM
-                            </span>
-                            {/* Start value and remaining capacity exist only per
-                                size, so they sit here rather than as columns the
-                                tenor rows below could never fill. */}
-                            <span className="text-[10px] font-medium text-muted-foreground tabular-nums">
-                              {formatNaira(group.start_value)} start · {formatSqm(group.sqm_remaining)} left
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap text-xs font-bold tabular-nums">
-                          {formatNaira(totals.soldValue)}
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap text-xs font-bold tabular-nums">
-                          {formatNaira(totals.moneyReceived)}
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap text-xs font-bold tabular-nums">
-                          {formatNaira(totals.balanceOwed)}
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap text-xs font-bold tabular-nums">
-                          {formatSqm(totals.sqmSold)}
-                        </TableCell>
-                        <TableCell className="text-xs font-bold tabular-nums">
-                          {totals.transactions}
-                        </TableCell>
-                        <TableCell className="border-l">
-                          <span
-                            className={cn(
-                              "text-xs font-bold tabular-nums",
-                              totals.defaultedCount > 0 ? "text-rose-600" : "text-muted-foreground"
-                            )}
-                          >
-                            {totals.defaultedCount || "—"}
-                          </span>
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap text-xs font-bold tabular-nums text-rose-600">
-                          {formatNaira(totals.defaultedValue)}
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap text-xs font-bold tabular-nums text-rose-500">
-                          {formatNaira(totals.defaultedBalance)}
-                        </TableCell>
-                        <TableCell className="border-l">
-                          <span
-                            className={cn(
-                              "text-xs font-bold tabular-nums",
-                              totals.terminatedCount > 0
-                                ? "text-amber-600"
-                                : "text-muted-foreground"
-                            )}
-                          >
-                            {totals.terminatedCount || "—"}
-                          </span>
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap text-xs font-bold tabular-nums text-amber-600">
-                          {formatNaira(totals.terminatedValue)}
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap text-xs font-bold tabular-nums text-amber-500">
-                          {formatNaira(totals.terminatedBalance)}
-                        </TableCell>
-                        <TableCell className="border-l text-right">
-                          <EfficiencyBar
-                            efficiency={totals.efficiency}
-                            label={`${group.size} SQM`}
-                          />
-                        </TableCell>
-                        {profitability
-                          ? (() => {
-                              const profit = rowProfit(totals.soldValue, profitability);
-                              return (
-                                <>
-                                  <TableCell className="whitespace-nowrap border-l text-right text-xs font-bold tabular-nums">
-                                    {formatProfitNaira(profit?.grossProfit)}
-                                  </TableCell>
-                                  <TableCell className="whitespace-nowrap text-right text-xs font-bold tabular-nums">
-                                    {formatProfitNaira(profit?.allocatedOpex)}
-                                  </TableCell>
-                                  <TableCell className="whitespace-nowrap text-right text-xs font-bold tabular-nums">
-                                    {formatProfitNaira(profit?.netContribution)}
-                                  </TableCell>
-                                  <TableCell className="whitespace-nowrap text-right text-xs font-bold tabular-nums">
-                                    {formatMarginPercent(profit?.marginPercent)}
-                                  </TableCell>
-                                </>
-                              );
-                            })()
-                          : null}
-                      </TableRow>
-
-                      {open &&
-                        group.plans.map((plan) => (
-                          <TableRow
-                            key={`${group.size}-${plan.month_subscription}`}
-                            className="hover:bg-muted/20"
-                          >
-                            <TableCell />
-                            <TableCell className="py-4">
-                              <div className="flex flex-col">
-                                <span className="whitespace-nowrap text-sm font-bold">
-                                  {planTenorLabel(plan.month_subscription)}
-                                </span>
-                                <span className="text-[10px] font-medium uppercase text-muted-foreground">
-                                  {plan.units_sold} units sold
-                                </span>
-                              </div>
-                            </TableCell>
-                            <TableCell className="whitespace-nowrap text-sm tabular-nums">
-                              {formatNaira(plan.sold_value)}
-                            </TableCell>
-                            <TableCell className="whitespace-nowrap text-sm tabular-nums">
-                              {formatNaira(plan.money_received)}
-                            </TableCell>
-                            <TableCell className="whitespace-nowrap text-sm tabular-nums">
-                              {formatNaira(plan.balance_owed)}
-                            </TableCell>
-                            <TableCell className="whitespace-nowrap text-sm tabular-nums">
-                              {formatSqm(plan.sqm_sold)}
-                            </TableCell>
-                            <TableCell className="text-sm font-bold tabular-nums">
-                              {plan.plan_count}
-                            </TableCell>
-                            <TableCell className="border-l">
-                              <span
-                                className={cn(
-                                  "text-sm font-bold tabular-nums",
-                                  plan.defaulting.customers > 0
-                                    ? "text-rose-600"
-                                    : "text-muted-foreground"
-                                )}
-                              >
-                                {plan.defaulting.customers || "—"}
-                              </span>
-                            </TableCell>
-                            <TableCell className="whitespace-nowrap text-sm tabular-nums text-rose-600">
-                              {formatNaira(plan.defaulting.value)}
-                            </TableCell>
-                            <TableCell className="whitespace-nowrap text-sm tabular-nums text-rose-500">
-                              {formatNaira(plan.defaulting.amount_owing)}
-                            </TableCell>
-                            <TableCell className="border-l">
-                              <span
-                                className={cn(
-                                  "text-sm font-bold tabular-nums",
-                                  plan.terminated.plans > 0
-                                    ? "text-amber-600"
-                                    : "text-muted-foreground"
-                                )}
-                              >
-                                {plan.terminated.plans || "—"}
-                              </span>
-                            </TableCell>
-                            <TableCell className="whitespace-nowrap text-sm tabular-nums text-amber-600">
-                              {formatNaira(plan.terminated.value)}
-                            </TableCell>
-                            <TableCell className="whitespace-nowrap text-sm tabular-nums text-amber-500">
-                              {formatNaira(plan.terminated.amount_owing)}
-                            </TableCell>
-                            <TableCell className="border-l text-right">
-                              <EfficiencyBar
-                                efficiency={plan.efficiency}
-                                label={planTenorLabel(plan.month_subscription)}
-                              />
-                            </TableCell>
-                            {profitability
-                              ? (() => {
-                                  const profit = rowProfit(plan.sold_value, profitability);
-                                  return (
-                                    <>
-                                      <TableCell className="whitespace-nowrap border-l text-right text-sm tabular-nums">
-                                        {formatProfitNaira(profit?.grossProfit)}
-                                      </TableCell>
-                                      <TableCell className="whitespace-nowrap text-right text-sm tabular-nums">
-                                        {formatProfitNaira(profit?.allocatedOpex)}
-                                      </TableCell>
-                                      <TableCell className="whitespace-nowrap text-right text-sm tabular-nums">
-                                        {formatProfitNaira(profit?.netContribution)}
-                                      </TableCell>
-                                      <TableCell className="whitespace-nowrap text-right text-sm tabular-nums">
-                                        {formatMarginPercent(profit?.marginPercent)}
-                                      </TableCell>
-                                    </>
-                                  );
-                                })()
-                              : null}
-                          </TableRow>
-                        ))}
-                    </Fragment>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
-
-          {/* ── mobile ──────────────────────────────────────────────── */}
-          <div className="space-y-3 md:hidden">
+    <section className="overflow-hidden rounded-lg border">
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-xs">
+          <thead>
+            <tr className="bg-muted/40">
+              <th className={HEAD}>Plan / Size</th>
+              <th className={HEAD}>Sold value</th>
+              <th className={HEAD}>Received</th>
+              <th className={HEAD}>Balance</th>
+              <th className={HEAD}>Sqm sold</th>
+              <th className={HEAD}>Transactions</th>
+              <th className={HEAD}>Defaults</th>
+              <th className={HEAD}>Default value</th>
+              <th className={HEAD}>Terminated</th>
+              <th className={HEAD}>Efficiency</th>
+            </tr>
+          </thead>
+          <tbody>
             {data.map((group) => {
               const open = isOpen(group.size);
               const totals = totalsFor(group);
+              const Chevron = open ? ChevronDown : ChevronRight;
 
               return (
-                <div key={group.size} className="overflow-hidden rounded-xl border">
-                  <button
-                    type="button"
-                    onClick={() => toggleSize(group.size)}
-                    aria-expanded={open}
-                    className="flex w-full items-center gap-2 bg-muted/20 px-4 py-3 text-left"
-                  >
-                    {open ? (
-                      <ChevronDown className="h-4 w-4 shrink-0" aria-hidden />
-                    ) : (
-                      <ChevronRight className="h-4 w-4 shrink-0" aria-hidden />
-                    )}
-                    <span className="text-xs font-black uppercase tracking-widest">
-                      {group.size} SQM
-                    </span>
-                    <span className="ml-auto text-xs font-bold tabular-nums text-muted-foreground">
-                      {formatNaira(totals.soldValue)}
-                    </span>
-                  </button>
-
-                  <dl className="grid grid-cols-2 gap-x-4 gap-y-3 border-t px-4 py-3">
-                    <Stat label="Start value" value={formatNaira(group.start_value)} />
-                    <Stat label="Sold value" value={formatNaira(totals.soldValue)} />
-                    <Stat label="Received" value={formatNaira(totals.moneyReceived)} />
-                    <Stat label="Balance" value={formatNaira(totals.balanceOwed)} />
-                    <Stat label="SQM sold" value={formatSqm(totals.sqmSold)} />
-                    <Stat label="SQM remaining" value={formatSqm(group.sqm_remaining)} />
-                    <Stat label="Transactions" value={String(totals.transactions)} />
-                    <Stat
-                      label="Defaulted"
-                      value={`${totals.defaultedCount} · ${formatNaira(totals.defaultedBalance)}`}
-                      tone={totals.defaultedCount > 0 ? "danger" : undefined}
-                    />
-                    {profitability
-                      ? (() => {
-                          const profit = rowProfit(totals.soldValue, profitability);
-                          return (
-                            <>
-                              <Stat label="Gross profit" value={formatProfitNaira(profit?.grossProfit)} />
-                              <Stat label="Allocated OPEX" value={formatProfitNaira(profit?.allocatedOpex)} />
-                              <Stat label="Net contribution" value={formatProfitNaira(profit?.netContribution)} />
-                              <Stat label="Margin" value={formatMarginPercent(profit?.marginPercent)} />
-                            </>
-                          );
-                        })()
-                      : null}
-                  </dl>
-
-                  {open &&
-                    group.plans.map((plan) => (
-                      <div
-                        key={plan.month_subscription}
-                        className="border-t bg-muted/10 px-4 py-3"
+                <Fragment key={group.size}>
+                  <tr className="border-b bg-muted/40 font-semibold">
+                    <td className="whitespace-nowrap px-2.5 py-2.5 text-left">
+                      <button
+                        type="button"
+                        onClick={() => toggle(group.size)}
+                        aria-expanded={open}
+                        className="flex items-center gap-1.5"
                       >
-                        <div className="mb-2 flex items-center justify-between gap-3">
-                          <span className="text-sm font-bold">
+                        <Chevron className="h-4 w-4" aria-hidden />
+                        {group.size.toLocaleString()} sqm
+                      </button>
+                    </td>
+                    <td className={CELL}>{formatNairaCompact(totals.soldValue)}</td>
+                    <td className={CELL}>{formatNairaCompact(totals.received)}</td>
+                    <td className={CELL}>{formatNairaCompact(totals.balance)}</td>
+                    <td className={CELL}>{totals.sqmSold.toLocaleString()}</td>
+                    <td className={CELL}>{totals.transactions.toLocaleString()}</td>
+                    <td className={cn(CELL, totals.defaults > 0 && "text-rose-600")}>{totals.defaults.toLocaleString()}</td>
+                    <td className={cn(CELL, totals.defaults > 0 && "text-rose-600")}>
+                      <DefaultValueCell count={totals.defaults} value={totals.defaultValue} owed={totals.defaultOwed} />
+                    </td>
+                    <td className={cn(CELL, totals.terminated > 0 && "text-amber-600")}>
+                      <TerminatedCell
+                        count={totals.terminated}
+                        value={totals.terminatedValue}
+                        owed={totals.terminatedOwed}
+                      />
+                    </td>
+                    <td className={CELL}>
+                      <EfficiencyBar efficiency={totals.efficiency} />
+                    </td>
+                  </tr>
+
+                  {open
+                    ? group.plans.map((plan) => (
+                        <tr
+                          key={`${group.size}-${plan.month_subscription}`}
+                          className="border-b last:border-b-0 hover:bg-muted/40"
+                        >
+                          <td className="whitespace-nowrap py-2.5 pl-9 pr-2.5 text-left text-muted-foreground">
                             {planTenorLabel(plan.month_subscription)}
-                          </span>
-                          <EfficiencyBar
-                            efficiency={plan.efficiency}
-                            label={planTenorLabel(plan.month_subscription)}
-                          />
-                        </div>
-                        <dl className="grid grid-cols-2 gap-x-4 gap-y-2">
-                          <Stat label="Sold value" value={formatNaira(plan.sold_value)} />
-                          <Stat label="Received" value={formatNaira(plan.money_received)} />
-                          <Stat label="Balance" value={formatNaira(plan.balance_owed)} />
-                          <Stat label="SQM sold" value={formatSqm(plan.sqm_sold)} />
-                          <Stat label="Units sold" value={String(plan.units_sold)} />
-                          <Stat label="Transactions" value={String(plan.plan_count)} />
-                          <Stat
-                            label="Defaults"
-                            value={`${plan.defaulting.customers || 0} · ${formatNaira(plan.defaulting.amount_owing)}`}
-                            tone={plan.defaulting.customers > 0 ? "danger" : undefined}
-                          />
-                          <Stat
-                            label="Terminations"
-                            value={`${plan.terminated.plans || 0} · ${formatNaira(plan.terminated.amount_owing)}`}
-                            tone={plan.terminated.plans > 0 ? "warning" : undefined}
-                          />
-                          {profitability
-                            ? (() => {
-                                const profit = rowProfit(plan.sold_value, profitability);
-                                return (
-                                  <>
-                                    <Stat label="Gross profit" value={formatProfitNaira(profit?.grossProfit)} />
-                                    <Stat label="Allocated OPEX" value={formatProfitNaira(profit?.allocatedOpex)} />
-                                    <Stat label="Net contribution" value={formatProfitNaira(profit?.netContribution)} />
-                                    <Stat label="Margin" value={formatMarginPercent(profit?.marginPercent)} />
-                                  </>
-                                );
-                              })()
-                            : null}
-                        </dl>
-                      </div>
-                    ))}
-                </div>
+                          </td>
+                          <td className={CELL}>{formatNairaCompact(plan.sold_value)}</td>
+                          <td className={CELL}>{formatNairaCompact(plan.money_received)}</td>
+                          <td className={CELL}>{formatNairaCompact(plan.balance_owed)}</td>
+                          <td className={CELL}>{plan.sqm_sold.toLocaleString()}</td>
+                          <td className={CELL}>{plan.plan_count.toLocaleString()}</td>
+                          <td className={cn(CELL, plan.defaulting.customers > 0 && "font-semibold text-rose-600")}>
+                            {plan.defaulting.customers.toLocaleString()}
+                          </td>
+                          <td className={CELL}>
+                            <DefaultValueCell
+                              count={plan.defaulting.customers}
+                              value={plan.defaulting.value}
+                              owed={plan.defaulting.amount_owing}
+                            />
+                          </td>
+                          <td className={CELL}>
+                            <TerminatedCell
+                              count={plan.terminated.plans}
+                              value={plan.terminated.value}
+                              owed={plan.terminated.amount_owing}
+                            />
+                          </td>
+                          <td className={CELL}>{plan.efficiency.toFixed(0)}%</td>
+                        </tr>
+                      ))
+                    : null}
+                </Fragment>
               );
             })}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-function Stat({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: string;
-  tone?: "danger" | "warning";
-}) {
-  return (
-    <div className="min-w-0">
-      <dt className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-        {label}
-      </dt>
-      <dd
-        className={cn(
-          "text-sm font-medium tabular-nums wrap-break-word",
-          tone === "danger" && "text-rose-600",
-          tone === "warning" && "text-amber-600"
-        )}
-      >
-        {value}
-      </dd>
-    </div>
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }

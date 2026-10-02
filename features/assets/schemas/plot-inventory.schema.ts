@@ -71,18 +71,30 @@ const AllocationEventSchema = z.object({
   size_unit: z.string().nullable().optional(),
 });
 
+const AllocationReadinessSchema = z.object({
+  plots_ready: z.number(),
+  plots_not_ready: z.number(),
+  upcoming_event: AllocationEventSchema.nullable(),
+  latest_completed_event: AllocationEventSchema.nullable(),
+  note: z.string().nullable(),
+});
+
 export const PlotInventoryResponseSchema = z.object({
   asset: z.object({ id: z.string(), name: z.string() }),
   plots: z.array(PlotInventoryRowSchema),
   totals: PlotInventoryTotalsSchema,
   filtered_totals: PlotInventoryTotalsSchema,
-  allocation_readiness: z.object({
-    plots_ready: z.number(),
-    plots_not_ready: z.number(),
-    upcoming_event: AllocationEventSchema.nullable(),
-    latest_completed_event: AllocationEventSchema.nullable(),
-    note: z.string().nullable(),
-  }),
+  allocation_readiness: AllocationReadinessSchema,
 });
+
+/**
+ * GET /admin/assets/:assetId/plots/summary — the same response without the
+ * `plots` rows (`SiteSetupService.plotSummary()`, added to the backend on
+ * 28 Sep 2026). Takes the same filters; `filtered_totals` covers the plots
+ * they match.
+ */
+export const PlotSummarySchema = PlotInventoryResponseSchema.omit({ plots: true });
+
+export type PlotSummary = z.infer<typeof PlotSummarySchema>;
 
 export type PlotInventoryResponse = z.infer<typeof PlotInventoryResponseSchema>;

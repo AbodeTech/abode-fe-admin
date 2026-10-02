@@ -7,6 +7,7 @@ import { assetRoutes } from '../lib/mocks/routes/assets';
 import { landConfigurationRoutes } from '../lib/mocks/routes/land-configuration';
 import { companyEventsRoutes } from '../lib/mocks/routes/company-events';
 import { inventoryReconciliationRoutes } from '../lib/mocks/routes/inventory-reconciliation';
+import { PlotSummarySchema } from '../features/assets/schemas/plot-inventory.schema';
 
 registerRoutes(assetRoutes);
 registerRoutes(landConfigurationRoutes);
@@ -254,6 +255,24 @@ async function main() {
         commercialOnlyRow.exceptions.some((e: any) => e.code === 'NO_PHYSICAL_PLOTS'),
         `expected the no-physical-plots exception, got ${JSON.stringify(commercialOnlyRow.exceptions)}`
       );
+    })
+  );
+
+  results.push(
+    await run('LI-plot-summary-matches-the-list-and-splits-allocated', async () => {
+      const list: any = await call('GET', `/admin/assets/${A1}/plots`, { limit: 200 });
+      const raw = await call('GET', `/admin/assets/${A1}/plots/summary`, { allocation: 'allocated' });
+      const summary = PlotSummarySchema.parse(raw);
+
+      assert(summary.totals.plots === list.data.totals.plots, 'summary totals should equal the list totals');
+      assert(summary.totals.sqm === list.data.totals.sqm, 'summary sqm should equal the list sqm');
+      // The filter narrows `filtered_totals` to allocated plots only; `totals` stays estate-wide.
+      assert(
+        summary.filtered_totals.plots === summary.totals.allocated,
+        `allocated subset (${summary.filtered_totals.plots}) should equal totals.allocated (${summary.totals.allocated})`
+      );
+      assert(summary.filtered_totals.sqm <= summary.totals.sqm, 'allocated sqm cannot exceed total sqm');
+      assert(!('plots' in (raw as object)), 'the summary must not carry the plot rows');
     })
   );
 

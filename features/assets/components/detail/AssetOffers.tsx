@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useParams } from "next/navigation";
-import { History, Loader2, MoreVertical, Pencil, Plus } from "lucide-react";
+import { ChevronDown, History, Loader2, MoreVertical, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -27,15 +26,15 @@ import { isMockApiEnabled } from "@/lib/mocks/config";
 
 import { OFFER_TYPES, OFFER_TYPE_LABELS, usesFoModel } from "../../schemas/asset.schema";
 import {
-  offerConfiguredSqm,
+  configuredSqm,
   sortedPlans,
   totalSellingPrice,
   type Offer,
   type Plan,
   type Size,
 } from "../../schemas/asset-detail.schema";
-import { productCapacity } from "../../schemas/land-configuration.schema";
-import { formatSqm } from "@/lib/utils/format";
+import { useAdminPermissions } from "@/hooks/use-admin-permission";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -46,9 +45,11 @@ import {
 
 import { useAssetDetail } from "../../hooks/use-asset-detail";
 import { useUpdateOffer } from "../../hooks/use-offer-mutations";
+import { useSellingCharges } from "../../hooks/use-selling-charges";
 import { useAssetFormStore } from "../../store/asset-form-store";
 import { OfferConfigHistorySheet } from "./OfferConfigHistorySheet";
 import { OfferEditDialogs } from "./OfferEditDialogs";
+import { OfferLandPoolsPanel } from "./OfferLandPoolsPanel";
 import { SellingChargesPanel } from "./SellingChargesPanel";
 
 const PAYMENT_TYPE_LABELS: Record<string, string> = {
@@ -62,7 +63,18 @@ function planTerms(plan: Plan): string {
   return `${formatNaira(plan.initial_payment)} then ${formatNaira(plan.monthly_installment)}/mo`;
 }
 
-function PlansTable({ size, offerType }: { size: Size; offerType: string }) {
+/** What the Price version column shows, and how to open the charges behind it. */
+type PriceVersion = { label: string | null; onOpen: () => void };
+
+function PlansTable({
+  size,
+  offerType,
+  priceVersion,
+}: {
+  size: Size;
+  offerType: string;
+  priceVersion: PriceVersion;
+}) {
   const openOfferEdit = useAssetFormStore((state) => state.openOfferEdit);
   const plans = sortedPlans(size.plans);
   // The backend refuses to delete a size's only plan (`LAST_PLAN`), so the
@@ -82,6 +94,7 @@ function PlansTable({ size, offerType }: { size: Size; offerType: string }) {
               <TableHead>Tenor</TableHead>
               <TableHead>Land price</TableHead>
               <TableHead>Terms</TableHead>
+              <TableHead>Price version</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="w-px" />
             </TableRow>
@@ -107,13 +120,28 @@ function PlansTable({ size, offerType }: { size: Size; offerType: string }) {
                 <TableCell className="text-sm tabular-nums text-muted-foreground">
                   {planTerms(plan)}
                 </TableCell>
+                <TableCell className="text-sm whitespace-nowrap">
+                  {priceVersion.label ? (
+                    <button
+                      type="button"
+                      onClick={priceVersion.onOpen}
+                      className="tabular-nums underline-offset-4 hover:underline"
+                    >
+                      {priceVersion.label}
+                    </button>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
+                </TableCell>
                 <TableCell className="text-sm">
                   {plan.is_active === false ? (
                     <span className="text-muted-foreground">Inactive</span>
                   ) : plan.is_promo ? (
-                    <span className="rounded-full border px-2 py-0.5 text-xs">Promo</span>
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium">Promo</span>
                   ) : (
-                    <span className="text-muted-foreground">—</span>
+                    <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-600">
+                      Active
+                    </span>
                   )}
                 </TableCell>
                 <TableCell className="text-right">
@@ -168,6 +196,7 @@ function PlansTable({ size, offerType }: { size: Size; offerType: string }) {
             subtitle={formatNaira(plan.land_price)}
           >
             <AdminMobileField label="Terms" value={planTerms(plan)} />
+            {priceVersion.label ? <AdminMobileField label="Price version" value={priceVersion.label} /> : null}
             {plan.development_levy > 0 || plan.document_levy > 0 ? (
               <AdminMobileField label="Total selling price" value={formatNaira(totalSellingPrice(plan))} />
             ) : null}
@@ -183,43 +212,45 @@ function SizeCard({
   size,
   isFo,
   offerType,
+  priceVersion,
 }: {
   size: Size;
   /** Full-ownership model — full ownership and commercial carry a document fee. */
   isFo: boolean;
   offerType: string;
+  priceVersion: PriceVersion;
 }) {
   const openOfferEdit = useAssetFormStore((state) => state.openOfferEdit);
 
   return (
     <div className="rounded-lg border">
-      <div className="flex flex-wrap items-baseline justify-between gap-2 border-b px-4 py-3">
-        <p className="font-medium tabular-nums">
-          {size.size_sqm.toLocaleString()} sqm
-          <span className="ml-2 text-sm font-normal text-muted-foreground">
-            {size.configured_units.toLocaleString()} configured units
-          </span>
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/30 px-3.5 py-2.5">
+        <strong className="text-sm font-semibold tabular-nums">{size.size_sqm.toLocaleString()} sqm</strong>
 
         <div className="flex flex-wrap items-center gap-2">
-          {isFo && typeof size.document_fee === "number" ? (
-            <p className="text-sm text-muted-foreground tabular-nums">
-              Document fee {formatNaira(size.document_fee)}
-            </p>
-          ) : null}
+          <p className="text-xs text-muted-foreground tabular-nums">
+            {size.configured_units.toLocaleString()} configured units · {configuredSqm(size).toLocaleString()} sqm
+            {isFo && typeof size.document_fee === "number"
+              ? ` · document fee ${formatNaira(size.document_fee)}`
+              : ""}
+          </p>
+
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => openOfferEdit({ kind: "size", offerType, sizeId: size._id })}
+          >
+            Edit
+          </Button>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label={`Actions for ${size.size_sqm} sqm`}>
+              <Button variant="ghost" size="icon" aria-label={`More actions for ${size.size_sqm} sqm`}>
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onClick={() => openOfferEdit({ kind: "size", offerType, sizeId: size._id })}
-              >
-                Edit size
-              </DropdownMenuItem>
               <DropdownMenuItem
                 variant="destructive"
                 onClick={() => openOfferEdit({ kind: "delete-size", offerType, sizeId: size._id })}
@@ -232,7 +263,7 @@ function SizeCard({
       </div>
 
       <div className="space-y-3 p-4">
-        <PlansTable size={size} offerType={offerType} />
+        <PlansTable size={size} offerType={offerType} priceVersion={priceVersion} />
 
         <Button
           type="button"
@@ -248,7 +279,15 @@ function SizeCard({
   );
 }
 
-function OfferCard({ assetId, offer }: { assetId: string; offer: Offer }) {
+function OfferCard({
+  assetId,
+  offer,
+  priceVersion,
+}: {
+  assetId: string;
+  offer: Offer;
+  priceVersion: PriceVersion;
+}) {
   const isFo = usesFoModel(offer.offer_type);
   const updateOffer = useUpdateOffer(assetId, offer.offer_type);
   const openOfferEdit = useAssetFormStore((state) => state.openOfferEdit);
@@ -270,85 +309,45 @@ function OfferCard({ assetId, offer }: { assetId: string; offer: Offer }) {
     );
   };
 
-  // Only asset-level product pools set up through the Land Account carry a
-  // real `assigned_sqm` — a legacy, not-yet-configured product has no
-  // capacity to report against, so nothing renders rather than showing a
-  // misleading "0 of 0 sqm" state.
-  const hasLandAccount = offer.assigned_sqm > 0;
-  const configured = offerConfiguredSqm(offer);
-  const capacity = productCapacity({ assigned_sqm: offer.assigned_sqm, configured_sqm: configured });
+  const label = OFFER_TYPE_LABELS[offer.offer_type];
 
   return (
-    <section className="rounded-lg border">
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b px-4 py-3">
+    <section className="overflow-hidden rounded-lg border">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3.5">
         <div className="min-w-0">
-          <h2 className="font-medium">{OFFER_TYPE_LABELS[offer.offer_type]}</h2>
-          <p className="mt-0.5 text-sm text-muted-foreground">
+          <h3 className="text-sm font-semibold">{label}</h3>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
             {offer.allocation_qualification_pct}% qualifies for allocation
             {offer.payment_type ? ` · ${PAYMENT_TYPE_LABELS[offer.payment_type]}` : ""}
           </p>
-          {hasLandAccount ? (
-            <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-              <span className="text-muted-foreground">
-                {formatSqm(configured)} configured of {formatSqm(offer.assigned_sqm)} assigned
-              </span>
-              <span
-                className={cn(
-                  "rounded-full px-2 py-0.5 font-medium",
-                  capacity.isOverCapacity
-                    ? "bg-rose-500/10 text-rose-600"
-                    : capacity.unconfiguredSqm === 0
-                      ? "bg-emerald-500/10 text-emerald-600"
-                      : "bg-muted text-muted-foreground"
-                )}
-              >
-                {capacity.isOverCapacity
-                  ? `Over capacity by ${formatSqm(Math.abs(capacity.unconfiguredSqm))}`
-                  : capacity.unconfiguredSqm === 0
-                    ? "Fully configured"
-                    : `${formatSqm(capacity.unconfiguredSqm)} unconfigured`}
-              </span>
-              {/* Assigned sqm is edited in exactly one place — the Land
-                  Account editor — so this links there rather than adding a
-                  second input here that could drift from it. */}
-              <Link href={`/assets/${assetId}`} className="text-muted-foreground underline underline-offset-4 hover:text-foreground">
-                Edit assigned sqm
-              </Link>
-            </p>
-          ) : null}
         </div>
 
-        <div className="flex shrink-0 items-center gap-3">
-          <span
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium",
-              offer.is_active
-                ? "border-[#ABEFC6] bg-[#ECFDF3AB] text-[#067647]"
-                : "border-border text-muted-foreground"
-            )}
-          >
-            <span
-              className={cn(
-                "h-1.5 w-1.5 rounded-full",
-                offer.is_active ? "bg-[#067647]" : "bg-muted-foreground/40"
-              )}
-              aria-hidden
-            />
-            {offer.is_active ? "On sale" : "Off sale"}
-          </span>
-
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => handleToggle(!offer.is_active)}
-            disabled={updateOffer.isPending}
-          >
-            {updateOffer.isPending ? (
-              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />
-            ) : null}
-            {offer.is_active ? "Take off sale" : "Put on sale"}
-          </Button>
+        <div className="flex shrink-0 flex-wrap items-center gap-2.5">
+          {/* The status pill is also the control that changes it — the offer
+              edit dialog has no on/off-sale field, and the design has no
+              separate button for it. */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                disabled={updateOffer.isPending}
+                aria-label={`${label} is ${offer.is_active ? "on sale" : "off sale"} — change`}
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-semibold",
+                  offer.is_active ? "bg-emerald-500/10 text-emerald-600" : "bg-muted text-muted-foreground"
+                )}
+              >
+                {updateOffer.isPending ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden /> : null}
+                {offer.is_active ? "On sale" : "Off sale"}
+                <ChevronDown className="h-3 w-3" aria-hidden />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => handleToggle(!offer.is_active)}>
+                {offer.is_active ? "Take off sale" : "Put on sale"}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           <Button
             type="button"
@@ -356,8 +355,16 @@ function OfferCard({ assetId, offer }: { assetId: string; offer: Offer }) {
             size="sm"
             onClick={() => openOfferEdit({ kind: "offer", offerType: offer.offer_type })}
           >
-            <Pencil className="mr-1.5 h-3.5 w-3.5" />
-            Settings
+            Edit offer
+          </Button>
+
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => openOfferEdit({ kind: "size", offerType: offer.offer_type })}
+          >
+            Add size
           </Button>
         </div>
       </div>
@@ -367,29 +374,45 @@ function OfferCard({ assetId, offer }: { assetId: string; offer: Offer }) {
           <p className="text-sm text-muted-foreground">No sizes on this offer.</p>
         ) : (
           offer.sizes.map((size) => (
-            <SizeCard key={size._id} size={size} isFo={isFo} offerType={offer.offer_type} />
+            <SizeCard
+              key={size._id}
+              size={size}
+              isFo={isFo}
+              offerType={offer.offer_type}
+              priceVersion={priceVersion}
+            />
           ))
         )}
-
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => openOfferEdit({ kind: "size", offerType: offer.offer_type })}
-        >
-          <Plus className="mr-1 h-3.5 w-3.5" />
-          Add size
-        </Button>
       </div>
     </section>
   );
 }
 
+/** `2026-09-12T…` → `"12 Sep 2026"`. */
+function shortDate(value: string): string {
+  return new Date(value).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
+
+/**
+ * The Offers tab, in the asset-detail design's order: the "Offer land pools"
+ * table, then one card per offer with its sizes and payment plans.
+ *
+ * "Price version" on every plan row is the selling-charges version in force
+ * today (GET .../selling-charges, `in_force`) — the backend versions buyer-facing
+ * prices once per estate, not per plan, so every row shows the same version.
+ * The charges themselves, their editor and their history open in a side
+ * sheet from that cell or from the "Price versions" button; the design has
+ * no panel for them on the page.
+ */
 export function AssetOffers() {
   const params = useParams<{ id: string }>();
   const { data: asset } = useAssetDetail(params.id);
   const openOfferEdit = useAssetFormStore((state) => state.openOfferEdit);
+  const permissions = useAdminPermissions();
+  const canViewCharges = permissions.has("view_asset_costs");
+  const { data: charges } = useSellingCharges(params.id, { enabled: canViewCharges });
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [chargesOpen, setChargesOpen] = useState(false);
 
   if (!asset) return null;
 
@@ -401,44 +424,77 @@ export function AssetOffers() {
       offerType !== 'developer-plot' && !asset.offers.some((offer) => offer.offer_type === offerType)
   );
 
+  const priceVersion: PriceVersion = {
+    label: charges?.in_force
+      ? `v${charges.in_force.version} · ${shortDate(charges.in_force.effective_date)}`
+      : null,
+    onOpen: () => setChargesOpen(true),
+  };
+
   return (
     <div className="space-y-4">
-      <SellingChargesPanel assetId={params.id} />
-
-      {isMockApiEnabled() ? (
-        <div className="flex justify-end">
-          <Button type="button" variant="outline" size="sm" onClick={() => setHistoryOpen(true)}>
-            <History className="mr-1.5 h-3.5 w-3.5" />
-            History
-          </Button>
-        </div>
-      ) : null}
+      <OfferLandPoolsPanel
+        assetId={params.id}
+        action={
+          <>
+            {isMockApiEnabled() ? (
+              <Button type="button" variant="outline" size="sm" onClick={() => setHistoryOpen(true)}>
+                <History className="mr-1.5 h-3.5 w-3.5" />
+                History
+              </Button>
+            ) : null}
+            {canViewCharges ? (
+              <Button type="button" variant="outline" size="sm" onClick={() => setChargesOpen(true)}>
+                Price versions
+              </Button>
+            ) : null}
+            {missingOfferTypes.length > 0 ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button type="button" variant="outline" size="sm">
+                    <Plus className="mr-1 h-3.5 w-3.5" />
+                    Add offer
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {missingOfferTypes.map((offerType) => (
+                    <DropdownMenuItem key={offerType} onClick={() => openOfferEdit({ kind: "add-offer", offerType })}>
+                      {OFFER_TYPE_LABELS[offerType]}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : null}
+          </>
+        }
+      />
 
       {asset.offers.length === 0 ? (
         <div className="rounded-md border border-dashed p-8 text-center">
           <p className="font-medium">No offers</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            This asset has nothing on sale.
+            This asset has nothing on sale. Use Add offer above to start one.
           </p>
         </div>
       ) : (
         asset.offers.map((offer) => (
-          <OfferCard key={offer._id} assetId={params.id} offer={offer} />
+          <OfferCard key={offer._id} assetId={params.id} offer={offer} priceVersion={priceVersion} />
         ))
       )}
 
-      {/* Ticket 18 resolved 2026-07-28 — the missing offer type can now be added. */}
-      {missingOfferTypes.map((offerType) => (
-        <button
-          key={offerType}
-          type="button"
-          onClick={() => openOfferEdit({ kind: "add-offer", offerType })}
-          className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed p-4 text-sm text-muted-foreground hover:bg-muted/40 hover:text-foreground"
-        >
-          <Plus className="h-4 w-4" aria-hidden />
-          Add {OFFER_TYPE_LABELS[offerType].toLowerCase()} — this asset doesn&apos;t sell it yet
-        </button>
-      ))}
+      <Sheet open={chargesOpen} onOpenChange={setChargesOpen}>
+        <SheetContent side="right" className="flex w-full flex-col gap-0 overflow-y-auto p-0 sm:max-w-xl">
+          <SheetHeader className="border-b px-6 py-5 text-left">
+            <SheetTitle>Price versions</SheetTitle>
+            <SheetDescription>
+              The buyer-facing charges in force for this estate. Each save creates a new version.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="p-4">
+            <SellingChargesPanel assetId={params.id} />
+          </div>
+        </SheetContent>
+      </Sheet>
 
       <OfferEditDialogs asset={asset} />
       {isMockApiEnabled() ? (

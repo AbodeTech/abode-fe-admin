@@ -48,37 +48,26 @@ import { useAssetFormStore } from "../../store/asset-form-store";
 import { GalleryUploadField, SingleUploadField } from "../create/UploadFields";
 
 /* ============================================================
- * One hook per editable section.
+ * The Asset details panel's edit form: three field groups (details,
+ * availability, images and documents), each with its own form and Zod
+ * schema, edited together and saved by `useAssetEditSection` below.
  *
- * Written out concretely rather than behind a generic helper: RHF's resolver
- * types are invariant in the form values, so a generic wrapper needs casts at
- * every call site — which defeats the point of having the schema drive the
- * types at all.
- *
- * Each section owns its own slice of `UpdateAssetDto`, so a Save sends only
- * the fields that section shows. Derived fields (`sold`, `sold_units`,
- * `reserved_units`) appear nowhere — `forbidNonWhitelisted` makes sending one
- * a hard 400.
+ * Derived fields (`sold`, `sold_units`, `reserved_units`) appear nowhere:
+ * `forbidNonWhitelisted` makes sending one a hard 400.
  * ============================================================ */
-
-export type SectionForm<TValues extends Record<string, unknown>> = {
-  form: UseFormReturn<TValues>;
-  submit: () => void;
-  isSaving: boolean;
-};
 
 /**
  * Re-seed whenever editing opens, so a cancelled edit never lingers.
  *
- * `seed` is held in a ref rather than listed as a dependency. Every call site
- * passes an inline arrow, so its identity changes on every render — and with it
- * in the deps the effect ran `reset()`, which re-rendered, which made a new
- * arrow, which ran the effect again. Opening any of these forms hit React's
- * "Maximum update depth exceeded" and took the page down with it.
- *
- * Depending on `editing` alone is also the more correct rule: re-seeding
- * because the asset object changed underneath an open form would throw away
- * whatever the admin had typed.
+ * `seed` is a fresh closure every render (the caller does not memoise it) —
+ * depending on it directly used to re-run this effect
+ * on every single render, and since `seed()` calls `form.reset()`, which
+ * itself triggers a re-render of every `FormField` reading this form's state,
+ * that re-render produced a new `seed` closure and fired the effect again:
+ * an infinite loop (confirmed live — "Maximum update depth exceeded" the
+ * moment an Overview edit panel opened). A ref sidesteps it:
+ * always the latest `seed`, but never itself a reason for the effect to
+ * re-run — only an actual `editing` transition does that now.
  */
 function useReseedOnOpen(sectionId: string, seed: () => void) {
   const editing = useAssetFormStore((state) => state.editingSections[sectionId] ?? false);
@@ -96,37 +85,6 @@ function useReseedOnOpen(sectionId: string, seed: () => void) {
 }
 
 /* -------------------- details -------------------- */
-
-export function useAssetDetailsSection(
-  asset: AssetDetail | undefined
-): SectionForm<AssetDetailsFormValues> {
-  const update = useUpdateAsset(asset?._id ?? "");
-  const stopEditing = useAssetFormStore((state) => state.stopEditing);
-
-  const form = useForm<AssetDetailsFormValues>({
-    resolver: zodResolver(assetDetailsFormSchema),
-    // The list fields are required arrays; seeding them here means the form is
-    // valid before `useReseedOnOpen` fires rather than only after.
-    defaultValues: { name: "", amenities: [], landmark: [] },
-  });
-
-  const { reset } = form;
-  useReseedOnOpen("details", () => {
-    if (asset) reset(assetToDetailsForm(asset));
-  });
-
-  const submit = form.handleSubmit((values) => {
-    update.mutate(detailsFormToPayload(values), {
-      onSuccess: () => {
-        toast.success("Asset details saved");
-        stopEditing("details");
-      },
-      onError: (error) => toast.error(error.message || "Couldn't save"),
-    });
-  });
-
-  return { form, submit, isSaving: update.isPending };
-}
 
 export function AssetDetailsFields({ form }: { form: UseFormReturn<AssetDetailsFormValues> }) {
   return (
@@ -310,45 +268,6 @@ export function AssetDetailsFields({ form }: { form: UseFormReturn<AssetDetailsF
 
 /* -------------------- availability -------------------- */
 
-export function useAssetAvailabilitySection(
-  asset: AssetDetail | undefined
-): SectionForm<AssetAvailabilityFormValues> {
-  const update = useUpdateAsset(asset?._id ?? "");
-  const stopEditing = useAssetFormStore((state) => state.stopEditing);
-
-  const form = useForm<AssetAvailabilityFormValues>({
-    resolver: zodResolver(assetAvailabilityFormSchema),
-    defaultValues: { sales_cap: 1, visibility: "draft" },
-  });
-
-  const { reset } = form;
-  useReseedOnOpen("availability", () => {
-    if (asset) reset(assetToAvailabilityForm(asset));
-  });
-
-  const submit = form.handleSubmit((values) => {
-    if (!asset) return;
-
-    // The backend doesn't check this, and a cap below what's already committed
-    // would leave `available_units` negative on every screen that shows it.
-    const capError = validateSalesCap(values.sales_cap, asset);
-    if (capError) {
-      form.setError("sales_cap", { message: capError });
-      return;
-    }
-
-    update.mutate(values, {
-      onSuccess: () => {
-        toast.success("Availability saved");
-        stopEditing("availability");
-      },
-      onError: (error) => toast.error(error.message || "Couldn't save"),
-    });
-  });
-
-  return { form, submit, isSaving: update.isPending };
-}
-
 export function AssetAvailabilityFields({
   form,
   asset,
@@ -419,35 +338,6 @@ const DOCUMENT_SLOTS = [
   { key: "brochure", label: "Brochure" },
 ] as const;
 
-export function useAssetMediaSection(
-  asset: AssetDetail | undefined
-): SectionForm<AssetMediaFormValues> {
-  const update = useUpdateAsset(asset?._id ?? "");
-  const stopEditing = useAssetFormStore((state) => state.stopEditing);
-
-  const form = useForm<AssetMediaFormValues>({
-    resolver: zodResolver(assetMediaFormSchema),
-    defaultValues: { hero_image: "", pictures: [], documents: {} },
-  });
-
-  const { reset } = form;
-  useReseedOnOpen("media", () => {
-    if (asset) reset(assetToMediaForm(asset));
-  });
-
-  const submit = form.handleSubmit((values) => {
-    update.mutate(mediaFormToPayload(values), {
-      onSuccess: () => {
-        toast.success("Images and documents saved");
-        stopEditing("media");
-      },
-      onError: (error) => toast.error(error.message || "Couldn't save"),
-    });
-  });
-
-  return { form, submit, isSaving: update.isPending };
-}
-
 export function AssetMediaFields({ form }: { form: UseFormReturn<AssetMediaFormValues> }) {
   return (
     <Form {...form}>
@@ -513,5 +403,100 @@ export function AssetMediaFields({ form }: { form: UseFormReturn<AssetMediaFormV
         </div>
       </div>
     </Form>
+  );
+}
+
+/* -------------------- one panel, one save -------------------- */
+
+/**
+ * The asset-detail design has a single "Asset details" panel with one Edit
+ * button, so the three field groups above are edited together here and saved
+ * as ONE `PATCH /admin/assets/:id` — the endpoint takes any subset of asset
+ * fields, so details, sales cap/visibility and images/documents can travel
+ * in the same request. Each group keeps its own form (and its own Zod
+ * schema), which is why saving validates all three before anything is sent.
+ */
+export function useAssetEditSection(asset: AssetDetail | undefined) {
+  const update = useUpdateAsset(asset?._id ?? "");
+  const stopEditing = useAssetFormStore((state) => state.stopEditing);
+
+  const details = useForm<AssetDetailsFormValues>({
+    resolver: zodResolver(assetDetailsFormSchema),
+    defaultValues: { name: "", amenities: [], landmark: [] },
+  });
+  const availability = useForm<AssetAvailabilityFormValues>({
+    resolver: zodResolver(assetAvailabilityFormSchema),
+    defaultValues: { sales_cap: 1, visibility: "draft" },
+  });
+  const media = useForm<AssetMediaFormValues>({
+    resolver: zodResolver(assetMediaFormSchema),
+    defaultValues: { hero_image: "", pictures: [], documents: {} },
+  });
+
+  useReseedOnOpen("details", () => {
+    if (!asset) return;
+    details.reset(assetToDetailsForm(asset));
+    availability.reset(assetToAvailabilityForm(asset));
+    media.reset(assetToMediaForm(asset));
+  });
+
+  // Nested so the request is only built once every group has passed its own
+  // schema — and from the resolver's parsed output, not raw input values.
+  const submit = () => {
+    if (!asset) return;
+    void details.handleSubmit((detailValues) =>
+      availability.handleSubmit((availabilityValues) => {
+        // The backend doesn't check this, and a cap below what's already
+        // committed would leave `available_units` negative everywhere.
+        const capError = validateSalesCap(availabilityValues.sales_cap, asset);
+        if (capError) {
+          availability.setError("sales_cap", { message: capError });
+          return;
+        }
+        return media.handleSubmit((mediaValues) => {
+          update.mutate(
+            { ...detailsFormToPayload(detailValues), ...availabilityValues, ...mediaFormToPayload(mediaValues) },
+            {
+              onSuccess: () => {
+                toast.success("Asset details saved");
+                stopEditing("details");
+              },
+              onError: (error) => toast.error(error.message || "Couldn't save"),
+            }
+          );
+        })();
+      })()
+    )();
+  };
+
+  return { details, availability, media, submit, isSaving: update.isPending };
+}
+
+function EditGroup({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-3 border-t pt-4">
+      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{title}</h3>
+      {children}
+    </div>
+  );
+}
+
+export function AssetEditFields({
+  section,
+  asset,
+}: {
+  section: ReturnType<typeof useAssetEditSection>;
+  asset: AssetDetail;
+}) {
+  return (
+    <div className="space-y-5">
+      <AssetDetailsFields form={section.details} />
+      <EditGroup title="Visibility and sales cap">
+        <AssetAvailabilityFields form={section.availability} asset={asset} />
+      </EditGroup>
+      <EditGroup title="Images and documents">
+        <AssetMediaFields form={section.media} />
+      </EditGroup>
+    </div>
   );
 }

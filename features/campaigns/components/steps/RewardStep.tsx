@@ -10,6 +10,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import type { CreateCampaignDto } from "../../schemas/create-campaign.schema";
 import { CheckpointEditorSubsection } from "./CheckpointEditorSubsection";
 import { LeaderboardMaskingField } from "./LeaderboardMaskingField";
+import { RafflePrizeEditorSubsection } from "./RafflePrizeEditorSubsection";
 
 export function RewardStep() {
   const form = useFormContext<CreateCampaignDto>();
@@ -88,6 +89,10 @@ export function RewardStep() {
 
       <LeaderboardMaskingField />
       <CheckpointEditorSubsection />
+      {/* Tickets only. Prizes typed in and then abandoned by switching to
+          hampers are dropped by the create payload, so they never reach the
+          backend's RAFFLE_PRIZES_NOT_APPLICABLE check. */}
+      {rewardType === "ticket" ? <RafflePrizeEditorSubsection /> : null}
     </div>
   );
 }

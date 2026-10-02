@@ -152,6 +152,35 @@ function shareForProduct(
   return round2(recognised * (ownAssigned / totalAssigned));
 }
 
+/**
+ * How much of one cost item's recognised amount is charged to one product.
+ * The single source for both `by_product` and the drill-down's `shares`, so
+ * the two can never disagree (the real backend derives both from one
+ * allocation pass, too).
+ */
+function productShareOfItem(
+  assetId: string,
+  item: MockCostItem,
+  recognised: number,
+  offerType: MockOfferType,
+  obligations: ReturnType<typeof getCostObligations>,
+  activeOfferTypes: MockOfferType[],
+  assignedSqmByOffer: Map<string, number>
+): number {
+  if (item.allocation_basis === 'direct') {
+    return obligations.some((o) => o.cost_item_id === item._id && o.product === offerType) ? recognised : 0;
+  }
+  if (item.is_shared) {
+    return shareForProduct(assetId, item, recognised, offerType, activeOfferTypes, assignedSqmByOffer);
+  }
+  if (obligations.some((o) => o.cost_item_id === item._id && o.product === offerType)) return recognised;
+  if (obligations.some((o) => o.cost_item_id === item._id && o.product === null)) {
+    // Estate-wide, non-shared item with no product tag at all — split evenly as a fallback.
+    return activeOfferTypes.length > 0 ? round2(recognised / activeOfferTypes.length) : 0;
+  }
+  return 0;
+}
+
 function computeByProduct(row: MockAsset): { offer_type: MockOfferType; scope: ScopeResult }[] {
   const items = getCostItems(row._id);
   const obligations = getCostObligations(row._id);
@@ -180,20 +209,7 @@ function computeByProduct(row: MockAsset): { offer_type: MockOfferType; scope: S
       const recognised = byItem.get(item._id) ?? 0;
       if (recognised === 0) continue;
 
-      let share = 0;
-      if (item.allocation_basis === 'direct') {
-        const directObligations = obligations.filter((o) => o.cost_item_id === item._id && o.product === offerType);
-        if (directObligations.length > 0) share = recognised;
-      } else if (item.is_shared) {
-        share = shareForProduct(row._id, item, recognised, offerType, activeOfferTypes, assignedSqmByOffer);
-      } else {
-        const ownObligations = obligations.filter((o) => o.cost_item_id === item._id && o.product === offerType);
-        if (ownObligations.length > 0) share = recognised;
-        else if (!item.is_shared && obligations.some((o) => o.cost_item_id === item._id && o.product === null)) {
-          // Estate-wide, non-shared item with no product tag at all — split evenly as a fallback.
-          share = activeOfferTypes.length > 0 ? round2(recognised / activeOfferTypes.length) : 0;
-        }
-      }
+      const share = productShareOfItem(row._id, item, recognised, offerType, obligations, activeOfferTypes, assignedSqmByOffer);
 
       if (DIRECT_GROUPS.includes(item.group)) directCost += share;
       else allocatedOpex += share;
@@ -384,9 +400,25 @@ export const estateProfitabilityRoutes: MockRoutes = {
         )
     );
 
+    const obligations = getCostObligations(row._id);
+    const activeOffers = offers.filter((o) => o.is_active);
+    const activeOfferTypes = activeOffers.map((o) => o.offer_type as MockOfferType);
+    const assignedSqmByOffer = new Map(activeOffers.map((o) => [o.offer_type, o.assigned_sqm]));
+
     const costRows = items.map((item: MockCostItem) => {
       const amount = byItem.get(item._id) ?? null;
       const rule = getCurrentAllocationRule(row._id, item._id);
+      // Same per-product amounts `by_product` is built from, as the real
+      // drill-down's `shares` are — one entry per product actually charged.
+      const shares = amount
+        ? offers
+            .map((offer) => {
+              const offerType = offer.offer_type as MockOfferType;
+              const charged = productShareOfItem(row._id, item, amount, offerType, obligations, activeOfferTypes, assignedSqmByOffer);
+              return { offer_type: offerType, amount: round2(charged), share_pct: round2((charged / amount) * 100) };
+            })
+            .filter((share) => share.amount !== 0)
+        : [];
       return {
         cost_item_id: item._id,
         name: item.name,
@@ -396,10 +428,9 @@ export const estateProfitabilityRoutes: MockRoutes = {
         basis: item.allocation_basis,
         included_products: item.applies_to_products,
         excluded_products: item.excluded_products,
-        shares: (rule?.shares ?? [])
-          .filter((s) => s.percent != null)
-          .map((s) => ({ offer_type: s.offer_type, amount: 0, share_pct: s.percent ?? 0 })),
-        counted: amount != null && amount !== 0,
+        shares,
+        // The real `drillDown()`: counted means it was charged to at least one product.
+        counted: shares.length > 0,
         warning: item.is_shared && !rule ? 'This shared item has no allocation rule yet — excluded from every product.' : null,
       };
     });

@@ -19,6 +19,7 @@ import { dashboardRoutes } from './dashboard';
 import { marketplaceRoutes } from './marketplace';
 import { meetingRoutes } from './meetings';
 import { csManagerRoutes } from './cs-managers';
+import { financialOfficerRoutes } from './financial-officers';
 import { purchaseConfirmationRoutes } from './purchase-confirmations';
 import { campaignEngineRoutes } from './campaigns-engine';
 import { paymentPlanRoutes } from './payment-plans';
@@ -35,6 +36,7 @@ import { assetAnalyticsRoutes } from './asset-analytics';
 import { assetSubscribersRoutes } from './asset-subscribers';
 import { inventoryReconciliationRoutes } from './inventory-reconciliation';
 import { siteSetupRoutes } from './site-setup';
+import { fieldOperationsRoutes } from './field-operations';
 import { courseRoutes } from './courses';
 import { divisionRoutes } from './division';
 import { standingRoutes } from './standing';
@@ -121,6 +123,9 @@ import { standingRoutes } from './standing';
  *               — ticket in docs/BACKEND-REQUESTS.md) and no onboarding-
  *               attempts routes (nothing in this
  *               scoped UI reaches a plan_id to call them with).
+ * financial-officers — /admin/financial-officers/* (role, targets, officer and
+ *               team dashboards, recovery-plan detail + reassign). 🚧 Provisional:
+ *               no BE module exists — ticket 33 in docs/BACKEND-REQUESTS.md.
  * payment-plans — GET /admin/payment-plans, /summary, /export. Distinct from
  *               CS-manager plan actions under
  *               GET/POST /admin/payment-plans/:plan_id/*.
@@ -234,6 +239,11 @@ import { standingRoutes } from './standing';
  *               dev. The CSV export sibling is deliberately not mocked; the
  *               FE hook already refuses in mock mode itself. The segment
  *               after :assetId is the literal "subscribers".
+ * field-operations — /admin/field-submissions/*, /admin/field-allocation/*,
+ *               and GET /admin/assets/:assetId/field-costs | field-staff |
+ *               field-performance. All real (`abode-be-v2`'s field-staff
+ *               module); shares its data with site-setup through
+ *               field-store.ts, so reviewing a submission moves site progress.
  * site-setup  — GET/PUT /admin/assets/:assetId/boundary, GET .../site-setup.
  *               REAL module, confirmed against `AssetSiteSetupController`/
  *               `SiteSetupService` in `field-staff/site-setup` — not a forward
@@ -270,6 +280,7 @@ export function ensureRoutesRegistered(): void {
   registerRoutes(marketplaceRoutes);
   registerRoutes(meetingRoutes);
   registerRoutes(csManagerRoutes);
+  registerRoutes(financialOfficerRoutes);
   registerRoutes(purchaseConfirmationRoutes);
   registerRoutes(campaignEngineRoutes);
   registerRoutes(paymentPlanRoutes);
@@ -292,6 +303,7 @@ export function ensureRoutesRegistered(): void {
   registerRoutes(inventoryReconciliationRoutes);
   registerRoutes(assetSubscribersRoutes);
   registerRoutes(siteSetupRoutes);
+  registerRoutes(fieldOperationsRoutes);
 
   // Only mark done after every domain registered — a throw mid-way must allow retry.
   registered = true;

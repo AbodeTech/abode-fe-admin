@@ -35,7 +35,7 @@ import {
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { formatSqm } from "@/lib/utils/format";
+import { formatSqmExact } from "@/lib/utils/format";
 
 import { OFFER_TYPES, OFFER_TYPE_LABELS, type OfferType } from "../../schemas/asset.schema";
 import {
@@ -72,6 +72,31 @@ function toFormValues(data: LandConfiguration): LandConfigurationFormValues {
       is_active: true,
     })),
   };
+}
+
+function ReconciliationFigure({
+  label,
+  value,
+  tone = "neutral",
+}: {
+  label: string;
+  value: string;
+  tone?: "neutral" | "warn" | "bad";
+}) {
+  return (
+    <div className="min-w-0">
+      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p
+        className={cn(
+          "text-sm font-semibold tabular-nums",
+          tone === "warn" && "text-amber-600",
+          tone === "bad" && "text-rose-600"
+        )}
+      >
+        {value}
+      </p>
+    </div>
+  );
 }
 
 interface FormProps {
@@ -124,6 +149,7 @@ function LandAccountEditorForm({ assetId, landConfiguration, onClose, focusSecti
   }));
   const total = Number(watchedTotal) || 0;
   const reconciliation = reconcileLand(total > 0 ? total : null, previewPools, previewNonSaleable);
+  const share = (sqm: number) => `${total > 0 ? Math.min(100, Math.max(0, (sqm / total) * 100)) : 0}%`;
 
   function onSubmit(values: LandConfigurationFormValues) {
     setConflictMessage(null);
@@ -155,7 +181,37 @@ function LandAccountEditorForm({ assetId, landConfiguration, onClose, focusSecti
   return (
     <FormProvider {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-1 flex-col overflow-hidden">
-        <div className="flex-1 space-y-6 overflow-y-auto px-6 py-5">
+        {/* Live reconciliation — pinned above the scrolling fields so the
+            effect of every edit is visible without scrolling to find it. */}
+        <div
+          className={cn(
+            "border-b bg-muted/30 px-6 py-3",
+            reconciliation.isOverAllocated && "bg-rose-500/5"
+          )}
+        >
+          <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
+            <ReconciliationFigure label="Total" value={formatSqmExact(total || null)} />
+            <ReconciliationFigure label="Products" value={formatSqmExact(reconciliation.saleableAssignedSqm)} />
+            <ReconciliationFigure label="Roads & services" value={formatSqmExact(reconciliation.nonSaleableSqm)} />
+            <ReconciliationFigure
+              label="Unclassified"
+              value={formatSqmExact(reconciliation.unclassifiedSqm)}
+              tone={reconciliation.isOverAllocated ? "bad" : (reconciliation.unclassifiedSqm ?? 0) > 0 ? "warn" : "neutral"}
+            />
+          </div>
+          <div className="mt-2.5 flex h-1.5 overflow-hidden rounded-full bg-muted">
+            <div className="h-full bg-foreground/75" style={{ width: share(reconciliation.saleableAssignedSqm) }} />
+            <div className="h-full bg-muted-foreground/50" style={{ width: share(reconciliation.nonSaleableSqm) }} />
+            <div className="h-full bg-amber-500" style={{ width: share(Math.max(0, reconciliation.unclassifiedSqm ?? 0)) }} />
+          </div>
+          {reconciliation.isOverAllocated ? (
+            <p className="mt-2 text-xs font-medium text-rose-600">
+              Assigned and non-saleable sqm exceed the total estate size.
+            </p>
+          ) : null}
+        </div>
+
+        <div className="flex-1 space-y-5 overflow-y-auto px-6 py-5">
           {conflictMessage ? (
             <div className="flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-500/5 p-3 text-sm">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" aria-hidden />
@@ -173,22 +229,26 @@ function LandAccountEditorForm({ assetId, landConfiguration, onClose, focusSecti
             </div>
           ) : null}
 
-          <section className="space-y-3">
-            <h3 className="text-sm font-medium">Total land</h3>
-            <FormField
-              control={form.control}
-              name="total_land_sqm"
-              render={({ field }) => (
-                <FormItem className="max-w-xs">
-                  <FormLabel className="text-xs">Total estate size</FormLabel>
+          <FormField
+            control={form.control}
+            name="total_land_sqm"
+            render={({ field }) => (
+              <FormItem className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 space-y-0">
+                <div>
+                  <FormLabel className="text-sm font-medium">Total estate size</FormLabel>
+                  <p className="text-xs text-muted-foreground">
+                    The whole physical estate. Everything below is carved out of this figure.
+                  </p>
+                </div>
+                <div className="w-48 space-y-1">
                   <FormControl>
                     <NumberInput field={field} suffix="sqm" />
                   </FormControl>
                   <FormMessage />
-                </FormItem>
-              )}
-            />
-          </section>
+                </div>
+              </FormItem>
+            )}
+          />
 
           <Separator />
 
@@ -197,8 +257,8 @@ function LandAccountEditorForm({ assetId, landConfiguration, onClose, focusSecti
               <div>
                 <h3 className="text-sm font-medium">Saleable product pools</h3>
                 <p className="text-xs text-muted-foreground">
-                  Assigned to a product but not yet divided into sizes is <em>product-unconfigured</em> — not
-                  the same as estate-unclassified below.
+                  How much of the estate each product may sell. Splitting a pool into plot sizes happens on
+                  the Offers tab.
                 </p>
               </div>
               {availableOfferTypes.length > 0 ? (
@@ -223,38 +283,48 @@ function LandAccountEditorForm({ assetId, landConfiguration, onClose, focusSecti
               ) : null}
             </div>
 
-            {pools.fields.map((pool, index) => {
-              const canRemove = !initialOfferTypes.has(pool.offer_type);
-              return (
-                <div key={pool.id} className="flex items-end gap-3 rounded-lg border p-3">
-                  <p className="flex-1 text-xs font-medium">{OFFER_TYPE_LABELS[pool.offer_type]}</p>
+            <div className="grid gap-2.5 sm:grid-cols-2">
+              {pools.fields.map((pool, index) => {
+                const canRemove = !initialOfferTypes.has(pool.offer_type);
+                return (
                   <FormField
+                    key={pool.id}
                     control={form.control}
                     name={`products.${index}.assigned_sqm` as const}
                     render={({ field }) => (
-                      <FormItem className="w-40">
-                        <FormLabel className="text-xs">Assigned sqm</FormLabel>
-                        <FormControl>
-                          <NumberInput field={field} suffix="sqm" />
-                        </FormControl>
-                        <FormMessage />
+                      <FormItem className="space-y-1 rounded-lg border px-3 py-2.5">
+                        <div className="flex items-center gap-2">
+                          <FormLabel className="flex-1 text-sm font-medium">
+                            {OFFER_TYPE_LABELS[pool.offer_type]}
+                            <span className="sr-only"> — assigned sqm</span>
+                          </FormLabel>
+                          <div className="w-40">
+                            <FormControl>
+                              <NumberInput field={field} suffix="sqm" />
+                            </FormControl>
+                          </div>
+                          {canRemove ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              aria-label={`Remove ${OFFER_TYPE_LABELS[pool.offer_type]}`}
+                              onClick={() => pools.remove(index)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          ) : null}
+                        </div>
+                        <FormMessage className="text-right" />
                       </FormItem>
                     )}
                   />
-                  {canRemove ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      aria-label={`Remove ${OFFER_TYPE_LABELS[pool.offer_type]}`}
-                      onClick={() => pools.remove(index)}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  ) : null}
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
+            {pools.fields.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No product has land assigned yet.</p>
+            ) : null}
           </section>
 
           <Separator />
@@ -265,62 +335,20 @@ function LandAccountEditorForm({ assetId, landConfiguration, onClose, focusSecti
 
           <Separator />
 
-          <section
-            className={cn(
-              "space-y-2 rounded-lg border p-3 text-sm",
-              reconciliation.isOverAllocated && "border-rose-200 bg-rose-500/5"
+          <FormField
+            control={form.control}
+            name="reason"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-sm font-medium">Reason for this change</FormLabel>
+                <FormControl>
+                  <Textarea rows={2} placeholder="e.g. Added the confirmed roads and services breakdown" {...field} />
+                </FormControl>
+                <FormDescription className="text-xs">Shown in the configuration history.</FormDescription>
+                <FormMessage />
+              </FormItem>
             )}
-          >
-            <h3 className="text-sm font-medium">Reconciliation</h3>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <div>
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Total</p>
-                <p className="font-medium tabular-nums">{formatSqm(total || null)}</p>
-              </div>
-              <div>
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Products</p>
-                <p className="font-medium tabular-nums">{formatSqm(reconciliation.saleableAssignedSqm)}</p>
-              </div>
-              <div>
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Non-saleable</p>
-                <p className="font-medium tabular-nums">{formatSqm(reconciliation.nonSaleableSqm)}</p>
-              </div>
-              <div>
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Unclassified</p>
-                <p className={cn("font-medium tabular-nums", reconciliation.isOverAllocated && "text-rose-600")}>
-                  {formatSqm(reconciliation.unclassifiedSqm)}
-                </p>
-              </div>
-            </div>
-            {reconciliation.isOverAllocated ? (
-              <p className="text-xs font-medium text-rose-600">
-                Assigned and non-saleable sqm exceed the total estate size.
-              </p>
-            ) : null}
-            {form.formState.errors.total_land_sqm?.message ? (
-              <p className="text-xs font-medium text-rose-600">{form.formState.errors.total_land_sqm.message}</p>
-            ) : null}
-          </section>
-
-          <Separator />
-
-          <section className="space-y-3">
-            <h3 className="text-sm font-medium">Revision details</h3>
-            <FormField
-              control={form.control}
-              name="reason"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-xs">Reason for this change</FormLabel>
-                  <FormControl>
-                    <Textarea rows={2} placeholder="e.g. Added the confirmed roads and services breakdown" {...field} />
-                  </FormControl>
-                  <FormDescription className="text-xs">Shown in the configuration history.</FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </section>
+          />
         </div>
 
         <div className="flex items-center justify-end gap-3 border-t px-6 py-4">
@@ -360,7 +388,7 @@ export function LandAccountEditorDrawer({ assetId, open, onOpenChange, focusSect
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-2xl">
+      <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-3xl">
         <SheetHeader className="border-b px-6 py-5 text-left">
           <SheetTitle>Land account</SheetTitle>
           <SheetDescription>

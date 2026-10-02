@@ -82,7 +82,29 @@ export const assetKeys = {
    */
   plotInventory: (assetId: string, filters?: object) =>
     [...assetKeys.detail(assetId), 'plot-inventory', filters ?? {}] as const,
+  /** GET /admin/assets/:assetId/plots/summary — nested under detail, like the list it summarises. */
+  plotSummary: (assetId: string, filters?: object) =>
+    [...assetKeys.detail(assetId), 'plot-summary', filters ?? {}] as const,
   /** GET /admin/assets/:assetId/site-setup(/boundary) — real field-staff endpoints, not mocks. */
   siteSetup: (assetId: string) => [...assetKeys.detail(assetId), 'site-setup'] as const,
   boundaryHistory: (assetId: string) => [...assetKeys.detail(assetId), 'boundary-history'] as const,
+  /**
+   * Field operations on one estate (see field-operations.schema.ts). All nested
+   * under detail, so reviewing a submission can refresh everything it moves
+   * (site progress, plots, costs, scores) with one asset-wide invalidate.
+   */
+  fieldSubmissions: (assetId: string, filters?: object) =>
+    [...assetKeys.detail(assetId), 'field-submissions', filters ?? {}] as const,
+  fieldSubmission: (assetId: string, submissionId: string) =>
+    [...assetKeys.detail(assetId), 'field-submission', submissionId] as const,
+  fieldCosts: (assetId: string) => [...assetKeys.detail(assetId), 'field-costs'] as const,
+  fieldStaff: (assetId: string, includeEnded: boolean) =>
+    [...assetKeys.detail(assetId), 'field-staff', includeEnded] as const,
+  fieldPerformance: (assetId: string, year: number, month: number) =>
+    [...assetKeys.detail(assetId), 'field-performance', year, month] as const,
+  fieldAllocation: (assetId: string) => [...assetKeys.detail(assetId), 'field-allocation'] as const,
+  fieldAllocationEvent: (assetId: string, eventId: string) =>
+    [...assetKeys.fieldAllocation(assetId), eventId] as const,
+  /** GET .../costs/catalogue — the same for every estate, but keyed by asset because the route is. */
+  costCatalogue: (assetId: string) => [...assetKeys.detail(assetId), 'cost-catalogue'] as const,
 };
