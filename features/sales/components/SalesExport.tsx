@@ -86,6 +86,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { withDocumentColumns } from '../lib/export-columns'
 
 // --- Types & Constants ---
 
@@ -93,6 +94,7 @@ const STORAGE_KEYS = {
   TEMPLATES: 'sales_export_templates',
   LAST_USED: 'sales_export_last_used',
   DEFAULT_TEMPLATE: 'sales_export_default_template',
+  DOCUMENT_COLUMNS_ADDED: 'sales_export_document_columns_added',
 }
 
 interface ExportTemplate {
@@ -113,8 +115,8 @@ const FIELD_CONFIG = {
       name: { label: 'Customer Name', default: true },
       email: { label: 'Email', default: true },
       phone: { label: 'Phone', default: true },
-      nameOnDocument: { label: 'Name on Document', default: false },
-      addressOnDocument: { label: 'Address on Document', default: false },
+      nameOnDocument: { label: 'Name on Document', default: true },
+      addressOnDocument: { label: 'Address on Document', default: true },
     }
   },
   referrer: {
@@ -357,6 +359,25 @@ const getLastUsedConfig = (): { columnOrder: string[]; format: ExportFormat } | 
   } catch { return null }
 }
 
+// Once per browser: saved choices predate the document columns, and a restored
+// choice wins over the defaults, so add them to the last-used setup and every
+// saved template. Only once — after that, someone who removes them keeps it so.
+const addDocumentColumnsToSavedChoices = () => {
+  if (typeof window === 'undefined') return
+  try {
+    if (localStorage.getItem(STORAGE_KEYS.DOCUMENT_COLUMNS_ADDED)) return
+    const lastUsed = getLastUsedConfig()
+    if (lastUsed) saveLastUsedConfig(withDocumentColumns(lastUsed.columnOrder), lastUsed.format)
+    const templates = getStoredTemplates()
+    if (templates.length) {
+      saveTemplatesToStorage(templates.map(t => ({ ...t, columnOrder: withDocumentColumns(t.columnOrder) })))
+    }
+    localStorage.setItem(STORAGE_KEYS.DOCUMENT_COLUMNS_ADDED, '1')
+  } catch {
+    // Storage unavailable: the defaults above still include the columns.
+  }
+}
+
 // --- Sub-components ---
 
 const SortableItem = ({ id, label, category, color, onRemove, index }: any) => {
@@ -448,6 +469,7 @@ export function SalesExport({ filters }: { filters: SalesFilters }) {
   )
 
   useEffect(() => {
+    addDocumentColumnsToSavedChoices()
     const storedTemplates = getStoredTemplates()
     setTemplates(storedTemplates)
     const defaultId = getDefaultTemplateId()
