@@ -25,8 +25,8 @@ export type AssetAnalyticsParams = {
  *
  * A `custom` filter with only one end of the range is a 400, so the dates are
  * sent both-or-neither and the filter falls back to `all_time` without them.
- * The BE caches the aggregation, so this is safe at a 5-minute `staleTime` —
- * matching `usePortfolioAnalytics`.
+ * The BE caches this asset view for 30 seconds; keep the client on the same
+ * interval so plan closures and releases are reflected promptly.
  */
 export const useAssetAnalytics = (assetId: string, params?: AssetAnalyticsParams) => {
   const startDate = params?.startDate?.trim() || undefined;
@@ -37,7 +37,7 @@ export const useAssetAnalytics = (assetId: string, params?: AssetAnalyticsParams
   return useQuery({
     queryKey: assetKeys.analytics(assetId, filter, startDate, endDate),
     enabled: Boolean(assetId) && (params?.enabled ?? true),
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 1000,
     queryFn: () =>
       apiGet(`/admin/assets/${assetId}/analytics`, AssetAnalyticsResponseSchema, {
         params: {

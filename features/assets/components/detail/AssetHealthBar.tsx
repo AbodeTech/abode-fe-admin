@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { formatNairaCompact } from "@/lib/utils/format";
+import { formatNairaCompact, formatSqmExact } from "@/lib/utils/format";
 
 import type { AssetAnalyticsResponse, LifecycleBucket } from "../../schemas/asset-analytics.schema";
 
@@ -27,32 +27,37 @@ function Metric({
   );
 }
 
-function HealthValue({ label, value, valueClass }: { label: string; value: string; valueClass?: string }) {
+function HealthValue({ label, value, valueClass, note }: { label: string; value: string; valueClass?: string; note?: string }) {
   return (
     <div className="min-w-0">
       <div className="text-[11px] text-muted-foreground">{label}</div>
       <div className={cn("mt-1 text-sm font-semibold tabular-nums", valueClass)}>{value}</div>
+      {note ? <small className="mt-0.5 block text-[10px] text-muted-foreground">{note}</small> : null}
     </div>
   );
 }
 
 /**
  * One side of the defaults / terminations block. `landLabel` is the design's
- * third figure ("Land retained" / "Land released"); the analytics endpoint
- * reports these buckets in customers, plans and naira only — no sqm — so it
- * is drawn as an em-dash rather than left out or guessed.
+ * third figure is an inventory measure: current held defaulted land, or
+ * close/delete releases in the selected period. The two figures have
+ * different time meanings and are labelled accordingly.
  */
 function LifecycleSide({
   title,
   bucket,
   valueLabel,
   landLabel,
+  landSqm,
+  landNote,
   tone,
 }: {
   title: string;
   bucket: LifecycleBucket;
   valueLabel: string;
   landLabel: string;
+  landSqm: number | null;
+  landNote: string;
   tone: "bad" | "warn";
 }) {
   const text = tone === "bad" ? "text-rose-600" : "text-amber-600";
@@ -65,7 +70,7 @@ function LifecycleSide({
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <HealthValue label={valueLabel} value={formatNairaCompact(bucket.value)} />
         <HealthValue label="Outstanding balance" value={formatNairaCompact(bucket.amount_owing)} valueClass={text} />
-        <HealthValue label={landLabel} value="—" />
+        <HealthValue label={landLabel} value={landSqm == null ? "—" : formatSqmExact(landSqm)} note={landNote} />
       </div>
     </div>
   );
@@ -83,6 +88,9 @@ type AssetHealth = Pick<
   | "total_capacity_sqm"
   | "sqm_sold"
   | "sqm_remaining"
+  | "land_retained_sqm"
+  | "land_released_sqm"
+  | "filter"
   | "efficiency_rate"
   | "active_customers"
   | "total_customers"
@@ -143,14 +151,18 @@ export function AssetHealthBar({ data }: { data: AssetHealth }) {
           title="Defaults"
           bucket={defaulting}
           valueLabel="Defaulted asset value"
-          landLabel="Land retained"
+          landLabel="Land retained now"
+          landSqm={data.land_retained_sqm}
+          landNote={data.land_retained_sqm == null ? "Requires active sqm inventory" : "Current defaulted plans with land still held"}
           tone="bad"
         />
         <LifecycleSide
           title="Terminations"
           bucket={terminated}
           valueLabel="Terminated value"
-          landLabel="Land released"
+          landLabel={data.filter === "custom" ? "Land released in period" : "Land released since tracking"}
+          landSqm={data.land_released_sqm}
+          landNote={data.land_released_sqm == null ? "Requires active sqm inventory" : "Plan closures and deletions that returned land to stock"}
           tone="warn"
         />
       </div>

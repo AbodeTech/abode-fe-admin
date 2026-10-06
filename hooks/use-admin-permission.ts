@@ -39,6 +39,7 @@ export const ADMIN_PERMISSIONS = [
   'create_user_plan',
   'create_developer_plot',
   'delete_user_plan',
+  'keep_inventory_on_close',
   'edit_user_asset_question',
   'adjust_plan_balance',
   'override_next_payment_date',

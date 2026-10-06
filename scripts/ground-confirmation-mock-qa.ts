@@ -99,18 +99,15 @@ async function main() {
   );
 
   results.push(
-    await run('GC-submit-on-a-fresh-plot-then-verify', async () => {
+    await run('GC-refuses-available-plot', async () => {
       const before: any = await call('GET', `/admin/plots/${SEEDED_AVAILABLE_PLOT}/ground-confirmation`);
       assert(before.length === 0, 'an untouched plot should start with no ground-confirmation history');
-
-      const submitted: any = await call('POST', `/admin/plots/${SEEDED_AVAILABLE_PLOT}/ground-confirmation`, {}, {
-        notes: 'QA field visit',
-      });
-      assert(submitted.verified_at === null, 'a fresh submission should be unverified');
-
-      await call('POST', `/admin/plots/${SEEDED_AVAILABLE_PLOT}/ground-confirmation/${submitted._id}/verify`);
-      const after: any = await call('GET', `/admin/plots/${SEEDED_AVAILABLE_PLOT}/ground-confirmation`);
-      assert(after[0].verified_at !== null, 'the submission should be verified after the verify call');
+      try {
+        await call('POST', `/admin/plots/${SEEDED_AVAILABLE_PLOT}/ground-confirmation`, {}, { notes: 'QA field visit' });
+        throw new Error('expected an unallocated plot to be rejected');
+      } catch (e) {
+        assert(e instanceof MockHttpError && e.code === 'PLOT_NOT_ALLOCATED', 'expected PLOT_NOT_ALLOCATED');
+      }
     })
   );
 

@@ -39,8 +39,8 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" });
 }
 
-function GroundConfirmationDialogBody({ assetId, plotId }: { assetId: string; plotId: string }) {
-  const { data: history, isLoading } = useGroundConfirmationHistory(plotId);
+function GroundConfirmationDialogBody({ assetId, plotId, planId }: { assetId: string; plotId: string; planId: string }) {
+  const { data: history, isLoading, isError } = useGroundConfirmationHistory(plotId, { planId });
   const submit = useSubmitGroundConfirmation(assetId, plotId);
   const verify = useVerifyGroundConfirmation(assetId, plotId);
   const form = useForm<SubmitGroundConfirmationFormValues>({
@@ -64,6 +64,8 @@ function GroundConfirmationDialogBody({ assetId, plotId }: { assetId: string; pl
     <div className="space-y-4">
       {isLoading ? (
         <Skeleton className="h-16 w-full" />
+      ) : isError ? (
+        <p className="text-sm text-destructive">Could not load this plot’s ground confirmation.</p>
       ) : history && history.length > 0 ? (
         <ul className="space-y-2">
           {history.map((entry) => (
@@ -108,7 +110,7 @@ function GroundConfirmationDialogBody({ assetId, plotId }: { assetId: string; pl
         <p className="text-sm text-muted-foreground">No ground confirmation submitted yet.</p>
       )}
 
-      {!pending ? (
+      {!isLoading && !isError && !pending && !isGroundConfirmed(history ?? []) ? (
         <Form {...form}>
           <div className="space-y-3 border-t pt-4">
             <FormField
@@ -116,7 +118,7 @@ function GroundConfirmationDialogBody({ assetId, plotId }: { assetId: string; pl
               name="notes"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-xs">Submit a new field confirmation</FormLabel>
+                  <FormLabel className="text-xs">Record an on-site confirmation</FormLabel>
                   <FormControl>
                     <Textarea rows={2} placeholder="e.g. Plot staked and handed over on site" {...field} />
                   </FormControl>
@@ -145,9 +147,9 @@ function GroundConfirmationDialogBody({ assetId, plotId }: { assetId: string; pl
  * badge is rendered from (the real `GET .../plots`) carries no such field at
  * all, so there is nothing for a caller to pass down.
  */
-export function GroundConfirmationBadge({ assetId, plotId }: { assetId: string; plotId: string }) {
+export function GroundConfirmationBadge({ assetId, plotId, planId }: { assetId: string; plotId: string; planId: string }) {
   const [open, setOpen] = useState(false);
-  const { data: history } = useGroundConfirmationHistory(plotId);
+  const { data: history, isLoading, isError } = useGroundConfirmationHistory(plotId, { planId });
   const groundConfirmed = isGroundConfirmed(history ?? []);
 
   return (
@@ -158,7 +160,7 @@ export function GroundConfirmationBadge({ assetId, plotId }: { assetId: string; 
           className={groundConfirmed ? "gap-1 text-emerald-700" : "gap-1 text-muted-foreground"}
         >
           {groundConfirmed ? <CheckCircle2 className="h-3 w-3" aria-hidden /> : null}
-          {groundConfirmed ? "Ground confirmed" : "Not ground confirmed"}
+          {isLoading ? "Checking…" : isError ? "Status unavailable" : groundConfirmed ? "Ground confirmed" : "Not ground confirmed"}
         </Badge>
       </button>
 
@@ -167,11 +169,11 @@ export function GroundConfirmationBadge({ assetId, plotId }: { assetId: string; 
           <DialogHeader>
             <DialogTitle>Ground confirmation</DialogTitle>
             <DialogDescription>
-              A field submission confirming this specific plot, verified by an admin — independent of its
+              An admin records an on-site confirmation for this plot, then verifies it. This is separate from its
               &ldquo;System allocated&rdquo; database status.
             </DialogDescription>
           </DialogHeader>
-          {open ? <GroundConfirmationDialogBody assetId={assetId} plotId={plotId} /> : null}
+          {open ? <GroundConfirmationDialogBody assetId={assetId} plotId={plotId} planId={planId} /> : null}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Close

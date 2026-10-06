@@ -71,6 +71,12 @@ export const SqmInventorySchema = z.object({
     purchase_snapshot_value: z.number(),
   }),
   positions: z.array(SqmPositionSchema).default([]),
+  contract_values: z.array(z.object({
+    offer_type: OfferTypeSchema,
+    sold_contract_value: z.number().nullable(),
+    defaulted_contract_value: z.number().nullable(),
+  })).default([]),
+  contract_values_note: z.string().optional(),
   operational_overlay_note: z.string(),
   legacy_unit_inventory: SqmLegacyUnitInventorySchema,
 });
@@ -86,9 +92,8 @@ export type SqmInventory = z.infer<typeof SqmInventorySchema>;
  * row (`size_id: null`) and the size's own row — and moves the same sqm
  * through both (`SqmInventoryService.keysFor()` returns `[poolKey, key]`). So
  * a product's commercial figures are its pool row alone; adding the size rows
- * on top counts every sale twice. The response's own `totals` block sums
- * every row and therefore has exactly that double count — don't read it for
- * capacity/selling/sold/available; use `ledgerTotals()` below.
+ * on top counts every sale twice. The response totals and `ledgerTotals()`
+ * both use one pool row per product for commercial sqm.
  *
  * The overlay figures (customers, units, value, defaulted, allocated) work
  * the other way round: each live plan is attached to exactly one row — its

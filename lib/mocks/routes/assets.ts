@@ -754,6 +754,14 @@ function plotInventoryTotals(rows: MockPlot[]) {
   };
 }
 
+function plotBlockSummaries(rows: MockPlot[]) {
+  const blocks = [...new Set(rows.map((row) => row.block_label))];
+  return blocks.map((block) => ({
+    block,
+    ...plotInventoryTotals(rows.filter((row) => row.block_label === block)),
+  }));
+}
+
 /** Mirrors the BE: allocated plots are frozen, and so are the blocks holding them. */
 function refuseIfAllocated(plot: MockPlot): void {
   if (plot.status === 'allocated') {
@@ -1439,6 +1447,16 @@ export const assetRoutes: MockRoutes = {
 
   'POST /admin/plots/:plotId/ground-confirmation': ({ params, body: raw }) => {
     const plot = requirePlot(params.plotId);
+    if (plot.status !== 'allocated' || !plot.payment_plan) {
+      throw new MockHttpError(409, 'The plot must have a current system allocation before ground confirmation', 'PLOT_NOT_ALLOCATED');
+    }
+    const existing = groundConfirmationsByPlot[plot._id] ?? [];
+    if (existing.some((entry) => entry.verified_at)) {
+      throw new MockHttpError(409, 'This plot allocation has already been confirmed on the ground', 'GROUND_CONFIRMATION_VERIFIED');
+    }
+    if (existing.length) {
+      throw new MockHttpError(409, 'A ground confirmation report is already waiting for verification', 'GROUND_CONFIRMATION_PENDING');
+    }
     const dto = body<{ notes?: string }>(raw);
 
     groundConfirmationSeq += 1;
@@ -1458,6 +1476,9 @@ export const assetRoutes: MockRoutes = {
   /** An admin confirms a field submission in person — this is what makes a plot "Ground confirmed", not the submission alone. */
   'POST /admin/plots/:plotId/ground-confirmation/:confirmationId/verify': ({ params }) => {
     const plot = requirePlot(params.plotId);
+    if (plot.status !== 'allocated' || !plot.payment_plan) {
+      throw new MockHttpError(409, 'The plot must have a current system allocation before ground confirmation', 'PLOT_NOT_ALLOCATED');
+    }
     const confirmation = (groundConfirmationsByPlot[plot._id] ?? []).find(
       (candidate) => candidate._id === params.confirmationId
     );
@@ -1509,6 +1530,8 @@ export const assetRoutes: MockRoutes = {
             commercial_status: p.status,
             product: null,
             payment_plan_id: p.payment_plan ?? null,
+            customer_name: null,
+            allocation_event_name: null,
             allocated_date: p.allocated_date ?? null,
             parcelled: ops.parcelled,
             re_pegged_count: ops.re_pegged_count,
@@ -1520,6 +1543,7 @@ export const assetRoutes: MockRoutes = {
         }),
         totals: plotInventoryTotals(all),
         filtered_totals: plotInventoryTotals(filtered),
+        block_summaries: plotBlockSummaries(all),
         allocation_readiness: {
           plots_ready: filtered.filter((p) => fieldOpsFor(p).allocation_ready).length,
           plots_not_ready: filtered.filter((p) => !fieldOpsFor(p).allocation_ready).length,
@@ -1548,6 +1572,7 @@ export const assetRoutes: MockRoutes = {
       asset: { id: params.assetId, name: asset.name },
       totals: plotInventoryTotals(all),
       filtered_totals: plotInventoryTotals(filtered),
+      block_summaries: plotBlockSummaries(all),
       allocation_readiness: {
         plots_ready: all.filter((p) => fieldOpsFor(p).allocation_ready).length,
         plots_not_ready: all.filter((p) => !fieldOpsFor(p).allocation_ready).length,

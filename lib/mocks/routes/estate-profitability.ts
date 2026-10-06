@@ -345,6 +345,7 @@ export const estateProfitabilityRoutes: MockRoutes = {
           return {
             offer_type: offerType,
             size_id: size._id,
+            size_sqm: size.size_sqm,
             tenor_months: plan.tenor_months,
             sold_value: soldValue,
             received: 0,

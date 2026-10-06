@@ -181,6 +181,17 @@ export function AssetPerformance({ assetId }: { assetId: string }) {
       {canViewProfitability ? (
         <>
           <SectionTitle icon={Banknote}>Profitability</SectionTitle>
+          {profitability ? (
+            <p className="text-xs text-muted-foreground">
+              Profit as of {new Date(profitability.as_of).toLocaleString("en-GB", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}. The sales date filter above does not change this calculation.
+            </p>
+          ) : null}
 
           {profitWarnings.length > 0 ? (
             <aside className="flex flex-col items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3.5 py-3 sm:flex-row">
@@ -207,8 +218,7 @@ export function AssetPerformance({ assetId }: { assetId: string }) {
       ) : null}
 
       <p className="text-[11px] text-muted-foreground">
-        Customer counts remain all-time when a custom date range is selected. Profitability is always
-        current and does not move with the date range.
+        Customer counts remain all-time when a custom date range is selected.
       </p>
     </div>
   );

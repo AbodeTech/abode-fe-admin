@@ -14,7 +14,7 @@ import { assetKeys } from './query-keys';
  */
 export const useInventoryReconciliation = (assetId: string, options: { enabled?: boolean } = {}) =>
   useQuery({
-    queryKey: [...assetKeys.detail(assetId), 'inventory-reconciliation'] as const,
+    queryKey: assetKeys.inventoryReconciliation(assetId),
     queryFn: () => apiGet(`/admin/assets/${assetId}/inventory-reconciliation`, InventoryReconciliationSchema),
     enabled: Boolean(assetId) && (options.enabled ?? true),
   });

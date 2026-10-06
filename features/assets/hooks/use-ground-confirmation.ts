@@ -7,10 +7,10 @@ import { apiGet } from '@/lib/api-client';
 
 import { GroundConfirmationSchema } from '../schemas/ground-confirmation.schema';
 
-/** GET /admin/plots/:plotId/ground-confirmation — every field submission for this plot, newest first. */
-export const useGroundConfirmationHistory = (plotId: string, options: { enabled?: boolean } = {}) =>
+/** GET /admin/plots/:plotId/ground-confirmation — reports for the current plot allocation. */
+export const useGroundConfirmationHistory = (plotId: string, options: { enabled?: boolean; planId?: string | null } = {}) =>
   useQuery({
-    queryKey: ['plots', plotId, 'ground-confirmation'] as const,
+    queryKey: ['plots', plotId, 'ground-confirmation', options.planId ?? null] as const,
     queryFn: () => apiGet(`/admin/plots/${plotId}/ground-confirmation`, z.array(GroundConfirmationSchema)),
     enabled: Boolean(plotId) && (options.enabled ?? true),
   });

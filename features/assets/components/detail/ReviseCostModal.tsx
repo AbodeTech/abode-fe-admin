@@ -1409,7 +1409,7 @@ export function ReviseCostModal({
                   {record.obligation.archived_reason
                     ? `: ${record.obligation.archived_reason}`
                     : ""}
-                  . No further entries can be added to it.
+                  . Its entries remain in the history but no longer count in current cost or profit figures.
                 </p>
               ) : canManage ? (
                 <button
@@ -1437,7 +1437,7 @@ export function ReviseCostModal({
           open={archiveOpen}
           onOpenChange={setArchiveOpen}
           title="Archive this cost record?"
-          description="Archiving closes the record: no more entries can be added, and it cannot be re-opened. It does not remove what is already approved. Those amounts still count as cost until each one is reversed, so reverse them first if they should not count."
+          description="Archiving closes the record and removes its amounts from current cost and profit figures. Its entries remain in the history. This action cannot be undone."
           confirmLabel="Archive record"
           placeholder="e.g. Entered twice; the other record is the one in use"
           destructive

@@ -33,7 +33,7 @@ const LENS_NOTES: Record<Lens, string | null> = {
   sqm: null,
   units: "Units are counted from land already divided into sizes. A product with no sizes has no unit count.",
   value:
-    "Valued at each size's current outright land price (its lowest plan price where there is no outright plan) — today's price list, not what each customer actually paid.",
+    "Assigned, Available, Selling and Allocated are estimates at today's catalogue price. Sold and Defaulted retained use the plan's contract price when its held land matches the sqm ledger; a dash means that value cannot be reconciled. Contract value is not cash received.",
 };
 
 /** `null` is "not knowable from the backend", shown as an em-dash — never a zero. */
@@ -81,14 +81,12 @@ function currentPriceBySize(asset: AssetDetail | undefined): Map<string, number>
  *                        held for the customer.
  *  - Allocated           sqm of exact plots bound to a customer's plan.
  *
- * Units and Value lenses (worked out here — see `lensFigures`): the ledger's
- * per-size rows divided by their size give units; units times today's price
- * for that size give value. Before sqm inventory is activated there are no
- * ledger rows, so only Assigned is known, from the land account's configured
- * units.
+ * Units are derived from the per-size ledger rows. In the Value lens, stock
+ * without a buyer is valued at today's catalogue price, while Sold and
+ * Defaulted retained use held plans' contract prices returned by the backend.
  *
- * The design's "Event reserved" column is left out: an allocation event
- * reserves one total, with no per-product split to show.
+ * There is no per-product "Event reserved" column: event places are first
+ * come, first served for eligible customers, and Developer Plot is excluded.
  */
 export function ProductPositionTable({ assetId }: { assetId: string }) {
   const permissions = useAdminPermissions();
@@ -105,6 +103,7 @@ export function ProductPositionTable({ assetId }: { assetId: string }) {
   const byProduct = new Map(productPositions(positions).map((position) => [position.offer_type, position]));
   const pools = new Map((land?.products ?? []).map((product) => [product.offer_type, product]));
   const prices = currentPriceBySize(asset);
+  const contractValues = new Map((inventory?.contract_values ?? []).map((row) => [row.offer_type, row]));
 
   function figuresFor(offerType: OfferType): LensFigures {
     const position = byProduct.get(offerType);
@@ -123,19 +122,23 @@ export function ProductPositionTable({ assetId }: { assetId: string }) {
 
     const worth = (sizeId: string) => (lens === "units" ? 1 : (prices.get(sizeId) ?? null));
     const figures = lensFigures(positions, offerType, worth);
-    if (figures.assigned != null) return figures;
+    const contract = contractValues.get(offerType);
+    const valued = lens === "value"
+      ? { ...figures, sold: contract?.sold_contract_value ?? null, defaulted: contract?.defaulted_contract_value ?? null }
+      : figures;
+    if (valued.assigned != null) return valued;
 
     // No ledger rows for this product yet — the land account still knows how
     // many units each size was configured with.
     const sizes = pool?.takes_sizes ? pool.sizes : [];
-    if (sizes.length === 0) return figures;
+    if (sizes.length === 0) return valued;
     let assigned = 0;
     for (const size of sizes) {
       const unitWorth = worth(size.id);
-      if (unitWorth == null) return figures;
+      if (unitWorth == null) return valued;
       assigned += size.configured_units * unitWorth;
     }
-    return { ...figures, assigned };
+    return { ...valued, assigned };
   }
 
   const products = OFFER_TYPES.filter((type) => byProduct.has(type) || pools.has(type));

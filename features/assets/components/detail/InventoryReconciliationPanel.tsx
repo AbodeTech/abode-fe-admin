@@ -10,18 +10,22 @@ import { formatNaira } from "@/lib/utils/format";
 import type { ReconciliationException } from "../../schemas/inventory-reconciliation.schema";
 import { useInventoryReconciliation } from "../../hooks/use-inventory-reconciliation";
 
-/** Both point at the same fix — record more plots — so both get the same CTA; NO_SALES_DATA has no action from this panel. */
+/** Both prompt review of the plot register; an unsold recorded plot is normal stock. */
 const ACTIONABLE_EXCEPTION_CODES = new Set(["NO_PHYSICAL_PLOTS", "OVERSOLD"]);
 
 /**
- * The physical (Block/Plot) vs. commercial (Analytics) join, by size — a
+ * The physical (Block/Plot) vs. live sale-plan join, by size — a
  * deliberately partial reconciliation (no product dimension exists on either
  * side). Exceptions are computed once, server-side, and surfaced here
  * prominently rather than buried in a table cell — that's the whole point
  * of this view.
  */
 export function InventoryReconciliationPanel({ assetId }: { assetId: string }) {
-  const { data, isLoading } = useInventoryReconciliation(assetId);
+  const { data, isLoading, isError } = useInventoryReconciliation(assetId);
+
+  if (isError) {
+    return <section className="rounded-xl border p-6 text-sm text-destructive">Could not load inventory reconciliation.</section>;
+  }
 
   if (isLoading || !data) {
     return (
@@ -40,13 +44,9 @@ export function InventoryReconciliationPanel({ assetId }: { assetId: string }) {
       <div className="border-b px-4 py-3 sm:px-6">
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="font-medium">Inventory reconciliation</h2>
-          <Badge variant="outline" className="text-[10px] text-muted-foreground">
-            Demo data — not backed by a live system
-          </Badge>
         </div>
         <p className="text-xs text-muted-foreground">
-          Physical plot status against commercial sales data, joined by size — by-product reconciliation isn&apos;t
-          available yet.
+          Recorded plots against live sales, grouped by size. Sold units can be awaiting physical allocation.
         </p>
       </div>
 
@@ -66,11 +66,11 @@ export function InventoryReconciliationPanel({ assetId }: { assetId: string }) {
         </span>
         {totals.exception_count > 0 ? (
           <Badge variant="outline" className="text-rose-600">
-            {totals.exception_count} exception{totals.exception_count === 1 ? "" : "s"} across the estate
+            {totals.exception_count} review item{totals.exception_count === 1 ? "" : "s"} across the estate
           </Badge>
         ) : (
           <Badge variant="outline" className="text-emerald-600">
-            No exceptions across the estate
+            No plot-register gaps found
           </Badge>
         )}
       </div>
@@ -146,12 +146,12 @@ export function InventoryReconciliationPanel({ assetId }: { assetId: string }) {
           <span className="font-medium text-foreground">System allocated</span> means a plot&apos;s status was set the
           moment it was bound to a payment plan — a database fact, not a site visit.{" "}
           <span className="font-medium text-foreground">Ground confirmed</span> is a separate, independent count: a
-          field submission for that specific plot, verified by an admin — open a plot&apos;s ground-confirmation
+          on-site report for that specific plot, verified by an admin — open a plot&apos;s ground-confirmation
           badge on the Plot Inventory panel above to submit or verify one. A plot can be system allocated without
           ever being ground confirmed.{" "}
           <span className="font-medium text-foreground">Commercial</span> (sold/defaulted, right column) comes from a
-          separate sales record that this system-allocated count doesn&apos;t always match — see the exceptions above
-          when it doesn&apos;t.
+          separate sales record. A sold unit may await plot allocation; only sales beyond the total number of
+          recorded plots at that size raise a shortage warning above.
         </p>
       </div>
 

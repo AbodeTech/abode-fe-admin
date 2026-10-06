@@ -61,6 +61,9 @@ import {
 } from "../../hooks/use-plots";
 import { DetailPanel } from "./DetailPanel";
 import { NumberInput } from "./NumberInput";
+import { usePlotSummary } from "../../hooks/use-plot-summary";
+import { formatSqmExact } from "@/lib/utils/format";
+import type { PlotSummary } from "../../schemas/plot-inventory.schema";
 
 /* ============================================================
  * Block inventory — the land this asset is actually made of.
@@ -88,6 +91,7 @@ export function BlocksManager({
   onManageBlock: (blockId: string | null) => void;
 }) {
   const { data: blocks = [], isLoading, isError, error } = useAssetBlocks(assetId);
+  const { data: plotSummary } = usePlotSummary(assetId, { allocation: "allocated" });
   const createBlock = useCreateBlock(assetId);
   const deleteBlock = useDeleteBlock(assetId);
 
@@ -155,7 +159,12 @@ export function BlocksManager({
       ) : (
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           {blocks.map((block) => (
-            <BlockCard key={block._id} block={block} onManage={() => onManageBlock(block._id)} />
+            <BlockCard
+              key={block._id}
+              block={block}
+              survey={plotSummary?.block_summaries.find((summary) => summary.block === block.label)}
+              onManage={() => onManageBlock(block._id)}
+            />
           ))}
         </div>
       )}
@@ -219,7 +228,11 @@ function BlockStat({ label, value, good = false }: { label: string; value: React
  * (GET /admin/blocks/:block_id/plots). The whole card is the button that
  * opens the block's plot editor.
  */
-function BlockCard({ block, onManage }: { block: Block; onManage: () => void }) {
+function BlockCard({ block, survey, onManage }: {
+  block: Block;
+  survey?: PlotSummary["block_summaries"][number];
+  onManage: () => void;
+}) {
   const { data: plots = [], isLoading } = useBlockPlots({ blockId: block._id });
   const stats = useMemo(() => blockStats(plots), [plots]);
 
@@ -250,6 +263,21 @@ function BlockCard({ block, onManage }: { block: Block; onManage: () => void }) 
         <BlockStat label="Plots" value={isLoading ? "…" : stats.total} />
         <BlockStat label="Available" value={isLoading ? "…" : stats.available} good={stats.available > 0} />
         <BlockStat label="Allocated" value={isLoading ? "…" : stats.allocated} />
+      </div>
+      <div className="mt-3 space-y-1 border-t pt-2.5 text-[11px] text-muted-foreground">
+        <span className="block text-[9px] font-semibold uppercase tracking-wider">Verified survey work</span>
+        <div className="flex justify-between gap-2">
+          <span>Parcelled</span>
+          <strong className="font-medium text-foreground tabular-nums">
+            {survey ? `${survey.parcelled} of ${survey.plots} plots` : "—"}
+          </strong>
+        </div>
+        <div className="flex justify-between gap-2">
+          <span>Cleared</span>
+          <strong className="font-medium text-foreground tabular-nums">
+            {survey ? `${formatSqmExact(survey.cleared_sqm)} of ${formatSqmExact(survey.sqm)}` : "—"}
+          </strong>
+        </div>
       </div>
     </button>
   );

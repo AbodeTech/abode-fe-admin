@@ -15,6 +15,7 @@ import { OfferTypeSchema } from './asset.schema';
 export const ProfitabilityMatrixRowSchema = z.object({
   offer_type: OfferTypeSchema,
   size_id: z.string().nullable(),
+  size_sqm: z.number(),
   tenor_months: z.number().nullable(),
   sold_value: z.number(),
   received: z.number(),
@@ -42,10 +43,7 @@ export type ProfitabilityMatrix = z.infer<typeof ProfitabilityMatrixSchema>;
 
 /* -------------------- rows for the screen -------------------- */
 
-export type PlanProfitRow = ProfitabilityMatrixRow & {
-  /** `null` when the row's size is no longer on the asset (or the sale has no size). */
-  size_sqm: number | null;
-};
+export type PlanProfitRow = ProfitabilityMatrixRow;
 
 const OFFER_ORDER = OfferTypeSchema.options as readonly string[];
 
@@ -53,19 +51,11 @@ const OFFER_ORDER = OfferTypeSchema.options as readonly string[];
  * The matrix rows, labelled and ordered for display: by product, then size,
  * then tenor (outright first).
  *
- * The backend sends a size's id, not its area, so the area is looked up in
- * the asset's own offers. A row whose size cannot be found keeps `null`.
- * Nothing else is derived: every figure is the backend's.
+ * The backend supplies each row's sqm size, including sizes no longer in
+ * the current offer catalogue. Every financial figure passes through unchanged.
  */
-export function planProfitRows(
-  rows: ProfitabilityMatrixRow[],
-  offers: { offer_type: string; sizes: { _id: string; size_sqm: number }[] }[]
-): PlanProfitRow[] {
-  const sqmBySize = new Map(offers.flatMap((offer) => offer.sizes.map((size) => [size._id, size.size_sqm] as const)));
-
-  return rows
-    .map((row) => ({ ...row, size_sqm: row.size_id ? (sqmBySize.get(row.size_id) ?? null) : null }))
-    .sort(
+export function planProfitRows(rows: ProfitabilityMatrixRow[]): PlanProfitRow[] {
+  return [...rows].sort(
       (a, b) =>
         OFFER_ORDER.indexOf(a.offer_type) - OFFER_ORDER.indexOf(b.offer_type) ||
         (a.size_sqm ?? Number.POSITIVE_INFINITY) - (b.size_sqm ?? Number.POSITIVE_INFINITY) ||

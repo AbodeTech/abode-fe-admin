@@ -191,10 +191,10 @@ export function CostDetailSheet({ assetId, obligationId, open, onOpenChange, can
 
                 <div className="flex items-center justify-between gap-2 rounded-lg border p-3">
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Recognised cost</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Current recognised cost</p>
                     <p className="text-lg font-bold tabular-nums">{formatNaira(data.recognised_cost)}</p>
                   </div>
-                  {canManage ? (
+                  {canManage && obligation.status !== "archived" ? (
                     <div className="flex items-center gap-2">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -247,7 +247,7 @@ export function CostDetailSheet({ assetId, obligationId, open, onOpenChange, can
                         assetId={assetId}
                         obligationId={obligation.id}
                         event={event}
-                        canManage={canManage}
+                        canManage={canManage && obligation.status !== "archived"}
                         onReverse={setReverseTarget}
                       />
                     ))}

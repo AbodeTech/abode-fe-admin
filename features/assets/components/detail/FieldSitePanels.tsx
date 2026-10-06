@@ -105,7 +105,7 @@ export function FieldCostsPanel({ assetId }: { assetId: string }) {
               {data.by_category.map((row) => (
                 <div key={row.category}>
                   <span className="block text-[10px] uppercase tracking-wider text-muted-foreground">
-                    {categoryLabel(row.category)}
+                    {row.category_label ?? categoryLabel(row.category)}
                   </span>
                   <strong className="text-base font-semibold tabular-nums">{formatNairaCompact(row.amount)}</strong>
                 </div>
@@ -126,7 +126,7 @@ export function FieldCostsPanel({ assetId }: { assetId: string }) {
                   {data.entries.map((entry, index) => (
                     <tr key={`${entry.submission_id}-${index}`} className="border-b last:border-b-0">
                       <td className={cn(CELL, "whitespace-nowrap")}>{day(entry.work_date)}</td>
-                      <td className={CELL}>{categoryLabel(entry.category)}</td>
+                      <td className={CELL}>{entry.category_label ?? categoryLabel(entry.category)}</td>
                       <td className={CELL}>
                         {entry.vendor ?? "—"}
                         {entry.payment_reference ? (

@@ -77,8 +77,17 @@ export const AdminDeletePlanPayloadSchema = z.object({
   reason: z.string().trim().min(30).max(2000),
   refund_to_wallet: z.boolean().optional(),
   free_inventory: z.boolean().optional(),
+  keep_inventory_reason: z.string().trim().min(20).optional(),
   expected_updated_at: z.string().optional(),
   notify_user: z.boolean().optional(),
+}).superRefine((payload, context) => {
+  if (payload.free_inventory === false && !payload.keep_inventory_reason) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['keep_inventory_reason'],
+      message: 'Explain why the land must stay committed (at least 20 characters)',
+    });
+  }
 });
 
 export const PlanMutationReasonSchema = AdminReasonSchema.extend({

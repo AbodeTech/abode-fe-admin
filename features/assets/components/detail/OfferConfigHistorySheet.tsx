@@ -35,7 +35,8 @@ interface Props {
 }
 
 export function OfferConfigHistorySheet({ assetId, open, onOpenChange }: Props) {
-  const { data, isLoading } = useOfferConfigHistory(assetId, { enabled: open });
+  const [page, setPage] = useState(1);
+  const { data, isLoading, isError } = useOfferConfigHistory(assetId, { enabled: open, page });
   const [expanded, setExpanded] = useState(false);
 
   const revisions = data?.items ?? [];
@@ -56,6 +57,8 @@ export function OfferConfigHistorySheet({ assetId, open, onOpenChange }: Props) 
               <Skeleton className="h-10 w-full" />
               <Skeleton className="h-10 w-full" />
             </div>
+          ) : isError ? (
+            <p className="p-6 text-sm text-destructive">Could not load offer history. Close and reopen this panel to try again.</p>
           ) : revisions.length === 0 ? (
             <p className="p-6 text-sm text-muted-foreground">No changes have been made yet.</p>
           ) : (
@@ -82,6 +85,13 @@ export function OfferConfigHistorySheet({ assetId, open, onOpenChange }: Props) 
             >
               {expanded ? "Show fewer" : `Show all ${revisions.length} changes`}
             </button>
+          ) : null}
+          {(data?.meta.totalPages ?? 0) > 1 ? (
+            <div className="flex items-center justify-between border-t px-6 py-3 text-sm">
+              <button type="button" disabled={page <= 1} onClick={() => { setPage((value) => value - 1); setExpanded(false); }} className="disabled:opacity-40">Previous</button>
+              <span>Page {page} of {data?.meta.totalPages}</span>
+              <button type="button" disabled={page >= (data?.meta.totalPages ?? 1)} onClick={() => { setPage((value) => value + 1); setExpanded(false); }} className="disabled:opacity-40">Next</button>
+            </div>
           ) : null}
         </div>
       </SheetContent>
