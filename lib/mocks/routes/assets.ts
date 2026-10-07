@@ -1,4 +1,5 @@
 import { MockHttpError, type MockRoutes } from '../router';
+import { ensurePricingState, sizePricingFields, versionStats } from './flex-pricing-store';
 import { body, paged } from './util';
 
 /* ============================================================
@@ -363,17 +364,27 @@ type MockOfferConfigAction =
   | 'delete-size'
   | 'add-plan'
   | 'update-plan'
-  | 'delete-plan';
+  | 'delete-plan'
+  | 'publish-pricing'
+  | 'convert-pricing';
 type MockOfferConfigRevision = {
   version: number;
   action: MockOfferConfigAction;
   summary: string;
   changed_by: string | null;
   changed_at: string;
+  /** Pricing actions only — the counts shown beside them are read live from the pricing store. */
+  size_id?: string;
+  pricing_version?: number;
 };
 const offerConfigHistory: Record<string, MockOfferConfigRevision[]> = {};
 
-function recordOfferConfigChange(assetId: string, action: MockOfferConfigAction, summary: string): void {
+export function recordOfferConfigChange(
+  assetId: string,
+  action: MockOfferConfigAction,
+  summary: string,
+  extra: { size_id?: string; pricing_version?: number } = {}
+): void {
   const entries = offerConfigHistory[assetId] ?? [];
   entries.push({
     version: entries.length + 1,
@@ -381,16 +392,49 @@ function recordOfferConfigChange(assetId: string, action: MockOfferConfigAction,
     summary,
     changed_by: MOCK_ADMIN_NAME,
     changed_at: nowIso(),
+    ...extra,
   });
   offerConfigHistory[assetId] = entries;
 }
 
-function requireSize(assetId: string, offerType: string, sizeId: string): MockSize {
+export function requireSize(assetId: string, offerType: string, sizeId: string): MockSize {
   const offer = trees[assetId]?.find((candidate) => candidate.offer_type === offerType);
   if (!offer) throw new MockHttpError(404, 'Offer not found', 'OFFER_NOT_FOUND');
   const size = offer.sizes.find((candidate) => candidate._id === sizeId);
   if (!size) throw new MockHttpError(404, 'Size not found', 'SIZE_NOT_FOUND');
   return size;
+}
+
+/** The size plus its position in its offer — pricing state is seeded by position. */
+export function requireSizeIndexed(assetId: string, offerType: string, sizeId: string): { size: MockSize; index: number } {
+  const size = requireSize(assetId, offerType, sizeId);
+  const offer = trees[assetId]?.find((candidate) => candidate.offer_type === offerType);
+  return { size, index: offer ? offer.sizes.findIndex((candidate) => candidate._id === sizeId) : -1 };
+}
+
+/**
+ * Plans are the legacy tenor-list model. Once a Flex size is on a base plan (or
+ * is still unpriced) the plan routes are refused, so there is one source of
+ * truth (contract §3.1).
+ */
+function assertPlansEditable(assetId: string, offerType: string, size: MockSize): void {
+  if (offerType !== 'flex') return;
+  const { index } = requireSizeIndexed(assetId, offerType, size._id);
+  const state = ensurePricingState(size, { isFlex: true, index });
+  if (state && state.mode !== 'tenor_list') {
+    throw new MockHttpError(409, 'This size is priced by a base plan. Edit its pricing instead.', 'PRICING_MODE_BASE_PLAN');
+  }
+}
+
+/** The tree as the detail route returns it — every size carries `pricing_mode`/`pricing` (contract §3.1). */
+function withPricing(offers: MockOffer[]) {
+  return offers.map((offer) => ({
+    ...offer,
+    sizes: offer.sizes.map((size, index) => ({
+      ...size,
+      ...sizePricingFields(ensurePricingState(size, { isFlex: offer.offer_type === 'flex', index }), size.plans),
+    })),
+  }));
 }
 
 export function offerTree(row: MockAsset): MockOffer[] {
@@ -914,7 +958,7 @@ export const assetRoutes: MockRoutes = {
     const row = assets.find((candidate) => candidate._id === params.id);
     if (!row) throw new MockHttpError(404, 'Asset not found', 'ASSET_NOT_FOUND');
 
-    return { ...row, offers: offerTree(row) };
+    return { ...row, offers: withPricing(offerTree(row)) };
   },
 
   /** PUT /admin/assets/:id/pitch-pack — `SetPitchPackDto`; the same link keeps its upload date. */
@@ -1155,6 +1199,8 @@ export const assetRoutes: MockRoutes = {
       plans?: MockPlan[];
     }>(raw);
 
+    if (dto.plans !== undefined) assertPlansEditable(params.assetId, params.offerType, size);
+
     if (dto.size_sqm !== undefined || dto.configured_units !== undefined) {
       assertWithinProductCapacity(offer, OFFER_TYPE_DISPLAY_LABELS[params.offerType] ?? params.offerType, size._id, {
         size_sqm: dto.size_sqm ?? size.size_sqm,
@@ -1209,6 +1255,7 @@ export const assetRoutes: MockRoutes = {
   /** Ticket 19's add half (2026-07-28) — one plan, refused on a duplicate tenor. */
   'POST /admin/assets/:assetId/offers/:offerType/sizes/:sizeId/plans': ({ params, body: raw }) => {
     const size = requireSize(params.assetId, params.offerType, params.sizeId);
+    assertPlansEditable(params.assetId, params.offerType, size);
     const dto = body<MockPlan>(raw);
 
     if (size.plans.some((candidate) => candidate.tenor_months === dto.tenor_months)) {
@@ -1228,6 +1275,7 @@ export const assetRoutes: MockRoutes = {
 
   'PATCH /admin/assets/:assetId/offers/:offerType/sizes/:sizeId/plans/:tenor': ({ params, body: raw }) => {
     const size = requireSize(params.assetId, params.offerType, params.sizeId);
+    assertPlansEditable(params.assetId, params.offerType, size);
     const plan = size.plans.find((candidate) => candidate.tenor_months === Number(params.tenor));
     if (!plan) throw new MockHttpError(404, 'Plan not found', 'PLAN_NOT_FOUND');
 
@@ -1255,6 +1303,7 @@ export const assetRoutes: MockRoutes = {
 
   'DELETE /admin/assets/:assetId/offers/:offerType/sizes/:sizeId/plans/:tenor': ({ params }) => {
     const size = requireSize(params.assetId, params.offerType, params.sizeId);
+    assertPlansEditable(params.assetId, params.offerType, size);
     const tenor = Number(params.tenor);
     if (!size.plans.some((candidate) => candidate.tenor_months === tenor)) {
       throw new MockHttpError(404, 'Plan not found', 'PLAN_NOT_FOUND');
@@ -1585,7 +1634,14 @@ export const assetRoutes: MockRoutes = {
 
   /** "Preserve offer configuration history" — newest first, like every other history route in this feature. */
   'GET /admin/assets/:assetId/offers/history': ({ params, query }) => {
-    const revisions = [...(offerConfigHistory[params.assetId] ?? [])].sort((a, b) => b.version - a.version);
+    const revisions = [...(offerConfigHistory[params.assetId] ?? [])]
+      .sort((a, b) => b.version - a.version)
+      // Pricing entries carry live purchase counts and a superseded marker.
+      .map((revision) =>
+        revision.size_id && revision.pricing_version
+          ? { ...revision, ...versionStats(revision.size_id, revision.pricing_version) }
+          : revision
+      );
     return paged(revisions, query, 50);
   },
 

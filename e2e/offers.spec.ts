@@ -100,35 +100,50 @@ test.describe.serial('Offers', () => {
     await closeDialog(page);
   });
 
-  test('a plan\'s land price is plain-editable again, its pre-Sprint-3 behaviour', async () => {
+  test('a plan\'s land price is plain-editable, once the kind of price edit is stated', async () => {
     await page.goto(assetTabUrl(ASSET_WITH_FULL_TREE, 'offers'));
 
-    const planRow = page.locator('table').getByText('12 months').first();
-    await planRow.locator('xpath=ancestor::tr').getByRole('button', { name: 'Plan actions' }).click();
+    // A full-ownership plan: Flex sizes are priced by a base plan now (or hide their hand-entered
+    // plans behind a row expander), so the always-visible plans table is the full-ownership one.
+    const fo = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Full ownership', exact: true }) });
+    const planRow = fo.locator('tr', { hasText: '24 months' }).first();
+    await planRow.getByRole('button', { name: 'Plan actions' }).click();
     await page.getByRole('menuitem', { name: 'Edit' }).click();
 
     const dialog = page.getByRole('dialog');
     await expect(dialog.getByRole('heading', { name: 'Edit plan' })).toBeVisible();
     const priceField = dialog.getByLabel('Land price', { exact: true });
     await expect(priceField).toBeEnabled();
-    // Keep the instalments consistent with the new price (initial 30%, the
-    // rest spread over the remaining 11 months) — planFormSchema refuses a
-    // plan whose numbers don't add up, by design.
-    await priceField.fill('2000000');
-    await dialog.getByLabel('Initial payment', { exact: true }).fill('600000');
-    await dialog.getByLabel('Monthly instalment', { exact: true }).fill('127273');
+
+    // A price different from whatever an earlier run left, so the edit is always a real change.
+    const newPrice = 2_000_000 + (Date.now() % 90) * 1000;
+    // 24 months = initial + 23 instalments, and planFormSchema refuses numbers that don't add up,
+    // so split the price exactly: a whole-naira instalment, with the remainder in the initial payment.
+    const monthly = Math.floor((newPrice - 600_000) / 23);
+    const initial = newPrice - 23 * monthly;
+    await priceField.fill(String(newPrice));
+    await dialog.getByLabel('Initial payment', { exact: true }).fill(String(initial));
+    await dialog.getByLabel('Monthly instalment', { exact: true }).fill(String(monthly));
+
+    // Changing a plan's money now has to say what kind of edit it is, and why.
+    await expect(dialog.getByText('What kind of price edit is this?')).toBeVisible();
+    await dialog.getByRole('radio', { name: /Correction/ }).click();
+    await dialog.getByLabel('Reason', { exact: true }).fill('E2E: price corrected');
     await dialog.getByRole('button', { name: 'Save plan' }).click();
 
     await expect(page.getByText('Plan saved')).toBeVisible({ timeout: 10_000 });
     await expect(dialog).toBeHidden();
     // Desktop table + mobile card both render simultaneously (toggled by CSS,
     // not conditional mounting), so the new price appears twice in the DOM.
-    await expect(page.getByText(/2,000,000/).first()).toBeVisible();
+    await expect(fo.getByText(newPrice.toLocaleString('en-US')).first()).toBeVisible();
     await waitForToastsToClear(page);
     await waitForBodyUnlocked(page);
   });
 
-  test('selling charges: sets up the estate\'s first version, then sees it in history', async () => {
+  // Stale since before the Flex 2.0 work: the "Price versions" button this drives no longer exists on the Offers
+  // tab, and SellingChargesPanel/-Dialog/-HistorySheet aren't mounted on any page, so the flow is unreachable.
+  // Re-enable (and re-check its selectors) when the selling-charges UI is put back on a page.
+  test.fixme('selling charges: sets up the estate\'s first version, then sees it in history', async () => {
     // Selling charges live in the "Price versions" side sheet, not on the page.
     await page.getByRole('button', { name: 'Price versions' }).click();
     const sheet = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Price versions' }) });

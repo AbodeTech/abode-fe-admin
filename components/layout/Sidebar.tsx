@@ -21,6 +21,7 @@ import {
   Compass,
   FileText,
   Gem,
+  Gauge,
   Gift,
   GraduationCap,
   HardHat,

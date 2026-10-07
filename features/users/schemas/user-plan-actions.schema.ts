@@ -46,6 +46,14 @@ export const AdminCreateFlexPlanPayloadSchema = AdminCreatePlanBaseSchema.extend
   monthly_payment: z.number().positive(),
   initial_payment: z.number().nonnegative(),
   amount_paid: z.number().nonnegative(),
+  /**
+   * Flex 2.0 (Q12): whether this manually created plan takes part in the
+   * customer's account-wide streak. The backend default is on, so the field is
+   * only sent when an admin switches it OFF — a plan created the usual way sends
+   * exactly what it always did. Off means the plan neither earns nor blocks the
+   * streak. (docs/FLEX-2.0-ENDPOINTS.pdf §3.1, POST /admin/users/:id/assets/flex)
+   */
+  enable_streaks: z.boolean().optional(),
 });
 
 const AdminCreateLandPlanPayloadSchema = AdminCreatePlanBaseSchema.extend({

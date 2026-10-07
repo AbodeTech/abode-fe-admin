@@ -270,21 +270,30 @@ function AddOfferDialog({ asset, offerType }: { asset: AssetDetail; offerType: O
             size_sqm: values.size_sqm,
             units_available: values.configured_units,
             ...(isFo ? { document_fee: values.document_fee ?? 0 } : {}),
-            plans: [
-              {
-                tenor_months: isFlex ? 12 : 0,
-                land_price: 1,
-                initial_payment: 1,
-                monthly_installment: 0,
-                is_active: true,
-              },
-            ],
+            // A Flex size is created unpriced and priced on the pricing editor.
+            ...(isFlex
+              ? {}
+              : {
+                  plans: [
+                    {
+                      tenor_months: 0,
+                      land_price: 1,
+                      initial_payment: 1,
+                      monthly_installment: 0,
+                      is_active: true,
+                    },
+                  ],
+                }),
           },
         ],
       },
       {
         onSuccess: () => {
-          toast.success(`${OFFER_TYPE_LABELS[offerType]} added — set its plan pricing next`);
+          toast.success(
+            isFlex
+              ? `${OFFER_TYPE_LABELS[offerType]} added — set its pricing next`
+              : `${OFFER_TYPE_LABELS[offerType]} added — set its plan pricing next`
+          );
           close();
         },
         onError: (error) => toast.error(error.message || "Couldn't add the offer"),
@@ -298,7 +307,9 @@ function AddOfferDialog({ asset, offerType }: { asset: AssetDetail; offerType: O
         <DialogHeader>
           <DialogTitle>Add {OFFER_TYPE_LABELS[offerType].toLowerCase()}</DialogTitle>
           <DialogDescription>
-            Starts with one size and a placeholder plan — price the plan right after.
+            {isFlex
+              ? "Starts with one size. It isn't on sale until you set its pricing."
+              : "Starts with one size and a placeholder plan — price the plan right after."}
           </DialogDescription>
         </DialogHeader>
 
@@ -348,7 +359,7 @@ function AddOfferDialog({ asset, offerType }: { asset: AssetDetail; offerType: O
               />
             ) : null}
 
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid items-start gap-3 sm:grid-cols-2">
               <FormField
                 control={form.control}
                 name="size_sqm"
@@ -521,28 +532,33 @@ function SizeDialog({
       return;
     }
 
-    // AddSizeDto extends SizeInputDto, so a new size must arrive with at least
-    // one plan. A placeholder outright/one-month plan priced at zero would be
-    // rejected by the arithmetic rules, so we seed a minimal valid one and let
-    // the admin price it immediately after.
+    // A full-ownership/commercial size must arrive with at least one plan, and a
+    // placeholder priced at zero would be rejected by the arithmetic rules, so
+    // we seed a minimal valid one and let the admin price it immediately after.
+    // A Flex size has no placeholder: it is created unpriced and priced on the
+    // pricing editor, and isn't sellable until that first publish.
     addSize.mutate(
       {
         size_sqm: values.size_sqm,
         units_available: values.configured_units,
         ...(document_fee === undefined ? {} : { document_fee }),
-        plans: [
-          {
-            tenor_months: isFlex ? 12 : 0,
-            land_price: 1,
-            initial_payment: isFlex ? 1 : 1,
-            monthly_installment: 0,
-            is_active: true,
-          },
-        ],
+        ...(isFlex
+          ? {}
+          : {
+              plans: [
+                {
+                  tenor_months: 0,
+                  land_price: 1,
+                  initial_payment: 1,
+                  monthly_installment: 0,
+                  is_active: true,
+                },
+              ],
+            }),
       },
       {
         onSuccess: () => {
-          toast.success("Size added — set its plan pricing next");
+          toast.success(isFlex ? "Size added — set its pricing next" : "Size added — set its plan pricing next");
           close();
         },
         onError: (error) => toast.error(error.message || "Couldn't add the size"),
@@ -560,7 +576,9 @@ function SizeDialog({
           <DialogDescription>
             {isEdit
               ? "Plans on this size are edited separately."
-              : "A size needs a plan to exist, so one is created with it — price it straight after."}
+              : isFlex
+                ? "A new size isn't on sale until its pricing is set — do that straight after."
+                : "A size needs a plan to exist, so one is created with it — price it straight after."}
           </DialogDescription>
         </DialogHeader>
 
@@ -580,7 +598,7 @@ function SizeDialog({
               ))}
             </div>
           ) : null}
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid items-start gap-4 sm:grid-cols-2">
             <FormField
               control={form.control}
               name="size_sqm"
@@ -927,7 +945,7 @@ function PlanDialog({
 
         <Form {...form}>
           <div className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid items-start gap-3 sm:grid-cols-2">
               <FormField
                 control={form.control}
                 name="tenor_months"

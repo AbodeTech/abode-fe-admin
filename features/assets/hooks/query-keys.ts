@@ -42,6 +42,12 @@ export const assetKeys = {
     [...assetKeys.landConfiguration(assetId), 'history'] as const,
   landConfigurationRevision: (assetId: string, version: number) =>
     [...assetKeys.landConfigurationHistory(assetId), version] as const,
+  /**
+   * GET /admin/assets/:assetId/offers/flex/sizes/:sizeId/pricing — nested under
+   * detail so any offer write (and the pricing mutations themselves) refetch it
+   * together with the tree and the history log.
+   */
+  flexPricing: (assetId: string, sizeId: string) => [...assetKeys.detail(assetId), 'flex-pricing', sizeId] as const,
   /** Cost items (the catalogue) — GET/POST/PATCH .../costs/items(/:itemId). */
   costItems: (assetId: string) => [...assetKeys.detail(assetId), 'cost-items'] as const,
   costItem: (assetId: string, itemId: string) => [...assetKeys.costItems(assetId), itemId] as const,

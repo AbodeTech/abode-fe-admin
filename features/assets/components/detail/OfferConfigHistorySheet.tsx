@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import { Info } from "lucide-react";
+
 import { Badge } from "@/components/ui/badge";
 import {
   Sheet,
@@ -13,7 +15,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
-import { OFFER_CONFIG_ACTION_LABELS } from "../../schemas/offer-config-history.schema";
+import { OFFER_CONFIG_ACTION_LABELS, type OfferConfigRevision } from "../../schemas/offer-config-history.schema";
 import { useOfferConfigHistory } from "../../hooks/use-offer-config-history";
 
 /* ============================================================
@@ -23,6 +25,20 @@ import { useOfferConfigHistory } from "../../hooks/use-offer-config-history";
  * no before/after snapshot to diff, so each entry is just a server-derived
  * summary of what happened, who, and when.
  * ============================================================ */
+
+/**
+ * “3 purchases so far” on the live version, “11 purchases · now superseded” on an
+ * older one — and, when any, the transfers still awaiting approval, which keep
+ * their saved terms too. Only pricing entries carry these counts.
+ */
+function pricingNote(revision: OfferConfigRevision): string | null {
+  if (revision.purchase_count === undefined) return null;
+  const count = revision.purchase_count;
+  const purchases = `${count} ${count === 1 ? "purchase" : "purchases"}`;
+  const base = revision.superseded ? `${purchases} · now superseded` : `${purchases} so far`;
+  const pending = revision.pending_transfer_count ?? 0;
+  return pending > 0 ? `${base} · ${pending} awaiting approval` : base;
+}
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleString("en-NG", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" });
@@ -44,7 +60,7 @@ export function OfferConfigHistorySheet({ assetId, open, onOpenChange }: Props) 
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-xl">
+      <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-2xl">
         <SheetHeader className="border-b px-6 py-5 text-left">
           <SheetTitle>Offer configuration history</SheetTitle>
           <SheetDescription>Every offer, size and plan change made on this estate.</SheetDescription>
@@ -68,7 +84,12 @@ export function OfferConfigHistorySheet({ assetId, open, onOpenChange }: Props) 
                   <Badge variant="outline" className="mt-0.5 shrink-0 text-[10px]">
                     {OFFER_CONFIG_ACTION_LABELS[revision.action]}
                   </Badge>
-                  <span className="min-w-0 flex-1 text-sm">{revision.summary}</span>
+                  <span className="min-w-0 flex-1 text-sm">
+                    {revision.summary}
+                    {pricingNote(revision) ? (
+                      <span className="mt-0.5 block text-xs text-muted-foreground">{pricingNote(revision)}</span>
+                    ) : null}
+                  </span>
                   <span className="w-full text-xs text-muted-foreground sm:w-auto">
                     {revision.changed_by ?? "—"} · {formatDate(revision.changed_at)}
                   </span>
@@ -86,6 +107,14 @@ export function OfferConfigHistorySheet({ assetId, open, onOpenChange }: Props) 
               {expanded ? "Show fewer" : `Show all ${revisions.length} changes`}
             </button>
           ) : null}
+
+          {revisions.some((revision) => revision.pricing_version !== undefined) ? (
+            <div className="m-4 flex items-start gap-2.5 rounded-lg border border-blue-200 bg-blue-50 px-3.5 py-2.5 text-[13px] text-blue-900 sm:mx-6">
+              <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+              <div>
+                <b>Publishing a new pricing version doesn&apos;t touch earlier purchases.</b> Buyers under earlier versions — including transfers
+                awaiting approval — keep their saved terms. Only new quotes use the live version.
+              </div>
           {(data?.meta.totalPages ?? 0) > 1 ? (
             <div className="flex items-center justify-between border-t px-6 py-3 text-sm">
               <button type="button" disabled={page <= 1} onClick={() => { setPage((value) => value - 1); setExpanded(false); }} className="disabled:opacity-40">Previous</button>

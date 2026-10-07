@@ -542,7 +542,14 @@ export async function apiGetPagedWithAggregates<
         aggregates: aggregatesSchema,
       })
       .parse(res.data);
-    return { items: parsed.data, meta: parsed.meta ?? {}, aggregates: parsed.aggregates };
+    // `aggregates` is required here (unlike the mock branch above), and Zod v4's mapped type can't
+    // see a required key whose schema is a generic parameter. The runtime check is the parse above;
+    // this only tells the compiler what it already guarantees.
+    return {
+      items: parsed.data,
+      meta: parsed.meta ?? {},
+      aggregates: (parsed as { aggregates: z.infer<A> }).aggregates,
+    };
   } catch (err) {
     throw toApiClientError(err, 'GET', path);
   }

@@ -127,10 +127,16 @@ export type AddSizePayload = {
    */
   units_available: number;
   document_fee?: number;
-  plans: SizePlanInput[];
+  /**
+   * Required on full-ownership and commercial sizes. A **Flex** size omits it:
+   * under Flex 2.0 it is created `unpriced` and priced on the pricing editor, so
+   * the old ₦1 placeholder plan is gone (docs/FLEX-2.0-ENDPOINTS.pdf §3.1 —
+   * this needs the backend change described there).
+   */
+  plans?: SizePlanInput[];
 };
 
-/** A size is created together with its plans — `AddSizeDto` extends `SizeInputDto`. */
+/** A full-ownership/commercial size is created together with its plans; a Flex size is created unpriced. */
 export const useAddSize = (assetId: string, offerType: OfferType) =>
   useTreeMutation(assetId, (payload: AddSizePayload) =>
     apiPost(`/admin/assets/${assetId}/offers/${offerType}/sizes`, payload, WriteResultSchema)
