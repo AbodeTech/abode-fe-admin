@@ -117,8 +117,12 @@ export function TicketComposer({ ticketId, channel, mergedInto }: Props) {
   };
 
   return (
-    <div className="border-t border-gray-200 bg-gray-50/60 p-3 space-y-2 shrink-0">
-      <div className="flex items-center gap-1.5">
+    // The composer sits under the timeline in a fixed-height column. It may
+    // take up to two-thirds of that column, and shrinks rather than overflow
+    // it; only the reply box gives way inside it, so the mode tabs and the
+    // Attach/Send row always stay in view, however long the reply.
+    <div className="border-t border-gray-200 bg-gray-50/60 p-3 flex flex-col gap-2 min-h-0 max-h-[66%]">
+      <div className="flex items-center gap-1.5 shrink-0">
         <ModeTab
           active={activeMode === "reply"}
           disabled={!canReply}
@@ -140,7 +144,7 @@ export function TicketComposer({ ticketId, channel, mergedInto }: Props) {
       </div>
 
       {!canReply && (
-        <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1.5">
+        <p className="shrink-0 text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1.5">
           {isMerged ? (
             <>
               This ticket was merged.{" "}
@@ -179,20 +183,19 @@ export function TicketComposer({ ticketId, channel, mergedInto }: Props) {
             ? "Write to the customer — this is sent as an email"
             : "Internal note — visible to admins only"
         }
-        // The shared Textarea grows with its content (field-sizing-content) and
-        // has no ceiling, while this composer is shrink-0 at the foot of a
-        // fixed-height column. A long reply grew the box past the bottom of the
-        // panel and took the Send button with it. Capped here, so it still
-        // grows for an ordinary reply and scrolls inside itself after that —
-        // the button below stays on screen however much is written.
+        // The shared Textarea grows with its content (field-sizing-content).
+        // A window-height cap (max-h-[40vh]) wasn't enough: the panel is far
+        // shorter than the window, so the box still pushed the Send row out.
+        // Instead it is the one part of the composer that shrinks (down to
+        // about three lines) and scrolls inside itself past that.
         className={cn(
-          "text-sm resize-none bg-white max-h-[40vh] overflow-y-auto",
+          "text-sm resize-none bg-white min-h-[4.5rem] shrink overflow-y-auto",
           activeMode === "note" && "border-amber-200 focus-visible:ring-amber-400"
         )}
       />
 
       {activeMode === "reply" && files.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-1.5 shrink-0 max-h-16 overflow-y-auto">
           {files.map((file, index) => (
             <span
               key={`${file.name}-${file.size}`}
@@ -215,7 +218,7 @@ export function TicketComposer({ ticketId, channel, mergedInto }: Props) {
         </div>
       )}
 
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex items-center justify-between gap-2 shrink-0">
         <p className="text-[10px] text-gray-500">
           {activeMode === "reply"
             ? "Sent as email, threaded so their answer returns to this ticket."
