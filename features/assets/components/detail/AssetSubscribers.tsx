@@ -28,14 +28,12 @@ import {
   type AssetSubscribersFilters,
 } from "../../hooks/use-asset-subscribers";
 import { useExportAssetSubscribers } from "../../hooks/use-export-asset-subscribers";
-import { usePlotInventory } from "../../hooks/use-plot-inventory";
 import {
   SUBSCRIBER_SORT_FIELDS,
   SUBSCRIBER_TYPES,
   SUBSCRIBER_TYPE_LABELS,
   customerLandPosition,
   paymentPercentage,
-  plotsByPlanId,
   type PurchaseTone,
   type SubscriberRow,
   type SubscriberSortField,
@@ -52,8 +50,6 @@ const SORT_LABELS: Record<SubscriberSortField, string> = {
 };
 
 const ALL = "all";
-/** The plot endpoint's own page cap. */
-const ALLOCATED_PLOTS_LIMIT = 200;
 
 const HEAD =
   "whitespace-nowrap border-b px-2.5 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider text-muted-foreground first:text-left";
@@ -87,12 +83,8 @@ const TYPE_SET = new Set<string>(SUBSCRIBER_TYPES);
  * what on this estate, the state of the purchase, what happens to the land,
  * and which plot (if any) they have been given.
  *
- * Two reads, joined by plan id:
- *  - GET /admin/assets/:id/subscribers   one row per payment plan — buyer,
- *    product, size, payments and plan status.
- *  - GET /admin/assets/:id/plots?allocation=allocated   the allocated plots
- *    and the plan each belongs to; this is the only source of the Allocation
- *    column.
+ * GET /admin/assets/:id/subscribers returns one row per payment plan,
+ * including its allocation status, allocated plot labels and linked events.
  *
  * The design's six columns are kept. What the old twelve-column list showed
  * (referrer, tenor, paid, balance, progress, next payment, date joined) is
@@ -141,8 +133,6 @@ export function AssetSubscribers({ assetId }: { assetId: string }) {
   const permissions = useAdminPermissions();
   const canView = permissions.has("view_asset_subscribers");
   const canExport = permissions.has("export_asset_subscribers");
-  // The plot inventory sits behind its own permission.
-  const canViewPlots = permissions.has("view_field_performance");
 
   const filters: AssetSubscribersFilters = {
     page,
@@ -157,11 +147,6 @@ export function AssetSubscribers({ assetId }: { assetId: string }) {
     ...filters,
     enabled: canView,
   });
-  const allocated = usePlotInventory(
-    assetId,
-    { allocation: "allocated", limit: ALLOCATED_PLOTS_LIMIT },
-    { enabled: canView && canViewPlots }
-  );
   const exportMutation = useExportAssetSubscribers(assetId);
 
   if (!canView) {
@@ -180,11 +165,6 @@ export function AssetSubscribers({ assetId }: { assetId: string }) {
   const rows = data?.items ?? [];
   const total = data?.meta?.total ?? 0;
   const aggregates = data?.aggregates;
-
-  const plotsByPlan = plotsByPlanId(allocated.data?.data.plots ?? []);
-  // Known only when every allocated plot was read: with more than one page, a
-  // plan with no match might still hold a plot on a page that wasn't fetched.
-  const plotsKnown = Boolean(allocated.data) && (allocated.data?.meta.totalPages ?? 1) <= 1;
 
   const runExport = async () => {
     try {
@@ -322,7 +302,7 @@ export function AssetSubscribers({ assetId }: { assetId: string }) {
               </thead>
               <tbody>
                 {rows.map((row) => (
-                  <CustomerRow key={row.plan_id} row={row} plotsByPlan={plotsByPlan} plotsKnown={plotsKnown} />
+                  <CustomerRow key={row.plan_id} row={row} />
                 ))}
               </tbody>
             </table>
@@ -335,16 +315,8 @@ export function AssetSubscribers({ assetId }: { assetId: string }) {
   );
 }
 
-function CustomerRow({
-  row,
-  plotsByPlan,
-  plotsKnown,
-}: {
-  row: SubscriberRow;
-  plotsByPlan: ReadonlyMap<string, string[]>;
-  plotsKnown: boolean;
-}) {
-  const position = customerLandPosition(row, plotsByPlan, plotsKnown);
+function CustomerRow({ row }: { row: SubscriberRow }) {
+  const position = customerLandPosition(row);
   const name = row.buyer_name || row.buyer_email || "—";
   const joined = shortDate(row.createdAt);
   const nextPayment = shortDate(row.next_payment_date);
@@ -401,7 +373,7 @@ function CustomerRow({
         {position.landTreatment ?? (
           <span
             className="text-muted-foreground"
-            title="Whether a cancelled or closed plan's land was released or kept is not reported for this list"
+            title="Land treatment for a cancelled plan is not reported for this list"
           >
             —
           </span>
@@ -416,6 +388,12 @@ function CustomerRow({
         ) : (
           <span className="text-muted-foreground">—</span>
         )}
+        {row.allocation_events.map((event) => (
+          <Sub key={event.event_id}>
+            {event.title} · {event.confirmed ? "Ground confirmed" : "Not ground confirmed"}
+            {shortDate(event.starts_at) ? ` · ${shortDate(event.starts_at)}` : ""}
+          </Sub>
+        ))}
       </td>
     </tr>
   );

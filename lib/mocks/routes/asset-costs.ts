@@ -391,6 +391,7 @@ function presentObligationDetail(
   const stages: Record<string, number> = {};
   let recognised = 0;
   for (const event of events) {
+    if (obligation.status === "archived") continue;
     if (event.status !== "approved" || event.amount == null) continue;
     stages[event.financial_stage] =
       (stages[event.financial_stage] ?? 0) + event.amount;
@@ -780,6 +781,16 @@ function createCostRecord(
 }
 
 export const assetCostRoutes: MockRoutes = {
+  "GET /admin/costs/catalogue": () => ({
+    groups: [
+      { group: "acquisition", label: "Acquisition" },
+      { group: "development", label: "Development" },
+      { group: "documentation_finance", label: "Documentation & Finance" },
+      { group: "direct_cost_of_sale", label: "Direct Cost of Sale" },
+      { group: "opex", label: "OPEX" },
+    ],
+  }),
+
   /** GET .../costs/catalogue — `COST_GROUPS` with `COST_GROUP_LABELS`, as `AssetCostService.catalogue()` sends them. */
   "GET /admin/assets/:assetId/costs/catalogue": () => ({
     groups: [
@@ -1088,7 +1099,7 @@ export const assetCostRoutes: MockRoutes = {
 
     const rows = items.map((item) => {
       const itemObligations = obligations.filter(
-        (o) => o.cost_item_id === item._id,
+        (o) => o.cost_item_id === item._id && o.status !== "archived",
       );
       const events = itemObligations.flatMap(
         (o) => eventsByObligation[o._id] ?? [],
@@ -1462,6 +1473,8 @@ export const assetCostRoutes: MockRoutes = {
         "Cost entry not found",
         "COST_EVENT_NOT_FOUND",
       );
+    if (found.obligation.status === "archived")
+      throw new MockHttpError(409, "This cost record has been archived", "OBLIGATION_ARCHIVED");
     if (found.event.status !== "draft") {
       throw new MockHttpError(
         409,
@@ -1494,6 +1507,8 @@ export const assetCostRoutes: MockRoutes = {
         "Cost entry not found",
         "COST_EVENT_NOT_FOUND",
       );
+    if (found.obligation.status === "archived")
+      throw new MockHttpError(409, "This cost record has been archived", "OBLIGATION_ARCHIVED");
     if (found.event.status === "approved")
       throw new MockHttpError(
         409,

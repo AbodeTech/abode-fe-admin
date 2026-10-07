@@ -105,7 +105,7 @@ function AddCostForm({ assetId, initialItemId, onClose }: FormProps) {
 
   const { data: items = [] } = useCostItems(assetId);
   // The backend's own list of groups; the compiled-in copy stands in until it arrives.
-  const { data: catalogue } = useCostCatalogue(assetId);
+  const { data: catalogue } = useCostCatalogue();
   const groups = catalogue?.length
     ? catalogue
     : COST_GROUPS.map((group) => ({ group, label: COST_GROUP_LABELS[group] }));

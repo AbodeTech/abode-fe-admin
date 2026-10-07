@@ -39,6 +39,8 @@ export const PlotInventoryRowSchema = z.object({
   commercial_status: PlotStatusSchema,
   product: z.enum(OFFER_TYPES).nullable(),
   payment_plan_id: z.string().nullable(),
+  customer_name: z.string().nullable().optional(),
+  allocation_event_name: z.string().nullable().optional(),
   allocated_date: z.string().nullable(),
   parcelled: z.boolean(),
   re_pegged_count: z.number(),
@@ -84,6 +86,8 @@ export const PlotInventoryResponseSchema = z.object({
   plots: z.array(PlotInventoryRowSchema),
   totals: PlotInventoryTotalsSchema,
   filtered_totals: PlotInventoryTotalsSchema,
+  /** Verified survey work grouped by the plot's current block. */
+  block_summaries: z.array(PlotInventoryTotalsSchema.extend({ block: z.string() })).default([]),
   allocation_readiness: AllocationReadinessSchema,
 });
 

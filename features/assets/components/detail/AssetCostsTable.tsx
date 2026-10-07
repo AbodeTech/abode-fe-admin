@@ -5,7 +5,7 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { formatNairaCompact } from "@/lib/utils/format";
+import { formatNaira, formatNairaCompact } from "@/lib/utils/format";
 
 import { OFFER_TYPE_LABELS, type OfferType } from "../../schemas/asset.schema";
 import {
@@ -74,8 +74,8 @@ interface Props {
  *    and paid), otherwise In progress.
  *
  * The design draws each row as a single record. Here a cost item can hold
- * several, so "View" opens the one record when there is exactly one, and
- * otherwise opens the row to list them; each record opens its own detail.
+ * several, so the summary row always expands to show its individual records,
+ * even when there is only one. Each record then opens its own detail.
  *
  * "Remove" is offered only on a cost item with nothing recorded on it. The
  * backend never deletes an item, it marks it inactive, and an inactive item
@@ -120,12 +120,11 @@ export function AssetCostsTable({ rows, canManage, onOpenRecord, onAddRecord, on
 
             return (
               <Fragment key={item.id}>
-                <tr className="border-b last:border-b-0 hover:bg-muted/40">
+                <tr className="border-b bg-muted/10 last:border-b-0 hover:bg-muted/40">
                   <td className="px-2.5 py-2.5 text-left">
                     <span className="font-semibold">{item.name}</span>
                     <span className="block text-[10px] text-muted-foreground">
-                      {COST_GROUP_LABELS[item.group]}
-                      {records.length > 1 ? ` · ${records.length} records` : ""}
+                      {COST_GROUP_LABELS[item.group]} · Total across {records.length} {records.length === 1 ? "record" : "records"}
                     </span>
                   </td>
                   <td className={cn(CELL, "whitespace-normal")}>{scopeLabel(item, records)}</td>
@@ -160,42 +159,45 @@ export function AssetCostsTable({ rows, canManage, onOpenRecord, onAddRecord, on
                           </Button>
                         </span>
                       ) : null
-                    ) : records.length === 1 ? (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onOpenRecord(records[0].obligation.id)}
-                      >
-                        View
-                      </Button>
                     ) : (
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
                         aria-expanded={open}
-                        aria-label={`${open ? "Hide" : "View"} records for ${item.name}`}
+                        aria-label={`${open ? "Hide" : "Show"} ${records.length} ${records.length === 1 ? "record" : "records"} for ${item.name}`}
                         onClick={() => toggle(item.id)}
                       >
-                        View
+                        {open ? "Hide" : "Show"} {records.length} {records.length === 1 ? "record" : "records"}
                         <Chevron className="ml-1 h-3.5 w-3.5" aria-hidden />
                       </Button>
                     )}
                   </td>
                 </tr>
 
+                {open ? (
+                  <tr id={`cost-records-${item.id}`} className="border-b bg-muted/20">
+                    <td colSpan={9} className="px-4 py-2 text-left text-[11px] font-medium text-muted-foreground">
+                      Individual records for {item.name} — select a record to see its entries and evidence.
+                    </td>
+                  </tr>
+                ) : null}
+
                 {open
                   ? records.map((record) => (
                       <tr
                         key={record.obligation.id}
-                        className="cursor-pointer border-b bg-muted/20 hover:bg-muted/40"
-                        onClick={() => onOpenRecord(record.obligation.id)}
+                        className="border-b bg-muted/20 hover:bg-muted/40"
                       >
-                        <td className="py-2 pl-7 pr-2.5 text-left text-muted-foreground">
-                          {record.obligation.title}
+                        <td className="py-2 pl-7 pr-2.5 text-left">
+                          <span className="block font-medium">{record.obligation.title}</span>
+                          {record.obligation.vendor || record.obligation.reference ? (
+                            <span className="block text-[10px] text-muted-foreground">
+                              {[record.obligation.vendor, record.obligation.reference].filter(Boolean).join(" · ")}
+                            </span>
+                          ) : null}
                           {record.obligation.source_type !== "manual" ? (
-                            <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px]">
+                            <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px]">
                               {COST_SOURCE_TYPE_LABELS[record.obligation.source_type]}
                             </span>
                           ) : null}
@@ -203,13 +205,19 @@ export function AssetCostsTable({ rows, canManage, onOpenRecord, onAddRecord, on
                         <td className={CELL}>
                           {record.obligation.product ? names([record.obligation.product]) : "—"}
                         </td>
-                        <td className={CELL}>{money(record.stages.budget)}</td>
-                        <td className={CELL}>{money(record.stages.committed)}</td>
-                        <td className={CELL}>{money(record.recognised_cost)}</td>
-                        <td className={CELL}>{money(record.stages.paid)}</td>
-                        <td className={CELL} />
+                        <td className={CELL}>{formatNaira(record.stages.budget)}</td>
+                        <td className={CELL}>{formatNaira(record.stages.committed)}</td>
+                        <td className={CELL}>{formatNaira(record.recognised_cost)}</td>
+                        <td className={CELL}>{formatNaira(record.stages.paid)}</td>
+                        <td className={CELL}>
+                          <Remaining value={record.stages.budget == null ? null : record.stages.budget - (record.recognised_cost ?? 0)} />
+                        </td>
                         <td className={cn(CELL, "capitalize text-muted-foreground")}>{record.obligation.status}</td>
-                        <td className={cn(CELL, "text-muted-foreground")}>Open</td>
+                        <td className={CELL}>
+                          <Button type="button" variant="ghost" size="sm" onClick={() => onOpenRecord(record.obligation.id)}>
+                            View entries
+                          </Button>
+                        </td>
                       </tr>
                     ))
                   : null}

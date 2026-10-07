@@ -9,7 +9,6 @@ import { assetAnalyticsRoutes } from '../lib/mocks/routes/asset-analytics';
 import { assetCostRoutes } from '../lib/mocks/routes/asset-costs';
 import { estateProfitabilityRoutes } from '../lib/mocks/routes/estate-profitability';
 import { landConfigurationRoutes } from '../lib/mocks/routes/land-configuration';
-import { AssetDetailSchema } from '../features/assets/schemas/asset-detail.schema';
 import { EstateProfitabilitySchema } from '../features/assets/schemas/estate-profitability.schema';
 import { ProfitabilityMatrixSchema, planProfitRows } from '../features/assets/schemas/profitability-matrix.schema';
 import {
@@ -174,9 +173,10 @@ async function main() {
 
   results.push(
     await run('PS-plan-profit-rows-are-labelled-by-size-and-ordered', async () => {
-      const row = (offer_type: 'flex' | 'commercial', size_id: string | null, tenor_months: number | null) => ({
+      const row = (offer_type: 'flex' | 'commercial', size_id: string | null, size_sqm: number, tenor_months: number | null) => ({
         offer_type,
         size_id,
+        size_sqm,
         tenor_months,
         sold_value: 100,
         received: 40,
@@ -189,20 +189,19 @@ async function main() {
         margin_pct: 60,
         complete: true,
       });
-      const offers = [
-        { offer_type: 'flex', sizes: [{ _id: 's300', size_sqm: 300 }, { _id: 's150', size_sqm: 150 }] },
-        { offer_type: 'commercial', sizes: [{ _id: 'c500', size_sqm: 500 }] },
-      ];
-      const rows = planProfitRows(
-        [row('commercial', 'c500', 12), row('flex', 's300', 6), row('flex', 'gone', 6), row('flex', 's150', 12), row('flex', 's150', null)],
-        offers
-      );
-      const order = rows.map((r) => `${r.offer_type}:${r.size_sqm ?? 'none'}:${r.tenor_months ?? 'outright'}`).join(' ');
+      const rows = planProfitRows([
+        row('commercial', 'c500', 500, 12),
+        row('flex', 's300', 300, 6),
+        row('flex', 'gone', 700, 6),
+        row('flex', 's150', 150, 12),
+        row('flex', 's150', 150, null),
+      ]);
+      const order = rows.map((r) => `${r.offer_type}:${r.size_sqm}:${r.tenor_months ?? 'outright'}`).join(' ');
       assert(
-        order === 'flex:150:outright flex:150:12 flex:300:6 flex:none:6 commercial:500:12',
+        order === 'flex:150:outright flex:150:12 flex:300:6 flex:700:6 commercial:500:12',
         `unexpected order "${order}"`
       );
-      assert(rows[3].size_sqm === null, 'a size no longer on the asset stays unknown, not 0');
+      assert(rows[3].size_sqm === 700, 'a removed size retains its historical sqm label');
       assert(rows[0].forecast_net_contribution === 60, 'the backend figures pass through untouched');
     })
   );
@@ -211,10 +210,9 @@ async function main() {
     await run('PS-the-mock-matrix-parses-and-every-row-finds-its-size', async () => {
       const get = (path: string) => dispatchMockRoute({ method: 'GET', path, query: {}, body: undefined });
       const matrix = ProfitabilityMatrixSchema.parse(await get(`/admin/assets/${A1}/profitability/matrix`));
-      const asset = AssetDetailSchema.parse(await get(`/admin/assets/${A1}`));
-      const rows = planProfitRows(matrix.rows, asset.offers);
+      const rows = planProfitRows(matrix.rows);
       assert(rows.length === matrix.rows.length && rows.length > 0, 'no row should be dropped');
-      assert(rows.every((r) => r.size_sqm !== null), 'every mock row should map to a size on the asset');
+      assert(rows.every((r) => r.size_sqm > 0), 'every mock row should include its sqm size');
     })
   );
 

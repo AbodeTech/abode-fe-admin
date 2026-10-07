@@ -1,16 +1,15 @@
 import { z } from 'zod';
 
 /* ============================================================
- * Physical (Block/Plot) vs. commercial (Analytics) reconciliation, joined by
+ * Physical (Block/Plot) vs. live retained sale-plan reconciliation, joined by
  * `size` — the one field both domains already share. See
  * lib/mocks/routes/inventory-reconciliation.ts's header for why `size` is
  * usable as a join key and what it does NOT resolve (this codebase's own
  * documented "four non-reconciling sqm concepts," land-configuration.schema.ts).
  *
- * This is a genuinely partial reconciliation — by size only, not by product
- * (no product dimension exists on either side of this join). Deferred:
- * per-product reconciliation, which needs the not-yet-decided sqm-allocation
- * architecture already flagged in the Costs & Profitability epic's roadmap.
+ * This is a partial reconciliation by size. A sold plan identifies a product,
+ * but an available physical plot has no product assignment, so this view
+ * cannot claim a product-by-product physical balance.
  * ============================================================ */
 
 export const AllocatedPlotHolderSchema = z.object({
@@ -44,13 +43,11 @@ export const CommercialSizeStatusSchema = z.object({
 export type CommercialSizeStatus = z.infer<typeof CommercialSizeStatusSchema>;
 
 /**
- * `code` is what "Make Review issues actionable" hangs a CTA off — plain
- * strings gave the FE nothing to key an action on besides fragile substring
- * matching. `NO_PHYSICAL_PLOTS` and `OVERSOLD` both point at the same fix
- * (record more plots), so both get the panel's "Manage plots" action;
- * `NO_SALES_DATA` has no admin action available from this panel.
+ * Missing sales at a recorded plot size is normal unsold stock, not an
+ * exception. These two codes indicate that the plot register may not yet
+ * cover all sold units; they prompt an admin review, not an overselling claim.
  */
-export const RECONCILIATION_EXCEPTION_CODES = ['NO_SALES_DATA', 'NO_PHYSICAL_PLOTS', 'OVERSOLD'] as const;
+export const RECONCILIATION_EXCEPTION_CODES = ['NO_PHYSICAL_PLOTS', 'OVERSOLD'] as const;
 export const ReconciliationExceptionCodeSchema = z.enum(RECONCILIATION_EXCEPTION_CODES);
 export type ReconciliationExceptionCode = z.infer<typeof ReconciliationExceptionCodeSchema>;
 

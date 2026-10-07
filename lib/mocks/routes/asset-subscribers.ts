@@ -52,6 +52,9 @@ type MockSubscriberRow = {
   next_payment_date: string | null;
   payment_percentage: string;
   status: string;
+  allocation_status: string | null;
+  allocated_plots: string[];
+  allocation_events: { event_id: string; title: string; starts_at: string; confirmed: boolean }[];
   is_defaulted: boolean;
   is_suspended: boolean;
 };
@@ -83,6 +86,9 @@ function subscriber(partial: Pick<MockSubscriberRow, 'plan_id' | 'asset_id' | 'b
     next_payment_date: null,
     payment_percentage: '0.00',
     status: 'active',
+    allocation_status: null,
+    allocated_plots: [],
+    allocation_events: [],
     is_defaulted: false,
     is_suspended: false,
     asset_price: 0,

@@ -282,11 +282,12 @@ export type LinkPlotsFormValues = z.infer<typeof linkPlotsFormSchema>;
 export const FieldCostsSchema = z.object({
   asset: z.object({ id: z.string(), name: z.string() }),
   total_amount: z.number(),
-  by_category: z.array(z.object({ category: z.string(), amount: z.number() })),
+  by_category: z.array(z.object({ category: z.string(), category_label: z.string().optional(), amount: z.number() })),
   entries: z.array(
     z.object({
       submission_id: z.string(),
       category: z.string(),
+      category_label: z.string().optional(),
       amount: z.number(),
       vendor: z.string().nullable(),
       payment_reference: z.string().nullable(),

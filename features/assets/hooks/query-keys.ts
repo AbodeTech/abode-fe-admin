@@ -74,6 +74,8 @@ export const assetKeys = {
   /** GET /admin/assets/:assetId/sqm-inventory(/reconciliation) — the real ledger position + activation readiness. */
   sqmInventory: (assetId: string) => [...assetKeys.detail(assetId), 'sqm-inventory'] as const,
   sqmReconciliation: (assetId: string) => [...assetKeys.detail(assetId), 'sqm-reconciliation'] as const,
+  inventoryReconciliation: (assetId: string) =>
+    [...assetKeys.detail(assetId), 'inventory-reconciliation'] as const,
   /** GET /admin/assets/:id/updates — nested under detail so an asset-wide invalidate also refetches it. */
   estateUpdates: (assetId: string) => [...assetKeys.detail(assetId), 'estate-updates'] as const,
   estateUpdateList: (assetId: string, params?: object) =>
@@ -113,6 +115,6 @@ export const assetKeys = {
   fieldAllocation: (assetId: string) => [...assetKeys.detail(assetId), 'field-allocation'] as const,
   fieldAllocationEvent: (assetId: string, eventId: string) =>
     [...assetKeys.fieldAllocation(assetId), eventId] as const,
-  /** GET .../costs/catalogue — the same for every estate, but keyed by asset because the route is. */
-  costCatalogue: (assetId: string) => [...assetKeys.detail(assetId), 'cost-catalogue'] as const,
+  /** The cost groups are shared across all estates. */
+  costCatalogue: () => ['admin-cost-catalogue'] as const,
 };

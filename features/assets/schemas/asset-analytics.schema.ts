@@ -87,6 +87,9 @@ export const AssetAnalyticsResponseSchema = z.object({
   total_capacity_units: z.number(),
   sqm_sold: z.number(),
   sqm_remaining: z.number(),
+  /** Null before the estate activates sqm inventory. */
+  land_retained_sqm: z.number().nullable(),
+  land_released_sqm: z.number().nullable(),
 
   efficiency_rate: z.number(),
   occupancy_rate: z.number(),

@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { useAdminPermissions } from "@/hooks/use-admin-permission";
 
 import { OFFER_TYPE_LABELS } from "../../schemas/asset.schema";
 import { PLOT_STATUSES, type PlotStatus } from "../../schemas/block-plot.schema";
@@ -27,6 +28,7 @@ import { useAssetBlocks } from "../../hooks/use-blocks";
 import { usePlotInventory } from "../../hooks/use-plot-inventory";
 import { formatEventDate } from "../../schemas/allocation-event.schema";
 import { DetailPanel } from "./DetailPanel";
+import { GroundConfirmationBadge } from "./GroundConfirmationBadge";
 
 const ALL_BLOCKS = "all-blocks";
 const ALL_STATUSES = "all-statuses";
@@ -50,9 +52,9 @@ const CELL = "whitespace-nowrap px-2.5 py-2.5 text-right first:text-left";
  *                          plot shows a dash (the design shows one there, but
  *                          the backend has nothing to give).
  *  - Plot status           `available` or `allocated`.
- *  - Customer plan         the id of the plan holding the plot. The design
- *                          shows the customer's name and event; this endpoint
- *                          returns only the plan id.
+ *  - Customer plan         the buyer's name, with the plan id for reference.
+ *  - Allocation event      only shown when linked to this exact plot; an event
+ *                          reservation alone does not establish that link.
  *  - Allocated date        when the plot was bound to that plan.
  *
  * "Manage plots" opens the per-block editor (add, resize, renumber, delete) —
@@ -69,6 +71,7 @@ export function PlotInventoryPanel({
   const [block, setBlock] = useState<string | null>(null);
   const [status, setStatus] = useState<PlotStatus | null>(null);
   const [page, setPage] = useState(1);
+  const canViewCustomer = useAdminPermissions().has("view_asset_subscribers");
 
   const { data: blocks = [] } = useAssetBlocks(assetId);
 
@@ -184,7 +187,9 @@ export function PlotInventoryPanel({
                 <th className={HEAD}>Size</th>
                 <th className={HEAD}>Product</th>
                 <th className={HEAD}>Plot status</th>
+                <th className={HEAD}>On-site status</th>
                 <th className={HEAD}>Customer plan</th>
+                <th className={HEAD}>Allocation event</th>
                 <th className={HEAD}>Allocated date</th>
               </tr>
             </thead>
@@ -207,12 +212,27 @@ export function PlotInventoryPanel({
                       {STATUS_LABELS[plot.commercial_status]}
                     </span>
                   </td>
+                  <td className={CELL}>
+                    {plot.commercial_status === "allocated" && plot.payment_plan_id ? (
+                      <GroundConfirmationBadge assetId={assetId} plotId={plot.id} planId={plot.payment_plan_id} />
+                    ) : "—"}
+                  </td>
                   <td className={cn(CELL, "tabular-nums")}>
                     {plot.payment_plan_id ? (
-                      <span title={plot.payment_plan_id}>Plan …{plot.payment_plan_id.slice(-6)}</span>
+                      <span>
+                        <span className="block font-medium">
+                          {canViewCustomer ? (plot.customer_name ?? "Customer unavailable") : "Customer name restricted"}
+                        </span>
+                        <span className="block text-[10px] text-muted-foreground" title={plot.payment_plan_id}>
+                          Plan …{plot.payment_plan_id.slice(-6)}
+                        </span>
+                      </span>
                     ) : (
                       "—"
                     )}
+                  </td>
+                  <td className={CELL}>
+                    {plot.payment_plan_id ? (plot.allocation_event_name ?? "Not recorded per plot") : "—"}
                   </td>
                   <td className={CELL}>{plot.allocated_date ? formatEventDate(plot.allocated_date) : "—"}</td>
                 </tr>

@@ -210,17 +210,15 @@ async function main() {
       assert(size500?.physical, 'size 500 should have physical data (Block A)');
       assert(size500?.commercial, 'size 500 should have commercial data (analytics)');
       assert(size500.physical.allocated_count === 1, `expected 1 allocated at size 500, got ${size500.physical.allocated_count}`);
+      const recorded = size500.physical.allocated_count + size500.physical.available_count;
       assert(
-        size500.commercial.units_sold > size500.physical.allocated_count,
-        'expected the seeded commercial units_sold to exceed physical allocated_count at size 500'
-      );
-      assert(
-        size500.exceptions.some((e: any) => e.code === 'OVERSOLD'),
-        `expected an over-sold exception at size 500, got ${JSON.stringify(size500.exceptions)}`
+        size500.exceptions.some((e: any) => e.code === 'OVERSOLD') === (size500.commercial.units_sold > recorded),
+        'a shortage must compare sales with every recorded plot, not just plots already allocated'
       );
 
       const holder = size500.physical.allocated_holders[0];
-      assert(holder?.customer_name && typeof holder.attributable_value === 'number', 'allocated_holders row missing customer/value');
+      assert(holder?.plot_id && holder.customer_name === null && holder.attributable_value === null,
+        'view_assets must not expose customer identity or invent a per-plot price');
     })
   );
 
@@ -240,7 +238,6 @@ async function main() {
         r.estate_totals.exception_count === expectedExceptions,
         `estate_totals.exception_count (${r.estate_totals.exception_count}) should sum the per-size rows (${expectedExceptions})`
       );
-      assert(r.estate_totals.exception_count > 0, 'expected at least one exception across Aviation City given the known over-sold row');
     })
   );
 

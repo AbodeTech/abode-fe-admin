@@ -65,6 +65,8 @@ type MockAssetAnalytics = {
   total_capacity_units: number;
   sqm_sold: number;
   sqm_remaining: number;
+  land_retained_sqm: number | null;
+  land_released_sqm: number | null;
   efficiency_rate: number;
   occupancy_rate: number;
   total_plans: number;
@@ -194,6 +196,8 @@ function seedIfNeeded(assetId: string): void {
       total_capacity_units: 450,
       sqm_sold: 108_000,
       sqm_remaining: 57_000,
+      land_retained_sqm: 900,
+      land_released_sqm: 600,
       efficiency_rate: 65,
       occupancy_rate: 72,
       total_plans: 300,
@@ -268,6 +272,8 @@ function seedIfNeeded(assetId: string): void {
       total_capacity_units: 100,
       sqm_sold: 24_000,
       sqm_remaining: 16_000,
+      land_retained_sqm: 400,
+      land_released_sqm: 0,
       efficiency_rate: 60,
       occupancy_rate: 55,
       total_plans: 60,

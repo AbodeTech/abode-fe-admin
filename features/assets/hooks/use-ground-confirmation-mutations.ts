@@ -18,7 +18,9 @@ const WriteResultSchema = z.unknown();
  * asset path anywhere else in this feature either).
  */
 function invalidateGroundConfirmation(queryClient: ReturnType<typeof useQueryClient>, assetId: string, plotId: string) {
-  queryClient.invalidateQueries({ queryKey: assetKeys.plotInventory(assetId) });
+  // A verified report moves the plot badge, the reconciliation view, and the
+  // sqm inventory's operational overlay.
+  queryClient.invalidateQueries({ queryKey: assetKeys.detail(assetId) });
   queryClient.invalidateQueries({ queryKey: ['plots', plotId, 'ground-confirmation'] });
 }
 
