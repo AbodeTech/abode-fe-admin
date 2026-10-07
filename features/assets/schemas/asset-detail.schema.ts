@@ -10,6 +10,7 @@ import {
   TopographySchema,
   VisibilitySchema,
 } from './asset.schema';
+import { PricingModeSchema, SizePricingSummarySchema } from './flex-pricing.schema';
 
 /* ============================================================
  * GET /admin/assets/:id — the full tree.
@@ -95,6 +96,14 @@ const SizeShapeSchema = z.object({
   /** Required on full-ownership and commercial sizes; absent on flex. */
   document_fee: z.number().optional(),
   is_active: z.boolean().default(true),
+  /**
+   * 🚧 Flex 2.0 (docs/FLEX-2.0-ENDPOINTS.pdf §3.1) — which pricing model this
+   * size is on. A backend that predates it sends neither field, which reads as
+   * `tenor_list`: exactly today's behaviour, so nothing changes until a size is
+   * converted. `pricing` is only present for `base_plan`.
+   */
+  pricing_mode: PricingModeSchema.default('tenor_list'),
+  pricing: SizePricingSummarySchema.nullable().optional(),
   plans: z.array(PlanSchema).default([]),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),

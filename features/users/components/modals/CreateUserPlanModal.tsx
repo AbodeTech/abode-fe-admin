@@ -84,6 +84,8 @@ type FormState = {
   queue_signature_reminder: boolean;
   create_purchase_transaction: boolean;
   notify_user: boolean;
+  /** Flex only. Defaults on; only an explicit off is sent. */
+  enable_streaks: boolean;
 };
 
 const emptyForm = (type: AdminPlanType): FormState => ({
@@ -121,6 +123,7 @@ const emptyForm = (type: AdminPlanType): FormState => ({
   queue_signature_reminder: true,
   create_purchase_transaction: true,
   notify_user: true,
+  enable_streaks: true,
 });
 
 const labels: Record<AdminPlanType, string> = {
@@ -188,6 +191,8 @@ export function CreateUserPlanModal({ userId, type, open, onOpenChange }: Props)
           monthly_payment: number(form.monthly_payment),
           initial_payment: number(form.initial_payment),
           amount_paid: number(form.amount_paid),
+          // The backend default is "on", so only an explicit off is sent (Q12).
+          ...(form.enable_streaks ? {} : { enable_streaks: false }),
         });
         await flex.mutateAsync({ userId, payload });
       } else {
@@ -325,7 +330,13 @@ export function CreateUserPlanModal({ userId, type, open, onOpenChange }: Props)
               {toggle('queue_signature_reminder', 'Queue signature reminder')}
               {toggle('create_purchase_transaction', 'Create purchase transaction')}
               {toggle('notify_user', 'Notify user by email')}
+              {type === 'flex' ? toggle('enable_streaks', 'Enable streaks') : null}
             </div>
+            {type === 'flex' ? (
+              <p className="text-xs text-muted-foreground">
+                Enable streaks is on by default. Turn it off and this plan neither earns nor blocks the customer&apos;s account-wide streak.
+              </p>
+            ) : null}
           </div>
         </ScrollArea>
         <DialogFooter>

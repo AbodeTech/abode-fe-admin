@@ -84,6 +84,7 @@ export { UsersTable } from './components/all/UsersTable';
 export { UserProfile } from './components/detail/UserProfile';
 export { UserProfileHeader } from './components/detail/UserProfileHeader';
 export { UserStats } from './components/detail/UserStats';
+export { UserStreakCard } from './components/detail/UserStreakCard';
 export { UserStatsCards } from './components/detail/UserStatsCards';
 export { UserInfo } from './components/detail/UserInfo';
 export { UserAssetsList } from './components/detail/UserAssetsList';

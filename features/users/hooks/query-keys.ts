@@ -37,5 +37,6 @@ export const userKeys = {
   transactions: (id: string, filters?: Record<string, unknown>) =>
     [...userKeys.details(), id, 'transactions', filters] as const,
   associatePro: (id: string) => [...userKeys.details(), id, 'associate-pro'] as const,
+  streak: (id: string) => [...userKeys.details(), id, 'streak'] as const,
   campaigns: (id: string) => [...userKeys.details(), id, 'campaigns'] as const,
 };

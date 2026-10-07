@@ -30,7 +30,8 @@ export async function login(page: Page): Promise<void> {
   await page.getByLabel('Email Address').fill('e2e.qa@abode.ng');
   await page.locator('input[type="password"]').fill('e2e-test-password');
   await page.getByRole('button', { name: 'Login' }).click();
-  await expect(page).toHaveURL('/', { timeout: 15_000 });
+  // Generous: the first login after a cold `next dev` compiles the dashboard before it can redirect.
+  await expect(page).toHaveURL('/', { timeout: 90_000 });
 }
 
 export const test = base.extend<{ adminPage: Page }>({

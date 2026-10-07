@@ -8,6 +8,8 @@ import { cn } from "@/lib/utils";
 import { formatNairaCompact } from "@/lib/utils/format";
 
 import { useAssetDetail } from "../../hooks/use-asset-detail";
+import { previewRows } from "../../lib/flex-pricing";
+import { discountAt } from "../../schemas/flex-pricing.schema";
 import { useLandConfiguration } from "../../hooks/use-land-configuration";
 import { useSqmInventory } from "../../hooks/use-sqm-inventory";
 import { OFFER_TYPES, OFFER_TYPE_LABELS, type OfferType } from "../../schemas/asset.schema";
@@ -47,13 +49,29 @@ function cellText(value: number | null, lens: Lens): string {
 
 /**
  * What one unit of each size sells for today: its outright plan's land
- * price, or the cheapest active plan when there is no outright one. Sizes
- * with no active plan are left out, which makes their product's value "—".
+ * price, or the cheapest active plan when there is no outright one. A Flex
+ * size on a base plan has no stored plans (they are calculated), so its
+ * cheapest plan is the 12-month one. Sizes with no price — no active plan, or
+ * not priced yet — are left out, which makes their product's value "—".
  */
 function currentPriceBySize(asset: AssetDetail | undefined): Map<string, number> {
   const prices = new Map<string, number>();
   for (const offer of asset?.offers ?? []) {
     for (const size of offer.sizes) {
+      if (size.pricing_mode === "base_plan") {
+        const discount24 = discountAt(size.pricing?.checkpoints, 24);
+        const discount12 = discountAt(size.pricing?.checkpoints, 12);
+        if (size.pricing && discount24 !== undefined && discount12 !== undefined) {
+          const rows = previewRows({
+            base_price_per_unit: size.pricing.base_price_per_unit,
+            discount_24_pct: discount24,
+            discount_12_pct: discount12,
+          });
+          const cheapest = rows[rows.length - 1]; // the last row is the shortest plan, 12 months
+          if (cheapest) prices.set(size._id, cheapest.total);
+        }
+        continue;
+      }
       const plans = size.plans.filter((plan) => plan.is_active);
       if (plans.length === 0) continue;
       const outright = plans.find((plan) => plan.tenor_months === 0);

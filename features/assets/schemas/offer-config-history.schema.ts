@@ -25,6 +25,9 @@ export const OFFER_CONFIG_ACTIONS = [
   'add-plan',
   'update-plan',
   'delete-plan',
+  // Flex 2.0 — a base-plan pricing version went live, or a tenor-list size moved onto one.
+  'publish-pricing',
+  'convert-pricing',
 ] as const;
 export const OfferConfigActionSchema = z.enum(OFFER_CONFIG_ACTIONS);
 export type OfferConfigAction = z.infer<typeof OfferConfigActionSchema>;
@@ -38,6 +41,8 @@ export const OFFER_CONFIG_ACTION_LABELS: Record<OfferConfigAction, string> = {
   'add-plan': 'Added plan',
   'update-plan': 'Updated plan',
   'delete-plan': 'Deleted plan',
+  'publish-pricing': 'Pricing published',
+  'convert-pricing': 'Converted to base plan',
 };
 
 export const OfferConfigRevisionSchema = z.object({
@@ -46,6 +51,12 @@ export const OfferConfigRevisionSchema = z.object({
   summary: z.string(),
   changed_by: z.string().nullable(),
   changed_at: z.string(),
+  /** Pricing actions only (docs/FLEX-2.0-ENDPOINTS.pdf §3.1) — absent on every other action. */
+  size_id: z.string().nullable().optional(),
+  pricing_version: z.number().int().optional(),
+  purchase_count: z.number().int().optional(),
+  pending_transfer_count: z.number().int().optional(),
+  superseded: z.boolean().optional(),
 });
 
 export type OfferConfigRevision = z.infer<typeof OfferConfigRevisionSchema>;

@@ -6,20 +6,6 @@ import { ChevronDown, History, Loader2, MoreVertical, Plus } from "lucide-react"
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  AdminDesktopTableWrap,
-  AdminMobileCard,
-  AdminMobileField,
-  AdminMobileStack,
-} from "@/components/shared/admin-responsive-table";
 import { formatNaira } from "@/lib/utils/format";
 import { cn } from "@/lib/utils";
 import { isMockApiEnabled } from "@/lib/mocks/config";
@@ -27,23 +13,22 @@ import { isMockApiEnabled } from "@/lib/mocks/config";
 import { OFFER_TYPES, OFFER_TYPE_LABELS, usesFoModel } from "../../schemas/asset.schema";
 import {
   configuredSqm,
-  sortedPlans,
-  totalSellingPrice,
   type Offer,
-  type Plan,
   type Size,
 } from "../../schemas/asset-detail.schema";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
 import { useAssetDetail } from "../../hooks/use-asset-detail";
 import { useUpdateOffer } from "../../hooks/use-offer-mutations";
 import { useAssetFormStore } from "../../store/asset-form-store";
+import { FlexPricingSheet } from "./FlexPricingSheet";
+import { FlexSizesTable } from "./FlexSizesTable";
+import { PlansTable } from "./PlansTable";
 import { OfferConfigHistorySheet } from "./OfferConfigHistorySheet";
 import { OfferEditDialogs } from "./OfferEditDialogs";
 import { OfferLandPoolsPanel } from "./OfferLandPoolsPanel";
@@ -52,137 +37,6 @@ const PAYMENT_TYPE_LABELS: Record<string, string> = {
   "all-inclusive": "All inclusive",
   "partially-inclusive": "Partially inclusive",
 };
-
-function planTerms(plan: Plan): string {
-  if (plan.tenor_months === 0) return "Paid in full";
-  if (plan.tenor_months === 1) return "Single payment";
-  return `${formatNaira(plan.initial_payment)} then ${formatNaira(plan.monthly_installment)}/mo`;
-}
-
-function PlansTable({
-  size,
-  offerType,
-}: {
-  size: Size;
-  offerType: string;
-}) {
-  const openOfferEdit = useAssetFormStore((state) => state.openOfferEdit);
-  const plans = sortedPlans(size.plans);
-  // The backend refuses to delete a size's only plan (`LAST_PLAN`), so the
-  // action is disabled rather than attempted.
-  const isOnlyPlan = plans.length <= 1;
-
-  if (plans.length === 0) {
-    return <p className="text-sm text-muted-foreground">No plans on this size.</p>;
-  }
-
-  return (
-    <>
-      <AdminDesktopTableWrap>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Tenor</TableHead>
-              <TableHead>Land price</TableHead>
-              <TableHead>Terms</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="w-px" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {plans.map((plan) => (
-              <TableRow key={plan.tenor_months}>
-                <TableCell className="text-sm whitespace-nowrap">
-                  {plan.tenor_months === 0 ? (
-                    <span className="font-medium">Outright</span>
-                  ) : (
-                    <span className="tabular-nums">{plan.tenor_months} months</span>
-                  )}
-                </TableCell>
-                <TableCell className="text-sm font-medium tabular-nums">
-                  {formatNaira(plan.land_price)}
-                  {plan.development_levy > 0 || plan.document_levy > 0 ? (
-                    <span className="block text-xs font-normal text-muted-foreground">
-                      Total {formatNaira(totalSellingPrice(plan))}
-                    </span>
-                  ) : null}
-                </TableCell>
-                <TableCell className="text-sm tabular-nums text-muted-foreground">
-                  {planTerms(plan)}
-                </TableCell>
-                <TableCell className="text-sm">
-                  {plan.is_active === false ? (
-                    <span className="text-muted-foreground">Inactive</span>
-                  ) : plan.is_promo ? (
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium">Promo</span>
-                  ) : (
-                    <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-600">
-                      Active
-                    </span>
-                  )}
-                </TableCell>
-                <TableCell className="text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" aria-label="Plan actions">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={() =>
-                          openOfferEdit({
-                            kind: "plan",
-                            offerType,
-                            sizeId: size._id,
-                            tenor: plan.tenor_months,
-                          })
-                        }
-                      >
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        variant="destructive"
-                        disabled={isOnlyPlan}
-                        onClick={() =>
-                          openOfferEdit({
-                            kind: "delete-plan",
-                            offerType,
-                            sizeId: size._id,
-                            tenor: plan.tenor_months,
-                          })
-                        }
-                      >
-                        {isOnlyPlan ? "Can't delete the only plan" : "Delete"}
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </AdminDesktopTableWrap>
-
-      <AdminMobileStack>
-        {plans.map((plan) => (
-          <AdminMobileCard
-            key={plan.tenor_months}
-            title={plan.tenor_months === 0 ? "Outright" : `${plan.tenor_months} months`}
-            subtitle={formatNaira(plan.land_price)}
-          >
-            <AdminMobileField label="Terms" value={planTerms(plan)} />
-            {plan.development_levy > 0 || plan.document_levy > 0 ? (
-              <AdminMobileField label="Total selling price" value={formatNaira(totalSellingPrice(plan))} />
-            ) : null}
-            {plan.is_promo ? <AdminMobileField label="Promo" value="Yes" /> : null}
-          </AdminMobileCard>
-        ))}
-      </AdminMobileStack>
-    </>
-  );
-}
 
 function SizeCard({
   size,
@@ -256,9 +110,15 @@ function SizeCard({
 function OfferCard({
   assetId,
   offer,
+  onEditPricing,
+  onOpenHistory,
 }: {
   assetId: string;
   offer: Offer;
+  /** Flex only — opens the pricing editor on a size. */
+  onEditPricing: (sizeId: string) => void;
+  /** Flex only — the mockup puts History in the Flex card's header. */
+  onOpenHistory: () => void;
 }) {
   const isFo = usesFoModel(offer.offer_type);
   const updateOffer = useUpdateOffer(assetId, offer.offer_type);
@@ -282,6 +142,7 @@ function OfferCard({
   };
 
   const label = OFFER_TYPE_LABELS[offer.offer_type];
+  const isFlex = offer.offer_type === "flex";
 
   return (
     <section className="overflow-hidden rounded-lg border">
@@ -289,7 +150,9 @@ function OfferCard({
         <div className="min-w-0">
           <h3 className="text-sm font-semibold">{label}</h3>
           <p className="mt-0.5 text-[11px] text-muted-foreground">
-            {offer.allocation_qualification_pct}% qualifies for allocation
+            {isFlex
+              ? `Allocation qualification ${offer.allocation_qualification_pct}%`
+              : `${offer.allocation_qualification_pct}% qualifies for allocation`}
             {offer.payment_type ? ` · ${PAYMENT_TYPE_LABELS[offer.payment_type]}` : ""}
           </p>
         </div>
@@ -321,6 +184,13 @@ function OfferCard({
             </DropdownMenuContent>
           </DropdownMenu>
 
+          {isFlex && isMockApiEnabled() ? (
+            <Button type="button" variant="outline" size="sm" onClick={onOpenHistory}>
+              <History className="mr-1.5 h-3.5 w-3.5" />
+              History
+            </Button>
+          ) : null}
+
           <Button
             type="button"
             variant="outline"
@@ -344,6 +214,8 @@ function OfferCard({
       <div className="space-y-3 p-4">
         {offer.sizes.length === 0 ? (
           <p className="text-sm text-muted-foreground">No sizes on this offer.</p>
+        ) : isFlex ? (
+          <FlexSizesTable sizes={offer.sizes} onEditPricing={onEditPricing} />
         ) : (
           offer.sizes.map((size) => (
             <SizeCard
@@ -368,8 +240,19 @@ export function AssetOffers() {
   const { data: asset } = useAssetDetail(params.id);
   const openOfferEdit = useAssetFormStore((state) => state.openOfferEdit);
   const [historyOpen, setHistoryOpen] = useState(false);
+  // Each open is a fresh editor session (its own key): the sheet starts on the size that was
+  // clicked, with no leftover chip selection or "published" badge from the last time.
+  const [pricing, setPricing] = useState<{ session: number; sizeId: string | null; open: boolean }>({
+    session: 0,
+    sizeId: null,
+    open: false,
+  });
 
   if (!asset) return null;
+
+  const flexOffer = asset.offers.find((offer) => offer.offer_type === "flex");
+  const openPricing = (sizeId: string) =>
+    setPricing((current) => ({ session: current.session + 1, sizeId, open: true }));
 
   // Developer plot has no size/plan tree in Phase 1 (see asset.schema.ts's
   // OFFER_TYPES doc comment) — it exists only as a Land Account product pool,
@@ -385,7 +268,9 @@ export function AssetOffers() {
         assetId={params.id}
         action={
           <>
-            {isMockApiEnabled() ? (
+            {/* With a Flex offer, History lives in that card's header (the Flex 2.0 mockup);
+                an asset without one keeps it here. */}
+            {isMockApiEnabled() && !flexOffer ? (
               <Button type="button" variant="outline" size="sm" onClick={() => setHistoryOpen(true)}>
                 <History className="mr-1.5 h-3.5 w-3.5" />
                 History
@@ -421,11 +306,27 @@ export function AssetOffers() {
         </div>
       ) : (
         asset.offers.map((offer) => (
-          <OfferCard key={offer._id} assetId={params.id} offer={offer} />
+          <OfferCard
+            key={offer._id}
+            assetId={params.id}
+            offer={offer}
+            onEditPricing={openPricing}
+            onOpenHistory={() => setHistoryOpen(true)}
+          />
         ))
       )}
 
       <OfferEditDialogs asset={asset} />
+      {flexOffer ? (
+        <FlexPricingSheet
+          key={pricing.session}
+          assetId={params.id}
+          sizes={flexOffer.sizes}
+          sizeId={pricing.sizeId}
+          open={pricing.open}
+          onOpenChange={(open) => setPricing((current) => ({ ...current, open }))}
+        />
+      ) : null}
       {isMockApiEnabled() ? (
         <OfferConfigHistorySheet assetId={params.id} open={historyOpen} onOpenChange={setHistoryOpen} />
       ) : null}

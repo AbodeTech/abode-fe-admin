@@ -6,6 +6,7 @@ import {
   UserProfile,
   UserInfo,
   UserStats,
+  UserStreakCard,
   UserTransactions,
   UserAssetsList,
   UserReferralsTable,
@@ -95,6 +96,8 @@ export default function UserDetailsPage() {
       <ManagerAssignmentCard user={user} />
 
       <UserStats user={user} />
+
+      <UserStreakCard userId={id} />
 
       <UserAssetsList userId={id} userEmail={user.email} />
 
