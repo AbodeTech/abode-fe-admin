@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-/** Folded into /field-performance. Kept so old links still land; the page fixes the role tab itself. */
+/** Folded into the role pages. Kept so old links still land; the page moves surveyors to their own. */
 export default async function StaffRedirect({
   params,
   searchParams,
@@ -11,5 +11,5 @@ export default async function StaffRedirect({
   const { id } = await params;
   const { year, month } = await searchParams;
   const next = new URLSearchParams({ person: id, ...(year && { year }), ...(month && { month }) });
-  redirect(`/field-performance?${next.toString()}`);
+  redirect(`/field-performance/site-managers?${next.toString()}`);
 }

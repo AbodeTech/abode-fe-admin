@@ -47,7 +47,7 @@ export { SourceRecordsSheet, type SourceRecordsTarget } from './components/Sourc
 export { StaleReviews } from './components/StaleReviews';
 export { ScoreTrend } from './components/ScoreTrend';
 export { useFieldRoster, type RosterRow } from './hooks/use-field-roster';
-export { usePerformanceParams, ALL } from './hooks/use-performance-params';
+export { usePerformanceParams, ALL, ROLE_PATHS } from './hooks/use-performance-params';
 export { fieldStaffKeys } from './hooks/query-keys';
 export type { FieldStaffListFilters, ScorecardFilters, SubmissionFilters } from './hooks/query-keys';
 
@@ -55,12 +55,14 @@ export type { FieldStaffListFilters, ScorecardFilters, SubmissionFilters } from 
 export { FieldPeriodFilter, useFieldPeriod } from './components/FieldPeriodFilter';
 export { FieldTeamTable } from './components/FieldTeamTable';
 export { FieldPerformanceHeader } from './components/FieldPerformanceHeader';
+export { FieldPerformanceView } from './components/FieldPerformanceView';
 export { TeamSnapshot, PeriodPill } from './components/TeamSnapshot';
 export { PersonSnapshot } from './components/PersonSnapshot';
 export { PersonWork } from './components/PersonWork';
 export { MetricTile, ScoreTile, mergeMetrics } from './components/MetricTiles';
 export { ReviewQueueTable } from './components/ReviewQueueTable';
 export { QueueMetricFilter, useQueueMetric } from './components/QueueMetricFilter';
+export { QueueStatusTabs, useQueueTab, QUEUE_TABS, type QueueTab } from './components/QueueStatusTabs';
 export { ScorecardActions } from './components/ScorecardActions';
 export { ScorecardTargetsDialog, TargetContext, type TargetsDialogMode } from './components/ScorecardTargetsDialog';
 export { TargetCards, WeightMeter } from './components/TargetEditor';
