@@ -40,6 +40,9 @@ export const ADMIN_PERMISSIONS = [
   'create_developer_plot',
   'delete_user_plan',
   'edit_user_asset_question',
+  // Flex 2.0 (backend `adjust_streak`): correct a customer's streak, optionally with a points correction.
+  // The backend migration grants it to every role that holds `adjust_plan_balance`.
+  'adjust_streak',
   'adjust_plan_balance',
   'override_next_payment_date',
   'update_plan_spec',

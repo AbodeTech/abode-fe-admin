@@ -146,8 +146,14 @@ export function validatePricingBody(raw: unknown): { errors: MockPricingError[];
   return { errors, basePrice: price, checkpoints: shapeOk ? list.map((c) => ({ months: c.months, discount_pct: c.discount_pct })).sort((a, b) => b.months - a.months) : undefined };
 }
 
+/** Like the backend: a generic sentence, with every problem in the body's `errors[]`. */
 export function failValidation(errors: MockPricingError[]): never {
-  throw new MockHttpError(400, errors.map((e) => e.message).join(' '), 'PRICING_VALIDATION_FAILED');
+  throw new MockHttpError(
+    400,
+    'The pricing has problems. Fix every item in errors and try again.',
+    'PRICING_VALIDATION_FAILED',
+    { errors }
+  );
 }
 
 /* -------------------- state -------------------- */

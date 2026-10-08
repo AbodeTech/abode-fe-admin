@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
 
-import { apiGet, apiPost, apiPut } from '@/lib/api-client';
+import { ApiClientError, apiGet, apiPost, apiPut } from '@/lib/api-client';
 
 import {
   PricingDraftSchema,
@@ -27,6 +27,19 @@ import { assetKeys } from './query-keys';
  * reads the offers/history log, which already carries each pricing entry, and
  * the designed editor has no “discard draft” control.
  * ============================================================ */
+
+/**
+ * The message to show for a failed pricing write. On a validation failure the backend lists every
+ * problem in `errors[]` (not just the first), which is more useful than its generic sentence.
+ */
+export function describePricingError(error: unknown, fallback: string): string {
+  if (error instanceof ApiClientError) {
+    const list = (error.details as { errors?: { message?: string }[] } | null)?.errors;
+    const messages = Array.isArray(list) ? list.map((item) => item?.message).filter((m): m is string => Boolean(m)) : [];
+    if (messages.length > 0) return messages.join(' ');
+  }
+  return error instanceof Error && error.message ? error.message : fallback;
+}
 
 const base = (assetId: string, sizeId: string) => `/admin/assets/${assetId}/offers/flex/sizes/${sizeId}/pricing`;
 

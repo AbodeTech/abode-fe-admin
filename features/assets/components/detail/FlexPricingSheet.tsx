@@ -19,6 +19,7 @@ import { useHasPermission } from "@/hooks/use-admin-permission";
 import { cn } from "@/lib/utils";
 
 import {
+  describePricingError,
   useConvertLegacyPricing,
   usePublishPricing,
   useSavePricingDraft,
@@ -300,7 +301,7 @@ function PricingEditor({
       checkpoints: toCheckpoints(values.discount_24_pct, values.discount_12_pct),
     };
     const onError = (err: Error) => {
-      toast.error(err.message || "Couldn't publish the pricing");
+      toast.error(describePricingError(err, "Couldn't publish the pricing"));
       // 409: another admin published first. Re-read what is live; the form keeps the admin's edits.
       if (err instanceof ApiClientError && err.statusCode === 409) void refetch();
     };
@@ -339,7 +340,7 @@ function PricingEditor({
           toast.success("Draft saved — customers are not affected");
           form.reset({ base_price_per_unit: price, discount_24_pct: d24, discount_12_pct: d12 });
         },
-        onError: (err) => toast.error(err.message || "Couldn't save the draft"),
+        onError: (err) => toast.error(describePricingError(err, "Couldn't save the draft")),
       }
     );
   };
@@ -398,6 +399,15 @@ function PricingEditor({
                   )}
                 />
               </div>
+
+              {/* A conversion pre-fills the base price from the size's 36-month plan; when the backend can't
+                  (no such plan, or its payments don't add up) it says why, and nothing is guessed. */}
+              {isConversion && data.legacy && data.legacy.tenor_36_land_price == null ? (
+                <AlertRow tone="info">
+                  The base price couldn&apos;t be pre-filled
+                  {data.legacy.tenor_36_unavailable_reason ? `: ${data.legacy.tenor_36_unavailable_reason}` : "."} Enter it yourself.
+                </AlertRow>
+              ) : null}
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <ReadOnlyField
@@ -468,10 +478,14 @@ function PricingEditor({
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <Button type="button" variant="outline" disabled={!canEdit || !complete || pending} onClick={onSaveDraft}>
-                  {saveDraft.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" aria-hidden /> : null}
-                  Save draft
-                </Button>
+                {/* A draft is for a size that already has (or is getting) a base plan. The backend refuses one on a
+                    tenor-list size (409), so a conversion has only the Convert button. */}
+                {!isConversion ? (
+                  <Button type="button" variant="outline" disabled={!canEdit || !complete || pending} onClick={onSaveDraft}>
+                    {saveDraft.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" aria-hidden /> : null}
+                    Save draft
+                  </Button>
+                ) : null}
                 <Button type="button" disabled={!canEdit || !valid || pending} onClick={onPublish}>
                   {publish.isPending || convert.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" aria-hidden /> : null}
                   {publishLabel}

@@ -230,6 +230,23 @@ function normalizeMessages(message: unknown, fallback: string): string[] {
   return [fallback];
 }
 
+/**
+ * `details` from the BE's own `details`, plus two top-level extras some routes put
+ * on the error body: a full validation list (`errors`, e.g. Flex pricing's
+ * PRICING_VALIDATION_FAILED) and the live version a publish conflicted with
+ * (`live_version`). Dropping them would leave only the generic message.
+ */
+function errorDetails(body: { details?: unknown; errors?: unknown; live_version?: unknown } | undefined): unknown {
+  const extras: Record<string, unknown> = {};
+  if (Array.isArray(body?.errors)) extras.errors = body.errors;
+  if (body?.live_version !== undefined) extras.live_version = body.live_version;
+  if (Object.keys(extras).length === 0) return body?.details ?? null;
+
+  const own = body?.details;
+  const base = own && typeof own === 'object' && !Array.isArray(own) ? (own as Record<string, unknown>) : own != null ? { value: own } : {};
+  return { ...base, ...extras };
+}
+
 function toApiClientError(err: unknown, method: string, path: string): ApiClientError {
   if (err instanceof ApiClientError) return err;
 
@@ -242,6 +259,7 @@ function toApiClientError(err: unknown, method: string, path: string): ApiClient
       code: err.code ?? null,
       method,
       path,
+      details: err.details ?? null,
     });
   }
 
@@ -268,6 +286,8 @@ function toApiClientError(err: unknown, method: string, path: string): ApiClient
           error?: string;
           message?: unknown;
           details?: unknown;
+          errors?: unknown;
+          live_version?: unknown;
         }
       | undefined;
     return new ApiClientError({
@@ -279,7 +299,7 @@ function toApiClientError(err: unknown, method: string, path: string): ApiClient
       code: body?.code ?? body?.error ?? null,
       method,
       path,
-      details: body?.details ?? null,
+      details: errorDetails(body),
     });
   }
 

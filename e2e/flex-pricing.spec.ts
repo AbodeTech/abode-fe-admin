@@ -164,6 +164,8 @@ test.describe.serial('Flex 2.0 pricing (admin)', () => {
     await flexCard().getByRole('button', { name: 'Convert to base plan' }).click();
     const dialog = sheet();
     await expect(dialog.getByText(/Draft v1 · converting from a tenor list/)).toBeVisible();
+    // The backend refuses a draft on a tenor-list size, so a conversion offers only Convert.
+    await expect(dialog.getByRole('button', { name: 'Save draft' })).toHaveCount(0);
 
     // The existing 36-month land price pre-fills the base price; discounts are left for the admin to set.
     await expect(dialog.getByLabel('Base price per unit (₦)')).not.toHaveValue('');
@@ -232,16 +234,21 @@ test.describe.serial('Flex 2.0 pricing (admin)', () => {
     await closeDialog(page);
   });
 
-  test('the user Summary shows Streaks & Points and an adjustment needs a reason, never moving points', async () => {
+  /** The Points balance figure on the card, read from the page so a used server can't throw the test off. */
+  const readPoints = async () =>
+    Number((await page.getByText('Points balance').locator('xpath=ancestor::div[2]').locator('p').nth(1).innerText()).replace(/,/g, ''));
+
+  test('the user Summary shows Streaks & Points; a streak adjustment needs a reason and leaves points alone', async () => {
     await page.goto(`/users/${USER_WITH_STREAK}`);
     await expect(page.getByText('Streaks & Points', { exact: true })).toBeVisible();
     await expect(page.getByText('Active streak')).toBeVisible();
-    await expect(page.getByText('Points balance')).toBeVisible();
-    const points = page.getByText('1,000', { exact: true });
-    await expect(points).toBeVisible();
+    await expect(page.getByText('Best streak')).toBeVisible();
+    const pointsBefore = await readPoints();
 
     await page.getByRole('button', { name: 'Adjust streak' }).click();
     const dialog = page.getByRole('dialog');
+    await expect(dialog.getByLabel('Points correction (optional)')).toBeVisible();
+    await expect(dialog.getByText(/20 to 500 characters/)).toBeVisible();
     // Read where the streak is now (a used server may not be at its seeded value) and move it by one.
     const current = Number((await dialog.getByText(/^Currently \d+\./).innerText()).match(/\d+/)![0]);
     const target = current + 1;
@@ -254,14 +261,50 @@ test.describe.serial('Flex 2.0 pricing (admin)', () => {
     await expect(page.getByText(`Streak adjusted from ${current} to ${target}`)).toBeVisible({ timeout: 10_000 });
     await waitForToastsToClear(page);
     await expect(page.getByText(`${target} months`, { exact: true }).first()).toBeVisible();
-    await expect(points).toBeVisible(); // points never move when a streak is adjusted
+    expect(await readPoints()).toBe(pointsBefore); // no correction was entered, so points are untouched
     await expect(page.getByText(/Last adjusted by .* — Bank transfer verified on time/)).toBeVisible();
   });
 
-  test('a customer with no streak-enabled plan shows no streak, not a zero', async () => {
+  test('a points correction changes points, can be negative, and cannot go below zero', async () => {
+    await page.goto(`/users/${USER_WITH_STREAK}`);
+    await expect(page.getByText('Points balance')).toBeVisible();
+    const before = await readPoints();
+
+    await page.getByRole('button', { name: 'Adjust streak' }).click();
+    const dialog = page.getByRole('dialog');
+    // Streak left as it is: a points-only correction is allowed, but an empty one is not.
+    await dialog.getByLabel('Reason').fill('Goodwill correction after the March reversal (ticket 4412)');
+    await dialog.getByRole('button', { name: 'Adjust streak' }).click();
+    await expect(dialog.getByText('Change the streak or enter a points correction')).toBeVisible();
+
+    // The balance can't be taken below zero — said before any round trip.
+    await dialog.getByLabel('Points correction (optional)').fill(String(-(before + 1)));
+    await dialog.getByRole('button', { name: 'Adjust streak' }).click();
+    await expect(dialog.getByText(/This would take the balance below zero/)).toBeVisible();
+
+    await dialog.getByLabel('Points correction (optional)').fill('150');
+    await dialog.getByRole('button', { name: 'Adjust streak' }).click();
+    await expect(page.getByText(`points ${before.toLocaleString()} → ${(before + 150).toLocaleString()}`)).toBeVisible({ timeout: 10_000 });
+    await waitForToastsToClear(page);
+    expect(await readPoints()).toBe(before + 150);
+
+    // And a negative correction takes points off.
+    await page.getByRole('button', { name: 'Adjust streak' }).click();
+    const again = page.getByRole('dialog');
+    await again.getByLabel('Points correction (optional)').fill('-100');
+    await again.getByLabel('Reason').fill('Reversing part of the goodwill correction (ticket 4412)');
+    await again.getByRole('button', { name: 'Adjust streak' }).click();
+    await expect(page.getByText(`points ${(before + 150).toLocaleString()} → ${(before + 50).toLocaleString()}`)).toBeVisible({ timeout: 10_000 });
+    await waitForToastsToClear(page);
+    expect(await readPoints()).toBe(before + 50);
+  });
+
+  test('a customer with no streak-enabled plan shows no streak, hides Best streak, and keeps real points', async () => {
     await page.goto(`/users/${USER_WITHOUT_STREAK}`);
     await expect(page.getByText('No streak-enabled plan, so there is no active streak.')).toBeVisible();
-    await expect(page.getByText('Best streak')).toBeVisible();
+    // The backend reports 0 for the streaks here, so Best streak is left out rather than shown as a made-up 0.
+    await expect(page.getByText('Best streak')).toHaveCount(0);
+    expect(await readPoints()).toBeGreaterThan(0);
     await expect(page.getByRole('button', { name: 'Adjust streak' })).toBeDisabled();
   });
 });

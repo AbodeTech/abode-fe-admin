@@ -8,7 +8,6 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { formatNaira } from "@/lib/utils/format";
 import { cn } from "@/lib/utils";
-import { isMockApiEnabled } from "@/lib/mocks/config";
 
 import { OFFER_TYPES, OFFER_TYPE_LABELS, usesFoModel } from "../../schemas/asset.schema";
 import {
@@ -184,7 +183,7 @@ function OfferCard({
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {isFlex && isMockApiEnabled() ? (
+          {isFlex ? (
             <Button type="button" variant="outline" size="sm" onClick={onOpenHistory}>
               <History className="mr-1.5 h-3.5 w-3.5" />
               History
@@ -270,7 +269,7 @@ export function AssetOffers() {
           <>
             {/* With a Flex offer, History lives in that card's header (the Flex 2.0 mockup);
                 an asset without one keeps it here. */}
-            {isMockApiEnabled() && !flexOffer ? (
+            {!flexOffer ? (
               <Button type="button" variant="outline" size="sm" onClick={() => setHistoryOpen(true)}>
                 <History className="mr-1.5 h-3.5 w-3.5" />
                 History
@@ -327,9 +326,7 @@ export function AssetOffers() {
           onOpenChange={(open) => setPricing((current) => ({ ...current, open }))}
         />
       ) : null}
-      {isMockApiEnabled() ? (
-        <OfferConfigHistorySheet assetId={params.id} open={historyOpen} onOpenChange={setHistoryOpen} />
-      ) : null}
+      <OfferConfigHistorySheet assetId={params.id} open={historyOpen} onOpenChange={setHistoryOpen} />
     </div>
   );
 }

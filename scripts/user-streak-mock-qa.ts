@@ -3,10 +3,10 @@
  * Run: npx tsx scripts/user-streak-mock-qa.ts
  *
  * Proves the contract's rules before the card is trusted: the summary shape,
- * "never fake a zero" for a customer with no streak-enabled plan, that an
- * adjustment needs a reason and a real change, that the best streak never
- * falls, and — the one the decisions are explicit about — that points never
- * move when a streak is adjusted.
+ * the zeros the backend reports for a customer with no streak-enabled plan (the
+ * card hides Best streak then), that an adjustment needs a reason and a real
+ * change, that the best streak never falls, and that points move ONLY when a
+ * points correction is sent — never below zero.
  */
 import { registerRoutes, dispatchMockRoute, MockHttpError } from '../lib/mocks/router';
 import { userStreakRoutes } from '../lib/mocks/routes/user-streaks';
@@ -83,11 +83,13 @@ async function main() {
   );
 
   results.push(
-    await run('STREAK-no-enabled-plan-shows-no-streak', async () => {
+    await run('STREAK-no-enabled-plan-reports-zeros-but-real-points', async () => {
       const s: any = await call('GET', `/admin/users/${withoutStreak}/streak`);
       assert(s.current_streak === 0 && s.current_month === null && s.streak_enabled_plans === 0, 'empty-state payload');
-      assert(s.best_streak > 0 && s.points_balance > 0, 'a completed customer keeps their best streak and points');
-      await expectError(() => call('POST', `/admin/users/${withoutStreak}/streak/adjust`, { current_streak: 3, reason: REASON }), 409, 'NO_ACTIVE_STREAK');
+      // The real backend reports 0 for BOTH streaks here (even for a customer with a real best streak),
+      // which is why the card hides Best streak rather than showing it.
+      assert(s.best_streak === 0, 'backend reports best_streak 0 with no streak-enabled plan');
+      assert(s.points_balance > 0, 'points are real');
     })
   );
 
@@ -95,6 +97,9 @@ async function main() {
     await run('ADJUST-requires-a-valid-reason-and-streak', async () => {
       await expectError(() => call('POST', `/admin/users/${withStreak}/streak/adjust`, { current_streak: 5 }), 400, 'VALIDATION_FAILED');
       await expectError(() => call('POST', `/admin/users/${withStreak}/streak/adjust`, { current_streak: 5, reason: 'too short' }), 400, 'VALIDATION_FAILED');
+      await expectError(() => call('POST', `/admin/users/${withStreak}/streak/adjust`, { current_streak: 5, reason: 'x'.repeat(501) }), 400, 'VALIDATION_FAILED');
+      await expectError(() => call('POST', `/admin/users/${withStreak}/streak/adjust`, { current_streak: 5, reason: REASON, points_change: 1.5 }), 400, 'VALIDATION_FAILED');
+      await expectError(() => call('POST', `/admin/users/${withStreak}/streak/adjust`, { current_streak: 5, reason: REASON, points_change: 100_001 }), 400, 'VALIDATION_FAILED');
       await expectError(() => call('POST', `/admin/users/${withStreak}/streak/adjust`, { current_streak: -1, reason: REASON }), 400, 'VALIDATION_FAILED');
       await expectError(() => call('POST', `/admin/users/${withStreak}/streak/adjust`, { current_streak: 2.5, reason: REASON }), 400, 'VALIDATION_FAILED');
       const s: any = await call('GET', `/admin/users/${withStreak}/streak`);
@@ -110,17 +115,37 @@ async function main() {
   );
 
   results.push(
-    await run('ADJUST-changes-streak-never-points-and-audits', async () => {
+    await run('ADJUST-changes-streak-and-leaves-points-alone-without-a-correction', async () => {
       const before: any = await call('GET', `/admin/users/${withStreak}/streak`);
       const target = before.current_streak + 1;
       const out: any = await call('POST', `/admin/users/${withStreak}/streak/adjust`, { current_streak: target, reason: `  ${REASON}  ` });
       assert(out.before.current_streak === before.current_streak && out.after.current_streak === target, 'before/after');
-      assert(out.before.points_balance === out.after.points_balance && out.after.points_balance === before.points_balance, 'points must not change');
+      assert(out.points_change === 0, 'no points correction was sent');
+      assert(out.before.points_balance === out.after.points_balance && out.after.points_balance === before.points_balance, 'points must not change without a correction');
       assert(out.audit_id.startsWith('adj_') && out.adjusted_by.name, 'audit reference and actor');
 
       const after: any = await call('GET', `/admin/users/${withStreak}/streak`);
       assert(after.current_streak === target && after.points_balance === before.points_balance, 'summary reflects the adjustment');
       assert(after.last_adjustment.reason === REASON && after.last_adjustment.by === out.adjusted_by.name, 'last adjustment is recorded, reason trimmed');
+    })
+  );
+
+  results.push(
+    await run('ADJUST-points-correction-moves-points-and-never-below-zero', async () => {
+      const before: any = await call('GET', `/admin/users/${withStreak}/streak`);
+      const up: any = await call('POST', `/admin/users/${withStreak}/streak/adjust`, { current_streak: before.current_streak, reason: REASON, points_change: 250 });
+      assert(up.points_change === 250 && up.after.points_balance === before.points_balance + 250, 'positive correction');
+      assert(up.before.current_streak === up.after.current_streak, 'streak unchanged by a points-only correction');
+      const down: any = await call('POST', `/admin/users/${withStreak}/streak/adjust`, { current_streak: before.current_streak, reason: REASON, points_change: -100 });
+      assert(down.after.points_balance === before.points_balance + 150, 'negative correction');
+      const balance = down.after.points_balance;
+      await expectError(
+        () => call('POST', `/admin/users/${withStreak}/streak/adjust`, { current_streak: before.current_streak, reason: REASON, points_change: -(balance + 1) }),
+        409,
+        'POINTS_BELOW_ZERO'
+      );
+      const after: any = await call('GET', `/admin/users/${withStreak}/streak`);
+      assert(after.points_balance === balance, 'a refused correction changes nothing');
     })
   );
 
