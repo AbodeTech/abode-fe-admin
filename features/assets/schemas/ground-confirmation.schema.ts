@@ -6,10 +6,10 @@ import { z } from 'zod';
  * label (block-plot.schema.ts) was the whole of that ticket: a relabel with
  * no real "Ground confirmed" data behind it anywhere in this codebase.
  *
- * 🚧 Provisional, fully greenfield — a per-plot field submission, distinct
+ * Live per-plot admin report, distinct
  * from `Plot.status` (a DB flag set the instant POST .../allocate runs): this
- * is about ONE plot, confirmed on the ground by whoever visits it. A
- * submission is not authoritative until an admin verifies it in person.
+ * is about ONE currently allocated plot. The report is not authoritative
+ * until an admin verifies it; old reports do not follow a reallocated plot.
  *
  * GET/POST /admin/plots/:plotId/ground-confirmation(/:id/verify).
  * ============================================================ */

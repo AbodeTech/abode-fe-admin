@@ -56,6 +56,7 @@ function usePlotMutation<TVariables, TData>(
       // The tab's summary strip and plot table read the asset-wide endpoints.
       queryClient.invalidateQueries({ queryKey: assetKeys.plotInventory(assetId) });
       queryClient.invalidateQueries({ queryKey: assetKeys.plotSummary(assetId) });
+      queryClient.invalidateQueries({ queryKey: assetKeys.inventoryReconciliation(assetId) });
     },
   });
 }

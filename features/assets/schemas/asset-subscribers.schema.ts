@@ -87,6 +87,14 @@ export const SubscriberRowSchema = z.object({
   payment_percentage: z.string(),
 
   status: z.string(),
+  allocation_status: z.string().nullable(),
+  allocated_plots: z.array(z.string()),
+  allocation_events: z.array(z.object({
+    event_id: z.string(),
+    title: z.string(),
+    starts_at: z.union([z.string(), z.date()]),
+    confirmed: z.boolean(),
+  })),
   is_defaulted: z.boolean(),
   is_suspended: z.boolean(),
 });
@@ -119,24 +127,21 @@ export function paymentPercentage(row: Pick<SubscriberRow, 'payment_percentage'>
 /* -------------------- customer land position -------------------- */
 
 /**
- * The design's "Customer land position" row, read from one subscriber row
- * plus the plots allocated to its plan.
+ * The design's "Customer land position" row, read from one subscriber row.
  *
  * What the backend gives and doesn't:
  *  - Purchase state — from the plan's `status` and `is_defaulted`.
- *  - Land treatment — a plan that is still live holds its land ("Retained").
- *    For a cancelled or closed plan the admin chooses, at closing, whether to
- *    free the land or keep it, and this endpoint doesn't return that choice,
- *    so it is `null` (shown as a dash) rather than guessed.
- *  - Allocation — not on the subscriber row at all. It comes from the plot
- *    inventory (GET .../plots?allocation=allocated), matched by plan id.
+ *  - Land treatment — a live plan holds its land ("Retained"). Closing a
+ *    plan always releases it, so a closed plan reads "Released". This
+ *    endpoint cannot establish treatment for a cancelled plan.
+ *  - Allocation — plot labels and allocation status are supplied for this plan.
  */
 export type PurchaseTone = 'good' | 'warn' | 'bad' | 'neutral';
 
 export type CustomerLandPosition = {
   product: string | null;
   purchaseState: { label: string; tone: PurchaseTone };
-  landTreatment: 'Retained' | null;
+  landTreatment: 'Retained' | 'Released' | null;
   /** Plot labels held by the plan, `'awaiting'`, or `null` when it can't be known. */
   allocation: string[] | 'awaiting' | null;
 };
@@ -164,33 +169,17 @@ function purchaseState(row: Pick<SubscriberRow, 'status' | 'is_defaulted'>): Cus
   return { label: 'Selling', tone: 'neutral' };
 }
 
-/**
- * @param plotsByPlan  plan id → labels of the plots allocated to it.
- * @param plotsKnown   false when the allocated plots couldn't be read, or only
- *                     partly — a plan with no match is then unknown, not "awaiting".
- */
 export function customerLandPosition(
-  row: Pick<SubscriberRow, 'plan_id' | 'asset_type' | 'status' | 'is_defaulted'>,
-  plotsByPlan: ReadonlyMap<string, string[]>,
-  plotsKnown: boolean
+  row: Pick<SubscriberRow, 'asset_type' | 'status' | 'is_defaulted' | 'allocation_status' | 'allocated_plots'>
 ): CustomerLandPosition {
   const terminated = TERMINATED.has(row.status);
-  const plots = plotsByPlan.get(row.plan_id);
+  const plots = row.allocated_plots;
+  const hasUnmatchedAllocation = ['allocated', 'email_sent', 'reassigned'].includes(row.allocation_status ?? '');
 
   return {
     product: row.asset_type ? (PRODUCT_LABELS[row.asset_type] ?? row.asset_type) : null,
     purchaseState: purchaseState(row),
-    landTreatment: terminated ? null : 'Retained',
-    allocation: plots && plots.length > 0 ? plots : terminated || !plotsKnown ? null : 'awaiting',
+    landTreatment: row.status === 'closed' ? 'Released' : terminated ? null : 'Retained',
+    allocation: plots.length > 0 ? plots : terminated || hasUnmatchedAllocation ? null : 'awaiting',
   };
-}
-
-/** Groups allocated plots by the plan that holds them. */
-export function plotsByPlanId(plots: { label: string; payment_plan_id: string | null }[]): Map<string, string[]> {
-  const byPlan = new Map<string, string[]>();
-  for (const plot of plots) {
-    if (!plot.payment_plan_id) continue;
-    byPlan.set(plot.payment_plan_id, [...(byPlan.get(plot.payment_plan_id) ?? []), plot.label]);
-  }
-  return byPlan;
 }

@@ -35,7 +35,7 @@ export const useCostItems = (
     enabled: Boolean(assetId) && (options.enabled ?? true),
   });
 
-/** GET .../costs/catalogue — the finance sheet's cost groups and the backend's own labels for them. */
+/** GET /admin/costs/catalogue — shared finance cost groups and their labels. */
 export const CostCatalogueSchema = z.object({
   groups: z.array(z.object({ group: z.string(), label: z.string() })),
 });
@@ -47,11 +47,11 @@ export const CostCatalogueSchema = z.object({
  * A group this app's schema doesn't know yet is left out: the create request
  * would be validated against the same list.
  */
-export const useCostCatalogue = (assetId: string, options: { enabled?: boolean } = {}) =>
+export const useCostCatalogue = (options: { enabled?: boolean } = {}) =>
   useQuery({
-    queryKey: assetKeys.costCatalogue(assetId),
-    queryFn: () => apiGet(`/admin/assets/${assetId}/costs/catalogue`, CostCatalogueSchema),
-    enabled: Boolean(assetId) && (options.enabled ?? true),
+    queryKey: assetKeys.costCatalogue(),
+    queryFn: () => apiGet('/admin/costs/catalogue', CostCatalogueSchema),
+    enabled: options.enabled ?? true,
     staleTime: Infinity,
     select: (data) => data.groups.filter((row): row is { group: CostGroup; label: string } => CostGroupSchema.safeParse(row.group).success),
   });

@@ -63,10 +63,9 @@ function LegacyUnitBar({ asset }: { asset: HeaderAsset }) {
 /**
  * The design's header bar, for an estate on the live sqm ledger: "X of Y
  * saleable sqm available", split into sold, selling and available. Figures
- * are the per-product roll-up of GET .../sqm-inventory (not its `totals`
- * block, which double-counts — see `ProductPosition`).
+ * are the per-product roll-up of GET .../sqm-inventory.
  *
- * Defaulted-retained is named in the caption but has no segment of its own:
+ * Defaulted-retained is shown as a separate callout but has no bar segment:
  * the backend reports it as a subset of selling/sold, not a separate bucket,
  * so drawing it as a fourth slice would make the bar add up to more than the
  * estate.
@@ -89,7 +88,6 @@ function LedgerAvailabilityBar({ assetId }: { assetId: string }) {
         </strong>
         <span className="text-xs text-muted-foreground tabular-nums">
           {formatSqmExact(totals.sold_sqm)} sold · {formatSqmExact(totals.selling_sqm)} selling
-          {totals.defaulted_sqm > 0 ? ` · ${formatSqmExact(totals.defaulted_sqm)} defaulted-retained` : ""}
         </span>
       </div>
       <div className="mt-2.5 flex h-1.5 overflow-hidden rounded-full bg-muted" role="img" aria-label="Inventory position">
@@ -97,6 +95,13 @@ function LedgerAvailabilityBar({ assetId }: { assetId: string }) {
         <div className="h-full bg-amber-500" style={{ width: width(totals.selling_sqm) }} />
         <div className="h-full bg-foreground/75" style={{ width: width(totals.available_sqm) }} />
       </div>
+      {totals.defaulted_sqm > 0 && (
+        <div className="mt-2.5 inline-flex flex-wrap items-center gap-x-1.5 rounded-md border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs text-rose-800">
+          <span className="font-semibold tabular-nums">{formatSqmExact(totals.defaulted_sqm)}</span>
+          <span>defaulted land retained</span>
+          <span className="text-rose-700/80">· included in sold or selling above</span>
+        </div>
+      )}
     </section>
   );
 }

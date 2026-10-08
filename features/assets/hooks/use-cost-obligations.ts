@@ -77,6 +77,12 @@ function useObligationMutation<TVariables, TData>(
       queryClient.invalidateQueries({
         queryKey: assetKeys.costCoverage(assetId),
       });
+      queryClient.invalidateQueries({
+        queryKey: [...assetKeys.detail(assetId), 'profitability'],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [...assetKeys.detail(assetId), 'profitability-drilldown'],
+      });
       if (obligationId) {
         queryClient.invalidateQueries({
           queryKey: assetKeys.costObligation(assetId, obligationId),

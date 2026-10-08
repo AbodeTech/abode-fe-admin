@@ -37,8 +37,8 @@ function physicalStatusForSize(plots: MockPlot[], size: number) {
     allocated_holders: allocated.map((p) => ({
       plot_id: p._id,
       plot_name: `${p.block_label}-${p.plot_number}`,
-      customer_name: p.customer_name ?? null,
-      attributable_value: p.attributable_value ?? null,
+      customer_name: null,
+      attributable_value: null,
     })),
   };
 }
@@ -73,21 +73,16 @@ export const inventoryReconciliationRoutes: MockRoutes = {
       const group = sizeGroups.find((g) => g.size === size) ?? null;
       const commercial = group ? commercialStatusForGroup(group) : null;
 
-      const exceptions: { code: 'NO_SALES_DATA' | 'NO_PHYSICAL_PLOTS' | 'OVERSOLD'; message: string }[] = [];
-      if (physical && !commercial) {
-        exceptions.push({
-          code: 'NO_SALES_DATA',
-          message: `${size} sqm has ${physical.allocated_count + physical.available_count} physical plot(s) but no matching sales data`,
-        });
-      } else if (!physical && commercial) {
+      const exceptions: { code: 'NO_PHYSICAL_PLOTS' | 'OVERSOLD'; message: string }[] = [];
+      if (!physical && commercial && commercial.units_sold > 0) {
         exceptions.push({
           code: 'NO_PHYSICAL_PLOTS',
           message: `${size} sqm shows ${commercial.units_sold} unit(s) sold but no physical plots are recorded`,
         });
-      } else if (physical && commercial && commercial.units_sold > physical.allocated_count) {
+      } else if (physical && commercial && commercial.units_sold > physical.allocated_count + physical.available_count) {
         exceptions.push({
           code: 'OVERSOLD',
-          message: `${size} sqm: ${commercial.units_sold - physical.allocated_count} more unit(s) sold than physically allocated`,
+          message: `${size} sqm has ${commercial.units_sold} sold unit(s) but only ${physical.allocated_count + physical.available_count} plots recorded. Review the plot register and sales.`,
         });
       }
 

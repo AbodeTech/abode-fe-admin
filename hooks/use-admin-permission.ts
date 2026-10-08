@@ -21,6 +21,7 @@ import { useAuthStore } from '@/store/auth-store';
 export const ADMIN_PERMISSIONS = [
   'view_finance_runs',
   'run_finance_posting',
+  'run_finance_reports',
   'view_user',
   'view_users',
   'view_user_analytics',
@@ -39,6 +40,7 @@ export const ADMIN_PERMISSIONS = [
   'create_user_plan',
   'create_developer_plot',
   'delete_user_plan',
+  'keep_inventory_on_close',
   'edit_user_asset_question',
   // Flex 2.0 (backend `adjust_streak`): correct a customer's streak, optionally with a points correction.
   // The backend migration grants it to every role that holds `adjust_plan_balance`.

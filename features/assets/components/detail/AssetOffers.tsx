@@ -316,6 +316,7 @@ export function AssetOffers() {
       )}
 
       <OfferEditDialogs asset={asset} />
+
       {flexOffer ? (
         <FlexPricingSheet
           key={pricing.session}

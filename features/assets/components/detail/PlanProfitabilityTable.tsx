@@ -7,7 +7,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { formatNairaCompact } from "@/lib/utils/format";
 
-import { useAssetDetail } from "../../hooks/use-asset-detail";
 import { useProfitabilityMatrix } from "../../hooks/use-profitability-matrix";
 import { planTenorLabel } from "../../schemas/asset-analytics.schema";
 import { OFFER_TYPE_LABELS } from "../../schemas/asset.schema";
@@ -45,9 +44,7 @@ const CELL = "whitespace-nowrap px-2.5 py-2.5 text-right tabular-nums";
 export function PlanProfitabilityTable({ assetId }: { assetId: string }) {
   const [open, setOpen] = useState(false);
   const { data, isLoading, error } = useProfitabilityMatrix(assetId, undefined, { enabled: open });
-  const { data: asset } = useAssetDetail(assetId);
-
-  const rows = data && asset ? planProfitRows(data.rows, asset.offers) : [];
+  const rows = data ? planProfitRows(data.rows) : [];
 
   return (
     <DetailPanel
@@ -62,7 +59,7 @@ export function PlanProfitabilityTable({ assetId }: { assetId: string }) {
     >
       {!open ? null : error ? (
         <p className="p-6 text-center text-sm text-rose-600">Couldn&apos;t load profit by plan: {error.message}</p>
-      ) : isLoading || !data || !asset ? (
+      ) : isLoading || !data ? (
         <div className="p-4">
           <Skeleton className="h-24 w-full" />
         </div>
@@ -92,7 +89,7 @@ export function PlanProfitabilityTable({ assetId }: { assetId: string }) {
                   <td className="px-2.5 py-2.5 text-left">
                     <span className="font-semibold">{OFFER_TYPE_LABELS[row.offer_type]}</span>
                     <span className="block text-[10px] text-muted-foreground">
-                      {row.size_sqm == null ? "Size not on this asset" : `${row.size_sqm.toLocaleString()} sqm`} ·{" "}
+                      {row.size_sqm > 0 ? `${row.size_sqm.toLocaleString()} sqm` : "Size unknown"} ·{" "}
                       {planTenorLabel(row.tenor_months ?? 0)}
                       {row.complete ? "" : " · provisional"}
                     </span>

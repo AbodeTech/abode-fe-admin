@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { useAdminPermissions } from '@/hooks/use-admin-permission';
 
 import {
   useAdjustUserPlanBalance,
@@ -229,7 +230,9 @@ export function ClosePlanModal(props: BaseProps) {
 
 export function DeletePlanModal(props: BaseProps) {
   const mutation = useDeleteUserPlan();
+  const canKeepInventory = useAdminPermissions().has('keep_inventory_on_close');
   const [reason, setReason] = useState('');
+  const [keepInventoryReason, setKeepInventoryReason] = useState('');
   const [refund, setRefund] = useState(true);
   const [freeInventory, setFreeInventory] = useState(true);
   const [notify, setNotify] = useState(true);
@@ -243,6 +246,7 @@ export function DeletePlanModal(props: BaseProps) {
           reason,
           refund_to_wallet: refund,
           free_inventory: freeInventory,
+          keep_inventory_reason: freeInventory ? undefined : keepInventoryReason.trim(),
           notify_user: notify,
           expected_updated_at: props.expectedUpdatedAt,
         },
@@ -270,14 +274,36 @@ export function DeletePlanModal(props: BaseProps) {
           <label className="flex items-center gap-2 text-sm">
             <Checkbox checked={refund} onCheckedChange={(v) => setRefund(v === true)} /> Refund paid amount to wallet
           </label>
-          <label className="flex items-center gap-2 text-sm">
-            <Checkbox checked={freeInventory} onCheckedChange={(v) => setFreeInventory(v === true)} /> Release asset inventory
-          </label>
+          {canKeepInventory ? (
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox checked={freeInventory} onCheckedChange={(v) => setFreeInventory(v === true)} /> Release asset inventory
+            </label>
+          ) : (
+            <p className="text-xs text-muted-foreground">Deleting this plan will release its land back into available inventory.</p>
+          )}
+          {canKeepInventory && !freeInventory ? (
+            <div className="space-y-2 rounded-md border p-3">
+              <Label htmlFor="delete-plan-keep-inventory-reason">Why must this land stay committed?</Label>
+              <Textarea
+                id="delete-plan-keep-inventory-reason"
+                value={keepInventoryReason}
+                onChange={(e) => setKeepInventoryReason(e.target.value)}
+                aria-describedby="delete-plan-keep-inventory-help"
+              />
+              <p id="delete-plan-keep-inventory-help" className="text-xs text-muted-foreground">
+                Minimum 20 characters. The deleted plan will no longer appear, but its land will remain unavailable for another sale.
+              </p>
+            </div>
+          ) : null}
           <NotifyToggle checked={notify} onChange={setNotify} />
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => props.onOpenChange(false)}>Cancel</Button>
-          <Button variant="destructive" disabled={mutation.isPending || reason.trim().length < 30} onClick={submit}>
+          <Button
+            variant="destructive"
+            disabled={mutation.isPending || reason.trim().length < 30 || (!freeInventory && (!canKeepInventory || keepInventoryReason.trim().length < 20))}
+            onClick={submit}
+          >
             {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Delete plan
           </Button>
