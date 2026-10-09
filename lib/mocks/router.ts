@@ -43,7 +43,9 @@ export class MockHttpError extends Error {
   constructor(
     readonly statusCode: number,
     message: string,
-    readonly code?: string
+    readonly code?: string,
+    /** Top-level extras the real BE puts on an error body (a validation `errors[]`, a conflict's `live_version`). */
+    readonly details?: unknown
   ) {
     super(message);
   }
