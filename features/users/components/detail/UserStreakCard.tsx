@@ -40,10 +40,10 @@ import { getErrorMessage } from "../../utils/error-message";
  * Points only change when the admin enters a points correction (backend
  * decision #4); otherwise they are left alone.
  *
- * A customer with no streak-enabled plan has no streak to show, so the streak
- * reads “—” and Best streak is hidden — the backend reports 0 for both in that
- * case, which would be a made-up figure for a customer who may have a real best
- * streak. Their points are real and still shown.
+ * A customer with no streak-enabled plan has no *active* streak, so Active
+ * streak reads “—” rather than a made-up 0. Their best streak and points are
+ * real (D12 — a completed customer keeps them; the backend returns the real best
+ * streak there since 9 Oct 2026) and are shown as usual.
  * ============================================================ */
 
 function monthLabel(month: string): string {
@@ -252,17 +252,14 @@ export function UserStreakCard({ userId }: { userId: string }) {
       </CardHeader>
 
       <CardContent>
-        <div className={hasStreak ? "grid gap-3 sm:grid-cols-2 lg:grid-cols-4" : "grid gap-3 sm:grid-cols-2 lg:grid-cols-3"}>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Stat
             label="Active streak"
             value={hasStreak ? `${streak.current_streak} ${streak.current_streak === 1 ? "month" : "months"}` : "—"}
             hint={hasStreak && streak.covered_through ? `Protected through ${monthLabel(streak.covered_through)}` : undefined}
             icon={<Flame className="h-4 w-4 text-[#667085]" />}
           />
-          {/* Hidden, not zero, when there is no streak-enabled plan: the backend reports 0 there. */}
-          {hasStreak ? (
-            <Stat label="Best streak" value={`${streak.best_streak} ${streak.best_streak === 1 ? "month" : "months"}`} />
-          ) : null}
+          <Stat label="Best streak" value={`${streak.best_streak} ${streak.best_streak === 1 ? "month" : "months"}`} />
           <Stat label="Points balance" value={streak.points_balance.toLocaleString()} icon={<Star className="h-4 w-4 text-[#667085]" />} />
           <Stat
             label={month ? monthLabel(month.month) : "This month"}

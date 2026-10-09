@@ -102,7 +102,8 @@ export function previewRowsFor(basePrice: number, checkpoints: MockCheckpoint[])
 
 export type MockPricingError = { field: string; code: string; message: string };
 
-const twoDp = (v: number) => Math.abs(v * 100 - Math.round(v * 100)) < 1e-6;
+// Same exact check as the backend (flex-pricing.engine.ts): no float epsilon to wrongly reject large kobo prices.
+const twoDp = (v: number) => Number.isSafeInteger(Math.round(v * 100)) && Math.round(v * 100) / 100 === v;
 
 /** Publish-time rules (contract §3.2). Draft saves skip this and check shape only. */
 export function validatePricingBody(raw: unknown): { errors: MockPricingError[]; basePrice?: number; checkpoints?: MockCheckpoint[] } {

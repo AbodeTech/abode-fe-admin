@@ -202,7 +202,7 @@ story += [
     P("Abode Flex 2.0 — API endpoint requirements", "title"),
     P("Every endpoint the Flex site and the admin need for Flex 2.0, Streaks &amp; Points and Autopay: what exists, what must change, what is new, "
       "where each is used and why. <b>Admin endpoints now carry request and response shapes.</b>", "body"),
-    P("Date: 6 Oct 2026 &nbsp;·&nbsp; Revision of the 5 Oct 2026 document &nbsp;·&nbsp; Basis: Flex 2.0 PRD v0.1, Recorded Decisions (6 Oct 2026), "
+    P("Date: 6 Oct 2026 (status updated 9 Oct) &nbsp;·&nbsp; Revision of the 5 Oct 2026 document &nbsp;·&nbsp; Basis: Flex 2.0 PRD v0.1, Recorded Decisions (6 Oct 2026), "
       "Flex 2.0 admin mockups &nbsp;·&nbsp; Scanned: abode-v2, abode-fe-admin, abode-be-v2 at origin/staging (live OpenAPI) &nbsp;·&nbsp; "
       "Audience: backend, frontend and admin teams", "meta"),
 ]
@@ -228,6 +228,21 @@ story += box(
     "<b>Q11/D08</b> first installment is the minimum purchase payment, smaller later installments are accepted. "
     "<b>D04</b> no shorter-than-12-month Flex plan. <b>Q12</b> manual plans get an Enable-streaks flag. <b>Q13</b> property suggestions go only to customers with no active plan. "
     "Changed rows are tagged in their notes.", bg="#f3f8fb")
+
+story += box(
+    "<b>Status, 9 Oct 2026: implemented.</b> The backend built the admin routes in this document on <font name='Mono'>abode-be-v2</font> "
+    "<font name='Mono'>staging</font> (PRs #95 and #96) and they are live on the staging API. <b>Where the shipped behaviour differs from the text below, the backend wins:</b> "
+    "(1) pricing writes use <font name='Mono'>manage_assets</font> and reads <font name='Mono'>view_assets</font>; "
+    "(2) a draft is refused on a tenor_list size (409 PRICING_MODE_CONFLICT), and drafts are marked deferred by product; "
+    "(3) streak adjust needs the new <font name='Mono'>adjust_streak</font> permission, takes a 10–500 character reason and an optional "
+    "<font name='Mono'>points_change</font> (±100,000, never below a zero balance, else 409 POINTS_BELOW_ZERO); points are untouched without it; "
+    "(4) there is no NO_ACTIVE_STREAK error, and with no streak-enabled plan the summary reports 0 for the current streak but keeps the real best streak (fixed 9 Oct); "
+    "(5) <font name='Mono'>enable_streaks</font> is accepted on every manual plan type, not only Flex; "
+    "(6) the pricing GET's <font name='Mono'>legacy</font> block adds <font name='Mono'>tenor_36_unavailable_reason</font>; "
+    "(7) errors carry the code in <font name='Mono'>code</font> plus top-level <font name='Mono'>errors[]</font> / <font name='Mono'>live_version</font>; "
+    "(8) the discounted total is rounded half up per unit, as assumed in section 3.4, and the 2-decimal price check is exact so large kobo prices are accepted (fixed 9 Oct); "
+    "(9) history's <font name='Mono'>changed_by</font> is the admin's name, with <font name='Mono'>changed_by_email</font> alongside (9 Oct).",
+    bg="#eefaf3", border="#bfe6cf")
 
 # ================================================================== 1 summary (filled after counting)
 SUMMARY_INDEX = len(story)

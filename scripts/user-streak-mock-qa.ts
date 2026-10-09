@@ -3,8 +3,8 @@
  * Run: npx tsx scripts/user-streak-mock-qa.ts
  *
  * Proves the contract's rules before the card is trusted: the summary shape,
- * the zeros the backend reports for a customer with no streak-enabled plan (the
- * card hides Best streak then), that an adjustment needs a reason and a real
+ * what the backend reports for a customer with no streak-enabled plan (no active
+ * streak, but the real best streak and points), that an adjustment needs a reason and a real
  * change, that the best streak never falls, and that points move ONLY when a
  * points correction is sent — never below zero.
  */
@@ -83,12 +83,11 @@ async function main() {
   );
 
   results.push(
-    await run('STREAK-no-enabled-plan-reports-zeros-but-real-points', async () => {
+    await run('STREAK-no-enabled-plan-has-no-active-streak-but-keeps-best-streak-and-points', async () => {
       const s: any = await call('GET', `/admin/users/${withoutStreak}/streak`);
       assert(s.current_streak === 0 && s.current_month === null && s.streak_enabled_plans === 0, 'empty-state payload');
-      // The real backend reports 0 for BOTH streaks here (even for a customer with a real best streak),
-      // which is why the card hides Best streak rather than showing it.
-      assert(s.best_streak === 0, 'backend reports best_streak 0 with no streak-enabled plan');
+      // D12: a customer with no counted plan keeps the best streak they earned (the backend returns it since 9 Oct).
+      assert(s.best_streak > 0, 'best streak is kept, not zeroed');
       assert(s.points_balance > 0, 'points are real');
     })
   );

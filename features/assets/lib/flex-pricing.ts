@@ -51,7 +51,11 @@ export type PricingError = {
 const toKobo = (naira: number): bigint => BigInt(Math.round(naira * 100));
 const fromKobo = (kobo: bigint): number => Number(kobo) / 100;
 
-const hasAtMostTwoDecimals = (value: number): boolean => Math.abs(value * 100 - Math.round(value * 100)) < 1e-6;
+// Exact for every amount below 2^53 kobo, and identical to the backend's check (flex-pricing.engine.ts):
+// k / 100 is the nearest double to the decimal "x.yz", the same double the input parsed to. The earlier
+// fixed epsilon on value * 100 wrongly rejected kobo prices above about ₦134M, which the backend accepts.
+const hasAtMostTwoDecimals = (value: number): boolean =>
+  Number.isSafeInteger(Math.round(value * 100)) && Math.round(value * 100) / 100 === value;
 
 /** Trims float noise from a percent shown to the admin: 5.5 not 5.499999. */
 const pct = (value: number): string => String(Math.round(value * 100) / 100);

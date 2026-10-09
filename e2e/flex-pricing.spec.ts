@@ -299,11 +299,12 @@ test.describe.serial('Flex 2.0 pricing (admin)', () => {
     expect(await readPoints()).toBe(before + 50);
   });
 
-  test('a customer with no streak-enabled plan shows no streak, hides Best streak, and keeps real points', async () => {
+  test('a customer with no streak-enabled plan shows no active streak but keeps Best streak and real points', async () => {
     await page.goto(`/users/${USER_WITHOUT_STREAK}`);
     await expect(page.getByText('No streak-enabled plan, so there is no active streak.')).toBeVisible();
-    // The backend reports 0 for the streaks here, so Best streak is left out rather than shown as a made-up 0.
-    await expect(page.getByText('Best streak')).toHaveCount(0);
+    // No active streak (shown as "—"), but the best streak earned is real and stays (D12).
+    await expect(page.getByText('Best streak')).toBeVisible();
+    await expect(page.getByText('Active streak').locator('xpath=ancestor::div[2]').getByText('—')).toBeVisible();
     expect(await readPoints()).toBeGreaterThan(0);
     await expect(page.getByRole('button', { name: 'Adjust streak' })).toBeDisabled();
   });

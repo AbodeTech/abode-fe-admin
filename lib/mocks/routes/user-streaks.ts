@@ -7,8 +7,8 @@ import { body } from './util';
  * from the id, then mutated by adjustments.
  *
  * Mirrors abode-be-v2 `staging` (StreakAdminController / StreakService, 8 Oct 2026):
- *  - the summary reports 0 for current AND best streak when no plan is
- *    streak-enabled (the real service does; the UI hides Best streak then);
+ *  - with no streak-enabled plan the summary reports 0 for the current streak but keeps the
+ *    real best streak (D12; fixed in the backend on 9 Oct 2026);
  *  - adjust takes a 10–500 character reason and an optional `points_change`
  *    (±100,000, never taking the balance below zero — 409 POINTS_BELOW_ZERO);
  *  - 409 NO_CHANGE only when the streak is unchanged AND no points change was sent;
@@ -62,7 +62,7 @@ export const userStreakRoutes: MockRoutes = {
     if (state.streak_enabled_plans === 0) {
       return {
         current_streak: 0,
-        best_streak: 0,
+        best_streak: state.best_streak,
         points_balance: state.points_balance,
         current_month: null,
         covered_through: null,

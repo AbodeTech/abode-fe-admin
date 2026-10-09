@@ -129,6 +129,19 @@ async function main() {
     })
   );
 
+  results.push(
+    await run('ENG-large-kobo-prices-are-accepted-like-the-backend', async () => {
+      // The old float epsilon rejected these valid 2-decimal prices (kobo above about ₦134M); the backend now accepts them.
+      for (const price of [134_217_728.29, 301_538_072.71, 999_999_999_999.99]) {
+        assert(validatePricing(input(price, 5, 15)).length === 0, `${price} wrongly rejected by the UI engine`);
+        assert(previewRows(input(price, 5, 15)).length === 25, `${price} produced no preview rows`);
+      }
+      // Genuinely too many decimals is still refused.
+      assert(validatePricing(input(134_217_728.291, 5, 15))[0]?.code === 'BASE_PRICE_INVALID', '3 dp price accepted');
+      assert(validatePricing(input(1000, 5.555, 15)).some((e) => e.code === 'DISCOUNT_OUT_OF_RANGE'), '3 dp discount accepted');
+    })
+  );
+
   /* ---------------- engine vs mock server ---------------- */
   results.push(
     await run('AGREE-engine-matches-server-preview', async () => {
@@ -147,6 +160,15 @@ async function main() {
         const base = basePlanPayments(cfg)!;
         assert(server.monthly_payment === base.monthly_payment && server.final_payment === base.final_payment, 'base payments differ');
       }
+    })
+  );
+
+  results.push(
+    await run('AGREE-server-preview-accepts-large-kobo-prices', async () => {
+      const asset: any = await call('GET', `/admin/assets/${A1}`);
+      const size = asset.offers.find((o: any) => o.offer_type === 'flex').sizes[0];
+      const out: any = await call('POST', `/admin/assets/${A1}/offers/flex/sizes/${size._id}/pricing/preview`, body(301_538_072.71, 26.33, 99.27));
+      assert(out.valid === true && out.rows.length === 25, 'the mock server rejected a valid large kobo price');
     })
   );
 
