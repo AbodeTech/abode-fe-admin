@@ -99,7 +99,7 @@ export function WhatsappContactList({
       <header className="shrink-0 space-y-3 px-1 pb-4">
         {/* The same 64px band as the transcript card's header, so the page
             title and the open contact sit on one line across the layout. */}
-        <div className="mt-px flex h-16 items-center gap-2 border-b border-gray-200">
+        <div className="flex h-12 items-center gap-2 border-b border-gray-200 lg:mt-px lg:h-16">
           <h1 className="text-lg font-semibold text-gray-900">WhatsApp</h1>
           {!isLoading && total > 0 && (
             <span
@@ -119,7 +119,7 @@ export function WhatsappContactList({
             placeholder="Search by phone number"
             inputMode="tel"
             maxLength={20}
-            className="h-10 bg-white pl-8 text-sm"
+            className="h-11 bg-white pl-8 text-base md:h-10 md:text-sm"
             aria-label="Search WhatsApp conversations by phone number"
           />
           {isFetching && !isLoading && (
@@ -145,7 +145,7 @@ export function WhatsappContactList({
                 aria-checked={active}
                 onClick={() => onUnresolvedOnlyChange(option.value)}
                 className={cn(
-                  "rounded-md px-2 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00695C]/40",
+                  "rounded-md px-2 py-2 transition-colors md:py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00695C]/40",
                   active
                     ? "bg-white text-gray-900 shadow-sm"
                     : "text-gray-500 hover:text-gray-700",
@@ -246,7 +246,7 @@ export function WhatsappContactList({
               disabled={page <= 1}
               onClick={() => onPageChange(page - 1)}
               aria-label="Previous page"
-              className="grid h-8 w-8 place-items-center rounded-md text-gray-500 hover:bg-gray-200/60 hover:text-gray-900 disabled:pointer-events-none disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00695C]/40"
+              className="grid h-10 w-10 place-items-center rounded-md md:h-8 md:w-8 text-gray-500 hover:bg-gray-200/60 hover:text-gray-900 disabled:pointer-events-none disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00695C]/40"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
@@ -255,7 +255,7 @@ export function WhatsappContactList({
               disabled={page >= totalPages}
               onClick={() => onPageChange(page + 1)}
               aria-label="Next page"
-              className="grid h-8 w-8 place-items-center rounded-md text-gray-500 hover:bg-gray-200/60 hover:text-gray-900 disabled:pointer-events-none disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00695C]/40"
+              className="grid h-10 w-10 place-items-center rounded-md md:h-8 md:w-8 text-gray-500 hover:bg-gray-200/60 hover:text-gray-900 disabled:pointer-events-none disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00695C]/40"
             >
               <ChevronRight className="h-4 w-4" />
             </button>
@@ -288,10 +288,8 @@ function ContactRow({
         onClick={onSelect}
         aria-current={active ? "true" : undefined}
         className={cn(
-          "flex w-full gap-3 rounded-lg px-2 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00695C]/40",
-          active
-            ? "bg-[#E0F2F1]/70"
-            : "hover:bg-gray-100",
+          "flex w-full gap-3 rounded-lg px-2 py-3 text-left md:py-2.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00695C]/40",
+          active ? "bg-[#E0F2F1]/70" : "hover:bg-gray-100",
         )}
       >
         <ContactAvatar contact={contact} />

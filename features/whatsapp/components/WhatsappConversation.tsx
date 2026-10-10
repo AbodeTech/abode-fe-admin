@@ -144,20 +144,25 @@ export function WhatsappConversation({
 
   return (
     <div className="flex h-full flex-col">
-      <header className="flex h-16 shrink-0 items-center gap-3 border-b border-gray-100 px-3 lg:px-6">
+      <header className="flex min-h-14 shrink-0 items-center gap-2.5 border-b border-gray-100 px-2 py-2 sm:gap-3 sm:px-3 lg:h-16 lg:px-6 lg:py-0">
         {onBack && (
           <Button
             variant="ghost"
             size="icon"
             onClick={onBack}
-            className="-ml-1 shrink-0 lg:hidden"
+            className="h-10 w-10 shrink-0 lg:hidden"
             aria-label="Back to conversations"
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
         )}
 
-        <ContactAvatar contact={contact} size="md" />
+        <span className="sm:hidden">
+          <ContactAvatar contact={contact} />
+        </span>
+        <span className="hidden sm:block">
+          <ContactAvatar contact={contact} size="md" />
+        </span>
 
         <div className="min-w-0 flex-1">
           <h2 className="flex flex-wrap items-center gap-1.5 text-sm font-semibold text-gray-900">
@@ -183,7 +188,9 @@ export function WhatsappConversation({
             <span className="tabular-nums">
               {formatPhone(contact.phoneNumber)}
             </span>
-            {contact.email && <span className="ml-2">{contact.email}</span>}
+            {contact.email && (
+              <span className="ml-2 hidden sm:inline">{contact.email}</span>
+            )}
             {!contact.userId && (
               <span className="ml-2 text-amber-700">No matching account</span>
             )}
@@ -191,8 +198,13 @@ export function WhatsappConversation({
         </div>
 
         {contact.userId && (
-          <Button asChild variant="outline" size="sm" className="shrink-0">
-            <Link href={`/users/${contact.userId}`}>
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="h-10 w-10 shrink-0 px-0 sm:h-8 sm:w-auto sm:px-3"
+          >
+            <Link href={`/users/${contact.userId}`} aria-label="View account">
               <span className="hidden sm:inline">View account</span>
               <ExternalLink className="h-3.5 w-3.5 sm:ml-1.5" />
             </Link>
@@ -204,13 +216,13 @@ export function WhatsappConversation({
         ref={scrollRef}
         className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-[#F9FAFB] [scrollbar-width:thin]"
       >
-        <div className="mx-auto flex w-full max-w-[760px] flex-col gap-2 px-4 pb-6 pt-3 lg:px-8 lg:pt-4">
+        <div className="mx-auto flex w-full max-w-[760px] flex-col gap-2 px-3 pb-6 pt-3 sm:px-4 lg:px-8 lg:pt-4">
           {hasOlder && (
             <div className="flex justify-center pb-1">
               <Button
                 variant="outline"
                 size="sm"
-                className="h-7 bg-white text-xs"
+                className="h-9 bg-white text-xs md:h-7"
                 onClick={() => onPageChange(page + 1)}
               >
                 <ChevronUp className="mr-1 h-3.5 w-3.5" />
@@ -238,7 +250,7 @@ export function WhatsappConversation({
               <Button
                 variant="outline"
                 size="sm"
-                className="h-7 bg-white text-xs"
+                className="h-9 bg-white text-xs md:h-7"
                 onClick={() => onPageChange(1)}
               >
                 Jump to latest
@@ -251,8 +263,11 @@ export function WhatsappConversation({
       <footer className="flex shrink-0 items-center justify-center gap-1.5 border-t border-gray-100 px-4 py-3 text-xs text-gray-500">
         <Lock className="h-3 w-3 shrink-0" />
         <span>
-          Read-only. {totalCount} message{totalCount === 1 ? "" : "s"} on
-          record; messages are deleted after 90 days.
+          Read-only. {totalCount} message{totalCount === 1 ? "" : "s"}
+          <span className="hidden sm:inline">
+            {" "}
+            on record; messages are deleted after 90 days.
+          </span>
         </span>
       </footer>
     </div>
@@ -302,7 +317,7 @@ function MessageRow({
       >
         <div
           className={cn(
-            "max-w-[85%] rounded-[18px] px-3.5 py-2.5 text-[15px] [overflow-wrap:anywhere]",
+            "max-w-[88%] rounded-[18px] sm:max-w-[85%] px-3.5 py-2.5 text-[15px] [overflow-wrap:anywhere]",
             isOutbound
               ? "rounded-br-md bg-[#E0F2F1] text-gray-900"
               : "rounded-bl-md border border-gray-200 bg-white text-gray-900",

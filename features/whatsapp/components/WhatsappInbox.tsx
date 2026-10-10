@@ -93,7 +93,7 @@ export function WhatsappInbox() {
    * replaces the list, and the back arrow brings it back.
    */
   return (
-    <div className="flex h-[calc(100dvh-9.5rem)] min-h-[32rem] gap-6">
+    <div className="flex h-[calc(100dvh-7rem)] min-h-[26rem] gap-6 md:h-[calc(100dvh-8.5rem)] lg:h-[calc(100dvh-9.5rem)] lg:min-h-[32rem]">
       <aside
         aria-label="Conversations"
         className={cn(
