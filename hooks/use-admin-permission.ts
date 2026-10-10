@@ -133,6 +133,12 @@ export const ADMIN_PERMISSIONS = [
   'view_meetings',
   'manage_meetings',
 
+  // Amaris query log and the WhatsApp inbox. The inbox permission is granted
+  // to exactly the roles holding the Amaris one (BE migration
+  // `grant-whatsapp-inbox-permission`), so the two entries show together.
+  'view_amaris_queries',
+  'view_whatsapp_inbox',
+
   'view_campaigns',
   'manage_campaigns',
   'export_campaigns',
