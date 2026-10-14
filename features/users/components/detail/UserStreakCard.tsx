@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Flame, Loader2, Star } from "lucide-react";
 import { toast } from "sonner";
@@ -25,22 +25,25 @@ import { useHasPermission } from "@/hooks/use-admin-permission";
 import { useAdjustUserStreak, useUserStreak } from "../../hooks/use-user-streak";
 import {
   streakAdjustFormSchema,
-  STREAK_REASON_MIN,
   type StreakAdjustFormValues,
   type UserStreak,
 } from "../../schemas/user-streak.schema";
+import { POINTS_CHANGE_LIMIT, STREAK_REASON_MAX } from "../../schemas/user-streak.schema";
+import { ADMIN_REASON_MIN } from "../../schemas/user-actions.schema";
 import { getErrorMessage } from "../../utils/error-message";
 
 /* ============================================================
  * Streaks & Points — a card in the user-details Summary (D22).
  *
- * Shows the active streak and points balance. “Adjust streak” is for
- * authorised admins and needs a reason, which is stored on an audit record.
- * Points change only when the admin explicitly enters an optional correction.
+ * Shows the active streak and points balance. “Adjust streak” is for admins
+ * holding `adjust_streak` and needs a reason, which is stored on an audit record.
+ * Points only change when the admin enters a points correction (backend
+ * decision #4); otherwise they are left alone.
  *
  * A customer with no streak-enabled plan has no streak to show, so the streak
- * figures read “—” with the reason, never a made-up 0. Their best streak and
- * points are still real and still shown.
+ * reads “—” and Best streak is hidden — the backend reports 0 for both in that
+ * case, which would be a made-up figure for a customer who may have a real best
+ * streak. Their points are real and still shown.
  * ============================================================ */
 
 function monthLabel(month: string): string {
@@ -70,21 +73,47 @@ function AdjustStreakDialog({ userId, streak, onClose }: { userId: string; strea
   const adjust = useAdjustUserStreak(userId);
   const form = useForm<StreakAdjustFormValues>({
     resolver: zodResolver(streakAdjustFormSchema),
-    defaultValues: { current_streak: streak.current_streak, reason: "" },
+    defaultValues: { current_streak: streak.current_streak, points_change: undefined, reason: "" },
   });
+  const pendingPointsChange = useWatch({ control: form.control, name: "points_change" });
 
   const submit = form.handleSubmit((values) => {
-    if (streak.points_balance + (values.points_change ?? 0) < 0) {
-      form.setError("points_change", { message: "The resulting points balance cannot be negative." });
+    const pointsChange = values.points_change ?? 0;
+
+    // Mirror the backend's two refusals so the admin hears it before the round trip.
+    if (values.current_streak === streak.current_streak && pointsChange === 0) {
+      form.setError("current_streak", { message: "Change the streak or enter a points correction" });
       return;
     }
-    adjust.mutate(values, {
-      onSuccess: ({ before, after }) => {
-        toast.success(`Streak: ${before.current_streak} → ${after.current_streak}. Points: ${before.points_balance} → ${after.points_balance}.`);
-        onClose();
+    if (streak.points_balance + pointsChange < 0) {
+      form.setError("points_change", {
+        message: `This would take the balance below zero (it is ${streak.points_balance.toLocaleString()})`,
+      });
+      return;
+    }
+
+    adjust.mutate(
+      {
+        current_streak: values.current_streak,
+        reason: values.reason,
+        // Sent only when there is a correction, so a plain streak adjustment is exactly what it always was.
+        ...(pointsChange !== 0 ? { points_change: pointsChange } : {}),
       },
-      onError: (error) => toast.error(getErrorMessage(error, "Couldn't adjust the streak")),
-    });
+      {
+        onSuccess: ({ before, after }) => {
+          const parts: string[] = [];
+          if (before.current_streak !== after.current_streak) {
+            parts.push(`Streak adjusted from ${before.current_streak} to ${after.current_streak}`);
+          }
+          if (before.points_balance !== after.points_balance) {
+            parts.push(`points ${before.points_balance.toLocaleString()} → ${after.points_balance.toLocaleString()}`);
+          }
+          toast.success(parts.length ? parts.join(" · ") : "Adjustment recorded");
+          onClose();
+        },
+        onError: (error) => toast.error(getErrorMessage(error, "Couldn't adjust the streak")),
+      }
+    );
   });
 
   return (
@@ -93,7 +122,8 @@ function AdjustStreakDialog({ userId, streak, onClose }: { userId: string; strea
         <DialogHeader>
           <DialogTitle>Adjust streak</DialogTitle>
           <DialogDescription>
-            Set the current streak and optionally correct points. Leave the points field blank to keep the balance unchanged. Every correction requires an audit reason.
+            Sets this customer&apos;s current streak. Their points stay as they are unless you enter a correction below. The reason is
+            stored on an audit record.
           </DialogDescription>
         </DialogHeader>
 
@@ -118,7 +148,9 @@ function AdjustStreakDialog({ userId, streak, onClose }: { userId: string; strea
                       onChange={(event) => field.onChange(event.target.value === "" ? undefined : Number(event.target.value))}
                     />
                   </FormControl>
-                  <FormDescription>Currently {streak.current_streak}. Their best streak ({streak.best_streak}) never goes down.</FormDescription>
+                  <FormDescription>
+                    Currently {streak.current_streak}. Their best streak never goes down, and rises if you set the streak above it.
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -128,17 +160,26 @@ function AdjustStreakDialog({ userId, streak, onClose }: { userId: string; strea
               name="points_change"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Points adjustment (optional)</FormLabel>
+                  <FormLabel>Points correction (optional)</FormLabel>
                   <FormControl>
-                    <Input type="number" step={1} min={-100_000} max={100_000}
-                      name={field.name} ref={field.ref} onBlur={field.onBlur}
-                      value={field.value ?? ""} placeholder="Leave unchanged"
-                      onChange={(event) => field.onChange(event.target.value === "" ? undefined : Number(event.target.value))} />
+                    <Input
+                      type="number"
+                      inputMode="numeric"
+                      step={1}
+                      min={-POINTS_CHANGE_LIMIT}
+                      max={POINTS_CHANGE_LIMIT}
+                      placeholder="e.g. 100 or -100"
+                      name={field.name}
+                      ref={field.ref}
+                      onBlur={field.onBlur}
+                      value={field.value ?? ""}
+                      onChange={(event) => field.onChange(event.target.value === "" ? undefined : Number(event.target.value))}
+                    />
                   </FormControl>
                   <FormDescription>
-                    Enter a positive number to add points or a negative number to remove them.
-                    Current balance: {streak.points_balance.toLocaleString()}.
-                    New balance: {(streak.points_balance + (form.watch("points_change") ?? 0)).toLocaleString()}.
+                    Add or remove points. Leave empty to leave points alone. Balance is {streak.points_balance.toLocaleString()}; it can&apos;t go
+                    below zero.
+                    {pendingPointsChange ? ` New balance: ${(streak.points_balance + pendingPointsChange).toLocaleString()}.` : null}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -153,7 +194,9 @@ function AdjustStreakDialog({ userId, streak, onClose }: { userId: string; strea
                   <FormControl>
                     <Textarea placeholder="Why is the streak being adjusted?" {...field} />
                   </FormControl>
-                  <FormDescription>At least {STREAK_REASON_MIN} characters. This is stored on the audit log.</FormDescription>
+                  <FormDescription>
+                    {ADMIN_REASON_MIN} to {STREAK_REASON_MAX} characters. This is stored on the audit log.
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -213,14 +256,17 @@ export function UserStreakCard({ userId }: { userId: string }) {
       </CardHeader>
 
       <CardContent>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className={hasStreak ? "grid gap-3 sm:grid-cols-2 lg:grid-cols-4" : "grid gap-3 sm:grid-cols-2 lg:grid-cols-3"}>
           <Stat
             label="Active streak"
             value={hasStreak ? `${streak.current_streak} ${streak.current_streak === 1 ? "month" : "months"}` : "—"}
             hint={hasStreak && streak.covered_through ? `Protected through ${monthLabel(streak.covered_through)}` : undefined}
             icon={<Flame className="h-4 w-4 text-[#667085]" />}
           />
-          <Stat label="Best streak" value={`${streak.best_streak} ${streak.best_streak === 1 ? "month" : "months"}`} />
+          {/* Hidden, not zero, when there is no streak-enabled plan: the backend reports 0 there. */}
+          {hasStreak ? (
+            <Stat label="Best streak" value={`${streak.best_streak} ${streak.best_streak === 1 ? "month" : "months"}`} />
+          ) : null}
           <Stat label="Points balance" value={streak.points_balance.toLocaleString()} icon={<Star className="h-4 w-4 text-[#667085]" />} />
           <Stat
             label={month ? monthLabel(month.month) : "This month"}

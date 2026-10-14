@@ -74,6 +74,8 @@ export const SizePricingResponseSchema = z.object({
   legacy: z
     .object({
       tenor_36_land_price: z.number().nullable(),
+      /** Why `tenor_36_land_price` is null — no active 36-month plan, or its payments don't add up. */
+      tenor_36_unavailable_reason: z.string().nullable().optional(),
       active_tenors: z.array(z.number().int()),
     })
     .nullable(),

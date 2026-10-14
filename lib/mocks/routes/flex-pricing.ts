@@ -98,6 +98,7 @@ export const flexPricingRoutes: MockRoutes = {
         state.mode === 'tenor_list'
           ? {
               tenor_36_land_price: plan36?.land_price ?? null,
+              tenor_36_unavailable_reason: plan36 ? null : 'This size has no active 36-month plan.',
               active_tenors: size.plans.filter((plan) => plan.is_active).map((plan) => plan.tenor_months).sort((a, b) => a - b),
             }
           : null,
@@ -124,7 +125,13 @@ export const flexPricingRoutes: MockRoutes = {
 
   [`PUT ${PREFIX}/draft`]: ({ params, body: raw }) => {
     const { state } = load(params.assetId, params.sizeId);
-    // A tenor-list size may hold a draft too: preparing its conversion ahead of launch (Q8) is exactly what a draft is for.
+    // The backend refuses a draft on a tenor-list size: convert it first (the editor hides Save draft for a conversion).
+    if (state.mode === 'tenor_list') {
+      throw new MockHttpError(409, 'This action does not apply to this size in its current pricing mode', 'PRICING_MODE_CONFLICT', {
+        pricing_mode: 'tenor_list',
+        reason: 'Convert this size to a base plan before editing its pricing',
+      });
+    }
     const dto = body<{ base_price_per_unit?: unknown; checkpoints?: unknown }>(raw);
     const list = Array.isArray(dto.checkpoints) ? (dto.checkpoints as { months: number; discount_pct: number }[]) : [];
     const shapeOk =
@@ -164,8 +171,9 @@ export const flexPricingRoutes: MockRoutes = {
     if (expected !== (live?.version ?? null)) {
       throw new MockHttpError(
         409,
-        `Pricing changed while you were editing — v${live?.version ?? 'none'} is now live. Reload and review before publishing.`,
-        'PRICING_VERSION_CONFLICT'
+        'Someone published a newer price for this size. Reload and review it before publishing.',
+        'PRICING_VERSION_CONFLICT',
+        { live_version: live?.version ?? null }
       );
     }
 

@@ -217,6 +217,51 @@ async function main() {
     })
   );
 
+  results.push(
+    await run('DRAFT-refused-on-a-tenor-list-size-like-the-backend', async () => {
+      await expectError(() => call('PUT', P(flexSizes[2]._id, '/draft'), body(3_600_000, 5, 15)), 409, 'PRICING_MODE_CONFLICT');
+      const out: any = await call('GET', P(flexSizes[2]._id));
+      assert(out.draft === null, 'a refused draft must not be stored');
+    })
+  );
+
+  results.push(
+    await run('LEGACY-says-why-when-no-36-month-price-can-prefill', async () => {
+      const out: any = await call('GET', P(flexSizes[2]._id));
+      assert('tenor_36_unavailable_reason' in out.legacy, 'legacy block carries the reason field');
+      assert(out.legacy.tenor_36_land_price !== null && out.legacy.tenor_36_unavailable_reason === null, 'a priced 36-month plan has no reason');
+    })
+  );
+
+  /** Run a call that must fail and hand back the error, so its body extras can be checked. */
+  async function failure(fn: () => Promise<unknown>): Promise<MockHttpError> {
+    try {
+      await fn();
+    } catch (e) {
+      if (e instanceof MockHttpError) return e;
+      throw e;
+    }
+    throw new Error('expected the call to fail');
+  }
+
+  results.push(
+    await run('ERRORS-validation-failure-lists-every-problem-in-details', async () => {
+      const err = await failure(() => call('POST', P(flexSizes[0]._id, '/publish'), { ...body(0, 15, 5), expected_live_version: 2 }));
+      const list = (err.details as { errors?: { field: string; code: string; message: string }[] } | undefined)?.errors;
+      assert(err.code === 'PRICING_VALIDATION_FAILED' && Array.isArray(list), 'carries errors[]');
+      const codes = list!.map((item) => item.code);
+      assert(codes.includes('BASE_PRICE_INVALID') && codes.includes('DISCOUNT_ORDER_INVALID'), `every problem, not just the first: ${codes}`);
+    })
+  );
+
+  results.push(
+    await run('ERRORS-version-conflict-reports-the-live-version', async () => {
+      const err = await failure(() => call('POST', P(flexSizes[0]._id, '/publish'), { ...body(3_600_000, 5, 15), expected_live_version: 1 }));
+      assert(err.code === 'PRICING_VERSION_CONFLICT', `code ${err.code}`);
+      assert((err.details as { live_version?: number } | undefined)?.live_version === 2, 'live_version in the body');
+    })
+  );
+
   /* ---------------- publish ---------------- */
   results.push(
     await run('PUB-validation-blocks-bad-input', async () => {

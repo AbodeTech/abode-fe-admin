@@ -2,7 +2,7 @@
 
 For the `abode-be-v2` team. Everything below was confirmed either by reading the current `asset`, `asset-cost`, and `asset/land` module source directly, or reproduced live against `https://api-v2-staging.abodeflex.ng` during a manual QA pass of the Land Inventory & Field Performance sprint. Each item says which.
 
-The admin FE (`abode-fe-admin`) hides every widget/tab listed in §1 outside mock-mode dev, rather than show it permanently broken against the real API — see `lib/mocks/config.ts`'s `isMockApiEnabled()` and its call sites in `app/(dashboard)/assets/[id]/blocks/page.tsx` and `AssetOffers.tsx`.
+The admin FE (`abode-fe-admin`) hides every widget/tab listed in §1 that is still missing outside mock-mode dev, rather than show it permanently broken against the real API — see `lib/mocks/config.ts`'s `isMockApiEnabled()` and its call sites (e.g. `app/(dashboard)/assets/[id]/blocks/page.tsx`).
 
 ---
 
@@ -10,24 +10,13 @@ The admin FE (`abode-fe-admin`) hides every widget/tab listed in §1 outside moc
 
 Each of these has a real, working screen in the admin FE, built and tested against a mock server, with no matching real route. Confirmed live — each 404s against staging.
 
-### 1.1 Offer configuration history
+### 1.1 Offer configuration history — RESOLVED 8 Oct 2026
 
 ```
-GET /admin/assets/:assetId/offers/history
+GET /admin/assets/:assetId/offers/history   ✅ real (asset-admin controller, `view_assets`)
 ```
 
-**Confirmed live**:
-```json
-{
-  "success": false,
-  "statusCode": 404,
-  "error": "Not Found",
-  "message": "Cannot GET /api/v1/admin/assets/:assetId/offers/history?page=1&limit=50"
-}
-```
-**Confirmed via source**: full-tree search for `offers/history` and for any history-shaped route in `asset-admin.controller.ts` — no such route exists anywhere. The nearest real analogue is `GET /admin/assets/:assetId/land-configuration/history` (and `/history/:version`), but that audits land pool/non-saleable changes, not offer/size/plan changes — a different resource entirely.
-
-**Why it matters**: the Offers tab's "History" button (an activity log of every add-offer/add-size/add-plan/edit-plan action) has nowhere to read from. Not urgent, but if this is wanted for real, it needs a new audit-log endpoint on the offer/size/plan tree specifically — the land-configuration one can't be repurposed.
+This used to 404 on staging. It shipped with the Flex 2.0 work (`abode-be-v2` PR #95, `AssetService.offerHistory`), confirmed in source and in the live OpenAPI. It is paged (`?page=1&limit=50`, newest first) and each entry carries `version`, `action`, `summary`, `changed_by` (an email), `changed_at` and `size_id`; pricing entries (`publish-pricing`, `convert-pricing`) also carry `pricing_version`, `purchase_count`, `pending_transfer_count` and `superseded`. The admin FE's History button is no longer mock-only — `AssetOffers.tsx` no longer checks `isMockApiEnabled()` for it.
 
 ### 1.2 Asset-wide plot inventory — RESOLVED, was never actually missing
 

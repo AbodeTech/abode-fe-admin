@@ -312,15 +312,20 @@ export function CreateAssetForm() {
                   </FormControl>
                   <SelectContent>
                     {VISIBILITIES.map((visibility) => (
-                      <SelectItem key={visibility} value={visibility}>
+                      // The backend refuses to create an estate as public (409 SQM_INVENTORY_NOT_ACTIVE):
+                      // it has no unit capacity and no active sqm ledger yet, and this form sets neither.
+                      // Public is chosen on the asset's page once it does.
+                      <SelectItem key={visibility} value={visibility} disabled={visibility === "public"}>
                         {VISIBILITY_LABELS[visibility]}
+                        {visibility === "public" ? " — after creation" : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 <FormDescription className="text-xs">
-                  Draft keeps it off the app entirely. A newly created asset stays non-purchasable
-                  until legacy unit inventory is assigned, regardless of visibility.
+                  Draft keeps it off the app entirely. A new estate can&apos;t be made Public until it has
+                  unit capacity or its sqm inventory is active, so set Public from the asset&apos;s page
+                  after creating it.
                 </FormDescription>
                 <FormMessage />
               </FormItem>
