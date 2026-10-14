@@ -1,22 +1,9 @@
 import { z } from 'zod';
 
-import { ADMIN_REASON_MAX, ADMIN_REASON_MIN } from './user-actions.schema';
+export const STREAK_REASON_MIN = 10;
+export const STREAK_REASON_MAX = 500;
 
-/* ============================================================
- * Streaks & Points on the user-details Summary (D22).
- *
- *   GET  /admin/users/:id/streak          — the card
- *   POST /admin/users/:id/streak/adjust   — authorised adjustment, reason required
- *
- * 🚧 Proposed contract (docs/FLEX-2.0-ENDPOINTS.pdf §3.2); not on staging yet,
- * so lib/mocks/routes/user-streaks.ts serves it. There is no mockup for this
- * card — it follows the Summary's existing cards.
- *
- * What the decisions do and don't approve: a streak adjustment with a reason
- * and an audit record (D22). They do NOT approve adjusting points directly, any
- * adjustment limit, or points changing as a side effect of a streak change — so
- * `points_balance` is read-only here and the adjust response proves it didn't move.
- * ============================================================ */
+// Admin streak corrections support an optional, audited points delta.
 
 export const UserStreakSchema = z.object({
   current_streak: z.number().int(),
@@ -53,6 +40,7 @@ const SnapshotSchema = z.object({
 export const StreakAdjustResultSchema = z.object({
   before: SnapshotSchema,
   after: SnapshotSchema,
+  points_change: z.number().int(),
   audit_id: z.string(),
   adjusted_at: z.string(),
   adjusted_by: z.object({ id: z.string(), name: z.string() }),
@@ -64,10 +52,11 @@ export const streakAdjustFormSchema = z.object({
     .number({ message: 'Enter the streak this customer should have' })
     .int('Whole months only')
     .min(0, 'Cannot be negative'),
+  points_change: z.number().int('Whole points only').min(-100_000).max(100_000).optional(),
   reason: z
     .string()
     .trim()
-    .min(ADMIN_REASON_MIN, `Reason must be at least ${ADMIN_REASON_MIN} characters`)
-    .max(ADMIN_REASON_MAX),
+    .min(STREAK_REASON_MIN, `Reason must be at least ${STREAK_REASON_MIN} characters`)
+    .max(STREAK_REASON_MAX),
 });
 export type StreakAdjustFormValues = z.infer<typeof streakAdjustFormSchema>;

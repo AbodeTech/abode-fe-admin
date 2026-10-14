@@ -1,4 +1,6 @@
-import { CheckCircle2, TrendingUp, UserPlus, Users, ClipboardList } from "lucide-react";
+import { CheckCircle2, TrendingUp, UserPlus, Users, ClipboardList, Activity } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { contributorBreakdown, isPerProAttribution, sourceBreakdown, type AttributionMode } from "../lib/attribution";
 import { StatCard } from "./StatCard";
 import type {
   ManagerDashboard,
@@ -12,14 +14,22 @@ interface Props {
   roster?: "associate-pro" | "associate";
   /** When provided, the cards become drill-down triggers. */
   onOpenGroup?: (group: ProGroup) => void;
+  attributionMode?: AttributionMode;
 }
 
-export function RecruitmentSection({ data, roster = "associate-pro", onOpenGroup }: Props) {
+export function RecruitmentSection({ data, roster = "associate-pro", onOpenGroup, attributionMode = "single" }: Props) {
   const isAssociate = roster === "associate";
+  const perPro = isPerProAttribution(attributionMode);
+  const newSignupsSegments = perPro
+    ? contributorBreakdown(data.top_new_signups_contributors, data.others_new_signups_count)
+    : sourceBreakdown(data.new_signups_by_source);
+  const upgradesSegments = perPro
+    ? contributorBreakdown(data.top_upgrades_contributors, data.others_upgrades_count)
+    : sourceBreakdown(data.upgrades_by_source);
   return (
     <section className="space-y-3">
       <h2 className="text-base font-semibold text-gray-900">Recruitment</h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <StatCard
           icon={UserPlus}
           iconColor="text-cyan-600"
@@ -27,10 +37,10 @@ export function RecruitmentSection({ data, roster = "associate-pro", onOpenGroup
           value={data.new_signups_in_period.toLocaleString()}
           hint={
             isAssociate
-              ? "People associates brought in this period (all tiers)"
-              : "People your pros brought in this period (all tiers)"
+              ? "Associates & Pros brought in by associates this period"
+              : "Associates & Pros brought in by your team this period"
           }
-          onClick={onOpenGroup ? () => onOpenGroup("recruited_in_period") : undefined}
+          breakdown={newSignupsSegments}
         />
         <StatCard
           icon={TrendingUp}
@@ -39,8 +49,15 @@ export function RecruitmentSection({ data, roster = "associate-pro", onOpenGroup
           label="Recruits Promoted to Associate Pro"
           value={data.upgrades_in_period.toLocaleString()}
           hint="Recruits who upgraded to Associate Pro this period"
-          onClick={onOpenGroup ? () => onOpenGroup("upgraded_in_period") : undefined}
+          breakdown={upgradesSegments}
         />
+        {perPro && !isAssociate && (
+          <ContributingProsCard
+            recruiting={data.active_recruiting_pros_count}
+            promoting={data.active_promoting_pros_count}
+            totalAssigned={data.total_assigned}
+          />
+        )}
         {/* Associates aren't onboarded (onboarding is the associate-pro flow),
             so the metric is always 0 for that roster — hide rather than mislead. */}
         {!isAssociate && (
@@ -52,6 +69,10 @@ export function RecruitmentSection({ data, roster = "associate-pro", onOpenGroup
             value={data.onboarded_in_period.toLocaleString()}
             hint="Pros whose first call landed in Picked this period"
             onClick={onOpenGroup ? () => onOpenGroup("onboarded_in_period") : undefined}
+            breakdown={[
+              { label: "fresh", value: data.onboarded_fresh_in_period, color: "bg-emerald-500", display: data.onboarded_fresh_in_period.toLocaleString() },
+              { label: "carryover", value: data.onboarded_carryover_in_period, color: "bg-gray-300", display: data.onboarded_carryover_in_period.toLocaleString() },
+            ]}
           />
         )}
         {!isAssociate && (
@@ -77,5 +98,18 @@ export function RecruitmentSection({ data, roster = "associate-pro", onOpenGroup
         />
       </div>
     </section>
+  );
+}
+
+function ContributingProsCard({ recruiting, promoting, totalAssigned }: { recruiting: number; promoting: number; totalAssigned: number }) {
+  return (
+    <div className={cn("bg-white rounded-xl p-6 border border-gray-200 hover:shadow-md transition-shadow")}>
+      <div className="flex items-start justify-between mb-4"><div className="p-3 rounded-lg bg-indigo-50"><Activity className="w-6 h-6 text-indigo-600" /></div></div>
+      <p className="text-sm text-gray-600 mb-3">Contributing Pros</p>
+      <div className="space-y-3">
+        <div><p className="text-2xl font-bold text-gray-900 tabular-nums">{recruiting.toLocaleString()}<span className="text-base font-normal text-gray-500"> / {totalAssigned.toLocaleString()}</span></p><p className="text-xs text-gray-500 mt-0.5">recruited someone this period</p></div>
+        <div><p className="text-lg font-semibold text-gray-900 tabular-nums">{promoting.toLocaleString()}<span className="text-sm font-normal text-gray-500"> / {totalAssigned.toLocaleString()}</span></p><p className="text-xs text-gray-500 mt-0.5">drove a promotion this period</p></div>
+      </div>
+    </div>
   );
 }

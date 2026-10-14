@@ -36,6 +36,7 @@ export function TicketComposer({ ticketId, channel, mergedInto }: Props) {
 
   const [mode, setMode] = useState<Mode>(canReply ? "reply" : "note");
   const [body, setBody] = useState("");
+  const [cc, setCc] = useState("");
 
   const reply = useReplyToTicket();
   const addNote = useAddTicketNote();
@@ -56,13 +57,14 @@ export function TicketComposer({ ticketId, channel, mergedInto }: Props) {
     if (!text || isPending) return;
     try {
       if (activeMode === "reply") {
-        await reply.mutateAsync({ ticketId, body: text });
+        await reply.mutateAsync({ ticketId, body: text, cc: cc.split(",").map((address) => address.trim()).filter(Boolean) });
         toast.success("Reply sent to the customer");
       } else {
         await addNote.mutateAsync({ ticketId, body: text });
         toast.success("Note added");
       }
       setBody("");
+      setCc("");
     } catch (err: unknown) {
       toast.error(
         err instanceof Error
@@ -118,6 +120,10 @@ export function TicketComposer({ ticketId, channel, mergedInto }: Props) {
           )}
         </p>
       )}
+
+      {activeMode === "reply" && <label className="block text-xs text-gray-600">CC for this reply (optional, comma-separated)
+        <input type="text" value={cc} onChange={(event) => setCc(event.target.value)} disabled={isPending} placeholder="colleague@example.com" className="mt-1 w-full rounded-md border border-gray-200 bg-white px-2 py-1.5 text-sm text-gray-900" />
+      </label>}
 
       <Textarea
         value={body}

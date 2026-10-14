@@ -170,6 +170,7 @@ export const ManagerDashboardSchema = z.object({
     initial_sales_revenue: z.number(),
     recurring_revenue: z.number(),
     revenue_per_selling_pro: z.number(),
+    contract_size: z.number(),
     sales_count_by_source: SourceBreakdownSchema,
     revenue_by_source: SourceBreakdownSchema,
     top_selling_contributors: z.array(ContributorAmountSchema),

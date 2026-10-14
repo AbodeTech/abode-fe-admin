@@ -93,6 +93,27 @@ export const SalesRowSchema = z.object({
 
 export type SalesRow = z.infer<typeof SalesRowSchema>;
 
+/** Super Admin only: extra fields used by the configurable Sales download. */
+export const SalesExportRowSchema = z.object({
+  sale: SalesRowSchema,
+  extras: z.object({
+    buyer_phone: z.string().nullable(),
+    referrer_phone: z.string().nullable(),
+    name_on_document: z.string().nullable(),
+    address_on_document: z.string().nullable(),
+    block: z.string(),
+    plot: z.string(),
+    block_plot_pairs: z.string(),
+    plot_count: z.number(),
+    amount_payable: z.number(),
+    unique_asset_id: z.string().nullable(),
+    months_covered: z.number(),
+    updated_at: z.string(),
+    land_payment_completed_at: z.string().nullable(),
+  }),
+});
+export type SalesExportRow = z.infer<typeof SalesExportRowSchema>;
+
 /** `GET /admin/sales/dashboard` — one of the four cards. */
 export const SalesDashboardCardSchema = z.object({
   total: z.number(),

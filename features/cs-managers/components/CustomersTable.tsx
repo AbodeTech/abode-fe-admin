@@ -23,7 +23,7 @@ import { PlanDetailDrawer } from "./PlanDetailDrawer";
 import { useExportDashboardPlans } from "../hooks/use-export-dashboard-plans";
 
 interface Props {
-  managerId: string;
+  managerId: string | null;
   /** One page of plans, already filtered/searched/sorted by the BE. */
   plans: PlanRow[];
   totalAssigned: number;
@@ -125,6 +125,7 @@ export function CustomersTable({
   const rangeEnd = Math.min(page * limit, totalPlans);
 
   const handleExport = () => {
+    if (!managerId) return;
     const month = searchParams.get("month");
     const year = searchParams.get("year");
     exportPlans.mutate(
@@ -184,7 +185,7 @@ export function CustomersTable({
               placeholder="Search customer name, email, or asset…"
               className="h-8 text-xs w-56"
             />
-            <Button
+            {managerId && <Button
               variant="outline"
               size="sm"
               className="h-8 text-xs gap-1.5"
@@ -197,7 +198,7 @@ export function CustomersTable({
                 <Download className="h-3.5 w-3.5" aria-hidden />
               )}
               Export
-            </Button>
+            </Button>}
           </div>
         </div>
 

@@ -4,6 +4,7 @@ import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Loader2, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CSManagerTicketFlow } from "@/features/cs-managers/components/CSManagerTicketFlow";
 import {
   CSPerformanceHeader,
   CSManagerSnapshot,
@@ -134,7 +135,7 @@ function CustomerManagersContent() {
   // BE returns manager: null when the role is unassigned or the admin id in
   // the URL didn't resolve. Keep the header mounted so a super admin still
   // has the picker to switch away from the bad selection.
-  if (!data.manager) {
+  if (!data.manager && activeManagerId !== "all") {
     return (
       <div className="space-y-6">
         <CSPerformanceHeader
@@ -172,15 +173,17 @@ function CustomerManagersContent() {
           totalAssigned={data.portfolio.total_assigned}
           // Setting targets is super-admin only, so a CS Manager gets the
           // read-only snapshot with no CTA.
-          onManageTargets={viewAs === "super-admin" ? () => setTargetsDialogOpen(true) : undefined}
+          onManageTargets={viewAs === "super-admin" && data.manager ? () => setTargetsDialogOpen(true) : undefined}
         />
+
+        <CSManagerTicketFlow flow={data.target.ticket_flow} />
 
         <BacklogsSection backlogs={data.backlogs} />
 
         <PortfolioHealthStrip portfolio={data.portfolio} />
 
         <CustomersTable
-          managerId={activeManagerId!}
+          managerId={activeManagerId === "all" ? null : activeManagerId}
           plans={data.plans}
           totalAssigned={data.portfolio.total_assigned}
           totalPlans={data.plans_total}
@@ -191,7 +194,7 @@ function CustomerManagersContent() {
         />
       </div>
 
-      {viewAs === "super-admin" && (
+      {viewAs === "super-admin" && data.manager && (
         <ManageCSTargetsDialog
           open={targetsDialogOpen}
           onOpenChange={setTargetsDialogOpen}

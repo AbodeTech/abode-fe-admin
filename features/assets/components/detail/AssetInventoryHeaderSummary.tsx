@@ -1,64 +1,17 @@
 "use client";
 
-import { availableUnits, type Asset } from "../../schemas/asset.schema";
+import type { Asset } from "../../schemas/asset.schema";
 import { formatSqm, formatSqmExact } from "@/lib/utils/format";
 import { useLandConfiguration } from "../../hooks/use-land-configuration";
 import { useSqmInventory } from "../../hooks/use-sqm-inventory";
 import { ledgerTotals, productPositions } from "../../schemas/sqm-inventory.schema";
 
-/**
- * The header's inventory summary — one of three honest states, never a
- * figure blended across models:
- *
- *  - legacy-only: `land_inventory_state === 'not_configured'` — today's unit
- *    bar, unchanged.
- *  - mixed: a land account exists but `inventory_model_version` is still
- *    `'legacy_units'` (true for every asset throughout Phase 1) — both bars
- *    shown stacked, each clearly labelled, never combined into one
- *    percentage.
- *  - sqm-only: `inventory_model_version === 'sqm_v1'` — the live ledger has
- *    activated (the Overview's "Activate sqm inventory" notice) and legacy
- *    counters are retired. This is the state the asset-detail design draws.
- */
-
 type HeaderAsset = Pick<
   Asset,
   | '_id'
-  | 'sales_cap'
-  | 'sold_units'
-  | 'reserved_units'
-  | 'available_units'
-  | 'inventory_model_version'
+  | 'sqm_inventory_active'
   | 'land_inventory_state'
 >;
-
-function LegacyUnitBar({ asset }: { asset: HeaderAsset }) {
-  const available = availableUnits(asset);
-  const allocated = asset.sales_cap > 0 ? 1 - available / asset.sales_cap : 0;
-
-  return (
-    <div className="rounded-lg border p-4">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <p className="text-sm font-medium tabular-nums">
-          {available.toLocaleString()}{" "}
-          <span className="font-normal text-muted-foreground">
-            of {asset.sales_cap.toLocaleString()} units available
-          </span>
-        </p>
-        <p className="text-xs text-muted-foreground tabular-nums">
-          {asset.sold_units.toLocaleString()} sold
-          {asset.reserved_units > 0 ? ` · ${asset.reserved_units.toLocaleString()} reserved` : ""}
-        </p>
-      </div>
-      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-        <div
-          className="h-full rounded-full bg-foreground/60"
-          style={{ width: `${Math.min(100, Math.max(0, allocated * 100))}%` }}
-        />
-      </div>
-    </div>
-  );
-}
 
 /**
  * The design's header bar, for an estate on the live sqm ledger: "X of Y
@@ -71,12 +24,12 @@ function LegacyUnitBar({ asset }: { asset: HeaderAsset }) {
  * estate.
  */
 function LedgerAvailabilityBar({ assetId }: { assetId: string }) {
-  const { data } = useSqmInventory(assetId);
-  if (!data) return null;
+  const { data, isLoading, error } = useSqmInventory(assetId);
+  if (isLoading) return <div className="rounded-lg border p-4 text-sm text-muted-foreground">Loading live land availability…</div>;
+  if (error || !data) return <div className="rounded-lg border p-4 text-sm text-rose-700">Live land availability could not be loaded.</div>;
 
   const totals = ledgerTotals(productPositions(data.positions));
-  // Active, but nothing on the ledger yet — fall back to the land account.
-  if (totals.capacity_sqm <= 0) return <SqmSummaryBar assetId={assetId} />;
+  if (totals.capacity_sqm <= 0) return <div className="rounded-lg border p-4 text-sm text-muted-foreground">No saleable land capacity is recorded in the live ledger.</div>;
 
   const width = (value: number) => `${Math.min(100, Math.max(0, (value / totals.capacity_sqm) * 100))}%`;
 
@@ -134,33 +87,19 @@ function SqmSummaryBar({ assetId }: { assetId: string }) {
   );
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-      {children}
-    </p>
-  );
-}
-
 export function AssetInventoryHeaderSummary({ asset }: { asset: HeaderAsset }) {
-  if (asset.inventory_model_version === "sqm_v1") {
+  if (asset.sqm_inventory_active) {
     return <LedgerAvailabilityBar assetId={asset._id} />;
   }
 
   if (asset.land_inventory_state === "not_configured") {
-    return <LegacyUnitBar asset={asset} />;
+    return <div className="rounded-lg border p-4 text-sm text-muted-foreground">Land account not configured. Live availability is unavailable until SQM inventory is activated.</div>;
   }
 
   return (
     <div className="space-y-3">
-      <div>
-        <SectionLabel>Legacy unit inventory</SectionLabel>
-        <LegacyUnitBar asset={asset} />
-      </div>
-      <div>
-        <SectionLabel>Land inventory (sqm)</SectionLabel>
-        <SqmSummaryBar assetId={asset._id} />
-      </div>
+      <p className="text-xs text-muted-foreground">Land assigned for planning; live availability is unavailable until SQM inventory is activated.</p>
+      <SqmSummaryBar assetId={asset._id} />
     </div>
   );
 }

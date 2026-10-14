@@ -5,7 +5,6 @@ export type AssetListFilters = {
   search?: string;
   visibility?: Visibility;
   offer_type?: OfferType;
-  sold?: boolean;
   include_deleted?: boolean;
   page?: number;
   limit?: number;

@@ -38,7 +38,7 @@ export const useCSManagerDashboard = ({
   useQuery({
     queryKey: csManagerKeys.dashboard(managerId, { month, year, page, limit, filter, search, sort }),
     queryFn: () =>
-      apiGet(`/admin/cs-managers/${managerId}/dashboard`, CSManagerDashboardSchema, {
+      apiGet(managerId === "all" ? "/admin/cs-managers/dashboard/all" : `/admin/cs-managers/${managerId}/dashboard`, CSManagerDashboardSchema, {
         params: { month, year, page, limit, filter, search: search || undefined, sort },
       }),
     enabled: enabled && !!managerId,

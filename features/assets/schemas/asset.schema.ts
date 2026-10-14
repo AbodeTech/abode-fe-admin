@@ -12,10 +12,8 @@ import { z } from 'zod';
  * assets table rather than the per-type screens v1 had — offer type is a
  * property of a row, not a separate screen.
  *
- * Layered on top of that model is a physical-land account — total estate
- * size and per-product sqm assignment (see land-configuration.schema.ts) —
- * introduced alongside the legacy sales_cap/sold_units/reserved_units
- * counters below, not in place of them.
+ * Live availability comes from the SQM inventory ledger, not an estate-wide
+ * unit counter. Configured offer units are planning capacity, not stock.
  *
  * Money is decimal naira. See docs/ASSETS-ADMIN-DESIGN.md.
  * ============================================================ */
@@ -63,15 +61,6 @@ export function usesFoModel(offerType: OfferType): boolean {
 export const LAND_INVENTORY_STATES = ['not_configured', 'draft', 'configured'] as const;
 export const LandInventoryStateSchema = z.enum(LAND_INVENTORY_STATES);
 export type LandInventoryState = z.infer<typeof LandInventoryStateSchema>;
-
-/**
- * Stays `'legacy_units'` throughout Phase 1 — only the (not-yet-built)
- * inventory-ledger activation gate may move an asset to `'sqm_v1'`, and only
- * after reconciliation succeeds. Never inferred client-side.
- */
-export const INVENTORY_MODEL_VERSIONS = ['legacy_units', 'sqm_v1'] as const;
-export const InventoryModelVersionSchema = z.enum(INVENTORY_MODEL_VERSIONS);
-export type InventoryModelVersion = z.infer<typeof InventoryModelVersionSchema>;
 
 export const VISIBILITIES = ['draft', 'internal', 'public'] as const;
 export const VisibilitySchema = z.enum(VISIBILITIES);
@@ -121,14 +110,7 @@ export const OfferSummarySchema = z.object({
 
 export type OfferSummary = z.infer<typeof OfferSummarySchema>;
 
-/**
- * One row of the assets list.
- *
- * `available_units` is a backend virtual (`sales_cap − sold_units −
- * reserved_units`) returned because the schema sets
- * `toJSON: { virtuals: true }`. It is real data, unlike the analytics panels
- * on the same page.
- */
+/** One row of GET /admin/assets. Live stock is fetched from the SQM ledger. */
 export const AssetSchema = z.object({
   _id: z.string(),
   name: z.string(),
@@ -146,25 +128,12 @@ export const AssetSchema = z.object({
   documents: AssetDocumentsSchema.default({}),
   asset_history: z.array(AssetHistoryEntrySchema).default([]),
 
-  sales_cap: z.number(),
-  sold_units: z.number().default(0),
-  reserved_units: z.number().default(0),
-  available_units: z.number().nullable().optional(),
-
-  /**
-   * The physical-land account, layered on top of the legacy fields above
-   * (see land-configuration.schema.ts). `null`/`'not_configured'` means the
-   * asset predates this feature or hasn't been configured yet — the legacy
-   * unit fields above remain the only real inventory for such an asset.
-   * Never combine these with sales_cap/sold_units/reserved_units into one
-   * figure or percentage.
-   */
+  /** Physical-land planning state; not live availability. */
   total_land_sqm: z.number().nullable().default(null),
   land_inventory_state: LandInventoryStateSchema.default('not_configured'),
-  inventory_model_version: InventoryModelVersionSchema.default('legacy_units'),
+  sqm_inventory_active: z.boolean(),
   land_configuration_version: z.number().default(0),
 
-  sold: z.boolean().default(false),
   visibility: VisibilitySchema,
   deleted_at: z.string().nullable().optional(),
 
@@ -175,15 +144,6 @@ export const AssetSchema = z.object({
 });
 
 export type Asset = z.infer<typeof AssetSchema>;
-
-/**
- * `available_units` is a virtual, so fall back to computing it rather than
- * showing a blank if a response ever omits it.
- */
-export function availableUnits(asset: Pick<Asset, 'sales_cap' | 'sold_units' | 'reserved_units' | 'available_units'>): number {
-  if (typeof asset.available_units === 'number') return asset.available_units;
-  return Math.max(0, asset.sales_cap - asset.sold_units - asset.reserved_units);
-}
 
 /** Offers that are actually on sale, in a stable order for display. */
 export function activeOffers(offers: OfferSummary[]): OfferSummary[] {

@@ -14,6 +14,8 @@ import { cn } from "@/lib/utils";
 import { useTicketPermissions } from "../hooks/use-ticket-permissions";
 import {
   useRemoveTicketCollaborator,
+  useAddTicketParticipant,
+  useRemoveTicketParticipant,
   useUnlinkTicketFromIssue,
 } from "../hooks/use-ticket-mutations";
 import { AddCollaboratorDialog } from "./AddCollaboratorDialog";
@@ -80,12 +82,15 @@ export function TicketContextPanel({ detail }: Props) {
   const [addCollaboratorOpen, setAddCollaboratorOpen] = useState(false);
   const [assignUserOpen, setAssignUserOpen] = useState(false);
   const [linkIssueOpen, setLinkIssueOpen] = useState(false);
+  const [participantAddress, setParticipantAddress] = useState("");
   // `fault` is the wire value support calls an "issue" — see TYPE_LABELS.
   const canLinkToIssue = ticket.type === "fault";
   const [removingAdminId, setRemovingAdminId] = useState<string | null>(null);
 
   const unlinkIssue = useUnlinkTicketFromIssue();
   const removeCollaborator = useRemoveTicketCollaborator();
+  const addParticipant = useAddTicketParticipant();
+  const removeParticipant = useRemoveTicketParticipant();
 
   const handleRemoveCollaborator = async (adminId: string) => {
     setRemovingAdminId(adminId);
@@ -142,6 +147,30 @@ export function TicketContextPanel({ detail }: Props) {
           removingId={removeCollaborator.isPending ? removingAdminId : null}
         />
       </div>
+
+      {ticket.channel === "email" && (
+        <section className="rounded-lg border border-gray-200 bg-white p-3 space-y-2">
+          <h3 className="text-xs font-semibold text-gray-900">Email thread</h3>
+          <p className="text-[11px] text-gray-500">The customer receives replies; copied people receive future replies until removed.</p>
+          {(ticket.participants.length ? ticket.participants : ticket.source_reference ? [{ address: ticket.source_reference, role: "customer" as const }] : []).map((person) => (
+            <div key={person.address} className="flex items-center justify-between gap-2 text-xs">
+              <span className="break-all text-gray-700">{person.address} <span className="text-gray-400">· {person.role === "customer" ? "Customer" : "CC"}</span></span>
+              {canDecideRouting && person.role === "cc" && <button type="button" className="text-[#AD1F2A]" disabled={removeParticipant.isPending} onClick={async () => {
+                try { await removeParticipant.mutateAsync({ ticketId: ticket._id, address: person.address }); toast.success("Removed from future replies"); }
+                catch (error) { toast.error(ticketWriteError(error, "Could not remove address")); }
+              }}>Remove</button>}
+            </div>
+          ))}
+          {canDecideRouting && <form className="flex gap-2" onSubmit={async (event) => {
+            event.preventDefault();
+            try { await addParticipant.mutateAsync({ ticketId: ticket._id, address: participantAddress.trim() }); setParticipantAddress(""); toast.success("Address added to future replies"); }
+            catch (error) { toast.error(ticketWriteError(error, "Could not add address")); }
+          }}>
+            <input type="email" required value={participantAddress} onChange={(event) => setParticipantAddress(event.target.value)} placeholder="Copy an email address" className="min-w-0 flex-1 rounded-md border border-gray-200 px-2 py-1 text-xs" />
+            <button type="submit" disabled={addParticipant.isPending} className="rounded-md bg-[#00695C] px-2 py-1 text-xs text-white">Add CC</button>
+          </form>}
+        </section>
+      )}
 
       {ticket.source_reference && (
         <div className="text-xs text-gray-500">

@@ -83,7 +83,7 @@ export function ActivitySection({ data, roster = "associate-pro", onOpenGroup }:
           iconBg="bg-[#E0F2F1]"
           label={`Active ${noun}`}
           value={active_count}
-          hint={`${recent_login_count.toLocaleString()} logged in · ${recent_sale_count.toLocaleString()} sold · ${recent_recruit_count.toLocaleString()} recruited (last 30 days)`}
+          hint={`${recent_login_count.toLocaleString()} logged in · ${recent_sale_count.toLocaleString()} sold · ${recent_recruit_count.toLocaleString()} recruited (last 90 days)`}
           onClick={onOpenGroup ? () => onOpenGroup("active") : undefined}
         />
         <StatCard
@@ -92,7 +92,7 @@ export function ActivitySection({ data, roster = "associate-pro", onOpenGroup }:
           iconBg="bg-amber-50"
           label={`Inactive ${noun}`}
           value={inactive_count}
-          hint="Last login, sale or recruit was 30-60 days ago"
+          hint="No activity in last 90 days"
           onClick={onOpenGroup ? () => onOpenGroup("inactive") : undefined}
         />
         <StatCard
@@ -101,7 +101,7 @@ export function ActivitySection({ data, roster = "associate-pro", onOpenGroup }:
           iconBg="bg-red-50"
           label={`Abandoned ${noun}`}
           value={abandoned_count}
-          hint="No login, sale or recruit in over 60 days"
+          hint="No login in last 6 months"
           onClick={onOpenGroup ? () => onOpenGroup("abandoned") : undefined}
         />
       </div>

@@ -43,6 +43,7 @@ export const ADMIN_PERMISSIONS = [
   'keep_inventory_on_close',
   'edit_user_asset_question',
   'adjust_plan_balance',
+  'adjust_streak',
   'override_next_payment_date',
   'update_plan_spec',
   'suspend_plan',

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { InventoryModelVersionSchema, OfferTypeSchema } from './asset.schema';
+import { OfferTypeSchema } from './asset.schema';
 
 /* ============================================================
  * GET /admin/assets/:assetId/sqm-inventory — the real square-metre ledger
@@ -43,22 +43,8 @@ export const SqmPositionSchema = z.object({
 
 export type SqmPosition = z.infer<typeof SqmPositionSchema>;
 
-/**
- * Only `sales_cap`/`sold_units`/`reserved_units`/`note` — NOT the same shape
- * as `land-configuration.schema.ts`'s `LegacyUnitInventorySchema` (which also
- * carries `available_units`). Two different endpoints, two different legacy
- * snapshots; don't merge them.
- */
-export const SqmLegacyUnitInventorySchema = z.object({
-  sales_cap: z.number(),
-  sold_units: z.number(),
-  reserved_units: z.number(),
-  note: z.string(),
-});
-
 export const SqmInventorySchema = z.object({
   asset_id: z.string(),
-  inventory_model_version: InventoryModelVersionSchema,
   sqm_inventory_active: z.boolean(),
   totals: z.object({
     capacity_sqm: z.number(),
@@ -78,7 +64,6 @@ export const SqmInventorySchema = z.object({
   })).default([]),
   contract_values_note: z.string().optional(),
   operational_overlay_note: z.string(),
-  legacy_unit_inventory: SqmLegacyUnitInventorySchema,
 });
 
 export type SqmInventory = z.infer<typeof SqmInventorySchema>;

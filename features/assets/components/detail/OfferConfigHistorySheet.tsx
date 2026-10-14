@@ -115,6 +115,9 @@ export function OfferConfigHistorySheet({ assetId, open, onOpenChange }: Props) 
                 <b>Publishing a new pricing version doesn&apos;t touch earlier purchases.</b> Buyers under earlier versions — including transfers
                 awaiting approval — keep their saved terms. Only new quotes use the live version.
               </div>
+            </div>
+          ) : null}
+
           {(data?.meta.totalPages ?? 0) > 1 ? (
             <div className="flex items-center justify-between border-t px-6 py-3 text-sm">
               <button type="button" disabled={page <= 1} onClick={() => { setPage((value) => value - 1); setExpanded(false); }} className="disabled:opacity-40">Previous</button>

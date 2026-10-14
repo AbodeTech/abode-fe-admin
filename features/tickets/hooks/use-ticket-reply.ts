@@ -10,6 +10,7 @@ import { ticketKeys } from './query-keys';
 export interface ReplyToTicketInput {
   ticketId: string;
   body: string;
+  cc?: string[];
 }
 
 /**
@@ -24,8 +25,8 @@ export interface ReplyToTicketInput {
 export const useReplyToTicket = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ ticketId, body }: ReplyToTicketInput) =>
-      apiPost(`/admin/tickets/${ticketId}/reply`, { body }, TicketDetailSchema),
+    mutationFn: ({ ticketId, body, cc }: ReplyToTicketInput) =>
+      apiPost(`/admin/tickets/${ticketId}/reply`, { body, cc }, TicketDetailSchema),
     onSuccess: (detail, v) => {
       queryClient.setQueryData(ticketKeys.detail(v.ticketId), detail);
       queryClient.invalidateQueries({ queryKey: ticketKeys.lists() });

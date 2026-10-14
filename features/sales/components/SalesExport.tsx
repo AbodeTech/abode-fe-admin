@@ -10,9 +10,10 @@ import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
 import { useSalesExportData, EXPORT_ROW_CAP } from '../hooks/use-sales-export'
 import type { SalesListFilters } from '../hooks/use-sales'
-import type { SalesRow } from '../schemas/sales.schema'
+import type { SalesExportRow } from '../schemas/sales.schema'
 import { SALES_PLAN_STATUSES } from '../schemas/sales.schema'
 import { PLAN_STATUS_LABELS, excludedFromTotalsReason } from '../lib/plan-status'
+import { derivePaymentStatus } from '../lib/payment-status'
 // @ts-ignore
 import { Parser } from 'json2csv'
 import { saveAs } from 'file-saver'
@@ -109,6 +110,9 @@ const FIELD_CONFIG = {
       id: { label: 'ID', default: true },
       name: { label: 'Customer Name', default: true },
       email: { label: 'Email', default: true },
+      phone: { label: 'Phone', default: true },
+      nameOnDocument: { label: 'Name on Document', default: true },
+      addressOnDocument: { label: 'Address on Document', default: true },
     }
   },
   referrer: {
@@ -117,6 +121,7 @@ const FIELD_CONFIG = {
     fields: {
       referrer_name: { label: 'Referrer Name', default: false },
       referrer_email: { label: 'Referrer Email', default: false },
+      referrer_phone: { label: 'Referrer Phone', default: false },
       agencyName: { label: 'Agency', default: false },
     }
   },
@@ -132,12 +137,23 @@ const FIELD_CONFIG = {
       total_size: { label: 'Total Size', default: false },
     }
   },
+  allocation: {
+    label: 'Block & Plot',
+    color: 'bg-amber-100 text-amber-700',
+    fields: {
+      block: { label: 'Block', default: false },
+      plot: { label: 'Plot', default: false },
+      blockPlotPairs: { label: 'Block/Plot Pairs', default: false },
+      plotCount: { label: 'Plot Count', default: false },
+    }
+  },
   pricing: {
     label: 'Pricing & Payments',
     color: 'bg-emerald-100 text-emerald-700',
     fields: {
       price: { label: 'Price', default: true },
       amountPaid: { label: 'Amount Paid', default: true },
+      amountPayable: { label: 'Amount Payable', default: false },
       landBalance: { label: 'Land Balance', default: true },
     }
   },
@@ -166,6 +182,8 @@ const FIELD_CONFIG = {
       month_subscription: { label: 'Subscription Month', default: false },
       startDate: { label: 'Start Date', default: true },
       endDate: { label: 'Next Payment Date', default: true },
+      landPaymentCompletedDate: { label: 'Land Payment Completed', default: false },
+      landPaymentCompletedAt: { label: 'Land Payment Completed (ISO)', default: false },
     }
   },
   status: {
@@ -173,6 +191,7 @@ const FIELD_CONFIG = {
     color: 'bg-rose-100 text-rose-700',
     fields: {
       planStatus: { label: 'Plan Status', default: true },
+      paymentStatus: { label: 'Payment Status', default: false },
       defaulted: { label: 'Currently Defaulting', default: true },
       hasDefaultedEver: { label: 'Has Defaulted (Ever)', default: false },
       terminated: { label: 'Suspended', default: true },
@@ -185,9 +204,12 @@ const FIELD_CONFIG = {
     color: 'bg-slate-100 text-slate-700',
     fields: {
       paymentPlanId: { label: 'Payment Plan ID', default: true },
+      uniqueAssetId: { label: 'Unique Asset ID', default: false },
+      monthsCovered: { label: 'Months Covered', default: false },
       monthRemaining: { label: 'Months Remaining', default: false },
       allocationStatus: { label: 'Allocation Status', default: false },
       planCreatedAt: { label: 'Plan Created At', default: false },
+      planUpdatedAt: { label: 'Plan Last Updated', default: false },
     }
   },
 }
@@ -229,11 +251,11 @@ const FORMAT_OPTIONS: { value: ExportFormat; label: string; icon: React.ReactNod
 const PRESETS: Record<string, { label: string; fields: string[] }> = {
   basic: {
     label: 'Basic Info',
-    fields: ['id', 'name', 'email', 'assetName', 'price', 'amountPaid', 'totalBalance', 'planStatus']
+    fields: ['id', 'name', 'email', 'phone', 'nameOnDocument', 'addressOnDocument', 'assetName', 'price', 'amountPaid', 'totalBalance', 'planStatus']
   },
   financial: {
     label: 'Financial Report',
-    fields: ['id', 'paymentPlanId', 'name', 'assetName', 'price', 'amountPaid', 'landBalance', 'documentPrice', 'documentAmountPaid', 'documentBalance', 'totalAssetValue', 'totalPaid', 'totalBalance', 'planStatus']
+    fields: ['id', 'paymentPlanId', 'name', 'assetName', 'price', 'amountPaid', 'amountPayable', 'landBalance', 'documentPrice', 'documentAmountPaid', 'documentBalance', 'totalAssetValue', 'totalPaid', 'totalBalance', 'planStatus']
   },
   complete: {
     label: 'All Fields',
@@ -241,7 +263,7 @@ const PRESETS: Record<string, { label: string; fields: string[] }> = {
   },
   referrals: {
     label: 'Referral Report',
-    fields: ['id', 'name', 'email', 'referrer_name', 'referrer_email', 'agencyName', 'assetName', 'totalPaid']
+    fields: ['id', 'name', 'email', 'referrer_name', 'referrer_email', 'referrer_phone', 'agencyName', 'assetName', 'totalPaid']
   },
 }
 
@@ -410,7 +432,7 @@ export function SalesExport({ filters }: { filters: SalesListFilters }) {
     return formatDateFn(date, 'yyyy/MM/dd')
   }
 
-  const processRecord = (record: SalesRow, index: number) => {
+  const processRecord = ({ sale: record, extras }: SalesExportRow, index: number) => {
     const unitsBought = record.no_of_units || 0
     const size = record.size || 0
     const price = record.price || 0
@@ -423,8 +445,12 @@ export function SalesExport({ filters }: { filters: SalesListFilters }) {
       id: index + 1,
       name: record.buyer.name || 'No Name',
       email: record.buyer.email || 'No Email',
+      phone: extras.buyer_phone || '',
+      nameOnDocument: extras.name_on_document || '',
+      addressOnDocument: extras.address_on_document || '',
       referrer_name: record.referrer?.name || 'No Referrer',
       referrer_email: record.referrer?.email || 'No Referrer Email',
+      referrer_phone: extras.referrer_phone || '',
       agencyName: record.agency?.name || 'No Agency',
       assetName: record.asset.name || 'No Asset',
       assetType: record.asset.type || 'No Asset Type',
@@ -432,9 +458,14 @@ export function SalesExport({ filters }: { filters: SalesListFilters }) {
       unitsBought,
       size,
       total_size: size * unitsBought,
+      block: extras.block,
+      plot: extras.plot,
+      blockPlotPairs: extras.block_plot_pairs,
+      plotCount: extras.plot_count,
       price,
       amountPaid,
       landBalance: record.balance,
+      amountPayable: extras.amount_payable,
       documentPrice,
       documentAmountPaid,
       documentBalance,
@@ -444,13 +475,19 @@ export function SalesExport({ filters }: { filters: SalesListFilters }) {
       month_subscription: record.month_subscription || '',
       startDate: formatDate(record.start_date),
       endDate: formatDate(record.next_date_of_payment),
+      landPaymentCompletedDate: formatDate(extras.land_payment_completed_at),
+      landPaymentCompletedAt: extras.land_payment_completed_at || '',
       planStatus: PLAN_STATUS_LABELS[record.plan_status],
+      paymentStatus: derivePaymentStatus({ amount_paid: record.amount_paid, balance: record.balance, amount_payable: extras.amount_payable, price: record.price }),
       defaulted: record.is_defaulted ? 'Yes' : 'No',
       hasDefaultedEver: record.has_defaulted_ever ? 'Yes' : 'No',
       terminated: record.is_suspended ? 'Yes' : 'No',
       sourceType: record.source_type,
       excludedFromTotals: excludedFromTotalsReason(record) ? 'Yes' : 'No',
       paymentPlanId: record.id,
+      uniqueAssetId: extras.unique_asset_id || '',
+      monthsCovered: extras.months_covered,
+      planUpdatedAt: formatDate(extras.updated_at),
       monthRemaining: record.month_remaining ?? '',
       allocationStatus: record.allocation_status || '',
       planCreatedAt: formatDate(record.created_at),
@@ -522,7 +559,7 @@ export function SalesExport({ filters }: { filters: SalesListFilters }) {
   }
 
   const mutation = useSalesExportData()
-  const handleExportSuccess = ({ rows, truncated }: { rows: SalesRow[]; truncated: boolean }) => {
+  const handleExportSuccess = ({ rows, truncated }: { rows: SalesExportRow[]; truncated: boolean }) => {
     if (!rows.length) {
       toast.error('No data available for download')
       return
@@ -530,14 +567,14 @@ export function SalesExport({ filters }: { filters: SalesListFilters }) {
     // Deterministic order: plan status, then start date, then plan id — so
     // the same dataset always produces the same row order across downloads.
     const sorted = [...rows].sort((a, b) => {
-      const statusDiff = SALES_PLAN_STATUSES.indexOf(a.plan_status) - SALES_PLAN_STATUSES.indexOf(b.plan_status)
+      const statusDiff = SALES_PLAN_STATUSES.indexOf(a.sale.plan_status) - SALES_PLAN_STATUSES.indexOf(b.sale.plan_status)
       if (statusDiff !== 0) return statusDiff
-      const dateDiff = new Date(a.start_date || 0).getTime() - new Date(b.start_date || 0).getTime()
+      const dateDiff = new Date(a.sale.start_date || 0).getTime() - new Date(b.sale.start_date || 0).getTime()
       if (dateDiff !== 0) return dateDiff
-      return a.id.localeCompare(b.id)
+      return a.sale.id.localeCompare(b.sale.id)
     })
     const entries = sorted.map((record, index) => ({
-      status: record.plan_status,
+      status: record.sale.plan_status,
       row: processRecord(record, index),
     }))
     downloadFile(entries, 'salesReport')

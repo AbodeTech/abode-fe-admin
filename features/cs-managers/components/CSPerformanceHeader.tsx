@@ -59,7 +59,9 @@ export function CSPerformanceHeader({
           <p className="text-muted-foreground">
             {!isSuperAdmin
               ? `Your dashboard — ${assignedCustomersCount} customer${assignedCustomersCount === 1 ? "" : "s"} assigned.`
-              : activeManager
+              : activeManagerId === "all"
+                ? `${assignedCustomersCount} customers across all CS Managers.`
+                : activeManager
                 ? `${adminMinName(activeManager.manager)} — ${assignedCustomersCount} customer${assignedCustomersCount === 1 ? "" : "s"} assigned.`
                 : "Onboarding, allocation and Deed of Assignment progress, scoped per manager."}
           </p>
@@ -72,6 +74,7 @@ export function CSPerformanceHeader({
                 <SelectValue placeholder="Select CS Manager" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="all">All CS Managers</SelectItem>
                 {managers.length === 0 ? (
                   <div className="px-2 py-1.5 text-sm text-gray-500">No CS Managers yet</div>
                 ) : (

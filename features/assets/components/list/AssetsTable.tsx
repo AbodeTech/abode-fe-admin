@@ -26,7 +26,7 @@ import {
   AdminMobileStack,
 } from "@/components/shared/admin-responsive-table";
 
-import { availableUnits, type Asset } from "../../schemas/asset.schema";
+import type { Asset } from "../../schemas/asset.schema";
 import { AssetOffersCell } from "./AssetOffersCell";
 import { AssetStatusBadges } from "./AssetStatusBadges";
 
@@ -37,49 +37,11 @@ function formatDate(value: string | undefined): string {
   return parsed.toLocaleDateString("en-NG", { year: "numeric", month: "short", day: "numeric" });
 }
 
-/**
- * Allocation from the asset's own counters — `sales_cap`, `sold_units` and
- * `reserved_units` are real fields and `available_units` is a backend virtual.
- * Unlike the analytics panels above the table, none of this is sample data.
- *
- * The "sqm" chip is a state flag, not a second inventory figure — it says
- * this asset also has a land account (see the detail page's Land Account
- * card), without mixing its numbers into this unit-based column.
- */
 function Inventory({ asset }: { asset: Asset }) {
-  const available = availableUnits(asset);
-  const allocated = asset.sales_cap > 0 ? 1 - available / asset.sales_cap : 0;
-  const hasLandAccount = asset.land_inventory_state !== "not_configured";
-
   return (
-    <div className="min-w-0 space-y-1">
-      <p className="text-sm font-medium tabular-nums">
-        {available.toLocaleString()}{" "}
-        <span className="font-normal text-muted-foreground">
-          of {asset.sales_cap.toLocaleString()} left
-        </span>
-        {hasLandAccount ? (
-          <span
-            className="ml-1.5 rounded-full bg-emerald-500/10 px-1.5 py-0.5 align-middle text-[10px] font-medium text-emerald-600"
-            title="This asset also has a land account (sqm)"
-          >
-            sqm
-          </span>
-        ) : null}
-      </p>
-
-      <div className="h-1 w-full max-w-[9rem] overflow-hidden rounded-full bg-muted">
-        <div
-          className="h-full rounded-full bg-foreground/60"
-          style={{ width: `${Math.min(100, Math.max(0, allocated * 100))}%` }}
-        />
-      </div>
-
-      <p className="text-xs text-muted-foreground tabular-nums">
-        {asset.sold_units.toLocaleString()} sold
-        {asset.reserved_units > 0 ? ` · ${asset.reserved_units.toLocaleString()} reserved` : ""}
-      </p>
-    </div>
+    <span className="text-sm text-muted-foreground">
+      {asset.sqm_inventory_active ? "SQM inventory active" : "SQM inventory not active"}
+    </span>
   );
 }
 
@@ -168,7 +130,6 @@ export function AssetsTable({ rows, isLoading, emptyState, onDelete }: AssetsTab
                 <TableCell>
                   <AssetStatusBadges
                     visibility={asset.visibility}
-                    sold={asset.sold}
                     deletedAt={asset.deleted_at}
                   />
                 </TableCell>
@@ -192,7 +153,6 @@ export function AssetsTable({ rows, isLoading, emptyState, onDelete }: AssetsTab
             subtitle={
               <AssetStatusBadges
                 visibility={asset.visibility}
-                sold={asset.sold}
                 deletedAt={asset.deleted_at}
               />
             }

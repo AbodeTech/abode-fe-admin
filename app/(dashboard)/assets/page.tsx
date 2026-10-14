@@ -38,7 +38,6 @@ function AssetsPageContent() {
   const search = searchParams.get("search") ?? undefined;
   const visibility = (searchParams.get("visibility") as Visibility) ?? undefined;
   const offerType = (searchParams.get("offer_type") as OfferType) ?? undefined;
-  const sold = searchParams.get("sold") === "true";
   const includeDeleted = searchParams.get("include_deleted") === "true";
 
   const [deleting, setDeleting] = useState<Asset | null>(null);
@@ -49,13 +48,12 @@ function AssetsPageContent() {
     search,
     visibility,
     offer_type: offerType,
-    sold,
     include_deleted: includeDeleted,
   });
 
   const rows = data?.items ?? [];
   const total = data?.meta.total ?? 0;
-  const hasFilters = Boolean(search || visibility || offerType || sold || includeDeleted);
+  const hasFilters = Boolean(search || visibility || offerType || includeDeleted);
 
   if (error) {
     return (

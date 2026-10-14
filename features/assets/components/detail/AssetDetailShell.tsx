@@ -7,6 +7,7 @@ import { ArrowLeft } from "lucide-react";
 import { PageContentLoader } from "@/components/shared/page-content-loader";
 
 import { useAssetDetail } from "../../hooks/use-asset-detail";
+import { useSqmInventory } from "../../hooks/use-sqm-inventory";
 import { AssetStatusBadges } from "../list/AssetStatusBadges";
 import { AssetDetailNav } from "./AssetDetailNav";
 import { AssetInventoryHeaderSummary } from "./AssetInventoryHeaderSummary";
@@ -25,6 +26,7 @@ export function AssetDetailShell({ children }: { children: React.ReactNode }) {
   const assetId = params.id;
 
   const { data: asset, isLoading, error } = useAssetDetail(assetId);
+  const { data: inventory } = useSqmInventory(assetId, { enabled: asset?.sqm_inventory_active === true });
 
   if (isLoading) {
     return (
@@ -68,17 +70,14 @@ export function AssetDetailShell({ children }: { children: React.ReactNode }) {
 
           <AssetStatusBadges
             visibility={asset.visibility}
-            sold={asset.sold}
+            sold={Boolean(asset.sqm_inventory_active && inventory && inventory.totals.capacity_sqm > 0 && inventory.totals.available_sqm === 0)}
             deletedAt={asset.deleted_at}
             className="shrink-0"
           />
         </div>
       </div>
 
-      {/* Real data throughout — legacy counters are asset fields and
-          available_units is a backend virtual; the sqm side, when present,
-          comes from GET .../land-configuration. Nothing here is sample, and
-          the two models are never blended into one figure. */}
+      {/* Live availability comes only from the activated SQM ledger. */}
       <AssetInventoryHeaderSummary asset={asset} />
 
       <AssetDetailNav assetId={assetId} />

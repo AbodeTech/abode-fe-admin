@@ -21,11 +21,9 @@ import { useActivateSqmInventory } from "../../hooks/use-sqm-activation-mutation
 import { useSqmInventory, useSqmReconciliation } from "../../hooks/use-sqm-inventory";
 
 /**
- * Shown on the Overview only while an estate is still on legacy unit
- * counters, and gone for good once it is activated.
+ * Shown on the Overview until the SQM ledger is activated.
  *
- * An estate starts out selling by unit count. "Activating sqm inventory" is
- * the one-way switch to the square-metre ledger, which is what the header
+ * "Activating sqm inventory" seeds the square-metre ledger, which is what the header
  * bar, Product position and the rest of the asset-detail design read from.
  *
  *  - GET  .../sqm-inventory/reconciliation  a dry run: can every live plan be
@@ -64,7 +62,7 @@ export function SqmActivationNotice({ assetId }: { assetId: string }) {
       <Zap className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
       <div className="min-w-0 flex-1">
         <strong className="block text-[13px] font-semibold">
-          This estate still sells by unit count
+          SQM inventory is not active
           {reconciliation.ready ? " — ready to move to the sqm ledger" : " — not ready for the sqm ledger yet"}
         </strong>
         {reconciliation.blockers.length > 0 ? (

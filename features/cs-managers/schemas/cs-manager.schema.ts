@@ -214,7 +214,7 @@ export const CSManagerDashboardSchema = z.object({
     start: z.string(),
     end: z.string(),
   }),
-  manager: AdminMinSchema,
+  manager: AdminMinSchema.nullable(),
   target: z.object({
     allocated_target: z.number(),
     allocated_so_far: z.number(),
@@ -237,6 +237,7 @@ export const CSManagerDashboardSchema = z.object({
     ticket_resolution_rate: z.number().nullable(),
     tickets_entered: z.number().default(0),
     tickets_resolved: z.number().default(0),
+    ticket_flow: z.array(z.object({ month: z.string(), created: z.number(), resolved: z.number() })),
   }),
   performance_score: z.object({
     score: z.number(),

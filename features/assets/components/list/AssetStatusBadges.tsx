@@ -22,7 +22,7 @@ export function AssetStatusBadges({
   className,
 }: {
   visibility: Visibility;
-  sold: boolean;
+  sold?: boolean;
   deletedAt?: string | null;
   className?: string;
 }) {

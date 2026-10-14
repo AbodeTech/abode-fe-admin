@@ -183,7 +183,7 @@ function OfferCard({
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {isFlex && isMockApiEnabled() ? (
+          {isFlex ? (
             <Button type="button" variant="outline" size="sm" onClick={onOpenHistory}>
               <History className="mr-1.5 h-3.5 w-3.5" />
               History
@@ -267,10 +267,14 @@ export function AssetOffers() {
         assetId={params.id}
         action={
           <>
-            <Button type="button" variant="outline" size="sm" onClick={() => setHistoryOpen(true)}>
-              <History className="mr-1.5 h-3.5 w-3.5" />
-              History
-            </Button>
+            {/* With a Flex offer, History lives in that card's header (the Flex 2.0 mockup);
+                an asset without one keeps it here. */}
+            {!flexOffer ? (
+              <Button type="button" variant="outline" size="sm" onClick={() => setHistoryOpen(true)}>
+                <History className="mr-1.5 h-3.5 w-3.5" />
+                History
+              </Button>
+            ) : null}
             {missingOfferTypes.length > 0 ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

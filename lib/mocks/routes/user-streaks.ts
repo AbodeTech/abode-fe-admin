@@ -6,9 +6,7 @@ import { body } from './util';
  * docs/FLEX-2.0-ENDPOINTS.pdf §3.2. Any user id is accepted: state is derived
  * from the id, then mutated by adjustments.
  *
- * Points never change here. The decisions approve adjusting a streak with a
- * reason and an audit record; they do not approve adjusting points, or points
- * moving because a streak was adjusted.
+ * Points stay unchanged unless an optional points_change is supplied.
  * ============================================================ */
 
 type StreakState = {
@@ -22,7 +20,7 @@ type StreakState = {
 };
 
 const states: Record<string, StreakState> = {};
-const audits: { audit_id: string; user_id: string; before: unknown; after: unknown; reason: string }[] = [];
+const audits: { audit_id: string; user_id: string; before: unknown; after: unknown; reason: string; points_change: number }[] = [];
 
 const MOCK_ADMIN = { id: 'u_1', name: 'Nicholas' };
 
@@ -67,26 +65,34 @@ export const userStreakRoutes: MockRoutes = {
   },
 
   'POST /admin/users/:id/streak/adjust': ({ params, body: raw }) => {
-    const dto = body<{ current_streak?: unknown; reason?: unknown }>(raw);
+    const dto = body<{ current_streak?: unknown; reason?: unknown; points_change?: unknown }>(raw);
     const reason = typeof dto.reason === 'string' ? dto.reason.trim() : '';
 
     if (typeof dto.current_streak !== 'number' || !Number.isInteger(dto.current_streak) || dto.current_streak < 0) {
       throw new MockHttpError(400, 'current_streak must be a whole number, 0 or more', 'VALIDATION_FAILED');
     }
-    if (reason.length < 20 || reason.length > 2000) {
-      throw new MockHttpError(400, 'reason must be between 20 and 2000 characters', 'VALIDATION_FAILED');
+    if (reason.length < 10 || reason.length > 500) {
+      throw new MockHttpError(400, 'reason must be between 10 and 500 characters', 'VALIDATION_FAILED');
     }
 
+    const pointsChange = dto.points_change ?? 0;
+    if (typeof pointsChange !== 'number' || !Number.isInteger(pointsChange) || Math.abs(pointsChange) > 100_000) {
+      throw new MockHttpError(400, 'points_change must be a whole number between -100000 and 100000', 'VALIDATION_FAILED');
+    }
     const state = stateFor(params.id);
+    if (state.points_balance + pointsChange < 0) {
+      throw new MockHttpError(409, 'The points balance cannot be negative', 'POINTS_BELOW_ZERO');
+    }
     if (state.streak_enabled_plans === 0) {
       throw new MockHttpError(409, 'This customer has no streak-enabled plan, so there is no active streak to adjust.', 'NO_ACTIVE_STREAK');
     }
-    if (dto.current_streak === state.current_streak) {
+    if (dto.current_streak === state.current_streak && pointsChange === 0) {
       throw new MockHttpError(409, 'The streak already has that value.', 'NO_CHANGE');
     }
 
     const before = snapshot(state);
     state.current_streak = dto.current_streak;
+    state.points_balance += pointsChange;
     // The best streak never falls, and rises if the adjustment passes it.
     state.best_streak = Math.max(state.best_streak, dto.current_streak);
     const adjustedAt = new Date().toISOString();
@@ -94,8 +100,8 @@ export const userStreakRoutes: MockRoutes = {
 
     const after = snapshot(state);
     const audit_id = `adj_${(audits.length + 1).toString(16).padStart(8, '0')}`;
-    audits.push({ audit_id, user_id: params.id, before, after, reason });
+    audits.push({ audit_id, user_id: params.id, before, after, reason, points_change: pointsChange });
 
-    return { before, after, audit_id, adjusted_at: adjustedAt, adjusted_by: MOCK_ADMIN };
+    return { before, after, points_change: pointsChange, audit_id, adjusted_at: adjustedAt, adjusted_by: MOCK_ADMIN };
   },
 };

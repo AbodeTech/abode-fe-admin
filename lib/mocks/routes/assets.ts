@@ -58,6 +58,7 @@ export type MockAsset = {
   total_land_sqm: number | null;
   land_inventory_state: 'not_configured' | 'draft' | 'configured';
   inventory_model_version: 'legacy_units' | 'sqm_v1';
+  sqm_inventory_active: boolean;
   land_configuration_version: number;
   sold: boolean;
   visibility: 'draft' | 'internal' | 'public';
@@ -97,6 +98,7 @@ const asset = (
     createdAt: daysAgo(60),
     updatedAt: daysAgo(3),
     ...partial,
+    sqm_inventory_active: partial.sqm_inventory_active ?? partial.inventory_model_version === 'sqm_v1',
     sold_units,
     reserved_units,
     // The BE returns this as a virtual; mirror the same arithmetic.
@@ -1031,7 +1033,6 @@ export const assetRoutes: MockRoutes = {
       'pictures',
       'documents',
       'visibility',
-      'sales_cap',
     ];
     for (const key of WRITABLE) {
       if (key in dto) (row as Record<string, unknown>)[key] = dto[key];

@@ -2,7 +2,7 @@ import { useMutation } from '@tanstack/react-query';
 
 import { apiGetPaged } from '@/lib/api-client';
 
-import { SalesRowSchema, type SalesRow } from '../schemas/sales.schema';
+import { SalesExportRowSchema, type SalesExportRow } from '../schemas/sales.schema';
 import { salesKeys } from './query-keys';
 import { buildSalesListParams, type SalesListFilters } from './use-sales';
 
@@ -23,17 +23,17 @@ export const EXPORT_ROW_CAP = 1_000;
 const EXPORT_PAGE_SIZE = 100;
 
 export interface SalesExportResult {
-  rows: SalesRow[];
+  rows: SalesExportRow[];
   truncated: boolean;
 }
 
 export const fetchSalesExportRows = async (filters: SalesListFilters): Promise<SalesExportResult> => {
-  const rows: SalesRow[] = [];
+  const rows: SalesExportRow[] = [];
   let page = 1;
   let total = Infinity;
 
   while (rows.length < total && rows.length < EXPORT_ROW_CAP) {
-    const { items, meta } = await apiGetPaged('/admin/sales', SalesRowSchema, {
+    const { items, meta } = await apiGetPaged('/admin/sales/export/data', SalesExportRowSchema, {
       params: buildSalesListParams({ ...filters, page, limit: EXPORT_PAGE_SIZE }),
     });
     total = meta.total ?? items.length;

@@ -63,6 +63,7 @@ type PresentedLandUse = { id: string; category: MockLandUseCategory; label: stri
 type PresentedLandConfiguration = {
   asset_id: string;
   inventory_model_version: MockAsset['inventory_model_version'];
+  sqm_inventory_active: boolean;
   state: MockAsset['land_inventory_state'];
   version: number;
   total_land_sqm: number | null;
@@ -212,6 +213,7 @@ function buildPresented(row: MockAsset): PresentedLandConfiguration {
   return {
     asset_id: row._id,
     inventory_model_version: row.inventory_model_version,
+    sqm_inventory_active: row.sqm_inventory_active,
     state: row.land_inventory_state,
     version: row.land_configuration_version,
     total_land_sqm: total,

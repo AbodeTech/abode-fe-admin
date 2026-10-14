@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { InventoryModelVersionSchema, LandInventoryStateSchema, OfferTypeSchema } from './asset.schema';
+import { LandInventoryStateSchema, OfferTypeSchema } from './asset.schema';
 
 /* ============================================================
  * Land configuration — the physical-land account layered on top of the
@@ -131,26 +131,17 @@ export const LandConfigurationProductSchema = z.object({
 
 export type LandConfigurationProduct = z.infer<typeof LandConfigurationProductSchema>;
 
-/** Every legacy unit-counter field the estate still carries, shown for context only — never square metres. */
-export const LegacyUnitInventorySchema = z.object({
-  sales_cap: z.number(),
-  sold_units: z.number(),
-  reserved_units: z.number(),
-  available_units: z.number(),
-  note: z.string(),
-});
-
 /**
  * GET/PUT /admin/assets/:assetId/land-configuration.
  *
- * `total_land_sqm` is nullable — a `'not_configured'` legacy asset has no
+ * `total_land_sqm` is nullable — a `'not_configured'` asset has no
  * total to compute a remainder from. `unclassified_sqm` is NOT nullable: the
  * backend's own calculator always resolves it to a number, defaulting to 0
  * when there's no total to classify against yet.
  */
 export const LandConfigurationSchema = z.object({
   asset_id: z.string(),
-  inventory_model_version: InventoryModelVersionSchema,
+  sqm_inventory_active: z.boolean(),
   state: LandInventoryStateSchema,
   version: z.number(),
   total_land_sqm: z.number().nullable(),
@@ -159,7 +150,6 @@ export const LandConfigurationSchema = z.object({
   unclassified_sqm: z.number(),
   products: z.array(LandConfigurationProductSchema).default([]),
   non_saleable: z.array(AssetLandUseSchema).default([]),
-  legacy_unit_inventory: LegacyUnitInventorySchema,
   warnings: z.array(z.string()).default([]),
 });
 
@@ -232,8 +222,7 @@ export type LandConfigurationHistoryEntry = z.infer<typeof LandConfigurationHist
  * The `before`/`after` shape on GET .../history/:version — a narrower
  * snapshot than `LandConfigurationSchema` (the live GET/PUT response): it
  * keeps `is_active` on every row (inactive ones aren't filtered out of a
- * historical snapshot) and never carries `legacy_unit_inventory`, `warnings`,
- * `inventory_model_version`, or `asset_id`.
+ * historical snapshot) and never carries `warnings` or `asset_id`.
  */
 export const LandConfigurationSnapshotSchema = z.object({
   total_land_sqm: z.number().nullable(),

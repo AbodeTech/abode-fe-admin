@@ -276,8 +276,8 @@ function AssociateManagersContent() {
         />
       )}
 
-      <RecruitmentSection data={dashboard.recruitment} onOpenGroup={openGroup} />
-      <SalesRevenueSection data={dashboard.sales_and_revenue} onOpenGroup={openGroup} />
+      <RecruitmentSection attributionMode={isAllManagers ? "combined" : "single"} data={dashboard.recruitment} onOpenGroup={openGroup} />
+      <SalesRevenueSection attributionMode={isAllManagers ? "combined" : "single"} data={dashboard.sales_and_revenue} onOpenGroup={openGroup} />
       <ActivitySection data={dashboard.activity} onOpenGroup={openGroup} />
       <MilestonesSection data={dashboard.milestones} onOpenGroup={openGroup} />
 

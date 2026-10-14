@@ -28,7 +28,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { TOPOGRAPHIES, VISIBILITIES, VISIBILITY_LABELS } from "../../schemas/asset.schema";
 import { NIGERIAN_STATES, stateLabel } from "../../lib/nigerian-states";
 import type { AssetDetail } from "../../schemas/asset-detail.schema";
-import { NumberInput } from "./NumberInput";
 import {
   assetAvailabilityFormSchema,
   assetDetailsFormSchema,
@@ -38,7 +37,6 @@ import {
   assetToMediaForm,
   detailsFormToPayload,
   mediaFormToPayload,
-  validateSalesCap,
   type AssetAvailabilityFormValues,
   type AssetDetailsFormValues,
   type AssetMediaFormValues,
@@ -49,11 +47,10 @@ import { GalleryUploadField, SingleUploadField } from "../create/UploadFields";
 
 /* ============================================================
  * The Asset details panel's edit form: three field groups (details,
- * availability, images and documents), each with its own form and Zod
+ * visibility, images and documents), each with its own form and Zod
  * schema, edited together and saved by `useAssetEditSection` below.
  *
- * Derived fields (`sold`, `sold_units`, `reserved_units`) appear nowhere:
- * `forbidNonWhitelisted` makes sending one a hard 400.
+ * Inventory is configured separately; this generic PATCH never sends it.
  * ============================================================ */
 
 /**
@@ -270,35 +267,12 @@ export function AssetDetailsFields({ form }: { form: UseFormReturn<AssetDetailsF
 
 export function AssetAvailabilityFields({
   form,
-  asset,
 }: {
   form: UseFormReturn<AssetAvailabilityFormValues>;
-  asset: AssetDetail;
 }) {
-  const committed = asset.sold_units + asset.reserved_units;
-
   return (
     <Form {...form}>
       <div className="grid gap-3 sm:grid-cols-2">
-        <FormField
-          control={form.control}
-          name="sales_cap"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="text-xs">Sales cap</FormLabel>
-              <FormControl>
-                <NumberInput field={field} min={1} />
-              </FormControl>
-              <FormDescription className="text-xs">
-                {committed > 0
-                  ? `Can't go below ${committed.toLocaleString()} — that many are already sold or reserved.`
-                  : "Total units across every offer."}
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
         <FormField
           control={form.control}
           name="visibility"
@@ -412,7 +386,7 @@ export function AssetMediaFields({ form }: { form: UseFormReturn<AssetMediaFormV
  * The asset-detail design has a single "Asset details" panel with one Edit
  * button, so the three field groups above are edited together here and saved
  * as ONE `PATCH /admin/assets/:id` — the endpoint takes any subset of asset
- * fields, so details, sales cap/visibility and images/documents can travel
+ * fields, so details, visibility and images/documents can travel
  * in the same request. Each group keeps its own form (and its own Zod
  * schema), which is why saving validates all three before anything is sent.
  */
@@ -426,7 +400,7 @@ export function useAssetEditSection(asset: AssetDetail | undefined) {
   });
   const availability = useForm<AssetAvailabilityFormValues>({
     resolver: zodResolver(assetAvailabilityFormSchema),
-    defaultValues: { sales_cap: 1, visibility: "draft" },
+    defaultValues: { visibility: "draft" },
   });
   const media = useForm<AssetMediaFormValues>({
     resolver: zodResolver(assetMediaFormSchema),
@@ -446,13 +420,6 @@ export function useAssetEditSection(asset: AssetDetail | undefined) {
     if (!asset) return;
     void details.handleSubmit((detailValues) =>
       availability.handleSubmit((availabilityValues) => {
-        // The backend doesn't check this, and a cap below what's already
-        // committed would leave `available_units` negative everywhere.
-        const capError = validateSalesCap(availabilityValues.sales_cap, asset);
-        if (capError) {
-          availability.setError("sales_cap", { message: capError });
-          return;
-        }
         return media.handleSubmit((mediaValues) => {
           update.mutate(
             { ...detailsFormToPayload(detailValues), ...availabilityValues, ...mediaFormToPayload(mediaValues) },
@@ -491,8 +458,8 @@ export function AssetEditFields({
   return (
     <div className="space-y-5">
       <AssetDetailsFields form={section.details} />
-      <EditGroup title="Visibility and sales cap">
-        <AssetAvailabilityFields form={section.availability} asset={asset} />
+      <EditGroup title="Visibility">
+        <AssetAvailabilityFields form={section.availability} />
       </EditGroup>
       <EditGroup title="Images and documents">
         <AssetMediaFields form={section.media} />

@@ -32,9 +32,6 @@ export const useAssetList = (filters?: AssetListFilters) => {
           search: rest.search || undefined,
           visibility: rest.visibility,
           offer_type: rest.offer_type,
-          // Only sent when true — `false` and `undefined` mean the same thing
-          // to these filters, and omitting keeps the query string clean.
-          sold: rest.sold ? true : undefined,
           include_deleted: rest.include_deleted ? true : undefined,
         },
       }),

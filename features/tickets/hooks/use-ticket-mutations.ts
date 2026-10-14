@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { apiDelete, apiPatch, apiPost } from '@/lib/api-client';
 
 import {
+  TicketDetailSchema,
   TicketNoteSchema,
   TicketSchema,
   type TicketStatus,
@@ -194,3 +195,21 @@ export {
 
 /** Every issue write can change a ticket's blocked state. */
 export const ticketAndIssueKeys = { ticketKeys, issueKeys };
+
+export const useAddTicketParticipant = () => {
+  const invalidate = useTicketInvalidator();
+  return useMutation({
+    mutationFn: ({ ticketId, address, name }: { ticketId: string; address: string; name?: string }) =>
+      apiPost(`/admin/tickets/${ticketId}/participants`, { address, name }, TicketDetailSchema),
+    onSuccess: (_detail, value) => invalidate(value.ticketId),
+  });
+};
+
+export const useRemoveTicketParticipant = () => {
+  const invalidate = useTicketInvalidator();
+  return useMutation({
+    mutationFn: ({ ticketId, address }: { ticketId: string; address: string }) =>
+      apiDelete(`/admin/tickets/${ticketId}/participants/${encodeURIComponent(address)}`, TicketDetailSchema),
+    onSuccess: (_detail, value) => invalidate(value.ticketId),
+  });
+};

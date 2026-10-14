@@ -11,8 +11,8 @@ import type { AssetDetail } from './asset-detail.schema';
  * have their own endpoint family.
  *
  * Sections are split so each Save sends only the fields that section owns.
- * With `forbidNonWhitelisted` on, sending a derived field (`sold`,
- * `sold_units`, `reserved_units`) is a hard 400 — none of them appear here.
+ * Inventory is managed through the land configuration and SQM endpoints,
+ * not this generic asset PATCH.
  * ============================================================ */
 
 import { NIGERIAN_STATES } from '../lib/nigerian-states';
@@ -79,33 +79,13 @@ export function detailsFormToPayload(values: AssetDetailsFormValues) {
 /* -------------------- availability -------------------- */
 
 export const assetAvailabilityFormSchema = z.object({
-  sales_cap: z
-    .number({ message: 'Enter a sales cap' })
-    .int('Whole units only')
-    .positive('Must be greater than zero'),
   visibility: VisibilitySchema,
 });
 
 export type AssetAvailabilityFormValues = z.infer<typeof assetAvailabilityFormSchema>;
 
 export function assetToAvailabilityForm(asset: AssetDetail): AssetAvailabilityFormValues {
-  return { sales_cap: asset.sales_cap, visibility: asset.visibility };
-}
-
-/**
- * The backend does not validate `sales_cap` against units already sold, so a
- * cap below `sold_units + reserved_units` would leave `available_units`
- * negative. Checked here instead — see `validateSalesCap`.
- */
-export function validateSalesCap(
-  salesCap: number,
-  asset: Pick<AssetDetail, 'sold_units' | 'reserved_units'>
-): string | null {
-  const committed = asset.sold_units + asset.reserved_units;
-  if (salesCap < committed) {
-    return `${committed.toLocaleString()} units are already sold or reserved — the cap can't be lower`;
-  }
-  return null;
+  return { visibility: asset.visibility };
 }
 
 /* -------------------- media -------------------- */

@@ -27,8 +27,8 @@ export const useAssetDetail = (assetId: string) =>
  * PATCH /admin/assets/:id — asset fields only.
  *
  * Offers are **not** editable here; they have their own endpoint family. And
- * because `forbidNonWhitelisted` is on, sending `sold`, `sold_units` or
- * `reserved_units` is a hard 400 — those are derived, never set by an admin.
+ * `forbidNonWhitelisted` is on, so retired estate-wide unit counters must
+ * never be sent in this PATCH. Live capacity belongs to the SQM ledger.
  *
  * `total_land_sqm`/`product_pools` are excluded too, even though creation
  * sets them here — once set, they change only through the (future)

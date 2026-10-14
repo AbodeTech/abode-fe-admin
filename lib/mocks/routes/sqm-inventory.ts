@@ -159,6 +159,7 @@ function buildReconciliation(row: MockAsset, land: ReturnType<typeof getLandSnap
     asset_id: row._id,
     asset_name: row.name,
     inventory_model_version: row.inventory_model_version,
+    sqm_inventory_active: row.sqm_inventory_active,
     ready: blockers.length === 0,
     blockers,
     totals: { live_plans: 0, mapped_plans: 0, committed_sqm: 0 },
@@ -175,7 +176,7 @@ export const sqmInventoryRoutes: MockRoutes = {
     return {
       asset_id: row._id,
       inventory_model_version: row.inventory_model_version,
-      sqm_inventory_active: row.inventory_model_version === 'sqm_v1',
+      sqm_inventory_active: row.sqm_inventory_active,
       totals: {
         capacity_sqm: positions.reduce((s, p) => s + p.capacity_sqm, 0),
         selling_sqm: positions.reduce((s, p) => s + p.selling_sqm, 0),
@@ -216,6 +217,7 @@ export const sqmInventoryRoutes: MockRoutes = {
     }
 
     row.inventory_model_version = 'sqm_v1';
+    row.sqm_inventory_active = true;
     return {
       activated: true,
       already_active: false,

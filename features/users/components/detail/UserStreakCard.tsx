@@ -25,10 +25,10 @@ import { useHasPermission } from "@/hooks/use-admin-permission";
 import { useAdjustUserStreak, useUserStreak } from "../../hooks/use-user-streak";
 import {
   streakAdjustFormSchema,
+  STREAK_REASON_MIN,
   type StreakAdjustFormValues,
   type UserStreak,
 } from "../../schemas/user-streak.schema";
-import { ADMIN_REASON_MIN } from "../../schemas/user-actions.schema";
 import { getErrorMessage } from "../../utils/error-message";
 
 /* ============================================================
@@ -36,7 +36,7 @@ import { getErrorMessage } from "../../utils/error-message";
  *
  * Shows the active streak and points balance. “Adjust streak” is for
  * authorised admins and needs a reason, which is stored on an audit record.
- * Points are read-only: the decisions approve adjusting a streak, not points.
+ * Points change only when the admin explicitly enters an optional correction.
  *
  * A customer with no streak-enabled plan has no streak to show, so the streak
  * figures read “—” with the reason, never a made-up 0. Their best streak and
@@ -74,9 +74,13 @@ function AdjustStreakDialog({ userId, streak, onClose }: { userId: string; strea
   });
 
   const submit = form.handleSubmit((values) => {
+    if (streak.points_balance + (values.points_change ?? 0) < 0) {
+      form.setError("points_change", { message: "The resulting points balance cannot be negative." });
+      return;
+    }
     adjust.mutate(values, {
       onSuccess: ({ before, after }) => {
-        toast.success(`Streak adjusted from ${before.current_streak} to ${after.current_streak}`);
+        toast.success(`Streak: ${before.current_streak} → ${after.current_streak}. Points: ${before.points_balance} → ${after.points_balance}.`);
         onClose();
       },
       onError: (error) => toast.error(getErrorMessage(error, "Couldn't adjust the streak")),
@@ -89,7 +93,7 @@ function AdjustStreakDialog({ userId, streak, onClose }: { userId: string; strea
         <DialogHeader>
           <DialogTitle>Adjust streak</DialogTitle>
           <DialogDescription>
-            Sets this customer&apos;s current streak. Their points balance is not changed by this. The reason is stored on an audit record.
+            Set the current streak and optionally correct points. Leave the points field blank to keep the balance unchanged. Every correction requires an audit reason.
           </DialogDescription>
         </DialogHeader>
 
@@ -121,6 +125,27 @@ function AdjustStreakDialog({ userId, streak, onClose }: { userId: string; strea
             />
             <FormField
               control={form.control}
+              name="points_change"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Points adjustment (optional)</FormLabel>
+                  <FormControl>
+                    <Input type="number" step={1} min={-100_000} max={100_000}
+                      name={field.name} ref={field.ref} onBlur={field.onBlur}
+                      value={field.value ?? ""} placeholder="Leave unchanged"
+                      onChange={(event) => field.onChange(event.target.value === "" ? undefined : Number(event.target.value))} />
+                  </FormControl>
+                  <FormDescription>
+                    Enter a positive number to add points or a negative number to remove them.
+                    Current balance: {streak.points_balance.toLocaleString()}.
+                    New balance: {(streak.points_balance + (form.watch("points_change") ?? 0)).toLocaleString()}.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
               name="reason"
               render={({ field }) => (
                 <FormItem>
@@ -128,7 +153,7 @@ function AdjustStreakDialog({ userId, streak, onClose }: { userId: string; strea
                   <FormControl>
                     <Textarea placeholder="Why is the streak being adjusted?" {...field} />
                   </FormControl>
-                  <FormDescription>At least {ADMIN_REASON_MIN} characters. This is stored on the audit log.</FormDescription>
+                  <FormDescription>At least {STREAK_REASON_MIN} characters. This is stored on the audit log.</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -157,7 +182,7 @@ function AdjustStreakDialog({ userId, streak, onClose }: { userId: string; strea
 
 export function UserStreakCard({ userId }: { userId: string }) {
   const { data: streak, isLoading, isError } = useUserStreak(userId);
-  const canAdjust = useHasPermission("edit_user");
+  const canAdjust = useHasPermission("adjust_streak");
   const [adjusting, setAdjusting] = useState(false);
 
   if (isLoading) return <Skeleton className="h-40 w-full rounded-lg" />;

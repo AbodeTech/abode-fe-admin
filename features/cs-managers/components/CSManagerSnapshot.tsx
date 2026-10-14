@@ -6,7 +6,7 @@ import { KpiTile } from "@/components/shared/KpiTile";
 import { adminMinInitials, adminMinName, type CSManagerDashboard } from "../schemas/cs-manager.schema";
 
 interface Props {
-  manager: NonNullable<CSManagerDashboard["manager"]>;
+  manager: CSManagerDashboard["manager"];
   period: CSManagerDashboard["period"];
   target: CSManagerDashboard["target"];
   score: CSManagerDashboard["performance_score"];
@@ -67,12 +67,12 @@ export function CSManagerSnapshot({
     <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-5">
       <div className="flex items-center gap-3">
         <div className="h-10 w-10 rounded-full bg-[#E0F2F1] text-[#00695C] flex items-center justify-center font-semibold text-sm">
-          {adminMinInitials(manager)}
+          {manager ? adminMinInitials(manager) : "ALL"}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-gray-900 truncate">{adminMinName(manager)}</p>
+          <p className="text-sm font-medium text-gray-900 truncate">{manager ? adminMinName(manager) : "All CS Managers"}</p>
           <p className="text-xs text-gray-500 truncate">
-            {manager.email} · {totalAssigned} customers assigned
+            {manager ? `${manager.email} · ` : ""}{totalAssigned} customers assigned
           </p>
         </div>
       </div>

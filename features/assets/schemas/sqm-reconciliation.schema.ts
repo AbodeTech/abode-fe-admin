@@ -32,7 +32,7 @@ export const SqmReconciliationByProductSchema = z.object({
 export const SqmReconciliationSchema = z.object({
   asset_id: z.string(),
   asset_name: z.string(),
-  inventory_model_version: z.string(),
+  sqm_inventory_active: z.boolean(),
   ready: z.boolean(),
   blockers: z.array(z.string()).default([]),
   totals: z.object({

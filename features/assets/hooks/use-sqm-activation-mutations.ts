@@ -11,7 +11,7 @@ import { assetKeys } from './query-keys';
  * POST /admin/assets/:assetId/sqm-inventory/activate — a one-way switch, no
  * body. Blocked (400 `LAND_CONFIGURATION_INCOMPLETE`) unless the
  * reconciliation report is `ready`; idempotent if already active. On success
- * this also changes `inventory_model_version` on the asset root, so refresh
+ * this also sets `sqm_inventory_active` on the asset root, so refresh
  * both the sqm reads and the asset detail/list.
  */
 export const useActivateSqmInventory = (assetId: string) => {

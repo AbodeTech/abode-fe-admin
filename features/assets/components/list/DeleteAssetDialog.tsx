@@ -56,17 +56,9 @@ export function DeleteAssetDialog({
                 still resolve.
               </p>
 
-              {asset.sold_units > 0 || asset.reserved_units > 0 ? (
-                <p className="rounded-md border bg-muted/40 p-3">
-                  This asset has{" "}
-                  <strong>{asset.sold_units.toLocaleString()} sold</strong>
-                  {asset.reserved_units > 0
-                    ? ` and ${asset.reserved_units.toLocaleString()} reserved`
-                    : ""}{" "}
-                  units. Those customers keep their plans — removing the asset only takes it off
-                  sale.
-                </p>
-              ) : null}
+              <p className="rounded-md border bg-muted/40 p-3">
+                Existing customer plans remain linked to this asset. Removing it only takes it off sale.
+              </p>
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>

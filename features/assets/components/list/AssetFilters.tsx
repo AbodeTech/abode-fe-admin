@@ -25,7 +25,6 @@ const OFFER_TYPE_OPTIONS = OFFER_TYPES.map((offerType) => ({
   value: offerType,
 }));
 
-const SOLD_OPTIONS = [{ label: "Sold out only", value: "true" }];
 const DELETED_OPTIONS = [{ label: "Include deleted", value: "true" }];
 
 /**
@@ -79,7 +78,6 @@ export function AssetFilters() {
         the two separate tables v1 had.
       */}
       <FilterSelect data={OFFER_TYPE_OPTIONS} queryKey="offer_type" placeholder="All offers" />
-      <FilterSelect data={SOLD_OPTIONS} queryKey="sold" placeholder="Any availability" />
       <FilterSelect data={DELETED_OPTIONS} queryKey="include_deleted" placeholder="Active only" />
     </div>
   );

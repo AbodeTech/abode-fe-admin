@@ -91,7 +91,7 @@ export function SqmInventoryPanel({ assetId }: { assetId: string }) {
           </Badge>
         ) : (
           <Badge variant="outline" className="text-muted-foreground">
-            Legacy units
+            Not activated
           </Badge>
         )}
       </div>

@@ -5,6 +5,8 @@ import {
   TrendingUp,
   Briefcase,
   Star,
+  Gauge,
+  CircleDollarSign,
   Info,
   Target,
   AlertCircle,
@@ -24,6 +26,7 @@ import {
   type ManagerListItem,
 } from "../schemas/associate-manager.schema";
 import type { ManagerDashboard } from "../schemas/manager-dashboard.schema";
+import { formatCurrencyShort as formatNairaShort } from "../lib/attribution";
 
 interface Props {
   viewAs: "super-admin" | "manager";
@@ -31,6 +34,8 @@ interface Props {
   manager: ManagerListItem | null;
   dashboard: ManagerDashboard;
 }
+
+const formatNaira = (value: number) => `₦${value.toLocaleString("en-NG", { maximumFractionDigits: 0 })}`;
 
 type Tone = "exceeded" | "on-track" | "approaching" | "behind";
 
@@ -278,14 +283,19 @@ export function ManagerSnapshot({ viewAs, manager, dashboard }: Props) {
     target.selling_target > 0
       ? (target.selling_so_far / target.selling_target) * 100
       : undefined;
-  // Rating scale is fixed at 1-5, so the ceiling for the performance score is
-  // always 5.00. `performance_score_target` from the manager's monthly config is
-  // stale (came from the pre-rating scoring era where scores were 0-100), so
-  // ignore it for the denominator here — the tile always renders X.XX / 5.00
-  // and the progress bar is computed against 5.
+  const revenuePct = target.revenue_target > 0
+    ? (target.revenue_so_far / target.revenue_target) * 100
+    : undefined;
   const RATING_MAX = 5;
-  const scorePct =
-    score.actual > 0 ? (score.actual / RATING_MAX) * 100 : undefined;
+  const peerRatingPct = score.actual > 0 ? (score.actual / RATING_MAX) * 100 : undefined;
+  const componentLine = (label: string, weight: number, value: number, hasTarget: boolean) =>
+    hasTarget ? `${label}: ${value.toFixed(1)}/${weight}` : `${label}: no target set`;
+  const scoreTooltip = [
+    "Objective score out of 100. Selling 50 + Revenue 30 + Recruitment 20.",
+    componentLine("Selling", 50, score.selling_component, target.selling_target > 0),
+    componentLine("Revenue", 30, score.revenue_component, target.revenue_target > 0),
+    componentLine("Recruitment", 20, score.recruitment_component, target.recruited_target > 0),
+  ].join(" · ");
 
   const managerAdminId = manager?.manager_id ?? null;
 
@@ -337,8 +347,8 @@ export function ManagerSnapshot({ viewAs, manager, dashboard }: Props) {
           )}
         </div>
 
-        {/* KPI tiles — 3 (reward descoped per blueprint §8) */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* Objective targets: recruited, selling, revenue, and weighted score. */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <KpiTile
             icon={TrendingUp}
             iconColor="text-[#00695C]"
@@ -370,20 +380,34 @@ export function ManagerSnapshot({ viewAs, manager, dashboard }: Props) {
           />
 
           <KpiTile
-            icon={Star}
-            iconColor="text-amber-600"
-            iconBg="bg-amber-50"
+            icon={CircleDollarSign}
+            iconColor="text-emerald-600"
+            iconBg="bg-emerald-50"
+            label="Revenue"
+            actualDisplay={formatNairaShort(target.revenue_so_far)}
+            targetDisplay={target.revenue_target > 0 ? formatNairaShort(target.revenue_target) : undefined}
+            percent={revenuePct}
+            tooltip={`Cash received this period on plans opened this period vs. active target. Currently ${formatNaira(target.revenue_so_far)}.`}
+            noData={target.revenue_target === 0}
+            noDataLabel="No revenue target set"
+          />
+
+          <KpiTile
+            icon={Gauge}
+            iconColor="text-purple-600"
+            iconBg="bg-purple-50"
             label="Performance Score"
-            actualDisplay={score.actual.toFixed(2)}
-            targetDisplay="5.00"
-            percent={scorePct}
-            tooltip="Average of realtor ratings for this period, out of 5."
-            // Rating enum is 1-5, so an average of exactly 0 reliably means
-            // "no ratings this period" rather than "everyone rated zero".
-            noData={score.actual === 0}
-            noDataLabel="No ratings yet this period"
+            actualDisplay={score.score.toFixed(1)}
+            targetDisplay="100"
+            percent={score.score}
+            tooltip={scoreTooltip}
           />
         </div>
+        <div className="flex items-center justify-between gap-4 border-t border-gray-100 pt-4">
+          <div className="flex items-center gap-2 text-sm text-gray-700"><Star className="h-4 w-4 text-amber-500" /><span>Peer rating</span></div>
+          <div className="text-right"><span className="font-semibold tabular-nums">{score.rating_count > 0 ? score.actual.toFixed(2) : "No ratings yet"}</span><span className="text-gray-500 text-sm"> / 5.00</span><p className="text-xs text-gray-500">{score.rating_count.toLocaleString()} ratings this period</p></div>
+        </div>
+        {peerRatingPct !== undefined && <div className="h-1.5 rounded-full bg-gray-100"><div className="h-full rounded-full bg-amber-500" style={{ width: `${Math.min(peerRatingPct, 100)}%` }} /></div>}
       </div>
 
       <ManageTargetsDialog

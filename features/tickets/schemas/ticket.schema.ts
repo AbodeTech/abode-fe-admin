@@ -139,6 +139,7 @@ export const TicketSchema = z.looseObject({
   user_affected: UserRefSchema.nullish(),
   assigned_admin: AdminRefSchema.nullish(),
   collaborators: z.array(AdminRefSchema).default([]),
+  participants: z.array(z.object({ address: z.string(), name: z.string().nullish(), role: z.enum(["customer", "cc"]), added_via: z.enum(["original", "inbound", "outbound", "manual"]), added_at: z.string().optional() })).default([]),
   issue: IssueRefSchema.nullish(),
   resolution: z.string().nullish(),
   resolved_at: z.string().nullish(),

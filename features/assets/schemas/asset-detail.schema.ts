@@ -3,7 +3,6 @@ import { z } from 'zod';
 import {
   AssetDocumentsSchema,
   AssetHistoryEntrySchema,
-  InventoryModelVersionSchema,
   LandInventoryStateSchema,
   OfferTypeSchema,
   PaymentTypeSchema,
@@ -195,18 +194,12 @@ export const AssetDetailSchema = z.object({
   pitch_pack: PitchPackSchema.nullable().optional(),
   asset_history: z.array(AssetHistoryEntrySchema).default([]),
 
-  sales_cap: z.number(),
-  sold_units: z.number().default(0),
-  reserved_units: z.number().default(0),
-  available_units: z.number().nullable().optional(),
-
-  /** See the matching fields on AssetSchema — never combined with the legacy unit fields above. */
+  /** Estate land configuration is planning data; live stock is in the SQM ledger. */
   total_land_sqm: z.number().nullable().default(null),
   land_inventory_state: LandInventoryStateSchema.default('not_configured'),
-  inventory_model_version: InventoryModelVersionSchema.default('legacy_units'),
+  sqm_inventory_active: z.boolean(),
   land_configuration_version: z.number().default(0),
 
-  sold: z.boolean().default(false),
   visibility: VisibilitySchema,
   deleted_at: z.string().nullable().optional(),
 

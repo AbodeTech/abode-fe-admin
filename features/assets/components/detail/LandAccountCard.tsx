@@ -39,8 +39,7 @@ interface Props {
  * "Product pools assigned" reads `assigned / saleable land`, where saleable
  * land is the total minus roads & services. The gap between the two is
  * exactly the unclassified figure above it.
- * Never mixes this sqm figure with the legacy unit counters (`sales_cap` /
- * `sold_units` / `reserved_units`) shown elsewhere on the page.
+ * This is planned land assignment, not live SQM availability.
  */
 export function LandAccountCard({ assetId, onEdit, onViewHistory }: Props) {
   const permissions = useAdminPermissions();
@@ -162,10 +161,9 @@ export function LandAccountCard({ assetId, onEdit, onViewHistory }: Props) {
         </div>
       ) : null}
 
-      {data.inventory_model_version === "legacy_units" ? (
+      {!data.sqm_inventory_active ? (
         <p className="mt-3 text-[11px] text-muted-foreground">
-          Legacy unit inventory is still what sells this asset today — this sqm account is planning
-          data until the live inventory ledger activates.
+          This land account is planning data until the live SQM inventory ledger is activated.
         </p>
       ) : null}
     </DetailPanel>

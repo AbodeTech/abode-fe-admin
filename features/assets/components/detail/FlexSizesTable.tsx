@@ -36,7 +36,7 @@ import { PlansTable } from "./PlansTable";
 /* ============================================================
  * The Flex offer's sizes — screen 1 of the Flex 2.0 admin mockup.
  *
- * One row per size: Size · Units available · Pricing · Price version · Status,
+ * One row per size: Size · Configured units · Pricing · Price version · Status,
  * and a single action. A size is in exactly one pricing mode:
  *
  *   base_plan  — one-line summary + “Edit pricing” (the editor sheet).
@@ -152,7 +152,7 @@ export function FlexSizesTable({
           <TableHeader>
             <TableRow>
               <TableHead>Size</TableHead>
-              <TableHead>Units available</TableHead>
+              <TableHead>Configured units</TableHead>
               <TableHead>Pricing</TableHead>
               <TableHead>Price version</TableHead>
               <TableHead>Status</TableHead>
@@ -226,7 +226,7 @@ export function FlexSizesTable({
       <AdminMobileStack>
         {sizes.map((size) => (
           <AdminMobileCard key={size._id} title={`${size.size_sqm.toLocaleString()} sqm`} subtitle={<StatusCell size={size} />}>
-            <AdminMobileField label="Units available" value={size.configured_units.toLocaleString()} />
+            <AdminMobileField label="Configured units" value={size.configured_units.toLocaleString()} />
             <AdminMobileField label="Pricing" value={<PricingCell size={size} />} />
             <AdminMobileField label="Price version" value={<VersionCell size={size} />} />
             <div className="flex items-center justify-end gap-1 pt-1">
