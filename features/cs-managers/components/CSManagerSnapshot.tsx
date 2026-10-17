@@ -11,6 +11,8 @@ interface Props {
   target: CSManagerDashboard["target"];
   score: CSManagerDashboard["performance_score"];
   obligation: CSManagerDashboard["obligation"];
+  /** For the demand behind the onboarding target: who is still waiting for a call. */
+  onboardingBacklog: CSManagerDashboard["backlogs"]["onboarding"];
   totalAssigned: number;
   onManageTargets?: () => void;
 }
@@ -34,9 +36,12 @@ export function CSManagerSnapshot({
   target,
   score,
   obligation,
+  onboardingBacklog,
   totalAssigned,
   onManageTargets,
 }: Props) {
+  const dueThisPeriod = onboardingBacklog.call_pending_this_period;
+  const dueCarriedOver = onboardingBacklog.call_pending_carried_over ?? 0;
   const active = hasActiveTarget(target);
   const periodLabel = formatPeriod(period);
   const remaining = daysRemaining(period.end);
@@ -132,6 +137,28 @@ export function CSManagerSnapshot({
           targetDisplay={target.onboarded_target > 0 ? target.onboarded_target.toLocaleString() : undefined}
           percent={onboardedPct}
           tooltip="Onboarding calls logged this period. Every new purchase needs an onboarding call to gather intel on why the customer chose the land."
+          // The demand behind the target: how many are waiting for a call, and
+          // how many of those are this period's problem. Absent against a BE
+          // that doesn't send the split.
+          footer={
+            dueThisPeriod !== undefined && dueThisPeriod + dueCarriedOver > 0 ? (
+              <p className="mt-3 pt-3 border-t border-dashed border-gray-200 text-xs text-gray-500">
+                <span className="font-semibold tabular-nums text-gray-700">
+                  {dueThisPeriod.toLocaleString()}
+                </span>{" "}
+                bought in {periodLabel} still need a call
+                {dueCarriedOver > 0 && (
+                  <>
+                    {" · "}
+                    <span className="font-semibold tabular-nums text-gray-700">
+                      {dueCarriedOver.toLocaleString()}
+                    </span>{" "}
+                    carried over
+                  </>
+                )}
+              </p>
+            ) : null
+          }
         />
 
         <KpiTile

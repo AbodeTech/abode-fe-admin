@@ -6,9 +6,39 @@ import type { CSManagerDashboard } from "../schemas/cs-manager.schema";
 
 interface Props {
   backlogs: CSManagerDashboard["backlogs"];
+  /** The period the onboarding split is measured against. */
+  period: CSManagerDashboard["period"];
   onOpenAllocationQueue?: () => void;
   onOpenPurchaseConfirmations?: () => void;
   onOpenDoaQueue?: () => void;
+}
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/**
+ * The call-pending number split by when the obligation started. "Seventy to
+ * onboard" is not a month's work and reads as an impossible target; "nine
+ * this month, sixty-one carried over" is two problems, and only the first is
+ * this month's performance. Falls back to the single row against a BE that
+ * doesn't send the split.
+ */
+function callPendingRows(
+  onboarding: CSManagerDashboard["backlogs"]["onboarding"],
+  period: CSManagerDashboard["period"]
+): BacklogRow[] {
+  const thisPeriod = onboarding.call_pending_this_period;
+  const carriedOver = onboarding.call_pending_carried_over;
+  if (thisPeriod === undefined || carriedOver === undefined) {
+    return [{ label: "New purchases · call pending", value: onboarding.call_pending, tone: "fresh" }];
+  }
+  return [
+    {
+      label: `Bought in ${MONTHS[period.month - 1]} ${period.year} · call pending`,
+      value: thisPeriod,
+      tone: "fresh",
+    },
+    { label: "Carried over · call pending", value: carriedOver, tone: "warn" },
+  ];
 }
 
 /**
@@ -18,6 +48,7 @@ interface Props {
  */
 export function BacklogsSection({
   backlogs,
+  period,
   onOpenAllocationQueue,
   onOpenPurchaseConfirmations,
   onOpenDoaQueue,
@@ -48,7 +79,7 @@ export function BacklogsSection({
           label="Onboarding Pipeline"
           pillLabel="Chase"
           rows={[
-            { label: "New purchases · call pending", value: backlogs.onboarding.call_pending, tone: "fresh" },
+            ...callPendingRows(backlogs.onboarding, period),
             { label: "Called · confirmation pending", value: backlogs.onboarding.confirm_pending, tone: "warn" },
             { label: "Disputed by buyer", value: backlogs.onboarding.disputed, tone: "crit" },
           ]}

@@ -7,6 +7,7 @@ export const csManagerKeys = {
   target: (managerId: string, year: number, month: number) =>
     [...csManagerKeys.all, 'target', managerId, year, month] as const,
   adminPicker: () => [...csManagerKeys.all, 'admin-picker'] as const,
+  autoAssignPreview: () => [...csManagerKeys.all, 'auto-assign-preview'] as const,
   dashboards: () => [...csManagerKeys.all, 'dashboard'] as const,
   dashboard: (managerId: string, params: Record<string, unknown>) =>
     [...csManagerKeys.dashboards(), managerId, params] as const,

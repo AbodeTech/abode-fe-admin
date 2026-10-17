@@ -6,18 +6,35 @@ import { ArrowRight, Download, Loader2, Repeat } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Pagination } from "@/components/shared/Pagination";
 import { useDebounce } from "@/hooks/use-debounce";
 import { cn } from "@/lib/utils";
-import type { CSManagerDashboard, PlanFilterKey, PlanRow } from "../schemas/cs-manager.schema";
+import type {
+  CSManagerDashboard,
+  EstateOption,
+  PlanFilterKey,
+  PlanRow,
+} from "../schemas/cs-manager.schema";
 import {
   AllocationPill,
   DoaPill,
+  LastAttemptNote,
   OnboardingPill,
   PaymentPill,
+  allocationStatusLabel,
   formatShortDate,
   planCustomerInitials,
   planCustomerName,
+  planLandLabel,
+  productLabel,
+  telHref,
 } from "./status-pills";
 import { PlanDetailDrawer } from "./PlanDetailDrawer";
 import { useExportDashboardPlans } from "../hooks/use-export-dashboard-plans";
@@ -29,8 +46,10 @@ interface Props {
   totalAssigned: number;
   /** Rows matching the active filter + search, before pagination. */
   totalPlans: number;
-  /** Book-wide per-chip counts — unaffected by the active filter. */
+  /** Per-chip counts — unaffected by the active chip, narrowed by the estate. */
   filterCounts: CSManagerDashboard["filter_counts"];
+  /** Every estate in the book, for the estate filter. */
+  estates: EstateOption[];
   page: number;
   limit: number;
   isFetching?: boolean;
@@ -40,10 +59,18 @@ const FILTERS: { key: PlanFilterKey; label: string }[] = [
   { key: "all", label: "All" },
   { key: "due_allocation", label: "Due allocation" },
   { key: "onboarding_pending", label: "Onboarding pending" },
+  // The three states inside that chip: a plan nobody has rung, one where the
+  // customer did not pick up, and one with a call booked — three different jobs.
+  { key: "never_attempted", label: "Never rung" },
+  { key: "no_answer", label: "Didn't pick" },
+  { key: "rescheduled", label: "Call booked" },
   { key: "due_doa", label: "Due DoA" },
   { key: "defaulting_soon", label: "Defaulting soon" },
   { key: "completed_payment", label: "Completed payment" },
 ];
+
+/** Radix Select can't hold an empty value, so "no estate" needs a sentinel. */
+const ALL_ESTATES = "__all__";
 
 const timeAgo = (iso: string | null) => {
   if (!iso) return "—";
@@ -64,6 +91,7 @@ export function CustomersTable({
   totalAssigned,
   totalPlans,
   filterCounts,
+  estates,
   page,
   limit,
   isFetching = false,
@@ -78,6 +106,7 @@ export function CustomersTable({
 
   const activeFilter = (searchParams.get("filter") as PlanFilterKey | null) ?? "all";
   const searchParam = searchParams.get("search") ?? "";
+  const estateParam = searchParams.get("estate") ?? "";
 
   // Local input state so typing stays responsive; the URL (and the query)
   // only move once typing settles.
@@ -119,6 +148,23 @@ export function CustomersTable({
       else p.set("filter", key);
     });
 
+  const setEstate = (name: string) =>
+    pushParams((p) => {
+      if (name === ALL_ESTATES) p.delete("estate");
+      else p.set("estate", name);
+    });
+
+  // A chip whose count the BE doesn't send yet would 400 on click — hide it.
+  const visibleFilters = FILTERS.filter((f) => filterCounts[f.key] !== undefined);
+
+  // An estate in the URL that this book doesn't hold (say, after switching
+  // manager) still needs an item, or the trigger would read "All estates"
+  // over an empty table.
+  const estateOptions: EstateOption[] =
+    estateParam && !estates.some((e) => e.name === estateParam)
+      ? [...estates, { name: estateParam, plans: 0, due_allocation: 0 }]
+      : estates;
+
   const openPlan = openPlanId ? plans.find((p) => p.plan_id === openPlanId) ?? null : null;
 
   const rangeStart = totalPlans === 0 ? 0 : (page - 1) * limit + 1;
@@ -135,6 +181,7 @@ export function CustomersTable({
         year: year ? Number(year) : undefined,
         filter: activeFilter,
         search: searchParam || undefined,
+        estate: estateParam || undefined,
       },
       {
         onSuccess: ({ filename }) => toast.success(`Exported ${filename}`),
@@ -156,7 +203,7 @@ export function CustomersTable({
       <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
         <div className="flex items-center justify-between gap-3 flex-wrap p-3 border-b border-gray-200">
           <div className="flex flex-wrap gap-1.5">
-            {FILTERS.map((f) => {
+            {visibleFilters.map((f) => {
               const active = activeFilter === f.key;
               return (
                 <button
@@ -172,17 +219,47 @@ export function CustomersTable({
                 >
                   {f.label}
                   <span className={cn("tabular-nums text-[11px]", active ? "opacity-90" : "text-gray-400")}>
-                    {filterCounts[f.key].toLocaleString()}
+                    {(filterCounts[f.key] ?? 0).toLocaleString()}
                   </span>
                 </button>
               );
             })}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {estateOptions.length > 0 && (
+              <Select value={estateParam || ALL_ESTATES} onValueChange={setEstate}>
+                <SelectTrigger size="sm" className="h-8 text-xs w-fit min-w-40 max-w-64 bg-white">
+                  {/* The name alone in the trigger; the counts are for choosing. */}
+                  <SelectValue placeholder="All estates">{estateParam || "All estates"}</SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL_ESTATES} className="text-xs">
+                    All estates
+                  </SelectItem>
+                  {estateOptions.map((e) => (
+                    <SelectItem key={e.name} value={e.name} className="text-xs">
+                      <span className="flex flex-col">
+                        <span>{e.name}</span>
+                        <span className="text-[11px] text-gray-500 tabular-nums">
+                          {e.plans.toLocaleString()} plan{e.plans === 1 ? "" : "s"}
+                          {e.due_allocation > 0 && (
+                            <span className="text-[#AD1F2A]">
+                              {" · "}
+                              {e.due_allocation.toLocaleString()} due allocation
+                            </span>
+                          )}
+                        </span>
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <Input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Search customer name, email, or asset…"
+              placeholder="Search name, email, phone or estate…"
+              title="A phone number matches on 4 or more digits, in any spacing"
               className="h-8 text-xs w-56"
             />
             {managerId && <Button
@@ -207,6 +284,7 @@ export function CustomersTable({
             <thead>
               <tr className="text-left text-[11px] uppercase tracking-wide text-gray-500 bg-gray-50">
                 <th className="px-4 py-2.5 font-medium">Customer</th>
+                <th className="px-4 py-2.5 font-medium">Phone</th>
                 <th className="px-4 py-2.5 font-medium">Plan</th>
                 <th className="px-4 py-2.5 font-medium">Payment</th>
                 <th className="px-4 py-2.5 font-medium">Onboarding</th>
@@ -219,8 +297,10 @@ export function CustomersTable({
             <tbody>
               {plans.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-gray-500 text-sm">
-                    {searchParam || activeFilter !== "all" ? "No plans match this filter." : "No plans in this book yet."}
+                  <td colSpan={9} className="px-4 py-8 text-center text-gray-500 text-sm">
+                    {searchParam || estateParam || activeFilter !== "all"
+                      ? "No plans match this filter."
+                      : "No plans in this book yet."}
                   </td>
                 </tr>
               ) : (
@@ -249,21 +329,45 @@ export function CustomersTable({
                         </div>
                       </div>
                     </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {r.customer.phone ? (
+                        // A queue row is read to place a call, so the number dials.
+                        <a
+                          href={telHref(r.customer.phone)}
+                          className="text-xs text-gray-700 tabular-nums hover:text-[#00695C]"
+                        >
+                          {r.customer.phone}
+                        </a>
+                      ) : (
+                        <span className="text-gray-400">—</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-gray-700">
-                      <p className="leading-tight">{r.asset}</p>
+                      <p className="leading-tight">{r.asset || "—"}</p>
                       <p className="text-xs text-gray-500 leading-tight">
-                        {r.product === "flex" ? "Flex" : "Full-ownership"} · opened{" "}
-                        {formatShortDate(r.purchase_date)}
+                        {[r.location, planLandLabel(r)].filter(Boolean).join(" · ")}
+                      </p>
+                      <p className="text-xs text-gray-500 leading-tight">
+                        {productLabel(r.product)} · opened {formatShortDate(r.purchase_date)}
                       </p>
                     </td>
                     <td className="px-4 py-3">
                       <PaymentPill status={r.payment_status} label={r.payment_label} />
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 align-top">
                       <OnboardingPill status={r.onboarding} />
+                      {/* What was already tried, so the next call is an informed one. */}
+                      <LastAttemptNote attempt={r.last_attempt} />
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 align-top">
                       <AllocationPill status={r.allocation} label={r.allocation_label} />
+                      {/* The status stored on the plan, beside the pill the BE
+                          derives. Skipped where it would only repeat the pill. */}
+                      {r.allocation_status && !(r.allocation === "allocated" && r.allocation_status === "allocated") && (
+                        <span className="mt-1 block text-[11px] text-gray-500">
+                          Status: {allocationStatusLabel(r.allocation_status)}
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <DoaPill status={r.doa} label={r.doa_label} />
