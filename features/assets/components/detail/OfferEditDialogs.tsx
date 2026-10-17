@@ -137,7 +137,7 @@ function EditOfferDialog({ asset, offerType }: { asset: AssetDetail; offerType: 
 
   return (
     <Dialog open onOpenChange={(open) => (open ? undefined : close())}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{OFFER_TYPE_LABELS[offerType]} settings</DialogTitle>
           <DialogDescription>
@@ -303,7 +303,7 @@ function AddOfferDialog({ asset, offerType }: { asset: AssetDetail; offerType: O
 
   return (
     <Dialog open onOpenChange={(open) => (open ? undefined : close())}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Add {OFFER_TYPE_LABELS[offerType].toLowerCase()}</DialogTitle>
           <DialogDescription>
@@ -570,7 +570,7 @@ function SizeDialog({
 
   return (
     <Dialog open onOpenChange={(open) => (open ? undefined : close())}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Edit size" : "Add size"}</DialogTitle>
           <DialogDescription>
@@ -932,7 +932,7 @@ function PlanDialog({
 
   return (
     <Dialog open onOpenChange={(open) => (open ? undefined : close())}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Edit plan" : "Add plan"}</DialogTitle>
           <DialogDescription>

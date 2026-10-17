@@ -38,6 +38,21 @@
   --ring: var(--auth-btn-end);
 }
 
+/* The maintenance page sits straight on the background, without the white card,
+   centred on every screen size (the layout only centres from lg up). */
+.auth-layout:has([data-maintenance]) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+}
+
+.auth-layout > section:has([data-maintenance]) {
+  background-color: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
 .dark {
   /* Dark mode overrides would go here, keeping light mode focus for legacy match */
   --background: #020817;
