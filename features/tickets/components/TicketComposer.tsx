@@ -77,8 +77,12 @@ export function TicketComposer({ ticketId, channel, mergedInto }: Props) {
   };
 
   return (
-    <div className="border-t border-gray-200 bg-gray-50/60 p-3 space-y-2 shrink-0">
-      <div className="flex items-center gap-1.5">
+    // The composer sits under the timeline in a fixed-height column. It may
+    // take up to two-thirds of that column, and shrinks rather than overflow
+    // it; only the reply box gives way inside it, so the mode tabs, CC field
+    // and Send row always stay in view, however long the reply.
+    <div className="border-t border-gray-200 bg-gray-50/60 p-3 flex flex-col gap-2 min-h-0 max-h-[66%]">
+      <div className="flex items-center gap-1.5 shrink-0">
         <ModeTab
           active={activeMode === "reply"}
           disabled={!canReply}
@@ -100,7 +104,7 @@ export function TicketComposer({ ticketId, channel, mergedInto }: Props) {
       </div>
 
       {!canReply && (
-        <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1.5">
+        <p className="shrink-0 text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1.5">
           {isMerged ? (
             <>
               This ticket was merged.{" "}
@@ -121,7 +125,7 @@ export function TicketComposer({ ticketId, channel, mergedInto }: Props) {
         </p>
       )}
 
-      {activeMode === "reply" && <label className="block text-xs text-gray-600">CC for this reply (optional, comma-separated)
+      {activeMode === "reply" && <label className="block shrink-0 text-xs text-gray-600">CC for this reply (optional, comma-separated)
         <input type="text" value={cc} onChange={(event) => setCc(event.target.value)} disabled={isPending} placeholder="colleague@example.com" className="mt-1 w-full rounded-md border border-gray-200 bg-white px-2 py-1.5 text-sm text-gray-900" />
       </label>}
 
@@ -143,13 +147,18 @@ export function TicketComposer({ ticketId, channel, mergedInto }: Props) {
             ? "Write to the customer — this is sent as an email"
             : "Internal note — visible to admins only"
         }
+        // The shared Textarea grows with its content (field-sizing-content).
+        // A window-height cap (max-h-[40vh]) wasn't enough: the panel is far
+        // shorter than the window, so the box still pushed the Send row out.
+        // Instead it is the one part of the composer that shrinks (down to
+        // about three lines) and scrolls inside itself past that.
         className={cn(
-          "text-sm resize-none bg-white",
+          "text-sm resize-none bg-white min-h-18 shrink overflow-y-auto",
           activeMode === "note" && "border-amber-200 focus-visible:ring-amber-400"
         )}
       />
 
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex items-center justify-between gap-2 shrink-0">
         <p className="text-[10px] text-gray-500">
           {activeMode === "reply"
             ? "Sent as email, threaded so their answer returns to this ticket."
@@ -161,7 +170,7 @@ export function TicketComposer({ ticketId, channel, mergedInto }: Props) {
           ) : (
             <Send className="h-3.5 w-3.5 mr-1.5" />
           )}
-          {activeMode === "reply" ? "Send reply" : "Add note"}
+          {activeMode === "reply" ? "Send" : "Add note"}
         </Button>
       </div>
     </div>
