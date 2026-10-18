@@ -306,7 +306,10 @@ export function TicketContextPanel({ detail }: Props) {
         </section>
       )}
 
-      {ticket.resolution && (
+      {/* Keyed on the status, not the summary: the summary is optional, and a
+          ticket resolved without one still needs to say who closed it and when.
+          Not on resolved_at either: reopening by hand leaves it set. */}
+      {ticket.status === "resolved" && (
         <section className="rounded-lg border border-emerald-200 bg-emerald-50/60 p-3 text-sm space-y-1.5">
           <div className="flex flex-wrap items-center gap-1 text-xs text-emerald-800">
             Resolved
@@ -318,9 +321,13 @@ export function TicketContextPanel({ detail }: Props) {
             )}
             {ticket.resolved_at && <>· {formatWhen(ticket.resolved_at)}</>}
           </div>
-          <p className="text-emerald-900 whitespace-pre-wrap">
-            {ticket.resolution}
-          </p>
+          {ticket.resolution ? (
+            <p className="text-emerald-900 whitespace-pre-wrap">
+              {ticket.resolution}
+            </p>
+          ) : (
+            <p className="text-xs italic text-emerald-800/70">No resolution summary added.</p>
+          )}
         </section>
       )}
 

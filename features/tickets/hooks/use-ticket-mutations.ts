@@ -92,8 +92,8 @@ export const useResolveTicket = () => {
       ...body
     }: {
       ticketId: string;
-      /** Minimum 20 characters, enforced server-side. */
-      resolution: string;
+      /** Optional, with no minimum. Null or blank resolves without a summary. */
+      resolution?: string | null;
       notify_user?: boolean;
       expected_updated_at?: string;
     }) => apiPost(`/admin/tickets/${ticketId}/resolve`, body, TicketSchema),
