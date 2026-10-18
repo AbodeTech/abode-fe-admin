@@ -157,6 +157,24 @@ export function DateFilter() {
     }
   };
 
+  const handleCalendarOpenChange = (open: boolean) => {
+    if (open) {
+      openCalendar();
+      return;
+    }
+    // A single day is a legitimate range and a common one — "what came in
+    // yesterday". With min={1} the first click leaves `to` unset, and clicking
+    // the same day again clears it, so without this the reader picks one day,
+    // closes the calendar and nothing happens at all. Closing on a half-made
+    // range takes the one day they chose rather than discarding it.
+    if (draftRange?.from && !draftRange.to) {
+      const day = startOfDay(draftRange.from);
+      updateURL(day, day);
+      setDraftRange(undefined);
+    }
+    setIsCalendarOpen(false);
+  };
+
   const hasCompleteRange = Boolean(appliedRange?.from && appliedRange?.to);
   const showRangeControls = showCustomPicker || isCalendarOpen || urlOption === "custom";
 
@@ -187,10 +205,7 @@ export function DateFilter() {
 
       {showRangeControls && (
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-          <Popover
-            open={isCalendarOpen}
-            onOpenChange={(open) => (open ? openCalendar() : setIsCalendarOpen(false))}
-          >
+          <Popover open={isCalendarOpen} onOpenChange={handleCalendarOpenChange}>
             <PopoverTrigger asChild>
               <Button
                 type="button"
