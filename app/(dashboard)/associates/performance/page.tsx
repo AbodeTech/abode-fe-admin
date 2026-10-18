@@ -50,7 +50,6 @@ function AssociatePerformanceContent() {
 
   const isSuperAdmin = Boolean(user?.role?.is_super_admin);
 
-  const period = searchParams.get("period");
   const startDate = searchParams.get("start_date");
   const endDate = searchParams.get("end_date");
   const month = searchParams.get("month");
@@ -59,7 +58,6 @@ function AssociatePerformanceContent() {
   const proSort = searchParams.get("pro_sort");
 
   const filter = buildManagerDashboardFilter({
-    period,
     startDate,
     endDate,
     month,
@@ -68,7 +66,6 @@ function AssociatePerformanceContent() {
     proSort,
   });
   const periodFilter = buildManagerDashboardPeriodFilter({
-    period,
     startDate,
     endDate,
     month,
@@ -79,7 +76,7 @@ function AssociatePerformanceContent() {
 
   useEffect(() => {
     setPage(1);
-  }, [period, startDate, endDate, month, year, proGroup, proSort]);
+  }, [startDate, endDate, month, year, proGroup, proSort]);
 
   const kpiQuery = useSystemAssociatesDashboard(periodFilter, { enabled: isSuperAdmin });
   const tableQuery = useSystemAssociatesDashboard(

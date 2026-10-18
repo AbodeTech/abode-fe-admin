@@ -79,7 +79,6 @@ function AssociateManagersContent() {
       : "super-admin";
 
   const managerIdParam = searchParams.get("manager");
-  const period = searchParams.get("period");
   const startDate = searchParams.get("start_date");
   const endDate = searchParams.get("end_date");
   const month = searchParams.get("month");
@@ -88,7 +87,6 @@ function AssociateManagersContent() {
   const proSort = searchParams.get("pro_sort");
 
   const filter = buildManagerDashboardFilter({
-    period,
     startDate,
     endDate,
     month,
@@ -97,7 +95,6 @@ function AssociateManagersContent() {
     proSort,
   });
   const periodFilter = buildManagerDashboardPeriodFilter({
-    period,
     startDate,
     endDate,
     month,
