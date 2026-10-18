@@ -9,7 +9,8 @@ import {
   formatAmount,
   formatDate,
   getStatusColor,
-  getTransactionTypeColor,
+  getPaymentMethodColor,
+  getPaymentMethodLabel,
   parseCommissionDescription
 } from "@/lib/utils/transaction-utils"
 import { TransactionListResponse } from "@/lib/api/admin/transactions.types"
@@ -100,10 +101,10 @@ export function CommissionTransactionsTable({ transactions }: CommissionTransact
               <AdminMobileCard key={transaction._id} title={transaction._id} subtitle={formatDate(transaction.time_of_transaction)}>
                 <AdminMobileField label="Amount" value={formatAmount(transaction.amount)} />
                 <AdminMobileField
-                  label="Txn type"
+                  label="Payment method"
                   value={
-                    <Badge variant="outline" className={getTransactionTypeColor(transaction.transaction_type)}>
-                      {transaction.transaction_type}
+                    <Badge variant="outline" className={getPaymentMethodColor(transaction.payment_method)}>
+                      {getPaymentMethodLabel(transaction.payment_method)}
                     </Badge>
                   }
                 />
@@ -151,9 +152,9 @@ export function CommissionTransactionsTable({ transactions }: CommissionTransact
                   Amount
                   {sortField === "amount" && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-4 w-4" /> : <ArrowDownIcon className="inline ml-1 h-4 w-4" />)}
                 </TableHead>
-                <TableHead className="cursor-pointer" onClick={() => handleSort("transaction_type")}>
-                  Transaction Type
-                  {sortField === "transaction_type" && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-4 w-4" /> : <ArrowDownIcon className="inline ml-1 h-4 w-4" />)}
+                <TableHead className="cursor-pointer" onClick={() => handleSort("payment_method")}>
+                  Payment Method
+                  {sortField === "payment_method" && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-4 w-4" /> : <ArrowDownIcon className="inline ml-1 h-4 w-4" />)}
                 </TableHead>
                 <TableHead className="cursor-pointer" onClick={() => handleSort("vatAmount")}>
                   Transaction Amount
@@ -185,8 +186,8 @@ export function CommissionTransactionsTable({ transactions }: CommissionTransact
                     <TableCell>{formatDate(transaction.time_of_transaction)}</TableCell>
                     <TableCell className="font-medium">{formatAmount(transaction.amount)}</TableCell>
                     <TableCell>
-                      <Badge variant="outline" className={getTransactionTypeColor(transaction.transaction_type)}>
-                        {transaction.transaction_type}
+                      <Badge variant="outline" className={getPaymentMethodColor(transaction.payment_method)}>
+                        {getPaymentMethodLabel(transaction.payment_method)}
                       </Badge>
                     </TableCell>
                     <TableCell>

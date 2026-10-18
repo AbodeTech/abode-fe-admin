@@ -272,6 +272,7 @@ export const userRoutes: MockRoutes = {
         status: 'completed',
         amount: 45_000,
         net_commission: 45_000,
+        payment_method: 'system',
         description: 'Commission for Flex sale - Ada Okafor VAT: 3375 Balance: 0',
         createdAt: '2026-08-01T10:00:00.000Z',
       },
@@ -280,6 +281,7 @@ export const userRoutes: MockRoutes = {
         type: 'marketplace_referral_commission',
         status: 'completed',
         amount: 12_000,
+        payment_method: 'system',
         createdAt: '2026-08-10T10:00:00.000Z',
         description: 'Marketplace referral',
       },
@@ -290,6 +292,7 @@ export const userRoutes: MockRoutes = {
         amount: 200_000,
         createdAt: '2026-08-12T10:00:00.000Z',
         description: 'Plan installment',
+        payment_method: 'paystack',
         paystack_reference: 'PSK_abc',
       },
     ];

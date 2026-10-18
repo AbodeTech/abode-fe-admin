@@ -215,7 +215,7 @@ function asTransactions(raw: unknown) {
       type: asString(item.type),
       status: asString(item.status),
       description: asString(item.description),
-      transaction_type: asString(item.transaction_type),
+      payment_method: asString(item.payment_method),
       paystack_reference: asString(item.paystack_reference),
       transfer_reference: asString(item.transfer_reference),
       transfer_file: file ? { file: asString(file.file) } : null,

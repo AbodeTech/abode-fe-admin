@@ -201,7 +201,10 @@ export function toUserTransaction(raw: Record<string, unknown>): TransactionList
     type: asString(raw.type),
     status: asString(raw.status),
     description: asString(raw.description),
-    transaction_type: asString(raw.transaction_type || raw.type),
+    // `type` says what it is, `payment_method` how it was paid. The retired
+    // transaction_type is not read: it was empty on most v2 rows and marked
+    // commissions as "system-charge".
+    payment_method: asString(raw.payment_method),
     paystack_reference: asString(raw.paystack_reference) || undefined,
     transfer_reference: asString(raw.transfer_reference) || undefined,
     transfer_file: file ? { file: asString(file.file) } : null,

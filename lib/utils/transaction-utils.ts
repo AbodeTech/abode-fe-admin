@@ -123,16 +123,45 @@ export const getTypeColor = (type: string) => {
   }
 }
 
-// Get transaction type badge color
-export const getTransactionTypeColor = (transactionType: string) => {
-  switch (transactionType.toLowerCase()) {
+// How the money moved. v2 always fills payment_method; transaction_type was
+// v1's payment channel and is retired — v2 no longer writes it, and where it
+// did it put "system-charge" on commissions, so it is not read anywhere.
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  paystack: "Paystack",
+  transfer: "Bank transfer",
+  wallet: "Wallet",
+  // Done automatically by Abode: commissions, penalties, refunds, fees, admin adjustments.
+  system: "System",
+  autopay: "Autopay",
+}
+
+export const getPaymentMethodLabel = (paymentMethod: string | null | undefined) => {
+  if (!paymentMethod) return "—"
+  return PAYMENT_METHOD_LABELS[paymentMethod.toLowerCase()] ?? paymentMethod
+}
+
+// Get payment method badge color
+export const getPaymentMethodColor = (paymentMethod: string | null | undefined) => {
+  switch ((paymentMethod ?? "").toLowerCase()) {
     case "transfer":
       return "bg-blue-100 text-blue-800 hover:bg-blue-100 border-blue-200"
     case "wallet":
       return "bg-purple-100 text-purple-800 hover:bg-purple-100 border-purple-200"
     case "paystack":
       return "bg-green-100 text-green-800 hover:bg-green-100 border-green-200"
+    case "system":
+      return "bg-indigo-100 text-indigo-800 hover:bg-indigo-100 border-indigo-200"
+    case "autopay":
+      return "bg-teal-100 text-teal-800 hover:bg-teal-100 border-teal-200"
     default:
       return "bg-gray-100 text-gray-800 hover:bg-gray-100 border-gray-200"
   }
+}
+
+// What the transaction is, readable: "penalty_charge" → "Penalty charge",
+// "upgrade-associate-pro" → "Upgrade associate pro".
+export const formatTransactionType = (type: string | null | undefined) => {
+  if (!type) return "—"
+  const words = type.replace(/[_-]+/g, " ").trim()
+  return words.charAt(0).toUpperCase() + words.slice(1)
 }

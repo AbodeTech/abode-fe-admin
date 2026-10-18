@@ -23,7 +23,7 @@ export type UserTransaction = {
   type: string;
   status: string;
   description: string;
-  transaction_type: string;
+  payment_method: string;
   paystack_reference: string;
   transfer_reference: string;
   transfer_file: {
