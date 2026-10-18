@@ -29,6 +29,7 @@ import {
   Landmark,
   LandPlot,
   LayoutDashboard,
+  MessageCircle,
   LogOut,
   Percent,
   ScrollText,
@@ -65,7 +66,8 @@ const navGroups = [
       { name: "Purchase Confirmations", link: "/purchase-confirmations", icon: <CheckCircle /> },
       { name: "Marketplace", link: "/marketplace", icon: <Store /> },
       { name: "Requests", link: "/requests", icon: <ClipboardList /> },
-      { name: "Amaris", link: "/amaris", icon: <Bot /> },
+      { name: "Amaris", link: "/amaris", icon: <Bot />, requiresPermission: "view_amaris_queries" },
+      { name: "WhatsApp", link: "/whatsapp", icon: <MessageCircle />, requiresPermission: "view_whatsapp_inbox" },
       { name: "Flex Leads", link: "/flex-leads", icon: <UserPlus /> },
       { name: "Upgrade Coupons", link: "/associate-upgrade/coupons", icon: <Gift /> },
     ]

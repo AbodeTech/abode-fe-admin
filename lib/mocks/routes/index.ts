@@ -14,6 +14,7 @@ import { assetTransactionRoutes } from './asset-transactions';
 import { salesRoutes } from './sales';
 import { requestRoutes } from './requests';
 import { amarisRoutes } from './amaris';
+import { whatsappRoutes } from './whatsapp';
 import { flexLeadRoutes } from './flex-leads';
 import { flexPricingRoutes } from './flex-pricing';
 import { couponRoutes } from './coupons';
@@ -277,6 +278,7 @@ export function ensureRoutesRegistered(): void {
   registerRoutes(salesRoutes);
   registerRoutes(requestRoutes);
   registerRoutes(amarisRoutes);
+  registerRoutes(whatsappRoutes);
   registerRoutes(flexLeadRoutes);
   registerRoutes(flexPricingRoutes);
   registerRoutes(couponRoutes);
