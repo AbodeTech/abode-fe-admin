@@ -37,7 +37,58 @@ function isPublic(pathname: string): boolean {
   );
 }
 
+/**
+ * Maintenance switch — flip to `false` and deploy to reopen the dashboard.
+ * While on, every request signs the admin out by clearing the session cookies
+ * and redirects to /maintenance. The admin app has no public pages, so sign-in
+ * and its side flows (forgot/reset/change password) are closed too. While off,
+ * /maintenance redirects home.
+ */
+const MAINTENANCE_MODE = true;
+const MAINTENANCE_PATH = '/maintenance';
+/** Same set lib/utils/cookies.ts `clearAuthCookies` removes on sign-out. */
+const AUTH_COOKIES = [
+  'adminAccessToken',
+  'adminRefreshToken',
+  'adminMustChangePassword',
+  'accessToken',
+  'user',
+  'adminRole',
+];
+
+function maintenanceResponse(request: NextRequest): NextResponse | null {
+  const { pathname } = request.nextUrl;
+
+  if (!MAINTENANCE_MODE) {
+    if (pathname !== MAINTENANCE_PATH) return null;
+    const url = request.nextUrl.clone();
+    url.pathname = '/';
+    url.search = '';
+    return NextResponse.redirect(url);
+  }
+
+  let response: NextResponse;
+  if (pathname !== MAINTENANCE_PATH) {
+    const url = request.nextUrl.clone();
+    url.pathname = MAINTENANCE_PATH;
+    url.search = '';
+    response = NextResponse.redirect(url);
+  } else {
+    response = NextResponse.next();
+  }
+
+  // Sign everyone out, on every request, for as long as maintenance is on.
+  for (const name of AUTH_COOKIES) {
+    if (request.cookies.has(name)) response.cookies.delete(name);
+  }
+  return response;
+}
+
 export function middleware(request: NextRequest) {
+  // Maintenance takes precedence over every rule below.
+  const maintenance = maintenanceResponse(request);
+  if (maintenance) return maintenance;
+
   const { pathname } = request.nextUrl;
 
   const hasSession = !!request.cookies.get('adminAccessToken')?.value;
