@@ -2,10 +2,10 @@
 
 import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { CsManagerBacklogs as CSManagerBacklogs } from "@/lib/gql/graphql";
+import type { CSManagerDashboard } from "../schemas/cs-manager.schema";
 
 interface Props {
-  backlogs: CSManagerBacklogs;
+  backlogs: CSManagerDashboard["backlogs"];
   onOpenAllocationQueue?: () => void;
   onOpenPurchaseConfirmations?: () => void;
   onOpenDoaQueue?: () => void;
@@ -25,9 +25,7 @@ export function BacklogsSection({
   return (
     <section className="space-y-3">
       <div className="flex items-baseline justify-between gap-3 flex-wrap">
-        <h2 className="text-base font-semibold text-gray-900">
-          Workload Backlogs
-        </h2>
+        <h2 className="text-base font-semibold text-gray-900">Workload Backlogs</h2>
         <span className="text-xs text-gray-500">
           Separate from the period target — work to burn down.
         </span>
@@ -38,8 +36,8 @@ export function BacklogsSection({
           label="Due for Allocation"
           pillLabel="Overdue"
           rows={[
-            { label: "This month", value: backlogs.allocation.thisMonth, tone: "fresh" },
-            { label: "Last month", value: backlogs.allocation.lastMonth, tone: "warn" },
+            { label: "This month", value: backlogs.allocation.this_month, tone: "fresh" },
+            { label: "Last month", value: backlogs.allocation.last_month, tone: "warn" },
             { label: "Older", value: backlogs.allocation.older, tone: "crit" },
           ]}
           onOpen={onOpenAllocationQueue}
@@ -50,21 +48,8 @@ export function BacklogsSection({
           label="Onboarding Pipeline"
           pillLabel="Chase"
           rows={[
-            // The call-pending number split by when the obligation started.
-            // "Seventy to onboard" is not a month's work and reads as an
-            // impossible target; "nine this month, sixty-one carried over" is
-            // two problems, and only the first is this month's performance.
-            {
-              label: "Bought this month · call pending",
-              value: backlogs.onboarding.dueThisPeriod ?? 0,
-              tone: "fresh",
-            },
-            {
-              label: "Carried over · call pending",
-              value: backlogs.onboarding.dueCarriedOver ?? 0,
-              tone: "warn",
-            },
-            { label: "Called · confirmation pending", value: backlogs.onboarding.confirmPending, tone: "warn" },
+            { label: "New purchases · call pending", value: backlogs.onboarding.call_pending, tone: "fresh" },
+            { label: "Called · confirmation pending", value: backlogs.onboarding.confirm_pending, tone: "warn" },
             { label: "Disputed by buyer", value: backlogs.onboarding.disputed, tone: "crit" },
           ]}
           onOpen={onOpenPurchaseConfirmations}
@@ -75,8 +60,8 @@ export function BacklogsSection({
           label="Due for Deed of Assignment"
           pillLabel="Overdue"
           rows={[
-            { label: "Eligible this month", value: backlogs.doa.thisMonth, tone: "fresh" },
-            { label: "Eligible last month", value: backlogs.doa.lastMonth, tone: "warn" },
+            { label: "Eligible this month", value: backlogs.doa.this_month, tone: "fresh" },
+            { label: "Eligible last month", value: backlogs.doa.last_month, tone: "warn" },
             { label: "Older", value: backlogs.doa.older, tone: "crit" },
           ]}
           onOpen={onOpenDoaQueue}
@@ -116,17 +101,10 @@ function BacklogCard({
 }) {
   const nothing = total === 0;
   return (
-    <div
-      className={cn(
-        "rounded-xl border p-4 bg-white",
-        nothing ? "border-gray-200" : "border-amber-300"
-      )}
-    >
+    <div className={cn("rounded-xl border p-4 bg-white", nothing ? "border-gray-200" : "border-amber-300")}>
       <div className="flex items-start justify-between mb-3">
         <div>
-          <p className="text-2xl font-bold text-gray-900 tabular-nums">
-            {total.toLocaleString()}
-          </p>
+          <p className="text-2xl font-bold text-gray-900 tabular-nums">{total.toLocaleString()}</p>
           <p className="text-sm text-gray-600">{label}</p>
         </div>
         {!nothing && (
@@ -139,14 +117,10 @@ function BacklogCard({
         {rows.map((r) => (
           <div key={r.label} className="flex items-center justify-between text-xs">
             <span className="flex items-center gap-2 text-gray-500">
-              <span
-                className={cn("h-2 w-2 rounded-sm", SWATCH_CLASSES[r.tone])}
-              />
+              <span className={cn("h-2 w-2 rounded-sm", SWATCH_CLASSES[r.tone])} />
               {r.label}
             </span>
-            <span className="font-semibold text-gray-700 tabular-nums">
-              {r.value.toLocaleString()}
-            </span>
+            <span className="font-semibold text-gray-700 tabular-nums">{r.value.toLocaleString()}</span>
           </div>
         ))}
       </div>

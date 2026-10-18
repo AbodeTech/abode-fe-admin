@@ -22,8 +22,7 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 
-import type { CompanyEventRow } from "../hooks/use-company-events";
-import type { CompanyEventStatus, CompanyEventType } from "../schemas/company-event.schema";
+import type { CompanyEventStatus, CompanyEventType, CompanyEventWithAssetName } from "../schemas/company-event.schema";
 
 const TYPE_LABELS: Record<CompanyEventType, string> = {
   site_inspection: "Site Inspection",
@@ -44,7 +43,7 @@ const formatDate = (value?: string | null) => {
 };
 
 interface EventsListTableProps {
-  rows?: CompanyEventRow[] | null;
+  rows?: CompanyEventWithAssetName[] | null;
   isLoading?: boolean;
 }
 
@@ -77,7 +76,7 @@ export function EventsListTable({ rows, isLoading }: EventsListTableProps) {
               <AdminMobileCard
                 key={event.id}
                 title={event.title}
-                subtitle={event.asset_label}
+                subtitle={event.asset_name}
                 onClick={() => router.push(`/company-events/${event.id}`)}
               >
                 <AdminMobileField label="Type" value={TYPE_LABELS[event.type]} />
@@ -134,11 +133,7 @@ export function EventsListTable({ rows, isLoading }: EventsListTableProps) {
                       {TYPE_LABELS[event.type]}
                     </TableCell>
                     <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed wrap-break-word">
-                      {event.asset_names.map((name) => (
-                        <span key={name} className="block">
-                          {name}
-                        </span>
-                      ))}
+                      {event.asset_name}
                     </TableCell>
                     <TableCell className="align-top whitespace-nowrap px-4 py-4 leading-relaxed">
                       {formatDate(event.date)} {event.time}

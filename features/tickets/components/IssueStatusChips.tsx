@@ -1,8 +1,8 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { IssueStatus } from "@/lib/gql/graphql";
 import { ISSUE_STATUS_LABELS } from "../lib/ticket-display";
+import { type IssueStatus } from "../schemas/ticket.schema";
 
 interface Props {
   active: IssueStatus | null;
@@ -11,10 +11,10 @@ interface Props {
 
 const CHIPS: { key: IssueStatus | null; label: string }[] = [
   { key: null, label: "All" },
-  { key: IssueStatus.Investigating, label: ISSUE_STATUS_LABELS.investigating },
-  { key: IssueStatus.Identified, label: ISSUE_STATUS_LABELS.identified },
-  { key: IssueStatus.Monitoring, label: ISSUE_STATUS_LABELS.monitoring },
-  { key: IssueStatus.Resolved, label: ISSUE_STATUS_LABELS.resolved },
+  { key: 'investigating', label: ISSUE_STATUS_LABELS.investigating },
+  { key: 'identified', label: ISSUE_STATUS_LABELS.identified },
+  { key: 'monitoring', label: ISSUE_STATUS_LABELS.monitoring },
+  { key: 'resolved', label: ISSUE_STATUS_LABELS.resolved },
 ];
 
 export function IssueStatusChips({ active, onChange }: Props) {

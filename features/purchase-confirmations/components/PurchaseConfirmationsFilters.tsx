@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { Download, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,8 @@ interface PurchaseConfirmationsFiltersProps {
   onStatusChange: (value: string) => void;
   onProductChange: (value: string) => void;
   onSearchChange: (value: string) => void;
+  onExport: () => void;
+  isExporting: boolean;
 }
 
 export function PurchaseConfirmationsFilters({
@@ -41,10 +44,12 @@ export function PurchaseConfirmationsFilters({
   onStatusChange,
   onProductChange,
   onSearchChange,
+  onExport,
+  isExporting,
 }: PurchaseConfirmationsFiltersProps) {
   return (
     <section className="mt-2 flex min-w-0 flex-col gap-3 sm:gap-4">
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {STATUS_TABS.map((tab) => (
           <Button
             key={tab.value}
@@ -56,6 +61,21 @@ export function PurchaseConfirmationsFilters({
             {tab.label}
           </Button>
         ))}
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onExport}
+          disabled={isExporting}
+          className="ml-auto gap-2"
+        >
+          {isExporting ? (
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+          ) : (
+            <Download className="h-4 w-4" aria-hidden />
+          )}
+          Export CSV
+        </Button>
       </div>
 
       <div className="grid min-w-0 grid-cols-1 gap-3 sm:gap-4 md:grid-cols-3">

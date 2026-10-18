@@ -1,67 +1,52 @@
 import { Briefcase, CircleDollarSign, BarChart3, FileSignature } from "lucide-react";
+import { contributorBreakdown, isPerProAttribution, sourceBreakdown, type AttributionMode } from "../lib/attribution";
 import { StatCard } from "./StatCard";
-import { ProRosterGroup, type ManagerDashboardSalesRevenue } from "@/lib/gql/graphql";
-import {
-  contributorBreakdown,
-  formatCurrencyShort,
-  isPerProAttribution,
-  sourceBreakdown,
-  type AttributionMode,
-} from "../lib/attribution";
+import type {
+  ManagerDashboard,
+  ProGroup,
+} from "../schemas/manager-dashboard.schema";
 
 interface Props {
-  data: ManagerDashboardSalesRevenue;
+  data: ManagerDashboard["sales_and_revenue"];
   /** Which tier of users the roster represents. Switches labels between
    * "Selling Pros" (manager dashboard) and "Selling Associates" (system view). */
   roster?: "associate-pro" | "associate";
   /** When provided, the Selling Pros card becomes a drill-down trigger. */
-  onOpenGroup?: (group: ProRosterGroup) => void;
-  /** Which attribution set to render. See RecruitmentSection for the rules. */
+  onOpenGroup?: (group: ProGroup) => void;
   attributionMode?: AttributionMode;
 }
 
 const formatCurrency = (n: number) =>
   `₦${n.toLocaleString("en-NG", { maximumFractionDigits: 0 })}`;
 
-export function SalesRevenueSection({
-  data,
-  roster = "associate-pro",
-  onOpenGroup,
-  attributionMode = "single",
-}: Props) {
+const formatCurrencyShort = (n: number) => {
+  if (n >= 1_000_000_000) return `₦${(n / 1_000_000_000).toFixed(1)}B`;
+  if (n >= 1_000_000) return `₦${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `₦${(n / 1_000).toFixed(1)}K`;
+  return formatCurrency(n);
+};
+
+export function SalesRevenueSection({ data, roster = "associate-pro", onOpenGroup, attributionMode = "single" }: Props) {
   const {
-    sellingPros,
-    sellingProsTarget,
-    totalRevenue,
-    initialSalesRevenue,
-    recurringRevenue,
-    revenuePerSellingPro,
-    contractSize,
+    selling_pros,
+    selling_pros_target,
+    total_revenue,
+    initial_sales_revenue,
+    recurring_revenue,
+    revenue_per_selling_pro,
+    contract_size,
   } = data;
   const isAssociate = roster === "associate";
   const perPro = isPerProAttribution(attributionMode);
+  const sellingBreakdown = perPro ? undefined : sourceBreakdown(data.sales_count_by_source);
+  const revenueBreakdown = perPro
+    ? contributorBreakdown(data.top_selling_contributors, data.others_selling_revenue, { getValue: (c) => c.amount ?? 0, formatValue: formatCurrencyShort })
+    : sourceBreakdown(data.revenue_by_source, { formatValue: formatCurrencyShort });
 
   const sellingDisplay =
-    sellingProsTarget > 0
-      ? `${sellingPros} / ${sellingProsTarget}`
-      : sellingPros.toLocaleString();
-
-  // Selling Pros card — only breakdown in combined/system view (source split).
-  // The BE doesn't ship a per-pro sales-count contributor list — attribution
-  // for one manager's team lives on the revenue card via topSellingContributors,
-  // and duplicating it here would just re-render the same list against a
-  // different total. Leave the Selling Pros card as a clean count.
-  const sellingBreakdown = perPro
-    ? undefined
-    : sourceBreakdown(data.salesCountBySource);
-
-  // Total Revenue card — carries the attribution story on the manager view.
-  const revenueBreakdown = perPro
-    ? contributorBreakdown(data.topSellingContributors, data.othersSellingRevenue, {
-        getValue: (c) => c.amount ?? 0,
-        formatValue: formatCurrencyShort,
-      })
-    : sourceBreakdown(data.revenueBySource, { formatValue: formatCurrencyShort });
+    selling_pros_target > 0
+      ? `${selling_pros} / ${selling_pros_target}`
+      : selling_pros.toLocaleString();
 
   return (
     <section className="space-y-3">
@@ -77,30 +62,30 @@ export function SalesRevenueSection({
               ? "Associates who closed a new sale this period"
               : "Pros who closed a new sale this period"
           }
-          onClick={onOpenGroup ? () => onOpenGroup(ProRosterGroup.SellingInPeriod) : undefined}
+          onClick={onOpenGroup ? () => onOpenGroup("selling_in_period") : undefined}
           breakdown={sellingBreakdown}
         />
         <StatCard
           icon={FileSignature}
           iconColor="text-purple-600"
           label="Contract Size"
-          value={formatCurrencyShort(contractSize)}
-          hint={`${formatCurrency(contractSize)} in land price on plans opened this period`}
+          value={formatCurrencyShort(contract_size)}
+          hint={`${formatCurrency(contract_size)} in land price on plans opened this period`}
         />
         <StatCard
           icon={CircleDollarSign}
           iconColor="text-green-600"
           label="Total Revenue from Associate Sales"
-          value={formatCurrencyShort(totalRevenue)}
-          hint={`${formatCurrencyShort(initialSalesRevenue)} initial · ${formatCurrencyShort(recurringRevenue)} recurring`}
+          value={formatCurrencyShort(total_revenue)}
+          hint={`${formatCurrencyShort(initial_sales_revenue)} initial · ${formatCurrencyShort(recurring_revenue)} recurring`}
           breakdown={revenueBreakdown}
         />
         <StatCard
           icon={BarChart3}
           iconColor="text-orange-600"
           label={isAssociate ? "Revenue per Selling Associate" : "Revenue per Selling Pro"}
-          value={formatCurrencyShort(revenuePerSellingPro)}
-          hint={formatCurrency(revenuePerSellingPro)}
+          value={formatCurrencyShort(revenue_per_selling_pro)}
+          hint={formatCurrency(revenue_per_selling_pro)}
         />
       </div>
     </section>

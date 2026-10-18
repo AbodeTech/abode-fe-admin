@@ -40,8 +40,10 @@ import { MultiSelect } from "@/components/ui/multi-select"
 import {
   formatAmount,
   formatDate,
+  formatTransactionType,
   getStatusColor,
-  getTransactionTypeColor,
+  getPaymentMethodColor,
+  getPaymentMethodLabel,
   getTypeColor,
 } from "@/lib/utils/transaction-utils"
 import {
@@ -198,15 +200,15 @@ export function OtherTransactionsTable({ transactions }: OtherTransactionsTableP
                       label="Type"
                       value={
                         <Badge variant="outline" className={getTypeColor(transaction.type)}>
-                          {transaction.type}
+                          {formatTransactionType(transaction.type)}
                         </Badge>
                       }
                     />
                     <AdminMobileField
-                      label="Txn type"
+                      label="Payment method"
                       value={
-                        <Badge variant="outline" className={getTransactionTypeColor(transaction.transaction_type)}>
-                          {transaction.transaction_type}
+                        <Badge variant="outline" className={getPaymentMethodColor(transaction.payment_method)}>
+                          {getPaymentMethodLabel(transaction.payment_method)}
                         </Badge>
                       }
                     />
@@ -280,9 +282,9 @@ export function OtherTransactionsTable({ transactions }: OtherTransactionsTableP
                     Type
                     {sortField === "type" && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-4 w-4" /> : <ArrowDownIcon className="inline ml-1 h-4 w-4" />)}
                   </TableHead>
-                  <TableHead className="cursor-pointer" onClick={() => handleSort("transaction_type")}>
-                    Transaction Type
-                    {sortField === "transaction_type" && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-4 w-4" /> : <ArrowDownIcon className="inline ml-1 h-4 w-4" />)}
+                  <TableHead className="cursor-pointer" onClick={() => handleSort("payment_method")}>
+                    Payment Method
+                    {sortField === "payment_method" && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-4 w-4" /> : <ArrowDownIcon className="inline ml-1 h-4 w-4" />)}
                   </TableHead>
                   <TableHead className="cursor-pointer" onClick={() => handleSort("status")}>
                     Status
@@ -321,12 +323,12 @@ export function OtherTransactionsTable({ transactions }: OtherTransactionsTableP
                         <TableCell>{formatDate(transaction.time_of_transaction)}</TableCell>
                         <TableCell>
                           <Badge variant="outline" className={getTypeColor(transaction.type)}>
-                            {transaction.type}
+                            {formatTransactionType(transaction.type)}
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline" className={getTransactionTypeColor(transaction.transaction_type)}>
-                            {transaction.transaction_type}
+                          <Badge variant="outline" className={getPaymentMethodColor(transaction.payment_method)}>
+                            {getPaymentMethodLabel(transaction.payment_method)}
                           </Badge>
                         </TableCell>
                         <TableCell>

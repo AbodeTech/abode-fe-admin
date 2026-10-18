@@ -1,45 +1,35 @@
 'use client';
 
 import { useMutation } from '@tanstack/react-query';
-import { execute } from '@/lib/graphql-client';
 
+import { apiGetPaged } from '@/lib/api-client';
+
+import { EventAllocationSchema, type EventAllocation } from '../schemas/company-event.schema';
 import { companyEventKeys } from './query-keys';
-import {
-  GET_EVENT_ALLOCATIONS_QUERY,
-  narrowAllocationRow,
-  type EventAllocationRow,
-} from './use-event-allocations';
 
 export const ALLOCATIONS_EXPORT_ROW_CAP = 1_000;
 const EXPORT_PAGE_SIZE = 100;
 
 export interface EventAllocationsExportResult {
-  rows: EventAllocationRow[];
+  rows: EventAllocation[];
   truncated: boolean;
 }
 
 /**
- * Loops pages of `eventAllocations` into one export set. The server caps a
- * single page, so an export means looping rather than asking for one huge
- * page — same shape as the eligible-clients export below it.
+ * Loops pages of `GET /admin/company-events/:id/allocations` into one export
+ * set — mirrors `use-event-eligible-clients-export.ts`'s page-looping pattern.
  */
-export const fetchEventAllocationsExportRows = async (
-  eventId: string
-): Promise<EventAllocationsExportResult> => {
-  const rows: EventAllocationRow[] = [];
+export const fetchEventAllocationsExportRows = async (eventId: string): Promise<EventAllocationsExportResult> => {
+  const rows: EventAllocation[] = [];
   let page = 1;
   let total = Infinity;
 
   while (rows.length < total && rows.length < ALLOCATIONS_EXPORT_ROW_CAP) {
-    const result = await execute(GET_EVENT_ALLOCATIONS_QUERY, {
-      eventId,
-      page,
-      limit: EXPORT_PAGE_SIZE,
-      filter: {},
+    const { items, meta } = await apiGetPaged(`/admin/company-events/${eventId}/allocations`, EventAllocationSchema, {
+      params: { page, limit: EXPORT_PAGE_SIZE },
     });
-    const items = result.eventAllocations.data;
-    total = result.eventAllocations.count ?? items.length;
-    rows.push(...items.map(narrowAllocationRow));
+    total = meta.total ?? items.length;
+    rows.push(...items);
     if (items.length < EXPORT_PAGE_SIZE) break;
     page += 1;
   }

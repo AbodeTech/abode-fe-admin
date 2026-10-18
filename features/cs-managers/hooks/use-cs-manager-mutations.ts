@@ -1,127 +1,84 @@
-"use client";
+'use client';
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { execute } from "@/lib/graphql-client";
-import { graphql } from "@/lib/gql";
-import type {
-  AssignCustomersToCsmInput,
-  AssignCsManagerTargetInput,
-} from "@/lib/gql/graphql";
-import { csManagerKeys } from "./use-cs-manager-dashboard";
-import { csManagersListKeys } from "./use-cs-managers-list";
-import { csManagerTargetKeys } from "./use-cs-manager-targets";
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-/**
- * Super-admin mutations for CS Manager role + customer assignment.
- * See guidelines/CS_Manager_Dashboard.md.
- */
+import { apiDelete, apiPost, apiPut } from '@/lib/api-client';
 
-const ADD_CS_MANAGER_MUTATION = graphql(`
-  mutation AddCSManager($managerId: ID!) {
-    addCSManager(managerId: $managerId) {
-      _id
-      manager
-      assigned_from
-      assigned_to
-      created_by
-      createdAt
-      updatedAt
-    }
-  }
-`);
+import {
+  AssignCustomersResultSchema,
+  CSManagerAssignmentSchema,
+  CSManagerTargetSchema,
+  type AssignTargetPayload,
+} from '../schemas/cs-manager.schema';
+import { csManagerKeys } from './query-keys';
 
-const REMOVE_CS_MANAGER_MUTATION = graphql(`
-  mutation RemoveCSManager($managerId: ID!) {
-    removeCSManager(managerId: $managerId) {
-      _id
-      manager
-      assigned_from
-      assigned_to
-      created_by
-      createdAt
-      updatedAt
-    }
-  }
-`);
-
-const ASSIGN_CUSTOMERS_TO_CSM_MUTATION = graphql(`
-  mutation AssignCustomersToCSManager($input: AssignCustomersToCSMInput!) {
-    assignCustomersToCSManager(input: $input) {
-      assigned
-      managerId
-    }
-  }
-`);
-
-const invalidateAll = (qc: ReturnType<typeof useQueryClient>) => {
-  qc.invalidateQueries({ queryKey: csManagersListKeys.managers() });
-  qc.invalidateQueries({
-    queryKey: ["cs-managers", "unassigned"],
-  });
-  qc.invalidateQueries({ queryKey: csManagerKeys.dashboards() });
-};
-
+/** POST /admin/cs-managers — [Super admin] promote an admin. */
 export const useAddCSManager = () => {
-  const qc = useQueryClient();
+  const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (managerId: string) =>
-      execute(ADD_CS_MANAGER_MUTATION, { managerId }),
-    onSuccess: () => invalidateAll(qc),
+    mutationFn: (adminId: string) =>
+      apiPost('/admin/cs-managers', { admin_id: adminId }, CSManagerAssignmentSchema),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: csManagerKeys.list() });
+    },
   });
 };
 
+/** DELETE /admin/cs-managers/:manager_id — [Super admin] demote. */
 export const useRemoveCSManager = () => {
-  const qc = useQueryClient();
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (managerId: string) =>
-      execute(REMOVE_CS_MANAGER_MUTATION, { managerId }),
-    onSuccess: () => invalidateAll(qc),
+      apiDelete(`/admin/cs-managers/${managerId}`, CSManagerAssignmentSchema),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: csManagerKeys.list() });
+      queryClient.invalidateQueries({ queryKey: csManagerKeys.all });
+    },
   });
 };
 
-export type AssignCustomersToCSMInput = AssignCustomersToCsmInput;
-
+/** POST /admin/cs-managers/:manager_id/assign-customers — bulk, transactional on the BE. */
 export const useAssignCustomersToCSM = () => {
-  const qc = useQueryClient();
+  const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: AssignCustomersToCsmInput) =>
-      execute(ASSIGN_CUSTOMERS_TO_CSM_MUTATION, { input }),
-    onSuccess: () => invalidateAll(qc),
+    mutationFn: ({ managerId, customerIds }: { managerId: string; customerIds: string[] }) =>
+      apiPost(
+        `/admin/cs-managers/${managerId}/assign-customers`,
+        { customer_ids: customerIds },
+        AssignCustomersResultSchema
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: csManagerKeys.list() });
+      queryClient.invalidateQueries({ queryKey: csManagerKeys.all });
+    },
   });
 };
 
-const ASSIGN_CS_MANAGER_TARGET_MUTATION = graphql(`
-  mutation AssignCSManagerTarget($input: AssignCSManagerTargetInput!) {
-    assignCSManagerTarget(input: $input) {
-      _id
-      manager
-      month
-      year
-      customers_allocated_target
-      customers_onboarded_target
-      tickets_resolved_target
-      createdAt
-      updatedAt
-    }
-  }
-`);
-
-export type { AssignCsManagerTargetInput };
-
-export const useAssignCSManagerTarget = () => {
-  const qc = useQueryClient();
+/** PUT /admin/cs-managers/:manager_id/targets/:year/:month — all three fields required. */
+export const useUpsertCSManagerTarget = () => {
+  const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: AssignCsManagerTargetInput) =>
-      execute(ASSIGN_CS_MANAGER_TARGET_MUTATION, { input }),
-    onSuccess: (data) => {
-      // Refresh both the target list and the dashboard so KPI benchmarks
-      // pick up the new numbers immediately.
-      qc.invalidateQueries({
-        queryKey: csManagerTargetKeys.all(
-          data.assignCSManagerTarget.manager
-        ),
+    mutationFn: ({
+      managerId,
+      year,
+      month,
+      values,
+    }: {
+      managerId: string;
+      year: number;
+      month: number;
+      values: AssignTargetPayload;
+    }) =>
+      apiPut(
+        `/admin/cs-managers/${managerId}/targets/${year}/${month}`,
+        values,
+        CSManagerTargetSchema
+      ),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: csManagerKeys.targets(variables.managerId) });
+      queryClient.invalidateQueries({
+        queryKey: csManagerKeys.target(variables.managerId, variables.year, variables.month),
       });
-      qc.invalidateQueries({ queryKey: csManagerKeys.dashboards() });
     },
   });
 };

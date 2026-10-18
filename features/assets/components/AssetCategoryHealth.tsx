@@ -2,29 +2,11 @@
 
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { graphql, FragmentType, useFragment } from "@/lib/gql";
 
-export const AssetCategoryHealthFragment = graphql(`
-  fragment AssetCategoryHealth_statistics on AssetInventoryStatistics {
-    categories {
-      category
-      activeAssetCount
-      totalSqm
-      grossRevenue
-      collectionEfficiency
-      occupancyRate
-      totalValueSold
-      totalSqmSold
-      totalMoneyReceived
-      totalBalance
-      defaulting {
-        defaultedAssetValue
-        defaultersPaid
-        defaultersOwing
-      }
-    }
-  }
-`);
+import {
+  ANALYTICS_CATEGORY_LABELS,
+  type AssetCategoryMetrics,
+} from "../schemas/portfolio-analytics.schema";
 
 function formatNaira(value: number | null | undefined): string {
   if (value == null || value === 0) return "₦0";
@@ -46,6 +28,7 @@ function formatSqm(value: number | null | undefined): string {
 interface CategoryProps {
   title: string;
   count: number;
+  excludedFromRollup: boolean;
   sqm: string;
   revenue: string;
   efficiency: number;
@@ -74,6 +57,7 @@ function StatRow({ label, value, valueClassName }: { label: string; value: strin
 function CategoryCard({
   title,
   count,
+  excludedFromRollup,
   sqm,
   revenue,
   efficiency,
@@ -96,9 +80,19 @@ function CategoryCard({
             <h4 className="text-base font-bold tracking-tight wrap-break-word sm:text-lg">{title}</h4>
             <span className="text-xs text-muted-foreground font-medium">{count} Active Assets</span>
           </div>
-          <Badge variant="secondary" className="shrink-0 bg-muted/50 text-[10px] font-bold uppercase tracking-wider">
-            Category View
-          </Badge>
+          {excludedFromRollup ? (
+            <Badge
+              variant="secondary"
+              className="shrink-0 bg-amber-100 text-[10px] font-bold uppercase tracking-wider text-amber-800"
+              title="Admin-priced plots — excluded from the portfolio totals above"
+            >
+              Excluded from totals
+            </Badge>
+          ) : (
+            <Badge variant="secondary" className="shrink-0 bg-muted/50 text-[10px] font-bold uppercase tracking-wider">
+              Category View
+            </Badge>
+          )}
         </div>
 
         {/* Performance bars */}
@@ -167,50 +161,40 @@ function CategoryCard({
 }
 
 interface Props {
-  data: FragmentType<typeof AssetCategoryHealthFragment> | null | undefined;
+  data: AssetCategoryMetrics[];
 }
 
+const ACCENTS = ["oklch(var(--primary))", "rgb(59 130 246)", "rgb(147 51 234)", "rgb(217 119 6)"];
+
 export function AssetCategoryHealth({ data }: Props) {
-  const stats = useFragment(AssetCategoryHealthFragment, data);
-  const categories = stats?.categories ?? [];
-
-  const flex = categories.find((c) => c?.category === "flex");
-  const fullOwnership = categories.find((c) => c?.category === "full-ownership");
-
   return (
-    <div className="mb-8 flex min-w-0 flex-col gap-6 lg:mb-12 lg:flex-row lg:items-stretch">
-      <CategoryCard
-        title="Flex Assets"
-        count={flex?.activeAssetCount ?? 0}
-        sqm={formatSqm(flex?.totalSqm)}
-        revenue={formatNaira(flex?.grossRevenue)}
-        efficiency={flex?.collectionEfficiency ?? 0}
-        occupancy={flex?.occupancyRate ?? 0}
-        accentColor="oklch(var(--primary))"
-        valueSold={formatNaira(flex?.totalValueSold)}
-        sqmSold={formatSqm(flex?.totalSqmSold)}
-        moneyReceived={formatNaira(flex?.totalMoneyReceived)}
-        totalBalance={formatNaira(flex?.totalBalance)}
-        defaultedAssetValue={formatNaira(flex?.defaulting?.defaultedAssetValue)}
-        defaultersPaid={formatNaira(flex?.defaulting?.defaultersPaid)}
-        defaultersOwing={formatNaira(flex?.defaulting?.defaultersOwing)}
-      />
-      <CategoryCard
-        title="Full Ownership"
-        count={fullOwnership?.activeAssetCount ?? 0}
-        sqm={formatSqm(fullOwnership?.totalSqm)}
-        revenue={formatNaira(fullOwnership?.grossRevenue)}
-        efficiency={fullOwnership?.collectionEfficiency ?? 0}
-        occupancy={fullOwnership?.occupancyRate ?? 0}
-        accentColor="rgb(59 130 246)"
-        valueSold={formatNaira(fullOwnership?.totalValueSold)}
-        sqmSold={formatSqm(fullOwnership?.totalSqmSold)}
-        moneyReceived={formatNaira(fullOwnership?.totalMoneyReceived)}
-        totalBalance={formatNaira(fullOwnership?.totalBalance)}
-        defaultedAssetValue={formatNaira(fullOwnership?.defaulting?.defaultedAssetValue)}
-        defaultersPaid={formatNaira(fullOwnership?.defaulting?.defaultersPaid)}
-        defaultersOwing={formatNaira(fullOwnership?.defaulting?.defaultersOwing)}
-      />
+    <div className="mb-8 min-w-0 space-y-3 lg:mb-12">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+        Category health
+      </p>
+
+      <div className="flex min-w-0 flex-col gap-6 lg:grid lg:grid-cols-2">
+        {data.map((category, index) => (
+          <CategoryCard
+            key={category.category}
+            title={ANALYTICS_CATEGORY_LABELS[category.category]}
+            count={category.active_assets}
+            excludedFromRollup={category.excluded_from_rollup}
+            sqm={formatSqm(category.total_capacity_sqm)}
+            revenue={formatNaira(category.gross_revenue)}
+            efficiency={category.collection_efficiency}
+            occupancy={category.occupancy_rate}
+            accentColor={ACCENTS[index % ACCENTS.length]}
+            valueSold={formatNaira(category.value_sold)}
+            sqmSold={formatSqm(category.sqm_sold)}
+            moneyReceived={formatNaira(category.money_received)}
+            totalBalance={formatNaira(category.balance_owed)}
+            defaultedAssetValue={formatNaira(category.defaulting.value_of_defaulted_assets)}
+            defaultersPaid={formatNaira(category.defaulting.amount_paid_by_defaulters)}
+            defaultersOwing={formatNaira(category.defaulting.amount_still_owing)}
+          />
+        ))}
+      </div>
     </div>
   );
 }

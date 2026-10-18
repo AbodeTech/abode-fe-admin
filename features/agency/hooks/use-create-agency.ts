@@ -1,63 +1,32 @@
+'use client';
+
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { executeRaw } from '@/lib/graphql-client';
+
+import { apiPost } from '@/lib/api-client';
+
+import { AgencySchema, type CreateAgencyPayload } from '../schemas/agency.schema';
 import { agencyKeys } from './query-keys';
 
-const CREATE_AGENCY = `
-  mutation CreateAgency($createAgencyInput: CreateAgencyInput!) {
-    createAgency(createAgencyInput: $createAgencyInput) {
-      success
-      message
-      agency {
-        _id
-      }
-      credentials {
-        agency_code
-        email
-        temporary_password
-      }
-    }
-  }
-`;
-
-interface CreateAgencyInput {
-  agency_name: string;
-  email: string;
-  phoneNumber: string;
-  commission_percentage: number;
-  address?: string;
-  country?: string;
-  state?: string;
-  city?: string;
-  communication_preference?: string;
-}
-
-interface CreateAgencyResponse {
-  createAgency?: {
-    success?: boolean;
-    message?: string;
-    agency?: { _id: string };
-    credentials?: {
-      agency_code: string;
-      email: string;
-      temporary_password: string;
-    };
-  };
-}
-
+/**
+ * POST /admin/agencies — takes `manage_agencies`.
+ *
+ * Two owner modes. `existing` promotes a user who must not already own an
+ * agency (400 `USER_ALREADY_AGENCY_OWNER`). `new` creates the user, generates
+ * a temporary password and emails it to them — the password is never returned
+ * in the response, so there are no credentials for the UI to display, unlike
+ * v1's `credentials` block.
+ *
+ * Either way the owner is moved into the new agency and the BE allocates the
+ * `AG-XXXXXXXX` code.
+ */
 export const useCreateAgency = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (createAgencyInput: CreateAgencyInput) => {
-      const result = await executeRaw<CreateAgencyResponse>(CREATE_AGENCY, { createAgencyInput });
-      if (!result.createAgency?.success) {
-        throw new Error(result.createAgency?.message || 'Failed to create agency');
-      }
-      return result;
-    },
+    mutationFn: (payload: CreateAgencyPayload) =>
+      apiPost('/admin/agencies', payload, AgencySchema),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: agencyKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: agencyKeys.dashboard() });
+      queryClient.invalidateQueries({ queryKey: agencyKeys.all });
     },
   });
 };

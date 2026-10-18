@@ -1,97 +1,58 @@
+'use client';
+
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { executeRaw } from '@/lib/graphql-client';
+
+import { apiPost } from '@/lib/api-client';
+
+import { MarketplaceListingSchema } from '../schemas/marketplace.schema';
 import { marketplaceKeys } from './query-keys';
 
-const SUSPEND_LISTING_MUTATION = `
-  mutation SuspendMarketplaceListing($listingId: ID!, $reason: String!) {
-    suspendMarketplaceListing(listingId: $listingId, reason: $reason) {
-      success
-      message
-      listing { _id status }
-    }
-  }
-`;
+function invalidateAll(queryClient: ReturnType<typeof useQueryClient>) {
+  queryClient.invalidateQueries({ queryKey: marketplaceKeys.lists() });
+  queryClient.invalidateQueries({ queryKey: marketplaceKeys.pendingApprovalsList() });
+  queryClient.invalidateQueries({ queryKey: marketplaceKeys.stats() });
+}
 
-const UNSUSPEND_LISTING_MUTATION = `
-  mutation UnsuspendMarketplaceListing($listingId: ID!) {
-    unsuspendMarketplaceListing(listingId: $listingId) {
-      success
-      message
-      listing { _id status }
-    }
-  }
-`;
-
-const APPROVE_PURCHASE_MUTATION = `
-  mutation ApproveMarketplacePurchase($listingId: ID!) {
-    approveMarketplacePurchase(listingId: $listingId) {
-      success
-      message
-      listing { _id status }
-    }
-  }
-`;
-
-const REJECT_PURCHASE_MUTATION = `
-  mutation RejectMarketplacePurchase($listingId: ID!, $reason: String!) {
-    rejectMarketplacePurchase(listingId: $listingId, reason: $reason) {
-      success
-      message
-      listing { _id status }
-    }
-  }
-`;
-
+/** POST /admin/marketplace/listings/:id/suspend — body: SuspendListingDto. */
 export const useSuspendListing = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ listingId, reason }: { listingId: string; reason: string }) =>
-      executeRaw(SUSPEND_LISTING_MUTATION, { listingId, reason }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: marketplaceKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: marketplaceKeys.stats() });
-    },
+    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+      apiPost(`/admin/marketplace/listings/${id}/suspend`, { reason }, MarketplaceListingSchema),
+    onSuccess: () => invalidateAll(queryClient),
   });
 };
 
+/** POST /admin/marketplace/listings/:id/unsuspend — no body. */
 export const useUnsuspendListing = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (listingId: string) =>
-      executeRaw(UNSUSPEND_LISTING_MUTATION, { listingId }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: marketplaceKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: marketplaceKeys.stats() });
-    },
+    mutationFn: (id: string) =>
+      apiPost(`/admin/marketplace/listings/${id}/unsuspend`, {}, MarketplaceListingSchema),
+    onSuccess: () => invalidateAll(queryClient),
   });
 };
 
+/** POST /admin/marketplace/listings/:id/approve — transfers ownership, no body. */
 export const useApproveMarketplacePurchase = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (listingId: string) =>
-      executeRaw(APPROVE_PURCHASE_MUTATION, { listingId }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: marketplaceKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: marketplaceKeys.pendingApprovalsList() });
-      queryClient.invalidateQueries({ queryKey: marketplaceKeys.stats() });
-    },
+    mutationFn: (id: string) =>
+      apiPost(`/admin/marketplace/listings/${id}/approve`, {}, MarketplaceListingSchema),
+    onSuccess: () => invalidateAll(queryClient),
   });
 };
 
+/** POST /admin/marketplace/listings/:id/reject — body: RejectPurchaseDto. */
 export const useRejectMarketplacePurchase = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ listingId, reason }: { listingId: string; reason: string }) =>
-      executeRaw(REJECT_PURCHASE_MUTATION, { listingId, reason }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: marketplaceKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: marketplaceKeys.pendingApprovalsList() });
-      queryClient.invalidateQueries({ queryKey: marketplaceKeys.stats() });
-    },
+    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+      apiPost(`/admin/marketplace/listings/${id}/reject`, { reason }, MarketplaceListingSchema),
+    onSuccess: () => invalidateAll(queryClient),
   });
 };

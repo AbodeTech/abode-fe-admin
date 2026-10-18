@@ -1,32 +1,5 @@
-"use client";
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Search } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useRef } from "react";
-import { FilterSelect } from "@/components/shared/FilterSelect";
-import { DateFilter } from "@/components/shared/DateFilter";
-
-import { graphql, FragmentType, useFragment } from "@/lib/gql";
-
-export const SummaryCardsFragment = graphql(`
-  fragment SummaryCards_dashboard on SalesDashboard {
-    totalTransactionValue
-    expectedTransactionValue
-    totalReceivedTransactionValue
-    outstandingTransactionValue
-    totalFlexTransactionValue
-    expectedFlexTransactionValue
-    totalReceivedFlexTransactionValue
-    outstandingFlexTransactionValue
-    totalFullOwnershipTransactionValue
-    expectedFullOwnershipTransactionValue
-    totalReceivedFullOwnershipTransactionValue
-    outstandingFullOwnershipTransactionValue
-  }
-`);
+import type { SalesDashboardResponse } from "../schemas/sales.schema";
 
 const formatCurrency = (amount: number) =>
   new Intl.NumberFormat("en-NG", {
@@ -105,83 +78,50 @@ function SalesCard({
   );
 }
 
-export function SummaryCards({ data }: { data: FragmentType<typeof SummaryCardsFragment> }) {
-  const summary = useFragment(SummaryCardsFragment, data);
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const searchInputRef = useRef<HTMLInputElement>(null);
-  const currentSearch = searchParams.get("search") || "";
-
-  const handleSearch = () => {
-    const params = new URLSearchParams(searchParams.toString());
-    const nextSearch = searchInputRef.current?.value?.trim() || "";
-    if (nextSearch) params.set("search", nextSearch);
-    else params.delete("search");
-    params.set("page", "1");
-    router.push(`?${params.toString()}`);
-  };
-
+/**
+ * 4-card summary from GET /admin/sales/dashboard (S-2) — Overall, Flex,
+ * Full-Ownership, Commercial. Developer plot has no card (S-1b — arbitrary
+ * pricing would skew it); marketplace has its own reporting surface.
+ */
+export function SummaryCards({ data }: { data: SalesDashboardResponse }) {
   return (
-    <div className="space-y-4 sm:space-y-6">
-      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-        <div className="flex w-full min-w-0 max-w-full gap-2 sm:max-w-md">
-          <Input
-            ref={searchInputRef}
-            key={currentSearch}
-            defaultValue={currentSearch}
-            placeholder="Search sales data..."
-            className="min-w-0"
-            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-          />
-          <Button type="button" onClick={handleSearch} size="icon" className="shrink-0">
-            <Search className="h-4 w-4" />
-          </Button>
-        </div>
-        <div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
-          <FilterSelect
-            data={[
-              { label: "All Asset Type", value: "all" },
-              { label: "flex", value: "flex" },
-              { label: "full-ownership", value: "full-ownership" },
-            ]}
-            queryKey="assettype"
-            placeholder="Asset type"
-          />
-          <div className="w-full min-w-0 sm:w-auto">
-            <DateFilter />
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2 sm:gap-4 md:gap-4 lg:grid-cols-3">
-        <SalesCard
-          title="Overall"
-          total={summary?.expectedTransactionValue ?? 0}
-          received={summary?.totalReceivedTransactionValue ?? 0}
-          outstanding={summary?.outstandingTransactionValue ?? 0}
-          accentColor="bg-primary"
-          bgColor="bg-primary/5"
-          progressColor="bg-primary"
-        />
-        <SalesCard
-          title="Flex"
-          total={summary?.expectedFlexTransactionValue ?? 0}
-          received={summary?.totalReceivedFlexTransactionValue ?? 0}
-          outstanding={summary?.outstandingFlexTransactionValue ?? 0}
-          accentColor="bg-blue-500"
-          bgColor="bg-blue-50"
-          progressColor="bg-blue-500"
-        />
-        <SalesCard
-          title="Full Ownership"
-          total={summary?.expectedFullOwnershipTransactionValue ?? 0}
-          received={summary?.totalReceivedFullOwnershipTransactionValue ?? 0}
-          outstanding={summary?.outstandingFullOwnershipTransactionValue ?? 0}
-          accentColor="bg-green-500"
-          bgColor="bg-green-50"
-          progressColor="bg-green-500"
-        />
-      </div>
+    <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2 sm:gap-4 md:gap-4 lg:grid-cols-4">
+      <SalesCard
+        title="Overall"
+        total={data.overall.total}
+        received={data.overall.received}
+        outstanding={data.overall.outstanding}
+        accentColor="bg-primary"
+        bgColor="bg-primary/5"
+        progressColor="bg-primary"
+      />
+      <SalesCard
+        title="Flex"
+        total={data.flex.total}
+        received={data.flex.received}
+        outstanding={data.flex.outstanding}
+        accentColor="bg-blue-500"
+        bgColor="bg-blue-50"
+        progressColor="bg-blue-500"
+      />
+      <SalesCard
+        title="Full Ownership"
+        total={data.full_ownership.total}
+        received={data.full_ownership.received}
+        outstanding={data.full_ownership.outstanding}
+        accentColor="bg-green-500"
+        bgColor="bg-green-50"
+        progressColor="bg-green-500"
+      />
+      <SalesCard
+        title="Commercial"
+        total={data.commercial.total}
+        received={data.commercial.received}
+        outstanding={data.commercial.outstanding}
+        accentColor="bg-purple-500"
+        bgColor="bg-purple-50"
+        progressColor="bg-purple-500"
+      />
     </div>
   );
 }

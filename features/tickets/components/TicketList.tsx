@@ -12,15 +12,15 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { TicketChannel, type GetTicketsQuery } from "@/lib/gql/graphql";
 import {
   STATUS_LABELS,
   STATUS_PILL_CLASS,
   TYPE_PILL_CLASS,
   TYPE_LABELS,
 } from "../lib/ticket-display";
+import { type Ticket, type TicketChannel } from "../schemas/ticket.schema";
 
-type Row = GetTicketsQuery["getTickets"]["results"][number];
+type Row = Ticket;
 
 interface Props {
   rows: Row[];

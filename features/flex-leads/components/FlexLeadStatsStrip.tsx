@@ -13,11 +13,12 @@ const CARDS = [
   { key: "closed" as const, label: "Closed", tone: "text-slate-600" },
 ];
 
+/** Real per-status counts from GET /admin/flex-leads/counts. */
 export function FlexLeadStatsStrip() {
   const { data, isLoading } = useFlexLeadCounts();
 
   return (
-    <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 sm:gap-4">
+    <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
       {CARDS.map((card) => (
         <Card key={card.key} className="min-w-0 border-none shadow-sm">
           <CardContent className="p-4">

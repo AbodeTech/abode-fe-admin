@@ -15,6 +15,8 @@ import { Input } from "@/components/ui/input";
 import { ArrowRight, Search } from "lucide-react";
 import Link from "next/link";
 import { SuspensePageFallback } from "@/components/shared/page-content-loader";
+import { getErrorMessage } from "@/features/users/utils/error-message";
+import { boolFromParam } from "@/features/users/utils/admin-users-query";
 
 function UsersPageContent() {
   const searchParams = useSearchParams();
@@ -48,37 +50,31 @@ function UsersPageContent() {
   }, [searchTerm, router, searchParams]);
 
   const searchQuery = searchParams.get("query") || searchParams.get("search") || undefined;
-  const hasReferral =
-    searchParams.get("hasReferral") === "true"
-      ? true
-      : searchParams.get("hasReferral") === "false"
-        ? false
-        : undefined;
-  const hasAsset =
-    searchParams.get("hasAsset") === "true"
-      ? true
-      : searchParams.get("hasAsset") === "false"
-        ? false
-        : undefined;
+  const hasReferral = boolFromParam(searchParams.get("hasReferral"));
+  const hasAsset = boolFromParam(searchParams.get("hasAsset"));
+  const isSuspended = boolFromParam(searchParams.get("isSuspended"));
+  const walletSuspended = boolFromParam(searchParams.get("walletSuspended"));
   const referralStatus = searchParams.get("referralStatus") || undefined;
   const howDidYouHearAboutUs = searchParams.get("howYouHeard") || undefined;
   const startDate = searchParams.get("start_date") || undefined;
   const endDate = searchParams.get("end_date") || undefined;
 
-  const { data, isLoading } = useUsers({
+  const { data, isLoading, isError, error } = useUsers({
     page,
     limit,
-    searchQuery,
+    search: searchQuery,
     hasReferral,
     hasAsset,
-    referralStatus,
-    howDidYouHearAboutUs,
-    startDate,
-    endDate,
+    isSuspended,
+    walletSuspended,
+    tier: referralStatus,
+    howYouHeard: howDidYouHearAboutUs,
+    dateFrom: startDate,
+    dateTo: endDate,
   });
 
-  const users = (data?.data || []).filter((u) => u !== null && u !== undefined);
-  const totalCount = data?.count || 0;
+  const users = data?.items ?? [];
+  const totalCount = data?.meta.total ?? 0;
 
   return (
     <div className="mx-auto mt-4 w-full min-w-0 max-w-[1600px] space-y-4 px-3 pb-20 sm:px-4">
@@ -137,6 +133,24 @@ function UsersPageContent() {
         />
         <FilterSelect
           data={[
+            { label: "Account - all", value: "all" },
+            { label: "Account - suspended", value: "true" },
+            { label: "Account - active", value: "false" },
+          ]}
+          queryKey="isSuspended"
+          placeholder="Account Status"
+        />
+        <FilterSelect
+          data={[
+            { label: "Wallet - all", value: "all" },
+            { label: "Wallet - suspended", value: "true" },
+            { label: "Wallet - active", value: "false" },
+          ]}
+          queryKey="walletSuspended"
+          placeholder="Wallet Status"
+        />
+        <FilterSelect
+          data={[
             { label: "Referral Status - all", value: "all" },
             { label: "Referral Status - User", value: "user" },
             { label: "Referral Status - Associate", value: "associate" },
@@ -164,7 +178,11 @@ function UsersPageContent() {
 
       <div className="overflow-hidden rounded-lg border border-[#E5EAEF] bg-white">
         <div className="overflow-x-auto">
-          <UsersTable data={users} isLoading={isLoading || isSearchPending} />
+          <UsersTable
+            data={users}
+            isLoading={isLoading || isSearchPending}
+            errorMessage={isError ? getErrorMessage(error, "Could not load users") : null}
+          />
         </div>
 
         {!isLoading && totalCount > 0 && (

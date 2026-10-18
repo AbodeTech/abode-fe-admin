@@ -5,11 +5,11 @@ import {
   TrendingUp,
   Briefcase,
   Star,
+  Gauge,
+  CircleDollarSign,
   Info,
   Target,
   AlertCircle,
-  CircleDollarSign,
-  Gauge,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,17 +20,22 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { ManageTargetsDialog } from "./dialogs/ManageTargetsDialog";
-import type {
-  AssociateManagerListItem,
-  ManagerDashboardResponse,
-} from "@/lib/gql/graphql";
+import {
+  managerDisplayName,
+  managerInitials,
+  type ManagerListItem,
+} from "../schemas/associate-manager.schema";
+import type { ManagerDashboard } from "../schemas/manager-dashboard.schema";
+import { formatCurrencyShort as formatNairaShort } from "../lib/attribution";
 
 interface Props {
   viewAs: "super-admin" | "manager";
   /** Active manager (from the managers list lookup). Null for manager view. */
-  manager: AssociateManagerListItem | null;
-  dashboard: ManagerDashboardResponse;
+  manager: ManagerListItem | null;
+  dashboard: ManagerDashboard;
 }
+
+const formatNaira = (value: number) => `₦${value.toLocaleString("en-NG", { maximumFractionDigits: 0 })}`;
 
 type Tone = "exceeded" | "on-track" | "approaching" | "behind";
 
@@ -76,14 +81,16 @@ const MONTHS = [
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
 
-const formatPeriod = (period: ManagerDashboardResponse["period"]) => {
-  if (period.periodType === "MONTH" && period.month && period.year) {
+const formatPeriod = (period: ManagerDashboard["period"]) => {
+  // `resolvePeriod` lowercases whatever it was sent, so the v1 spellings this
+  // FE sends come back as "month" / "week" / "year", not "MONTH".
+  if (period.period_type.toLowerCase() === "month" && period.month && period.year) {
     return `${MONTHS[period.month - 1]} ${period.year}`;
   }
-  if (period.periodType === "YEAR" && period.year) {
+  if (period.period_type.toLowerCase() === "year" && period.year) {
     return `${period.year}`;
   }
-  if (period.periodType === "WEEK") {
+  if (period.period_type.toLowerCase() === "week") {
     return "Last 7 days";
   }
   // CUSTOM
@@ -100,24 +107,10 @@ const daysRemaining = (periodEnd: Date | string) => {
   return Math.max(0, Math.ceil(ms / (1000 * 60 * 60 * 24)));
 };
 
-const hasActiveTarget = (target: ManagerDashboardResponse["target"]) =>
-  target.recruitedTarget > 0 ||
-  target.sellingTarget > 0 ||
-  target.revenueTarget > 0 ||
-  target.performanceScoreTarget > 0;
-
-// Naira formatter for revenue displays. Uses no fraction digits since targets
-// and running totals are set in whole naira.
-const formatNaira = (n: number) =>
-  `₦${n.toLocaleString("en-NG", { maximumFractionDigits: 0 })}`;
-
-// Compact naira for the tile value where space is tight (₦5.75M vs ₦5,750,000).
-const formatNairaShort = (n: number): string => {
-  if (n >= 1_000_000_000) return `₦${(n / 1_000_000_000).toFixed(1)}B`;
-  if (n >= 1_000_000) return `₦${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `₦${(n / 1_000).toFixed(1)}K`;
-  return `₦${Math.round(n)}`;
-};
+const hasActiveTarget = (target: ManagerDashboard["target"]) =>
+  target.recruited_target > 0 ||
+  target.selling_target > 0 ||
+  target.performance_score_target > 0;
 
 interface KpiTileProps {
   icon: React.ElementType;
@@ -272,74 +265,39 @@ function NoActiveTargetBanner({
   );
 }
 
-const initialsOf = (m?: AssociateManagerListItem["manager"] | null) =>
-  ((m?.lastName?.[0] ?? "") + (m?.firstName?.[0] ?? "")).toUpperCase() || "?";
-
-const fullName = (m?: AssociateManagerListItem["manager"] | null) =>
-  `${m?.lastName ?? ""} ${m?.firstName ?? ""}`.trim() ||
-  m?.userName ||
-  m?.email ||
-  "Manager";
-
 export function ManagerSnapshot({ viewAs, manager, dashboard }: Props) {
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const target = dashboard.target;
   const period = dashboard.period;
-  const score = dashboard.performanceScore;
+  const score = dashboard.performance_score;
   const active = hasActiveTarget(target);
   const periodLabel = formatPeriod(period);
   const remaining = daysRemaining(period.end);
 
   const recruitedPct =
-    target.recruitedTarget > 0
-      ? (target.recruitedSoFar / target.recruitedTarget) * 100
+    target.recruited_target > 0
+      ? (target.recruited_so_far / target.recruited_target) * 100
       : undefined;
   const sellingPct =
-    target.sellingTarget > 0
-      ? (target.sellingSoFar / target.sellingTarget) * 100
+    target.selling_target > 0
+      ? (target.selling_so_far / target.selling_target) * 100
       : undefined;
-  const revenuePct =
-    target.revenueTarget > 0
-      ? (target.revenueSoFar / target.revenueTarget) * 100
-      : undefined;
-  // Computed performance score is a 0–100 objective figure — a weighted mix of
-  // selling (50) + revenue (30) + recruitment (20). Untargeted components
-  // contribute 0 and their weight is NOT redistributed (BE contract), so the
-  // tooltip below flags which components are "no target set" rather than "0%".
-  const computedScorePct = score.score; // already 0-100
-  // Rating scale is fixed at 1-5, so the ceiling for the peer rating is
-  // always 5.00. `performanceScoreTarget` from the manager's monthly config is
-  // stale (came from the pre-rating scoring era where scores were 0-100), so
-  // ignore it for the denominator here — the peer-rating card always renders
-  // X.XX / 5.00 and the bar is computed against 5.
+  const revenuePct = target.revenue_target > 0
+    ? (target.revenue_so_far / target.revenue_target) * 100
+    : undefined;
   const RATING_MAX = 5;
-  const peerRatingPct =
-    score.actual > 0 ? (score.actual / RATING_MAX) * 100 : undefined;
-
-  // Component breakdown for the Performance Score tooltip.
-  const componentLine = (
-    label: string,
-    weight: number,
-    componentScore: number,
-    hasTarget: boolean
-  ) =>
-    hasTarget
-      ? `${label}: ${componentScore.toFixed(1)}/${weight}`
-      : `${label}: no target set`;
+  const peerRatingPct = score.actual > 0 ? (score.actual / RATING_MAX) * 100 : undefined;
+  const componentLine = (label: string, weight: number, value: number, hasTarget: boolean) =>
+    hasTarget ? `${label}: ${value.toFixed(1)}/${weight}` : `${label}: no target set`;
   const scoreTooltip = [
-    `Objective score out of 100. Selling 50 + Revenue 30 + Recruitment 20.`,
-    componentLine("Selling", 50, score.sellingComponent, target.sellingTarget > 0),
-    componentLine("Revenue", 30, score.revenueComponent, target.revenueTarget > 0),
-    componentLine(
-      "Recruitment",
-      20,
-      score.recruitmentComponent,
-      target.recruitedTarget > 0
-    ),
+    "Objective score out of 100. Selling 50 + Revenue 30 + Recruitment 20.",
+    componentLine("Selling", 50, score.selling_component, target.selling_target > 0),
+    componentLine("Revenue", 30, score.revenue_component, target.revenue_target > 0),
+    componentLine("Recruitment", 20, score.recruitment_component, target.recruited_target > 0),
   ].join(" · ");
 
-  const managerAdminId = manager?.manager?._id ?? null;
+  const managerAdminId = manager?.manager_id ?? null;
 
   return (
     <>
@@ -347,16 +305,14 @@ export function ManagerSnapshot({ viewAs, manager, dashboard }: Props) {
         {viewAs === "super-admin" && manager && (
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-full bg-[#E0F2F1] text-[#00695C] flex items-center justify-center font-semibold text-sm">
-              {initialsOf(manager.manager)}
+              {managerInitials(manager)}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900 truncate">
-                {fullName(manager.manager)}
+                {managerDisplayName(manager)}
               </p>
               <p className="text-xs text-gray-500 truncate">
-                {manager.manager?.email}
-                {" · "}
-                {manager.associate_pros_count ?? 0} Pros assigned
+                {manager.roster_size} Pros assigned
               </p>
             </div>
           </div>
@@ -391,17 +347,17 @@ export function ManagerSnapshot({ viewAs, manager, dashboard }: Props) {
           )}
         </div>
 
-        {/* KPI tiles — 4 objective targets: Recruited, Selling, Revenue, Score */}
+        {/* Objective targets: recruited, selling, revenue, and weighted score. */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <KpiTile
             icon={TrendingUp}
             iconColor="text-[#00695C]"
             iconBg="bg-[#E0F2F1]"
             label="Associate Pros Recruited"
-            actualDisplay={target.recruitedSoFar.toLocaleString()}
+            actualDisplay={target.recruited_so_far.toLocaleString()}
             targetDisplay={
-              target.recruitedTarget > 0
-                ? target.recruitedTarget.toLocaleString()
+              target.recruited_target > 0
+                ? target.recruited_target.toLocaleString()
                 : undefined
             }
             percent={recruitedPct}
@@ -413,10 +369,10 @@ export function ManagerSnapshot({ viewAs, manager, dashboard }: Props) {
             iconColor="text-blue-600"
             iconBg="bg-blue-50"
             label="Selling Associate Pros"
-            actualDisplay={target.sellingSoFar.toLocaleString()}
+            actualDisplay={target.selling_so_far.toLocaleString()}
             targetDisplay={
-              target.sellingTarget > 0
-                ? target.sellingTarget.toLocaleString()
+              target.selling_target > 0
+                ? target.selling_target.toLocaleString()
                 : undefined
             }
             percent={sellingPct}
@@ -428,16 +384,11 @@ export function ManagerSnapshot({ viewAs, manager, dashboard }: Props) {
             iconColor="text-emerald-600"
             iconBg="bg-emerald-50"
             label="Revenue"
-            actualDisplay={formatNairaShort(target.revenueSoFar)}
-            targetDisplay={
-              target.revenueTarget > 0 ? formatNairaShort(target.revenueTarget) : undefined
-            }
+            actualDisplay={formatNairaShort(target.revenue_so_far)}
+            targetDisplay={target.revenue_target > 0 ? formatNairaShort(target.revenue_target) : undefined}
             percent={revenuePct}
-            // Cash received in the period on plans opened in the period — not
-            // the same as salesAndRevenue.totalRevenue (that counts all cash
-            // regardless of when the plan opened). Keep the distinction clear.
-            tooltip={`Cash received this period on plans opened this period vs. active target. Currently ${formatNaira(target.revenueSoFar)}.`}
-            noData={target.revenueTarget === 0}
+            tooltip={`Cash received this period on plans opened this period vs. active target. Currently ${formatNaira(target.revenue_so_far)}.`}
+            noData={target.revenue_target === 0}
             noDataLabel="No revenue target set"
           />
 
@@ -448,74 +399,23 @@ export function ManagerSnapshot({ viewAs, manager, dashboard }: Props) {
             label="Performance Score"
             actualDisplay={score.score.toFixed(1)}
             targetDisplay="100"
-            percent={computedScorePct}
+            percent={score.score}
             tooltip={scoreTooltip}
           />
         </div>
-
-        {/* Peer rating — separate section, subjective + qualitatively different
-            from the computed score above. Kept small so it doesn't compete
-            visually with the four objective KPIs. */}
-        <PeerRatingRow
-          actual={score.actual}
-          ratingCount={score.ratingCount}
-          percent={peerRatingPct}
-        />
+        <div className="flex items-center justify-between gap-4 border-t border-gray-100 pt-4">
+          <div className="flex items-center gap-2 text-sm text-gray-700"><Star className="h-4 w-4 text-amber-500" /><span>Peer rating</span></div>
+          <div className="text-right"><span className="font-semibold tabular-nums">{score.rating_count > 0 ? score.actual.toFixed(2) : "No ratings yet"}</span><span className="text-gray-500 text-sm"> / 5.00</span><p className="text-xs text-gray-500">{score.rating_count.toLocaleString()} ratings this period</p></div>
+        </div>
+        {peerRatingPct !== undefined && <div className="h-1.5 rounded-full bg-gray-100"><div className="h-full rounded-full bg-amber-500" style={{ width: `${Math.min(peerRatingPct, 100)}%` }} /></div>}
       </div>
 
       <ManageTargetsDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         managerId={managerAdminId}
-        managerName={fullName(manager?.manager)}
+        managerName={managerDisplayName(manager)}
       />
     </>
-  );
-}
-
-interface PeerRatingRowProps {
-  actual: number;
-  ratingCount: number;
-  percent?: number;
-}
-
-// Peer rating is deliberately rendered as a compact row, not a full KPI tile,
-// so it reads as complementary insight rather than a fifth objective target.
-// A rating of exactly 0 with ratingCount 0 means "no ratings yet" — never
-// "everyone rated zero" (the enum is 1-5).
-function PeerRatingRow({ actual, ratingCount, percent }: PeerRatingRowProps) {
-  const noRatings = ratingCount === 0;
-  return (
-    <div className="flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50/60 px-4 py-3">
-      <div className="p-2 rounded-lg bg-amber-50 shrink-0">
-        <Star className="h-4 w-4 text-amber-600" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-baseline gap-2">
-          <p className="text-sm font-medium text-gray-900">Peer Rating</p>
-          <span className="text-xs text-gray-400">
-            subjective · from realtor ratings this period
-          </span>
-        </div>
-        {noRatings ? (
-          <p className="text-xs text-gray-500 mt-0.5">No ratings yet this period</p>
-        ) : (
-          <div className="flex items-baseline gap-2 mt-0.5">
-            <span className="text-base font-semibold text-gray-900 tabular-nums">
-              {actual.toFixed(2)}
-              <span className="text-xs font-normal text-gray-400"> / 5.00</span>
-            </span>
-            <span className="text-xs text-gray-500">
-              {ratingCount} rating{ratingCount === 1 ? "" : "s"}
-            </span>
-            {percent !== undefined && (
-              <span className="text-xs text-gray-400 tabular-nums">
-                · {Math.round(percent)}%
-              </span>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
   );
 }

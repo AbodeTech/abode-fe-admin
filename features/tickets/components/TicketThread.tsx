@@ -16,7 +16,6 @@ import {
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -32,8 +31,8 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import { useAdminSession } from "@/hooks/use-admin-session";
-import { TicketChannel, TicketStatus } from "@/lib/gql/graphql";
+import { useTicketPermissions } from "../hooks/use-ticket-permissions";
+import { MIN_RESOLUTION_LENGTH, ticketWriteError } from "../lib/ticket-errors";
 import { useTicket } from "../hooks/use-tickets";
 import {
   useResolveTicket,
@@ -47,6 +46,7 @@ import {
   STATUS_OPTIONS,
   STATUS_PILL_CLASS,
 } from "../lib/ticket-display";
+import { type TicketChannel, type TicketStatus } from "../schemas/ticket.schema";
 
 interface Props {
   ticketId: string | null;
@@ -72,7 +72,7 @@ export function TicketThread({ ticketId, onBack }: Props) {
   // Moving a ticket you are working is part of working it; deciding it is done
   // — and writing the resolution the next person reads instead of the thread —
   // is the owner's call. Both are re-checked in the BE service.
-  const { canDecideTicketRouting } = useAdminSession();
+  const { canDecideRouting } = useTicketPermissions();
   const [resolveOpen, setResolveOpen] = useState(false);
   const [resolutionText, setResolutionText] = useState("");
   const [contextOpen, setContextOpen] = useState(false);
@@ -83,35 +83,38 @@ export function TicketThread({ ticketId, onBack }: Props) {
   const ticket = data?.ticket;
 
   const handleResolve = async () => {
-    if (!ticketId) return;
+    if (resolutionText.trim().length < MIN_RESOLUTION_LENGTH || !ticketId) return;
     try {
-      // The summary is optional; blank is sent as null, not "".
       await resolveTicket.mutateAsync({
         ticketId,
-        resolution: resolutionText.trim() || null,
+        resolution: resolutionText.trim(),
       });
       setResolveOpen(false);
       setResolutionText("");
       toast.success("Ticket resolved");
     } catch (err: unknown) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to resolve ticket"
+        ticketWriteError(err, "Failed to resolve ticket")
       );
     }
   };
 
   const handleStatusChange = async (next: TicketStatus) => {
     if (!ticketId || !ticket || next === ticket.status) return;
-    if (next === TicketStatus.Resolved) {
+    if (next === 'resolved') {
       setResolveOpen(true);
       return;
     }
     try {
-      await updateTicket.mutateAsync({ ticketId, status: next });
+      await updateTicket.mutateAsync({
+        ticketId,
+        status: next,
+        expected_updated_at: ticket.updatedAt,
+      });
       toast.success(`Marked ${STATUS_LABELS[next]}`);
     } catch (err: unknown) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to update status"
+        ticketWriteError(err, "Failed to update status")
       );
     }
   };
@@ -148,7 +151,7 @@ export function TicketThread({ ticketId, onBack }: Props) {
   }
 
   const Icon = CHANNEL_ICON[ticket.channel];
-  const isResolved = ticket.status === TicketStatus.Resolved;
+  const isResolved = ticket.status === 'resolved';
 
   return (
     <div className="flex h-full min-h-0">
@@ -205,17 +208,17 @@ export function TicketThread({ ticketId, onBack }: Props) {
                   aria-label="Ticket status"
                 >
                   {STATUS_OPTIONS.filter(
-                    (o) => o.value !== TicketStatus.Resolved
+                    (o) => o.value !== 'resolved'
                   ).map((opt) => (
                     <option key={opt.value} value={opt.value}>
                       {opt.label}
                     </option>
                   ))}
-                  {canDecideTicketRouting && (
-                    <option value={TicketStatus.Resolved}>Resolved…</option>
+                  {canDecideRouting && (
+                    <option value={'resolved'}>Resolved…</option>
                   )}
                 </select>
-                {canDecideTicketRouting && (
+                {canDecideRouting && (
                   <Button size="sm" onClick={() => setResolveOpen(true)}>
                     <CheckCircle2 className="h-3.5 w-3.5 sm:mr-1.5" />
                     <span className="hidden sm:inline">Resolve</span>
@@ -277,23 +280,17 @@ export function TicketThread({ ticketId, onBack }: Props) {
           <DialogHeader>
             <DialogTitle>Resolve ticket</DialogTitle>
             <DialogDescription>
-              You can add a short note on how it was resolved for whoever picks
-              this up next. It is optional, so you can resolve without one.
+              A short note explaining how it was resolved — kept on the record
+              for future reference.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-1.5">
-            <Label htmlFor="resolution-summary" className="text-xs text-gray-700">
-              Resolution summary <span className="font-normal text-gray-500">(optional)</span>
-            </Label>
-            <Input
-              id="resolution-summary"
-              value={resolutionText}
-              onChange={(e) => setResolutionText(e.target.value)}
-              placeholder="Optional, e.g. Refund issued via Paystack (ref: …)"
-              className="text-sm"
-              autoFocus
-            />
-          </div>
+          <Input
+            value={resolutionText}
+            onChange={(e) => setResolutionText(e.target.value)}
+            placeholder="e.g. Refund issued via Paystack (ref: …)"
+            className="text-sm"
+            autoFocus
+          />
           <DialogFooter>
             <Button
               variant="ghost"
@@ -306,7 +303,10 @@ export function TicketThread({ ticketId, onBack }: Props) {
             <Button
               size="sm"
               onClick={handleResolve}
-              disabled={resolveTicket.isPending}
+              disabled={
+                resolutionText.trim().length < MIN_RESOLUTION_LENGTH ||
+                resolveTicket.isPending
+              }
             >
               {resolveTicket.isPending && (
                 <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />

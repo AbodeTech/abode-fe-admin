@@ -1,163 +1,40 @@
-"use client";
+'use client';
 
-import { useQuery } from "@tanstack/react-query";
-import type { TypedDocumentNode } from "@graphql-typed-document-node/core";
-import { parse } from "graphql";
-import { execute } from "@/lib/graphql-client";
+import { useQuery } from '@tanstack/react-query';
 
-import type {
-  EventAllocationStatus,
-  EventAttendeeType,
-  RegistrationCategory,
-} from "../schemas/company-event.schema";
-import { companyEventKeys } from "./query-keys";
+import { apiGetPaged } from '@/lib/api-client';
 
-// NOTE: excluded from codegen (see codegen.ts) — these fields are on the
-// allocation-events backend branch and not yet on the schema codegen
-// introspects. Parsed manually, the same way use-allocate-land.ts does it;
-// `graphql()` would return `{}` for an unregistered document and crash at
-// execute. Move back to graphql() once the BE lands on staging.
-export const GET_EVENT_REGISTRATIONS_QUERY = parse(`
-  query GetEventRegistrations(
-    $eventId: ID!
-    $filter: EventRegistrationFilterInput
-    $page: Int!
-    $limit: Int!
-  ) {
-    eventRegistrations(eventId: $eventId, filter: $filter, page: $page, limit: $limit) {
-      count
-      data {
-        id
-        allocation
-        attendee_type
-        getting_land
-        name
-        phone
-        email
-        contact_source
-        category
-        status
-        pickup_location
-        invite_sent_at
-        registered_at
-        checked_in_at
-        confirmed_at
-        submitted_at
-      }
-    }
-  }
-`) as unknown as TypedDocumentNode<
-  { eventRegistrations: { count: number; data: RawEventRegistrationRow[] } },
-  {
-    eventId: string;
-    page: number;
-    limit: number;
-    filter?: {
-      category?: string;
-      search?: string;
-      attendee_type?: string;
-      status?: string;
-    };
-  }
->;
-
-/**
- * As it comes off the wire.
- *
- * A row is created the moment somebody is allocated, which is before the invite
- * is sent and long before they fill anything in. Those rows now carry the
- * ACCOUNT's name, phone and email instead of nothing, so the list of people to
- * chase is a list you can actually ring; `contact_source` says which it is.
- * Category stays null until they tell us, and name/phone/email are still
- * nullable for a row with no account behind it.
- */
-interface RawEventRegistrationRow {
-  id: string;
-  allocation: string | null;
-  attendee_type: string;
-  getting_land: boolean;
-  name: string | null;
-  phone: string | null;
-  email: string | null;
-  /** form | account | none — where the three fields above came from. */
-  contact_source: string;
-  category: string | null;
-  status: string;
-  pickup_location: string | null;
-  invite_sent_at: string | null;
-  registered_at: string | null;
-  checked_in_at: string | null;
-  confirmed_at: string | null;
-  submitted_at: string | null;
-}
+import { EventRegistrationRowSchema, type RegistrationCategory } from '../schemas/company-event.schema';
+import { companyEventKeys } from './query-keys';
 
 export interface EventRegistrationsListFilters {
   page?: number;
   limit?: number;
-  category?: RegistrationCategory | null;
-  search?: string | null;
-  /** allocated | visitor — the two populations, filtered apart. */
-  attendeeType?: EventAttendeeType | null;
-  status?: EventAllocationStatus | null;
-}
-
-export interface EventRegistrationsFilters extends EventRegistrationsListFilters {
+  category?: RegistrationCategory;
+  search?: string;
   [key: string]: unknown;
 }
 
-export const DEFAULT_EVENT_REGISTRATIONS_LIMIT = 50;
-
-/** See `narrowAllocationRow` — same reasoning, and the same string-typed schema. */
-export const narrowRegistrationRow = (row: RawEventRegistrationRow) => ({
-  ...row,
-  attendee_type: row.attendee_type as EventAttendeeType,
-  category: (row.category ?? null) as RegistrationCategory | null,
-  status: row.status as EventAllocationStatus,
-});
+export const DEFAULT_EVENT_REGISTRATIONS_LIMIT = 25;
 
 /**
- * `eventRegistrations` — everyone coming to the event, of both kinds.
- *
- * Not only form submissions any more. Since attendance moved onto its own
- * record, this is the full guest list: people we allocated land to (whether or
- * not they have replied yet) and people who signed themselves up through the
- * public link. `attendee_type` is what tells them apart, and it is derived from
- * whether an allocation is attached rather than stored, so it cannot disagree
- * with the land.
+ * `GET /admin/company-events/:id/registrations` — real as of PR #69. Paginated
+ * table of this event's public form submissions, newest first — independent
+ * of the "Allocated" table's lifecycle status (`event-registration.controller.ts`
+ * writes these directly, no admin join needed).
  */
 export const useEventRegistrations = (
   eventId: string | undefined,
-  filters: EventRegistrationsFilters = {}
+  filters: EventRegistrationsListFilters = {}
 ) => {
-  const {
-    page = 1,
-    limit = DEFAULT_EVENT_REGISTRATIONS_LIMIT,
-    category,
-    search,
-    attendeeType,
-    status,
-  } = filters;
+  const { page = 1, limit = DEFAULT_EVENT_REGISTRATIONS_LIMIT, category, search } = filters;
 
   return useQuery({
-    queryKey: companyEventKeys.registrations(eventId ?? "", filters),
+    queryKey: companyEventKeys.registrations(eventId ?? '', filters),
     queryFn: () =>
-      execute(GET_EVENT_REGISTRATIONS_QUERY, {
-        eventId: eventId as string,
-        page,
-        limit,
-        filter: {
-          category: category || undefined,
-          search: search || undefined,
-          attendee_type: attendeeType || undefined,
-          status: status || undefined,
-        },
+      apiGetPaged(`/admin/company-events/${eventId}/registrations`, EventRegistrationRowSchema, {
+        params: { page, limit, category, search: search || undefined },
       }),
     enabled: !!eventId,
-    select: (data) => ({
-      count: data.eventRegistrations.count,
-      items: data.eventRegistrations.data.map(narrowRegistrationRow),
-    }),
   });
 };
-
-export type EventRegistrationRow = ReturnType<typeof narrowRegistrationRow>;

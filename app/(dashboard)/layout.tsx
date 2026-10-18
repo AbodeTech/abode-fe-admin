@@ -7,6 +7,7 @@ import Container from "@/components/layout/Container";
 import { Menu } from "lucide-react";
 import { useEffect } from "react";
 import { useUIStore } from "@/store/ui-store";
+import { AdminSessionGate } from "@/features/auth";
 
 // Mocking NextStep for now as we focus on UI structure
 const NextStepProvider = ({ children }: { children: React.ReactNode }) => <>{children}</>;
@@ -30,6 +31,7 @@ export default function DashboardLayout({
 
   return (
     <NextStepProvider>
+      <AdminSessionGate>
       {/* Outer App Container - Gray Background */}
       <div className="flex h-screen bg-[#f5f5f5] overflow-hidden">
         {isMobileNavOpen && (
@@ -80,6 +82,7 @@ export default function DashboardLayout({
           </div>
         </main>
       </div>
+      </AdminSessionGate>
     </NextStepProvider>
   );
 }

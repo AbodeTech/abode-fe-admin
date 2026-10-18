@@ -4,18 +4,16 @@
 
 import React, { useState, useMemo, useEffect } from 'react'
 import { format as formatDateFn } from 'date-fns'
-import { useMutation } from '@tanstack/react-query'
 import { useAuthStore } from '@/store/auth-store'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
-import { downloadSalesData } from '../hooks/use-sales-export'
-import { SalesFilters } from '@/features/sales'
-import {
-  derivePaymentStatus,
-  PAYMENT_STATUS_ORDER,
-  type PaymentStatus,
-} from '../lib/payment-status'
+import { useSalesExportData, EXPORT_ROW_CAP } from '../hooks/use-sales-export'
+import type { SalesListFilters } from '../hooks/use-sales'
+import type { SalesExportRow } from '../schemas/sales.schema'
+import { SALES_PLAN_STATUSES } from '../schemas/sales.schema'
+import { PLAN_STATUS_LABELS, excludedFromTotalsReason } from '../lib/plan-status'
+import { derivePaymentStatus } from '../lib/payment-status'
 // @ts-ignore
 import { Parser } from 'json2csv'
 import { saveAs } from 'file-saver'
@@ -86,7 +84,6 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { withDocumentColumns } from '../lib/export-columns'
 
 // --- Types & Constants ---
 
@@ -94,7 +91,6 @@ const STORAGE_KEYS = {
   TEMPLATES: 'sales_export_templates',
   LAST_USED: 'sales_export_last_used',
   DEFAULT_TEMPLATE: 'sales_export_default_template',
-  DOCUMENT_COLUMNS_ADDED: 'sales_export_document_columns_added',
 }
 
 interface ExportTemplate {
@@ -126,6 +122,7 @@ const FIELD_CONFIG = {
       referrer_name: { label: 'Referrer Name', default: false },
       referrer_email: { label: 'Referrer Email', default: false },
       referrer_phone: { label: 'Referrer Phone', default: false },
+      agencyName: { label: 'Agency', default: false },
     }
   },
   asset: {
@@ -134,6 +131,7 @@ const FIELD_CONFIG = {
     fields: {
       assetName: { label: 'Asset Name', default: true },
       assetType: { label: 'Asset Type', default: true },
+      assetLocation: { label: 'Asset Location', default: false },
       unitsBought: { label: 'Units Bought', default: true },
       size: { label: 'Size', default: true },
       total_size: { label: 'Total Size', default: false },
@@ -183,7 +181,7 @@ const FIELD_CONFIG = {
     fields: {
       month_subscription: { label: 'Subscription Month', default: false },
       startDate: { label: 'Start Date', default: true },
-      endDate: { label: 'End Date', default: true },
+      endDate: { label: 'Next Payment Date', default: true },
       landPaymentCompletedDate: { label: 'Land Payment Completed', default: false },
       landPaymentCompletedAt: { label: 'Land Payment Completed (ISO)', default: false },
     }
@@ -192,9 +190,13 @@ const FIELD_CONFIG = {
     label: 'Status',
     color: 'bg-rose-100 text-rose-700',
     fields: {
-      paymentStatus: { label: 'Payment Status', default: true },
-      defaulted: { label: 'Defaulted', default: true },
-      terminated: { label: 'Terminated', default: true },
+      planStatus: { label: 'Plan Status', default: true },
+      paymentStatus: { label: 'Payment Status', default: false },
+      defaulted: { label: 'Currently Defaulting', default: true },
+      hasDefaultedEver: { label: 'Has Defaulted (Ever)', default: false },
+      terminated: { label: 'Suspended', default: true },
+      sourceType: { label: 'Source Type', default: false },
+      excludedFromTotals: { label: 'Excluded From Totals', default: false },
     }
   },
   plan: {
@@ -249,11 +251,11 @@ const FORMAT_OPTIONS: { value: ExportFormat; label: string; icon: React.ReactNod
 const PRESETS: Record<string, { label: string; fields: string[] }> = {
   basic: {
     label: 'Basic Info',
-    fields: ['id', 'name', 'email', 'phone', 'assetName', 'price', 'amountPaid', 'totalBalance', 'paymentStatus']
+    fields: ['id', 'name', 'email', 'phone', 'nameOnDocument', 'addressOnDocument', 'assetName', 'price', 'amountPaid', 'totalBalance', 'planStatus']
   },
   financial: {
     label: 'Financial Report',
-    fields: ['id', 'paymentPlanId', 'name', 'assetName', 'price', 'amountPaid', 'amountPayable', 'landBalance', 'documentPrice', 'documentAmountPaid', 'documentBalance', 'totalAssetValue', 'totalPaid', 'totalBalance', 'paymentStatus']
+    fields: ['id', 'paymentPlanId', 'name', 'assetName', 'price', 'amountPaid', 'amountPayable', 'landBalance', 'documentPrice', 'documentAmountPaid', 'documentBalance', 'totalAssetValue', 'totalPaid', 'totalBalance', 'planStatus']
   },
   complete: {
     label: 'All Fields',
@@ -261,46 +263,8 @@ const PRESETS: Record<string, { label: string; fields: string[] }> = {
   },
   referrals: {
     label: 'Referral Report',
-    fields: ['id', 'name', 'email', 'referrer_name', 'referrer_email', 'referrer_phone', 'assetName', 'totalPaid']
+    fields: ['id', 'name', 'email', 'referrer_name', 'referrer_email', 'referrer_phone', 'agencyName', 'assetName', 'totalPaid']
   },
-  documentation: {
-    label: 'Documentation & Allocation',
-    fields: ['id', 'paymentPlanId', 'name', 'nameOnDocument', 'addressOnDocument', 'email', 'assetName', 'assetType', 'block', 'plot', 'blockPlotPairs', 'plotCount', 'landPaymentCompletedDate', 'landBalance', 'paymentStatus']
-  },
-}
-
-// Money columns. processRecord leaves these as raw numbers so the xlsx sheet
-// stays summable; thousands separators are applied per format at download
-// time — as text for csv/tsv/json, as a cell display format for xlsx.
-const CURRENCY_FIELDS = new Set([
-  'price',
-  'amountPaid',
-  'amountPayable',
-  'landBalance',
-  'documentPrice',
-  'documentAmountPaid',
-  'documentBalance',
-  'totalAssetValue',
-  'totalPaid',
-  'totalBalance',
-])
-
-const XLSX_CURRENCY_FORMAT = '#,##0.##'
-
-// No forced decimals: whole-naira amounts stay whole, and a value carrying
-// kobo keeps it rather than being rounded away.
-const groupThousands = (value: any) =>
-  typeof value === 'number' && Number.isFinite(value)
-    ? value.toLocaleString('en-NG', { maximumFractionDigits: 2 })
-    : value
-
-// Rebuilt key-by-key so the column order processRecord established survives.
-const withGroupedCurrency = (row: Record<string, any>) => {
-  const formatted: Record<string, any> = {}
-  Object.entries(row).forEach(([field, value]) => {
-    formatted[field] = CURRENCY_FIELDS.has(field) ? groupThousands(value) : value
-  })
-  return formatted
 }
 
 // Blank cells are written as "null" rather than left empty. Sheets get built
@@ -357,25 +321,6 @@ const getLastUsedConfig = (): { columnOrder: string[]; format: ExportFormat } | 
     const stored = localStorage.getItem(STORAGE_KEYS.LAST_USED)
     return stored ? JSON.parse(stored) : null
   } catch { return null }
-}
-
-// Once per browser: saved choices predate the document columns, and a restored
-// choice wins over the defaults, so add them to the last-used setup and every
-// saved template. Only once — after that, someone who removes them keeps it so.
-const addDocumentColumnsToSavedChoices = () => {
-  if (typeof window === 'undefined') return
-  try {
-    if (localStorage.getItem(STORAGE_KEYS.DOCUMENT_COLUMNS_ADDED)) return
-    const lastUsed = getLastUsedConfig()
-    if (lastUsed) saveLastUsedConfig(withDocumentColumns(lastUsed.columnOrder), lastUsed.format)
-    const templates = getStoredTemplates()
-    if (templates.length) {
-      saveTemplatesToStorage(templates.map(t => ({ ...t, columnOrder: withDocumentColumns(t.columnOrder) })))
-    }
-    localStorage.setItem(STORAGE_KEYS.DOCUMENT_COLUMNS_ADDED, '1')
-  } catch {
-    // Storage unavailable: the defaults above still include the columns.
-  }
 }
 
 // --- Sub-components ---
@@ -438,9 +383,9 @@ const SortableItem = ({ id, label, category, color, onRemove, index }: any) => {
 
 // --- Main Component ---
 
-export function SalesExport({ filters }: { filters: SalesFilters }) {
+export function SalesExport({ filters }: { filters: SalesListFilters }) {
   const { user } = useAuthStore()
-  const role = user?.role
+  const isSuperAdmin = Boolean(user?.role?.is_super_admin)
 
   const [open, setOpen] = useState(false)
   const [format, setFormat] = useState<ExportFormat>('csv')
@@ -469,7 +414,6 @@ export function SalesExport({ filters }: { filters: SalesFilters }) {
   )
 
   useEffect(() => {
-    addDocumentColumnsToSavedChoices()
     const storedTemplates = getStoredTemplates()
     setTemplates(storedTemplates)
     const defaultId = getDefaultTemplateId()
@@ -506,79 +450,65 @@ export function SalesExport({ filters }: { filters: SalesFilters }) {
     return formatDateFn(date, 'yyyy/MM/dd')
   }
 
-  // block/plot come back as parallel comma-strings on multi-plot plans
-  // (block: "C,C" / plot: "12,13"), not lists. Split them the same way so the
-  // paired column lines up; if the two lengths disagree we emit the raw
-  // strings rather than inventing a pairing.
-  const splitAllocations = (value: any) =>
-    String(value ?? '').split(',').map((part) => part.trim()).filter(Boolean)
-
-  const processRecord = (record: any, index: number) => {
-    // ... [Same logic as original code for processing fields] ...
-    // Keeping logic identical to preserve business rules
-    const unitsBought = Number(record.no_of_units) || 0
-    const size = Number(record.size) || 0
-    const price = Number(record.price) || 0
-    const amountPaid = Number(record.amount_paid) || 0
-    const documentPrice = Number(record.fullownerhsip_documentprice) || 0
-    const documentAmountPaid = Number(record.document_amount_paid) || 0
-    const landPrice = Number(record.fullownerhsip_landprice ?? record.price) || 0
-    const blocks = splitAllocations(record.block)
-    const plots = splitAllocations(record.plot)
-    const blockPlotPairs =
-      blocks.length === plots.length
-        ? plots.map((plot, i) => `${blocks[i]}-${plot}`).join(', ')
-        : [record.block, record.plot].filter(Boolean).join(' / ')
+  const processRecord = ({ sale: record, extras }: SalesExportRow, index: number) => {
+    const unitsBought = record.no_of_units || 0
+    const size = record.size || 0
+    const price = record.price || 0
+    const amountPaid = record.amount_paid || 0
+    const documentPrice = record.doc_price || 0
+    const documentAmountPaid = record.doc_amount_paid || 0
+    const documentBalance = documentPrice - documentAmountPaid
 
     const fullRecord: Record<string, any> = {
       id: index + 1,
-      name: `${record.user_lastName} ${record.user_firstName}` || 'No Name',
-      email: record.email || 'No Email',
-      phone: record.user_phone || 'No Phone',
-      referrer_name: record.referrer_name || 'No Referrer',
-      referrer_email: record.referrer_email || 'No Referrer Email',
-      referrer_phone: record.referrer_phone || 'No Referrer Phone',
-      assetName: record.asset_name || 'No Asset',
-      assetType: record.asset_type || 'No Asset Type',
+      name: record.buyer.name || 'No Name',
+      email: record.buyer.email || 'No Email',
+      phone: extras.buyer_phone || '',
+      nameOnDocument: extras.name_on_document || '',
+      addressOnDocument: extras.address_on_document || '',
+      referrer_name: record.referrer?.name || 'No Referrer',
+      referrer_email: record.referrer?.email || 'No Referrer Email',
+      referrer_phone: extras.referrer_phone || '',
+      agencyName: record.agency?.name || 'No Agency',
+      assetName: record.asset.name || 'No Asset',
+      assetType: record.asset.type || 'No Asset Type',
+      assetLocation: record.asset.location || '—',
       unitsBought,
       size,
       total_size: size * unitsBought,
+      block: extras.block,
+      plot: extras.plot,
+      blockPlotPairs: extras.block_plot_pairs,
+      plotCount: extras.plot_count,
       price,
       amountPaid,
-      landBalance: price - amountPaid,
+      landBalance: record.balance,
+      amountPayable: extras.amount_payable,
       documentPrice,
       documentAmountPaid,
-      documentBalance: documentPrice - documentAmountPaid,
-      totalAssetValue: landPrice + documentPrice,
+      documentBalance,
+      totalAssetValue: price + documentPrice,
       totalPaid: amountPaid + documentAmountPaid,
-      totalBalance: (price - amountPaid) + (documentPrice - documentAmountPaid),
+      totalBalance: record.balance + documentBalance,
       month_subscription: record.month_subscription || '',
       startDate: formatDate(record.start_date),
-      endDate: formatDate(record.next_date),
-      paymentStatus: derivePaymentStatus(record),
-      defaulted: Number(record.default_amount) > 0 ? 'Yes' : 'No',
+      endDate: formatDate(record.next_date_of_payment),
+      landPaymentCompletedDate: formatDate(extras.land_payment_completed_at),
+      landPaymentCompletedAt: extras.land_payment_completed_at || '',
+      planStatus: PLAN_STATUS_LABELS[record.plan_status],
+      paymentStatus: derivePaymentStatus({ amount_paid: record.amount_paid, balance: record.balance, amount_payable: extras.amount_payable, price: record.price }),
+      defaulted: record.is_defaulted ? 'Yes' : 'No',
+      hasDefaultedEver: record.has_defaulted_ever ? 'Yes' : 'No',
       terminated: record.is_suspended ? 'Yes' : 'No',
-      amountPayable: Number(record.amount_payable) || 0,
-      paymentPlanId: record.payment_plan_id || '',
-      uniqueAssetId: record.unique_asset_id || '',
-      monthsCovered: record.months_covered ?? '',
+      sourceType: record.source_type,
+      excludedFromTotals: excludedFromTotalsReason(record) ? 'Yes' : 'No',
+      paymentPlanId: record.id,
+      uniqueAssetId: extras.unique_asset_id || '',
+      monthsCovered: extras.months_covered,
+      planUpdatedAt: formatDate(extras.updated_at),
       monthRemaining: record.month_remaining ?? '',
       allocationStatus: record.allocation_status || '',
-      planCreatedAt: formatDate(record.payment_plan_created_at),
-      planUpdatedAt: formatDate(record.payment_plan_updated_at),
-      // Deliberately no fallbacks below. name_on_document and
-      // address_on_document are reconciled against, so falling back to the
-      // account name or address would hide a missing answer, and a missing
-      // land_payment_completed_date is not "unpaid" — it is an absent
-      // completion stamp. Blanks stay blank.
-      nameOnDocument: record.name_on_document || '',
-      addressOnDocument: record.address_on_document || '',
-      block: record.block || '',
-      plot: record.plot || '',
-      blockPlotPairs,
-      plotCount: plots.length,
-      landPaymentCompletedDate: formatDate(record.land_payment_completed_date),
-      landPaymentCompletedAt: record.land_payment_completed_date || '',
+      planCreatedAt: formatDate(record.created_at),
     }
 
     const orderedRecord: Record<string, any> = {}
@@ -589,7 +519,7 @@ export function SalesExport({ filters }: { filters: SalesFilters }) {
   }
 
   // --- Download Logic ---
-  const PAYMENT_STATUS_SHEETS: PaymentStatus[] = ['Paid', 'Still Paying', 'Unpaid']
+  const PAYMENT_STATUS_SHEETS = SALES_PLAN_STATUSES
 
   const buildWorksheet = (rows: any[]) => {
     // Renumber the visible id per sheet so each category reads 1..n
@@ -598,38 +528,25 @@ export function SalesExport({ filters }: { filters: SalesFilters }) {
     worksheet['!cols'] = columnOrder.map(field => ({
       wch: Math.max(ALL_FIELDS[field]?.label.length || field.length, 12)
     }))
-    // Money cells keep their numeric type so Excel can still sum and sort
-    // them; the commas come from the display format, not from baked-in text.
-    columnOrder.forEach((field, colIdx) => {
-      if (!CURRENCY_FIELDS.has(field)) return
-      for (let rowIdx = 1; rowIdx <= sheetRows.length; rowIdx += 1) {
-        const cell = worksheet[XLSX.utils.encode_cell({ c: colIdx, r: rowIdx })]
-        if (cell && cell.t === 'n') cell.z = XLSX_CURRENCY_FORMAT
-      }
-    })
     return worksheet
   }
 
-  const downloadFile = (entries: { status: PaymentStatus; row: any }[], filename: string) => {
+  const downloadFile = (entries: { status: (typeof SALES_PLAN_STATUSES)[number]; row: any }[], filename: string) => {
     const timestamp = new Date().toISOString().split('T')[0]
     const rangeSuffix = [
-      filters.startDate ? `from-${filters.startDate}` : null,
-      filters.endDate ? `to-${filters.endDate}` : null,
+      filters.createdStartDate ? `from-${filters.createdStartDate}` : null,
+      filters.createdEndDate ? `to-${filters.createdEndDate}` : null,
     ].filter(Boolean).join('_')
     const baseFilename = [filename, rangeSuffix, timestamp].filter(Boolean).join('_')
     // JSON gets a real null; the spreadsheet formats get the text marker.
     const blank = format === 'json' ? null : EMPTY_CELL
     const markRow = (row: Record<string, any>) => markEmptyCells(row, columnOrder, blank)
     const allRows = entries.map(e => markRow(e.row))
-    // csv/tsv/json have no display layer of their own, so the separators have
-    // to be written into the values. json2csv quotes anything containing the
-    // delimiter, so comma-grouped amounts stay in one csv column.
-    const groupedRows = allRows.map(withGroupedCurrency)
 
     switch (format) {
       case 'csv': {
         const parser = new Parser({ fields: columnOrder })
-        const csv = parser.parse(groupedRows)
+        const csv = parser.parse(allRows)
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
         saveAs(blob, `${baseFilename}.csv`)
         break
@@ -640,20 +557,20 @@ export function SalesExport({ filters }: { filters: SalesFilters }) {
         PAYMENT_STATUS_SHEETS.forEach(status => {
           const rows = entries.filter(e => e.status === status).map(e => markRow(e.row))
           if (rows.length > 0) {
-            XLSX.utils.book_append_sheet(workbook, buildWorksheet(rows), status)
+            XLSX.utils.book_append_sheet(workbook, buildWorksheet(rows), PLAN_STATUS_LABELS[status])
           }
         })
         XLSX.writeFile(workbook, `${baseFilename}.xlsx`)
         break
       }
       case 'json': {
-        const blob = new Blob([JSON.stringify(groupedRows, null, 2)], { type: 'application/json;charset=utf-8;' })
+        const blob = new Blob([JSON.stringify(allRows, null, 2)], { type: 'application/json;charset=utf-8;' })
         saveAs(blob, `${baseFilename}.json`)
         break
       }
       case 'tsv': {
         const parser = new Parser({ fields: columnOrder, delimiter: '\t' })
-        const tsv = parser.parse(groupedRows)
+        const tsv = parser.parse(allRows)
         const blob = new Blob([tsv], { type: 'text/tab-separated-values;charset=utf-8;' })
         saveAs(blob, `${baseFilename}.tsv`)
         break
@@ -662,35 +579,33 @@ export function SalesExport({ filters }: { filters: SalesFilters }) {
     saveLastUsedConfig(columnOrder, format)
   }
 
-  const mutation = useMutation({
-    mutationFn: downloadSalesData,
-    onSuccess: (response: any) => {
-      const data = response?.getSalesRecord?.data
-      if (!data || data.length === 0) {
-        toast.error('No data available for download')
-        return
-      }
-      // Deterministic order: category, then start date, then plan id — so the
-      // same dataset always produces the same row order across downloads.
-      const sorted = [...data].sort((a: any, b: any) => {
-        const statusDiff =
-          PAYMENT_STATUS_ORDER[derivePaymentStatus(a)] - PAYMENT_STATUS_ORDER[derivePaymentStatus(b)]
-        if (statusDiff !== 0) return statusDiff
-        const dateDiff =
-          new Date(a.start_date || 0).getTime() - new Date(b.start_date || 0).getTime()
-        if (dateDiff !== 0) return dateDiff
-        return String(a.payment_plan_id || '').localeCompare(String(b.payment_plan_id || ''))
-      })
-      const entries = sorted.map((record: any, index: number) => ({
-        status: derivePaymentStatus(record),
-        row: processRecord(record, index),
-      }))
-      downloadFile(entries, 'salesReport')
+  const mutation = useSalesExportData()
+  const handleExportSuccess = ({ rows, truncated }: { rows: SalesExportRow[]; truncated: boolean }) => {
+    if (!rows.length) {
+      toast.error('No data available for download')
+      return
+    }
+    // Deterministic order: plan status, then start date, then plan id — so
+    // the same dataset always produces the same row order across downloads.
+    const sorted = [...rows].sort((a, b) => {
+      const statusDiff = SALES_PLAN_STATUSES.indexOf(a.sale.plan_status) - SALES_PLAN_STATUSES.indexOf(b.sale.plan_status)
+      if (statusDiff !== 0) return statusDiff
+      const dateDiff = new Date(a.sale.start_date || 0).getTime() - new Date(b.sale.start_date || 0).getTime()
+      if (dateDiff !== 0) return dateDiff
+      return a.sale.id.localeCompare(b.sale.id)
+    })
+    const entries = sorted.map((record, index) => ({
+      status: record.sale.plan_status,
+      row: processRecord(record, index),
+    }))
+    downloadFile(entries, 'salesReport')
+    if (truncated) {
+      toast.warning(`Capped at ${EXPORT_ROW_CAP.toLocaleString()} rows — narrow your filters to get everything.`)
+    } else {
       toast.success('Download Successful')
-      setOpen(false)
-    },
-    onError: () => { toast.error('Download failed. Please try again.') }
-  })
+    }
+    setOpen(false)
+  }
 
   // --- Template Management ---
   const generateId = () => `template_${Date.now()}`
@@ -756,12 +671,13 @@ export function SalesExport({ filters }: { filters: SalesFilters }) {
       toast.error('Select at least one field')
       return
     }
-    mutation.mutate({
-      payload: filters
+    mutation.mutate(filters, {
+      onSuccess: handleExportSuccess,
+      onError: () => toast.error('Download failed. Please try again.'),
     })
   }
 
-  if (role !== 'admin') return null
+  if (!isSuperAdmin) return null
 
   return (
     <div className="mb-0 mt-0 flex w-full min-w-0 flex-col gap-2 sm:mb-3 sm:mt-5 sm:flex-row sm:flex-wrap sm:justify-end sm:gap-2">

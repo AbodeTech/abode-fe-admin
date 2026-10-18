@@ -1,32 +1,29 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { execute } from "@/lib/graphql-client";
-import { graphql } from "@/lib/gql";
-import type { ReassignAssociateProInput } from "@/lib/gql/graphql";
-import { managerKeys } from "./query-keys";
+'use client';
 
-const REASSIGN_ASSOCIATE_PRO_MUTATION = graphql(`
-  mutation ReassignAssociatePro($input: ReassignAssociateProInput!) {
-    reassignAssociatePro(input: $input) {
-      _id
-      manager {
-        _id
-      }
-      associate_pros {
-        _id
-      }
-      updatedAt
-    }
-  }
-`);
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
+import { apiPost } from '@/lib/api-client';
+
+import { ManagerListItemSchema } from '../schemas/associate-manager.schema';
+import { managerKeys } from './query-keys';
+
+/**
+ * POST /admin/managers/pros/:pro_id/reassign — move one pro to another manager.
+ *
+ * Answers with the TARGET manager's refreshed row. Moving a pro to the manager
+ * who already holds them is a no-op that sends no notification email.
+ */
 export const useReassignPro = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (input: ReassignAssociateProInput) =>
-      execute(REASSIGN_ASSOCIATE_PRO_MUTATION, { input }),
+    mutationFn: ({ proId, toManagerId }: { proId: string; toManagerId: string }) =>
+      apiPost(
+        `/admin/managers/pros/${proId}/reassign`,
+        { to_manager_id: toManagerId },
+        ManagerListItemSchema
+      ),
     onSuccess: () => {
-      // Both source + target manager roster + counts change → nuke all of it
       queryClient.invalidateQueries({ queryKey: managerKeys.all });
     },
   });

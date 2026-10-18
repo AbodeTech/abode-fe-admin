@@ -11,10 +11,11 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { useAdminSession } from "@/hooks/use-admin-session";
-import { TicketStatus, type GetTicketQuery } from "@/lib/gql/graphql";
+import { useTicketPermissions } from "../hooks/use-ticket-permissions";
 import {
   useRemoveTicketCollaborator,
+  useAddTicketParticipant,
+  useRemoveTicketParticipant,
   useUnlinkTicketFromIssue,
 } from "../hooks/use-ticket-mutations";
 import { AddCollaboratorDialog } from "./AddCollaboratorDialog";
@@ -28,8 +29,10 @@ import {
   STATUS_LABELS,
   STATUS_PILL_CLASS,
 } from "../lib/ticket-display";
+import { type AdminRef, type TicketDetail } from "../schemas/ticket.schema";
+import { ticketWriteError } from "../lib/ticket-errors";
 
-type Detail = GetTicketQuery["getTicket"];
+type Detail = TicketDetail;
 
 interface Props {
   detail: Detail;
@@ -74,15 +77,20 @@ const displayUser = (
  */
 export function TicketContextPanel({ detail }: Props) {
   const ticket = detail.ticket;
-  const { canDecideTicketRouting } = useAdminSession();
+  const { canDecideRouting } = useTicketPermissions();
   const [assignAdminOpen, setAssignAdminOpen] = useState(false);
   const [addCollaboratorOpen, setAddCollaboratorOpen] = useState(false);
   const [assignUserOpen, setAssignUserOpen] = useState(false);
   const [linkIssueOpen, setLinkIssueOpen] = useState(false);
+  const [participantAddress, setParticipantAddress] = useState("");
+  // `fault` is the wire value support calls an "issue" — see TYPE_LABELS.
+  const canLinkToIssue = ticket.type === "fault";
   const [removingAdminId, setRemovingAdminId] = useState<string | null>(null);
 
   const unlinkIssue = useUnlinkTicketFromIssue();
   const removeCollaborator = useRemoveTicketCollaborator();
+  const addParticipant = useAddTicketParticipant();
+  const removeParticipant = useRemoveTicketParticipant();
 
   const handleRemoveCollaborator = async (adminId: string) => {
     setRemovingAdminId(adminId);
@@ -91,7 +99,7 @@ export function TicketContextPanel({ detail }: Props) {
       toast.success("Collaborator removed");
     } catch (err: unknown) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to remove collaborator"
+        ticketWriteError(err, "Failed to remove collaborator")
       );
     } finally {
       setRemovingAdminId(null);
@@ -103,7 +111,7 @@ export function TicketContextPanel({ detail }: Props) {
       await unlinkIssue.mutateAsync(ticket._id);
       toast.success("Unlinked from issue");
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to unlink issue");
+      toast.error(ticketWriteError(err, "Failed to unlink issue"));
     }
   };
 
@@ -117,9 +125,9 @@ export function TicketContextPanel({ detail }: Props) {
           user={ticket.user_affected}
           helper="whose account this is about"
           actionLabel={
-            canDecideTicketRouting ? (ticket.user_affected ? "Change" : "Link user") : undefined
+            canDecideRouting ? (ticket.user_affected ? "Change" : "Link user") : undefined
           }
-          onAction={canDecideTicketRouting ? () => setAssignUserOpen(true) : undefined}
+          onAction={canDecideRouting ? () => setAssignUserOpen(true) : undefined}
         />
         {ticket.sender && ticket.sender._id !== ticket.user_affected?._id && (
           <IdentityRow
@@ -130,15 +138,39 @@ export function TicketContextPanel({ detail }: Props) {
         )}
         <AssignedAdminRow
           admin={ticket.assigned_admin}
-          onAssign={canDecideTicketRouting ? () => setAssignAdminOpen(true) : undefined}
+          onAssign={canDecideRouting ? () => setAssignAdminOpen(true) : undefined}
         />
         <CollaboratorsRow
           collaborators={ticket.collaborators}
-          onAdd={canDecideTicketRouting ? () => setAddCollaboratorOpen(true) : undefined}
-          onRemove={canDecideTicketRouting ? handleRemoveCollaborator : undefined}
+          onAdd={canDecideRouting ? () => setAddCollaboratorOpen(true) : undefined}
+          onRemove={canDecideRouting ? handleRemoveCollaborator : undefined}
           removingId={removeCollaborator.isPending ? removingAdminId : null}
         />
       </div>
+
+      {ticket.channel === "email" && (
+        <section className="rounded-lg border border-gray-200 bg-white p-3 space-y-2">
+          <h3 className="text-xs font-semibold text-gray-900">Email thread</h3>
+          <p className="text-[11px] text-gray-500">The customer receives replies; copied people receive future replies until removed.</p>
+          {(ticket.participants.length ? ticket.participants : ticket.source_reference ? [{ address: ticket.source_reference, role: "customer" as const }] : []).map((person) => (
+            <div key={person.address} className="flex items-center justify-between gap-2 text-xs">
+              <span className="break-all text-gray-700">{person.address} <span className="text-gray-400">· {person.role === "customer" ? "Customer" : "CC"}</span></span>
+              {canDecideRouting && person.role === "cc" && <button type="button" className="text-[#AD1F2A]" disabled={removeParticipant.isPending} onClick={async () => {
+                try { await removeParticipant.mutateAsync({ ticketId: ticket._id, address: person.address }); toast.success("Removed from future replies"); }
+                catch (error) { toast.error(ticketWriteError(error, "Could not remove address")); }
+              }}>Remove</button>}
+            </div>
+          ))}
+          {canDecideRouting && <form className="flex gap-2" onSubmit={async (event) => {
+            event.preventDefault();
+            try { await addParticipant.mutateAsync({ ticketId: ticket._id, address: participantAddress.trim() }); setParticipantAddress(""); toast.success("Address added to future replies"); }
+            catch (error) { toast.error(ticketWriteError(error, "Could not add address")); }
+          }}>
+            <input type="email" required value={participantAddress} onChange={(event) => setParticipantAddress(event.target.value)} placeholder="Copy an email address" className="min-w-0 flex-1 rounded-md border border-gray-200 px-2 py-1 text-xs" />
+            <button type="submit" disabled={addParticipant.isPending} className="rounded-md bg-[#00695C] px-2 py-1 text-xs text-white">Add CC</button>
+          </form>}
+        </section>
+      )}
 
       {ticket.source_reference && (
         <div className="text-xs text-gray-500">
@@ -156,7 +188,7 @@ export function TicketContextPanel({ detail }: Props) {
               <AlertCircle className="h-3.5 w-3.5" />
               Blocked on issue
             </div>
-            {canDecideTicketRouting && (
+            {canDecideRouting && (
               <button
                 type="button"
                 onClick={handleUnlinkIssue}
@@ -183,14 +215,23 @@ export function TicketContextPanel({ detail }: Props) {
             </span>
           </Link>
         </div>
-      ) : canDecideTicketRouting ? (
+      ) : canDecideRouting ? (
+        /* Only faults may group under a root cause, and the BE REFUSES anything
+           else rather than advising. Disabled with the reason, so the rule is
+           learned here instead of from a 400 the user cannot act on. */
         <button
           type="button"
+          disabled={!canLinkToIssue}
+          title={
+            canLinkToIssue
+              ? undefined
+              : "Only tickets typed as an issue can be grouped under a root cause"
+          }
           onClick={() => setLinkIssueOpen(true)}
-          className="w-full flex items-center justify-center gap-1.5 rounded-md border border-dashed border-gray-300 px-3 py-2 text-xs text-gray-600 hover:border-gray-400 hover:text-gray-800"
+          className="w-full flex items-center justify-center gap-1.5 rounded-md border border-dashed border-gray-300 px-3 py-2 text-xs text-gray-600 hover:border-gray-400 hover:text-gray-800 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-gray-300 disabled:hover:text-gray-600"
         >
           <AlertCircle className="h-3.5 w-3.5" />
-          Link to issue
+          {canLinkToIssue ? "Link to issue" : "Only issues can be grouped"}
         </button>
       ) : null}
 
@@ -222,12 +263,12 @@ export function TicketContextPanel({ detail }: Props) {
         </section>
       )}
 
-      {detail.csManager && (
+      {detail.cs_manager && (
         <div className="rounded-lg bg-gray-50/60 border border-gray-200 px-3 py-2 flex items-center gap-2 text-xs">
           <Headphones className="h-3.5 w-3.5 text-gray-500 shrink-0" />
           <span className="text-gray-500">CS Manager</span>
           <span className="text-gray-900 font-medium truncate">
-            {detail.csManager.userName}
+            {detail.cs_manager.userName}
           </span>
         </div>
       )}
@@ -265,10 +306,7 @@ export function TicketContextPanel({ detail }: Props) {
         </section>
       )}
 
-      {/* Keyed on the status, not the summary: the summary is optional, and a
-          ticket resolved without one still needs to say who closed it and when.
-          Not on resolved_at either: reopening by hand leaves it set. */}
-      {ticket.status === TicketStatus.Resolved && (
+      {ticket.resolution && (
         <section className="rounded-lg border border-emerald-200 bg-emerald-50/60 p-3 text-sm space-y-1.5">
           <div className="flex flex-wrap items-center gap-1 text-xs text-emerald-800">
             Resolved
@@ -280,19 +318,15 @@ export function TicketContextPanel({ detail }: Props) {
             )}
             {ticket.resolved_at && <>· {formatWhen(ticket.resolved_at)}</>}
           </div>
-          {ticket.resolution ? (
-            <p className="text-emerald-900 whitespace-pre-wrap">
-              {ticket.resolution}
-            </p>
-          ) : (
-            <p className="text-xs italic text-emerald-800/70">No resolution summary added.</p>
-          )}
+          <p className="text-emerald-900 whitespace-pre-wrap">
+            {ticket.resolution}
+          </p>
         </section>
       )}
 
       {/* Mounted only for the role that can open them — a dialog nobody can
           reach is still a mutation sitting in the bundle. */}
-      {canDecideTicketRouting && (
+      {canDecideRouting && (
         <>
       <AddCollaboratorDialog
         open={addCollaboratorOpen}
@@ -307,12 +341,14 @@ export function TicketContextPanel({ detail }: Props) {
         open={assignAdminOpen}
         onOpenChange={setAssignAdminOpen}
         ticketId={ticket._id}
+        expectedUpdatedAt={ticket.updatedAt}
         currentAdminId={ticket.assigned_admin?._id ?? null}
       />
       <AssignAffectedUserDialog
         open={assignUserOpen}
         onOpenChange={setAssignUserOpen}
         ticketId={ticket._id}
+        expectedUpdatedAt={ticket.updatedAt}
         currentUserId={ticket.user_affected?._id ?? null}
       />
       <LinkTicketToIssueDialog
@@ -390,7 +426,7 @@ function AssignedAdminRow({
   admin,
   onAssign,
 }: {
-  admin?: { _id: string; userName: string; email?: string | null } | null;
+  admin?: AdminRef | null;
   /** Absent for a reader who may not reassign — the row still reports who owns it. */
   onAssign?: () => void;
 }) {
@@ -438,12 +474,7 @@ function CollaboratorsRow({
   onRemove,
   removingId,
 }: {
-  collaborators: {
-    _id: string;
-    userName: string;
-    email?: string | null;
-    role?: string | null;
-  }[];
+  collaborators: AdminRef[];
   /** Both absent for a reader who may not change who is helping. */
   onAdd?: () => void;
   onRemove?: (adminId: string) => void;

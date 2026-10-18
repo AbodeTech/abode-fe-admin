@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 import { useSalesMonthlyTimeline, type SalesAnalyticsFilters } from "@/features/analytics";
 
 const chartConfig = {
-  expectedRevenue: {
+  expected_revenue: {
     label: "Expected Revenue",
     color: "oklch(var(--primary))",
   },
@@ -106,7 +106,7 @@ export function RevenueTimeline({ filters }: RevenueTimelineProps) {
               <ChartTooltip content={<ChartTooltipContent />} />
               <Area
                 type="monotone"
-                dataKey="expectedRevenue"
+                dataKey="expected_revenue"
                 fill="url(#fillExpectedRevenue)"
                 stroke="oklch(var(--primary))"
                 strokeWidth={2}
@@ -140,14 +140,14 @@ export function RevenueTimeline({ filters }: RevenueTimelineProps) {
             <TableBody>
               {timeline.length > 0 ? (
                 timeline.map((row) => {
-                  const totalDue = Number(row?.totalDue || 0);
-                  const totalReceived = Number(row?.totalReceived || 0);
+                  const totalDue = Number(row?.total_due || 0);
+                  const totalReceived = Number(row?.total_received || 0);
                   const efficiency = totalDue > 0 ? Math.round((totalReceived / totalDue) * 100) : 0;
 
                   return (
                     <TableRow key={row?.month} className="hover:bg-muted/10">
                       <TableCell className="font-bold py-4 whitespace-nowrap">{row?.month || "-"}</TableCell>
-                      <TableCell className="font-medium whitespace-nowrap">{formatCurrencyFull(Number(row?.expectedRevenue || 0))}</TableCell>
+                      <TableCell className="font-medium whitespace-nowrap">{formatCurrencyFull(Number(row?.expected_revenue || 0))}</TableCell>
                       <TableCell className="font-medium whitespace-nowrap">{formatCurrencyFull(totalDue)}</TableCell>
                       <TableCell className="font-bold text-emerald-600 whitespace-nowrap">{formatCurrencyFull(totalReceived)}</TableCell>
                       <TableCell>
@@ -160,12 +160,12 @@ export function RevenueTimeline({ filters }: RevenueTimelineProps) {
                           {efficiency}%
                         </span>
                       </TableCell>
-                      <TableCell className="font-medium">{Number(row?.activeTransactions || 0)}</TableCell>
+                      <TableCell className="font-medium">{Number(row?.active_transactions || 0)}</TableCell>
                       <TableCell>
-                        <span className="font-semibold tabular-nums text-amber-600">{Number(row?.missedPaymentCount || 0)}</span>
+                        <span className="font-semibold tabular-nums text-amber-600">{Number(row?.missed_payment_count || 0)}</span>
                       </TableCell>
                       <TableCell>
-                        <span className="font-semibold tabular-nums text-rose-600">{Number(row?.defaultedCount || 0)}</span>
+                        <span className="font-semibold tabular-nums text-rose-600">{Number(row?.defaulted_count || 0)}</span>
                       </TableCell>
                     </TableRow>
                   );

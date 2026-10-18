@@ -1,26 +1,16 @@
 "use client";
 
 import React from "react";
-import { graphql } from "@/lib/gql";
-import { FragmentType, useFragment as getFragmentData } from "@/lib/gql";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Shield, Trash2 } from "lucide-react";
 import { CreateRoleDialog } from "./CreateRoleDialog";
 import { Skeleton } from "@/components/ui/skeleton";
-
-export const RoleCardFragment = graphql(`
-  fragment RoleCardFragment on Role {
-    _id
-    name
-    description
-    permissions
-  }
-`);
+import type { Role } from "../schemas/role.schema";
 
 interface RolesGridProps {
-  roles?: (FragmentType<typeof RoleCardFragment> | null)[] | null;
+  roles?: Role[] | null;
   isLoading?: boolean;
 }
 
@@ -44,9 +34,7 @@ export function RolesGrid({ roles, isLoading }: RolesGridProps) {
     );
   }
 
-  const safeRoles = (roles ?? []).filter(
-    (item): item is NonNullable<typeof item> => item !== null
-  );
+  const safeRoles = roles ?? [];
 
   return (
     <section className="min-w-0 space-y-4">
@@ -61,41 +49,60 @@ export function RolesGrid({ roles, isLoading }: RolesGridProps) {
       </div>
 
       <div className="grid min-w-0 grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {safeRoles.map((role) => {
-          const data = getFragmentData(RoleCardFragment, role);
-          return (
-            <Card key={data._id} className="min-w-0 border-border bg-card transition hover:shadow-sm">
-              <CardHeader className="flex flex-row items-start justify-between gap-2 pb-3">
-                <div className="min-w-0">
-                  <CardTitle className="text-lg font-semibold text-foreground">
-                    {data.name}
-                  </CardTitle>
-                  <p className="mt-1 text-sm text-muted-foreground">{data.description}</p>
-                </div>
-                <Button variant="ghost" size="icon" className="text-destructive" disabled>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-sm font-medium text-muted-foreground">
-                  Permissions ({data.permissions?.length || 0})
-                </p>
-                <div className="flex flex-wrap gap-1">
-                  {(data.permissions || []).slice(0, 3).map((perm, idx) => (
-                    <Badge key={`${data._id}-${idx}`} variant="outline" className="text-xs bg-muted/30 border-border">
-                      {perm}
+        {safeRoles.map((role) => (
+          <Card key={role.id} className="min-w-0 border-border bg-card transition hover:shadow-sm">
+            <CardHeader className="flex flex-row items-start justify-between gap-2 pb-3">
+              <div className="min-w-0">
+                <CardTitle className="flex flex-wrap items-center gap-2 text-lg font-semibold text-foreground">
+                  {role.name}
+                  {role.is_system ? (
+                    <Badge variant="secondary" className="text-[10px] uppercase tracking-wide">
+                      System
                     </Badge>
-                  ))}
-                  {data.permissions && data.permissions.length > 3 && (
-                    <Badge variant="outline" className="text-xs bg-muted/30 border-border">
-                      +{data.permissions.length - 3} more
-                    </Badge>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
+                  ) : null}
+                </CardTitle>
+                <p className="mt-1 text-sm text-muted-foreground">{role.description}</p>
+              </div>
+              {/*
+                DELETE /admin/roles/:id exists now, but wiring it needs more than
+                a button: the BE refuses system roles outright, and refuses any
+                role that still has admins — returning them in the 400 so they
+                can be reassigned first. That reassignment flow is the real work.
+              */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-destructive"
+                disabled
+                title={
+                  role.is_system
+                    ? "System roles cannot be deleted"
+                    : "Deleting roles isn't wired up yet"
+                }
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm font-medium text-muted-foreground">
+                {role.permissions.length} permission{role.permissions.length === 1 ? "" : "s"} ·{" "}
+                {role.admin_count} admin{role.admin_count === 1 ? "" : "s"}
+              </p>
+              <div className="flex flex-wrap gap-1">
+                {role.permissions.slice(0, 3).map((perm) => (
+                  <Badge key={`${role.id}-${perm}`} variant="outline" className="text-xs bg-muted/30 border-border">
+                    {perm}
+                  </Badge>
+                ))}
+                {role.permissions.length > 3 && (
+                  <Badge variant="outline" className="text-xs bg-muted/30 border-border">
+                    +{role.permissions.length - 3} more
+                  </Badge>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
         {safeRoles.length === 0 && (
           <div className="text-sm text-muted-foreground">No roles found.</div>
         )}

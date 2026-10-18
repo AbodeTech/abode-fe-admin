@@ -1,93 +1,50 @@
-import { useQuery } from "@tanstack/react-query";
-import { execute } from "@/lib/graphql-client";
-import { graphql } from "@/lib/gql";
-import { managerKeys } from "./query-keys";
+'use client';
 
-const GET_ASSOCIATE_MANAGERS_QUERY = graphql(`
-  query GetAssociateManagers($page: Int!, $limit: Int!, $searchQuery: String) {
-    getAssociateManagers(page: $page, limit: $limit, searchQuery: $searchQuery) {
-      count
-      page
-      limit
-      results {
-        _id
-        manager {
-          _id
-          userName
-          firstName
-          lastName
-          email
-          role
-        }
-        associate_pros_count
-        associate_pros {
-          _id
-          firstName
-          lastName
-          email
-          phoneNumber
-          last_login
-          createdAt
-        }
-        createdAt
-        updatedAt
-      }
-    }
-  }
-`);
+import { useQuery } from '@tanstack/react-query';
+
+import { apiGetPaged, apiGet } from '@/lib/api-client';
+
+import { ManagerListItemSchema } from '../schemas/associate-manager.schema';
+import { managerKeys } from './query-keys';
+
+export const DEFAULT_MANAGER_LIST_LIMIT = 20;
 
 interface UseAssociateManagersParams {
   page?: number;
   limit?: number;
-  searchQuery?: string | null;
+  q?: string | null;
 }
 
+/**
+ * GET /admin/managers — paginated, searchable by manager name/email/display name.
+ *
+ * `associate_pros` on each row is a FIVE-member preview, not the roster; the BE
+ * caps it to keep the list query cheap. Use `roster_size` for counts and the
+ * detail route when the full roster is needed.
+ */
 export const useAssociateManagers = (params?: UseAssociateManagersParams) => {
   const page = params?.page ?? 1;
-  const limit = params?.limit ?? 20;
-  const searchQuery = params?.searchQuery ?? null;
+  const limit = params?.limit ?? DEFAULT_MANAGER_LIST_LIMIT;
+  const q = params?.q ?? null;
 
   return useQuery({
-    queryKey: managerKeys.list({ page, limit, searchQuery }),
+    queryKey: managerKeys.list({ page, limit, q }),
     queryFn: () =>
-      execute(GET_ASSOCIATE_MANAGERS_QUERY, { page, limit, searchQuery }),
-    select: (data) => data.getAssociateManagers,
+      apiGetPaged('/admin/managers', ManagerListItemSchema, {
+        params: { page, limit, ...(q ? { q } : {}) },
+      }),
   });
 };
 
-const GET_ASSOCIATE_MANAGER_QUERY = graphql(`
-  query GetAssociateManager($managerId: ID!) {
-    getAssociateManager(managerId: $managerId) {
-      _id
-      manager {
-        _id
-        userName
-        firstName
-        lastName
-        email
-        role
-      }
-      associate_pros {
-        _id
-        firstName
-        lastName
-        email
-        phoneNumber
-        last_login
-        createdAt
-      }
-      createdAt
-      updatedAt
-    }
-  }
-`);
-
-export const useAssociateManager = (managerId: string | null | undefined) => {
-  return useQuery({
-    queryKey: managerKeys.detail(managerId ?? ""),
-    queryFn: () =>
-      execute(GET_ASSOCIATE_MANAGER_QUERY, { managerId: managerId as string }),
-    select: (data) => data.getAssociateManager,
+/**
+ * GET /admin/managers/:manager_id — the manager plus their FULL roster.
+ *
+ * `managerId` is the admin id (`ManagerListItem.manager_id`), not the
+ * AssociateManager document's `id`.
+ */
+export const useAssociateManager = (managerId: string | null | undefined) =>
+  useQuery({
+    queryKey: managerKeys.detail(managerId ?? ''),
+    queryFn: () => apiGet(`/admin/managers/${managerId}`, ManagerListItemSchema),
     enabled: !!managerId,
   });
-};

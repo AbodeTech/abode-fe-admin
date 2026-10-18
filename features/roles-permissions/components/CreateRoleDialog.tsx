@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -16,19 +16,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Loader2 } from "lucide-react";
-import { graphql } from "@/lib/gql";
-import { useFragment as getFragmentData } from "@/lib/gql";
 import { usePermissions } from "../hooks/use-permissions";
 import { useCreateRole } from "../hooks/use-create-role";
 import { toast } from "sonner";
-
-export const PermissionOptionFragment = graphql(`
-  fragment PermissionOptionFragment on Permission {
-    _id
-    name
-    description
-  }
-`);
 
 export function CreateRoleDialog() {
   const [open, setOpen] = useState(false);
@@ -39,17 +29,14 @@ export function CreateRoleDialog() {
   const { data: permissionsData, isLoading } = usePermissions();
   const { mutateAsync: createRole, isPending } = useCreateRole();
 
-  const permissions = useMemo(
-    () =>
-      (permissionsData ?? []).map((p) =>
-        getFragmentData(PermissionOptionFragment, p)
-      ),
-    [permissionsData]
-  );
+  const permissions = permissionsData ?? [];
 
-  const toggle = (id: string, checked: boolean) => {
+  // Selection is by permission NAME, not by id. `POST /admin/roles` validates
+  // the names against the code-defined pool, and `GET /admin/permissions`
+  // returns no id to send instead — v1 sent Permission document ids here.
+  const toggle = (name: string, checked: boolean) => {
     setSelected((prev) =>
-      checked ? [...prev, id] : prev.filter((item) => item !== id)
+      checked ? [...prev, name] : prev.filter((item) => item !== name)
     );
   };
 
@@ -114,17 +101,17 @@ export function CreateRoleDialog() {
                 <div className="text-sm text-muted-foreground">Loading permissions...</div>
               ) : (
                 permissions.map((perm) => (
-                  <div key={perm._id} className="flex items-start space-x-3">
+                  <div key={perm.name} className="flex items-start space-x-3">
                     <Checkbox
-                      id={perm._id}
-                      checked={selected.includes(perm._id || "")}
+                      id={perm.name}
+                      checked={selected.includes(perm.name)}
                       onCheckedChange={(checked) =>
-                        toggle(perm._id || "", Boolean(checked))
+                        toggle(perm.name, Boolean(checked))
                       }
                       disabled={isPending}
                     />
                     <div className="flex-1">
-                      <Label htmlFor={perm._id} className="text-sm font-medium cursor-pointer">
+                      <Label htmlFor={perm.name} className="text-sm font-medium cursor-pointer">
                         {perm.name}
                       </Label>
                       <p className="text-xs text-gray-600 mt-1">

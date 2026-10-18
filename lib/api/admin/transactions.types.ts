@@ -136,7 +136,8 @@ export interface TransactionListResponse {
   type: string;
   status: string;
   description: string;
-  transaction_type: string;
+  /** How the money moved: paystack, transfer, wallet, system, autopay. */
+  payment_method: string;
   paystack_reference?: string;
   transfer_reference?: string;
   transfer_file?: {

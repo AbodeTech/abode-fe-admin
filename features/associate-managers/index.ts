@@ -18,6 +18,7 @@ export {
   useAssociateManagers,
   useAssociateManager,
 } from "./hooks/use-associate-managers";
+export { useProManager } from "./hooks/use-pro-manager";
 export {
   useAdminManagerDashboard,
   useManagerDashboard,
@@ -31,6 +32,8 @@ export {
   useUnassignedProsCount,
 } from "./hooks/use-unassigned-pros";
 export { useIsCurrentUserManager } from "./hooks/use-is-current-user-manager";
+export { useManagerMe } from "./hooks/use-manager-me";
+export { useAdminPicker } from "./hooks/use-admin-picker";
 export { useOnboardingAttempts } from "./hooks/use-onboarding-attempts";
 export type { OnboardingAttemptData } from "./hooks/use-onboarding-attempts";
 export {
@@ -43,11 +46,33 @@ export {
 } from "./hooks/use-all-managers-dashboard";
 export { useExportManagerDashboardPros } from "./hooks/use-export-manager-pros";
 export { useExportManagerSalesRecord } from "./hooks/use-export-manager-sales";
-export { buildManagerDashboardFilter } from "./lib/dashboard-filter";
+export {
+  buildManagerDashboardFilter,
+  buildManagerDashboardPeriodFilter,
+} from "./lib/dashboard-filter";
 export {
   PRO_GROUP_OPTIONS,
   PRO_SORT_OPTIONS,
+  proGroupOptionsForScope,
 } from "./lib/roster-filter-options";
+
+// Response types come from the Zod schemas, per the data-fetching guidelines.
+export type {
+  ManagerListItem,
+  ManagerProfile,
+  ManagerTarget,
+  OnboardingAttempt,
+  ProSummary,
+  RatingSeriesPoint,
+} from "./schemas/associate-manager.schema";
+export { managerDisplayName, managerInitials } from "./schemas/associate-manager.schema";
+export type {
+  ManagerDashboard,
+  ManagerDashboardParams,
+  ProGroup,
+  ProSort,
+  RosterRow,
+} from "./schemas/manager-dashboard.schema";
 
 // Hooks — mutations
 export { useAddManager } from "./hooks/use-add-manager";

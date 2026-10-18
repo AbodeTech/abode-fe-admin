@@ -1,46 +1,50 @@
 'use client';
 
 import { useMutation } from '@tanstack/react-query';
-import { execute } from '@/lib/graphql-client';
 
+import { apiGetPaged } from '@/lib/api-client';
+
+import { EventEligibleClientSchema, type EventEligibleClient } from '../schemas/company-event.schema';
 import { companyEventKeys } from './query-keys';
-import {
-  GET_EVENT_ELIGIBLE_CLIENTS_QUERY,
-  narrowEligibleClientRow,
-  type EventEligibleClientListFilters,
-  type EventEligibleClientRow,
-} from './use-event-eligible-clients';
+import type { EventEligibleClientFilters } from './use-event-eligible-clients';
 
+/**
+ * Loops pages of `GET /admin/company-events/:id/eligible-clients` into one
+ * export set — mirrors `features/sales/hooks/use-sales-export.ts`'s
+ * page-looping pattern (the BE caps a single page, so an export set means
+ * looping rather than requesting one huge page).
+ */
 export const ELIGIBLE_CLIENTS_EXPORT_ROW_CAP = 1_000;
 const EXPORT_PAGE_SIZE = 100;
 
 export interface EventEligibleClientsExportResult {
-  rows: EventEligibleClientRow[];
+  rows: EventEligibleClient[];
   truncated: boolean;
 }
 
-/** Loops pages of `eventEligibleClients` into one export set. */
 export const fetchEventEligibleClientsExportRows = async (
   eventId: string,
-  filters: Omit<EventEligibleClientListFilters, 'page' | 'limit'>
+  filters: Omit<EventEligibleClientFilters, 'page' | 'limit'>
 ): Promise<EventEligibleClientsExportResult> => {
-  const rows: EventEligibleClientRow[] = [];
+  const rows: EventEligibleClient[] = [];
   let page = 1;
   let total = Infinity;
 
   while (rows.length < total && rows.length < ELIGIBLE_CLIENTS_EXPORT_ROW_CAP) {
-    const result = await execute(GET_EVENT_ELIGIBLE_CLIENTS_QUERY, {
-      eventId,
-      page,
-      limit: EXPORT_PAGE_SIZE,
-      filter: {
-        search: filters.search || undefined,
-        eligibility_tier: filters.eligibilityTier || undefined,
-      },
-    });
-    const items = result.eventEligibleClients.data;
-    total = result.eventEligibleClients.count ?? items.length;
-    rows.push(...items.map(narrowEligibleClientRow));
+    const { items, meta } = await apiGetPaged(
+      `/admin/company-events/${eventId}/eligible-clients`,
+      EventEligibleClientSchema,
+      {
+        params: {
+          page,
+          limit: EXPORT_PAGE_SIZE,
+          search: filters.search || undefined,
+          eligibility_tier: filters.eligibilityTier || undefined,
+        },
+      }
+    );
+    total = meta.total ?? items.length;
+    rows.push(...items);
     if (items.length < EXPORT_PAGE_SIZE) break;
     page += 1;
   }
@@ -56,7 +60,7 @@ export const useEventEligibleClientsExport = () => {
       filters,
     }: {
       eventId: string;
-      filters: Omit<EventEligibleClientListFilters, 'page' | 'limit'>;
+      filters: Omit<EventEligibleClientFilters, 'page' | 'limit'>;
     }) => fetchEventEligibleClientsExportRows(eventId, filters),
   });
 };

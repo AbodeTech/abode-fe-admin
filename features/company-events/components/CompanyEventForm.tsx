@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
@@ -8,7 +8,6 @@ import { toast } from "sonner";
 import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Form,
   FormControl,
@@ -26,7 +25,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { MultiSelect } from "@/components/ui/multi-select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { useCompanyEventAssets } from "../hooks/use-company-event-assets";
@@ -40,13 +38,12 @@ const formSchema = z
   .object({
     type: z.enum(COMPANY_EVENT_TYPES),
     title: z.string().trim().min(3, "Title must be at least 3 characters"),
-    assets: z.array(z.string()).min(1, "Select at least one site"),
+    asset_id: z.string().min(1, "Select a site"),
     date: z.string().min(1, "Date is required"),
     time: z.string().min(1, "Time is required"),
     available_size: z.union([z.number(), z.nan()]).optional(),
     size_unit: z.string().optional(),
     pickup_locations: z.array(z.string()),
-    open_registration: z.boolean(),
   })
   .superRefine((values, ctx) => {
     if (values.type !== "allocation") return;
@@ -70,25 +67,27 @@ type CompanyEventFormValues = z.infer<typeof formSchema>;
 
 export function CompanyEventForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: assets, isLoading: assetsLoading } = useCompanyEventAssets();
   const createEvent = useCreateCompanyEvent();
 
+  // Preselects the site/type when arriving from an asset's own "Create event"
+  // shortcut (e.g. Asset Detail's Allocation events card) — read once at
+  // mount, same as every other default here.
+  const preselectedAssetId = searchParams.get("asset_id") ?? "";
+  const preselectedType = searchParams.get("type") === "allocation" ? "allocation" : "site_inspection";
 
   const form = useForm<CompanyEventFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      type: "site_inspection",
+      type: preselectedType,
       title: "",
-      assets: [],
+      asset_id: preselectedAssetId,
       date: "",
       time: "",
       available_size: undefined,
       size_unit: "sqm",
       pickup_locations: [],
-      // Open by default, matching the server. Both event types can take people
-      // who were never invited, and that is the normal case — a closed guest
-      // list is the thing worth opting into.
-      open_registration: true,
     },
   });
 
@@ -96,26 +95,14 @@ export function CompanyEventForm() {
   // each render, which makes React Compiler skip memoising this component.
   const activeType = useWatch({ control: form.control, name: "type" });
 
-  // Most estates exist as both a flex and a full-ownership asset, so the
-  // name alone repeats — the type is what distinguishes the two rows, the
-  // same way features/allocation's asset filter labels them.
-  //
-  // Location rides along as a label but is deliberately not filtered on: it
-  // is near-1:1 with the site and the stored strings vary for one place
-  // ("Agbowa-Ikorodu" vs "Agbowa-Ikorodu, Lagos"), so a filter would hide
-  // valid sites. As a label it still helps — "The WoodGate" and
-  // "The Woodgate" are different places.
-  const visibleAssets = (assets ?? []).filter((asset) => asset.selectable);
-
   function onSubmit(values: CompanyEventFormValues) {
     createEvent.mutate(
       {
         title: values.title,
         type: values.type,
-        assets: values.assets,
+        assetId: values.asset_id,
         date: values.date,
         time: values.time,
-        openRegistration: values.open_registration,
         ...(values.type === "allocation"
           ? {
               availableSize: values.available_size,
@@ -125,7 +112,7 @@ export function CompanyEventForm() {
           : {}),
       },
       {
-        onSuccess: ({ createCompanyEvent: event }) => {
+        onSuccess: (event) => {
           toast.success(`${event.title} created`);
           router.push(`/company-events/${event.id}`);
         },
@@ -163,27 +150,24 @@ export function CompanyEventForm() {
 
         <FormField
           control={form.control}
-          name="assets"
+          name="asset_id"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Sites</FormLabel>
-              <FormControl>
-                <MultiSelect
-                  options={visibleAssets.map((asset) => ({
-                    value: asset._id,
-                    label: `${asset.name}${asset.type ? ` (${asset.type})` : ""}${
-                      asset.location ? ` \u2014 ${asset.location}` : ""
-                    }`,
-                  }))}
-                  selected={field.value}
-                  onChange={field.onChange}
-                  placeholder={assetsLoading ? "Loading sites..." : "Select one or more sites"}
-                />
-              </FormControl>
-              <p className="text-xs text-muted-foreground">
-                One estate is two records — flex and full-ownership. Pick both to
-                run a single day across both products.
-              </p>
+              <FormLabel>Site</FormLabel>
+              <Select value={field.value} onValueChange={field.onChange}>
+                <FormControl>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder={assetsLoading ? "Loading sites..." : "Select a site"} />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {(assets ?? []).map((asset) => (
+                    <SelectItem key={asset._id} value={asset._id}>
+                      {asset.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <FormMessage />
             </FormItem>
           )}
@@ -278,35 +262,6 @@ export function CompanyEventForm() {
             />
           </div>
         )}
-
-        <FormField
-          control={form.control}
-          name="open_registration"
-          render={({ field }) => (
-            <FormItem className="rounded-lg border border-slate-200 p-4">
-              <div className="flex items-start gap-3">
-                <Checkbox
-                  id="open_registration"
-                  checked={field.value}
-                  onCheckedChange={(checked) => field.onChange(checked === true)}
-                  className="mt-0.5"
-                />
-                <div className="space-y-1">
-                  <Label htmlFor="open_registration" className="cursor-pointer">
-                    Let anyone register through the public link
-                  </Label>
-                  <p className="text-sm text-muted-foreground">
-                    People who were not allocated anything can sign themselves up and get a
-                    pass. They are given no land, so this does not touch the event&apos;s
-                    capacity — the registration list is what the buses are planned from.
-                    Untick for an invitation-only guest list.
-                  </p>
-                </div>
-              </div>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
 
         <Button type="submit" disabled={createEvent.isPending} className="w-full sm:w-auto">
           {createEvent.isPending ? (

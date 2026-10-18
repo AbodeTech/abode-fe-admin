@@ -37,11 +37,11 @@ export function AssetBreakdown({ filters }: AssetBreakdownProps) {
 
   const topAssets = [...assets]
     .sort((a, b) => {
-      const aEfficiency = (Number(a?.expectedAmount || 0) > 0)
-        ? Number(a?.totalReceived || 0) / Number(a?.expectedAmount || 0)
+      const aEfficiency = (Number(a?.expected_amount || 0) > 0)
+        ? Number(a?.total_received || 0) / Number(a?.expected_amount || 0)
         : 0;
-      const bEfficiency = (Number(b?.expectedAmount || 0) > 0)
-        ? Number(b?.totalReceived || 0) / Number(b?.expectedAmount || 0)
+      const bEfficiency = (Number(b?.expected_amount || 0) > 0)
+        ? Number(b?.total_received || 0) / Number(b?.expected_amount || 0)
         : 0;
       return bEfficiency - aEfficiency;
     })
@@ -58,18 +58,18 @@ export function AssetBreakdown({ filters }: AssetBreakdownProps) {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {topAssets.length > 0 ? topAssets.map((asset) => {
-            const expected = Number(asset?.expectedAmount || 0);
-            const received = Number(asset?.totalReceived || 0);
+            const expected = Number(asset?.expected_amount || 0);
+            const received = Number(asset?.total_received || 0);
             const performance = expected > 0 ? Math.min(Math.round((received / expected) * 100), 100) : 0;
 
             return (
-              <div key={`${asset?.assetName}-${asset?.location}`} className="flex flex-col gap-4 p-5 bg-background rounded-xl border shadow-sm">
+              <div key={asset.asset_id} className="flex flex-col gap-4 p-5 bg-background rounded-xl border shadow-sm">
                 <div className="flex justify-between items-start">
                   <div>
-                    <h4 className="font-bold text-base">{asset?.assetName || "-"}</h4>
-                    <p className="text-xs text-muted-foreground">{asset?.location || "Unknown location"}</p>
+                    <h4 className="font-bold text-base">{asset?.asset_name || "-"}</h4>
+                    <p className="text-xs text-muted-foreground">{asset?.asset_location || "Unknown location"}</p>
                   </div>
-                  <Badge variant="secondary" className="text-[10px] font-bold uppercase">{asset?.assetType || "N/A"}</Badge>
+                  <Badge variant="secondary" className="text-[10px] font-bold uppercase">{asset?.asset_type || "N/A"}</Badge>
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <div className="flex justify-between text-xs">
@@ -119,17 +119,17 @@ export function AssetBreakdown({ filters }: AssetBreakdownProps) {
             </TableHeader>
             <TableBody>
               {assets.length > 0 ? assets.map((asset) => {
-                const expected = Number(asset?.expectedAmount || 0);
-                const received = Number(asset?.totalReceived || 0);
+                const expected = Number(asset?.expected_amount || 0);
+                const received = Number(asset?.total_received || 0);
                 const efficiency = expected > 0 ? Math.min(Math.round((received / expected) * 100), 100) : 0;
 
                 return (
-                  <TableRow key={`${asset?.assetName}-${asset?.location}-${asset?.assetType}`} className="hover:bg-muted/20">
-                    <TableCell className="font-medium py-4">{asset?.assetName || "-"}</TableCell>
+                  <TableRow key={asset.asset_id} className="hover:bg-muted/20">
+                    <TableCell className="font-medium py-4">{asset?.asset_name || "-"}</TableCell>
                     <TableCell>
-                      <Badge variant="outline" className="text-[10px] uppercase font-bold">{asset?.assetType || "N/A"}</Badge>
+                      <Badge variant="outline" className="text-[10px] uppercase font-bold">{asset?.asset_type || "N/A"}</Badge>
                     </TableCell>
-                    <TableCell className="text-muted-foreground font-medium">{asset?.location || "Unknown"}</TableCell>
+                    <TableCell className="text-muted-foreground font-medium">{asset?.asset_location || "Unknown"}</TableCell>
                     <TableCell className="min-w-[200px]">
                       <div className="flex items-center gap-3">
                         <div className="flex-1 h-2 rounded-full bg-secondary overflow-hidden">
@@ -138,8 +138,8 @@ export function AssetBreakdown({ filters }: AssetBreakdownProps) {
                         <span className="text-xs font-bold tabular-nums">{efficiency}%</span>
                       </div>
                     </TableCell>
-                    <TableCell>{Number(asset?.totalBuyers || 0).toLocaleString()}</TableCell>
-                    <TableCell className="text-right font-bold pr-6">{formatCurrency(Number(asset?.outstandingBalance || 0))}</TableCell>
+                    <TableCell>{Number(asset?.total_buyers || 0).toLocaleString()}</TableCell>
+                    <TableCell className="text-right font-bold pr-6">{formatCurrency(Number(asset?.outstanding_balance || 0))}</TableCell>
                   </TableRow>
                 );
               }) : (

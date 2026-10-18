@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { FragmentType, useFragment as getFragmentData } from "@/lib/gql";
-import { AllocationTableRowFragment } from "./AllocationTable";
+import type { AllocationTableRow } from "./AllocationTable";
 import {
   Dialog,
   DialogContent,
@@ -15,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlertDialog,
@@ -34,15 +35,9 @@ import {
   Trash2,
   Mail,
   Shuffle,
-  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import {
-  useAssetIdByName,
-  useAvailablePlotsForAsset,
-  type Plot,
-} from "@/features/assets";
-import { suggestPlotCombination } from "../lib/suggest-plots";
+import { useAvailablePlotsForAsset, type Plot } from "../hooks/use-available-plots";
 import { useAllocateLand } from "../hooks/use-allocate-land";
 import { useDeallocateLand } from "../hooks/use-deallocate-land";
 import { useReassignLand } from "../hooks/use-reassign-land";
@@ -50,10 +45,13 @@ import { useSendAllocationEmail } from "../hooks/use-send-allocation-email";
 
 export type AllocationModalMode = "send" | "resend";
 
+/** `REASON_MIN_LENGTH` in abode-be-v2's allocation.constants.ts — enforced server-side too. */
+const REASON_MIN_LENGTH = 20;
+
 interface AllocationModalProps {
   open: boolean;
   mode: AllocationModalMode;
-  client?: FragmentType<typeof AllocationTableRowFragment> | null;
+  client?: AllocationTableRow | null;
   onOpenChange: (open: boolean) => void;
 }
 
@@ -63,23 +61,20 @@ export function AllocationModal({
   client,
   onOpenChange,
 }: AllocationModalProps) {
-  const allocationClient = getFragmentData(AllocationTableRowFragment, client);
-  const units = allocationClient?.unit ?? 0;
-  const assetSize = allocationClient?.assetSize ?? 0;
+  const allocationClient = client;
+  const units = allocationClient?.no_of_units ?? 0;
+  const assetSize = allocationClient?.size ?? 0;
   const requiredSqm = units * assetSize;
-  const assetName = allocationClient?.assetName ?? "";
-  const assetType = allocationClient?.assetType ?? "";
-  const paymentPlanId = allocationClient?.paymentPlan ?? "";
-  const hasExistingAllocation = Boolean(allocationClient?.allocation);
-  const emailAlreadySent = allocationClient?.allocationStatus === "email_sent";
-
-  const { data: assetId, isLoading: isResolvingAssetId } = useAssetIdByName(
-    assetName,
-    assetType
+  const assetId = allocationClient?.asset_id ?? "";
+  const paymentPlanId = allocationClient?.payment_plan_id ?? "";
+  const hasExistingAllocation = Boolean(
+    allocationClient && allocationClient.allocation_status !== "pending"
   );
+
   const { data: availablePlots = [], isLoading: isLoadingPlots } =
     useAvailablePlotsForAsset({
-      assetId: assetId ?? "",
+      assetId,
+      size: assetSize || undefined,
     });
 
   const [selectedPlotIds, setSelectedPlotIds] = useState<Set<string>>(new Set());
@@ -87,6 +82,8 @@ export function AllocationModal({
     Record<string, Plot>
   >({});
   const [isDeallocateConfirmOpen, setIsDeallocateConfirmOpen] = useState(false);
+  const [deallocateReason, setDeallocateReason] = useState("");
+  const [reassignReason, setReassignReason] = useState("");
 
   const allocateLand = useAllocateLand();
   const deallocateLand = useDeallocateLand();
@@ -97,8 +94,18 @@ export function AllocationModal({
     if (open) {
       setSelectedPlotIds(new Set());
       setSelectedPlotsMeta({});
+      setReassignReason("");
     }
   }, [open, allocationClient?.email]);
+
+  // Opens the confirm dialog and clears the reason at the same time, in the
+  // event handler rather than an effect keyed off `isDeallocateConfirmOpen`
+  // — the dialog can be opened more than once per modal session, and a
+  // stale reason from a cancelled attempt shouldn't slip through.
+  const openDeallocateConfirm = () => {
+    setDeallocateReason("");
+    setIsDeallocateConfirmOpen(true);
+  };
 
   const togglePlot = (plot: Plot) => {
     setSelectedPlotIds((prev) => {
@@ -138,27 +145,14 @@ export function AllocationModal({
     return Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b));
   }, [availablePlots]);
 
-  const handleSuggest = () => {
-    const suggestion = suggestPlotCombination(availablePlots, requiredSqm);
-    if (!suggestion) {
-      toast.error(
-        `No combination of available plots adds up to ${requiredSqm.toLocaleString()} sqm.`
-      );
-      return;
-    }
-    setSelectedPlotIds(new Set(suggestion.map((p) => p._id)));
-    setSelectedPlotsMeta(
-      Object.fromEntries(suggestion.map((p) => [p._id, p]))
-    );
-  };
-
   const handleAllocate = () => {
     if (!isMatch || !paymentPlanId) return;
     allocateLand.mutate(
       { paymentPlanId, plotIds: Array.from(selectedPlotIds) },
       {
         onSuccess: (data) => {
-          toast.success(data.allocateLand?.message || "Plots assigned");
+          toast.success(`Plots assigned to ${data.user_snapshot.name}`);
+          data.warnings.forEach((warning) => toast.warning(warning));
           onOpenChange(false);
         },
         onError: (err: Error) => toast.error(err.message),
@@ -166,13 +160,17 @@ export function AllocationModal({
     );
   };
 
+  const isReassignReasonValid = reassignReason.trim().length >= REASON_MIN_LENGTH;
+  const isDeallocateReasonValid = deallocateReason.trim().length >= REASON_MIN_LENGTH;
+
   const handleReassign = () => {
-    if (!isMatch || !paymentPlanId) return;
+    if (!isMatch || !paymentPlanId || !isReassignReasonValid) return;
     reassignLand.mutate(
-      { paymentPlanId, newPlotIds: Array.from(selectedPlotIds) },
+      { paymentPlanId, newPlotIds: Array.from(selectedPlotIds), reason: reassignReason.trim() },
       {
         onSuccess: (data) => {
-          toast.success(data.reassignLand?.message || "Allocation reassigned");
+          toast.success(`Allocation reassigned for ${data.user_snapshot.name}`);
+          data.warnings.forEach((warning) => toast.warning(warning));
           onOpenChange(false);
         },
         onError: (err: Error) => toast.error(err.message),
@@ -183,10 +181,10 @@ export function AllocationModal({
   const handleResendEmail = () => {
     if (!paymentPlanId) return;
     sendAllocationEmail.mutate(paymentPlanId, {
-      onSuccess: (data) => {
-        toast.success(
-          data.sendAllocationEmail?.message || "Allocation email resent"
-        );
+      // The BE always returns `queued: true` here — see the schema's note
+      // on why "queued" isn't the same as "sent".
+      onSuccess: () => {
+        toast.success("Allocation email queued");
         onOpenChange(false);
       },
       onError: (err: Error) => toast.error(err.message),
@@ -194,18 +192,21 @@ export function AllocationModal({
   };
 
   const handleDeallocate = () => {
-    if (!paymentPlanId) return;
-    deallocateLand.mutate(paymentPlanId, {
-      onSuccess: (data) => {
-        toast.success(data.deallocateLand?.message || "Allocation cleared");
-        setIsDeallocateConfirmOpen(false);
-        onOpenChange(false);
-      },
-      onError: (err: Error) => toast.error(err.message),
-    });
+    if (!paymentPlanId || !isDeallocateReasonValid) return;
+    deallocateLand.mutate(
+      { paymentPlanId, reason: deallocateReason.trim() },
+      {
+        onSuccess: () => {
+          toast.success("Allocation cleared");
+          setIsDeallocateConfirmOpen(false);
+          onOpenChange(false);
+        },
+        onError: (err: Error) => toast.error(err.message),
+      }
+    );
   };
 
-  const isLoading = isResolvingAssetId || isLoadingPlots;
+  const isLoading = isLoadingPlots;
   const anyMutationPending =
     allocateLand.isPending ||
     reassignLand.isPending ||
@@ -233,7 +234,7 @@ export function AllocationModal({
         label: `Reassign (${selectedPlotIds.size})`,
         icon: <Shuffle className="h-4 w-4" />,
         pendingLabel: "Reassigning...",
-        disabled: !isMatch,
+        disabled: !isMatch || !isReassignReasonValid,
         handler: handleReassign,
       };
     }
@@ -253,6 +254,7 @@ export function AllocationModal({
     selectedPlotIds.size,
     paymentPlanId,
     hasExistingAllocation,
+    isReassignReasonValid,
   ]);
 
   const primaryPending =
@@ -281,15 +283,13 @@ export function AllocationModal({
             <div className="space-y-4 overflow-y-auto pr-1">
               {/* Client summary */}
               <div className="rounded-md border p-3 bg-muted/40">
-                <p className="text-sm font-medium">
-                  {allocationClient.lastName} {allocationClient.firstName}
-                </p>
+                <p className="text-sm font-medium">{allocationClient.name}</p>
                 <p className="text-xs text-muted-foreground">
                   {allocationClient.email}
                 </p>
                 <Separator className="my-2" />
                 <div className="text-xs space-y-1">
-                  <p>Asset: {allocationClient.assetName}</p>
+                  <p>Asset: {allocationClient.asset_name}</p>
                   <p>
                     Units: <span className="font-semibold tabular-nums">{units}</span>
                     {" × "}
@@ -301,20 +301,9 @@ export function AllocationModal({
                     </span>
                   </p>
                   {hasExistingAllocation && (
-                    <>
-                      <p className="text-amber-600">
-                        Current allocation: {allocationClient.allocation}
-                      </p>
-                      <p
-                        className={
-                          emailAlreadySent ? "text-green-700" : "text-amber-600"
-                        }
-                      >
-                        {emailAlreadySent
-                          ? "Client has been notified by email."
-                          : "Client has not been notified yet."}
-                      </p>
-                    </>
+                    <p className="text-amber-600">
+                      Current status: {allocationClient.allocation_status}
+                    </p>
                   )}
                 </div>
               </div>
@@ -349,19 +338,6 @@ export function AllocationModal({
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {requiredSqm > 0 && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="w-full"
-                      onClick={handleSuggest}
-                      disabled={anyMutationPending}
-                    >
-                      <Sparkles className="h-4 w-4 mr-1.5" />
-                      Suggest plots for {requiredSqm.toLocaleString()} sqm
-                    </Button>
-                  )}
                   {plotsByBlock.map(([blockLabel, plots]) => (
                     <BlockPlotPicker
                       key={blockLabel}
@@ -373,6 +349,30 @@ export function AllocationModal({
                   ))}
                 </div>
               )}
+
+              {/* Required server-side (≥20 chars) once new plots are picked in resend mode. */}
+              {mode === "resend" && hasSelection && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="reassign-reason" className="text-sm text-muted-foreground">
+                    Reason for reassigning
+                  </Label>
+                  <Textarea
+                    id="reassign-reason"
+                    value={reassignReason}
+                    onChange={(event) => setReassignReason(event.target.value)}
+                    placeholder="Why is this plan being reassigned to different plots?"
+                    className="min-h-20"
+                  />
+                  <p
+                    className={cn(
+                      "text-xs",
+                      isReassignReasonValid ? "text-muted-foreground" : "text-rose-600"
+                    )}
+                  >
+                    {reassignReason.trim().length}/{REASON_MIN_LENGTH} characters minimum
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
@@ -380,7 +380,7 @@ export function AllocationModal({
             {hasExistingAllocation ? (
               <Button
                 variant="outline"
-                onClick={() => setIsDeallocateConfirmOpen(true)}
+                onClick={openDeallocateConfirm}
                 disabled={anyMutationPending}
                 type="button"
                 className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200"
@@ -432,16 +432,37 @@ export function AllocationModal({
             <AlertDialogTitle>Deallocate this payment plan?</AlertDialogTitle>
             <AlertDialogDescription>
               All currently assigned plots will be released back to the
-              available pool. Legacy block/plot strings will be cleared.
+              available pool. This is logged permanently in the allocation
+              history, so the reason below matters.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="space-y-1.5 px-6">
+            <Label htmlFor="deallocate-reason" className="text-sm text-muted-foreground">
+              Reason for deallocating
+            </Label>
+            <Textarea
+              id="deallocate-reason"
+              value={deallocateReason}
+              onChange={(event) => setDeallocateReason(event.target.value)}
+              placeholder="Why is this plan's allocation being cleared?"
+              className="min-h-20"
+            />
+            <p
+              className={cn(
+                "text-xs",
+                isDeallocateReasonValid ? "text-muted-foreground" : "text-rose-600"
+              )}
+            >
+              {deallocateReason.trim().length}/{REASON_MIN_LENGTH} characters minimum
+            </p>
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deallocateLand.isPending}>
               Cancel
             </AlertDialogCancel>
             <Button
               onClick={handleDeallocate}
-              disabled={deallocateLand.isPending}
+              disabled={deallocateLand.isPending || !isDeallocateReasonValid}
               className="bg-rose-600 hover:bg-rose-700 text-white"
             >
               {deallocateLand.isPending ? (

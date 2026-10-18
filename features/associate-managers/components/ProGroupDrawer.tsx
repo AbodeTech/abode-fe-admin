@@ -21,11 +21,10 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import type {
-  ManagerDashboardFilterInput,
-  ManagerDashboardProRow,
-  ProRosterSort,
-} from "@/lib/gql/graphql";
-import { ProRosterGroup } from "@/lib/gql/graphql";
+  ManagerDashboardParams,
+  ProSort,
+  RosterRow,
+} from "../schemas/manager-dashboard.schema";
 import {
   DRAWER_PAGE_SIZE,
   useDashboardProsGroup,
@@ -49,9 +48,8 @@ import { PRO_SORT_OPTIONS } from "../lib/roster-filter-options";
 interface Props {
   viewMode: DashboardProsViewMode;
   managerId: string | null;
-  periodFilter: ManagerDashboardFilterInput;
+  periodFilter: ManagerDashboardParams;
   roster?: "associate-pro" | "associate";
-  exportFilenamePrefix?: string;
   exportManagerId?: string | null;
 }
 
@@ -97,7 +95,7 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function ProGroupCard({ pro }: { pro: ManagerDashboardProRow }) {
+function ProGroupCard({ pro }: { pro: RosterRow }) {
   return (
     <article className="rounded-lg border border-gray-200 bg-white p-4 space-y-3">
       <div className="flex items-start justify-between gap-3">
@@ -106,10 +104,10 @@ function ProGroupCard({ pro }: { pro: ManagerDashboardProRow }) {
             <h3 className="font-semibold text-gray-900 truncate">
               {formatProFullName(pro)}
             </h3>
-            {pro.onboardedAt && (
+            {pro.onboarded_at && (
               <span
                 className="inline-flex items-center gap-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-medium px-1.5 py-0.5 border border-emerald-100"
-                title={`Onboarded ${formatProDate(pro.onboardedAt)}`}
+                title={`Onboarded ${formatProDate(pro.onboarded_at)}`}
               >
                 <CheckCircle2 className="h-3 w-3" />
                 Onboarded
@@ -119,8 +117,8 @@ function ProGroupCard({ pro }: { pro: ManagerDashboardProRow }) {
           {pro.email && (
             <p className="text-sm text-gray-600 truncate mt-0.5">{pro.email}</p>
           )}
-          {pro.phoneNumber && (
-            <p className="text-sm text-gray-500">{pro.phoneNumber}</p>
+          {pro.phone_number && (
+            <p className="text-sm text-gray-500">{pro.phone_number}</p>
           )}
         </div>
         <StatusBadge status={pro.status} />
@@ -129,24 +127,24 @@ function ProGroupCard({ pro }: { pro: ManagerDashboardProRow }) {
       <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
         <div>
           <dt className="text-gray-500 text-xs">Total sales</dt>
-          <dd className="font-medium text-gray-900">{pro.totalSales.toLocaleString()}</dd>
+          <dd className="font-medium text-gray-900">{pro.total_sales.toLocaleString()}</dd>
         </div>
         <div>
           <dt className="text-gray-500 text-xs">Revenue generated</dt>
           <dd className="font-medium text-gray-900">
-            {formatProCurrency(pro.revenueGenerated)}
+            {formatProCurrency(pro.revenue_generated)}
           </dd>
         </div>
         <div>
           <dt className="text-gray-500 text-xs">Last login</dt>
           <dd className="font-medium text-gray-900">
-            {formatProRelativeOrDate(pro.lastLogin)}
+            {formatProRelativeOrDate(pro.last_login)}
           </dd>
         </div>
         <div>
           <dt className="text-gray-500 text-xs">Date recruited</dt>
           <dd className="font-medium text-gray-900">
-            {formatProDate(pro.dateRecruited)}
+            {formatProDate(pro.date_recruited)}
           </dd>
         </div>
       </dl>
@@ -159,7 +157,6 @@ export function ProGroupDrawer({
   managerId,
   periodFilter,
   roster = "associate-pro",
-  exportFilenamePrefix = "roster",
   exportManagerId = null,
 }: Props) {
   const searchParams = useSearchParams();
@@ -168,9 +165,8 @@ export function ProGroupDrawer({
   const openGroup = parseOpenGroupParam(searchParams.get("open_group"));
   const groupSortRaw = searchParams.get("group_sort");
   const groupSort =
-    groupSortRaw &&
-    PRO_SORT_OPTIONS.some((o) => o.value === groupSortRaw && o.value !== "all")
-      ? (groupSortRaw as ProRosterSort)
+    groupSortRaw && PRO_SORT_OPTIONS.some((o) => o.value === groupSortRaw)
+      ? (groupSortRaw as ProSort)
       : null;
   const groupPage = Math.max(1, Number(searchParams.get("group_page")) || 1);
 
@@ -178,7 +174,7 @@ export function ProGroupDrawer({
     viewMode,
     managerId,
     periodFilter,
-    group: openGroup ?? ProRosterGroup.SellingInPeriod,
+    group: openGroup ?? "selling_in_period",
     sort: groupSort,
     page: groupPage,
     enabled: !!openGroup,
@@ -204,29 +200,37 @@ export function ProGroupDrawer({
     });
   };
 
-  const total = query.data?.associateProsGroupTotal ?? 0;
-  const rows = query.data?.associatePros ?? [];
+  const total = query.data?.associate_pros_group_total ?? 0;
+  const rows = query.data?.associate_pros ?? [];
   const totalPages = Math.max(1, Math.ceil(total / DRAWER_PAGE_SIZE));
   const periodLabel = formatPeriodRange(query.data?.period);
 
-  const canExport = viewMode === "admin" || viewMode === "self";
+  const EXPORT_SCOPE = {
+    admin: "single",
+    self: "single",
+    "all-managers": "combined",
+    "system-associates": "system",
+  } as const;
+  const exportScope = EXPORT_SCOPE[viewMode];
+  // `single` needs a manager to scope to; the org-wide scopes never do.
+  const canExport = exportScope !== "single" || !!exportManagerId;
 
   const handleExport = async () => {
     if (!canExport || !openGroup) return;
     try {
       await exportPros({
+        scope: exportScope,
         managerId: exportManagerId,
-        filter: {
+        params: {
           ...periodFilter,
-          proGroup: openGroup,
-          ...(groupSort ? { proSort: groupSort } : {}),
+          pro_group: openGroup,
+          ...(groupSort ? { pro_sort: groupSort } : {}),
         },
-        filenamePrefix: `${exportFilenamePrefix}-${openGroup}`,
       });
       toast.success("List exported successfully.");
     } catch (err) {
       const message = (err as Error).message || "";
-      if (/Export limit exceeded|EXPORT_LIMIT_EXCEEDED/i.test(message)) {
+      if (/EXPORT_TOO_LARGE|too many rows/i.test(message)) {
         toast.error(
           "Too many rows to export — narrow your date range or apply a filter."
         );

@@ -11,22 +11,19 @@ import {
   AllocationModal,
   AllocationModalMode,
   AllocationTable,
-  AllocationTableRowFragment,
+  type AllocationTableRow,
+  type AllocationStatus,
   DEFAULT_ALLOCATION_LIMIT,
   useAllocationAssets,
   useAllocationClients,
   useAllocationExport,
 } from "@/features/allocation";
-import { FragmentType, useFragment as getFragmentData } from "@/lib/gql";
-// @ts-expect-error - json2csv does not ship complete ESM typings in this setup.
-import { Parser } from "json2csv";
-import { saveAs } from "file-saver";
+import { useAdminPermissions } from "@/hooks/use-admin-permission";
 import { toast } from "sonner";
 
-const parsePercentage = (value?: string | null) => {
+const toNumberOrNull = (value?: string | null) => {
   if (!value) return null;
-  const firstPart = value.split("-")[0];
-  const parsed = Number(firstPart);
+  const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
 };
 
@@ -35,36 +32,46 @@ function AllocationContent() {
   const router = useRouter();
 
   const page = Number(searchParams.get("page")) || 1;
-  const assetNameParam = searchParams.get("assetname");
+  const assetIdParam = searchParams.get("assetid");
+  const statusParam = searchParams.get("status") as AllocationStatus | null;
   const percentageParam = searchParams.get("percentage");
   const searchParam = searchParams.get("search") || "";
-  const statusParam = searchParams.get("status");
   const startDateParam = searchParams.get("startDate");
   const endDateParam = searchParams.get("endDate");
+  // Independent of startDate/endDate (which filter the plan's createdAt) —
+  // the two ranges combine.
+  const completedFromParam = searchParams.get("completedFrom");
+  const completedToParam = searchParams.get("completedTo");
 
   const [searchTerm, setSearchTerm] = useState(searchParam);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<AllocationModalMode>("send");
-  const [modalClient, setModalClient] = useState<FragmentType<typeof AllocationTableRowFragment> | null>(null);
+  const [modalClient, setModalClient] = useState<AllocationTableRow | null>(null);
 
   const filters = {
     page,
     limit: DEFAULT_ALLOCATION_LIMIT,
-    assetName: assetNameParam,
-    percentage: parsePercentage(percentageParam),
-    search: searchParam || null,
+    assetId: assetIdParam,
     allocationStatus: statusParam,
-    startDate: startDateParam,
-    endDate: endDateParam,
+    paymentPercentageMin: toNumberOrNull(percentageParam),
+    search: searchParam || null,
+    dateFrom: startDateParam,
+    dateTo: endDateParam,
+    completedFrom: completedFromParam,
+    completedTo: completedToParam,
   };
 
   const { data, isLoading, error } = useAllocationClients(filters);
   const { data: assets } = useAllocationAssets();
   const { mutateAsync: exportAlloc, isPending: isExporting } = useAllocationExport();
 
-  useEffect(() => {
-    if (!modalOpen) setModalClient(null);
-  }, [modalOpen]);
+  const permissions = useAdminPermissions();
+  const canExport = permissions.has("export_allocation_list");
+
+  const handleModalOpenChange = (open: boolean) => {
+    setModalOpen(open);
+    if (!open) setModalClient(null);
+  };
 
   const updateParams = useCallback(
     (next: Record<string, string | number | null | undefined>, options?: { replace?: boolean }) => {
@@ -97,24 +104,24 @@ function AllocationContent() {
   }, [searchTerm, searchParam, updateParams]);
 
   const handleAssetChange = (value: string | null) => {
-    updateParams({ assetname: value, page: 1 });
+    updateParams({ assetid: value, page: 1 });
+  };
+
+  const handleAllocationStatusChange = (value: AllocationStatus | "all") => {
+    updateParams({ status: value === "all" ? null : value, page: 1 });
   };
 
   const handlePercentageChange = (value: string) => {
     updateParams({ percentage: value === "all" ? null : value, page: 1 });
   };
 
-  const handleStatusChange = (value: string) => {
-    updateParams({ status: value === "all" ? null : value, page: 1 });
-  };
-
-  const handleSend = (client: FragmentType<typeof AllocationTableRowFragment>) => {
+  const handleSend = (client: AllocationTableRow) => {
     setModalMode("send");
     setModalClient(client);
     setModalOpen(true);
   };
 
-  const handleManage = (client: FragmentType<typeof AllocationTableRowFragment>) => {
+  const handleResend = (client: AllocationTableRow) => {
     setModalMode("resend");
     setModalClient(client);
     setModalOpen(true);
@@ -122,47 +129,10 @@ function AllocationContent() {
 
   const handleDownload = async () => {
     try {
-      const result = await exportAlloc({
-        assetName: assetNameParam,
-        percentage: parsePercentage(percentageParam),
-        search: searchParam || null,
-        allocationStatus: statusParam,
-        startDate: startDateParam,
-        endDate: endDateParam,
-      });
-      const exportRows = result?.eligibleClientsForLand?.data ?? [];
-      if (!exportRows.length) {
-        toast.info("No data to export");
-        return;
-      }
-      const parsed = exportRows.map((row) => {
-        const client = getFragmentData(AllocationTableRowFragment, row);
-        return {
-          clientName: `${client.lastName ?? ""} ${client.firstName ?? ""}`.trim(),
-          referrer: client.referral || "not added yet",
-          assetName: client.assetType ? `${client.assetName} (${client.assetType})` : client.assetName,
-          landSize: client.assetSize,
-          units: client.unit,
-          paymentPercentage: client.paymentPercentage,
-          amountPaid: client.amountPaid,
-          totalPrice: client.totalPrice,
-          durationMonths: client.duration,
-          location: client.location,
-          boughtDate: client.end_date,
-          allocationNumber: client.allocation || "Not assigned yet",
-          allocationDate: client.allocationDate || "",
-          emailStatus:
-            client.allocationStatus === "email_sent"
-              ? "Email sent"
-              : client.allocationStatus === "allocated"
-              ? "Not notified"
-              : "—",
-        };
-      });
-      const parser = new Parser();
-      const csv = parser.parse(parsed);
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-      saveAs(blob, "allocation-clients.csv");
+      // The BE streams the CSV over the same filtered pipeline the table reads,
+      // so the whole filter set — including the completed-date range — carries
+      // over without restating any of it here.
+      await exportAlloc(filters);
       toast.success("Export ready");
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Failed to export");
@@ -187,6 +157,7 @@ function AllocationContent() {
             Manage and track allocations for eligible clients.
           </p>
         </div>
+        {canExport && (
         <Button
           variant="outline"
           size="sm"
@@ -206,29 +177,30 @@ function AllocationContent() {
             </>
           )}
         </Button>
+        )}
       </div>
 
       <AllocationFilters
         assets={assets}
         search={searchTerm}
         percentage={percentageParam || "all"}
-        assetName={assetNameParam}
-        allocationStatus={statusParam || "all"}
+        assetId={assetIdParam}
+        allocationStatus={statusParam ?? "all"}
         onSearchChange={setSearchTerm}
         onPercentageChange={handlePercentageChange}
-        onAssetNameChange={handleAssetChange}
-        onAllocationStatusChange={handleStatusChange}
+        onAssetIdChange={handleAssetChange}
+        onAllocationStatusChange={handleAllocationStatusChange}
       />
 
       <AllocationTable
-        rows={data?.data}
+        rows={data?.items}
         isLoading={isLoading}
         onSend={handleSend}
-        onManage={handleManage}
+        onResend={handleResend}
       />
 
       <Pagination
-        count={data?.count ?? 0}
+        count={data?.meta.total ?? 0}
         currentIdx={page}
         limit={DEFAULT_ALLOCATION_LIMIT}
       />
@@ -237,7 +209,7 @@ function AllocationContent() {
         open={modalOpen}
         mode={modalMode}
         client={modalClient}
-        onOpenChange={setModalOpen}
+        onOpenChange={handleModalOpenChange}
       />
     </div>
   );

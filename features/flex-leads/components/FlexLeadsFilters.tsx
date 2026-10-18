@@ -1,9 +1,11 @@
 "use client";
 
 import React from "react";
+import { Download, Loader2, Search } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -12,19 +14,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const STATUS_TABS = [
-  { label: "New", value: "new" },
-  { label: "Contacted", value: "contacted" },
-  { label: "Scheduled", value: "scheduled" },
-  { label: "Completed", value: "completed" },
-  { label: "Closed", value: "closed" },
-  { label: "All", value: "all" },
-];
+import {
+  FLEX_LEAD_STATUSES,
+  FLEX_LEAD_STATUS_LABELS,
+  FLEX_LEAD_TYPES,
+  FLEX_LEAD_TYPE_LABELS,
+} from "../schemas/flex-lead.schema";
 
-const TYPE_OPTIONS = [
-  { label: "All types", value: "all" },
-  { label: "Brochure download", value: "brochure" },
-  { label: "Site inspection", value: "site_inspection" },
+const STATUS_TABS = [
+  ...FLEX_LEAD_STATUSES.map((value) => ({ label: FLEX_LEAD_STATUS_LABELS[value], value })),
+  { label: "All", value: "all" },
 ];
 
 interface FlexLeadsFiltersProps {
@@ -34,6 +33,9 @@ interface FlexLeadsFiltersProps {
   onStatusChange: (value: string) => void;
   onTypeChange: (value: string) => void;
   onSearchChange: (value: string) => void;
+  /** The CSV export mirrors the current filters (FL-8). */
+  onExport: () => void;
+  isExporting: boolean;
 }
 
 export function FlexLeadsFilters({
@@ -43,10 +45,12 @@ export function FlexLeadsFilters({
   onStatusChange,
   onTypeChange,
   onSearchChange,
+  onExport,
+  isExporting,
 }: FlexLeadsFiltersProps) {
   return (
     <section className="mt-2 flex min-w-0 flex-col gap-3 sm:gap-4">
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {STATUS_TABS.map((tab) => (
           <Button
             key={tab.value}
@@ -58,17 +62,35 @@ export function FlexLeadsFilters({
             {tab.label}
           </Button>
         ))}
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onExport}
+          disabled={isExporting}
+          className="ml-auto gap-2"
+        >
+          {isExporting ? (
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+          ) : (
+            <Download className="h-4 w-4" aria-hidden />
+          )}
+          Export CSV
+        </Button>
       </div>
 
       <div className="grid min-w-0 grid-cols-1 gap-3 sm:gap-4 md:grid-cols-3">
         <div className="min-w-0 space-y-2 md:col-span-2">
           <Label className="text-sm text-muted-foreground">Search</Label>
-          <Input
-            className="min-w-0"
-            placeholder="Search by name, email, or phone"
-            value={search}
-            onChange={(event) => onSearchChange(event.target.value)}
-          />
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              className="min-w-0 pl-9"
+              placeholder="Search by name, email, or phone"
+              value={search}
+              onChange={(event) => onSearchChange(event.target.value)}
+            />
+          </div>
         </div>
         <div className="min-w-0 space-y-2">
           <Label className="text-sm text-muted-foreground">Lead type</Label>
@@ -77,9 +99,10 @@ export function FlexLeadsFilters({
               <SelectValue placeholder="All types" />
             </SelectTrigger>
             <SelectContent>
-              {TYPE_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
+              <SelectItem value="all">All types</SelectItem>
+              {FLEX_LEAD_TYPES.map((value) => (
+                <SelectItem key={value} value={value}>
+                  {FLEX_LEAD_TYPE_LABELS[value]}
                 </SelectItem>
               ))}
             </SelectContent>

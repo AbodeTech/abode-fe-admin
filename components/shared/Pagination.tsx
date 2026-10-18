@@ -8,20 +8,11 @@ interface PaginationProps {
   count: number;
   currentIdx?: number;
   limit?: number;
-  /**
-   * Search param this pager reads and writes. Defaults to `page`; pass a
-   * distinct name when a screen pages two tables independently, so one
-   * table's pager doesn't move the other.
-   */
+  /** URL query param this instance reads/writes — lets two paginated tables coexist on one page. */
   pageParam?: string;
 }
 
-export function Pagination({
-  count,
-  currentIdx = 1,
-  limit = 10,
-  pageParam = "page",
-}: PaginationProps) {
+export function Pagination({ count, currentIdx = 1, limit = 10, pageParam = "page" }: PaginationProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();

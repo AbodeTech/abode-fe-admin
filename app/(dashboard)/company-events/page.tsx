@@ -51,8 +51,7 @@ function CompanyEventsContent() {
             rows.map((event) => ({
               title: event.title,
               type: event.type,
-              sites: event.asset_names,
-              site_count: event.asset_count,
+              site: event.asset_name,
               date: event.date,
               time: event.time,
               status: event.status,
@@ -145,7 +144,7 @@ function CompanyEventsContent() {
 
       <EventsListTable rows={data?.items} isLoading={isLoading} />
 
-      <Pagination count={data?.count ?? 0} currentIdx={page} limit={DEFAULT_COMPANY_EVENT_LIMIT} />
+      <Pagination count={data?.meta.total ?? 0} currentIdx={page} limit={DEFAULT_COMPANY_EVENT_LIMIT} />
     </div>
   );
 }

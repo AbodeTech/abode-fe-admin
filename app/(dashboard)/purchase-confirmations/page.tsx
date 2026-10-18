@@ -13,6 +13,7 @@ import {
   PurchaseConfirmationsFilters,
   PurchaseConfirmationsTable,
   ResolveDisputeModal,
+  useExportConfirmations,
   usePurchaseConfirmations,
   useResendConfirmationEmail,
   type PurchaseConfirmationRow,
@@ -47,9 +48,20 @@ function PurchaseConfirmationsContent() {
     search,
   });
   const resendEmail = useResendConfirmationEmail();
+  const exportConfirmations = useExportConfirmations();
 
   const [detailRow, setDetailRow] = useState<PurchaseConfirmationRow | null>(null);
   const [resolveRow, setResolveRow] = useState<PurchaseConfirmationRow | null>(null);
+
+  const handleExport = () => {
+    exportConfirmations.mutate(
+      { status, product, q: search || undefined },
+      {
+        onSuccess: ({ filename }) => toast.success(`Exported ${filename}`),
+        onError: (err) => toast.error(err.message || "Export failed"),
+      }
+    );
+  };
 
   const handleResendEmail = async (row: PurchaseConfirmationRow) => {
     try {
@@ -100,6 +112,8 @@ function PurchaseConfirmationsContent() {
         onStatusChange={(value) => setParam("status", value)}
         onProductChange={(value) => setParam("product", value)}
         onSearchChange={(value) => setParam("q", value)}
+        onExport={handleExport}
+        isExporting={exportConfirmations.isPending}
       />
 
       <div className="min-w-0 space-y-4">

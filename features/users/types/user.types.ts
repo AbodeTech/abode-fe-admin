@@ -23,7 +23,7 @@ export type UserTransaction = {
   type: string;
   status: string;
   description: string;
-  transaction_type: string;
+  payment_method: string;
   paystack_reference: string;
   transfer_reference: string;
   transfer_file: {
@@ -63,14 +63,40 @@ export type UserDetail = {
   kyc: {
     tin: string;
   } | null;
+  associate_manager?: {
+    _id: string;
+    firstName?: string | null;
+    lastName?: string | null;
+    userName?: string | null;
+    email?: string | null;
+  } | null;
   subscriptions: number;
   transaction: UserTransaction[];
   wallet: {
     balance: number;
+    /** `false` means the wallet is suspended — the user cannot transact. */
+    is_active: boolean;
   };
   units_purchased: number;
   userName: string;
   next_date_of_payment: string;
+  created_at?: string;
+  unsigned_contracts?: number;
+  verified?: boolean;
+  state?: string;
+  lga?: string;
+  education_level?: string;
+  experience_level?: string;
+  acquisition_source?: string;
+  wallet_available?: number;
+  referrer_chain?: Array<{
+    level: number;
+    id: string;
+    first_name?: string | null;
+    last_name?: string | null;
+    email?: string | null;
+    tier?: string | null;
+  }>;
 };
 
 export type SystemUsersMetrics = {

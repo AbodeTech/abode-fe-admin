@@ -23,7 +23,6 @@ import {
   EventAllocatedTable,
   EventAllocationFilters,
   EventAllocationTable,
-  ConfirmationSheetPanel,
   EventMetricsPanel,
   EventRegistrationFilters,
   EventRegistrationsTable,
@@ -39,28 +38,10 @@ import {
   useSaveEventAllocations,
   useUpdateEventStatus,
   type EligibilityTier,
-  type EventAllocationStatus,
-  type EventAttendeeType,
-  type EventAllocationRow,
-  type EventEligibleClientRow,
+  type EventAllocation,
+  type EventEligibleClient,
   type RegistrationCategory,
 } from "@/features/company-events";
-
-/**
- * How many rows the current filters match.
- *
- * Reads the same count the pagination uses. Rendered because the answer to
- * "how many eligible people have registered" is a filter combination whose
- * total was, until now, only visible by paging to the last page and counting.
- */
-function RegistrationsTotal({ count, loading }: { count?: number; loading?: boolean }) {
-  if (loading || count === undefined) return null;
-  return (
-    <p className="text-sm text-muted-foreground">
-      {count.toLocaleString()} {count === 1 ? "person" : "people"} match these filters
-    </p>
-  );
-}
 
 function EventDetailContent() {
   const params = useParams<{ id: string }>();
@@ -76,20 +57,10 @@ function EventDetailContent() {
   const regPage = Number(searchParams.get("reg_page")) || 1;
   const regSearchParam = searchParams.get("reg_search") || "";
   const regCategoryParam = (searchParams.get("reg_category") as RegistrationCategory | null) ?? null;
-  const regTypeParam = (searchParams.get("reg_type") as EventAttendeeType | null) ?? null;
-  const regStatusParam = (searchParams.get("reg_status") as EventAllocationStatus | null) ?? null;
 
   const [searchTerm, setSearchTerm] = useState(searchParam);
   const [regSearchTerm, setRegSearchTerm] = useState(regSearchParam);
-  /**
-   * Selection, keyed by payment plan but holding the whole row.
-   *
-   * It is never cleared when the page changes, so a selection can span pages —
-   * and the capacity total and the client count both need the row's size and
-   * owner, which are not recoverable from an id once the row has scrolled out
-   * of the current page's data.
-   */
-  const [selected, setSelected] = useState<Map<string, EventEligibleClientRow>>(new Map());
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
 
   const { data: event, isLoading: eventLoading } = useCompanyEvent(eventId);
@@ -125,20 +96,15 @@ function EventDetailContent() {
   // row rather than reviving the old one — the "Allocated" table hides the
   // cancelled rows by default so a removed person doesn't look like they're
   // still committed, with a toggle to review them when wanted.
-  // Filtered on the LAND's own state, not on attendance: a row is hidden here
-  // because its allocation was released, which is a different thing from the
-  // person having cancelled.
   const visibleAllocatedRows = showCancelledAllocations
     ? allocatedData?.items
-    : allocatedData?.items?.filter((row) => row.allocation_status !== "cancelled");
+    : allocatedData?.items?.filter((row) => row.status !== "cancelled");
 
   const registrationFilters = {
     page: regPage,
     limit: DEFAULT_EVENT_REGISTRATIONS_LIMIT,
     search: regSearchParam || undefined,
     category: regCategoryParam ?? undefined,
-    attendeeType: regTypeParam ?? undefined,
-    status: regStatusParam ?? undefined,
   };
   // Real for both event types — `listEventRegistrations` doesn't gate on
   // `type` (only `getEventAnalytics` does), so a site-inspection event's
@@ -160,12 +126,9 @@ function EventDetailContent() {
   // `event.reserved_size` is the real, server-computed running total.
   const usedSize = event?.reserved_size ?? 0;
 
-  // Taken from the backend rather than assembled here. It is built from the
-  // event's slug in one place (utils/eventUrls.ts), and the old guess —
-  // /site-inspection/<id> — pointed at a route that no longer exists.
-  // Not personalized like the per-person emailed invite: one public URL per
-  // event, shared however the admin chooses.
-  const registrationLink = event?.public_url ?? "";
+  // Not personalized like the allocation flow's per-person emailed link —
+  // one public URL per event, shared however the admin chooses.
+  const registrationLink = eventId ? `${process.env.NEXT_PUBLIC_FE_APP_URL ?? ""}/site-inspection/${eventId}` : "";
 
   const handleCopyLink = async () => {
     if (!registrationLink) return;
@@ -214,13 +177,13 @@ function EventDetailContent() {
     return () => clearTimeout(timer);
   }, [regSearchTerm, regSearchParam, updateParams]);
 
-  const handleToggle = (row: EventEligibleClientRow) => {
+  const handleToggle = (row: EventEligibleClient) => {
     setSelected((prev) => {
-      const next = new Map(prev);
-      if (next.has(row.payment_plan)) {
-        next.delete(row.payment_plan);
+      const next = new Set(prev);
+      if (next.has(row.payment_plan_id)) {
+        next.delete(row.payment_plan_id);
       } else {
-        next.set(row.payment_plan, row);
+        next.add(row.payment_plan_id);
       }
       return next;
     });
@@ -229,39 +192,28 @@ function EventDetailContent() {
   const handleSave = () => {
     if (!eventId || selected.size === 0) return;
     saveAllocations.mutate(
-      { eventId, paymentPlanIds: Array.from(selected.keys()) },
+      { eventId, paymentPlanIds: Array.from(selected) },
       {
         onSuccess: (result) => {
-          setSelected(new Map());
-          const { succeeded, failed } = result.allocateToEvent;
-          if (succeeded.length > 0) {
-            // One entry is one seat, and a seat can cover several of the plots
-            // submitted — a buyer holding three here is allocated once. Say
-            // both numbers when they differ, so selecting 3 and seeing "1
-            // client" does not read as a partial failure.
-            const plots = succeeded.reduce((total, seat) => total + seat.payment_plans.length, 0);
-            const clients = `${succeeded.length} client${succeeded.length === 1 ? "" : "s"}`;
-            toast.success(
-              plots === succeeded.length
-                ? `${clients} allocated`
-                : `${clients} allocated, covering ${plots} plots`
-            );
+          setSelected(new Set());
+          if (result.succeeded.length > 0) {
+            toast.success(`${result.succeeded.length} client${result.succeeded.length === 1 ? "" : "s"} allocated`);
           }
-          if (failed.length > 0) {
+          if (result.failed.length > 0) {
             toast.error(
-              `${failed.length} could not be confirmed — someone else may have taken their spot. Refresh and retry.`
+              `${result.failed.length} could not be saved — someone else may have taken their spot. Refresh and retry.`
             );
           }
         },
-        onError: (error) => toast.error(error.message || "Could not confirm them for this event"),
+        onError: (error) => toast.error(error.message || "Failed to save allocation"),
       }
     );
   };
 
-  const handleRemove = (row: EventAllocationRow) => {
+  const handleRemove = (row: EventAllocation) => {
     if (!eventId) return;
     deallocateClient.mutate(
-      { eventId, eventAllocationId: row.id },
+      { eventId, eventAllocationId: row.allocation_id },
       {
         onSuccess: () => toast.success(`${row.name} removed — their spot is now open again`),
         onError: (error) => toast.error(error.message || "Failed to remove allocation"),
@@ -288,13 +240,6 @@ function EventDetailContent() {
               no_of_units: row.no_of_units,
               total_size: row.size * row.no_of_units,
               eligibility_tier: row.eligibility_tier,
-              asset_type: row.asset_type ?? "",
-              // Kept as separate columns: this sheet gets reconciled against,
-              // and a flex buyer on the threshold route legitimately has no
-              // land_completed_at, so the blank needs explaining by qualified_by.
-              qualified_by: row.qualified_by,
-              percent_paid: row.percent_paid,
-              allocation_qualification: row.allocation_qualification ?? "",
               land_completed_at: row.land_completed_at ?? "",
             })),
             `eligible-clients_${eventId}.csv`
@@ -325,7 +270,7 @@ function EventDetailContent() {
             pickup_location: row.pickup_location ?? "",
             size_reserved: row.size_reserved,
             eligibility_tier: row.eligibility_tier,
-            allocated_on: row.createdAt,
+            allocated_on: row.created_at,
           })),
           `allocated-clients_${eventId}.csv`
         );
@@ -339,37 +284,23 @@ function EventDetailContent() {
   const handleExportRegistrations = () => {
     if (!eventId) return;
     exportRegistrations.mutate(
-      {
-        eventId,
-        filters: {
-          search: regSearchParam || undefined,
-          category: regCategoryParam ?? undefined,
-          attendeeType: regTypeParam ?? undefined,
-          status: regStatusParam ?? undefined,
-        },
-      },
+      { eventId, filters: { search: regSearchParam || undefined, category: regCategoryParam ?? undefined } },
       {
         onSuccess: ({ rows, truncated }) => {
           if (!rows.length) {
-            toast.info("Nobody is on this event yet");
+            toast.info("No one has registered yet");
             return;
           }
           downloadCsv(
-            // attendee_type leads: a bus manifest that cannot tell who is being
-            // given land from who came to look is the one thing this list is for.
             rows.map((row) => ({
-              attendee_type: row.attendee_type,
-              name: row.name ?? "",
-              email: row.email ?? "",
-              phone: row.phone ?? "",
-              category: row.category ?? "",
-              status: row.status,
+              name: row.name,
+              email: row.email,
+              phone: row.phone,
+              category: row.category,
               pickup_location: row.pickup_location ?? "",
-              registered_at: row.registered_at ?? "",
-              checked_in_at: row.checked_in_at ?? "",
-              confirmed_at: row.confirmed_at ?? "",
+              submitted_at: row.submitted_at ?? "",
             })),
-            `event-attendees_${eventId}.csv`
+            `registrations_${eventId}.csv`
           );
           if (truncated) toast.warning("Capped at 1,000 rows — narrow your filters to get everything.");
           else toast.success("Export ready");
@@ -476,7 +407,7 @@ function EventDetailContent() {
           </div>
         </div>
         <p className="text-sm text-muted-foreground">
-          {event.asset_label} · {new Date(event.date).toLocaleDateString()} at {event.time}
+          {event.asset_name} · {new Date(event.date).toLocaleDateString()} at {event.time}
         </p>
         {event.pickup_locations.length > 0 && (
           <p className="text-sm text-muted-foreground">
@@ -485,41 +416,31 @@ function EventDetailContent() {
         )}
       </div>
 
-      {/* Both event types have an open list now, so the link is shown for both.
-          An allocation day sends personal invites to the people getting land AND
-          takes walk-ups through this link; without it the open half is unusable. */}
-      <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
-        <h2 className="text-sm font-semibold text-slate-900">Public registration link</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {event.open_registration
-            ? "Anyone with this link can sign themselves up and will be emailed a pass. They are allocated no land, so this does not touch the event's capacity — but they do take a seat on a bus."
-            : "This event is invitation only, so the link will turn people away. Only the people you allocate will be able to register."}
-        </p>
-        {event.status === "draft" ? (
-          <p className="mt-3 text-sm text-amber-600">
-            This event is still a draft — publish it before sharing the link.
-          </p>
-        ) : (
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <code className="min-w-0 flex-1 truncate rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
-              {registrationLink || "—"}
-            </code>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleCopyLink}
-              className="gap-2"
-              disabled={!registrationLink}
-            >
-              <Copy className="h-4 w-4" />
-              Copy link
-            </Button>
-          </div>
-        )}
-      </div>
-
       {!isAllocationEvent ? (
         <div className="space-y-6">
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+            <h2 className="text-sm font-semibold text-slate-900">Registration link</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Site inspection days don&apos;t have eligibility or capacity — anyone can attend. Share this link
+              however you like; everyone who submits it shows up below.
+            </p>
+            {event.status === "draft" ? (
+              <p className="mt-3 text-sm text-amber-600">
+                This event is still a draft — publish it before sharing the link.
+              </p>
+            ) : (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <code className="min-w-0 flex-1 truncate rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                  {registrationLink}
+                </code>
+                <Button variant="outline" size="sm" onClick={handleCopyLink} className="gap-2">
+                  <Copy className="h-4 w-4" />
+                  Copy link
+                </Button>
+              </div>
+            )}
+          </div>
+
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold">Registrants</h2>
@@ -543,33 +464,14 @@ function EventDetailContent() {
           <EventRegistrationFilters
             search={regSearchTerm}
             category={regCategoryParam ?? "all"}
-            attendeeType={regTypeParam ?? "all"}
-            status={regStatusParam ?? "all"}
-            onAttendeeTypeChange={(value) =>
-              updateParams({ reg_type: value === "all" ? null : value, reg_page: 1 })
-            }
-            onStatusChange={(value) =>
-              updateParams({ reg_status: value === "all" ? null : value, reg_page: 1 })
-            }
             onSearchChange={setRegSearchTerm}
             onCategoryChange={(value) => updateParams({ reg_category: value === "all" ? null : value, reg_page: 1 })}
           />
 
-          {/* The filtered total, which the page fetched all along and spent
-              only on page numbers. With the type and status filters above, this
-              is how an admin reads "how many eligible people have registered"
-              straight off the screen instead of paging to the end to count. */}
-          <RegistrationsTotal count={registrationsData?.count} loading={registrationsLoading} />
-
-          <EventRegistrationsTable
-            rows={registrationsData?.items}
-            isLoading={registrationsLoading}
-            eventId={eventId}
-            pickupLocations={event.pickup_locations}
-          />
+          <EventRegistrationsTable rows={registrationsData?.items} isLoading={registrationsLoading} />
 
           <Pagination
-            count={registrationsData?.count ?? 0}
+            count={registrationsData?.meta.total ?? 0}
             currentIdx={regPage}
             limit={DEFAULT_EVENT_REGISTRATIONS_LIMIT}
             pageParam="reg_page"
@@ -584,15 +486,6 @@ function EventDetailContent() {
           </TabsList>
 
           <TabsContent value="allocation" className="space-y-6 pt-4">
-            {/* First on the allocation tab, because on the morning of the event
-                this is the only thing anybody opens this page for: take the
-                sheet out, bring it back in. */}
-            <ConfirmationSheetPanel
-              eventId={eventId}
-              eventTitle={event.title}
-              pickupLocations={event.pickup_locations}
-            />
-
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h2 className="text-lg font-semibold">Eligible clients</h2>
@@ -627,7 +520,7 @@ function EventDetailContent() {
               isSaving={saveAllocations.isPending}
             />
 
-            <Pagination count={eligibleData?.count ?? 0} currentIdx={page} limit={DEFAULT_EVENT_ELIGIBLE_LIMIT} />
+            <Pagination count={eligibleData?.meta.total ?? 0} currentIdx={page} limit={DEFAULT_EVENT_ELIGIBLE_LIMIT} />
 
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
@@ -664,11 +557,8 @@ function EventDetailContent() {
           <TabsContent value="registrations" className="space-y-6 pt-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h2 className="text-lg font-semibold">Everyone coming</h2>
-                <p className="text-sm text-muted-foreground">
-                  People being given land and visitors who signed themselves up, together —
-                  this is the list the buses are planned from.
-                </p>
+                <h2 className="text-lg font-semibold">Registrations</h2>
+                <p className="text-sm text-muted-foreground">Public form submissions for this event.</p>
               </div>
               <Button variant="outline" size="sm" onClick={handleExportRegistrations} disabled={exportRegistrations.isPending}>
                 {exportRegistrations.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
@@ -679,31 +569,16 @@ function EventDetailContent() {
             <EventRegistrationFilters
               search={regSearchTerm}
               category={regCategoryParam ?? "all"}
-              attendeeType={regTypeParam ?? "all"}
-              status={regStatusParam ?? "all"}
-              onAttendeeTypeChange={(value) =>
-                updateParams({ reg_type: value === "all" ? null : value, reg_page: 1 })
-              }
-              onStatusChange={(value) =>
-                updateParams({ reg_status: value === "all" ? null : value, reg_page: 1 })
-              }
               onSearchChange={setRegSearchTerm}
               onCategoryChange={(value) =>
                 updateParams({ reg_category: value === "all" ? null : value, reg_page: 1 })
               }
             />
 
-            <RegistrationsTotal count={registrationsData?.count} loading={registrationsLoading} />
-
-            <EventRegistrationsTable
-            rows={registrationsData?.items}
-            isLoading={registrationsLoading}
-            eventId={eventId}
-            pickupLocations={event.pickup_locations}
-          />
+            <EventRegistrationsTable rows={registrationsData?.items} isLoading={registrationsLoading} />
 
             <Pagination
-              count={registrationsData?.count ?? 0}
+              count={registrationsData?.meta.total ?? 0}
               currentIdx={regPage}
               limit={DEFAULT_EVENT_REGISTRATIONS_LIMIT}
               pageParam="reg_page"
@@ -717,9 +592,9 @@ function EventDetailContent() {
                 availableSize={event.available_size ?? null}
                 reservedSize={event.reserved_size}
                 sizeUnit={event.size_unit ?? null}
-                eligibleRemainingCount={eligibleTotalData?.count ?? 0}
+                eligibleRemainingCount={eligibleTotalData?.meta.total ?? 0}
                 allocatedRows={allocatedData?.items ?? []}
-                allocatedTotal={allocatedData?.count ?? 0}
+                allocatedTotal={allocatedData?.meta.total ?? 0}
               />
             )}
           </TabsContent>

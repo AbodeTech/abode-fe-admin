@@ -1,11 +1,14 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import type { ResultOf } from "@graphql-typed-document-node/core";
 
-import { execute } from "@/lib/graphql-client";
-import { graphql } from "@/lib/gql";
+import { apiGet, apiGetPaged } from "@/lib/api-client";
 
+import {
+  AdminConfirmationRowSchema,
+  ConfirmationCountsSchema,
+  type AdminConfirmationRow,
+} from "../schemas/purchase-confirmation.schema";
 import {
   purchaseConfirmationKeys,
   type ConfirmationListFilters,
@@ -14,19 +17,18 @@ import {
 /* ============================================================
  * Purchase Confirmations — admin list + counts.
  *
- * Buyers get an email after a confirmed purchase asking them to review
- * and confirm the details that go on their property documents
- * (/purchase/confirm/[unique_asset_id] on the user app). This section
- * is the admin view of that loop: who confirmed, who is still waiting,
- * and who reported a problem.
+ * GET /admin/purchase-confirmations — standard paged envelope (data[] +
+ * meta{total,page,limit,totalPages}), per admin-purchase-confirmation.dto.ts's
+ * own comment: explicitly NOT {count, data} because that shape can't survive
+ * the global TransformInterceptor (see ticket #26 for the Amaris case this
+ * BE comment is citing).
  *
- * Backed by `viewPurchaseConfirmations` / `purchaseConfirmationCounts`.
- * The nested BE row (buyer / snapshot / disputes) is flattened into
- * `PurchaseConfirmationRow` in `select` so components consume plain
- * typed rows.
+ * The BE row (buyer / snapshot / disputes) is flattened into
+ * `PurchaseConfirmationRow` in `select` so components consume plain rows,
+ * same as before this was a REST endpoint.
  * ============================================================ */
 
-export const DEFAULT_CONFIRMATIONS_LIMIT = 10;
+export const DEFAULT_CONFIRMATIONS_LIMIT = 20;
 
 export type AdminConfirmationStatus = "waiting" | "confirmed" | "disputed";
 
@@ -55,86 +57,14 @@ export type PurchaseConfirmationRow = {
   resolvedAt: string | null;
 };
 
-/* --------------------- queries --------------------- */
-
-const VIEW_PURCHASE_CONFIRMATIONS_QUERY = graphql(`
-  query ViewPurchaseConfirmations(
-    $filter: PurchaseConfirmationFilterInput
-    $page: Int
-    $limit: Int
-  ) {
-    viewPurchaseConfirmations(filter: $filter, page: $page, limit: $limit) {
-      count
-      data {
-        planId
-        uniqueAssetId
-        status
-        buyer {
-          firstName
-          lastName
-          email
-        }
-        referrer
-        asset
-        snapshot {
-          name_on_document
-          size
-          units
-          plan_label
-          total
-          product
-        }
-        emailSentAt
-        confirmedAt
-        remindersSent
-        openDisputeNote
-        disputes {
-          note
-          disputed_at
-          resolved_at
-        }
-        createdAt
-      }
-    }
-  }
-`);
-
-const PURCHASE_CONFIRMATION_COUNTS_QUERY = graphql(`
-  query PurchaseConfirmationCounts {
-    purchaseConfirmationCounts {
-      disputed
-      waiting
-      confirmed
-    }
-  }
-`);
-
-/* --------------------- BE row → PurchaseConfirmationRow --------------------- */
-
-type ApiConfirmationRow = ResultOf<
-  typeof VIEW_PURCHASE_CONFIRMATIONS_QUERY
->["viewPurchaseConfirmations"]["data"][number];
-
-/** The `Date` scalar is untyped (`any`) — normalize ISO strings or epochs. */
-const toIsoDate = (value: unknown): string | null => {
-  if (value == null) return null;
-  let input = value;
-  if (typeof input === "string" && /^\d+$/.test(input)) input = Number(input);
-  if (typeof input === "string" || typeof input === "number") {
-    const date = new Date(input);
-    return Number.isNaN(date.getTime()) ? null : date.toISOString();
-  }
-  return null;
-};
-
 const toStatus = (value: string): AdminConfirmationStatus =>
   value === "confirmed" || value === "disputed" ? value : "waiting";
 
 const toProduct = (value: string | null | undefined): ConfirmationProduct =>
   value === "flex" ? "flex" : "full-ownership";
 
-function mapRow(row: ApiConfirmationRow): PurchaseConfirmationRow {
-  const disputes = row.disputes ?? [];
+function mapRow(row: AdminConfirmationRow): PurchaseConfirmationRow {
+  const disputes = row.disputes;
   // Latest unresolved entry; falls back to the most recent one.
   const activeDispute =
     [...disputes].reverse().find((entry) => !entry.resolved_at) ??
@@ -142,57 +72,52 @@ function mapRow(row: ApiConfirmationRow): PurchaseConfirmationRow {
     null;
   const resolvedAt =
     disputes
-      .map((entry) => toIsoDate(entry.resolved_at))
+      .map((entry) => entry.resolved_at)
       .filter((entry): entry is string => entry !== null)
       .sort()
       .at(-1) ?? null;
-  const buyerName = [row.buyer?.firstName, row.buyer?.lastName]
-    .filter(Boolean)
-    .join(" ")
-    .trim();
+  const buyerName = [row.buyer?.first_name, row.buyer?.last_name].filter(Boolean).join(" ").trim();
 
   return {
-    id: String(row.planId),
-    uniqueAssetId: row.uniqueAssetId,
+    id: row.plan_id,
+    uniqueAssetId: row.unique_asset_id,
     buyerName: buyerName || "Unknown buyer",
     buyerEmail: row.buyer?.email ?? "",
-    referrerName: row.referrer ?? null,
+    referrerName: row.referrer,
     assetName: row.asset ?? "Unknown asset",
     product: toProduct(row.snapshot.product),
-    nameOnDocument: row.snapshot.name_on_document ?? "—",
-    sizeSqm: row.snapshot.size ?? 0,
-    units: row.snapshot.units ?? 0,
-    planLabel: row.snapshot.plan_label ?? "—",
-    totalPayable: row.snapshot.total ?? 0,
-    purchasedAt: toIsoDate(row.createdAt) ?? "",
-    emailSentAt: toIsoDate(row.emailSentAt),
-    remindersSent: row.remindersSent?.length ?? 0,
+    nameOnDocument: row.snapshot.name_on_document || "—",
+    sizeSqm: row.snapshot.size,
+    units: row.snapshot.units,
+    planLabel: row.snapshot.plan_label || "—",
+    totalPayable: row.snapshot.total,
+    purchasedAt: row.createdAt,
+    emailSentAt: row.email_sent_at,
+    remindersSent: row.reminders_sent.length,
     status: toStatus(row.status),
-    confirmedAt: toIsoDate(row.confirmedAt),
-    disputedAt: toIsoDate(activeDispute?.disputed_at),
-    disputeNote: row.openDisputeNote ?? activeDispute?.note ?? null,
+    confirmedAt: row.confirmed_at,
+    disputedAt: activeDispute?.disputed_at ?? null,
+    disputeNote: row.open_dispute_note ?? activeDispute?.note ?? null,
     resolvedAt,
   };
 }
-
-/* --------------------- hooks --------------------- */
 
 export function usePurchaseConfirmations(filters: ConfirmationListFilters) {
   return useQuery({
     queryKey: purchaseConfirmationKeys.list(filters),
     queryFn: () =>
-      execute(VIEW_PURCHASE_CONFIRMATIONS_QUERY, {
-        filter: {
-          status: filters.status,
-          product: filters.product,
-          search: filters.search.trim() || undefined,
+      apiGetPaged("/admin/purchase-confirmations", AdminConfirmationRowSchema, {
+        params: {
+          status: filters.status === "all" ? undefined : filters.status,
+          product: filters.product === "all" ? undefined : filters.product,
+          q: filters.search.trim() || undefined,
+          page: filters.page,
+          limit: filters.limit,
         },
-        page: filters.page,
-        limit: filters.limit,
       }),
     select: (data) => ({
-      count: data.viewPurchaseConfirmations.count,
-      data: data.viewPurchaseConfirmations.data.map(mapRow),
+      count: data.meta.total ?? 0,
+      data: data.items.map(mapRow),
     }),
   });
 }
@@ -200,7 +125,6 @@ export function usePurchaseConfirmations(filters: ConfirmationListFilters) {
 export function useConfirmationCounts() {
   return useQuery({
     queryKey: purchaseConfirmationKeys.counts(),
-    queryFn: () => execute(PURCHASE_CONFIRMATION_COUNTS_QUERY),
-    select: (data) => data.purchaseConfirmationCounts,
+    queryFn: () => apiGet("/admin/purchase-confirmations/counts", ConfirmationCountsSchema),
   });
 }

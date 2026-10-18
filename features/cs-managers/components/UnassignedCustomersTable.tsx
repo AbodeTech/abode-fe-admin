@@ -5,7 +5,7 @@ import { AlertTriangle, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
-import type { UnassignedCustomer } from "@/lib/gql/graphql";
+import type { UnassignedCustomer } from "../schemas/cs-manager.schema";
 
 interface Props {
   customers: UnassignedCustomer[];
@@ -16,42 +16,30 @@ interface Props {
 const OVERDUE_THRESHOLD_DAYS = 7;
 
 const timeAgo = (iso: string) => {
-  const days = Math.floor(
-    (Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24)
-  );
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24));
   if (days === 0) return "today";
   if (days === 1) return "yesterday";
   return `${days}d ago`;
 };
 
 const initialsOf = (c: UnassignedCustomer) =>
-  ((c.lastName?.[0] ?? "") + (c.firstName?.[0] ?? "")).toUpperCase();
+  ((c.last_name?.[0] ?? "") + (c.first_name?.[0] ?? "")).toUpperCase();
 
-const fullName = (c: UnassignedCustomer) =>
-  `${c.lastName ?? ""} ${c.firstName ?? ""}`.trim();
+const fullName = (c: UnassignedCustomer) => `${c.last_name ?? ""} ${c.first_name ?? ""}`.trim();
 
-export function UnassignedCustomersTable({
-  customers,
-  onBulkAssign,
-  onAssignOne,
-}: Props) {
+export function UnassignedCustomersTable({ customers, onBulkAssign, onAssignOne }: Props) {
   const [selected, setSelected] = useState<Record<string, boolean>>({});
 
   const sorted = useMemo(
-    () =>
-      [...customers].sort((a, b) => b.daysUnassigned - a.daysUnassigned),
+    () => [...customers].sort((a, b) => b.days_unassigned - a.days_unassigned),
     [customers]
   );
 
   const selectedIds = Object.keys(selected).filter((k) => selected[k]);
-  const allSelected =
-    sorted.length > 0 && sorted.every((c) => selected[c._id]);
-  const overdueCount = sorted.filter(
-    (c) => c.daysUnassigned >= OVERDUE_THRESHOLD_DAYS
-  ).length;
+  const allSelected = sorted.length > 0 && sorted.every((c) => selected[c.id]);
+  const overdueCount = sorted.filter((c) => c.days_unassigned >= OVERDUE_THRESHOLD_DAYS).length;
 
-  const toggleOne = (id: string) =>
-    setSelected((s) => ({ ...s, [id]: !s[id] }));
+  const toggleOne = (id: string) => setSelected((s) => ({ ...s, [id]: !s[id] }));
 
   const toggleAll = () => {
     if (allSelected) {
@@ -59,7 +47,7 @@ export function UnassignedCustomersTable({
     } else {
       const next: Record<string, boolean> = {};
       sorted.forEach((c) => {
-        next[c._id] = true;
+        next[c.id] = true;
       });
       setSelected(next);
     }
@@ -81,11 +69,7 @@ export function UnassignedCustomersTable({
           )}
         </div>
         {onBulkAssign && (
-          <Button
-            size="sm"
-            disabled={selectedIds.length === 0}
-            onClick={() => onBulkAssign(selectedIds)}
-          >
+          <Button size="sm" disabled={selectedIds.length === 0} onClick={() => onBulkAssign(selectedIds)}>
             Assign {selectedIds.length > 0 ? `${selectedIds.length} ` : ""}selected
           </Button>
         )}
@@ -97,16 +81,14 @@ export function UnassignedCustomersTable({
             <thead>
               <tr className="text-left text-[11px] uppercase tracking-wide text-gray-500 bg-gray-50">
                 <th className="px-4 py-2.5 w-8">
-                  {onBulkAssign && (
-                    <Checkbox checked={allSelected} onCheckedChange={toggleAll} />
-                  )}
+                  {onBulkAssign && <Checkbox checked={allSelected} onCheckedChange={toggleAll} />}
                 </th>
                 <th className="px-4 py-2.5 font-medium">Customer</th>
                 <th className="px-4 py-2.5 font-medium">Phone</th>
                 <th className="px-4 py-2.5 font-medium">Plans</th>
                 <th className="px-4 py-2.5 font-medium">First purchase</th>
                 <th className="px-4 py-2.5 font-medium">Waiting</th>
-                <th className="px-4 py-2.5"></th>
+                <th className="px-4 py-2.5" />
               </tr>
             </thead>
             <tbody>
@@ -118,15 +100,12 @@ export function UnassignedCustomersTable({
                 </tr>
               ) : (
                 sorted.map((c) => {
-                  const overdue = c.daysUnassigned >= OVERDUE_THRESHOLD_DAYS;
+                  const overdue = c.days_unassigned >= OVERDUE_THRESHOLD_DAYS;
                   return (
-                    <tr key={c._id} className="border-t border-gray-100 hover:bg-gray-50/60">
+                    <tr key={c.id} className="border-t border-gray-100 hover:bg-gray-50/60">
                       <td className="px-4 py-3">
                         {onBulkAssign && (
-                          <Checkbox
-                            checked={!!selected[c._id]}
-                            onCheckedChange={() => toggleOne(c._id)}
-                          />
+                          <Checkbox checked={!!selected[c.id]} onCheckedChange={() => toggleOne(c.id)} />
                         )}
                       </td>
                       <td className="px-4 py-3">
@@ -135,43 +114,29 @@ export function UnassignedCustomersTable({
                             {initialsOf(c)}
                           </div>
                           <div>
-                            <p className="font-medium text-gray-900 leading-tight">
-                              {fullName(c)}
-                            </p>
-                            <p className="text-xs text-gray-500 leading-tight">
-                              {c.email}
-                            </p>
+                            <p className="font-medium text-gray-900 leading-tight">{fullName(c)}</p>
+                            <p className="text-xs text-gray-500 leading-tight">{c.email}</p>
                           </div>
                         </div>
                       </td>
                       <td className="px-4 py-3 text-gray-700">
                         {c.phone ?? <span className="text-gray-400">—</span>}
                       </td>
-                      <td className="px-4 py-3 text-gray-700 tabular-nums">
-                        {c.planCount}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-gray-500">
-                        {timeAgo(c.firstPurchaseAt)}
-                      </td>
+                      <td className="px-4 py-3 text-gray-700 tabular-nums">{c.plan_count}</td>
+                      <td className="px-4 py-3 text-xs text-gray-500">{timeAgo(c.first_purchase_at)}</td>
                       <td className="px-4 py-3">
                         <span
                           className={cn(
                             "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium tabular-nums",
-                            overdue
-                              ? "bg-red-50 text-[#AD1F2A]"
-                              : "bg-amber-50 text-amber-700"
+                            overdue ? "bg-red-50 text-[#AD1F2A]" : "bg-amber-50 text-amber-700"
                           )}
                         >
-                          {c.daysUnassigned}d
+                          {c.days_unassigned}d
                         </span>
                       </td>
                       <td className="px-4 py-3">
                         {onAssignOne && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => onAssignOne(c)}
-                          >
+                          <Button size="sm" variant="outline" onClick={() => onAssignOne(c)}>
                             Assign
                           </Button>
                         )}

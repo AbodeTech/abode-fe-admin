@@ -1,27 +1,11 @@
 'use client';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { execute } from '@/lib/graphql-client';
-import { graphql } from '@/lib/gql';
 
+import { apiPost } from '@/lib/api-client';
+
+import { SaveEventAllocationsResultSchema } from '../schemas/company-event.schema';
 import { companyEventKeys } from './query-keys';
-
-const ALLOCATE_TO_EVENT_MUTATION = graphql(`
-  mutation AllocateToEvent($eventId: ID!, $paymentPlanIds: [ID!]!) {
-    allocateToEvent(eventId: $eventId, paymentPlanIds: $paymentPlanIds) {
-      remaining_capacity
-      succeeded {
-        payment_plans
-        id
-        size_reserved
-      }
-      failed {
-        payment_plan
-        reason
-      }
-    }
-  }
-`);
 
 export interface SaveEventAllocationsInput {
   eventId: string;
@@ -29,25 +13,20 @@ export interface SaveEventAllocationsInput {
 }
 
 /**
- * `allocateToEvent` — commits the selected batch.
- *
- * One entry in `succeeded` is one seat, and a seat can cover several of the
- * ids sent — a buyer holding three plots here is allocated once, for their
- * combined size. So `succeeded.length` counts people, not plans, and will be
- * smaller than the number of ids submitted whenever someone holds more than
- * one plot.
- *
- * Deliberately not all-or-nothing at the row level: the server re-validates
- * every id regardless of what the admin's screen showed, so plans can come
- * back in `failed` with a reason while the rest still go through. One client
- * suspended since the page loaded does not cost the whole batch — callers
- * must report both lists rather than assuming success.
+ * `POST /admin/company-events/:id/allocations` — saves the selected batch.
+ * The response is a partial-success shape (decision #1: the server
+ * re-validates every id regardless of what the admin's screen showed, so
+ * some ids in the request can still come back `failed`).
  */
 export const useSaveEventAllocations = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ eventId, paymentPlanIds }: SaveEventAllocationsInput) =>
-      execute(ALLOCATE_TO_EVENT_MUTATION, { eventId, paymentPlanIds }),
+      apiPost(
+        `/admin/company-events/${eventId}/allocations`,
+        { payment_plan_ids: paymentPlanIds },
+        SaveEventAllocationsResultSchema
+      ),
     onSuccess: () => {
       // Invalidate the whole domain rather than a narrower list key: a list
       // key embeds the active filters object, and invalidateQueries only
@@ -58,7 +37,3 @@ export const useSaveEventAllocations = () => {
     },
   });
 };
-
-export type SaveEventAllocationsResult = Awaited<
-  ReturnType<ReturnType<typeof useSaveEventAllocations>['mutateAsync']>
->['allocateToEvent'];

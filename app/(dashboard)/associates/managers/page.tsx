@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Lock, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { ProRosterGroup } from "@/lib/gql/graphql";
+import type { ProGroup } from "@/features/associate-managers/schemas/manager-dashboard.schema";
 import {
   PerformanceHeader,
   ManagerSnapshot,
@@ -26,7 +26,6 @@ import {
 } from "@/features/associate-managers";
 import { buildManagerDashboardFilter, buildManagerDashboardPeriodFilter } from "@/features/associate-managers/lib/dashboard-filter";
 import { useAuthStore } from "@/store/auth-store";
-import { isTopLevelAdmin } from "@/lib/admin-roles";
 
 /** Friendly empty state for users who shouldn't be here. */
 function NotAuthorized() {
@@ -54,19 +53,23 @@ function AssociateManagersContent() {
   const { user } = useAuthStore();
 
   /** Opens the side drawer for a KPI cohort (does not change the main table filter). */
-  const openGroup = (group: ProRosterGroup) => {
+  const openGroup = (group: ProGroup) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("open_group", group);
     params.set("group_page", "1");
     router.push(`?${params.toString()}`, { scroll: false });
   };
 
-  // Real role gating: Super Admins (admin.role === "admin") get the Super
+  // Real role gating: super admins (the `is_super_admin` role flag) get the Super
   // Admin view. Any other admin who is also an Associate Manager (regardless
   // of their base role — subadmin / moderator / viewer) gets the Manager
   // view. `?view=manager` lets super admins preview the Manager layout.
-  const isSuperAdmin = isTopLevelAdmin(user?.role);
-  const { isManager, isLoading: managerCheckLoading } = useIsCurrentUserManager();
+  const isSuperAdmin = Boolean(user?.role?.is_super_admin);
+  const {
+    isManager,
+    managerId: selfManagerId,
+    isLoading: managerCheckLoading,
+  } = useIsCurrentUserManager();
   const wantsManagerView = searchParams.get("view") === "manager";
   const isAuthorized = isSuperAdmin || isManager || wantsManagerView;
 
@@ -103,19 +106,19 @@ function AssociateManagersContent() {
 
   // Super Admin: list managers for the dropdown. Limit 200 covers most orgs;
   // bump to a server-side search if rosters grow beyond that.
-  const managersQuery = useAssociateManagers({ page: 1, limit: 200 });
-  const managers = managersQuery.data?.results ?? [];
+  const managersQuery = useAssociateManagers({ page: 1, limit: 100 });
+  const managers = managersQuery.data?.items ?? [];
 
   // Resolve the active manager id from URL, fall back to first.
   // Special sentinel "all" = combined view across every manager.
   const isAllManagers = managerIdParam === "all";
   const activeManagerId = isAllManagers
     ? null
-    : (managerIdParam ?? managers[0]?.manager?._id ?? null);
+    : (managerIdParam ?? managers[0]?.manager_id ?? null);
 
   const activeManager = isAllManagers
     ? null
-    : managers.find((m) => m.manager?._id === activeManagerId) ?? null;
+    : managers.find((m) => m.manager_id === activeManagerId) ?? null;
 
   // Dashboard data — three super-admin endpoints + one self endpoint.
   // All gated on `isAuthorized` so unauthorized users skip the round-trip.
@@ -137,15 +140,8 @@ function AssociateManagersContent() {
       keepPreviousData: true,
     }
   );
-  const allManagersKpiQuery = useAllManagersDashboard({
-    filter: periodFilter,
-    enabled: isAuthorized && viewAs === "super-admin" && isAllManagers,
-  });
-  const allManagersTableQuery = useAllManagersDashboard({
-    filter,
-    enabled: isAuthorized && viewAs === "super-admin" && isAllManagers,
-    keepPreviousData: true,
-  });
+  const allManagersKpiQuery = useAllManagersDashboard(periodFilter, { enabled: isAuthorized && viewAs === "super-admin" && isAllManagers });
+  const allManagersTableQuery = useAllManagersDashboard(filter, { enabled: isAuthorized && viewAs === "super-admin" && isAllManagers, keepPreviousData: true });
   const selfKpiQuery = useManagerDashboard(periodFilter, {
     enabled: isAuthorized && viewAs === "manager",
   });
@@ -231,25 +227,18 @@ function AssociateManagersContent() {
     );
   }
 
-  const activeManagerSlug = (() => {
-    const m = activeManager?.manager;
-    if (!m) return "my-roster";
-    const full = `${m.lastName ?? ""} ${m.firstName ?? ""}`.trim() || m.userName || "manager";
-    return full.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-  })();
-
   const handleExportPros = async () => {
     try {
       await exportPros({
-        managerId: viewAs === "manager" ? null : activeManagerId,
-        filter,
-        filenamePrefix: `manager-pros-${activeManagerSlug}`,
+        scope: isAllManagers ? "combined" : "single",
+        managerId: viewAs === "manager" ? selfManagerId : activeManagerId,
+        params: filter,
       });
       toast.success("Roster exported successfully.");
     } catch (err) {
       const message = (err as Error).message || "";
-      // BE caps export at 5,000 rows; surface that clearly when it fires.
-      if (/Export limit exceeded|EXPORT_LIMIT_EXCEEDED/i.test(message)) {
+      // BE caps the roster export at 50,000 rows.
+      if (/EXPORT_TOO_LARGE|too many rows/i.test(message)) {
         toast.error("Too many rows to export — narrow your date range or apply a group filter.");
       } else {
         toast.error(message || "Failed to export roster.");
@@ -264,7 +253,7 @@ function AssociateManagersContent() {
         managers={managers}
         activeManagerId={activeManagerId}
         isAllManagers={isAllManagers}
-        assignedProsCount={dashboard.recruitment.totalAssigned}
+        assignedProsCount={dashboard.recruitment.total_assigned}
       />
 
       <ManagerSnapshot
@@ -284,16 +273,8 @@ function AssociateManagersContent() {
         />
       )}
 
-      <RecruitmentSection
-        data={dashboard.recruitment}
-        onOpenGroup={openGroup}
-        attributionMode={isAllManagers ? "combined" : "single"}
-      />
-      <SalesRevenueSection
-        data={dashboard.salesAndRevenue}
-        onOpenGroup={openGroup}
-        attributionMode={isAllManagers ? "combined" : "single"}
-      />
+      <RecruitmentSection attributionMode={isAllManagers ? "combined" : "single"} data={dashboard.recruitment} onOpenGroup={openGroup} />
+      <SalesRevenueSection attributionMode={isAllManagers ? "combined" : "single"} data={dashboard.sales_and_revenue} onOpenGroup={openGroup} />
       <ActivitySection data={dashboard.activity} onOpenGroup={openGroup} />
       <MilestonesSection data={dashboard.milestones} onOpenGroup={openGroup} />
 
@@ -307,15 +288,15 @@ function AssociateManagersContent() {
         }
         managerId={activeManagerId}
         periodFilter={periodFilter}
-        exportFilenamePrefix={`manager-pros-${activeManagerSlug}`}
-        exportManagerId={viewAs === "manager" ? null : activeManagerId}
+        exportManagerId={viewAs === "manager" ? selfManagerId : activeManagerId}
       />
 
       <AssociateProsTable
-        pros={tableData?.associatePros ?? dashboard.associatePros}
+        scope={isAllManagers ? "combined" : "single"}
+        pros={tableData?.associate_pros ?? dashboard.associate_pros}
         sourceManagerId={activeManagerId}
         groupTotal={
-          tableData?.associateProsGroupTotal ?? dashboard.associateProsGroupTotal
+          tableData?.associate_pros_group_total ?? dashboard.associate_pros_group_total
         }
         isLoading={tableLoading}
         onExport={isAllManagers ? undefined : handleExportPros}
@@ -328,6 +309,7 @@ function AssociateManagersContent() {
         <TeamSalesSection
           viewAs={viewAs}
           activeManagerId={activeManagerId}
+          selfManagerId={selfManagerId}
           startDate={startDate}
           endDate={endDate}
         />

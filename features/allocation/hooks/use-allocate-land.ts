@@ -1,65 +1,40 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { TypedDocumentNode } from "@graphql-typed-document-node/core";
-import { parse } from "graphql";
-import { execute } from "@/lib/graphql-client";
-import { allocationKeys } from "./query-keys";
+'use client';
 
-// NOTE: this file is excluded from codegen (see codegen.ts), so the codegen
-// `graphql()` helper returns `{}` at runtime and execute(print({})) crashes
-// with an "AST node" error. Parse the operation manually instead.
-const ALLOCATE_LAND_MUTATION = parse(`
-  mutation AllocateLand($paymentPlanId: ID!, $plotIds: [ID!]!) {
-    allocateLand(paymentPlanId: $paymentPlanId, plotIds: $plotIds) {
-      success
-      message
-      assetName
-      allocations {
-        plotId
-        block_label
-        plot_number
-        size
-      }
-      user {
-        name
-        email
-      }
-    }
-  }
-`) as unknown as TypedDocumentNode<
-  { allocateLand: AllocateLandResult },
-  { paymentPlanId: string; plotIds: string[] }
->;
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+
+import { apiPost } from '@/lib/api-client';
+
+import { AllocateResultSchema } from '../schemas/allocation.schema';
+import { allocationKeys } from './query-keys';
 
 export interface AllocateLandInput {
   paymentPlanId: string;
   plotIds: string[];
+  reason?: string;
 }
 
-export interface AllocationEntry {
-  plotId: string;
-  block_label: string;
-  plot_number: number;
-  size: number;
-}
-
-export interface AllocateLandResult {
-  success: boolean;
-  message: string;
-  assetName: string;
-  allocations: AllocationEntry[];
-  user: { name: string; email: string };
-}
-
+/**
+ * POST /admin/allocation/payment-plans/:plan_id/allocate — confirmed against
+ * abode-be-v2's allocation module on `origin/staging` (2026-08-28, not yet
+ * deployed to this app's target environment). Body: `{ plot_ids, reason? }`.
+ *
+ * `warnings` in the response is non-empty only for a `developer_plot` asset
+ * — every other asset type gets a hard 400 (`SIZE_MISMATCH`) instead, thrown
+ * as an `ApiClientError` the caller can read `.code` off.
+ */
 export const useAllocateLand = () => {
-  const client = useQueryClient();
+  const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: AllocateLandInput) =>
-      execute(ALLOCATE_LAND_MUTATION, {
-        paymentPlanId: input.paymentPlanId,
-        plotIds: input.plotIds,
-      }),
+    mutationFn: ({ paymentPlanId, plotIds, reason }: AllocateLandInput) =>
+      apiPost(
+        `/admin/allocation/payment-plans/${paymentPlanId}/allocate`,
+        { plot_ids: plotIds, ...(reason ? { reason } : {}) },
+        AllocateResultSchema
+      ),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: allocationKeys.all });
+      // allocationKeys.all covers both the eligible-clients list and every
+      // availablePlots query — both key factories nest under ['allocation'].
+      queryClient.invalidateQueries({ queryKey: allocationKeys.all });
     },
   });
 };

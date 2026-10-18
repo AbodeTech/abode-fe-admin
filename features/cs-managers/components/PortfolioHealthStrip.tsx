@@ -1,49 +1,46 @@
 "use client";
 
+import type { ElementType } from "react";
 import { CheckCircle2, Clock, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { CsManagerPortfolio as CSManagerPortfolio } from "@/lib/gql/graphql";
+import type { CSManagerDashboard } from "../schemas/cs-manager.schema";
 
 interface Props {
-  portfolio: CSManagerPortfolio;
+  portfolio: CSManagerDashboard["portfolio"];
 }
 
 /** Rolling counts across the roster — not tied to the current period. */
 export function PortfolioHealthStrip({ portfolio }: Props) {
-  const pctCompleted = portfolio.totalAssigned
-    ? Math.round((portfolio.completedPayment / portfolio.totalAssigned) * 100)
+  const pctCompleted = portfolio.total_assigned
+    ? Math.round((portfolio.completed_payment / portfolio.total_assigned) * 100)
     : 0;
 
   return (
     <section className="space-y-3">
       <div className="flex items-baseline justify-between gap-3 flex-wrap">
-        <h2 className="text-base font-semibold text-gray-900">
-          Portfolio Health
-        </h2>
-        <span className="text-xs text-gray-500">
-          Rolling roster counts — not tied to this period.
-        </span>
+        <h2 className="text-base font-semibold text-gray-900">Portfolio Health</h2>
+        <span className="text-xs text-gray-500">Rolling roster counts — not tied to this period.</span>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <HealthTile
           icon={CheckCircle2}
           iconClass="text-emerald-700 bg-emerald-50"
           label="Customers with completed payment"
-          value={portfolio.completedPayment}
-          foot={`of ${portfolio.totalAssigned} assigned · ${pctCompleted}%`}
+          value={portfolio.completed_payment}
+          foot={`of ${portfolio.total_assigned} assigned · ${pctCompleted}%`}
         />
         <HealthTile
           icon={Clock}
           iconClass="text-[#00695C] bg-[#E0F2F1]"
           label="Customers within payment period"
-          value={portfolio.withinPaymentPeriod}
+          value={portfolio.within_payment_period}
           foot="active plans · normal pace"
         />
         <HealthTile
           icon={AlertTriangle}
           iconClass="text-[#AD1F2A] bg-red-50"
           label="Close to defaulting (≤1 month to go)"
-          value={portfolio.closeToDefaulting}
+          value={portfolio.close_to_defaulting}
           foot="urgent intervention · escalate"
         />
       </div>
@@ -58,7 +55,7 @@ function HealthTile({
   value,
   foot,
 }: {
-  icon: React.ElementType;
+  icon: ElementType;
   iconClass: string;
   label: string;
   value: number;

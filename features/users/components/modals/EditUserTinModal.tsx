@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -29,12 +29,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { useUpdateUserTin } from "../../hooks/use-user-mutations";
 import { getErrorMessage } from "../../utils/error-message";
+import { AdminReasonFields } from "./AdminReasonFields";
+import { SetUserTinPayloadSchema } from "../../schemas/user-actions.schema";
 
-const formSchema = z.object({
-  tin: z.string().trim().min(1, "TIN is required"),
-});
-
-type FormSchemaType = z.infer<typeof formSchema>;
+type FormSchemaType = z.infer<typeof SetUserTinPayloadSchema>;
 
 interface EditUserTinModalProps {
   currentTin?: string;
@@ -58,19 +56,30 @@ export function EditUserTinModal({
   const setIsOpen = onOpenChange || setInternalOpen;
 
   const form = useForm<FormSchemaType>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(SetUserTinPayloadSchema),
     defaultValues: {
       tin: currentTin || "",
+      reason: "",
+      notify_user: false,
     },
   });
+
+  useEffect(() => {
+    if (!isOpen) return
+    form.reset({
+      tin: currentTin || "",
+      reason: "",
+      notify_user: false,
+    })
+  }, [isOpen, currentTin, form])
 
   const onSubmit = async (data: FormSchemaType) => {
     try {
       await updateTin.mutateAsync({
         userId,
-        tin: data.tin.trim(),
+        payload: { ...data, tin: data.tin.trim().toUpperCase() },
       });
-      toast.success("TIN updated successfully");
+      toast.success("TIN updated and approved");
       setIsOpen(false);
     } catch (error: unknown) {
       toast.error(getErrorMessage(error, "Failed to update TIN"));
@@ -83,7 +92,9 @@ export function EditUserTinModal({
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Edit User TIN</DialogTitle>
-          <DialogDescription>Update this user&apos;s tax identification number.</DialogDescription>
+          <DialogDescription>
+            Set or correct this user&apos;s TIN (11 digits, or an N-prefixed tax id). It will be marked approved.
+          </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -94,12 +105,13 @@ export function EditUserTinModal({
                 <FormItem>
                   <FormLabel>TIN</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter TIN" {...field} />
+                    <Input placeholder="12345678901" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
+            <AdminReasonFields reasonPlaceholder="Reason for setting this TIN…" />
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>

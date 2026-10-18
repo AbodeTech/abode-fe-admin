@@ -20,11 +20,17 @@ import {
 } from "../hooks/use-ticket-pickers";
 import { useTicketUserSuggestions } from "../hooks/use-tickets";
 import { useUpdateTicket } from "../hooks/use-ticket-mutations";
+import { ticketWriteError } from "../lib/ticket-errors";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  ticketId: string;
+ ticketId: string;
+  /**
+   * The `updatedAt` the caller rendered. Sent as the concurrency guard so this
+   * write is refused rather than silently overwriting someone else's.
+   */
+  expectedUpdatedAt?: string;
   currentUserId?: string | null;
   onAssigned?: () => void;
 }
@@ -51,6 +57,7 @@ export function AssignAffectedUserDialog({
   open,
   onOpenChange,
   ticketId,
+  expectedUpdatedAt,
   currentUserId,
   onAssigned,
 }: Props) {
@@ -74,13 +81,13 @@ export function AssignAffectedUserDialog({
   const handleAssign = async () => {
     if (!pickedId) return;
     try {
-      await update.mutateAsync({ ticketId, userAffectedId: pickedId });
+      await update.mutateAsync({ ticketId, user_affected_id: pickedId, expected_updated_at: expectedUpdatedAt });
       toast.success("Affected user linked");
       onAssigned?.();
       handleClose();
     } catch (err: unknown) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to link affected user"
+        ticketWriteError(err, "Failed to link affected user")
       );
     }
   };
@@ -92,7 +99,7 @@ export function AssignAffectedUserDialog({
           <DialogTitle>Link affected user</DialogTitle>
           <DialogDescription>
             Whose account this ticket concerns. Suggestions come from the
-            sender's address and other signals — always confirm before applying.
+            sender&apos;s address and other signals — always confirm before applying.
           </DialogDescription>
         </DialogHeader>
 
@@ -133,7 +140,7 @@ export function AssignAffectedUserDialog({
                         <span
                           className={cn(
                             "shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide",
-                            CONFIDENCE_CLASS[s.confidence] ??
+                            CONFIDENCE_CLASS[String(s.confidence ?? "")] ??
                               "bg-gray-100 text-gray-700"
                           )}
                         >

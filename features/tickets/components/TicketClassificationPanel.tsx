@@ -3,12 +3,7 @@
 import { AlertTriangle, Bot, Loader2, RefreshCw, Sparkles, User2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import {
-  FieldSource,
-  TicketType,
-  type GetTicketQuery,
-} from "@/lib/gql/graphql";
-import { useAdminSession } from "@/hooks/use-admin-session";
+import { useTicketPermissions } from "../hooks/use-ticket-permissions";
 import { useTicketCategories } from "../hooks/use-tickets";
 import {
   useClassifyTicket,
@@ -21,8 +16,10 @@ import {
   categoryLabel,
   formatConfidence,
 } from "../lib/ticket-display";
+import { type FieldSource, type TicketDetail, type TicketType } from "../schemas/ticket.schema";
+import { ticketWriteError } from "../lib/ticket-errors";
 
-type Ticket = GetTicketQuery["getTicket"]["ticket"];
+type Ticket = TicketDetail["ticket"];
 
 interface Props {
   ticket: Ticket;
@@ -56,22 +53,36 @@ const formatWhen = (iso: string) => {
  * a control that just stops working reads as a bug.
  */
 export function TicketClassificationPanel({ ticket }: Props) {
-  const { canDecideTicketRouting } = useAdminSession();
-  const { data: categories = [] } = useTicketCategories(canDecideTicketRouting);
+  const { canDecideRouting } = useTicketPermissions();
+  const { data: categories = [] } = useTicketCategories(canDecideRouting);
   const update = useUpdateTicket();
   const classify = useClassifyTicket();
 
   const ai = ticket.ai;
-  const confidence = ai?.confidence ?? null;
+  /**
+   * v2 scores category and type separately — the model is asked two questions
+   * and was never equally sure of both, so the single number GraphQL returned
+   * was always a lie about one of them. The badge reports the WEAKER of the
+   * two: it is the one that decides whether this classification can be trusted
+   * at a glance.
+   */
+  const confidences = [ai?.category_confidence, ai?.type_confidence].filter(
+    (c): c is number => typeof c === "number"
+  );
+  const confidence = confidences.length ? Math.min(...confidences) : null;
   // Below the BE's threshold nothing is written — the value is a suggestion only.
   const wasConfident = confidence != null && confidence >= AUTO_WRITE_CONFIDENCE;
 
   const handleCategory = async (value: string) => {
     try {
-      await update.mutateAsync({ ticketId: ticket._id, category: value || null });
+      await update.mutateAsync({
+        ticketId: ticket._id,
+        category: value || null,
+        expected_updated_at: ticket.updatedAt,
+      });
       toast.success("Category updated");
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to update category");
+      toast.error(ticketWriteError(err, "Failed to update category"));
     }
   };
 
@@ -80,10 +91,11 @@ export function TicketClassificationPanel({ ticket }: Props) {
       await update.mutateAsync({
         ticketId: ticket._id,
         type: (value || null) as TicketType | null,
+        expected_updated_at: ticket.updatedAt,
       });
       toast.success("Type updated");
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to update type");
+      toast.error(ticketWriteError(err, "Failed to update type"));
     }
   };
 
@@ -92,7 +104,7 @@ export function TicketClassificationPanel({ ticket }: Props) {
       await classify.mutateAsync(ticket._id);
       toast.success("Classification re-run");
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to re-classify");
+      toast.error(ticketWriteError(err, "Failed to re-classify"));
     }
   };
 
@@ -102,7 +114,7 @@ export function TicketClassificationPanel({ ticket }: Props) {
         <h3 className="text-xs font-semibold text-gray-900 uppercase tracking-wide">
           Classification
         </h3>
-        {canDecideTicketRouting && (
+        {canDecideRouting && (
           <button
             type="button"
             onClick={handleReclassify}
@@ -121,7 +133,7 @@ export function TicketClassificationPanel({ ticket }: Props) {
 
       <div className="grid grid-cols-2 gap-2">
         <Field label="Type" source={ticket.type_source}>
-          {canDecideTicketRouting ? (
+          {canDecideRouting ? (
             <select
               value={ticket.type ?? ""}
               onChange={(e) => handleType(e.target.value)}
@@ -143,7 +155,7 @@ export function TicketClassificationPanel({ ticket }: Props) {
         </Field>
 
         <Field label="Category" source={ticket.category_source}>
-          {canDecideTicketRouting ? (
+          {canDecideRouting ? (
             <select
               value={ticket.category ?? ""}
               onChange={(e) => handleCategory(e.target.value)}
@@ -163,7 +175,7 @@ export function TicketClassificationPanel({ ticket }: Props) {
         </Field>
       </div>
 
-      {!canDecideTicketRouting && (
+      {!canDecideRouting && (
         <p className="text-[11px] text-gray-500">
           Classification is set by the CS Manager. Add an internal note if you
           think it&apos;s wrong.
@@ -173,7 +185,7 @@ export function TicketClassificationPanel({ ticket }: Props) {
       {/* Only issues (`fault` on the wire) are meant to group under a
           root-cause Issue. The BE documents this but doesn't enforce it, so
           this advises. */}
-      {ticket.type === TicketType.Fault && !ticket.issue && (
+      {ticket.type === 'fault' && !ticket.issue && (
         <p className="text-[11px] text-gray-500">
           Issues can be grouped under a root cause — link one if this is part of
           something wider.
@@ -217,13 +229,13 @@ export function TicketClassificationPanel({ ticket }: Props) {
               </span>
             )}
           </p>
-          {ai.affected_hints.length > 0 && (
+          {(ai.affected_hints ?? []).length > 0 && (
             <div className="pt-0.5">
               <p className="text-[10px] uppercase tracking-wide text-gray-400 mb-1">
                 Identifiers found in the body — never auto-linked
               </p>
               <ul className="flex flex-wrap gap-1">
-                {ai.affected_hints.map((h, i) => (
+                {(ai.affected_hints ?? []).map((h, i) => (
                   <li
                     key={`${h.value}-${i}`}
                     title={h.note ?? undefined}
@@ -283,7 +295,7 @@ function Field({
         <span className="text-[10px] uppercase tracking-wide text-gray-500">
           {label}
         </span>
-        {source === FieldSource.Ai && (
+        {source === 'ai' && (
           <span
             title="Set by the classifier — change it to override"
             className="inline-flex items-center gap-0.5 rounded-full bg-violet-50 text-violet-700 px-1 py-0.5 text-[9px] font-medium"
@@ -292,7 +304,7 @@ function Field({
             AI
           </span>
         )}
-        {source === FieldSource.Human && (
+        {source === 'human' && (
           <span
             title="Set by a person"
             className="inline-flex items-center gap-0.5 rounded-full bg-gray-100 text-gray-600 px-1 py-0.5 text-[9px] font-medium"

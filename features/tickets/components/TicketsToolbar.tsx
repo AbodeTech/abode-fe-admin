@@ -2,7 +2,6 @@
 
 import { Loader2, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { DateFilter } from "@/components/shared/DateFilter";
 import {
   Select,
   SelectContent,
@@ -10,7 +9,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { TicketChannel, TicketSort, TicketType } from "@/lib/gql/graphql";
 import {
   CHANNEL_OPTIONS,
   SORT_OPTIONS,
@@ -19,18 +17,13 @@ import {
 } from "../lib/ticket-display";
 import { useTicketCategories } from "../hooks/use-tickets";
 import { useTicketManagerPicker } from "../hooks/use-ticket-manager-picker";
+import { type TicketChannel, type TicketSort, type TicketType } from "../schemas/ticket.schema";
 
 interface Props {
   sort: TicketSort;
   onSortChange: (value: TicketSort) => void;
   channel: TicketChannel | null;
   onChannelChange: (value: TicketChannel | null) => void;
-  /**
-   * Whether to offer the date range. Table-view only, for the same reason as
-   * the rest: re-filtering the rail while reading a thread moves the thread
-   * out from under the reader.
-   */
-  showDateFilter?: boolean;
   /**
    * Table-view only. In the mail view, search and the two classification
    * filters are omitted: search belongs in the list rail next to the rows it
@@ -65,7 +58,6 @@ const ANY = "__any__";
 
 /** Everything that narrows the queue, in one row above it. */
 export function TicketsToolbar({
-  showDateFilter,
   sort,
   onSortChange,
   channel,
@@ -93,11 +85,6 @@ export function TicketsToolbar({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {/* The app-wide control, writing start_date / end_date — the same params
-          and the same presets as every other dated screen, so the range means
-          the same thing here as it does on sales or admin logs. */}
-      {showDateFilter && <DateFilter />}
-
       {showSearch && (
         <div className="relative min-w-0 flex-1 sm:max-w-xs">
           <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />

@@ -1,87 +1,65 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { execute } from "@/lib/graphql-client";
-import { graphql } from "@/lib/gql";
+'use client';
 
-const GET_ASSET_BLOCKS_QUERY = graphql(`
-  query GetAssetBlocks($assetId: ID!) {
-    getAssetBlocks(assetId: $assetId) {
-      _id
-      asset
-      label
-      description
-      createdAt
-    }
-  }
-`);
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { z } from 'zod';
 
-const CREATE_BLOCK_MUTATION = graphql(`
-  mutation CreateBlock($assetId: ID!, $label: String!, $description: String) {
-    createBlock(assetId: $assetId, label: $label, description: $description) {
-      _id
-      asset
-      label
-      description
-      createdAt
-    }
-  }
-`);
+import { apiDelete, apiGet, apiPatch, apiPost } from '@/lib/api-client';
 
-const DELETE_BLOCK_MUTATION = graphql(`
-  mutation DeleteBlock($blockId: ID!) {
-    deleteBlock(blockId: $blockId)
-  }
-`);
+import { BlockSchema } from '../schemas/block-plot.schema';
+import { assetKeys } from './query-keys';
 
-export interface Block {
-  _id: string;
-  asset: string;
-  label: string;
-  description: string | null;
-  createdAt: string | null;
-}
+/**
+ * Blocks under one asset.
+ *
+ *   GET    /admin/assets/:asset_id/blocks
+ *   POST   /admin/assets/:asset_id/blocks   { label, description? }
+ *   PATCH  /admin/blocks/:block_id          { label?, description? }
+ *   DELETE /admin/blocks/:block_id
+ *
+ * Writes are only a signal that the change landed — every one invalidates and
+ * re-reads, so their responses go unparsed. `forbidNonWhitelisted` is on, so
+ * the bodies carry exactly the DTO's fields and nothing else.
+ */
+const WriteResultSchema = z.unknown();
 
-export const blockKeys = {
-  all: ["blocks"] as const,
-  list: (assetId: string) => [...blockKeys.all, "list", assetId] as const,
-};
-
-export const useAssetBlocks = (assetId: string) => {
-  return useQuery({
-    queryKey: blockKeys.list(assetId),
-    queryFn: () => execute(GET_ASSET_BLOCKS_QUERY, { assetId }),
-    select: (data) => data.getAssetBlocks as Block[],
+export const useAssetBlocks = (assetId: string) =>
+  useQuery({
+    queryKey: assetKeys.blocks(assetId),
+    queryFn: () => apiGet(`/admin/assets/${assetId}/blocks`, z.array(BlockSchema)),
     enabled: !!assetId,
   });
-};
 
-export interface CreateBlockInput {
-  assetId: string;
-  label: string;
-  description?: string;
+function useBlockMutation<TVariables, TData>(
+  assetId: string,
+  mutationFn: (variables: TVariables) => Promise<TData>
+) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: assetKeys.blocks(assetId) });
+      // Deleting a block removes its plots from the asset-wide figures too.
+      queryClient.invalidateQueries({ queryKey: assetKeys.plotInventory(assetId) });
+      queryClient.invalidateQueries({ queryKey: assetKeys.plotSummary(assetId) });
+      queryClient.invalidateQueries({ queryKey: assetKeys.inventoryReconciliation(assetId) });
+    },
+  });
 }
 
-export const useCreateBlock = (assetId: string) => {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: (input: CreateBlockInput) =>
-      execute(CREATE_BLOCK_MUTATION, {
-        assetId: input.assetId,
-        label: input.label,
-        description: input.description ?? null,
-      }),
-    onSuccess: () => {
-      client.invalidateQueries({ queryKey: blockKeys.list(assetId) });
-    },
-  });
-};
+export const useCreateBlock = (assetId: string) =>
+  useBlockMutation(assetId, (payload: { label: string; description?: string }) =>
+    apiPost(`/admin/assets/${assetId}/blocks`, payload, WriteResultSchema)
+  );
 
-export const useDeleteBlock = (assetId: string) => {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: (blockId: string) =>
-      execute(DELETE_BLOCK_MUTATION, { blockId }),
-    onSuccess: () => {
-      client.invalidateQueries({ queryKey: blockKeys.list(assetId) });
-    },
-  });
-};
+export const useUpdateBlock = (assetId: string) =>
+  useBlockMutation(
+    assetId,
+    ({ blockId, ...payload }: { blockId: string; label?: string; description?: string }) =>
+      apiPatch(`/admin/blocks/${blockId}`, payload, WriteResultSchema)
+  );
+
+/** The BE refuses a block that still holds allocated plots (400). */
+export const useDeleteBlock = (assetId: string) =>
+  useBlockMutation(assetId, (blockId: string) =>
+    apiDelete(`/admin/blocks/${blockId}`, WriteResultSchema)
+  );

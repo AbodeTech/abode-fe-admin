@@ -7,21 +7,15 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Pagination } from "@/components/shared/Pagination";
 import { useDebounce } from "@/hooks/use-debounce";
-import { useAdminSession } from "@/hooks/use-admin-session";
-import {
-  TicketChannel,
-  TicketFilter,
-  TicketSort,
-  TicketType,
-} from "@/lib/gql/graphql";
+import { useTicketPermissions } from "../hooks/use-ticket-permissions";
 import { useTickets, DEFAULT_TICKETS_LIMIT } from "../hooks/use-tickets";
 import { TicketFilterChips } from "./TicketFilterChips";
 import { TicketQueueStrip } from "./TicketQueueStrip";
-import { TicketMonthlyFlow } from "./TicketMonthlyFlow";
 import { TicketsToolbar } from "./TicketsToolbar";
 import { TicketsTable } from "./TicketsTable";
 import { TicketMailView } from "./TicketMailView";
 import { CreateTicketDialog } from "./CreateTicketDialog";
+import { TICKET_CHANNELS, TICKET_FILTERS, TICKET_SORTS, TICKET_TYPES, type TicketChannel, type TicketFilter, type TicketSort, type TicketType } from "../schemas/ticket.schema";
 
 /**
  * The support queue, in two views over one list.
@@ -50,38 +44,27 @@ const parseEnum = <T extends string>(
 ): T | null => (v && values.includes(v) ? (v as T) : null);
 
 const parseFilter = (v: string | null): TicketFilter =>
-  parseEnum<TicketFilter>(v, Object.values(TicketFilter)) ?? TicketFilter.All;
+  parseEnum<TicketFilter>(v, TICKET_FILTERS) ?? 'all';
 
-/**
- * Newest first, matching the BE's own default.
- *
- * An inbox is opened to see what has just come in. Oldest-first is the right
- * order for WORKING a queue and the wrong one for reading it — and "who has
- * waited longest" is now a tile rather than a row order.
- */
 const parseSort = (v: string | null): TicketSort =>
-  parseEnum<TicketSort>(v, Object.values(TicketSort)) ?? TicketSort.NewestFirst;
+  parseEnum<TicketSort>(v, TICKET_SORTS) ?? 'oldest_first';
 
 export function TicketInbox() {
   const router = useRouter();
   const search = useSearchParams();
-  const { canRouteTickets, canManageAllTickets } = useAdminSession();
+  const { canRouteTickets, canManageAllTickets } = useTicketPermissions();
 
   const filter = parseFilter(search.get("filter"));
   const sort = parseSort(search.get("sort"));
   const channel = parseEnum<TicketChannel>(
     search.get("channel"),
-    Object.values(TicketChannel)
+    TICKET_CHANNELS
   );
   const type = parseEnum<TicketType>(
     search.get("type"),
-    Object.values(TicketType)
+    TICKET_TYPES
   );
   const category = search.get("category");
-  // Written by the shared DateFilter, as yyyy-mm-dd. The BE treats both bounds
-  // as inclusive days, so "to" covers the whole of the day picked.
-  const from = search.get("start_date");
-  const to = search.get("end_date");
   const assignedAdminId = search.get("assignedTo");
   const csManagerId = search.get("csm");
   // Both manager filters are only meaningful to someone whose list reaches
@@ -117,8 +100,6 @@ export function TicketInbox() {
       assignedAdminId,
       csManagerId,
       search: debouncedQ || null,
-      from,
-      to,
     },
   });
 
@@ -163,44 +144,23 @@ export function TicketInbox() {
         />
       ) : (
         <>
-          {/* The same narrowing the list uses, so the tiles describe the rows
-              on screen. The chip is deliberately left out: the BE ignores it,
-              because the tiles are what the chips are read against. */}
-          <TicketQueueStrip
-            filter={{
-              channel,
-              type,
-              category,
-              assignedAdminId,
-              csManagerId,
-              search: debouncedQ || null,
-              from,
-              to,
-            }}
-          />
+          <TicketQueueStrip />
 
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <TicketFilterChips
               active={filter}
               onChange={(v) =>
-                updateParams({ filter: v === TicketFilter.All ? null : v })
+                updateParams({ filter: v === 'all' ? null : v })
               }
-              counts={data?.filterCounts}
+              counts={data?.filter_counts}
               canRoute={canRouteTickets}
             />
           </div>
 
-          {/* Under the tiles and folded away: the tiles say where things stand
-              right now, this says which way they have been moving — and the
-              inbox is opened to work tickets, not to read a trend. */}
-          <TicketMonthlyFlow />
-
           <TicketsToolbar
-            showDateFilter
             sort={sort}
             onSortChange={(v) =>
-              // The default drops out of the url rather than being restated.
-              updateParams({ sort: v === TicketSort.NewestFirst ? null : v })
+              updateParams({ sort: v === 'oldest_first' ? null : v })
             }
             channel={channel}
             onChannelChange={(v) => updateParams({ channel: v })}

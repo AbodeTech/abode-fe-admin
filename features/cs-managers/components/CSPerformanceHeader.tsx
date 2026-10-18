@@ -10,29 +10,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CSPeriodFilter } from "./CSPeriodFilter";
+import { MonthPeriodFilter } from "@/components/shared/MonthPeriodFilter";
 import { ManageCSManagersMenu } from "./ManageCSManagersMenu";
-import { UnassignedCustomersDialog } from "./dialogs/UnassignedCustomersDialog";
-import { useUnassignedCustomers } from "../hooks/use-cs-managers-list";
-import { csManagerName, type CSManagerSummary } from "../lib/manager-display";
-
-/** URL sentinel for the combined view. Matches the associate-manager dashboard. */
-export const ALL_MANAGERS = "all";
+import { UnassignedCustomersDialog } from "./UnassignedCustomersDialog";
+import { useUnassignedCustomers } from "../hooks/use-cs-managers";
+import { adminMinName, type CSManagerSummary } from "../schemas/cs-manager.schema";
 
 interface Props {
   /** Super admins pick any manager; a CS Manager only ever sees their own. */
   viewAs: "super-admin" | "manager";
   managers: CSManagerSummary[];
   activeManagerId: string | null;
-  /**
-   * The combined view across every manager's book — `?manager=all`.
-   *
-   * A sentinel rather than a separate control, mirroring the associate-manager
-   * dashboard: it is one more thing the picker can be pointed at, not a second
-   * mode the page can be in.
-   */
-  isAllManagers?: boolean;
-  /** From the dashboard payload: portfolio.totalAssigned. */
+  /** From the dashboard payload: portfolio.total_assigned. */
   assignedCustomersCount: number;
 }
 
@@ -40,7 +29,6 @@ export function CSPerformanceHeader({
   viewAs,
   managers,
   activeManagerId,
-  isAllManagers = false,
   assignedCustomersCount,
 }: Props) {
   const router = useRouter();
@@ -50,13 +38,10 @@ export function CSPerformanceHeader({
   const isSuperAdmin = viewAs === "super-admin";
 
   // Super-admin only endpoint — don't fire it in the manager view.
-  const { data: unassignedResponse } = useUnassignedCustomers({
-    enabled: isSuperAdmin,
-  });
+  const { data: unassignedResponse } = useUnassignedCustomers({ enabled: isSuperAdmin });
   const unassignedCount = unassignedResponse?.count ?? 0;
 
-  const activeManager =
-    managers.find((m) => m.manager._id === activeManagerId) ?? null;
+  const activeManager = managers.find((m) => m.manager?.id === activeManagerId) ?? null;
 
   const handleManagerChange = (managerId: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -70,49 +55,40 @@ export function CSPerformanceHeader({
     <>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            CS Manager Performance
-          </h1>
+          <h1 className="text-2xl font-bold tracking-tight">CS Manager Performance</h1>
           <p className="text-muted-foreground">
             {!isSuperAdmin
               ? `Your dashboard — ${assignedCustomersCount} customer${assignedCustomersCount === 1 ? "" : "s"} assigned.`
-              : isAllManagers
-                ? `All ${managers.length} CS Manager${managers.length === 1 ? "" : "s"} combined — ${assignedCustomersCount} customer${assignedCustomersCount === 1 ? "" : "s"} assigned.`
+              : activeManagerId === "all"
+                ? `${assignedCustomersCount} customers across all CS Managers.`
                 : activeManager
-                  ? `${csManagerName(activeManager.manager)} — ${assignedCustomersCount} customer${assignedCustomersCount === 1 ? "" : "s"} assigned.`
-                  : "Onboarding, allocation and ticket resolution progress, scoped per manager."}
+                ? `${adminMinName(activeManager.manager)} — ${assignedCustomersCount} customer${assignedCustomersCount === 1 ? "" : "s"} assigned.`
+                : "Onboarding, allocation and Deed of Assignment progress, scoped per manager."}
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
           {isSuperAdmin && (
-            <Select
-              value={isAllManagers ? ALL_MANAGERS : activeManagerId ?? ""}
-              onValueChange={handleManagerChange}
-            >
+            <Select value={activeManagerId ?? ""} onValueChange={handleManagerChange}>
               <SelectTrigger className="w-fit min-w-55 bg-white">
                 <SelectValue placeholder="Select CS Manager" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="all">All CS Managers</SelectItem>
                 {managers.length === 0 ? (
-                  <div className="px-2 py-1.5 text-sm text-gray-500">
-                    No CS Managers yet
-                  </div>
+                  <div className="px-2 py-1.5 text-sm text-gray-500">No CS Managers yet</div>
                 ) : (
-                  <>
-                    <SelectItem value={ALL_MANAGERS}>All CS Managers</SelectItem>
-                    {managers.map((m) => (
-                      <SelectItem key={m.manager._id} value={m.manager._id}>
-                        {csManagerName(m.manager)}
-                      </SelectItem>
-                    ))}
-                  </>
+                  managers.map((m) => (
+                    <SelectItem key={m.id} value={m.manager?.id ?? m.id}>
+                      {adminMinName(m.manager)}
+                    </SelectItem>
+                  ))
                 )}
               </SelectContent>
             </Select>
           )}
 
-          <CSPeriodFilter />
+          <MonthPeriodFilter />
 
           {isSuperAdmin && (
             <>
@@ -128,21 +104,14 @@ export function CSPerformanceHeader({
                 </button>
               )}
 
-              {/* Nobody is selected in the combined view, so there is no
-                  manager to remove — the menu still offers "Add". */}
-              <ManageCSManagersMenu
-                activeManager={isAllManagers ? null : activeManager}
-              />
+              <ManageCSManagersMenu activeManager={activeManager} />
             </>
           )}
         </div>
       </div>
 
       {isSuperAdmin && (
-        <UnassignedCustomersDialog
-          open={unassignedOpen}
-          onOpenChange={setUnassignedOpen}
-        />
+        <UnassignedCustomersDialog open={unassignedOpen} onOpenChange={setUnassignedOpen} />
       )}
     </>
   );

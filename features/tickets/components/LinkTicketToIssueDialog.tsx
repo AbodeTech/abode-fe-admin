@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { IssueStatus } from "@/lib/gql/graphql";
 import { useIssues } from "../hooks/use-issues";
 import { useTicketIssueSuggestions } from "../hooks/use-tickets";
 import { useLinkTicketToIssue } from "../hooks/use-ticket-mutations";
@@ -24,6 +23,7 @@ import {
   ISSUE_STATUS_PILL_CLASS,
 } from "../lib/ticket-display";
 import { CreateIssueDialog } from "./CreateIssueDialog";
+import { ticketWriteError } from "../lib/ticket-errors";
 
 interface Props {
   open: boolean;
@@ -33,7 +33,7 @@ interface Props {
 }
 
 /** Search existing issues + pick one, or promote to a brand-new issue.
- * The "New issue" path opens CreateIssueDialog with fromTicketId set so
+ * The "New issue" path opens CreateIssueDialog with from_ticket_id set so
  * the link happens in the same BE call. */
 export function LinkTicketToIssueDialog({
   open,
@@ -62,14 +62,14 @@ export function LinkTicketToIssueDialog({
 
   const results = data?.results ?? [];
   // A pick can come from either list. The search rows are full Issues; the
-  // suggestion rows are TicketIssueRef, which carries no ticketCount — so the
+  // suggestion rows are TicketIssueRef, which carries no ticket_count — so the
   // count is only quoted when we actually have it, never guessed.
   const pickedFromResults = results.find((r) => r._id === pickedId) ?? null;
   const picked =
     pickedFromResults ??
     suggestions.find((sg) => sg.issue._id === pickedId)?.issue ??
     null;
-  const pickedTicketCount = pickedFromResults?.ticketCount ?? null;
+  const pickedTicketCount = pickedFromResults?.ticket_count ?? null;
 
   /**
    * Linking a fault onto a RESOLVED incident silently reopens it BE-side
@@ -78,7 +78,7 @@ export function LinkTicketToIssueDialog({
    * longer true. The BE only records that in an AdminLog, so this is the one
    * place the person doing it can be told.
    */
-  const willReopen = picked?.status === IssueStatus.Resolved;
+  const willReopen = picked?.status === 'resolved';
 
   const handleClose = () => {
     if (link.isPending) return;
@@ -99,7 +99,7 @@ export function LinkTicketToIssueDialog({
       onLinked?.();
       handleClose();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to link");
+      toast.error(ticketWriteError(err, "Failed to link"));
     }
   };
 
@@ -161,9 +161,9 @@ export function LinkTicketToIssueDialog({
                               {ISSUE_STATUS_LABELS[sg.issue.status]}
                             </span>
                           </div>
-                          {sg.matchedTerms.length > 0 && (
+                          {(sg.matched_terms ?? []).length > 0 && (
                             <p className="text-[10px] text-violet-800 mt-0.5">
-                              matched: {sg.matchedTerms.join(", ")}
+                              matched: {(sg.matched_terms ?? []).join(", ")}
                             </p>
                           )}
                         </button>
@@ -208,8 +208,8 @@ export function LinkTicketToIssueDialog({
                               </p>
                             </div>
                             <p className="text-[11px] text-gray-500 mt-0.5">
-                              {(r.ticketCount ?? 0)} linked ticket
-                              {(r.ticketCount ?? 0) === 1 ? "" : "s"}
+                              {(r.ticket_count ?? 0)} linked ticket
+                              {(r.ticket_count ?? 0) === 1 ? "" : "s"}
                               {r.owner ? ` · owned by ${r.owner.userName}` : ""}
                             </p>
                           </div>
@@ -285,7 +285,7 @@ export function LinkTicketToIssueDialog({
       <CreateIssueDialog
         open={createOpen}
         onOpenChange={setCreateOpen}
-        fromTicketId={ticketId}
+        from_ticket_id={ticketId}
         onCreated={() => {
           onLinked?.();
           onOpenChange(false);

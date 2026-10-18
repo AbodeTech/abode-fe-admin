@@ -80,16 +80,16 @@ const OTHERS_COLOR = "bg-gray-300";
 
 /** BE-shape mirror for a contributor. Same shape for count + float variants. */
 export interface ContributorShape {
-  proId: string;
-  firstName?: string | null;
-  lastName?: string | null;
+  pro_id: string;
+  first_name?: string | null;
+  last_name?: string | null;
   email?: string | null;
   count?: number | null;
   amount?: number | null;
 }
 
 const contributorName = (c: ContributorShape) => {
-  const full = `${c.lastName ?? ""} ${c.firstName ?? ""}`.trim();
+  const full = `${c.last_name ?? ""} ${c.first_name ?? ""}`.trim();
   if (full) return full;
   if (c.email) return c.email.split("@")[0];
   return "Unnamed pro";

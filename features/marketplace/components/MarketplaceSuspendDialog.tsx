@@ -30,21 +30,24 @@ export function MarketplaceSuspendDialog({
   const [reason, setReason] = useState("");
   const suspendMutation = useSuspendListing();
 
-  const handleSuspend = async () => {
+  const handleSuspend = () => {
     if (!listingId) return;
     if (!reason.trim()) {
       toast.error("Please provide a reason for suspension");
       return;
     }
 
-    try {
-      await suspendMutation.mutateAsync({ listingId, reason: reason.trim() });
-      toast.success("Listing suspended");
-      setReason("");
-      onClose();
-    } catch (error: any) {
-      toast.error(error.message || "Failed to suspend listing");
-    }
+    suspendMutation.mutate(
+      { id: listingId, reason: reason.trim() },
+      {
+        onSuccess: () => {
+          toast.success("Listing suspended");
+          setReason("");
+          onClose();
+        },
+        onError: (error) => toast.error(error.message || "Failed to suspend listing"),
+      }
+    );
   };
 
   return (

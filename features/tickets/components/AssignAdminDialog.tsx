@@ -16,11 +16,17 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useTicketAdminPicker } from "../hooks/use-ticket-pickers";
 import { useUpdateTicket } from "../hooks/use-ticket-mutations";
+import { ticketWriteError } from "../lib/ticket-errors";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  ticketId: string;
+ ticketId: string;
+  /**
+   * The `updatedAt` the caller rendered. Sent as the concurrency guard so this
+   * write is refused rather than silently overwriting someone else's.
+   */
+  expectedUpdatedAt?: string;
   currentAdminId?: string | null;
   onAssigned?: () => void;
 }
@@ -35,6 +41,7 @@ export function AssignAdminDialog({
   open,
   onOpenChange,
   ticketId,
+  expectedUpdatedAt,
   currentAdminId,
   onAssigned,
 }: Props) {
@@ -55,12 +62,12 @@ export function AssignAdminDialog({
   const handleAssign = async () => {
     if (!pickedId) return;
     try {
-      await update.mutateAsync({ ticketId, assignedAdminId: pickedId });
+      await update.mutateAsync({ ticketId, assigned_admin_id: pickedId, expected_updated_at: expectedUpdatedAt });
       toast.success("Ticket assigned");
       onAssigned?.();
       handleClose();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to assign ticket");
+      toast.error(ticketWriteError(err, "Failed to assign ticket"));
     }
   };
 

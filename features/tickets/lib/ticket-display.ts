@@ -1,13 +1,5 @@
-import {
-  TicketChannel,
-  TicketStatus,
-  TicketType,
-  FieldSource,
-  IssueStatus,
-  TicketFilter,
-  TicketSort,
-} from "@/lib/gql/graphql";
 
+import { type FieldSource, type IssueStatus, type TicketChannel, type TicketFilter, type TicketSort, type TicketStatus, type TicketType } from "../schemas/ticket.schema";
 /** Copy + colour tokens for every enum the ticketing surface renders.
  * Kept in one place so pill colours stay consistent across list, drawer
  * and dialogs. */
@@ -59,33 +51,25 @@ export const FILTER_LABELS: Record<TicketFilter, string> = {
   resolved: "Resolved",
 };
 
-/**
- * Newest first leads, because it is the default.
- *
- * An inbox is opened to see what has just come in; oldest-first is the right
- * order for WORKING a queue and the wrong one for reading it, and "who has
- * waited longest" is now the queue tiles rather than the row order. A list
- * whose first entry is not the default reads as though it were one.
- */
 export const SORT_OPTIONS: { value: TicketSort; label: string }[] = [
-  { value: TicketSort.NewestFirst, label: "Newest first" },
-  { value: TicketSort.OldestFirst, label: "Oldest first" },
-  { value: TicketSort.RecentlyUpdated, label: "Recently updated" },
+  { value: 'oldest_first', label: "Oldest first" },
+  { value: 'newest_first', label: "Newest first" },
+  { value: 'recently_updated', label: "Recently updated" },
 ];
 
 export const CHANNEL_OPTIONS: { value: TicketChannel; label: string }[] = [
-  { value: TicketChannel.Email, label: "Email" },
-  { value: TicketChannel.Phone, label: "Phone" },
-  { value: TicketChannel.Whatsapp, label: "WhatsApp" },
-  { value: TicketChannel.InPerson, label: "In-person" },
-  { value: TicketChannel.Other, label: "Other" },
+  { value: 'email', label: "Email" },
+  { value: 'phone', label: "Phone" },
+  { value: 'whatsapp', label: "WhatsApp" },
+  { value: 'in_person', label: "In-person" },
+  { value: 'other', label: "Other" },
 ];
 
 export const STATUS_OPTIONS: { value: TicketStatus; label: string }[] = [
-  { value: TicketStatus.Open, label: "Open" },
-  { value: TicketStatus.InProgress, label: "In progress" },
-  { value: TicketStatus.WaitingCustomer, label: "Waiting customer" },
-  { value: TicketStatus.Resolved, label: "Resolved" },
+  { value: 'open', label: "Open" },
+  { value: 'in_progress', label: "In progress" },
+  { value: 'waiting_customer', label: "Waiting customer" },
+  { value: 'resolved', label: "Resolved" },
 ];
 
 /**
@@ -135,9 +119,9 @@ export const TYPE_PILL_CLASS: Record<TicketType, string> = {
 };
 
 export const TYPE_OPTIONS: { value: TicketType; label: string }[] = [
-  { value: TicketType.Fault, label: "Issue — something is broken" },
-  { value: TicketType.Enquiry, label: "Enquiry — a question, nothing broken" },
-  { value: TicketType.Request, label: "Request — work needed, nothing broken" },
+  { value: 'fault', label: "Issue — something is broken" },
+  { value: 'enquiry', label: "Enquiry — a question, nothing broken" },
+  { value: 'request', label: "Request — work needed, nothing broken" },
 ];
 
 /** Turns a raw category key ("payment_process") into display copy. */

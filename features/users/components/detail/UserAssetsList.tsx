@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import {
   Plus,
@@ -27,13 +26,19 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useHasPermission } from "@/hooks/use-admin-permission";
 
-import { getUserAssetsByAdmin } from "@/lib/api/admin/user-assets.client";
-import { AddFlexAssetModal } from "../modals/AddFlexAssetModal";
-import { AddFullOwnershipAssetModal } from "../modals/AddFullOwnershipAssetModal";
+import { useUserDetailAssets } from "../../hooks/use-user-detail";
+import { CreateUserPlanModal, type AdminPlanType } from "../modals/CreateUserPlanModal";
 import { UserAssetActions } from "./UserAssetActions";
 
 interface UserAssetsListProps {
@@ -55,16 +60,18 @@ const formatCurrency = (amount: number) => {
 };
 
 export function UserAssetsList({ userId, userEmail, readOnly = false }: UserAssetsListProps) {
-  const [isFlexModalOpen, setIsFlexModalOpen] = useState(false);
-  const [isFullOwnershipModalOpen, setIsFullOwnershipModalOpen] = useState(false);
+  const [createType, setCreateType] = useState<AdminPlanType | null>(null);
+  const canCreatePlan = useHasPermission("create_user_plan");
+  const canCreateDeveloperPlot = useHasPermission("create_developer_plot");
 
-  const { data: assets, isLoading } = useQuery({
-    queryKey: ["userAssets", userId],
-    queryFn: () => getUserAssetsByAdmin(userId),
-  });
+  const { data: assets, isLoading } = useUserDetailAssets(userId);
 
   const flexAssets = assets?.filter((asset) => asset.payment_details?.asset_type === "flex") || [];
   const fullOwnershipAssets = assets?.filter((asset) => asset.payment_details?.asset_type === "full-ownership") || [];
+  const otherAssets = assets?.filter((asset) => {
+    const type = asset.payment_details?.asset_type;
+    return type !== "flex" && type !== "full-ownership";
+  }) || [];
 
   const getDaysUntilNextPayment = (nextPaymentDate: Date | string): number => {
     const today = new Date();
@@ -105,25 +112,54 @@ export function UserAssetsList({ userId, userEmail, readOnly = false }: UserAsse
 
   return (
     <div className="space-y-6 mt-6">
-      {!readOnly && (
-        <>
-          <AddFlexAssetModal userId={userId} isOpen={isFlexModalOpen} onClose={() => setIsFlexModalOpen(false)} />
-          <AddFullOwnershipAssetModal
-            userId={userId}
-            isOpen={isFullOwnershipModalOpen}
-            onClose={() => setIsFullOwnershipModalOpen(false)}
-          />
-        </>
+      {!readOnly && createType && (
+        <CreateUserPlanModal
+          userId={userId}
+          type={createType}
+          open
+          onOpenChange={(open) => !open && setCreateType(null)}
+        />
+      )}
+
+      {/*
+        Was a whole card wrapping four near-identical "+ <type>" buttons. The
+        plan type is a choice within one action, not four separate actions, so
+        it belongs in the menu rather than spread across a row.
+      */}
+      {!readOnly && (canCreatePlan || canCreateDeveloperPlot) && (
+        <div className="flex justify-end">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button className="w-full sm:w-auto">
+                <Plus className="mr-2 h-4 w-4" />
+                Create payment plan
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[200px]">
+              {canCreatePlan && (
+                <>
+                  <DropdownMenuItem onSelect={() => setCreateType("flex")}>Flex</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setCreateType("full-ownership")}>
+                    Full ownership
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setCreateType("commercial")}>
+                    Commercial
+                  </DropdownMenuItem>
+                </>
+              )}
+              {canCreateDeveloperPlot && (
+                <DropdownMenuItem onSelect={() => setCreateType("developer-plot")}>
+                  Developer plot
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       )}
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-2xl font-bold">User Flex Assets</CardTitle>
-          {!readOnly && (
-            <Button onClick={() => setIsFlexModalOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" /> Add Flex Asset
-            </Button>
-          )}
         </CardHeader>
         <CardContent>
           <div className="grid gap-4">
@@ -310,11 +346,6 @@ export function UserAssetsList({ userId, userEmail, readOnly = false }: UserAsse
   
           <div className="flex items-center justify-between gap-2 w-full px-4 ">
             <CardTitle className="text-2xl font-bold">User Full Ownership Assets</CardTitle>
-            {!readOnly && (
-              <Button onClick={() => setIsFullOwnershipModalOpen(true)}>
-                <Plus className=" h-4 w-4" /> Add New Asset
-              </Button>
-            )}
           </div>    
           
         <CardContent>
@@ -500,6 +531,33 @@ export function UserAssetsList({ userId, userEmail, readOnly = false }: UserAsse
           </div>
         </CardContent>
       </Card>
+
+      {otherAssets.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-2xl font-bold">Other assets</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            {otherAssets.map((asset) => {
+              const pd = asset.payment_details!;
+              return (
+                <Card key={asset._id}>
+                  <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+                    <div>
+                      <h3 className="font-bold">{asset.asset_name || "Untitled"}</h3>
+                      <p className="text-sm text-muted-foreground">{pd.asset_type.replace(/_/g, " ")}</p>
+                    </div>
+                    <p className="text-sm">
+                      {formatCurrency(pd.amount_paid)} paid · {formatCurrency(pd.balance)} outstanding
+                    </p>
+                    {!readOnly && <UserAssetActions userId={userId} asset={asset} email={userEmail} />}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

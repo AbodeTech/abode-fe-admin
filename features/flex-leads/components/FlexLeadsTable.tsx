@@ -1,6 +1,12 @@
 "use client";
 
 import React from "react";
+import { Eye } from "lucide-react";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -9,11 +15,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Eye } from "lucide-react";
 import {
   AdminDesktopTableWrap,
   AdminMobileCard,
@@ -21,18 +22,18 @@ import {
   AdminMobileStack,
 } from "@/components/shared/admin-responsive-table";
 
-import type { FlexLeadRow } from "../hooks/types";
+import { FLEX_LEAD_TYPE_LABELS, type FlexLeadRow } from "../schemas/flex-lead.schema";
 import { FlexLeadStatusBadge } from "./FlexLeadStatusBadge";
 
 const formatDate = (value: string | null) => {
   if (!value) return "—";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString();
+  return date.toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" });
 };
 
-const typeLabel = (type: FlexLeadRow["type"]) =>
-  type === "site_inspection" ? "Site inspection" : "Brochure";
+const HEAD =
+  "whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground";
 
 interface FlexLeadsTableProps {
   rows?: FlexLeadRow[] | null;
@@ -56,14 +57,14 @@ export function FlexLeadsTable({ rows, isLoading, onView }: FlexLeadsTableProps)
 
   const safeRows = rows ?? [];
 
-  const rowActions = (row: FlexLeadRow, mobile = false) => (
+  const viewButton = (row: FlexLeadRow, mobile = false) => (
     <Button
       variant="outline"
       size="sm"
       className={mobile ? "w-full gap-2" : "gap-2"}
       onClick={() => onView(row)}
     >
-      <Eye className="h-4 w-4" />
+      <Eye className="h-4 w-4" aria-hidden />
       View
     </Button>
   );
@@ -78,35 +79,23 @@ export function FlexLeadsTable({ rows, isLoading, onView }: FlexLeadsTableProps)
             </p>
           ) : (
             safeRows.map((row) => (
-              <AdminMobileCard
-                key={row.id}
-                title={row.fullName}
-                subtitle={row.email}
-              >
+              <AdminMobileCard key={row.id} title={row.full_name} subtitle={row.email}>
                 <AdminMobileField label="Phone" value={row.phone || "—"} />
                 <AdminMobileField
                   label="Type"
                   value={
                     <Badge variant="outline" className="font-normal">
-                      {typeLabel(row.type)}
+                      {FLEX_LEAD_TYPE_LABELS[row.type]}
                     </Badge>
                   }
                 />
-                <AdminMobileField
-                  label="Location"
-                  value={row.location ?? "—"}
-                />
-                <AdminMobileField
-                  label="Status"
-                  value={<FlexLeadStatusBadge status={row.status} />}
-                />
-                <AdminMobileField
-                  label="Submitted"
-                  value={formatDate(row.createdAt)}
-                />
-                <div className="border-t border-border pt-2">
-                  {rowActions(row, true)}
-                </div>
+                <AdminMobileField label="Location" value={row.location ?? "—"} />
+                {row.preferred_date ? (
+                  <AdminMobileField label="Preferred date" value={row.preferred_date} />
+                ) : null}
+                <AdminMobileField label="Status" value={<FlexLeadStatusBadge status={row.status} />} />
+                <AdminMobileField label="Submitted" value={formatDate(row.createdAt)} />
+                <div className="border-t border-border pt-2">{viewButton(row, true)}</div>
               </AdminMobileCard>
             ))
           )}
@@ -116,30 +105,14 @@ export function FlexLeadsTable({ rows, isLoading, onView }: FlexLeadsTableProps)
           <Table className="w-max min-w-[1100px] table-auto text-sm">
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead className="min-w-44 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Name
-                </TableHead>
-                <TableHead className="min-w-48 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Email
-                </TableHead>
-                <TableHead className="min-w-36 whitespace-nowrap px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Phone
-                </TableHead>
-                <TableHead className="min-w-32 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Type
-                </TableHead>
-                <TableHead className="min-w-36 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Location
-                </TableHead>
-                <TableHead className="min-w-28 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Status
-                </TableHead>
-                <TableHead className="min-w-28 whitespace-nowrap px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Submitted
-                </TableHead>
-                <TableHead className="min-w-28 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Action
-                </TableHead>
+                <TableHead className={`min-w-44 ${HEAD}`}>Name</TableHead>
+                <TableHead className={`min-w-48 ${HEAD}`}>Email</TableHead>
+                <TableHead className={`min-w-36 whitespace-nowrap ${HEAD}`}>Phone</TableHead>
+                <TableHead className={`min-w-32 ${HEAD}`}>Type</TableHead>
+                <TableHead className={`min-w-36 ${HEAD}`}>Location</TableHead>
+                <TableHead className={`min-w-28 ${HEAD}`}>Status</TableHead>
+                <TableHead className={`min-w-28 whitespace-nowrap ${HEAD}`}>Submitted</TableHead>
+                <TableHead className={`min-w-28 ${HEAD}`}>Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -154,36 +127,35 @@ export function FlexLeadsTable({ rows, isLoading, onView }: FlexLeadsTableProps)
                 </TableRow>
               ) : (
                 safeRows.map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed">
-                      <span className="block wrap-break-word font-medium">
-                        {row.fullName}
-                      </span>
+                  <TableRow key={row.id} className={row.is_deleted ? "opacity-50" : undefined}>
+                    <TableCell className="min-w-0 whitespace-normal px-4 py-4 align-top leading-relaxed">
+                      <span className="block font-medium wrap-break-word">{row.full_name}</span>
+                      {row.is_deleted ? (
+                        <span className="text-xs text-muted-foreground">Deleted</span>
+                      ) : null}
                     </TableCell>
-                    <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed wrap-break-word">
+                    <TableCell className="min-w-0 whitespace-normal px-4 py-4 align-top leading-relaxed wrap-break-word">
                       {row.email}
                     </TableCell>
-                    <TableCell className="align-top whitespace-nowrap px-4 py-4 leading-relaxed tabular-nums">
+                    <TableCell className="whitespace-nowrap px-4 py-4 align-top leading-relaxed tabular-nums">
                       {row.phone || "—"}
                     </TableCell>
-                    <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed">
+                    <TableCell className="min-w-0 whitespace-normal px-4 py-4 align-top leading-relaxed">
                       <Badge variant="outline" className="font-normal">
-                        {typeLabel(row.type)}
+                        {FLEX_LEAD_TYPE_LABELS[row.type]}
                       </Badge>
                     </TableCell>
-                    <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed wrap-break-word">
-                      {row.location ?? (
-                        <span className="text-muted-foreground">—</span>
-                      )}
+                    <TableCell className="min-w-0 whitespace-normal px-4 py-4 align-top leading-relaxed wrap-break-word">
+                      {row.location ?? <span className="text-muted-foreground">—</span>}
                     </TableCell>
-                    <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed">
+                    <TableCell className="min-w-0 whitespace-normal px-4 py-4 align-top leading-relaxed">
                       <FlexLeadStatusBadge status={row.status} />
                     </TableCell>
-                    <TableCell className="align-top whitespace-nowrap px-4 py-4 leading-relaxed">
+                    <TableCell className="whitespace-nowrap px-4 py-4 align-top leading-relaxed">
                       {formatDate(row.createdAt)}
                     </TableCell>
-                    <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4">
-                      {rowActions(row)}
+                    <TableCell className="min-w-0 whitespace-normal px-4 py-4 align-top">
+                      {viewButton(row)}
                     </TableCell>
                   </TableRow>
                 ))

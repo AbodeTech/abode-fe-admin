@@ -2,16 +2,9 @@
 
 import { useEffect, useRef } from "react";
 import { format, isSameDay, isToday, isYesterday } from "date-fns";
-import { AlertTriangle, Loader2, Lock, MailWarning, Link2, Paperclip } from "lucide-react";
+import { AlertTriangle, Loader2, Lock, MailWarning, Link2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { FragmentType, graphql, useFragment } from "@/lib/gql";
-import {
-  MatchSignal,
-  MessageDeliveryStatus,
-  MessageDirection,
-  type TicketTimeline_MessageFragment,
-  type TicketTimeline_NoteFragment,
-} from "@/lib/gql/graphql";
+import { type TicketMessage, type TicketNote } from "../schemas/ticket.schema";
 
 /**
  * The conversation, and the internal record, in one column.
@@ -27,37 +20,12 @@ import {
  * of the timeline looking busy.
  */
 
-export const TicketTimeline_message = graphql(`
-  fragment TicketTimeline_message on TicketMessage {
-    _id
-    direction
-    channel
-    body
-    from_address
-    sent_at
-    author_admin { _id userName email }
-    author_user { _id firstName lastName email }
-    attachments { filename mime size url inline }
-    delivery { status error }
-    match { signal conflict }
-  }
-`);
-
-export const TicketTimeline_note = graphql(`
-  fragment TicketTimeline_note on TicketNote {
-    _id
-    body
-    createdAt
-    admin { _id userName email }
-  }
-`);
-
-type Message = TicketTimeline_MessageFragment;
-type Note = TicketTimeline_NoteFragment;
+type Message = TicketMessage;
+type Note = TicketNote;
 
 interface Props {
-  messages: readonly FragmentType<typeof TicketTimeline_message>[];
-  notes: readonly FragmentType<typeof TicketTimeline_note>[];
+  messages: readonly Message[];
+  notes: readonly Note[];
   /** Re-scroll to the newest entry when the open ticket changes. */
   ticketId: string;
   /**
@@ -93,12 +61,18 @@ const userName = (
   return name || u.email || null;
 };
 
-/** Only worth surfacing when something other than the obvious happened. */
-const MATCH_NOTE: Partial<Record<MatchSignal, string>> = {
-  [MatchSignal.Headers]: "Threaded by mail headers",
-  [MatchSignal.ReplyAddress]: "Matched by the reply address",
-  [MatchSignal.SubjectTag]: "Matched by the subject tag",
-  [MatchSignal.Manual]: "Placed on this ticket by hand",
+/**
+ * Only worth surfacing when something other than the obvious happened.
+ *
+ * Keyed by the raw signal string: `original` and anything the BE adds later
+ * fall through to no note, which is the right default — the interesting case is
+ * a message that landed here by a route the reader would not assume.
+ */
+const MATCH_NOTE: Record<string, string> = {
+    headers: "Threaded by mail headers",
+    reply_address: "Matched by the reply address",
+    subject_tag: "Matched by the subject tag",
+    manual: "Placed on this ticket by hand",
 };
 
 export function TicketTimeline({
@@ -110,13 +84,15 @@ export function TicketTimeline({
   fallbackFrom,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const msgs = useFragment(TicketTimeline_message, messages);
-  const nts = useFragment(TicketTimeline_note, notes);
+  const msgs = messages;
+  const nts = notes;
 
   const entries: Entry[] = [
     ...msgs.map<Entry>((m) => ({
       kind: "message",
-      at: new Date(m.sent_at),
+      // Ingestion always stamps one of these; the epoch fallback keeps a
+      // malformed row at the bottom instead of reading the clock mid-render.
+      at: new Date(m.sent_at ?? m.createdAt ?? 0),
       key: `m-${m._id}`,
       data: m,
     })),
@@ -203,29 +179,28 @@ function DaySeparator({ label }: { label: string }) {
 }
 
 function MessageRow({ message, at }: { message: Message; at: Date }) {
-  const inbound = message.direction === MessageDirection.Inbound;
+  const inbound = message.direction === 'inbound';
   const author = inbound
     ? userName(message.author_user) ?? message.from_address ?? "the customer"
     : adminName(message.author_admin);
 
   const delivery = message.delivery;
-  const failed = delivery?.status === MessageDeliveryStatus.Failed;
-  const pending = delivery?.status === MessageDeliveryStatus.Pending;
+  const failed = delivery?.status === 'failed';
+  const pending = delivery?.status === 'pending';
   const matchNote = message.match ? MATCH_NOTE[message.match.signal] : undefined;
 
   return (
     <MessageBubble
       inbound={inbound}
-      body={message.body}
+      body={message.body ?? ""}
       at={at}
       author={author}
-      channel={message.channel}
+      channel={message.channel ?? undefined}
       failed={failed}
       failedReason={delivery?.error ?? null}
       pending={pending}
       matchNote={matchNote}
-      conflict={message.match?.conflict}
-      attachments={message.attachments}
+      conflict={message.match?.conflict ?? false}
     />
   );
 }
@@ -242,7 +217,6 @@ function MessageBubble({
   matchNote,
   conflict,
   legacy,
-  attachments,
 }: {
   inbound: boolean;
   body: string;
@@ -255,13 +229,6 @@ function MessageBubble({
   matchNote?: string;
   conflict?: boolean;
   legacy?: boolean;
-  attachments?: readonly {
-    filename: string;
-    mime: string;
-    size: number;
-    url?: string | null;
-    inline: boolean;
-  }[];
 }) {
   return (
     <div className={cn("flex", inbound ? "justify-start" : "justify-end")}>
@@ -297,36 +264,6 @@ function MessageBubble({
         >
           {body || <span className="text-gray-400 italic">(empty message)</span>}
         </div>
-
-        {attachments && attachments.length > 0 && (
-          <ul className={cn("mt-1.5 space-y-1", !inbound && "text-right")}>
-            {attachments.map((attachment, index) => (
-              <li key={`${attachment.url ?? attachment.filename}-${index}`}>
-                {attachment.url ? (
-                  <a
-                    href={attachment.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex max-w-full items-center gap-1 rounded border border-gray-200 bg-white px-2 py-1 text-xs text-[#00695C] hover:border-[#00695C]"
-                  >
-                    <Paperclip className="h-3 w-3 shrink-0" />
-                    <span className="truncate">{attachment.filename}</span>
-                    {attachment.size > 0 && (
-                      <span className="shrink-0 text-gray-400">
-                        · {Math.max(1, Math.round(attachment.size / 1024))} KB
-                      </span>
-                    )}
-                  </a>
-                ) : (
-                  <span className="inline-flex items-center gap-1 text-xs text-gray-400">
-                    <Paperclip className="h-3 w-3" />
-                    {attachment.filename} (unavailable)
-                  </span>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
 
         {legacy && (
           <p className="text-[10px] text-gray-400 mt-1">

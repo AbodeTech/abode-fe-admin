@@ -1,0 +1,212 @@
+'use client';
+
+import { useAuthStore } from '@/store/auth-store';
+
+/* ============================================================
+ * Does the signed-in admin hold a permission?
+ *
+ * The vocabulary is the backend's, verbatim from `src/common/permissions.ts`,
+ * and it is **underscored**. Typing the argument to that union is the point of
+ * this hook: several hand-written checks in this repo pass hyphenated names
+ * (`"suspend-user"`, `"modify-referral-status"`) which can never match, so those
+ * actions are hidden from every role including a full admin. A typo here is a
+ * compile error instead.
+ *
+ * `permissions` is derived server-side from `role`, so an `admin` already holds
+ * every entry. The role short-circuit is a safety net for a login response that
+ * arrives without the array — locking a full admin out of an action they own is
+ * the worse failure of the two.
+ * ============================================================ */
+
+export const ADMIN_PERMISSIONS = [
+  'view_finance_runs',
+  'run_finance_posting',
+  'run_finance_reports',
+  'view_user',
+  'view_users',
+  'view_user_analytics',
+  'edit_user',
+  'edit_user_profile',
+  'delete_user',
+  'suspend_user',
+  'unsuspend_user',
+  'force_password_reset',
+  'edit_user_tin',
+  'adjust_wallet',
+  'suspend_wallet',
+  'unsuspend_wallet',
+  'modify_tier',
+  'reassign_referrer',
+  'create_user_plan',
+  'create_developer_plot',
+  'delete_user_plan',
+  'keep_inventory_on_close',
+  'edit_user_asset_question',
+  // Flex 2.0 (backend `adjust_streak`): correct a customer's streak, optionally with a points correction.
+  // The backend migration grants it to every role that holds `adjust_plan_balance`.
+  'adjust_streak',
+  'adjust_plan_balance',
+  'adjust_streak',
+  'override_next_payment_date',
+  'update_plan_spec',
+  'suspend_plan',
+  'unsuspend_plan',
+  'close_plan',
+  'edit_plan_commission_config',
+  'edit_plan_commission_recipients',
+  'send_user_email',
+
+  'view_admin',
+  'manage_admins',
+  'manage_roles',
+
+  'view_assets',
+  'manage_assets',
+  'delete_assets',
+  'view_allocations',
+  'allocate_land',
+  'export_allocation_list',
+  'view_asset_analytics',
+  'view_asset_subscribers',
+  'export_asset_subscribers',
+  'buy_asset',
+  'delete_user_asset',
+  'update_asset_question',
+  'send_contract',
+
+  // Estate updates — the asset detail Updates tab.
+  'view_estate_updates',
+  'manage_estate_updates',
+
+  // Asset costs — the asset detail Costs & Profitability tab. Confirmed
+  // verbatim against abode-be-v2 staging's asset-cost module (PR #82).
+  'view_asset_costs',
+  'manage_asset_costs',
+  'approve_asset_costs',
+
+  // Estate profitability — the calculation surfaced by that same module.
+  // `manage_profitability_basis` (a singleton-basis idea that doesn't exist
+  // on the real backend — allocation rules are per cost item and gated by
+  // plain `manage_asset_costs`) has been retired; do not reintroduce it.
+  'view_asset_profitability',
+
+  // Site Setup — boundary + fencing progress, read from the real field-staff
+  // module (confirmed against `abode-be-v2`'s `AssetSiteSetupController`).
+  'view_field_performance',
+  'manage_asset_boundary',
+  // The rest of the field-staff module the Site Setup tab reads and writes:
+  // the review queue, who covers a site, and allocation event owners.
+  'view_field_submissions',
+  'verify_field_submissions',
+  'view_field_staff',
+  'assign_field_staff',
+
+  'asset_transactions',
+  'approve_payments',
+  'withdrawals',
+  'manage_commission',
+  'update_payment_plan',
+
+  'add_referral',
+  'remove_referral',
+  'modify_referral_status',
+
+  'view_kyc',
+  'view_user_bank_details',
+  'approve_kyc',
+
+  'view_marketplace',
+  'manage_marketplace',
+
+  'view_agencies',
+  'manage_agencies',
+  'export_agencies',
+
+  'manage_promotions',
+
+  'view_requests',
+  'manage_requests',
+
+  'view_reports',
+  'generate_reports',
+  'view_audit_logs',
+
+  'view_meetings',
+  'manage_meetings',
+
+  'view_campaigns',
+  'manage_campaigns',
+  'export_campaigns',
+
+  'view_payment_plans',
+  'export_payment_plans',
+
+  // Sales (BE `src/modules/sales`). The campaign revenue card and Purchases tab
+  // also require it on top of view_campaigns — money is sales data.
+  'view_sales',
+
+  // Portfolio standing (features/standing/). Live on the BE in
+  // `src/modules/standing/standing-admin.controller.ts`; these were missing
+  // here, so the Sidebar's `requiresPermission` filter resolved false for
+  // every non-super-admin and hid the nav entry from the people who own it.
+  'view_standing',
+  'manage_standing',
+
+  // Division — the associate season ladder (features/division/). Sidebar entry
+  // sits in the Associates group and gates on `view_division`.
+  'view_division',
+  'manage_division',
+
+  // In-house recruitment / Academy Admin (ABO-5–28 FE). BE keys land with ABO-82.
+  'view_academy',
+  'manage_academy',
+  'export_academy',
+
+  // Land allocation (features/allocation/) and Company Events both gate on
+  // this vocabulary on the real BE (confirmed in both
+  // `allocation-admin.controller.ts` and `company-events-admin.controller.ts`
+  // — the latter's own comment calls this an interim reuse pending a
+  // dedicated company-events permission). Neither FE feature enforces these
+  // yet (RBAC not FE-enforced per CLAUDE.md) except the Company Events
+  // sidebar entry.
+  'view_allocations',
+  'allocate_land',
+  'deallocate_land',
+
+  // Field operations — Site Managers and Surveyors (features/field-staff).
+  'view_field_staff',
+  'manage_field_staff',
+  'assign_field_staff',
+  'view_field_scorecards',
+  'manage_field_scorecards',
+  'view_field_submissions',
+  'verify_field_submissions',
+  'view_field_performance',
+  'manage_asset_boundary',
+] as const;
+
+export type AdminPermission = (typeof ADMIN_PERMISSIONS)[number];
+
+export function useHasPermission(permission: AdminPermission): boolean {
+  const user = useAuthStore((state) => state.user);
+
+  if (!user) return false;
+  // The super-admin bypass. Was `role === 'admin'`, which no longer means
+  // unrestricted: `admin` is an ops-editable role now (RP-7).
+  if (user.role?.is_super_admin) return true;
+
+  return (user.permissions ?? []).includes(permission);
+}
+
+/** MD §4 uses `useAdminPermissions().has('manage_campaigns')`. */
+export function useAdminPermissions() {
+  const user = useAuthStore((state) => state.user);
+
+  return {
+    has: (permission: AdminPermission) => {
+      if (!user) return false;
+      if (user.role?.is_super_admin) return true;
+      return (user.permissions ?? []).includes(permission);
+    },
+  };
+}

@@ -5,15 +5,18 @@ import {
   ClipboardList,
   Clock,
   CheckCircle,
+  CheckCheck,
+  Eye,
   XCircle,
-  MapPin,
   FileText,
   Settings,
   MessageSquare,
   TrendingUp,
   DollarSign,
+  RotateCcw,
 } from "lucide-react";
-import type { RequestStatistics } from "@/lib/gql/graphql";
+
+import type { RequestStatistics } from "../schemas/request.schema";
 
 const cards: {
   key: keyof RequestStatistics;
@@ -22,17 +25,25 @@ const cards: {
   iconColor: string;
   currency?: boolean;
 }[] = [
-  { key: "totalRequests", label: "Total Requests", icon: ClipboardList, iconColor: "text-gray-900" },
-  { key: "pendingRequests", label: "Pending", icon: Clock, iconColor: "text-yellow-600" },
-  { key: "approvedRequests", label: "Approved", icon: CheckCircle, iconColor: "text-green-600" },
-  { key: "declinedRequests", label: "Declined", icon: XCircle, iconColor: "text-red-600" },
-  { key: "locationChangeRequests", label: "Location Change", icon: MapPin, iconColor: "text-cyan-600" },
-  { key: "documentChangeRequests", label: "Document Change", icon: FileText, iconColor: "text-blue-600" },
-  { key: "assetUpdateRequests", label: "Asset Update", icon: Settings, iconColor: "text-purple-600" },
-  { key: "customRequests", label: "Custom Request", icon: MessageSquare, iconColor: "text-orange-600" },
-  { key: "totalFeesCollected", label: "Fees Collected", icon: TrendingUp, iconColor: "text-green-600", currency: true },
-  { key: "paidRequests", label: "Paid Fees", icon: CheckCircle, iconColor: "text-green-600" },
-  { key: "unpaidRequests", label: "Unpaid Fees", icon: DollarSign, iconColor: "text-red-600" },
+  // Volume — v2 splits the old "pending" into submitted + under_review, and
+  // adds completed (manual approvals need a second step) and cancelled.
+  { key: "total_requests", label: "Total Requests", icon: ClipboardList, iconColor: "text-gray-900" },
+  { key: "submitted_requests", label: "Pending", icon: Clock, iconColor: "text-yellow-600" },
+  { key: "under_review_requests", label: "Under Review", icon: Eye, iconColor: "text-sky-600" },
+  { key: "approved_requests", label: "Approved", icon: CheckCircle, iconColor: "text-green-600" },
+  { key: "completed_requests", label: "Completed", icon: CheckCheck, iconColor: "text-emerald-700" },
+  { key: "declined_requests", label: "Declined", icon: XCircle, iconColor: "text-red-600" },
+  { key: "cancelled_requests", label: "Cancelled", icon: RotateCcw, iconColor: "text-gray-500" },
+  // By type — three in v2; location change was dropped.
+  { key: "document_change_requests", label: "Document Change", icon: FileText, iconColor: "text-blue-600" },
+  { key: "asset_update_requests", label: "Asset Update", icon: Settings, iconColor: "text-purple-600" },
+  { key: "custom_requests", label: "Custom Request", icon: MessageSquare, iconColor: "text-orange-600" },
+  // Money — whole naira.
+  { key: "total_fees_collected", label: "Fees Collected", icon: TrendingUp, iconColor: "text-green-600", currency: true },
+  { key: "total_fees_pending_verification", label: "Fees Awaiting Verification", icon: DollarSign, iconColor: "text-amber-600", currency: true },
+  { key: "total_fees_refunded", label: "Fees Refunded", icon: RotateCcw, iconColor: "text-red-600", currency: true },
+  { key: "paid_requests", label: "Paid Requests", icon: CheckCircle, iconColor: "text-green-600" },
+  { key: "unpaid_requests", label: "Unpaid Requests", icon: DollarSign, iconColor: "text-red-600" },
 ];
 
 interface RequestStatsProps {

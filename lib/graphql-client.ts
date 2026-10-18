@@ -1,6 +1,8 @@
 import { TypedDocumentNode } from '@graphql-typed-document-node/core';
 import { print } from 'graphql';
 import { apiClient } from './axios-client';
+import { isMockApiEnabled } from './mocks/config';
+import { resolveMockGraphql } from './mocks/resolve';
 
 interface GraphQLResponse<T> {
   data: T;
@@ -10,13 +12,20 @@ interface GraphQLResponse<T> {
 /**
  * Execute a GraphQL query/mutation with full type safety
  * Uses axios client with interceptors for auth handling
+ * When NEXT_PUBLIC_USE_MOCKS=true, responses come from lib/mocks instead of the network.
  */
 export async function execute<TResult, TVariables>(
   document: TypedDocumentNode<TResult, TVariables>,
   variables?: TVariables
 ): Promise<TResult> {
+  const query = print(document);
+
+  if (isMockApiEnabled()) {
+    return resolveMockGraphql<TResult>(query, variables as Record<string, unknown> | undefined);
+  }
+
   const { data } = await apiClient.post<GraphQLResponse<TResult>>('', {
-    query: print(document),
+    query,
     variables,
   });
 
@@ -35,6 +44,10 @@ export async function executeRaw<T = unknown>(
   query: string,
   variables?: Record<string, unknown>
 ): Promise<T> {
+  if (isMockApiEnabled()) {
+    return resolveMockGraphql<T>(query, variables);
+  }
+
   const { data } = await apiClient.post<GraphQLResponse<T>>('', {
     query,
     variables,

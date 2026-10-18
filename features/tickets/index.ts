@@ -37,9 +37,13 @@ export {
   useTicketIssueSuggestions,
   useTicketCategories,
   useTicketQueueStats,
-  useSimilarTickets,
   DEFAULT_TICKETS_LIMIT,
 } from "./hooks/use-tickets";
+export { useTicketPermissions } from "./hooks/use-ticket-permissions";
+export {
+  useEditTicketNote,
+  useDeleteTicketNote,
+} from "./hooks/use-ticket-mutations";
 export {
   useCreateTicket,
   useUpdateTicket,
@@ -66,6 +70,7 @@ export {
   useCreateIssue,
   useUpdateIssue,
   useResolveIssue,
+  useSimilarTickets,
   DEFAULT_ISSUES_LIMIT,
 } from "./hooks/use-issues";
 export { ticketKeys, issueKeys } from "./hooks/query-keys";

@@ -1,0 +1,397 @@
+# REST Endpoint Map — abode-admin-fe
+
+Planning artifact for the GraphQL removal on `admin-graphql-decoupling`.
+Maps the FE's GraphQL operations to REST endpoints on `abode-be-v2` (staging,
+base `/api/v1`). All paths below are relative to that base.
+
+Source of truth for the operation list: `lib/mocks/handlers/*` (160 mocked
+operations) plus the 25 unmocked ones found in source — **185 operations total**
+across 86 hook files and 18 features.
+
+**Status legend**
+
+| Status | Meaning |
+|---|---|
+| ✅ real | Endpoint exists on BE staging. Response shape may differ from the GraphQL shape — the hook's Zod schema + mapper absorb that. |
+| ⚠️ adapt | Endpoint exists but semantics don't map 1:1 (merged endpoints, different model, FE-side derivation needed). |
+| 🚧 provisional | No BE endpoint. Path invented following BE conventions; **mock-only** until the BE ships it. |
+
+> Provisional paths never hit the network (mock mode intercepts them). They are
+> also the **proposal to the BE team** — review before BE builds them.
+
+---
+
+## Coverage summary
+
+The admin backend is strongest exactly where admin CRUD lives, and absent for
+everything analytical or campaign-related.
+
+| Feature | BE coverage |
+|---|---|
+| `assets` | ✅ Strong — full CRUD incl. nested offers/sizes/plans |
+| `users` | ✅ Strong — list, detail, edit, suspend/unsuspend |
+| `roles-permissions` | ✅ Complete — roles, permissions, admins, invite |
+| `admin-logs` | ✅ `GET /admin/audit-logs` |
+| `commission-config` | ✅ Complete — config + overrides + audit |
+| `associate-upgrade` | ✅ Complete — queue (populated + searchable), approve/decline, manual upgrade with fee + commission |
+| `requests` | ✅ Complete — admin list + status change |
+| `agency` | ✅ Complete — full CRUD + members + commission ledger/export. No dashboard aggregate exists (v1's sales-volume tiles are gone) |
+| `auth` | ✅ Admin login/me/change-password |
+| `marketplace` | ⚠️ Partial — public list/detail/cancel; **no admin moderation** |
+| `associates` (managers) | 🚧 **None** — 26 operations, zero BE |
+| `transactions` | ✅ Partial — `GET /admin/transactions` + unified transfer approve/decline; no stats/export |
+| `dashboard` | 🚧 None |
+| `analytics` | 🚧 None |
+| `campaigns` | 🚧 Engine REST mocked (`/admin/campaigns*`); Associate Pro tracker still GraphQL |
+| `allocation` | 🚧 None |
+| `sales` | 🚧 None |
+| `courses` (Academy) | ✅ Complete — all 7 screens wired. Credential revoke/reinstate unreachable pending a BE gap (no `credential_id` on learner rows) |
+
+**Roughly 45% of operations map to real endpoints; 55% are provisional.**
+
+---
+
+## Auth — `features/auth`, `actions/auth.ts`
+
+| Operation | REST | Status | Notes |
+|---|---|---|---|
+| `SigninAdmin` | `POST /auth/admin/login` | ✅ real | Returns `{ accessToken, refreshToken, admin }`. **Two FE login paths exist today** (client `signinAdminClient` + server `loginAction`) — collapse to one during conversion. |
+| `SendAdminEmailVerification` | `POST /auth/forgot-password` | ⚠️ adapt | No admin-specific reset on BE; the shared endpoint is the closest fit. Confirm admins are in scope for it. |
+| `VerifyAdminEmail` | `POST /auth/verify-otp` | ⚠️ adapt | Shared endpoint; purpose-scoped bearer token. |
+| `UpdateAdminPassword` | `POST /auth/admin/change-password` | ✅ real | BE also enforces a forced first-login change (`PasswordChangeGuard`). |
+
+New endpoints worth adopting: `GET /auth/admin/me` (session probe — would let
+middleware verify rather than trust a cookie), `POST /auth/admin/logout-all`.
+
+> **⚠ Open decision — refresh tokens.** BE issues short-lived access tokens +
+> rotating refresh. The FE has **no refresh flow** (`logoutAction` deletes a
+> `refreshToken` that is never set). Resolve before auth points at the real BE.
+
+## Users — `features/users` (24 ops, 8,519 LOC — heaviest feature)
+
+| Operation | REST | Status | Notes |
+|---|---|---|---|
+| `GetAllUsers` | `GET /admin/users` | ✅ real | Paginated `?page&limit&search`. |
+| `GetUserDetailsByAdmin` | `GET /admin/users/:id` | ✅ real | |
+| `EditUserDetailsByAdmin` | `PATCH /admin/users/:id` | ✅ real | |
+| `SuspendUser` | `PATCH /admin/users/:id/suspend` | ✅ real | |
+| `UnsuspendUser` | `PATCH /admin/users/:id/unsuspend` | ✅ real | |
+| `ModifyUserReferralStatus` | `PATCH /admin/users/:id/referral-status` | ✅ real | |
+| `ViewUserReferralsByAdmin` | `GET /admin/users/:id/downlines` | ✅ real | |
+| `RemoveReferralByAdmin` | `PATCH /admin/users/:id/referrer` | ⚠️ adapt | BE models *setting* the referrer; removal = set null. Confirm. |
+| `AddReferralByAdmin` | `PATCH /admin/users/:id/referrer` | ⚠️ adapt | Same endpoint. |
+| `GetAllSuspendedUsers` | `GET /admin/users` | ⚠️ adapt | Filter param (`?is_suspended=true`) — confirm the DTO supports it, otherwise FE-side filter. |
+| `GetAllDefaultUsers` | `GET /admin/users` | ⚠️ adapt | "Default" = payment-defaulting. Needs a BE filter or derivation from acquisitions. |
+| `GetSuspendedPaymentPlans` | `GET /acquisitions` | ⚠️ adapt | Admin acquisitions list; filter to suspended. |
+| `GetSuspendedPaymentPlansSummary` | — | 🚧 provisional | `GET /acquisitions/summary`. No BE aggregate. |
+| `Metrics`, `GetUserAnalytics` | — | 🚧 provisional | `GET /admin/users/metrics`. No BE. |
+| `AdminSignupUser` | `POST /auth/signup` | ⚠️ adapt | Admin-created user; BE has no admin-side create. |
+| `EditUserWalletDetailsByAdmin`, `EditWalletCommission` | — | 🚧 provisional | `PATCH /admin/users/:id/wallet`. No BE. |
+| `UpdateUserTin`, `ClearUserTin` | `PATCH /admin/users/:id` | ⚠️ adapt | Fold into the user PATCH if `tin` is in the DTO. |
+| `ExportUsersByFilter`, `ExportUsersWithAsset`, `ExportSuspendedUsers`, `ExportDefaultUsers`, `ExportSuspendedPaymentPlans` | — | 🚧 provisional | `GET /admin/users/export`. **No export endpoints anywhere on the BE** — see Exports note below. |
+
+## Assets — `features/assets` (24 ops)
+
+| Operation | REST | Status |
+|---|---|---|
+| `GetFeatureAdminAssets` | `GET /admin/assets` | ✅ real |
+| `ViewAsset` | `GET /admin/assets/:id` | ✅ real |
+| `CreateFlexAsset`, `CreateFullOwnershipAsset` | `POST /admin/assets` | ⚠️ adapt — one endpoint, offer type in body |
+| `UpdateAsset` | `PATCH /admin/assets/:id` | ✅ real |
+| `GetAssetIdByName`, `ViewAssetByName`, `ViewAssetOptionDataByName` | `GET /admin/assets?search=` | ⚠️ adapt — BE has no by-name lookup; search then select |
+| `FeatureAssetStatistics`, `GetAssetAnalytics` | — | 🚧 `GET /admin/assets/statistics` |
+| `GetAssetBlocks`, `CreateBlock`, `DeleteBlock`, `GetBlockPlots`, `CreatePlots`, `UpdatePlotSize`, `GetAvailablePlotsForAsset` | — | 🚧 `/admin/assets/:id/blocks[...]` — **no blocks/plots model on the BE at all** |
+
+The BE's nested offer/size/plan endpoints (`PATCH /admin/assets/:assetId/offers/:offerType`,
+`.../sizes`, `.../plans/:tenor`) have **no FE consumer yet** — the FE edits
+these inline via `UpdateAsset`. Worth aligning during conversion.
+
+### Estate updates — Updates tab
+
+Not a GraphQL conversion: progress posts an admin writes from an estate's
+detail Updates tab, which buyers then read on their plot page and in "This week
+at Abode". Reads need `view_estate_updates`; create, edit, publish and archive
+need `manage_estate_updates`. An update is always created as a draft.
+`published_at` is set once, on the first publish, and a re-publish keeps it.
+Archive is the unpublish; there is no delete.
+
+| Operation | REST | Status |
+|---|---|---|
+| List updates | `GET /admin/assets/:id/updates` | 🚧 provisional (mock-backed until the BE branch merges) |
+| Update detail | `GET /admin/assets/:id/updates/:updateId` | 🚧 provisional (mock-backed until the BE branch merges) |
+| Create update | `POST /admin/assets/:id/updates` | 🚧 provisional (mock-backed until the BE branch merges) |
+| Edit update | `PATCH /admin/assets/:id/updates/:updateId` | 🚧 provisional (mock-backed until the BE branch merges) |
+| Publish / re-publish | `POST /admin/assets/:id/updates/:updateId/publish` | 🚧 provisional (mock-backed until the BE branch merges) |
+| Archive | `POST /admin/assets/:id/updates/:updateId/archive` | 🚧 provisional (mock-backed until the BE branch merges) |
+
+### Land configuration — the physical-land account (Phase 1)
+
+Not a GraphQL conversion, and not adapted from any BE endpoint that exists —
+`abode-be-v2` has no land-configuration module at all yet. See
+`docs/BACKEND-PHASE-1-ASSET-LAND-MODEL.md` for the target contract this mocks
+against. Reads/writes are versioned: `PUT` requires `expected_version` and
+409s `LAND_CONFIGURATION_VERSION_CONFLICT` on a stale save.
+
+| Operation | REST | Status |
+|---|---|---|
+| Read current land account | `GET /admin/assets/:assetId/land-configuration` | 🚧 provisional (mock-backed, no BE module exists) |
+| Save (complete replace, versioned) | `PUT /admin/assets/:assetId/land-configuration` | 🚧 provisional (mock-backed, no BE module exists) |
+| Configuration history | `GET /admin/assets/:assetId/land-configuration/history` | 🚧 provisional (mock-backed, no BE module exists) |
+| One revision | `GET /admin/assets/:assetId/land-configuration/history/:version` | 🚧 provisional (mock-backed, no BE module exists) |
+
+## Roles & Permissions — `features/roles-permissions` (6 ops)
+
+| Operation | REST | Status |
+|---|---|---|
+| `GetAllRoles` | `GET /admin/roles` | ✅ real |
+| `GetAllPermissions` | `GET /admin/permissions` | ✅ real |
+| `GetAllAdminWithRoles` | `GET /admin/admins` | ✅ real |
+| `GetAdminWithRole` | `GET /admin/admins/:id` | ✅ real |
+| `UpdateAdminRole` | `PATCH /admin/admins/:id/role` | ✅ real |
+| `CreateRole` | — | 🚧 `POST /admin/roles` — BE roles look fixed (`admin\|subadmin\|moderator\|viewer`); confirm whether custom roles are supported |
+| `InviteAdmin` (dashboard) | `POST /admin/create-subadmin` | ✅ real |
+
+## Admin Logs — `features/admin-logs`
+
+| Operation | REST | Status |
+|---|---|---|
+| `GetAllAdminLogs` | `GET /admin/audit-logs` | ✅ real |
+| `ExportAdminLogs` | — | 🚧 provisional (see Exports) |
+
+## Commission Config — `features/commission-config` (7 ops)
+
+| Operation | REST | Status |
+|---|---|---|
+| `GetCommissionConfig` | `GET /admin/commission/config` | ✅ real |
+| `UpdateCommissionConfig` | `POST /admin/commission/config` | ✅ real |
+| `GetAssetCommissionOverrides` | `GET /admin/commission/overrides` | ✅ real |
+| `UpsertAssetCommissionOverride` | `POST /admin/commission/overrides/asset` | ✅ real |
+| `DeleteAssetCommissionOverride` | `DELETE /admin/commission/overrides/asset/:id` | ✅ real |
+| `GetAssetCommissionOverride` | `GET /admin/commission/overrides` | ⚠️ adapt — no single-override read; filter the list |
+| `GetCommissionConfigHistory` | — | 🚧 `GET /admin/commission/config/history` |
+
+BE also exposes `GET /admin/commission/audit/:paymentPlanId` and
+`POST /overrides/user` + `/overrides/asset-user`, none of which the FE uses yet.
+
+## Associate Upgrade — `features/associate-upgrade` (12 ops)
+
+| Operation | REST | Status |
+|---|---|---|
+| `GetAllUpgradeRequests` | `GET /admin/referrals/upgrades` | ✅ real — populated refs + `search` (tickets 13/14, 2026-08-13) |
+| `ApproveUpgradeToAssociate`, `ApproveUpgradeToAssociatePro` | `PATCH /admin/referrals/upgrades/:id/approve` | ✅ real — **no body**; the target tier is already on the upgrade row |
+| `DeclineUpgradeRequest` | `PATCH /admin/referrals/upgrades/:id/decline` | ✅ real |
+| `ManualUpgradeToAssociatePro` | `POST /admin/users/:id/manual-upgrade` | ✅ real — `to_tier`, `fee_amount?`, `pay_commission?`, `reason` (min 20); no `paymentUrl` |
+| `SearchUpgradeUsers` | `GET /admin/users?search=` | ✅ real — handler wired 2026-08-13 (ticket 2) |
+| `GetActiveCoupons`, `CreateCoupon`, `UpdateCoupon`, `UpdateCouponStatus`, `DeleteCoupon` | `/admin/coupons` (GET/POST); `/admin/coupons/:code` (GET/PATCH/DELETE); `/admin/coupons/:code/status` (PATCH) | ✅ real — requires `manage_promotions` |
+| `ExportUpgradeRequests` | — | 🚧 provisional (see Exports) |
+
+## Requests — `features/requests` (6 ops)
+
+| Operation | REST | Status |
+|---|---|---|
+| `GetAllClientRequests` | `GET /client-services/admin/requests` | ✅ real |
+| `UpdateRequestStatus` | `PATCH /client-services/admin/requests/:id/status` | ✅ real |
+| `SystemApproveLocationChangeRequest`, `SystemApproveDocumentChangeRequest`, `SystemApproveAssetUpdateRequest` | `PATCH /client-services/admin/requests/:id/status` | ⚠️ adapt — three ops collapse into the one status endpoint; the per-type side effects (actually applying the change) are BE-side and may not exist |
+| `GetRequestStatistics` | — | 🚧 `GET /client-services/admin/requests/statistics` |
+
+## Agency — `features/agency` — ✅ **ported** (2026-09-03)
+
+Ported against `AgencyAdminController` / `AgencyMembershipController` in
+abode-be-v2. Note the real paths are under **`/admin/agencies`**, not the
+`/agencies` this table previously guessed, and suspend/reactivate are `POST`,
+not `PATCH`.
+
+| v1 operation | REST | Status |
+|---|---|---|
+| `GetAgencies` | `GET /admin/agencies` | ✅ `useAgencies` — `page`, `limit` (≤100), `q` (name or code), `status`, `sort`, `order` |
+| `GetAgencyById` | `GET /admin/agencies/:agency_id` | ✅ `useAgency` — adds `owner`, `member_count`, `total_commission_to_date` |
+| `CreateAgency` | `POST /admin/agencies` | ✅ `useCreateAgency` — `owner_mode: 'existing' \| 'new'`; no `credentials` come back, the BE emails the temp password |
+| `UpdateAgencyCommission` | `PATCH /admin/agencies/:agency_id` | ✅ `useUpdateAgency` — also name and both contacts (nullable: `null` clears) |
+| `SuspendAgency` | `POST /admin/agencies/:agency_id/suspend` | ✅ `useSuspendAgency` — `suspension_reason`, 20–500 chars, checked trimmed |
+| `ReactivateAgency` | `POST /admin/agencies/:agency_id/reactivate` | ✅ `useReactivateAgency` — 400s if not suspended |
+| — | `DELETE /admin/agencies/:agency_id` | ✅ `useDeleteAgency` — new; refused unless `member_count` is 0 |
+| — | `POST /admin/agencies/:agency_id/change-owner` | ✅ `useChangeAgencyOwner` — new; **super admin** on top of `manage_agencies` |
+| — | `GET /admin/agencies/:agency_id/members` | ✅ `useAgencyMembers` — new; `q`, `include_owner` |
+| — | `PATCH /admin/users/:user_id/org` | ✅ `useSetUserOrg` — new; `agency_id: string \| null` |
+| — | `GET /admin/agencies/:agency_id/commissions` | ✅ `useAgencyCommissions` — new; the v2 stand-in for the v1 wallet feed |
+| — | `GET /admin/agencies/:agency_id/commissions/export` | ✅ `useExportAgencyCommissions` — new; CSV, `export_agencies`, 10/hour, 50k rows |
+| `GetAgencyDashboard` | — | ❌ **no v2 equivalent.** No agency aggregate endpoint exists: no clients-recruited, land-value-sold, outstanding-balance or top-selling-lands. Hook and panels deleted; `/agency` and `/agency/top-performing` redirect into the list. |
+| `GetAgencyTransactions` | — | ❌ **no v2 equivalent.** v1's agency wallet (debits, balances, payout rows) has no v2 counterpart; the commission ledger is earnings-only. `/agency/transactions` redirects into the list. |
+
+Permissions are `view_agencies` / `manage_agencies` / `export_agencies` —
+plural. The FE previously declared `view_agency` / `manage_agency`, names the
+BE has never had; corrected in `hooks/use-admin-permission.ts`.
+
+Headline counts on the list screen come from three `limit=1` calls reading
+`meta.total` (`useAgencyStats`), since there is no aggregate to ask.
+
+## Marketplace — `features/marketplace` (7 ops)
+
+| Operation | REST | Status |
+|---|---|---|
+| `ViewAllMarketplaceListings` | `GET /marketplace` | ⚠️ adapt — public endpoint; no admin view with moderation fields |
+| `GetMarketplaceDashboard` | — | 🚧 `GET /admin/marketplace/statistics` |
+| `ViewPendingMarketplaceApprovals` | — | 🚧 `GET /admin/marketplace/pending` |
+| `SuspendMarketplaceListing` / `UnsuspendMarketplaceListing` | — | 🚧 `PATCH /admin/marketplace/:id/suspend` / `/unsuspend` |
+| `ApproveMarketplacePurchase` / `RejectMarketplacePurchase` | — | 🚧 `PATCH /admin/marketplace/purchases/:id/approve` / `/reject` |
+
+**There is no admin marketplace module on the BE** — only the public browse
+endpoints plus a user-side cancel.
+
+## Transactions — `features/transactions` + `features/asset-transactions`
+
+Asset purchases (the screen at `/transactions/assets`) are **live**. Other transaction families (topup, document, commission) remain provisional.
+
+| Operation | REST | Status | Notes |
+|---|---|---|---|
+| Asset purchase list | `GET /admin/transactions?type=purchase` | ✅ real | Filters: `status`, `payment_method`, `sales_type` (`ap`/`rap`/`dp`), `asset_type` (`flex`/`full-ownership`), `search`, `start_date`, `end_date`, `user`. No `admin_status`. |
+| FO transaction detail | `GET /admin/fo/purchase/transactions/:id` | ✅ real | Land row includes the outright document sibling. Used by `/transactions/assets/:id`. |
+| Approve transfer | `POST /admin/acquisitions/transactions/:txId/approve` | ✅ real | Empty body. BE routes by kind (flex or FO). Returns `{ payment_plan_id }` (flex) or `{ plan_id }` (FO). Permission `approve_payments`. Do **not** call on `fo_outright_doc`. |
+| Decline transfer | `POST /admin/acquisitions/transactions/:txId/decline` | ✅ real | `{ reason }` min 20 chars. Outright land also declines the sibling doc tx. |
+| FO land plan detail | `GET /admin/fo/purchase/payment-plans/:id` | ✅ real | Land plan with linked document plan. Used to drive suspend / allocate on the FO transaction page. |
+| Suspend plan | `POST /admin/acquisitions/plans/:planId/suspend` | ✅ real | `{ reason }` min 20 chars. Replaces FO/flex/legacy acquisition suspend. |
+| Unsuspend plan | `POST /admin/acquisitions/plans/:planId/unsuspend` | ✅ real | Empty body. Resets default count. Replaces FO/flex unsuspend. |
+| Allocate plan | `POST /admin/acquisitions/plans/:planId/allocate` | ✅ real | `{ block, plot }` both required strings. Also used from the allocation modal for `assetType=full-ownership`. |
+| `GetTopupTransaction`, `GetDocumentTransaction`, `GetCommissionTransactions` | `GET /admin/transactions?type=…` | ⚠️ adapt | Same list endpoint; those screens are not migrated. |
+| `AdminTransactionDataPoint`, `GetAssetTransactionsStatistics` | — | 🚧 `GET /admin/transactions/statistics` | |
+
+## Associates / Managers — `features/associates`, `features/associate-managers` (26 ops, 7,642 LOC) — 🚧 **entirely provisional**
+
+"Associate manager" is a v1 concept with **no representation in `abode-be-v2`**
+(the BE models associates only as a `UserTier` on the referral ladder). All 26
+operations — manager dashboards, rosters, targets, ratings, onboarding attempts,
+sales records, bulk assignment, pro groups — are provisional under
+`/admin/associate-managers/*`.
+
+Because this feature is large and entirely unbacked, consider migrating it
+**last**: it is pure mock-to-mock work until the BE models managers.
+
+## Courses (Academy) — `features/courses` — ✅ **complete, all 7 screens real**
+
+Not a GraphQL conversion — a net-new admin surface for authoring courses and
+tracking who's taking them, based on a local design reference
+(`course-system-admin.html`, 7 screens + data contract). All 7 screens are
+wired to real endpoints, confirmed against `abode-be-v2` source directly
+(staging `7fefe13`).
+
+| Operation | REST | Status | Notes |
+|---|---|---|---|
+| List courses | `GET /admin/courses` | ✅ real | `?page&limit&status&audience&q` — the search param is `q`, not `search` |
+| Create course | `POST /admin/courses` | ✅ real | `{ title, slug?, summary?, cover_image?, audience?, estimated_minutes?, credential_validity_months?, grants_credential? }`. Always created as `draft`. |
+| Course detail | `GET /admin/courses/:id` | ✅ real | Includes `modules: [...]`, each with its `blocks` embedded. |
+| Update course | `PATCH /admin/courses/:id` | ✅ real | Same optional fields as create, minus `slug`'s auto-derivation. |
+| Publish | `POST /admin/courses/:id/publish` | ✅ real | Not a status PATCH — a dedicated route. 400s `COURSE_EMPTY` if the course has no modules or no content blocks yet. |
+| Unpublish | `POST /admin/courses/:id/unpublish` | ✅ real | Also a dedicated route, not a status PATCH. |
+| Delete course | `DELETE /admin/courses/:id` | ✅ real | Cascades modules and blocks. |
+| Read / set academy settings | `GET`/`PATCH /admin/academy-settings` | ✅ real | Singleton: `{ first_sale_path_course_id }` only — no title, see gaps doc §7. `PATCH` 400s unless the target is already published — no audience check, see gaps doc §8. |
+| Modules — list/create/rename/delete/reorder | `.../courses/:id/modules`, `.../modules/:id`, `.../modules/reorder` | ✅ real | A module is just `{id, course_id, title, position}` — no duration, kind, or completion-weight fields. |
+| Content blocks — list/create/update/delete/reorder | `.../modules/:id/blocks`, `.../content-blocks/:id`, `.../content-blocks/reorder` | ✅ real | 5 types: `text` (`{html}`), `video`/`image`/`file` (`{media_asset_id}`, must be `ready`), `quiz` (`{quiz_settings_id}`). |
+| Media upload | `POST .../media/upload-url` → browser `PUT` to the presigned URL → `POST .../media/:id/finalize`; `POST .../media/external`; `GET`/`DELETE .../media/:id` | ✅ real | Video goes `uploading` → `processing` → `ready`; image/file go straight to `ready`. `shapeMedia()` never returns the original filename, only kind/status/renditions/duration. |
+| Quiz settings & questions | `.../quiz-settings[/...]`, `.../quiz-questions[/...]` | ✅ real | A quiz belongs to a module, not a course — the FE's course-level Quiz tab scans the course's modules for the first one with a quiz. |
+| Learner-preview / grade-preview | `GET .../quiz-settings/:id/learner-preview`, `POST .../quiz-settings/:id/grade-preview` | ✅ real | Both admin-only, no-answer-key / no-attempt-recorded tools. |
+
+There is no `GET /admin/courses/summary` aggregate for the filter-chip counts
+— `abode-fe-admin` derives them client-side (`useCourseSummary`) the same way
+`useAgencyStats` does, five `limit=1` list calls reading `meta.total`. See
+gaps doc §3.
+
+The `Course` record itself has no `estate_id`, `require_in_order`,
+`credential_renewal`, or `is_first_sale_path` field, and no
+`modules_count`/`learners_count`/`completed_count` roll-up on the list or bare
+record — see `course.schema.ts` (FE) for exactly what `shapeCourse()` (BE)
+returns.
+
+**Update (2026-09-17):** enrolment/credential tracking (screens 6–7), then
+courses list/overview (1–2), then modules/module-editor/quiz (3–5) — all
+wired the same day, each confirmed against `abode-be-v2` source directly
+rather than inferred. Only `POST /admin/credentials/:id/{revoke,reinstate}`
+remain unreachable — see `docs/COURSE-LEARNERS-BACKEND-GAPS.md` §2.
+
+| Operation | REST | Status | Notes |
+|---|---|---|---|
+| Course learners | `GET /admin/courses/:id/learners` | ✅ real | `?page&limit`. `course`/`quiz_stats` are computed server-side but dropped by the response interceptor — see gaps doc §1. |
+| All learners | `GET /admin/learners` | ✅ real | `?page&limit&course_id`. One row per *enrolment*, not per associate — see gaps doc §6. |
+| Revoke credential | `POST /admin/credentials/:id/revoke` | ⚠️ not reachable from learner rows | `{ reason }`, min 20 chars. Learner rows carry no `credential_id` yet — see gaps doc §2. |
+| Reinstate credential | `POST /admin/credentials/:id/reinstate` | ⚠️ not reachable from learner rows | Same blocker. |
+
+## Field staff (Site Managers & Surveyors) — `features/field-staff` — ✅ **integrated** (2026-09-24)
+
+Admin side of abode-be-v2 Phase 1 field operations. The field app
+(`/field/*`, its own login and token) is a separate application. Schemas mirror
+the BE presenters (`field-staff.presenter.ts`, `scorecard.presenter.ts`,
+`submission.presenter.ts`, `field-performance.service.ts`). **No mocks** — the
+pages 404 in mock mode. Admin guide: `docs/docs/PHASE-1-ADMIN-GUIDE.md`.
+
+| Operation | REST | Status | Notes |
+|---|---|---|---|
+| List staff | `GET /admin/field-staff` | ✅ | `?staff_type&status&search&page&limit` (limit ≤ 100) |
+| Invite | `POST /admin/field-staff/invite` | ✅ | `{ first_name, last_name, email, staff_type, phone_number?, employee_reference? }` — emails a 72h activation link |
+| Resend invite | `POST /admin/field-staff/:id/resend-invite` | ✅ | Invited accounts only |
+| Staff detail | `GET /admin/field-staff/:id` | ✅ | `{ field_staff, assignments[] }` (ended included) |
+| Disable / enable | `PATCH /admin/field-staff/:id/disable` · `/enable` | ✅ | Disable `{ reason }`, signs out everywhere |
+| Assignments | `GET /admin/field-staff/:id/assignments?include_ended=true` | ✅ | |
+| Assign | `POST /admin/field-staff/:id/assignments` | ✅ | `{ asset_id, responsibility?: primary\|support\|relief, starts_on?, note? }`. One open per estate |
+| End assignment | `PATCH …/assignments/:assignmentId/end` | ✅ | `{ ends_on?, reason }`. Can't be changed once ended |
+| Metrics | `GET /admin/field-scorecards/metrics` | ✅ | Builds the target picker |
+| Scorecards | `GET /admin/field-scorecards` | ✅ | Paged. `?field_staff_id&asset_id&year&month&state&current_only` |
+| Create / edit | `POST /admin/field-scorecards`, `PATCH /:id` | ✅ | Targets `{ metric_key, target, weight, note? }` — never `unit`. PATCH on draft/restated only |
+| Lifecycle | `POST /:id/publish\|revise\|finalise\|restate` | ✅ | Revise `{ reason }` returns a new **draft** that is current at once; the dialog then PATCHes and publishes it |
+| Review queue | `GET /admin/field-submissions?status=submitted` | ✅ | No staff_type filter on the BE — the queue filters by `metric_key` |
+| Submission detail | `GET /admin/field-submissions/:id` | ✅ | `{ submission, plots, warnings, effects }` |
+| Verify | `POST /:id/verify` | ✅ | `{ revision, acknowledgement?, accept_proposed_boundary?, note? }`. Already-verified returns the bare submission |
+| Reject / reverse | `POST /:id/reject` · `/reverse` | ✅ | `{ reason }` |
+| Summary | `GET /admin/field-performance/summary` | ✅ | **Active workers only** — the roster joins it onto the staff list |
+| Person's month | `GET /admin/field-performance/staff/:staffId` | ✅ | Drafts excluded; draft sites land in `sites_without_targets`. `weekly` is ISO weeks, verified only, per metric across all the person's sites |
+| Site setup | `GET /admin/assets/:assetId/site-setup` | ✅ | Estate fencing by side on the site page |
+
+Not yet used: `correct`, `link-plots`, `metrics/:metricKey`, `trend`,
+`blockers`, `source-records`, `assets/:assetId` performance, plots, field
+history and costs, boundary PUT, allocation-event ownership.
+
+## Dashboard / Analytics / Sales / Campaigns / Allocation — 🚧 **entirely provisional**
+
+| Feature | Ops | Proposed base path |
+|---|---|---|
+| `dashboard` | `GetAdminDashboardDetails` | `GET /admin/dashboard` |
+| `analytics` | `GetSalesAnalytics` (+2) | `GET /admin/analytics/sales` |
+| `sales` | `GetSalesRecord`, `GetSalesStatusCounts`, `GetSalesDashboard`, `ExportSales` | `GET /admin/sales[...]` |
+| `campaigns` | Engine: list/create/detail/dashboard/rewards/transition/invalidate/export/PDF, plus revenue + purchases (`view_campaigns` **and** `view_sales`). Tracker: GraphQL Campaign2000 | `GET/POST/PATCH /admin/campaigns*` |
+| `allocation` | 7 ops (eligible clients, allocate/deallocate/reassign land, allocation email) | `/admin/allocation/*` — FO assign/reassign is `POST /admin/acquisitions/plans/:planId/allocate` |
+
+None of these exist on the BE as GraphQL domains. Campaigns remain unbacked.
+FO assign/reassign is the exception: it uses
+`POST /admin/acquisitions/plans/:planId/allocate` (see Transactions above).
+
+---
+
+## Cross-cutting notes
+
+### Exports (10+ operations)
+
+Every `Export*` operation returns generated file data. **The BE has no export
+endpoints** and its `DocumentModule` (PDF generation) exposes no routes at all.
+Options to settle with BE: a per-resource `?format=csv` param, dedicated
+`/admin/*/export` endpoints, or keep generating CSVs client-side from a
+full-page fetch (what the mock does today).
+
+**Decision (2026-08-13): client-side, per feature, no BE ticket.** Exports page
+the existing list endpoint and build the CSV in the browser. This is honest work
+— we hold every row we write — and it needs no new contract. The cost is bounded
+by the page loop, so each export caps its page count and says in the UI when it
+stopped short rather than handing over a silently truncated file. Revisit only
+if an export needs data the list endpoint doesn't return.
+
+### Statistics / dashboards
+
+A recurring pattern: nearly every feature has a `*Statistics` / `*Dashboard`
+operation with no BE counterpart. If the BE adds a single convention
+(`GET /admin/{resource}/statistics`), roughly 10 provisional endpoints resolve
+at once. Worth proposing as one design rather than ten tickets.
+
+### Contract questions
+
+- `POST /admin/assets` — does one endpoint take both flex and full-ownership via an offer-type discriminator, or are separate paths wanted?
+- ~~`PATCH /admin/referrals/upgrades/:id/approve` — is the target tier in the body, or should approve be tier-specific?~~ **Answered 2026-08-13: neither.** The handler is `approve(@Param('id'), @CurrentUser())` — no body at all. `to_tier` is already on the upgrade row, set when the applicant submitted. One endpoint, empty body.
+- ~~`GET /admin/users` — which filters does `AdminUserFilterDto` actually accept?~~ **Answered 2026-08-13** against the deployed spec: exactly `search`, `referral_status`, `is_suspended`, `page`, `limit`. Anything else is a hard 400 under `forbidNonWhitelisted`. Handler is wired (ticket 2).
+- Are BE admin roles fixed (`admin|subadmin|moderator|viewer`), or can the FE create custom roles as `CreateRole` implies?
+- ~~Should `/agencies` gain create + dashboard + transactions, or is agency management out of scope for v2?~~ **Answered 2026-09-03:** agency management is fully in scope and lives at `/admin/agencies` with create, delete, change-owner, members and a commission ledger. A **dashboard aggregate was not built** — no endpoint returns agency sales volume, commission-paid totals or top-selling lands, so v1's dashboard and wallet screens have no port. Open question for the BE: are those aggregates wanted, or is the per-agency commission ledger the intended replacement?

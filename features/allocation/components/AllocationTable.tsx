@@ -1,8 +1,7 @@
 "use client";
 
 import React from "react";
-import { graphql } from "@/lib/gql";
-import { FragmentType, useFragment as getFragmentData } from "@/lib/gql";
+import type { AllocationClient } from "../schemas/allocation.schema";
 import {
   Table,
   TableBody,
@@ -14,7 +13,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { MailCheck, MailWarning, MapPin, Send, Settings2 } from "lucide-react";
+import { MapPin, RotateCcw, Send } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   AdminDesktopTableWrap,
@@ -23,36 +22,33 @@ import {
   AdminMobileStack,
 } from "@/components/shared/admin-responsive-table";
 
-export const AllocationTableRowFragment = graphql(`
-  fragment AllocationTableRowFragment on EligibleClient {
-    allocation
-    allocationStatus
-    allocationDate
-    amountPaid
-    assetName
-    assetSize
-    assetType
-    duration
-    email
-    end_date
-    firstName
-    lastName
-    location
-    paymentPlan
-    paymentPercentage
-    phoneNumber
-    referral
-    referralStatus
-    totalPrice
-    unit
-  }
-`);
+export type AllocationTableRow = Pick<
+  AllocationClient,
+  | "payment_plan_id"
+  | "name"
+  | "email"
+  | "phone"
+  | "asset_id"
+  | "asset_name"
+  | "asset_location"
+  | "asset_type"
+  | "size"
+  | "no_of_units"
+  | "amount_paid"
+  | "amount_payable"
+  | "balance"
+  | "payment_percentage"
+  | "allocation_status"
+  | "allocation_date"
+  | "payment_completed_date"
+  | "date_joined"
+>;
 
 interface AllocationTableProps {
-  rows?: (FragmentType<typeof AllocationTableRowFragment> | null)[] | null;
+  rows?: AllocationTableRow[] | null;
   isLoading?: boolean;
-  onSend: (client: FragmentType<typeof AllocationTableRowFragment>) => void;
-  onManage: (client: FragmentType<typeof AllocationTableRowFragment>) => void;
+  onSend: (client: AllocationTableRow) => void;
+  onResend: (client: AllocationTableRow) => void;
 }
 
 const formatAmount = (value?: number | null) =>
@@ -65,6 +61,14 @@ const formatAmount = (value?: number | null) =>
 
 const formatNumber = (value?: number | null) =>
   new Intl.NumberFormat("en-NG").format(value ?? 0);
+
+/**
+ * Null `payment_completed_date` means the plan is still being paid — the
+ * normal case, since eligibility starts at the snapshot percentage rather than
+ * at completion. A bare em-dash would read as "unknown" instead.
+ */
+const formatCompletedDate = (value?: string | null) =>
+  value ? formatDate(value) : "Still paying";
 
 const formatDate = (value?: string | null) => {
   if (!value) return "—";
@@ -79,37 +83,31 @@ const formatDate = (value?: string | null) => {
   return date.toLocaleDateString();
 };
 
-/* allocation_status is set by the BE to one of pending | allocated | email_sent.
- * Reassigning drops it back to "allocated", so a client whose plots changed
- * correctly reads as un-notified until the email is sent again. */
-const EmailStatusBadge = ({ status }: { status?: string | null }) => {
-  const normalized = (status ?? "pending").toLowerCase();
+const ALLOCATION_STATUS_LABELS: Record<AllocationTableRow["allocation_status"], string> = {
+  pending: "Not assigned yet",
+  allocated: "Allocated",
+  email_sent: "Email sent",
+};
 
-  if (normalized === "email_sent") {
-    return (
-      <Badge className="inline-flex items-center gap-1.5 whitespace-normal bg-green-100 px-2.5 py-1 text-left text-sm font-normal leading-snug text-green-800 hover:bg-green-100">
-        <MailCheck className="h-3.5 w-3.5 shrink-0" />
-        Email sent
-      </Badge>
-    );
-  }
-
-  if (normalized === "allocated") {
+function AllocationStatusBadge({ status }: { status: AllocationTableRow["allocation_status"] }) {
+  if (status === "pending") {
     return (
       <Badge
         variant="secondary"
-        className="inline-flex items-center gap-1.5 whitespace-normal bg-amber-100 px-2.5 py-1 text-left text-sm font-normal leading-snug text-amber-800"
+        className="inline-block max-w-full whitespace-normal bg-orange-100 px-2.5 py-1 text-left text-sm font-normal leading-snug text-orange-800"
       >
-        <MailWarning className="h-3.5 w-3.5 shrink-0" />
-        Not notified
+        {ALLOCATION_STATUS_LABELS[status]}
       </Badge>
     );
   }
+  return (
+    <Badge className="inline-block max-w-full wrap-break-word bg-green-100 px-2.5 py-1 text-left text-sm font-normal leading-snug text-green-800 hover:bg-green-100">
+      {ALLOCATION_STATUS_LABELS[status]}
+    </Badge>
+  );
+}
 
-  return <span className="text-sm text-muted-foreground">—</span>;
-};
-
-export function AllocationTable({ rows, isLoading, onSend, onManage }: AllocationTableProps) {
+export function AllocationTable({ rows, isLoading, onSend, onResend }: AllocationTableProps) {
   if (isLoading) {
     return (
       <Card className="min-w-0 border-none shadow-sm">
@@ -123,9 +121,7 @@ export function AllocationTable({ rows, isLoading, onSend, onManage }: Allocatio
     );
   }
 
-  const safeRows = (rows ?? []).filter(
-    (item): item is NonNullable<typeof item> => item !== null
-  );
+  const safeRows = rows ?? [];
 
   return (
     <Card className="min-w-0 border-none shadow-sm">
@@ -135,48 +131,36 @@ export function AllocationTable({ rows, isLoading, onSend, onManage }: Allocatio
             <p className="py-8 text-center text-sm text-muted-foreground">No eligible clients found.</p>
           ) : (
             safeRows.map((row, idx) => {
-              const client = getFragmentData(AllocationTableRowFragment, row);
-              const hasAllocation = Boolean(client.allocation);
+              const client = row;
+              const hasAllocation = client.allocation_status !== "pending";
               return (
-                <AdminMobileCard key={`${client.email}-${idx}`} title={`${client.lastName} ${client.firstName}`} subtitle={client.email}>
-                  <AdminMobileField label="Phone" value={client.phoneNumber || "—"} />
-                  <AdminMobileField label="Referrer" value={client.referral || "not added yet"} />
+                <AdminMobileCard key={`${client.payment_plan_id}-${idx}`} title={client.name} subtitle={client.email}>
+                  <AdminMobileField label="Phone" value={client.phone || "—"} />
                   <AdminMobileField
                     label="Asset"
-                    value={client.assetType ? `${client.assetName} (${client.assetType})` : (client.assetName ?? "—")}
+                    value={client.asset_type ? `${client.asset_name} (${client.asset_type})` : client.asset_name}
                   />
-                  <AdminMobileField label="Land size" value={formatNumber(client.assetSize)} />
-                  <AdminMobileField label="Units" value={formatNumber(client.unit)} />
-                  <AdminMobileField label="Payment %" value={`${client.paymentPercentage ?? "—"}%`} />
-                  <AdminMobileField label="Amount paid" value={formatAmount(client.amountPaid)} />
-                  <AdminMobileField label="Total price" value={formatAmount(client.totalPrice)} />
-                  <AdminMobileField label="Duration" value={`${client.duration} months`} />
-                  <AdminMobileField label="Location" value={client.location ?? "—"} />
-                  <AdminMobileField label="Bought date" value={formatDate(client.end_date)} />
+                  <AdminMobileField label="Land size" value={formatNumber(client.size)} />
+                  <AdminMobileField label="Units" value={formatNumber(client.no_of_units)} />
+                  <AdminMobileField label="Payment %" value={`${client.payment_percentage}%`} />
+                  <AdminMobileField label="Amount paid" value={formatAmount(client.amount_paid)} />
+                  <AdminMobileField label="Amount payable" value={formatAmount(client.amount_payable)} />
+                  <AdminMobileField label="Balance" value={formatAmount(client.balance)} />
+                  <AdminMobileField label="Location" value={client.asset_location ?? "—"} />
+                  <AdminMobileField
+                    label="Payment completed"
+                    value={formatCompletedDate(client.payment_completed_date)}
+                  />
+                  <AdminMobileField label="Date joined" value={formatDate(client.date_joined)} />
                   <AdminMobileField
                     label="Allocation"
-                    value={
-                      hasAllocation ? (
-                        <Badge className="bg-green-100 text-green-800 hover:bg-green-100">{client.allocation}</Badge>
-                      ) : (
-                        <Badge variant="secondary" className="bg-orange-100 text-orange-800">
-                          Not assigned yet
-                        </Badge>
-                      )
-                    }
+                    value={<AllocationStatusBadge status={client.allocation_status} />}
                   />
-                  <AdminMobileField
-                    label="Email status"
-                    value={<EmailStatusBadge status={client.allocationStatus} />}
-                  />
-                  {hasAllocation && (
-                    <AdminMobileField label="Allocated on" value={formatDate(client.allocationDate)} />
-                  )}
                   <div className="border-t border-border pt-2">
                     {hasAllocation ? (
-                      <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => onManage(row)}>
-                        <Settings2 className="h-4 w-4" />
-                        Manage
+                      <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => onResend(row)}>
+                        <RotateCcw className="h-4 w-4" />
+                        Resend
                       </Button>
                     ) : (
                       <Button size="sm" className="w-full gap-2" onClick={() => onSend(row)}>
@@ -192,14 +176,11 @@ export function AllocationTable({ rows, isLoading, onSend, onManage }: Allocatio
         </AdminMobileStack>
 
         <AdminDesktopTableWrap>
-        <Table className="w-max min-w-[1520px] table-auto text-sm">
+        <Table className="w-max min-w-[1560px] table-auto text-sm">
           <TableHeader>
             <TableRow className="hover:bg-transparent">
               <TableHead className="min-w-44 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Client Name
-              </TableHead>
-              <TableHead className="min-w-40 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Referrer
               </TableHead>
               <TableHead className="min-w-52 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Asset Name
@@ -217,22 +198,22 @@ export function AllocationTable({ rows, isLoading, onSend, onManage }: Allocatio
                 Amount Paid
               </TableHead>
               <TableHead className="min-w-38 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Total Price
+                Amount Payable
               </TableHead>
-              <TableHead className="min-w-26 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Duration
+              <TableHead className="min-w-38 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Balance
               </TableHead>
               <TableHead className="min-w-48 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Location
               </TableHead>
+              <TableHead className="min-w-38 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Payment Completed
+              </TableHead>
               <TableHead className="min-w-34 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Bought Date
+                Date Joined
               </TableHead>
               <TableHead className="min-w-40 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Allocation #
-              </TableHead>
-              <TableHead className="min-w-36 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Email Status
+                Allocation
               </TableHead>
               <TableHead className="min-w-38 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Action
@@ -243,7 +224,7 @@ export function AllocationTable({ rows, isLoading, onSend, onManage }: Allocatio
             {safeRows.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={14}
+                  colSpan={13}
                   className="whitespace-normal px-4 py-12 text-center text-sm text-muted-foreground"
                 >
                   No eligible clients found.
@@ -251,74 +232,51 @@ export function AllocationTable({ rows, isLoading, onSend, onManage }: Allocatio
               </TableRow>
             ) : (
               safeRows.map((row, idx) => {
-                const client = getFragmentData(AllocationTableRowFragment, row);
-                const hasAllocation = Boolean(client.allocation);
+                const client = row;
+                const hasAllocation = client.allocation_status !== "pending";
 
                 return (
-                  <TableRow key={`${client.email}-${idx}`}>
+                  <TableRow key={`${client.payment_plan_id}-${idx}`}>
                     <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed">
-                      <span className="block wrap-break-word font-medium">
-                        {client.lastName} {client.firstName}
-                      </span>
+                      <span className="block wrap-break-word font-medium">{client.name}</span>
                     </TableCell>
                     <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed wrap-break-word">
-                      {client.referral || "not added yet"}
-                    </TableCell>
-                    <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed wrap-break-word">
-                      {client.assetType
-                        ? `${client.assetName} (${client.assetType})`
-                        : client.assetName}
+                      {client.asset_type
+                        ? `${client.asset_name} (${client.asset_type})`
+                        : client.asset_name}
                     </TableCell>
                     <TableCell className="align-top whitespace-nowrap px-4 py-4 tabular-nums leading-relaxed">
-                      {formatNumber(client.assetSize)}
+                      {formatNumber(client.size)}
                     </TableCell>
                     <TableCell className="align-top whitespace-nowrap px-4 py-4 tabular-nums leading-relaxed">
-                      {formatNumber(client.unit)}
+                      {formatNumber(client.no_of_units)}
                     </TableCell>
                     <TableCell className="align-top whitespace-nowrap px-4 py-4 tabular-nums leading-relaxed">
-                      {client.paymentPercentage ?? "—"}%
+                      {client.payment_percentage}%
                     </TableCell>
                     <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 tabular-nums leading-relaxed wrap-break-word">
-                      {formatAmount(client.amountPaid)}
+                      {formatAmount(client.amount_paid)}
                     </TableCell>
                     <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 tabular-nums leading-relaxed wrap-break-word">
-                      {formatAmount(client.totalPrice)}
+                      {formatAmount(client.amount_payable)}
                     </TableCell>
-                    <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed wrap-break-word">
-                      {client.duration} months
+                    <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 tabular-nums leading-relaxed wrap-break-word">
+                      {formatAmount(client.balance)}
                     </TableCell>
                     <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed">
                       <div className="flex min-w-0 items-start gap-2">
                         <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                        <span className="min-w-0 wrap-break-word">{client.location}</span>
+                        <span className="min-w-0 wrap-break-word">{client.asset_location}</span>
                       </div>
                     </TableCell>
                     <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed wrap-break-word">
-                      {formatDate(client.end_date)}
+                      {formatCompletedDate(client.payment_completed_date)}
+                    </TableCell>
+                    <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed wrap-break-word">
+                      {formatDate(client.date_joined)}
                     </TableCell>
                     <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed">
-                      {hasAllocation ? (
-                        <div className="space-y-1">
-                          <Badge className="inline-block max-w-full wrap-break-word bg-green-100 px-2.5 py-1 text-left text-sm font-normal leading-snug text-green-800 hover:bg-green-100">
-                            {client.allocation}
-                          </Badge>
-                          {client.allocationDate && (
-                            <p className="text-xs text-muted-foreground">
-                              Allocated {formatDate(client.allocationDate)}
-                            </p>
-                          )}
-                        </div>
-                      ) : (
-                        <Badge
-                          variant="secondary"
-                          className="inline-block max-w-full whitespace-normal bg-orange-100 px-2.5 py-1 text-left text-sm font-normal leading-snug text-orange-800"
-                        >
-                          Not assigned yet
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed">
-                      <EmailStatusBadge status={client.allocationStatus} />
+                      <AllocationStatusBadge status={client.allocation_status} />
                     </TableCell>
                     <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4">
                       {hasAllocation ? (
@@ -326,10 +284,10 @@ export function AllocationTable({ rows, isLoading, onSend, onManage }: Allocatio
                           variant="outline"
                           size="sm"
                           className="flex h-auto min-h-10 w-full flex-col gap-1.5 whitespace-normal px-3 py-2.5 text-center text-sm leading-snug sm:h-9 sm:min-h-0 sm:w-auto sm:flex-row sm:items-center sm:justify-center sm:gap-2"
-                          onClick={() => onManage(row)}
+                          onClick={() => onResend(row)}
                         >
-                          <Settings2 className="h-4 w-4 shrink-0" />
-                          Manage
+                          <RotateCcw className="h-4 w-4 shrink-0" />
+                          Resend
                         </Button>
                       ) : (
                         <Button

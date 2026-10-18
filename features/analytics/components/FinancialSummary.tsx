@@ -31,7 +31,7 @@ export function FinancialSummary({ filters }: FinancialSummaryProps) {
     }).format(val);
   };
 
-  const paymentHealth = summary?.paymentHealth;
+  const paymentHealth = summary?.payment_health;
   const completed = paymentHealth?.completed || 0;
   const defaulted = paymentHealth?.defaulted || 0;
   const terminated = paymentHealth?.terminated || 0;
@@ -43,38 +43,38 @@ export function FinancialSummary({ filters }: FinancialSummaryProps) {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 px-6 py-8 border-b">
-      <div className="lg:col-span-5 flex flex-col justify-center">
+      <div className="min-w-0 lg:col-span-5 flex flex-col justify-center">
         <span className="text-sm font-medium text-muted-foreground uppercase tracking-widest mb-2">
           Total Sales Value
         </span>
-        <h2 className="text-5xl lg:text-6xl font-bold tracking-tighter">
-          {formatCurrency(summary?.totalSalesValue)}
+        <h2 className="text-5xl lg:text-6xl font-bold tracking-tighter wrap-break-word">
+          {formatCurrency(summary?.total_sales_value)}
         </h2>
         <div className="mt-4 flex items-center gap-3">
-          <span className="text-xs text-muted-foreground">Active Transactions: {summary?.activeTransactions || 0}</span>
+          <span className="text-xs text-muted-foreground">Active Transactions: {summary?.active_transactions || 0}</span>
         </div>
       </div>
 
-      <div className="lg:col-span-4 grid grid-cols-2 gap-8 items-center border-l lg:px-8">
-        <div>
+      <div className="min-w-0 lg:col-span-4 grid grid-cols-2 gap-8 items-center border-l lg:px-8">
+        <div className="min-w-0">
           <span className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Expected</span>
-          <span className="text-2xl font-bold">{formatCurrency(summary?.expectedAmount)}</span>
+          <span className="block text-2xl font-bold wrap-break-word">{formatCurrency(summary?.expected_amount)}</span>
         </div>
-        <div>
+        <div className="min-w-0">
           <span className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Received</span>
-          <span className="text-2xl font-bold text-emerald-600">{formatCurrency(summary?.totalReceived)}</span>
+          <span className="block text-2xl font-bold text-emerald-600 wrap-break-word">{formatCurrency(summary?.total_received)}</span>
         </div>
-        <div>
+        <div className="min-w-0">
           <span className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Outstanding</span>
-          <span className="text-2xl font-bold text-amber-600">{formatCurrency(summary?.outstandingBalance)}</span>
+          <span className="block text-2xl font-bold text-amber-600 wrap-break-word">{formatCurrency(summary?.outstanding_balance)}</span>
         </div>
-        <div>
+        <div className="min-w-0">
           <span className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">SQM Sold</span>
-          <span className="text-2xl font-bold">{Math.round(summary?.sqmSold || 0).toLocaleString()} <span className="text-sm font-normal text-muted-foreground">sqm</span></span>
+          <span className="block text-2xl font-bold wrap-break-word">{Math.round(summary?.sqm_sold || 0).toLocaleString()} <span className="text-sm font-normal text-muted-foreground">sqm</span></span>
         </div>
       </div>
 
-      <div className="lg:col-span-3 flex flex-col justify-center border-l lg:pl-8">
+      <div className="min-w-0 lg:col-span-3 flex flex-col justify-center border-l lg:pl-8">
         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">
           Payment Health
         </span>

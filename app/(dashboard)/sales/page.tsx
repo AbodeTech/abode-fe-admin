@@ -7,11 +7,12 @@ import {
   SummaryCards,
   SalesTable,
   SalesStatusChips,
-  SalesFilterBar,
-  useSalesRecords,
-  useSalesSummary,
+  SalesFilters,
+  useSalesList,
+  useSalesDashboard,
   DEFAULT_SALES_LIMIT,
 } from "@/features/sales";
+import type { SalesPlanStatus } from "@/features/sales/schemas/sales.schema";
 import { SalesExport } from "@/features/sales/components/SalesExport";
 import { Pagination } from "@/components/shared/Pagination";
 import { SuspensePageFallback } from "@/components/shared/page-content-loader";
@@ -21,37 +22,33 @@ import Link from "next/link";
 function SalesContent() {
   const searchParams = useSearchParams();
   const page = Number(searchParams.get("page")) || 1;
-  const search = searchParams.get("search") || null;
+  const q = searchParams.get("q") || null;
   const startDate = searchParams.get("start_date") || null;
   const endDate = searchParams.get("end_date") || null;
   const assetType = searchParams.get("assettype") || null;
-  // Estate and location are matched loosely BE-side, so the raw name travels
-  // rather than an id.
-  const assetName = searchParams.get("asset_name") || null;
-  const assetLocation = searchParams.get("asset_location") || null;
+  const planStatus = (searchParams.get("status") as SalesPlanStatus | null) || null;
+  const sourceType = searchParams.get("source") || null;
 
-  const { data: summary, isLoading: summaryLoading, error: summaryError } = useSalesSummary({
-    startDate,
-    endDate,
-  });
-  const {
-    data: list,
-    isLoading: listLoading,
-    error: listError,
-  } = useSalesRecords({
+  const filters = {
     page,
     limit: DEFAULT_SALES_LIMIT,
-    search,
+    q,
+    createdStartDate: startDate,
+    createdEndDate: endDate,
+    assetType,
+    planStatus,
+    sourceType,
+  };
+
+  const { data: dashboard, isLoading: dashboardLoading, error: dashboardError } = useSalesDashboard({
     startDate,
     endDate,
-    assetType,
-    assetName,
-    assetLocation,
   });
+  const { data: list, isLoading: listLoading, error: listError } = useSalesList(filters);
 
-  const totalCount = list?.count || 0;
+  const totalCount = list?.meta.total || 0;
 
-  if (summaryLoading || listLoading) {
+  if (dashboardLoading || listLoading) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center py-16">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -82,43 +79,23 @@ function SalesContent() {
           </Link>
         </div>
         <div className="w-full min-w-0 sm:w-auto sm:shrink-0">
-          <SalesExport
-            filters={{
-              page,
-              limit: DEFAULT_SALES_LIMIT,
-              search,
-              startDate,
-              endDate,
-              assetType,
-              assetName,
-              assetLocation,
-            }}
-          />
+          <SalesExport filters={filters} />
         </div>
       </div>
 
-      {summaryError && (
+      {dashboardError && (
         <div className="p-4 rounded-md bg-amber-50 text-amber-700 border border-amber-200">
           <h3 className="font-bold">Unable to load sales summary</h3>
-          <p>{(summaryError as Error).message || "Sales cards could not be loaded."}</p>
+          <p>{(dashboardError as Error).message || "Sales cards could not be loaded."}</p>
         </div>
       )}
-      {summary && <SummaryCards data={summary} />}
+      {dashboard && <SummaryCards data={dashboard} />}
 
-      <SalesFilterBar />
+      <SalesFilters />
 
-      <SalesStatusChips
-        filters={{
-          search,
-          startDate,
-          endDate,
-          assetType,
-          assetName,
-          assetLocation,
-        }}
-      />
+      <SalesStatusChips filters={{ q, createdStartDate: startDate, createdEndDate: endDate, assetType, sourceType }} />
 
-      <SalesTable records={list?.data?.filter((item): item is NonNullable<typeof item> => item !== null)} />
+      <SalesTable records={list?.items} />
 
       <div className="min-w-0 px-0 sm:px-2">
         <Pagination count={totalCount} currentIdx={page} limit={DEFAULT_SALES_LIMIT} />

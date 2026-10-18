@@ -7,41 +7,49 @@ import { useUIStore } from "@/store/ui-store";
 
 import {
   Activity,
+  AlertOctagon,
   ArrowDownToLine,
   BarChart3,
+  Bot,
   Building2,
+  CalendarDays,
   CheckCircle,
   ChevronRight,
   CircleDollarSign,
+  ClipboardCheck,
   ClipboardList,
+  Compass,
   FileText,
+  Gem,
+  Gauge,
   Gift,
+  GraduationCap,
+  HardHat,
+  Inbox,
+  Landmark,
   LandPlot,
   LayoutDashboard,
   LogOut,
-  MessageSquare,
-  NotebookPen,
   Percent,
   ScrollText,
-  Settings,
   ShieldCheck,
   ShoppingCart,
+  SlidersHorizontal,
   Store,
+  Tags,
   TrendingUp,
+  Trophy,
   Upload,
+  UserCog,
   UserPlus,
   Users,
-  Headphones,
-  Bot,
-  MessagesSquare,
-  Inbox,
-  AlertOctagon,
+  Video,
 } from "lucide-react";
 
 import LogOutModal from "@/components/settings/LogOutModal";
 import { useAuthStore } from "@/store/auth-store";
+import { useAdminPermissions, type AdminPermission } from "@/hooks/use-admin-permission";
 import { useIsCurrentUserManager } from "@/features/associate-managers";
-import { isTopLevelAdmin } from "@/lib/admin-roles";
 
 // Grouped Navigation Items
 const navGroups = [
@@ -51,14 +59,30 @@ const navGroups = [
       { name: "Dashboard", link: "/", icon: <LayoutDashboard /> },
       { name: "Assets", link: "/assets", icon: <CircleDollarSign /> },
       { name: "Sales", link: "/sales", icon: <ShoppingCart /> },
+      { name: "Payment Plans", link: "/admin/payment-plans", icon: <ScrollText />, requiresPermission: "view_payment_plans" },
       { name: "Agency", link: "/agency", icon: <Building2 /> },
       { name: "Allocation", link: "/allocation", icon: <Building2 /> },
-      { name: "Company Events", link: "/company-events", icon: <LandPlot /> },
       { name: "Purchase Confirmations", link: "/purchase-confirmations", icon: <CheckCircle /> },
-      { name: "Flex Leads", link: "/flex-leads", icon: <NotebookPen /> },
       { name: "Marketplace", link: "/marketplace", icon: <Store /> },
       { name: "Requests", link: "/requests", icon: <ClipboardList /> },
-      { name: "WhatsApp", link: "/whatsapp", icon: <MessageSquare /> },
+      { name: "Amaris", link: "/amaris", icon: <Bot /> },
+      { name: "Flex Leads", link: "/flex-leads", icon: <UserPlus /> },
+      { name: "Upgrade Coupons", link: "/associate-upgrade/coupons", icon: <Gift /> },
+    ]
+  },
+  {
+    // ABO-5 — Meetings / Recruitment / Company Events as one Events group.
+    title: "Events",
+    isCollapsible: true,
+    icon: <CalendarDays />,
+    items: [
+      { name: "Meetings", link: "/meetings", icon: <Video />, requiresPermission: "view_meetings" },
+      // No requiresPermission — ships open like the rest of the dashboard
+      // (RBAC not FE-enforced per CLAUDE.md); the real backend still gates
+      // the underlying /admin/academy/* calls on view_academy, so a page
+      // visit without that permission will show real 403 error states.
+      { name: "Recruitment", link: "/recruitment", icon: <GraduationCap /> },
+      { name: "Company Events", link: "/company-events", icon: <LandPlot />, requiresPermission: "view_allocations" },
     ]
   },
   {
@@ -67,10 +91,11 @@ const navGroups = [
     icon: <Users />,
     items: [
       { name: "All Users", link: "/users", icon: <Users /> },
-      { name: "Default Users", link: "/users/defaults", icon: <ShieldCheck /> },
       { name: "Suspended Users", link: "/users/suspended", icon: <ShieldCheck /> },
-      { name: "Termination Payment Plans", link: "/users/suspended-payment-plans", icon: <ScrollText /> },
       { name: "Completed Asset Payments", link: "/users/completed-asset-payments", icon: <CheckCircle /> },
+      // Standing lives under Users, not in a settings area: it is mostly read
+      // as "who are my biggest landholders", and only occasionally edited.
+      { name: "Portfolio Standing", link: "/standing", icon: <Trophy />, requiresPermission: "view_standing" },
     ]
   },
   {
@@ -79,16 +104,28 @@ const navGroups = [
     icon: <Users />,
     items: [
       { name: "Associates Upgrade", link: "/associate-upgrade", icon: <UserPlus /> },
-      { name: "Upgrade Coupons", link: "/associate-upgrade/coupons", icon: <Gift /> },
       { name: "Top associates", link: "/associates", icon: <TrendingUp /> },
       { name: "Associate Performance", link: "/associates/performance", icon: <Activity />, requiresSuperAdmin: true },
       { name: "Manager Performance", link: "/associates/managers", icon: <ShieldCheck />, requiresAdminOrManager: true },
+      // Division sits with the associates rather than beside Portfolio Standing:
+      // the two screens are built the same way, but this one is read as "how is
+      // the sales floor doing this season", which is an associates question.
+      { name: "Division", link: "/division", icon: <Gem />, requiresPermission: "view_division" },
+    ]
+  },
+  {
+    title: "Academy",
+    isCollapsible: true,
+    icon: <GraduationCap />,
+    items: [
+      { name: "Courses", link: "/academy/courses", icon: <GraduationCap /> },
+      { name: "Learners", link: "/academy/learners", icon: <Users /> },
     ]
   },
   {
     title: "Customer Success",
     isCollapsible: true,
-    icon: <Headphones />,
+    icon: <UserCog />,
     items: [
       { name: "CS Manager Performance", link: "/customer-managers", icon: <ShieldCheck /> },
       { name: "Tickets", link: "/tickets", icon: <Inbox /> },
@@ -96,11 +133,26 @@ const navGroups = [
     ]
   },
   {
-    title: "Ilé Assistant",
+    // No permission gate, same as CS Manager Performance: the page itself
+    // admits only super admins and promoted Financial Officers.
+    title: "Finance",
     isCollapsible: true,
-    icon: <Bot />,
+    icon: <Landmark />,
     items: [
-      { name: "Questions", link: "/ile-assistant", icon: <MessagesSquare /> },
+      { name: "Financial Officer Performance", link: "/financial-officers", icon: <Gauge /> },
+      { name: "Finance Automation", link: "/finance-automation", icon: <ClipboardCheck />, requiresPermission: "view_finance_runs" },
+    ]
+  },
+  {
+    // Site Manager and Surveyor tracking. Gated on the BE's own permission
+    // keys so an admin without them isn't sent to a page of 403s.
+    title: "Field Performance",
+    isCollapsible: true,
+    icon: <HardHat />,
+    items: [
+      { name: "Site Manager Performance", link: "/field-performance/site-managers", icon: <HardHat />, requiresPermission: "view_field_performance" },
+      { name: "Surveyor Performance", link: "/field-performance/surveyors", icon: <Compass />, requiresPermission: "view_field_performance" },
+      { name: "Review Queue", link: "/field-performance/review-queue", icon: <ClipboardCheck />, requiresPermission: "view_field_submissions" },
     ]
   },
   {
@@ -112,7 +164,18 @@ const navGroups = [
       { name: "Topup", link: "/transactions/topup", icon: <Upload /> },
       { name: "Asset", link: "/transactions/assets", icon: <BarChart3 /> },
       { name: "Document", link: "/transactions/document", icon: <FileText /> },
-      { name: "Commission", link: "/transactions/commission", icon: <Percent /> },
+      // "Payouts" rather than "Commission": this lists commission payout
+      // transactions, and the Commission section below owns rates and overrides.
+      { name: "Commission Payouts", link: "/transactions/commission", icon: <Percent /> },
+    ]
+  },
+  {
+    title: "Commission",
+    isCollapsible: true,
+    icon: <SlidersHorizontal />,
+    items: [
+      { name: "Rates", link: "/commission/rates", icon: <Percent /> },
+      { name: "Overrides", link: "/commission/overrides", icon: <Tags /> },
     ]
   },
   {
@@ -120,9 +183,8 @@ const navGroups = [
     isCollapsible: true,
     icon: <Gift />,
     items: [
-      { name: "1000 Plots Project", link: "/campaigns/1000plotsproject", icon: <LandPlot /> },
-      { name: "2000 Associate Pro", link: "/campaigns/2000associateprocampaign", icon: <TrendingUp /> },
-      { name: "Hamper Campaign", link: "/campaigns/hampercampaign", icon: <Gift /> },
+      { name: "Campaigns", link: "/campaigns", icon: <Gift /> },
+      { name: "Associate Pro Tracker", link: "/associate-pros/tracker", icon: <TrendingUp /> },
     ]
   },
   {
@@ -133,16 +195,29 @@ const navGroups = [
       { name: "Admin Logs", link: "/security/adminlogs", icon: <ScrollText /> },
       { name: "Roles and Permissions", link: "/security/roles", icon: <ShieldCheck /> },
     ]
-  },
-  {
-    title: "Settings",
-    isCollapsible: true,
-    icon: <Settings />,
-    items: [
-      { name: "Commission Config", link: "/settings/commission-config", icon: <Percent /> },
-    ]
   }
 ];
+
+function getRouteOpenGroups(pathname: string): Record<string, boolean> {
+  const open: Record<string, boolean> = {};
+  const exactOwner = navGroups.some((group) =>
+    group.items.some((item) => item.link === pathname)
+  );
+
+  for (const group of navGroups) {
+    if (!group.isCollapsible) continue;
+    const activeHere = group.items.some((item) => {
+      if (pathname === item.link) return true;
+      // Prefix match only when no other nav item owns this path exactly
+      // (e.g. /associate-upgrade/coupons is a standalone General link).
+      if (exactOwner) return false;
+      return item.link.length > 1 && pathname.startsWith(`${item.link}/`);
+    });
+    if (activeHere) open[group.title] = true;
+  }
+
+  return open;
+}
 
 const Sidebar = () => {
   const pathname = usePathname();
@@ -150,14 +225,29 @@ const Sidebar = () => {
   const { user } = useAuthStore();
   const { isManager } = useIsCurrentUserManager();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+  /** Manual open/close overrides; cleared on navigation so route-driven opens win. */
+  const [manualOpenGroups, setManualOpenGroups] = useState<Record<string, boolean>>({});
+  const [prevPathname, setPrevPathname] = useState(pathname);
+
+  if (pathname !== prevPathname) {
+    setPrevPathname(pathname);
+    setManualOpenGroups({});
+  }
+
+  const routeOpenGroups = getRouteOpenGroups(pathname);
 
   /** On mobile drawer, always show labels and nested links (collapsed desktop mode hides sub-routes). */
   const showNavDetails = !isSidebarCollapsed || isMobileNavOpen;
-  const showCollapsibleChildren = (groupTitle: string) => Boolean(openGroups[groupTitle]) && showNavDetails;
+  const isGroupExpanded = (groupTitle: string) =>
+    manualOpenGroups[groupTitle] ?? routeOpenGroups[groupTitle] ?? false;
+  const showCollapsibleChildren = (groupTitle: string) =>
+    isGroupExpanded(groupTitle) && showNavDetails;
 
   const toggleGroup = (groupTitle: string) => {
-    setOpenGroups(prev => ({ ...prev, [groupTitle]: !prev[groupTitle] }));
+    setManualOpenGroups((prev) => ({
+      ...prev,
+      [groupTitle]: !(prev[groupTitle] ?? routeOpenGroups[groupTitle] ?? false),
+    }));
   };
 
   // Close the mobile drawer when navigating.
@@ -165,24 +255,8 @@ const Sidebar = () => {
     closeMobileNav();
   }, [pathname, closeMobileNav]);
 
-  // Auto-open the collapsible group whose active route matches the current path.
-  useEffect(() => {
-    setOpenGroups((prev) => {
-      const next = { ...prev };
-      for (const group of navGroups) {
-        if (!group.isCollapsible) continue;
-        const activeHere = group.items.some(
-          (item) =>
-            pathname === item.link ||
-            (item.link.length > 1 && pathname.startsWith(`${item.link}/`))
-        );
-        if (activeHere) next[group.title] = true;
-      }
-      return next;
-    });
-  }, [pathname]);
-
-  const isSuperAdmin = isTopLevelAdmin(user?.role);
+  const isSuperAdmin = Boolean(user?.role?.is_super_admin);
+  const permissions = useAdminPermissions();
 
   // Strip out items the current user shouldn't see. Each gate is a small
   // predicate keyed off a flag on the item.
@@ -194,7 +268,11 @@ const Sidebar = () => {
           restrictedToRoles?: string[];
           requiresAdminOrManager?: boolean;
           requiresSuperAdmin?: boolean;
+          requiresPermission?: AdminPermission;
         };
+        if (flags.requiresPermission) {
+          return permissions.has(flags.requiresPermission);
+        }
         if (flags.requiresSuperAdmin) {
           return isSuperAdmin;
         }
@@ -202,7 +280,8 @@ const Sidebar = () => {
           return isSuperAdmin || isManager;
         }
         if (flags.restrictedToRoles) {
-          return !!user?.role && flags.restrictedToRoles.includes(user.role);
+          // Matches on the role NAME — roles are records now, not strings.
+          return !!user?.role && flags.restrictedToRoles.includes(user.role.name);
         }
         return true;
       }),
@@ -232,7 +311,7 @@ const Sidebar = () => {
       {/* Navigation Area */}
       <div className="flex-1 overflow-y-auto py-4 px-3 ">
         {visibleNavGroups.map((group, groupIdx) => {
-          const isGroupOpen = Boolean(openGroups[group.title]);
+          const isGroupOpen = isGroupExpanded(group.title);
 
           // Special handling for collapsible groups ("Transactions")
           if (group.isCollapsible) {

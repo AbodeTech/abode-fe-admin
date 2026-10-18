@@ -1,14 +1,9 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { execute } from '@/lib/graphql-client';
 import { graphql, useFragment as getFragmentData } from '@/lib/gql';
 import { userKeys } from './query-keys';
 import { exportToCsv } from '../utils/export-csv';
-import { toast } from 'sonner';
-import { SuspendedUsersRowFragment, formatHasAsset } from '../components/suspended/SuspendedUsersTable';
-import { getErrorMessage } from '../utils/error-message';
-
-
-
+import { SuspendedUsersRowFragment } from '../components/suspended/SuspendedUsersTable';
 
 const GET_SUSPENDED_USERS_QUERY = graphql(`
   query GetAllSuspendedUsers($page: Int!, $limit: Int!) {
@@ -28,12 +23,6 @@ const EXPORT_SUSPENDED_USERS_QUERY = graphql(`
         ...SuspendedUsersRow_user
       }
     }
-  }
-`);
-
-const UNSUSPEND_USER_MUTATION = graphql(`
-  mutation UnsuspendUser($id: ID!) {
-    unsuspendUser(id: $id)
   }
 `);
 
@@ -75,7 +64,7 @@ export const useExportSuspendedUsers = () => {
         { header: 'User ID', accessor: (r) => r._id },
         { header: 'First Name', accessor: (r) => r.firstName },
         { header: 'Last Name', accessor: (r) => r.lastName },
-        { header: 'Full Name', accessor: (r) => `${r.lastName} ${r.firstName}`.trim() },
+        { header: 'Full Name', accessor: (r) => `${r.firstName} ${r.lastName}`.trim() },
         { header: 'Email', accessor: (r) => r.email },
         { header: 'Gender', accessor: (r) => r.gender ?? '' },
         { header: 'Country', accessor: (r) => r.country ?? '' },
@@ -85,25 +74,8 @@ export const useExportSuspendedUsers = () => {
         { header: 'Referrer', accessor: (r) => r.referrer },
         { header: 'Subscriptions', accessor: (r) => r.subscriptions ?? 0 },
         { header: 'Networth', accessor: (r) => r.Networth ?? 0 },
-        { header: 'Has Asset', accessor: (r) => formatHasAsset(r.hasAsset) },
         { header: 'Joined', accessor: (r) => r.createdAt },
       ], `suspended-users-report-${new Date().toISOString().split('T')[0]}.csv`);
-    },
-  });
-};
-
-export const useUnsuspendUser = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (id: string) => execute(UNSUSPEND_USER_MUTATION, { id }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: userKeys.list({ list: 'suspended' }) });
-      queryClient.invalidateQueries({ queryKey: userKeys.list({ list: 'suspended-payment-plans' }) });
-      toast.success('User unsuspended');
-    },
-    onError: (error: unknown) => {
-      toast.error(getErrorMessage(error, 'Unable to unsuspend user'));
     },
   });
 };

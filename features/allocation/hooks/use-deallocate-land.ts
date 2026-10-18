@@ -1,29 +1,35 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { execute } from "@/lib/graphql-client";
-import { graphql } from "@/lib/gql";
-import { allocationKeys } from "./query-keys";
+'use client';
 
-const DEALLOCATE_LAND_MUTATION = graphql(`
-  mutation DeallocateLand($paymentPlanId: ID!) {
-    deallocateLand(paymentPlanId: $paymentPlanId) {
-      success
-      message
-    }
-  }
-`);
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-export interface DeallocateLandResult {
-  success: boolean;
-  message: string;
+import { apiPost } from '@/lib/api-client';
+
+import { AllocateResultSchema } from '../schemas/allocation.schema';
+import { allocationKeys } from './query-keys';
+
+export interface DeallocateLandInput {
+  paymentPlanId: string;
+  /** Required, ≥20 chars — `DeallocatePlotsDto.reason`, `REASON_MIN_LENGTH`. */
+  reason: string;
 }
 
+/**
+ * POST /admin/allocation/payment-plans/:plan_id/deallocate — confirmed
+ * against abode-be-v2's allocation module on `origin/staging` (2026-08-28,
+ * not yet deployed to this app's target environment). Body: `{ reason }`,
+ * required and server-enforced at ≥20 chars — an admin can't skip it.
+ */
 export const useDeallocateLand = () => {
-  const client = useQueryClient();
+  const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (paymentPlanId: string) =>
-      execute(DEALLOCATE_LAND_MUTATION, { paymentPlanId }),
+    mutationFn: ({ paymentPlanId, reason }: DeallocateLandInput) =>
+      apiPost(
+        `/admin/allocation/payment-plans/${paymentPlanId}/deallocate`,
+        { reason },
+        AllocateResultSchema
+      ),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: allocationKeys.all });
+      queryClient.invalidateQueries({ queryKey: allocationKeys.all });
     },
   });
 };

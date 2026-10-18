@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Suspense } from "react";
 
 import { CompanyEventForm } from "@/features/company-events";
 
@@ -17,7 +18,10 @@ export default function CompanyEventNewPage() {
           size and pickup locations for the eligibility batch.
         </p>
       </div>
-      <CompanyEventForm />
+      {/* CompanyEventForm reads useSearchParams() — Next.js requires a Suspense boundary around any such consumer during static generation. */}
+      <Suspense>
+        <CompanyEventForm />
+      </Suspense>
     </div>
   );
 }

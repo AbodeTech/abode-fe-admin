@@ -24,8 +24,7 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 
-import type { EventEligibleClientRow } from "../hooks/use-event-eligible-clients";
-import type { EligibilityTier } from "../schemas/company-event.schema";
+import type { EligibilityTier, EventEligibleClient } from "../schemas/company-event.schema";
 
 const formatNumber = (value?: number | null) => new Intl.NumberFormat("en-NG").format(value ?? 0);
 
@@ -37,40 +36,12 @@ const formatDate = (value?: string | null) => {
 };
 
 /** `size` is per-unit — the real commit size is `size * no_of_units` (matches the backend's `saveAllocations`). */
-const totalSize = (row: EventEligibleClientRow) => row.size * row.no_of_units;
+const totalSize = (row: EventEligibleClient) => row.size * row.no_of_units;
 
 const ELIGIBILITY_LABELS: Record<EligibilityTier, string> = {
   land: "Land",
   land_and_dev_levy: "Land + Dev Levy",
 };
-
-/**
- * Why this plan is on the list. Full payment is the only route full-ownership
- * has; a flex plan can qualify earlier by passing the percentage its tier sets,
- * so the threshold is shown beside the progress to make the gap legible.
- */
-function QualifiedCell({ row }: { row: EventEligibleClientRow }) {
-  const paid = `${row.percent_paid.toFixed(1)}%`;
-  if (row.qualified_by === "fully_paid") {
-    return (
-      <span className="block">
-        <Badge variant="secondary">Paid in full</Badge>
-        <span className="mt-1 block text-xs text-muted-foreground tabular-nums">{paid} paid</span>
-      </span>
-    );
-  }
-  return (
-    <span className="block">
-      <Badge variant="outline">Threshold</Badge>
-      <span className="mt-1 block text-xs text-muted-foreground tabular-nums">
-        {paid} paid
-        {row.allocation_qualification != null
-          ? ` of ${row.allocation_qualification.toFixed(1)}% needed`
-          : ""}
-      </span>
-    </span>
-  );
-}
 
 function EligibilityBadge({ tier }: { tier: EligibilityTier }) {
   return (
@@ -87,11 +58,10 @@ function EligibilityBadge({ tier }: { tier: EligibilityTier }) {
 }
 
 interface EventAllocationTableProps {
-  rows?: EventEligibleClientRow[] | null;
+  rows?: EventEligibleClient[] | null;
   isLoading?: boolean;
-  /** Keyed by payment plan, holding the row — a selection can span pages. */
-  selected: Map<string, EventEligibleClientRow>;
-  onToggle: (row: EventEligibleClientRow) => void;
+  selected: Set<string>;
+  onToggle: (row: EventEligibleClient) => void;
   availableSize?: number | null;
   sizeUnit?: string | null;
   /** Size already committed by a prior save for this event. */
@@ -125,30 +95,19 @@ export function EventAllocationTable({
   }
 
   const safeRows = rows ?? [];
-  // Summed over the SELECTION, not over the visible rows. Selection survives
-  // paging, so totalling what happens to be on screen under-reported the
-  // capacity about to be committed the moment somebody selected across pages.
-  const selectedRows = Array.from(selected.values());
-  const selectedSize = selectedRows.reduce((sum, row) => sum + totalSize(row), 0);
+  const selectedSize = safeRows
+    .filter((row) => selected.has(row.payment_plan_id))
+    .reduce((sum, row) => sum + totalSize(row), 0);
   const grandTotal = usedSize + selectedSize;
-
-  /**
-   * People, not plans. A buyer holding three plots here is one passenger with
-   * one seat and one invite — counting plans would promise twelve and deliver
-   * nine, which is exactly the mismatch the success toast has to explain.
-   */
-  const selectedClients = new Set(
-    selectedRows.map((row) => row.user ?? `plan:${row.payment_plan}`)
-  ).size;
   const capacity = availableSize ?? null;
   const percent = capacity ? Math.min(100, Math.round((grandTotal / capacity) * 100)) : 0;
   const atOrOverCapacity = capacity != null && grandTotal >= capacity;
   const unit = sizeUnit || "sqm";
 
-  const wouldExceedCapacity = (row: EventEligibleClientRow) =>
-    capacity != null && !selected.has(row.payment_plan) && grandTotal + totalSize(row) > capacity;
+  const wouldExceedCapacity = (row: EventEligibleClient) =>
+    capacity != null && !selected.has(row.payment_plan_id) && grandTotal + totalSize(row) > capacity;
 
-  const handleRowClick = (row: EventEligibleClientRow, disabled: boolean) => {
+  const handleRowClick = (row: EventEligibleClient, disabled: boolean) => {
     if (disabled) return;
     onToggle(row);
   };
@@ -170,21 +129,10 @@ export function EventAllocationTable({
                     ? `${formatNumber(grandTotal)} / ${formatNumber(capacity)} ${unit} allocated`
                     : `${formatNumber(grandTotal)} ${unit} allocated (no capacity set)`}
                 </span>
-                <span className="font-medium">
-                  {selectedClients} {selectedClients === 1 ? "person" : "people"} selected
-                </span>
+                <span className="font-medium">{selected.size} selected</span>
               </div>
               {capacity != null && (
                 <Progress value={percent} className={cn(atOrOverCapacity && "[&>div]:bg-destructive")} />
-              )}
-              {/* The button emails everybody it confirms, immediately. On a
-                  large estate that is a hundred-odd messages from one click,
-                  and nothing else on the page says so. */}
-              {selectedClients > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  Confirming reserves their land and emails each of them an invitation
-                  straight away.
-                </p>
               )}
             </div>
             <Button
@@ -195,12 +143,10 @@ export function EventAllocationTable({
               {isSaving ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Confirming...
+                  Saving...
                 </>
-              ) : selectedClients ? (
-                `Confirm ${selectedClients} for this event`
               ) : (
-                "Confirm for this event"
+                `Save allocation${selected.size ? ` (${selected.size})` : ""}`
               )}
             </Button>
           </div>
@@ -212,10 +158,10 @@ export function EventAllocationTable({
           ) : (
             safeRows.map((row) => {
               const disabled = wouldExceedCapacity(row);
-              const isSelected = selected.has(row.payment_plan);
+              const isSelected = selected.has(row.payment_plan_id);
               return (
                 <AdminMobileCard
-                  key={row.payment_plan}
+                  key={row.payment_plan_id}
                   title={row.name}
                   subtitle={row.email}
                   onClick={disabled ? undefined : () => onToggle(row)}
@@ -224,7 +170,6 @@ export function EventAllocationTable({
                   <AdminMobileField label="Phone" value={row.phone || "—"} />
                   <AdminMobileField label="Size" value={`${formatNumber(totalSize(row))} ${unit}`} />
                   <AdminMobileField label="Eligibility" value={<EligibilityBadge tier={row.eligibility_tier} />} />
-                  <AdminMobileField label="Qualified" value={<QualifiedCell row={row} />} />
                   <AdminMobileField label="Land completed" value={formatDate(row.land_completed_at)} />
                   <div className="flex items-center justify-between border-t border-border pt-2">
                     <span className="text-sm text-muted-foreground">Select for allocation</span>
@@ -259,9 +204,6 @@ export function EventAllocationTable({
                 <TableHead className="min-w-40 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Eligibility
                 </TableHead>
-                <TableHead className="min-w-40 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Qualified
-                </TableHead>
                 <TableHead className="min-w-34 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Land Completed
                 </TableHead>
@@ -277,10 +219,10 @@ export function EventAllocationTable({
               ) : (
                 safeRows.map((row) => {
                   const disabled = wouldExceedCapacity(row);
-                  const isSelected = selected.has(row.payment_plan);
+                  const isSelected = selected.has(row.payment_plan_id);
                   return (
                     <TableRow
-                      key={row.payment_plan}
+                      key={row.payment_plan_id}
                       onClick={() => handleRowClick(row, disabled)}
                       className={cn(
                         disabled ? "opacity-60" : "cursor-pointer hover:bg-muted/40",
@@ -307,9 +249,6 @@ export function EventAllocationTable({
                       </TableCell>
                       <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed">
                         <EligibilityBadge tier={row.eligibility_tier} />
-                      </TableCell>
-                      <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed">
-                        <QualifiedCell row={row} />
                       </TableCell>
                       <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed wrap-break-word">
                         {formatDate(row.land_completed_at)}

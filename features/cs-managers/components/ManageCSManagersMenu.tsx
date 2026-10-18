@@ -12,8 +12,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { AddCSManagerDialog } from "./AddCSManagerDialog";
-import { RemoveCSManagerDialog } from "./dialogs/RemoveCSManagerDialog";
-import type { CSManagerSummary } from "../lib/manager-display";
+import { RemoveCSManagerDialog } from "./RemoveCSManagerDialog";
+import type { CSManagerSummary } from "../schemas/cs-manager.schema";
 
 interface Props {
   /** The currently-selected manager from the page dropdown. Drives Remove. */

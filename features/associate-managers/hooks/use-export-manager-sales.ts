@@ -1,65 +1,52 @@
-import { useMutation } from "@tanstack/react-query";
-import { execute } from "@/lib/graphql-client";
-import { graphql } from "@/lib/gql";
-import type { SalesRecordFilters } from "@/lib/gql/graphql";
-import { exportManagerSalesToCsv } from "../utils/export-manager-sales-csv";
+'use client';
 
-const EXPORT_MANAGER_SALES_RECORD_QUERY = graphql(`
-  query ExportManagerSalesRecord(
-    $managerId: ID
-    $filters: SalesRecordFilters
-  ) {
-    exportManagerSalesRecord(managerId: $managerId, filters: $filters) {
-      data {
-        user_firstName
-        user_lastName
-        email
-        user_phone
-        referrer_name
-        referrer_email
-        referrer_phone
-        asset_name
-        asset_type
-        no_of_units
-        size
-        price
-        amount_paid
-        amount_payable
-        balance
-        default_amount
-        is_suspended
-        start_date
-        next_date
-      }
-    }
-  }
-`);
+import { useMutation } from '@tanstack/react-query';
 
-export interface ExportManagerSalesInput {
-  managerId?: string | null;
-  filters?: SalesRecordFilters | null;
-  filenamePrefix?: string;
-}
+import { apiClient } from '@/lib/api-client';
+import { isMockApiEnabled } from '@/lib/mocks/config';
 
-export const useExportManagerSalesRecord = () => {
-  return useMutation({
+/**
+ * GET /admin/managers/:manager_id/exports/sales-record — a streaming CSV of
+ * every sale made by the manager's roster.
+ *
+ * Streamed, so the row cap is discovered mid-flight: the BE attaches the CSV
+ * headers on the FIRST write, which is what lets an over-cap request fail as
+ * clean JSON instead of downloading an error labelled `text/csv`.
+ *
+ * Buyer PII is deliberately EXCLUDED — `export_manager_tracker` is the
+ * manager-tracker grant, not the Sales module's full-export permission.
+ *
+ * Throttled to 10/hour per admin.
+ */
+export const useExportManagerSalesRecord = () =>
+  useMutation({
     mutationFn: async ({
       managerId,
-      filters,
-      filenamePrefix,
-    }: ExportManagerSalesInput) => {
-      const data = await execute(EXPORT_MANAGER_SALES_RECORD_QUERY, {
-        managerId: managerId ?? null,
-        filters: filters ?? null,
-      });
-      const rows = (data.exportManagerSalesRecord?.data ?? []).filter(
-        (r): r is NonNullable<typeof r> => r != null
-      );
-      if (rows.length === 0) {
-        throw new Error("No sales records to export for the current filters.");
+      params,
+    }: {
+      managerId: string;
+      /** Sales filters — the same `SalesQueryDto` the sales table sends. */
+      params?: Record<string, unknown>;
+    }) => {
+      if (isMockApiEnabled()) {
+        throw new Error('Export is unavailable in mock mode — point the app at a real backend.');
       }
-      exportManagerSalesToCsv(rows, filenamePrefix);
-      return rows;
+
+      const response = await apiClient.get(
+        `/admin/managers/${managerId}/exports/sales-record`,
+        { params: params ?? {}, responseType: 'blob' }
+      );
+
+      const disposition = String(response.headers['content-disposition'] ?? '');
+      const filename = /filename="([^"]+)"/.exec(disposition)?.[1] ?? 'manager-sales-record.csv';
+
+      const url = URL.createObjectURL(response.data as Blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = filename;
+      anchor.click();
+      URL.revokeObjectURL(url);
+
+      return { filename };
     },
   });
-};

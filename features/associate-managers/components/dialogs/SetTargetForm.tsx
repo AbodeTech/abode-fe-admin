@@ -14,11 +14,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAssignManagerTarget } from "../../hooks/use-assign-manager-target";
-import type { AssociateManagerTargetType } from "@/lib/gql/graphql";
+import type { ManagerTarget } from "../../schemas/associate-manager.schema";
 
 interface Props {
   managerId: string | null;
-  existing?: AssociateManagerTargetType | null;
+  existing?: ManagerTarget | null;
   onSaved: () => void;
   onCancel: () => void;
 }
@@ -65,11 +65,14 @@ export function SetTargetForm({
   const [selling, setSelling] = useState<string>(
     existing ? String(existing.selling_associate_pro_target) : ""
   );
-  const [revenue, setRevenue] = useState<string>(
-    existing ? String(existing.revenue_target) : ""
-  );
   const [score, setScore] = useState<string>(
     existing ? String(existing.performance_score_target) : ""
+  );
+  // The retired GraphQL input had no revenue field, so the form never
+  // collected one — but the dashboard scores a revenue component and shows the
+  // target, so leaving it unsettable meant a number nobody could ever set.
+  const [revenue, setRevenue] = useState<string>(
+    existing ? String(existing.revenue_target) : ""
   );
 
   const { mutateAsync, isPending } = useAssignManagerTarget();
@@ -79,14 +82,11 @@ export function SetTargetForm({
     setMonthValue(initialMonthValue);
     setRecruited(existing ? String(existing.associate_pro_recruited_target) : "");
     setSelling(existing ? String(existing.selling_associate_pro_target) : "");
-    setRevenue(existing ? String(existing.revenue_target) : "");
     setScore(existing ? String(existing.performance_score_target) : "");
+    setRevenue(existing ? String(existing.revenue_target) : "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [existing?._id]);
+  }, [existing?.year, existing?.month]);
 
-  // Revenue is optional on the BE (Float, default 0). Leave it blank if the
-  // admin doesn't want to gate on revenue this period — score's revenue
-  // component will read as "no target set" instead of being counted against.
   const canSave =
     !!managerId && recruited !== "" && selling !== "" && score !== "" && !isPending;
 
@@ -104,14 +104,26 @@ export function SetTargetForm({
     }
 
     try {
+      // A blank input is OMITTED, never sent as 0: the BE leaves an omitted
+      // target untouched, and a zero would be a real target of zero — which
+      // for revenue silently costs 30 points of the performance score.
+      const num = (raw: string) => {
+        const trimmed = raw.trim();
+        if (!trimmed) return undefined;
+        const n = Number(trimmed);
+        return Number.isFinite(n) ? n : undefined;
+      };
+
       await mutateAsync({
         managerId,
-        month,
         year,
-        associate_pro_recruited_target: Number(recruited),
-        selling_associate_pro_target: Number(selling),
-        revenue_target: revenue === "" ? 0 : Number(revenue),
-        performance_score_target: Number(score),
+        month,
+        values: {
+          associate_pro_recruited_target: num(recruited),
+          selling_associate_pro_target: num(selling),
+          revenue_target: num(revenue),
+          performance_score_target: num(score),
+        },
       });
       toast.success(existing ? "Target updated" : "Target saved");
       onSaved();
@@ -178,23 +190,19 @@ export function SetTargetForm({
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="revenue">
-            Revenue Target (₦)
-            <span className="text-xs text-gray-400 ml-1">optional</span>
-          </Label>
+          <Label htmlFor="revenue">Revenue Target (₦)</Label>
           <Input
             id="revenue"
             type="number"
             min={0}
-            step="1"
             value={revenue}
             onChange={(e) => setRevenue(e.target.value)}
-            placeholder="e.g. 5000000"
+            placeholder="e.g. 25000000"
             className="bg-white"
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="score">Peer Rating Target</Label>
+          <Label htmlFor="score">Performance Score</Label>
           <Input
             id="score"
             type="number"
@@ -202,7 +210,7 @@ export function SetTargetForm({
             step="1"
             value={score}
             onChange={(e) => setScore(e.target.value)}
-            placeholder="e.g. 4"
+            placeholder="e.g. 8"
             className="bg-white"
           />
         </div>

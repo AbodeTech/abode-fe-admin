@@ -1,12 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import type {
-  AllocationStatus,
-  DoaStatus,
-  OnboardingStatus,
-  PaymentStatus,
-} from "@/lib/gql/graphql";
+import type { PlanRow } from "../schemas/cs-manager.schema";
 
 /**
  * Plan status pills — shared by CustomersTable rows and PlanDetailDrawer so a
@@ -20,7 +15,7 @@ export function PaymentPill({
   status,
   label,
 }: {
-  status: PaymentStatus;
+  status: PlanRow["payment_status"];
   label: string;
 }) {
   const cls =
@@ -32,7 +27,7 @@ export function PaymentPill({
   return <span className={cn(PILL_BASE, cls)}>{label}</span>;
 }
 
-export function OnboardingPill({ status }: { status: OnboardingStatus }) {
+export function OnboardingPill({ status }: { status: PlanRow["onboarding"] }) {
   switch (status) {
     case "confirmed":
       return <span className={cn(PILL_BASE, "bg-emerald-50 text-emerald-700")}>Confirmed</span>;
@@ -45,48 +40,11 @@ export function OnboardingPill({ status }: { status: OnboardingStatus }) {
   }
 }
 
-/**
- * What was already tried on this plan.
- *
- * Sits under the onboarding pill because "call pending" says the same thing
- * about a plan nobody has rung and one rung three times without an answer —
- * and those are different jobs. The CSMs were recording it anyway: a run of
- * "didn't pick" and "call dropped" ended up typed into the land-choice reason,
- * because that was the only box on the form that took free text.
- */
-const ATTEMPT_LABELS: Record<string, string> = {
-  no_answer: "Didn't pick",
-  rescheduled: "Call booked",
-  spoke: "Spoke",
-  done: "Call done",
-};
-
-export function LastAttemptNote({
-  attempt,
-}: {
-  attempt?: { outcome: string; calledAt: string; attempts: number } | null;
-}) {
-  if (!attempt) return null;
-  const label = ATTEMPT_LABELS[attempt.outcome] ?? attempt.outcome;
-  const days = Math.floor(
-    (Date.now() - new Date(attempt.calledAt).getTime()) / 86_400_000
-  );
-  const when = days < 1 ? "today" : days === 1 ? "yesterday" : `${days}d ago`;
-  return (
-    <span className="mt-1 block text-[11px] text-gray-500">
-      {label} · {when}
-      {/* Only worth saying once it is more than one: "1 try" is noise, and
-          "3 tries" is the reason to pick up the phone differently. */}
-      {attempt.attempts > 1 ? ` · ${attempt.attempts} tries` : ""}
-    </span>
-  );
-}
-
 export function AllocationPill({
   status,
   label,
 }: {
-  status: AllocationStatus;
+  status: PlanRow["allocation"];
   label?: string | null;
 }) {
   switch (status) {
@@ -97,9 +55,7 @@ export function AllocationPill({
         </span>
       );
     case "awaiting":
-      return (
-        <span className={cn(PILL_BASE, "bg-red-50 text-[#AD1F2A]")}>Awaiting</span>
-      );
+      return <span className={cn(PILL_BASE, "bg-red-50 text-[#AD1F2A]")}>Awaiting</span>;
     default:
       return <span className={cn(PILL_BASE, "bg-gray-100 text-gray-400")}>—</span>;
   }
@@ -109,20 +65,14 @@ export function DoaPill({
   status,
   label,
 }: {
-  status: DoaStatus;
+  status: PlanRow["doa"];
   label?: string | null;
 }) {
   switch (status) {
     case "sent":
-      return (
-        <span className={cn(PILL_BASE, "bg-emerald-50 text-emerald-700")}>
-          {label ?? "Sent"}
-        </span>
-      );
+      return <span className={cn(PILL_BASE, "bg-emerald-50 text-emerald-700")}>{label ?? "Sent"}</span>;
     case "not_sent":
-      return (
-        <span className={cn(PILL_BASE, "bg-amber-50 text-amber-700")}>Not sent</span>
-      );
+      return <span className={cn(PILL_BASE, "bg-amber-50 text-amber-700")}>Not sent</span>;
     default:
       return <span className={cn(PILL_BASE, "bg-gray-100 text-gray-400")}>—</span>;
   }
@@ -133,16 +83,17 @@ const MONTHS_SHORT = [
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
 
-export const formatShortDate = (iso: string) => {
+export const formatShortDate = (iso: string | null) => {
+  if (!iso) return "—";
   const d = new Date(iso);
   return `${d.getDate()} ${MONTHS_SHORT[d.getMonth()]} ${d.getFullYear()}`;
 };
 
 /** Project convention: names render lastName firstName, initials too. */
-export const planCustomerName = (c: { firstName?: string | null; lastName?: string | null }) =>
-  `${c.lastName ?? ""} ${c.firstName ?? ""}`.trim();
+export const planCustomerName = (c: { first_name?: string | null; last_name?: string | null }) =>
+  `${c.last_name ?? ""} ${c.first_name ?? ""}`.trim();
 
 export const planCustomerInitials = (c: {
-  firstName?: string | null;
-  lastName?: string | null;
-}) => ((c.lastName?.[0] ?? "") + (c.firstName?.[0] ?? "")).toUpperCase();
+  first_name?: string | null;
+  last_name?: string | null;
+}) => ((c.last_name?.[0] ?? "") + (c.first_name?.[0] ?? "")).toUpperCase();

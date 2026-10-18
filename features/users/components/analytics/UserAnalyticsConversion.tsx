@@ -19,11 +19,11 @@ export function UserAnalyticsConversion({ startDate, endDate }: Props) {
     endDate: endDate ?? undefined,
   });
 
-  const totalUsers = metrics?.totalUsers ?? 0;
-  const totalAssociates = metrics?.referralStatusCounts?.associate ?? 0;
-  const totalAssociatePro = metrics?.referralStatusCounts?.associatePro ?? 0;
-  const activeAssociate = metrics?.active_associate ?? 0;
-  const activeAssociatePro = metrics?.active_associate_pro ?? 0;
+  const totalUsers = metrics?.total_users.value ?? 0;
+  const totalAssociates = metrics?.total_associates.value ?? 0;
+  const totalAssociatePro = metrics?.total_associate_pros.value ?? 0;
+  const activeAssociate = metrics?.active_associates.value ?? 0;
+  const activeAssociatePro = metrics?.active_associate_pros.value ?? 0;
 
   const userToProRate = totalUsers > 0 ? Math.round((totalAssociatePro / totalUsers) * 100) : 0;
   const assocToProRate = totalAssociates > 0 ? Math.round((totalAssociatePro / totalAssociates) * 100) : 0;

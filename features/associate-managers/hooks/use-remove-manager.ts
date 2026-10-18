@@ -1,34 +1,27 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { execute } from "@/lib/graphql-client";
-import { graphql } from "@/lib/gql";
-import type { AddRemoveManagerInput } from "@/lib/gql/graphql";
-import { managerKeys } from "./query-keys";
+'use client';
 
-const REMOVE_ASSOCIATE_MANAGER_MUTATION = graphql(`
-  mutation RemoveAssociateManager($input: AddRemoveManagerInput!) {
-    removeAssociateManager(input: $input) {
-      managerId
-      removed
-    }
-  }
-`);
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
+import { apiDelete } from '@/lib/api-client';
+
+import { RemoveManagerResultSchema } from '../schemas/associate-manager.schema';
+import { managerKeys } from './query-keys';
+
+/**
+ * DELETE /admin/managers/:manager_id — retire a manager.
+ *
+ * The roster must be EMPTY. A manager who still holds pros gets a 400 whose
+ * `details.pros_to_reassign` lists exactly who has to be moved first — see
+ * `ManagerHasRosterDetailsSchema`. Reassign, then retry.
+ */
 export const useRemoveManager = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (input: AddRemoveManagerInput) =>
-      execute(REMOVE_ASSOCIATE_MANAGER_MUTATION, { input }),
-    onSuccess: (data) => {
-      const removedId = data.removeAssociateManager.managerId;
-      // Manager doc deleted → that detail entry is stale
-      queryClient.invalidateQueries({ queryKey: managerKeys.detail(removedId) });
-      // List + roster summaries change
-      queryClient.invalidateQueries({ queryKey: managerKeys.lists() });
-      // Their pros become unassigned
-      queryClient.invalidateQueries({ queryKey: managerKeys.unassigned() });
-      // Dashboards reading this manager are dead
-      queryClient.invalidateQueries({ queryKey: managerKeys.dashboards() });
+    mutationFn: (managerId: string) =>
+      apiDelete(`/admin/managers/${managerId}`, RemoveManagerResultSchema),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: managerKeys.all });
     },
   });
 };

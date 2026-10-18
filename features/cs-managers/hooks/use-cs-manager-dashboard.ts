@@ -1,395 +1,46 @@
-"use client";
+'use client';
 
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { execute } from "@/lib/graphql-client";
-import { graphql } from "@/lib/gql";
-import type { CsPlanFilter, CsPlanSort } from "@/lib/gql/graphql";
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 
-/**
- * CS Manager dashboard reads — typed via codegen.
- * BE contract: guidelines/CS_Manager_Dashboard.md.
- */
+import { apiGet } from '@/lib/api-client';
 
-const GET_CS_MANAGER_DASHBOARD_QUERY = graphql(`
-  query GetCSManagerDashboard(
-    $managerId: ID!
-    $month: Int
-    $year: Int
-    $page: Int
-    $limit: Int
-    $filter: CSPlanFilter
-    $search: String
-    $estate: String
-    $sort: CSPlanSort
-  ) {
-    getCSManagerDashboard(
-      managerId: $managerId
-      month: $month
-      year: $year
-      page: $page
-      limit: $limit
-      filter: $filter
-      search: $search
-      estate: $estate
-      sort: $sort
-    ) {
-      period {
-        periodType
-        month
-        year
-        start
-        end
-      }
-      manager {
-        _id
-        userName
-        email
-        role
-      }
-      target {
-        allocatedTarget
-        allocatedSoFar
-        onboardedTarget
-        onboardedSoFar
-        ticketsResolvedTarget
-        ticketsEntered
-        ticketsResolved
-        ticketResolutionRate
-        ticketFlow { month created resolved }
-      }
-      performanceScore {
-        score
-        allocatedComponent
-        onboardedComponent
-        ticketsComponent
-      }
-      obligation {
-        paidNotAllocatedThisPeriod
-      }
-      backlogs {
-        allocation { total thisMonth lastMonth older }
-        onboarding { total callPending confirmPending disputed dueThisPeriod dueCarriedOver }
-        doa { total thisMonth lastMonth older }
-      }
-      portfolio {
-        totalAssigned
-        completedPayment
-        withinPaymentPeriod
-        closeToDefaulting
-      }
-      plans {
-        planId
-        customer { id firstName lastName email phone }
-        priorPlansCount
-        asset
-        assetId
-        location
-        size
-        units
-        allocationStatus
-        product
-        purchaseDate
-        paymentStatus
-        paymentLabel
-        onboarding
-        lastAttempt { outcome calledAt attempts }
-        allocation
-        allocationLabel
-        doa
-        doaLabel
-        lastActivityAt
-      }
-      plansTotal
-      filterCounts {
-        all
-        dueAllocation
-        onboardingPending
-        neverAttempted
-        noAnswer
-        rescheduled
-        dueDoa
-        defaultingSoon
-        completedPayment
-      }
-      estates {
-        name
-        plans
-        dueAllocation
-      }
-    }
-  }
-`);
+import {
+  CSManagerDashboardSchema,
+  type PlanFilterKey,
+  type PlanSortKey,
+} from '../schemas/cs-manager.schema';
+import { csManagerKeys } from './query-keys';
 
-/**
- * The same dashboard over every manager's book at once.
- *
- * Identical selection set to the single-manager query above, because the BE
- * returns the identical type — the combined view is the same computation over a
- * wider set of customers, not a second dashboard. `manager` comes back null.
- */
-const GET_ALL_CS_MANAGERS_DASHBOARD_QUERY = graphql(`
-  query GetAllCSManagersDashboard(
-    $month: Int
-    $year: Int
-    $page: Int
-    $limit: Int
-    $filter: CSPlanFilter
-    $search: String
-    $estate: String
-    $sort: CSPlanSort
-  ) {
-    getAllCSManagersDashboard(
-      month: $month
-      year: $year
-      page: $page
-      limit: $limit
-      filter: $filter
-      search: $search
-      estate: $estate
-      sort: $sort
-    ) {
-      period {
-        periodType
-        month
-        year
-        start
-        end
-      }
-      manager {
-        _id
-        userName
-        email
-        role
-      }
-      target {
-        allocatedTarget
-        allocatedSoFar
-        onboardedTarget
-        onboardedSoFar
-        ticketsResolvedTarget
-        ticketsEntered
-        ticketsResolved
-        ticketResolutionRate
-        ticketFlow { month created resolved }
-      }
-      performanceScore {
-        score
-        allocatedComponent
-        onboardedComponent
-        ticketsComponent
-      }
-      obligation {
-        paidNotAllocatedThisPeriod
-      }
-      backlogs {
-        allocation { total thisMonth lastMonth older }
-        onboarding { total callPending confirmPending disputed dueThisPeriod dueCarriedOver }
-        doa { total thisMonth lastMonth older }
-      }
-      portfolio {
-        totalAssigned
-        completedPayment
-        withinPaymentPeriod
-        closeToDefaulting
-      }
-      plans {
-        planId
-        customer { id firstName lastName email phone }
-        priorPlansCount
-        asset
-        assetId
-        location
-        size
-        units
-        allocationStatus
-        product
-        purchaseDate
-        paymentStatus
-        paymentLabel
-        onboarding
-        lastAttempt { outcome calledAt attempts }
-        allocation
-        allocationLabel
-        doa
-        doaLabel
-        lastActivityAt
-      }
-      plansTotal
-      filterCounts {
-        all
-        dueAllocation
-        onboardingPending
-        neverAttempted
-        noAnswer
-        rescheduled
-        dueDoa
-        defaultingSoon
-        completedPayment
-      }
-      estates {
-        name
-        plans
-        dueAllocation
-      }
-    }
-  }
-`);
-
-export const csManagerKeys = {
-  dashboards: () => ["cs-manager", "dashboard"] as const,
-  dashboard: (params: {
-    managerId: string;
-    month?: number;
-    year?: number;
-    page?: number;
-    limit?: number;
-    filter?: CsPlanFilter;
-    search?: string;
-    estate?: string;
-    sort?: CsPlanSort;
-  }) =>
-    [
-      ...csManagerKeys.dashboards(),
-      params.managerId,
-      params.month ?? null,
-      params.year ?? null,
-      params.page ?? null,
-      params.limit ?? null,
-      params.filter ?? null,
-      params.search ?? null,
-      params.estate ?? null,
-      params.sort ?? null,
-    ] as const,
-  /** The combined view has no manager id — a sentinel keeps it off the same key. */
-  allManagersDashboard: (params: {
-    month?: number;
-    year?: number;
-    page?: number;
-    limit?: number;
-    filter?: CsPlanFilter;
-    search?: string;
-    estate?: string;
-    sort?: CsPlanSort;
-  }) =>
-    [
-      ...csManagerKeys.dashboards(),
-      "__all__",
-      params.month ?? null,
-      params.year ?? null,
-      params.page ?? null,
-      params.limit ?? null,
-      params.filter ?? null,
-      params.search ?? null,
-      params.estate ?? null,
-      params.sort ?? null,
-    ] as const,
-};
-
-export interface UseCSManagerDashboardParams {
+export interface DashboardParams {
   managerId: string;
   month?: number;
   year?: number;
   page?: number;
   limit?: number;
-  /** Narrows the plans table only — KPIs, backlogs and portfolio stay
-   * book-wide, per the BE's schema docs. */
-  filter?: CsPlanFilter;
+  filter?: PlanFilterKey;
   search?: string;
-  /** Estate name. Narrows the table and its chips, like `filter`. */
-  estate?: string;
-  sort?: CsPlanSort;
+  sort?: PlanSortKey;
   enabled?: boolean;
 }
 
+/** GET /admin/cs-managers/:manager_id/dashboard — CSM-21/CSM-39. */
 export const useCSManagerDashboard = ({
   managerId,
   month,
   year,
-  page,
-  limit,
+  page = 1,
+  limit = 20,
   filter,
   search,
-  estate,
   sort,
   enabled = true,
-}: UseCSManagerDashboardParams) => {
-  return useQuery({
-    queryKey: csManagerKeys.dashboard({
-      managerId,
-      month,
-      year,
-      page,
-      limit,
-      filter,
-      search,
-      estate,
-      sort,
-    }),
+}: DashboardParams) =>
+  useQuery({
+    queryKey: csManagerKeys.dashboard(managerId, { month, year, page, limit, filter, search, sort }),
     queryFn: () =>
-      execute(GET_CS_MANAGER_DASHBOARD_QUERY, {
-        managerId,
-        month: month ?? null,
-        year: year ?? null,
-        page: page ?? null,
-        limit: limit ?? null,
-        filter: filter ?? null,
-        search: search?.trim() ? search.trim() : null,
-        estate: estate?.trim() ? estate.trim() : null,
-        sort: sort ?? null,
+      apiGet(managerId === "all" ? "/admin/cs-managers/dashboard/all" : `/admin/cs-managers/${managerId}/dashboard`, CSManagerDashboardSchema, {
+        params: { month, year, page, limit, filter, search: search || undefined, sort },
       }),
-    select: (data) => data.getCSManagerDashboard,
     enabled: enabled && !!managerId,
-    // Switching manager or period changes the key. Hold the previous
-    // dashboard while the next one loads so the picker doesn't drop the
-    // whole page to a spinner on every change.
     placeholderData: keepPreviousData,
   });
-};
-
-export type UseAllCSManagersDashboardParams = Omit<
-  UseCSManagerDashboardParams,
-  "managerId"
->;
-
-/**
- * Every CS Manager's book combined. Top-level admins only — the BE refuses
- * anyone else, so callers pass `enabled: false` rather than calling and catching.
- */
-export const useAllCSManagersDashboard = ({
-  month,
-  year,
-  page,
-  limit,
-  filter,
-  search,
-  estate,
-  sort,
-  enabled = true,
-}: UseAllCSManagersDashboardParams = {}) => {
-  return useQuery({
-    queryKey: csManagerKeys.allManagersDashboard({
-      month,
-      year,
-      page,
-      limit,
-      filter,
-      search,
-      estate,
-      sort,
-    }),
-    queryFn: () =>
-      execute(GET_ALL_CS_MANAGERS_DASHBOARD_QUERY, {
-        month: month ?? null,
-        year: year ?? null,
-        page: page ?? null,
-        limit: limit ?? null,
-        filter: filter ?? null,
-        search: search?.trim() ? search.trim() : null,
-        estate: estate?.trim() ? estate.trim() : null,
-        sort: sort ?? null,
-      }),
-    select: (data) => data.getAllCSManagersDashboard,
-    enabled,
-    placeholderData: keepPreviousData,
-  });
-};
