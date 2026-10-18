@@ -163,6 +163,22 @@ export const TicketNoteSchema = z.looseObject({
 });
 export type TicketNote = z.infer<typeof TicketNoteSchema>;
 
+/**
+ * A file on one message: what the customer sent in, or what we sent back. It
+ * also carries `mime`, `public_id`, `resource_type`, `format`, `cid` and
+ * `inline`, which pass through unread.
+ *
+ * Every field is optional so a message carried over from v1 still parses. An
+ * empty `url` (the BE's default) is a file that was never stored, and renders
+ * as unavailable rather than as a dead link.
+ */
+export const TicketMessageAttachmentSchema = z.looseObject({
+  url: z.string().nullish(),
+  filename: z.string().nullish(),
+  size: z.number().nullish(),
+});
+export type TicketMessageAttachment = z.infer<typeof TicketMessageAttachmentSchema>;
+
 export const TicketMessageSchema = z.looseObject({
   _id: z.string(),
   direction: MessageDirectionSchema,
@@ -175,6 +191,7 @@ export const TicketMessageSchema = z.looseObject({
   author_user: UserRefSchema.nullish(),
   match: z.looseObject({ signal: z.string(), conflict: z.boolean().nullish() }).nullish(),
   delivery: z.looseObject({ status: z.string(), error: z.string().nullish() }).nullish(),
+  attachments: z.array(TicketMessageAttachmentSchema).default([]),
   createdAt: z.string().nullish(),
 });
 export type TicketMessage = z.infer<typeof TicketMessageSchema>;
