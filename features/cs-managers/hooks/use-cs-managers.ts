@@ -6,6 +6,7 @@ import { apiGet } from '@/lib/api-client';
 
 import {
   AdminPickerRowSchema,
+  AutoAssignPreviewSchema,
   CSManagerSummarySchema,
   UnassignedCustomersResultSchema,
 } from '../schemas/cs-manager.schema';
@@ -42,6 +43,19 @@ export const useUnassignedCustomers = (params?: {
     enabled,
   });
 };
+
+/**
+ * GET /admin/cs-managers/auto-assign/preview — super admin only. A dry run of
+ * the auto-assign job: who is waiting and how many each manager would get.
+ * Writes nothing whether or not `CS_MANAGER_AUTO_ASSIGN` is on. The BE does
+ * the whole sweep to answer, so fetch it only when someone opens the preview.
+ */
+export const useAutoAssignPreview = ({ enabled = true }: { enabled?: boolean } = {}) =>
+  useQuery({
+    queryKey: csManagerKeys.autoAssignPreview(),
+    queryFn: () => apiGet('/admin/cs-managers/auto-assign/preview', AutoAssignPreviewSchema),
+    enabled,
+  });
 
 /**
  * GET /admin/admins — used only as the admin picker source for promoting a

@@ -86,9 +86,19 @@ export const SalesRowSchema = z.object({
   admin_creation_subtype: z.string().nullable().optional(),
   originated_from_close_relocate: z.boolean(),
   created_at: z.string(),
+  /**
+   * The address the buyer gave for their documents on the asset questions
+   * (abode-be-v2 `port/v1-sep-oct`, from v1 41be3131). No fallback to the
+   * account address — that would disguise a missing answer. Sent on
+   * `GET /admin/sales` only: the `sale` inside an export/data row doesn't carry
+   * it (that row has it under `extras`), and neither does a BE without the
+   * change — so it's optional here and read as null when absent.
+   */
+  address_on_document: z.string().nullable().optional(),
 }).transform((row) => ({
   ...row,
   is_suspended: row.is_suspended ?? row.plan_status === 'suspended',
+  address_on_document: row.address_on_document ?? null,
 }));
 
 export type SalesRow = z.infer<typeof SalesRowSchema>;

@@ -27,6 +27,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Form,
   FormControl,
   FormDescription,
@@ -36,7 +43,12 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { cn } from "@/lib/utils";
-import type { PlanRow } from "../schemas/cs-manager.schema";
+import {
+  LAND_CHOICE_REASONS,
+  LAND_CHOICE_REASON_LABELS,
+  landChoiceReasonLabel,
+  type PlanRow,
+} from "../schemas/cs-manager.schema";
 import {
   onboardingCallSchema,
   type OnboardingCallFormValues,
@@ -50,9 +62,13 @@ import {
   DoaPill,
   OnboardingPill,
   PaymentPill,
+  allocationStatusLabel,
   formatShortDate,
   planCustomerInitials,
   planCustomerName,
+  planLandLabel,
+  productLabel,
+  telHref,
 } from "./status-pills";
 
 interface Props {
@@ -107,7 +123,7 @@ const OUTCOME_LABELS: Record<string, string> = {
 
 const DEFAULTS: OnboardingCallFormValues = {
   outcome: undefined as unknown as OnboardingCallFormValues["outcome"],
-  landChoiceReason: "",
+  landChoiceReason: undefined,
   notes: "",
 };
 
@@ -149,7 +165,7 @@ export function PlanDetailDrawer({ plan, open, onOpenChange }: Props) {
       {
         planId: plan.plan_id,
         outcome: values.outcome,
-        land_choice_reason: values.landChoiceReason?.trim() || undefined,
+        land_choice_reason: values.landChoiceReason,
         notes: values.notes?.trim() || undefined,
       },
       {
@@ -188,18 +204,33 @@ export function PlanDetailDrawer({ plan, open, onOpenChange }: Props) {
               </SheetTitle>
               <SheetDescription className="text-xs text-gray-500 truncate">
                 {plan.customer.email}
+                {plan.customer.phone && (
+                  <>
+                    {" · "}
+                    <a href={telHref(plan.customer.phone)} className="tabular-nums hover:text-[#00695C]">
+                      {plan.customer.phone}
+                    </a>
+                  </>
+                )}
               </SheetDescription>
             </div>
           </div>
 
           <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 space-y-2">
             <div className="flex items-baseline justify-between gap-2">
-              <p className="text-sm font-medium text-gray-900 leading-tight">{plan.asset}</p>
-              <span className="text-[11px] text-gray-500 shrink-0">
-                {plan.product === "flex" ? "Flex" : "Full-ownership"}
-              </span>
+              <p className="text-sm font-medium text-gray-900 leading-tight">{plan.asset || "—"}</p>
+              <span className="text-[11px] text-gray-500 shrink-0">{productLabel(plan.product)}</span>
             </div>
-            <p className="text-xs text-gray-500">Opened {formatShortDate(plan.purchase_date)}</p>
+            <p className="text-xs text-gray-500">
+              {[plan.location, planLandLabel(plan), `Opened ${formatShortDate(plan.purchase_date)}`]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+            {plan.allocation_status && (
+              <p className="text-xs text-gray-500">
+                Allocation status: {allocationStatusLabel(plan.allocation_status)}
+              </p>
+            )}
             <div className="flex flex-wrap items-center gap-1.5 pt-1">
               <PaymentPill status={plan.payment_status} label={plan.payment_label} />
               <OnboardingPill status={plan.onboarding} />
@@ -302,7 +333,8 @@ export function PlanDetailDrawer({ plan, open, onOpenChange }: Props) {
                     {a.land_choice_reason && (
                       <div>
                         <p className="text-[10px] uppercase tracking-wide text-gray-400">Why this land</p>
-                        <p className="text-xs text-gray-700">{a.land_choice_reason}</p>
+                        {/* Calls logged before the fixed list hold free text — shown as typed. */}
+                        <p className="text-xs text-gray-700">{landChoiceReasonLabel(a.land_choice_reason)}</p>
                       </div>
                     )}
                     {a.notes && (
@@ -371,19 +403,30 @@ export function PlanDetailDrawer({ plan, open, onOpenChange }: Props) {
                         Why the customer chose this land
                         {outcome === "done" && <span className="text-[#AD1F2A]"> *</span>}
                       </FormLabel>
-                      <FormControl>
-                        <Textarea
-                          {...field}
-                          rows={3}
-                          className="text-xs"
-                          placeholder="The intel this call exists to gather — proximity, price, referral, resale plans…"
-                        />
-                      </FormControl>
-                      {outcome !== "done" && (
-                        <FormDescription className="text-[11px]">
-                          Optional unless you mark the call done.
-                        </FormDescription>
-                      )}
+                      {/* A list, not a box: free text gave 162 spellings of
+                          eight ideas, which can't be counted — and counting
+                          them is why the question is asked. */}
+                      <Select value={field.value ?? ""} onValueChange={field.onChange}>
+                        <FormControl>
+                          <SelectTrigger className="w-full text-xs">
+                            <SelectValue placeholder="Pick the main reason" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {LAND_CHOICE_REASONS.map((reason) => (
+                            <SelectItem key={reason} value={reason} className="text-xs">
+                              {reason === "other"
+                                ? "Other — say more in the notes"
+                                : LAND_CHOICE_REASON_LABELS[reason]}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormDescription className="text-[11px]">
+                        {outcome === "done"
+                          ? "Anything that doesn't fit: pick Other and write it in the notes."
+                          : "Optional unless you mark the call done."}
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}

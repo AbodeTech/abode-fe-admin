@@ -67,6 +67,7 @@ function CustomerManagersContent() {
   const page = Number(searchParams.get("page")) || 1;
   const filter = (searchParams.get("filter") as PlanFilterKey | null) ?? undefined;
   const search = searchParams.get("search") ?? undefined;
+  const estate = searchParams.get("estate") ?? undefined;
   const sort = (searchParams.get("sort") as PlanSortKey | null) ?? undefined;
 
   const managersQuery = useCSManagers();
@@ -87,6 +88,7 @@ function CustomerManagersContent() {
     limit: PLANS_PER_PAGE,
     filter,
     search,
+    estate,
     sort,
     enabled: isAuthorized && !!activeManagerId,
   });
@@ -170,6 +172,7 @@ function CustomerManagersContent() {
           target={data.target}
           score={data.performance_score}
           obligation={data.obligation}
+          onboardingBacklog={data.backlogs.onboarding}
           totalAssigned={data.portfolio.total_assigned}
           // Setting targets is super-admin only, so a CS Manager gets the
           // read-only snapshot with no CTA.
@@ -178,7 +181,7 @@ function CustomerManagersContent() {
 
         <CSManagerTicketFlow flow={data.target.ticket_flow} />
 
-        <BacklogsSection backlogs={data.backlogs} />
+        <BacklogsSection backlogs={data.backlogs} period={data.period} />
 
         <PortfolioHealthStrip portfolio={data.portfolio} />
 
@@ -188,6 +191,7 @@ function CustomerManagersContent() {
           totalAssigned={data.portfolio.total_assigned}
           totalPlans={data.plans_total}
           filterCounts={data.filter_counts}
+          estates={data.estates}
           page={page}
           limit={PLANS_PER_PAGE}
           isFetching={dashboardQuery.isFetching}

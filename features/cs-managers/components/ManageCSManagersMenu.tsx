@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, UserMinus, UserPlus } from "lucide-react";
+import { ChevronDown, Shuffle, UserMinus, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -12,16 +12,19 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { AddCSManagerDialog } from "./AddCSManagerDialog";
+import { AutoAssignPreviewDialog } from "./AutoAssignPreviewDialog";
 import { RemoveCSManagerDialog } from "./RemoveCSManagerDialog";
 import type { CSManagerSummary } from "../schemas/cs-manager.schema";
 
 interface Props {
   /** The currently-selected manager from the page dropdown. Drives Remove. */
   activeManager: CSManagerSummary | null;
+  /** Every active CS Manager — names the managers in the auto-assign preview. */
+  managers: CSManagerSummary[];
 }
 
-export function ManageCSManagersMenu({ activeManager }: Props) {
-  const [openDialog, setOpenDialog] = useState<"add" | "remove" | null>(null);
+export function ManageCSManagersMenu({ activeManager, managers }: Props) {
+  const [openDialog, setOpenDialog] = useState<"add" | "remove" | "auto-assign" | null>(null);
 
   return (
     <>
@@ -38,6 +41,10 @@ export function ManageCSManagersMenu({ activeManager }: Props) {
           <DropdownMenuItem onSelect={() => setOpenDialog("add")}>
             <UserPlus className="h-4 w-4 mr-2" />
             Add CS Manager
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => setOpenDialog("auto-assign")}>
+            <Shuffle className="h-4 w-4 mr-2" />
+            Auto-assign preview
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
@@ -59,6 +66,11 @@ export function ManageCSManagersMenu({ activeManager }: Props) {
         open={openDialog === "remove"}
         onOpenChange={(o) => !o && setOpenDialog(null)}
         manager={activeManager}
+      />
+      <AutoAssignPreviewDialog
+        open={openDialog === "auto-assign"}
+        onOpenChange={(o) => !o && setOpenDialog(null)}
+        managers={managers}
       />
     </>
   );

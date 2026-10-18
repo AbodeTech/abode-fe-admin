@@ -1,5 +1,11 @@
 // Hooks
-export { useCSManagers, useUnassignedCustomers, useAdminPicker, DEFAULT_UNASSIGNED_LIMIT } from './hooks/use-cs-managers';
+export {
+  useCSManagers,
+  useUnassignedCustomers,
+  useAdminPicker,
+  useAutoAssignPreview,
+  DEFAULT_UNASSIGNED_LIMIT,
+} from './hooks/use-cs-managers';
 export { useCSManagerTargets, useCSManagerTarget } from './hooks/use-cs-manager-targets';
 export {
   useAddCSManager,
@@ -23,6 +29,7 @@ export { RemoveCSManagerDialog } from './components/RemoveCSManagerDialog';
 export { ManageCSTargetsDialog } from './components/ManageCSTargetsDialog';
 export { UnassignedCustomersTable } from './components/UnassignedCustomersTable';
 export { UnassignedCustomersDialog } from './components/UnassignedCustomersDialog';
+export { AutoAssignPreviewDialog } from './components/AutoAssignPreviewDialog';
 export { NoCSManagersEmptyState } from './components/NoCSManagersEmptyState';
 export { CSPerformanceHeader } from './components/CSPerformanceHeader';
 export { CSManagerSnapshot } from './components/CSManagerSnapshot';
@@ -37,6 +44,9 @@ export {
   adminMinInitials,
   pickerRowName,
   pickerRowInitials,
+  landChoiceReasonLabel,
+  LAND_CHOICE_REASONS,
+  LAND_CHOICE_REASON_LABELS,
   PLAN_FILTER_KEYS,
   PLAN_SORT_KEYS,
 } from './schemas/cs-manager.schema';
@@ -51,4 +61,8 @@ export type {
   PlanRow,
   PlanFilterKey,
   PlanSortKey,
+  EstateOption,
+  LastAttempt,
+  LandChoiceReason,
+  AutoAssignPreview,
 } from './schemas/cs-manager.schema';

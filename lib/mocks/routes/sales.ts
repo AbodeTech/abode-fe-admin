@@ -53,6 +53,8 @@ type MockSalesRow = {
   admin_creation_subtype: (typeof ADMIN_SUBTYPES)[number] | null;
   originated_from_close_relocate: boolean;
   created_at: string;
+  /** From the asset questions; null where the buyer never answered. */
+  address_on_document: string | null;
 };
 
 /** Same revenue-eligibility rule as `src/common/revenue-eligibility.ts` on the BE (S-1b/S-1e). */
@@ -124,6 +126,8 @@ const rows: MockSalesRow[] = MOCK_USERS.map((user, i) => {
     admin_creation_subtype: adminSubtype,
     originated_from_close_relocate: sourceType === 'close_and_relocate',
     created_at: formatMockDate(180 + i * 5),
+    // Every fourth buyer skipped the asset questions — the column shows blank, not a fallback.
+    address_on_document: i % 4 === 3 ? null : `${12 + i} Admiralty Way, ${LOCATIONS[(i + 1) % LOCATIONS.length]}`,
   };
 });
 

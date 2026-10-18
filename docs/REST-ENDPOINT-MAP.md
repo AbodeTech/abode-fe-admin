@@ -44,7 +44,8 @@ everything analytical or campaign-related.
 | `analytics` | 🚧 None |
 | `campaigns` | 🚧 Engine REST mocked (`/admin/campaigns*`); Associate Pro tracker still GraphQL |
 | `allocation` | 🚧 None |
-| `sales` | 🚧 None |
+| `sales` | ✅ Real — `GET /admin/sales` (the record, paged), `/admin/sales/dashboard`, `/admin/sales/export/data` (super admin). Record rows carry `address_on_document` (view_sales; abode-be-v2 `port/v1-sep-oct`), shown as the "Address on Document" column — null where the buyer never answered, no fallback |
+| `cs-managers` | ✅ Real — `/admin/cs-managers/*` (roles, targets, unassigned, `:manager_id/dashboard`, `dashboard/all`, `:manager_id/exports/plans`) + `/admin/payment-plans/:plan_id/onboarding-attempts`. From `port/v1-sep-oct`: dashboard and export take `estate`; the response adds `estates[]`, row `customer.phone`/`asset_id`/`location`/`size`/`units`/`allocation_status`/`last_attempt`, chips `never_attempted`/`no_answer`/`rescheduled`, and `backlogs.onboarding.call_pending_this_period`/`_carried_over`; search matches 4+ phone digits; `land_choice_reason` is one of 9 values on the way in (old free text still returned). `GET /admin/cs-managers/auto-assign/preview` (super admin, dry run) backs the read-only "Auto-assign preview" — the job itself needs `CS_MANAGER_AUTO_ASSIGN=true` |
 | `courses` (Academy) | ✅ Complete — all 7 screens wired. Credential revoke/reinstate unreachable pending a BE gap (no `credential_id` on learner rows) |
 
 **Roughly 45% of operations map to real endpoints; 55% are provisional.**
@@ -354,7 +355,7 @@ history and costs, boundary PUT, allocation-event ownership.
 |---|---|---|
 | `dashboard` | `GetAdminDashboardDetails` | `GET /admin/dashboard` |
 | `analytics` | `GetSalesAnalytics` (+2) | `GET /admin/analytics/sales` |
-| `sales` | `GetSalesRecord`, `GetSalesStatusCounts`, `GetSalesDashboard`, `ExportSales` | `GET /admin/sales[...]` |
+| `sales` | `GetSalesRecord`, `GetSalesStatusCounts`, `GetSalesDashboard`, `ExportSales` | ✅ real, not provisional: `GET /admin/sales`, `/admin/sales/dashboard`, `/admin/sales/export/data` — see the coverage summary |
 | `campaigns` | Engine: list/create/detail/dashboard/rewards/transition/invalidate/export/PDF, plus revenue + purchases (`view_campaigns` **and** `view_sales`). Tracker: GraphQL Campaign2000 | `GET/POST/PATCH /admin/campaigns*` |
 | `allocation` | 7 ops (eligible clients, allocate/deallocate/reassign land, allocation email) | `/admin/allocation/*` — FO assign/reassign is `POST /admin/acquisitions/plans/:planId/allocate` |
 
