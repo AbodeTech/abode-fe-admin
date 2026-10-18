@@ -39,19 +39,19 @@ export type AcademySignupResponse = {
 
 export type AcademyUserProfile = {
   __typename?: 'AcademyUserProfile';
-  email: Scalars['String']['output'];
+  email?: Maybe<Scalars['String']['output']>;
   first_name: Scalars['String']['output'];
   last_name: Scalars['String']['output'];
-  phone: Scalars['String']['output'];
+  phone?: Maybe<Scalars['String']['output']>;
   username: Scalars['String']['output'];
 };
 
 export type AcademyUserSearchResult = {
   __typename?: 'AcademyUserSearchResult';
-  email: Scalars['String']['output'];
+  email?: Maybe<Scalars['String']['output']>;
   first_name: Scalars['String']['output'];
   last_name: Scalars['String']['output'];
-  phone: Scalars['String']['output'];
+  phone?: Maybe<Scalars['String']['output']>;
   username: Scalars['String']['output'];
 };
 
@@ -284,6 +284,41 @@ export type AdminRoles = {
   roleId: Scalars['ID']['output'];
 };
 
+/**
+ * Who the caller is, resolved from their token.
+ *
+ * isCSManager is an active CSManagerAssignment, not role -- they are
+ * different axes, and the assignment can be granted or withdrawn without the
+ * admin logging in again. Read here rather than baked into the signin response
+ * for exactly that reason: a stale token must not carry a stale privilege.
+ */
+export type AdminSession = {
+  __typename?: 'AdminSession';
+  _id: Scalars['ID']['output'];
+  /** May classify, categorise, assign, group and resolve -- a CS Manager, or a super admin. */
+  canDecideTicketRouting: Scalars['Boolean']['output'];
+  /**
+   * Super admin: reads and acts on every ticket, including other people's.
+   * Granted by the "manage_all_tickets" permission.
+   */
+  canManageAllTickets: Scalars['Boolean']['output'];
+  /**
+   * Whether this admin routes the unassigned pool -- a CS Manager whose role is
+   * "admin". They are the only reader who sees tickets that are not their own,
+   * and only the ones nobody owns yet.
+   *
+   * Derived server-side rather than left to the client to compute from role +
+   * isCSManager, so the rule has one definition and the UI cannot drift from
+   * what the scoping actually does.
+   */
+  canRouteTickets: Scalars['Boolean']['output'];
+  email: Scalars['String']['output'];
+  isCSManager: Scalars['Boolean']['output'];
+  permissions: Array<Scalars['String']['output']>;
+  role: Scalars['String']['output'];
+  userName?: Maybe<Scalars['String']['output']>;
+};
+
 export type AdminSignupData = {
   __typename?: 'AdminSignupData';
   generatedPassword: Scalars['String']['output'];
@@ -357,6 +392,14 @@ export type AdminWalletInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   new_amount?: InputMaybe<Scalars['String']['input']>;
   reason?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type AgeSplitBacklog = {
+  __typename?: 'AgeSplitBacklog';
+  lastMonth: Scalars['Int']['output'];
+  older: Scalars['Int']['output'];
+  thisMonth: Scalars['Int']['output'];
+  total: Scalars['Int']['output'];
 };
 
 export type AgenciesResponse = {
@@ -642,12 +685,59 @@ export type AllocateLandResponse = {
   user: UserAllocated;
 };
 
+/**
+ * A batch allocation is not all-or-nothing at the row level: plans that fail
+ * come back in the failed list with a reason and the rest still go through, so
+ * one client suspended since the page loaded does not cost the whole batch.
+ */
+export type AllocateToEventPayload = {
+  __typename?: 'AllocateToEventPayload';
+  failed: Array<EventAllocationFailure>;
+  remaining_capacity: Scalars['Int']['output'];
+  succeeded: Array<EventAllocationSuccess>;
+};
+
 export type AllocationEntry = {
   __typename?: 'AllocationEntry';
   block_label: Scalars['String']['output'];
   plotId: Scalars['ID']['output'];
   plot_number: Scalars['Int']['output'];
   size: Scalars['Int']['output'];
+};
+
+export enum AllocationStatus {
+  Allocated = 'allocated',
+  Awaiting = 'awaiting',
+  NotApplicable = 'not_applicable'
+}
+
+/**
+ * What a returned sheet would do, or did.
+ *
+ * The merge is one-way: a tick promotes somebody to confirmed, an untick never
+ * takes a confirmation away. Re-uploading the same sheet changes nothing the
+ * second time.
+ */
+export type ApplyConfirmationSheetResult = {
+  __typename?: 'ApplyConfirmationSheetResult';
+  already_confirmed: Scalars['Int']['output'];
+  /** False for a preview. Nothing is written unless apply was set. */
+  applied: Scalars['Boolean']['output'];
+  newly_confirmed: Scalars['Int']['output'];
+  rows_received: Scalars['Int']['output'];
+  ticked: Scalars['Int']['output'];
+  /** Ids that are not on this event, or not readable as ids at all. */
+  unmatched: Array<Scalars['String']['output']>;
+};
+
+export type AskAssistantInput = {
+  history?: InputMaybe<Array<AssistantMessageInput>>;
+  question: Scalars['String']['input'];
+};
+
+export type AskAssistantResponse = {
+  __typename?: 'AskAssistantResponse';
+  answer: Scalars['String']['output'];
 };
 
 export type Asset = {
@@ -1099,13 +1189,100 @@ export type Assets = {
   topography?: Maybe<Scalars['String']['output']>;
 };
 
+export type AssignCsManagerTargetInput = {
+  customers_allocated_target?: InputMaybe<Scalars['Int']['input']>;
+  customers_onboarded_target?: InputMaybe<Scalars['Int']['input']>;
+  managerId: Scalars['ID']['input'];
+  month: Scalars['Int']['input'];
+  /** Percentage (0-100) of the month's ticket intake that should be resolved. */
+  tickets_resolved_target?: InputMaybe<Scalars['Int']['input']>;
+  year: Scalars['Int']['input'];
+};
+
+export type AssignCustomersResult = {
+  __typename?: 'AssignCustomersResult';
+  assigned: Scalars['Int']['output'];
+  managerId: Scalars['ID']['output'];
+};
+
+export type AssignCustomersToCsmInput = {
+  customerIds: Array<Scalars['ID']['input']>;
+  managerId: Scalars['ID']['input'];
+};
+
 export type AssignManagerTargetInput = {
   associate_pro_recruited_target?: InputMaybe<Scalars['Int']['input']>;
   managerId: Scalars['ID']['input'];
   month?: InputMaybe<Scalars['Int']['input']>;
   performance_score_target?: InputMaybe<Scalars['Int']['input']>;
+  revenue_target?: InputMaybe<Scalars['Float']['input']>;
   selling_associate_pro_target?: InputMaybe<Scalars['Int']['input']>;
   year?: InputMaybe<Scalars['Int']['input']>;
+};
+
+export enum AssistantAudience {
+  Associate = 'associate',
+  Customer = 'customer'
+}
+
+export enum AssistantChannel {
+  Web = 'web',
+  Whatsapp = 'whatsapp'
+}
+
+export type AssistantMessageInput = {
+  content: Scalars['String']['input'];
+  role: Scalars['String']['input'];
+};
+
+export type AssistantQueryCounts = {
+  __typename?: 'AssistantQueryCounts';
+  answered: Scalars['Int']['output'];
+  associate: Scalars['Int']['output'];
+  customer: Scalars['Int']['output'];
+  noAnswer: Scalars['Int']['output'];
+  total: Scalars['Int']['output'];
+  web: Scalars['Int']['output'];
+  whatsapp: Scalars['Int']['output'];
+};
+
+export type AssistantQueryFilters = {
+  /** filter to answered (true) or unanswered/no_answer (false) questions */
+  answered?: InputMaybe<Scalars['Boolean']['input']>;
+  audience?: InputMaybe<AssistantAudience>;
+  channel?: InputMaybe<AssistantChannel>;
+  search?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type AssistantQueryListPayload = {
+  __typename?: 'AssistantQueryListPayload';
+  count: Scalars['Int']['output'];
+  data: Array<AssistantQuestion>;
+};
+
+export type AssistantQuestion = {
+  __typename?: 'AssistantQuestion';
+  /**
+   * true when the answer was built with this customer's own account figures in
+   * the prompt. The audit trail for the identity gate: every one of these should
+   * correspond to a verified JWT (web) or a confirmed email OTP (WhatsApp), so a
+   * run of them from one number is what to look at if the gate is questioned.
+   */
+  accountData: Scalars['Boolean']['output'];
+  answer?: Maybe<Scalars['String']['output']>;
+  /** false when the model replied with the [NO_ANSWER] sentinel — a handbook content gap */
+  answered: Scalars['Boolean']['output'];
+  audience: AssistantAudience;
+  channel: AssistantChannel;
+  createdAt: Scalars['Date']['output'];
+  /** empty for a WhatsApp sender whose number matched no account — use phone instead */
+  email: Scalars['String']['output'];
+  firstName?: Maybe<Scalars['String']['output']>;
+  id: Scalars['ID']['output'];
+  lastName?: Maybe<Scalars['String']['output']>;
+  /** sender's number, WhatsApp questions only */
+  phone?: Maybe<Scalars['String']['output']>;
+  question: Scalars['String']['output'];
 };
 
 export type Associate = {
@@ -1168,6 +1345,7 @@ export type AssociateManagerTargetType = {
   manager: Scalars['ID']['output'];
   month: Scalars['Int']['output'];
   performance_score_target: Scalars['Int']['output'];
+  revenue_target: Scalars['Float']['output'];
   selling_associate_pro_target: Scalars['Int']['output'];
   updatedAt?: Maybe<Scalars['Date']['output']>;
   year: Scalars['Int']['output'];
@@ -1273,6 +1451,15 @@ export type Block = {
   description?: Maybe<Scalars['String']['output']>;
   label: Scalars['String']['output'];
   updatedAt?: Maybe<Scalars['String']['output']>;
+};
+
+export type BookSiteInspectionInput = {
+  email: Scalars['String']['input'];
+  full_name: Scalars['String']['input'];
+  location: Scalars['String']['input'];
+  phone_number: Scalars['String']['input'];
+  /** YYYY-MM-DD */
+  preferred_date: Scalars['String']['input'];
 };
 
 export type BulkAssignAssociateProsInput = {
@@ -1392,6 +1579,167 @@ export type BuyMarketplaceListingReceiptInput = {
   receipt_reference: Scalars['String']['input'];
 };
 
+export type CsEstateOption = {
+  __typename?: 'CSEstateOption';
+  /** Of those, fully paid and waiting for a plot. */
+  dueAllocation: Scalars['Int']['output'];
+  name: Scalars['String']['output'];
+  /** Plans on this estate in the book. */
+  plans: Scalars['Int']['output'];
+};
+
+export type CsManagerAssignmentType = {
+  __typename?: 'CSManagerAssignmentType';
+  _id: Scalars['ID']['output'];
+  assigned_from: Scalars['Date']['output'];
+  assigned_to?: Maybe<Scalars['Date']['output']>;
+  createdAt?: Maybe<Scalars['Date']['output']>;
+  created_by: Scalars['ID']['output'];
+  manager: Scalars['ID']['output'];
+  updatedAt?: Maybe<Scalars['Date']['output']>;
+};
+
+export type CsManagerBacklogs = {
+  __typename?: 'CSManagerBacklogs';
+  allocation: AgeSplitBacklog;
+  doa: AgeSplitBacklog;
+  onboarding: OnboardingBacklog;
+};
+
+export type CsManagerDashboardResponse = {
+  __typename?: 'CSManagerDashboardResponse';
+  backlogs: CsManagerBacklogs;
+  /** Every estate in this book, for the estate filter. Not narrowed by the estate, filter or search. */
+  estates: Array<CsEstateOption>;
+  filterCounts: CsPlanFilterCounts;
+  /** null when the role is unassigned or the manager admin was not found */
+  manager?: Maybe<Admin>;
+  obligation: CsManagerObligation;
+  performanceScore: CsManagerPerformanceScore;
+  period: CsManagerPeriod;
+  plans: Array<PlanRow>;
+  /** matching plan rows before pagination — drives the FE's page count. Reflects filter and search. */
+  plansTotal: Scalars['Int']['output'];
+  portfolio: CsManagerPortfolio;
+  target: CsManagerTargets;
+};
+
+export type CsManagerObligation = {
+  __typename?: 'CSManagerObligation';
+  paidNotAllocatedThisPeriod: Scalars['Int']['output'];
+};
+
+export type CsManagerPerformanceScore = {
+  __typename?: 'CSManagerPerformanceScore';
+  allocatedComponent: Scalars['Float']['output'];
+  onboardedComponent: Scalars['Float']['output'];
+  score: Scalars['Float']['output'];
+  ticketsComponent: Scalars['Float']['output'];
+};
+
+export type CsManagerPeriod = {
+  __typename?: 'CSManagerPeriod';
+  end: Scalars['Date']['output'];
+  month?: Maybe<Scalars['Int']['output']>;
+  periodType: Scalars['String']['output'];
+  start: Scalars['Date']['output'];
+  year?: Maybe<Scalars['Int']['output']>;
+};
+
+export type CsManagerPortfolio = {
+  __typename?: 'CSManagerPortfolio';
+  closeToDefaulting: Scalars['Int']['output'];
+  completedPayment: Scalars['Int']['output'];
+  totalAssigned: Scalars['Int']['output'];
+  withinPaymentPeriod: Scalars['Int']['output'];
+};
+
+export type CsManagerSummary = {
+  __typename?: 'CSManagerSummary';
+  _id: Scalars['ID']['output'];
+  activeSince: Scalars['Date']['output'];
+  assignedCustomersCount: Scalars['Int']['output'];
+  assignedPlansCount: Scalars['Int']['output'];
+  /** null when the manager has no target set for the current period */
+  currentPeriodScore?: Maybe<Scalars['Float']['output']>;
+  manager: Admin;
+};
+
+export type CsManagerTargetType = {
+  __typename?: 'CSManagerTargetType';
+  _id: Scalars['ID']['output'];
+  createdAt?: Maybe<Scalars['Date']['output']>;
+  customers_allocated_target: Scalars['Int']['output'];
+  customers_onboarded_target: Scalars['Int']['output'];
+  manager: Scalars['ID']['output'];
+  month: Scalars['Int']['output'];
+  /** Share of the month's ticket intake that should be resolved, as a percentage (0-100). */
+  tickets_resolved_target: Scalars['Int']['output'];
+  updatedAt?: Maybe<Scalars['Date']['output']>;
+  year: Scalars['Int']['output'];
+};
+
+export type CsManagerTargets = {
+  __typename?: 'CSManagerTargets';
+  allocatedSoFar: Scalars['Int']['output'];
+  allocatedTarget: Scalars['Int']['output'];
+  onboardedSoFar: Scalars['Int']['output'];
+  onboardedTarget: Scalars['Int']['output'];
+  /**
+   * Six months of tickets in against tickets out for this manager. The figures
+   * above say how the period went; this says which way it is going, which one
+   * month cannot. Same attribution (assigned_admin), so the two agree.
+   */
+  ticketFlow: Array<TicketMonthlyFlow>;
+  /** resolved / entered as a percentage. Null when no tickets arrived — no intake is not a failure. */
+  ticketResolutionRate?: Maybe<Scalars['Float']['output']>;
+  /** Tickets assigned to this manager that were raised during the period. */
+  ticketsEntered: Scalars['Int']['output'];
+  /** How many of those are resolved as of now. */
+  ticketsResolved: Scalars['Int']['output'];
+  /** Required resolution rate for the period, as a percentage (0-100). */
+  ticketsResolvedTarget: Scalars['Int']['output'];
+};
+
+/** Plan-table filter chips. Narrows the table only — KPIs and backlogs stay book-wide. */
+export enum CsPlanFilter {
+  All = 'all',
+  CompletedPayment = 'completed_payment',
+  DefaultingSoon = 'defaulting_soon',
+  DueAllocation = 'due_allocation',
+  DueDoa = 'due_doa',
+  /** Onboarding pending and never rung — nobody has tried this plan yet. */
+  NeverAttempted = 'never_attempted',
+  /** Rung, and the customer did not pick up. Still owed a call. */
+  NoAnswer = 'no_answer',
+  OnboardingPending = 'onboarding_pending',
+  /** Rung, and a call was booked. The only pending state with a promise attached. */
+  Rescheduled = 'rescheduled'
+}
+
+/** Book-wide counts per filter chip — always unfiltered, whatever filter is set to. */
+export type CsPlanFilterCounts = {
+  __typename?: 'CSPlanFilterCounts';
+  all: Scalars['Int']['output'];
+  completedPayment: Scalars['Int']['output'];
+  defaultingSoon: Scalars['Int']['output'];
+  dueAllocation: Scalars['Int']['output'];
+  dueDoa: Scalars['Int']['output'];
+  /** The three states inside onboardingPending; they sum to it. */
+  neverAttempted: Scalars['Int']['output'];
+  noAnswer: Scalars['Int']['output'];
+  onboardingPending: Scalars['Int']['output'];
+  rescheduled: Scalars['Int']['output'];
+};
+
+export enum CsPlanSort {
+  CustomerAsc = 'customer_asc',
+  LastActivityAsc = 'last_activity_asc',
+  LastActivityDesc = 'last_activity_desc',
+  PurchaseDateAsc = 'purchase_date_asc',
+  PurchaseDateDesc = 'purchase_date_desc'
+}
+
 export type CampaignDashboard = {
   __typename?: 'CampaignDashboard';
   associateProProgress: AssociateProProgress;
@@ -1481,6 +1829,18 @@ export type CategoryDefaulting = {
   defaultedAssetValue?: Maybe<Scalars['Float']['output']>;
   defaultersOwing?: Maybe<Scalars['Float']['output']>;
   defaultersPaid?: Maybe<Scalars['Float']['output']>;
+};
+
+/**
+ * Changing a PIN you still know. Needs the account password and the current PIN.
+ * The current PIN is checked against the same attempt counter and 24-hour lock
+ * the withdrawal flows use, so this is not a cheaper place to guess it — and the
+ * password is checked first, so a wrong password costs no PIN attempt.
+ */
+export type ChangeWithdrawalPinInput = {
+  current_pin: Scalars['String']['input'];
+  new_pin: Scalars['String']['input'];
+  password: Scalars['String']['input'];
 };
 
 export type ClearTinResponse = {
@@ -1764,6 +2124,105 @@ export type CommissionTransactionsResponse = {
   transactions: Array<CommissionTransactions>;
 };
 
+export type CompanyEvent = {
+  __typename?: 'CompanyEvent';
+  /**
+   * The estates this event allocates for. Plural because one physical estate is
+   * two Asset records — flex and full-ownership are separate documents — so an
+   * allocation day covering both products names both.
+   */
+  assets: Array<Scalars['ID']['output']>;
+  /** The capacity cap. Null means uncapped, and allocation is refused until it is set. */
+  available_size?: Maybe<Scalars['Int']['output']>;
+  createdAt?: Maybe<Scalars['Date']['output']>;
+  created_by?: Maybe<Scalars['ID']['output']>;
+  /** As entered, yyyy-mm-dd. */
+  date: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  /**
+   * Whether anybody may sign themselves up, as opposed to only the people we
+   * invited. Unrelated to available_size: that cap governs land, and a
+   * registrant is allocated none.
+   */
+  open_registration: Scalars['Boolean']['output'];
+  pickup_locations: Array<EventPickupLocation>;
+  /**
+   * The link to hand out for open registration. Shareable as-is: it carries no
+   * token, and anybody who opens it gets the sign-up form.
+   */
+  public_url: Scalars['String']['output'];
+  remaining_capacity?: Maybe<Scalars['Int']['output']>;
+  /** Running total committed to non-cancelled allocations. */
+  reserved_size: Scalars['Int']['output'];
+  /** sqm | plots */
+  size_unit: Scalars['String']['output'];
+  /**
+   * The name this event is addressed by in public URLs — it IS the first path
+   * segment, as in /the-district-allocation-day-3-oct-2026/form. Generated from
+   * the title and the date when the event is created, and never changed.
+   */
+  slug: Scalars['String']['output'];
+  starts_at: Scalars['Date']['output'];
+  /** draft | published | closed */
+  status: Scalars['String']['output'];
+  /** As entered, HH:mm. */
+  time: Scalars['String']['output'];
+  title: Scalars['String']['output'];
+  /** site_inspection | allocation */
+  type: Scalars['String']['output'];
+  updatedAt?: Maybe<Scalars['Date']['output']>;
+};
+
+export type CompanyEventAnalytics = {
+  __typename?: 'CompanyEventAnalytics';
+  cancelled: Scalars['Int']['output'];
+  capacity: EventCapacity;
+  category_mix: Array<EventCategoryCount>;
+  event: Scalars['ID']['output'];
+  /** Attending → Registered → Checked in (boarded) → Confirmed (at the plot). */
+  funnel: EventFunnel;
+  /** Registered but never boarded — the morning's chase list. */
+  no_show: Scalars['Int']['output'];
+  pickup_load: Array<EventPickupLoad>;
+  registration_split: EventRegistrationSplit;
+  title: Scalars['String']['output'];
+};
+
+export type CompanyEventFilterInput = {
+  /** Matches events that name this estate among their assets. */
+  asset?: InputMaybe<Scalars['ID']['input']>;
+  /** Matches the event title. */
+  q?: InputMaybe<Scalars['String']['input']>;
+  status?: InputMaybe<Scalars['String']['input']>;
+  type?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type CompanyEventListPayload = {
+  __typename?: 'CompanyEventListPayload';
+  count: Scalars['Int']['output'];
+  data: Array<CompanyEvent>;
+};
+
+export type ConfirmSyncOutcome = {
+  __typename?: 'ConfirmSyncOutcome';
+  /**
+   * confirmed | already | duplicate | invalid | no_land
+   *
+   * no_land is a visitor: they boarded the same bus and are standing in the
+   * same field, but no plot was allocated to them, so there is nothing to
+   * confirm. Boarding covers everyone; this step does not.
+   */
+  outcome: Scalars['String']['output'];
+  token: Scalars['String']['output'];
+};
+
+export type ConfirmSyncResult = {
+  __typename?: 'ConfirmSyncResult';
+  confirmed: Scalars['Int']['output'];
+  received: Scalars['Int']['output'];
+  results: Array<ConfirmSyncOutcome>;
+};
+
 export type ConversionDataPoint = {
   __typename?: 'ConversionDataPoint';
   count: Scalars['Int']['output'];
@@ -1851,6 +2310,29 @@ export type CreateAgencyResponse = {
   success: Scalars['Boolean']['output'];
 };
 
+export type CreateCompanyEventInput = {
+  /** One or more estates. Name both the flex and full-ownership records to cover both products. */
+  assets: Array<Scalars['ID']['input']>;
+  /** Allocation events only; ignored on a site inspection. */
+  available_size?: InputMaybe<Scalars['Int']['input']>;
+  /** yyyy-mm-dd, as the organiser types it. */
+  date: Scalars['String']['input'];
+  /**
+   * Whether anybody may sign themselves up. Defaults to true — set it false for
+   * a closed guest list. It is not a capacity control; registrants are allocated
+   * no land, and the buses are planned from the resulting list.
+   */
+  open_registration?: InputMaybe<Scalars['Boolean']['input']>;
+  pickup_locations?: InputMaybe<Array<EventPickupLocationInput>>;
+  /** sqm | plots. Defaults to sqm. */
+  size_unit?: InputMaybe<Scalars['String']['input']>;
+  /** HH:mm, as the organiser types it. */
+  time: Scalars['String']['input'];
+  title: Scalars['String']['input'];
+  /** site_inspection | allocation */
+  type: Scalars['String']['input'];
+};
+
 export type CreateCouponInput = {
   activeImmediately?: InputMaybe<Scalars['Boolean']['input']>;
   couponCode: Scalars['String']['input'];
@@ -1902,6 +2384,14 @@ export type CreateFullOwnershipAssetInput = {
   topography?: InputMaybe<Scalars['String']['input']>;
 };
 
+export type CreateIssueInput = {
+  description?: InputMaybe<Scalars['String']['input']>;
+  /** Promoting a ticket links it to the new issue in the same call. */
+  fromTicketId?: InputMaybe<Scalars['ID']['input']>;
+  ownerId?: InputMaybe<Scalars['ID']['input']>;
+  title: Scalars['String']['input'];
+};
+
 export type CreateLocationChangeInput = {
   bankName: Scalars['String']['input'];
   couponCode?: InputMaybe<Scalars['String']['input']>;
@@ -1925,10 +2415,29 @@ export type CreateMarketplaceListingInput = {
   unique_asset_id: Scalars['String']['input'];
 };
 
+export type CreateMeetingInput = {
+  audience_type: MeetingAudienceType;
+  google_meet_url: Scalars['String']['input'];
+  name: Scalars['String']['input'];
+  starts_at: Scalars['Date']['input'];
+  verification_lead_minutes?: InputMaybe<Scalars['Int']['input']>;
+};
+
 export type CreateRoleInput = {
   description?: InputMaybe<Scalars['String']['input']>;
   name: Scalars['String']['input'];
   permissions: Array<Scalars['String']['input']>;
+};
+
+export type CreateTicketInput = {
+  attachments?: InputMaybe<Array<TicketAttachmentInput>>;
+  body?: InputMaybe<Scalars['String']['input']>;
+  category?: InputMaybe<Scalars['String']['input']>;
+  channel: TicketChannel;
+  senderId?: InputMaybe<Scalars['ID']['input']>;
+  sourceReference?: InputMaybe<Scalars['String']['input']>;
+  subject: Scalars['String']['input'];
+  userAffectedId?: InputMaybe<Scalars['ID']['input']>;
 };
 
 export type CreateUsersFullOwnershipAssetInput = {
@@ -1965,6 +2474,27 @@ export type CustomRequestResponse = {
   success: Scalars['Boolean']['output'];
 };
 
+export type CustomerOnboardingAttempt = {
+  __typename?: 'CustomerOnboardingAttempt';
+  _id: Scalars['ID']['output'];
+  called_at: Scalars['Date']['output'];
+  createdAt?: Maybe<Scalars['Date']['output']>;
+  csm: Scalars['ID']['output'];
+  customer: Scalars['ID']['output'];
+  land_choice_reason?: Maybe<Scalars['String']['output']>;
+  notes?: Maybe<Scalars['String']['output']>;
+  outcome: CustomerOnboardingOutcome;
+  payment_plan: Scalars['ID']['output'];
+  updatedAt?: Maybe<Scalars['Date']['output']>;
+};
+
+export enum CustomerOnboardingOutcome {
+  Done = 'done',
+  NoAnswer = 'no_answer',
+  Rescheduled = 'rescheduled',
+  Spoke = 'spoke'
+}
+
 export type DataPointInput = {
   type?: InputMaybe<Scalars['String']['input']>;
 };
@@ -1983,6 +2513,14 @@ export type DataPointResponse = {
 export type DateRangeInput = {
   from?: InputMaybe<Scalars['Date']['input']>;
   to?: InputMaybe<Scalars['Date']['input']>;
+};
+
+export type DeallocateFromEventPayload = {
+  __typename?: 'DeallocateFromEventPayload';
+  /** True when the allocation was already cancelled, so nothing further was freed. */
+  already_cancelled: Scalars['Boolean']['output'];
+  deallocated: Scalars['Boolean']['output'];
+  freed: Scalars['Int']['output'];
 };
 
 export type DeallocateLandResponse = {
@@ -2031,6 +2569,12 @@ export type DeleteUserFullOwnershipAssetInput = {
   unique_asset_id: Scalars['String']['input'];
   userId: Scalars['ID']['input'];
 };
+
+export enum DoaStatus {
+  NotApplicable = 'not_applicable',
+  NotSent = 'not_sent',
+  Sent = 'sent'
+}
 
 export type DocumentChangeRequestInput = {
   assetId: Scalars['String']['input'];
@@ -2125,6 +2669,15 @@ export type Documents = {
   deed_of_assignment?: Maybe<Scalars['String']['output']>;
   estate_layout?: Maybe<Scalars['String']['output']>;
   survey?: Maybe<Scalars['String']['output']>;
+};
+
+export type DuplicateCandidate = {
+  __typename?: 'DuplicateCandidate';
+  _id: Scalars['ID']['output'];
+  createdAt: Scalars['Date']['output'];
+  status: TicketStatus;
+  subject: Scalars['String']['output'];
+  ticket_ref: Scalars['String']['output'];
 };
 
 export type EditAgencyProfileInput = {
@@ -2268,6 +2821,375 @@ export type EmailVerificationResponse = {
   success?: Maybe<Scalars['Boolean']['output']>;
 };
 
+/** One plan that could not be allocated, and why. */
+export type EventAllocationFailure = {
+  __typename?: 'EventAllocationFailure';
+  payment_plan: Scalars['ID']['output'];
+  /** ALREADY_ALLOCATED | NO_LONGER_ELIGIBLE | CAPACITY_EXCEEDED */
+  reason: Scalars['String']['output'];
+};
+
+export type EventAllocationFilterInput = {
+  search?: InputMaybe<Scalars['String']['input']>;
+  status?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type EventAllocationListPayload = {
+  __typename?: 'EventAllocationListPayload';
+  count: Scalars['Int']['output'];
+  data: Array<EventAllocationRow>;
+};
+
+/** One person's committed seat, with their contact resolved for the admin table. */
+export type EventAllocationRow = {
+  __typename?: 'EventAllocationRow';
+  /** The land: allocated | cancelled. Separate from attendance, and not the same question. */
+  allocation_status: Scalars['String']['output'];
+  cancelled_at?: Maybe<Scalars['Date']['output']>;
+  /** From their registration form, where they have submitted one. */
+  category?: Maybe<Scalars['String']['output']>;
+  checked_in_at?: Maybe<Scalars['Date']['output']>;
+  confirmed_at?: Maybe<Scalars['Date']['output']>;
+  createdAt?: Maybe<Scalars['Date']['output']>;
+  eligibility_tier: Scalars['String']['output'];
+  email?: Maybe<Scalars['String']['output']>;
+  /** not_sent | queued | sent | failed — delivery, tracked apart from status. */
+  email_status: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  invite_sent_at?: Maybe<Scalars['Date']['output']>;
+  name: Scalars['String']['output'];
+  /** Every plot this seat covers. More than one where the buyer holds several here. */
+  payment_plans: Array<Scalars['ID']['output']>;
+  phone?: Maybe<Scalars['String']['output']>;
+  pickup_location?: Maybe<Scalars['String']['output']>;
+  registered_at?: Maybe<Scalars['Date']['output']>;
+  size_reserved: Scalars['Int']['output'];
+  /** Attendance: invited | registered | checked_in | confirmed | cancelled. */
+  status: Scalars['String']['output'];
+  user?: Maybe<Scalars['ID']['output']>;
+};
+
+export type EventAllocationSuccess = {
+  __typename?: 'EventAllocationSuccess';
+  id: Scalars['ID']['output'];
+  /** The plots this one seat covers, summed into size_reserved. */
+  payment_plans: Array<Scalars['ID']['output']>;
+  size_reserved: Scalars['Int']['output'];
+};
+
+export type EventAttendee = {
+  __typename?: 'EventAttendee';
+  attendance_id: Scalars['ID']['output'];
+  checked_in_at?: Maybe<Scalars['Date']['output']>;
+  confirmed_at?: Maybe<Scalars['Date']['output']>;
+  /** True when there is land attached; false for someone who registered themselves. */
+  getting_land: Scalars['Boolean']['output'];
+  name?: Maybe<Scalars['String']['output']>;
+  phone?: Maybe<Scalars['String']['output']>;
+  status?: Maybe<Scalars['String']['output']>;
+};
+
+/**
+ * A stand-in named by the registrant. Holds the same QR — it is the same seat —
+ * and the registrant keeps their own copy of it.
+ */
+export type EventAttendeeRepresentative = {
+  __typename?: 'EventAttendeeRepresentative';
+  email: Scalars['String']['output'];
+  name: Scalars['String']['output'];
+};
+
+export type EventCapacity = {
+  __typename?: 'EventCapacity';
+  available_size?: Maybe<Scalars['Int']['output']>;
+  remaining?: Maybe<Scalars['Int']['output']>;
+  reserved_size: Scalars['Int']['output'];
+  size_unit: Scalars['String']['output'];
+  utilization_pct?: Maybe<Scalars['Float']['output']>;
+};
+
+export type EventCategoryCount = {
+  __typename?: 'EventCategoryCount';
+  category: Scalars['String']['output'];
+  count: Scalars['Int']['output'];
+};
+
+export type EventCheckinResult = {
+  __typename?: 'EventCheckinResult';
+  attendanceId: Scalars['ID']['output'];
+  /** On 'already' this is the ORIGINAL boarding time, not now. */
+  checkedInAt?: Maybe<Scalars['Date']['output']>;
+  name?: Maybe<Scalars['String']['output']>;
+  /** ok on the first scan, already on any scan after it. */
+  status: Scalars['String']['output'];
+};
+
+export type EventCheckinScanInput = {
+  /** Picked from search, when there is no code at all. */
+  attendanceId?: InputMaybe<Scalars['ID']['input']>;
+  /** The scanned QR contents — the token is pulled out of the URL. */
+  qrPayload?: InputMaybe<Scalars['String']['input']>;
+  /** A typed token, when a code will not scan. */
+  token?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type EventCheckinSession = {
+  __typename?: 'EventCheckinSession';
+  date: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  pickupLocations: Array<EventPickupLocationAdmin>;
+  startsAt: Scalars['Date']['output'];
+  time: Scalars['String']['output'];
+  title: Scalars['String']['output'];
+};
+
+export type EventCheckinStats = {
+  __typename?: 'EventCheckinStats';
+  /** Of those, how many are being given land. */
+  allocated: Scalars['Int']['output'];
+  /** Everyone coming — allocated and registrants together. This is the bus number. */
+  attending: Scalars['Int']['output'];
+  /** Scanned onto the bus. */
+  boarded: Scalars['Int']['output'];
+  /** Scanned again at the plot. */
+  confirmed: Scalars['Int']['output'];
+  registered: Scalars['Int']['output'];
+  /** And how many signed themselves up with no allocation. */
+  registrants: Scalars['Int']['output'];
+};
+
+/**
+ * One person on the confirmation sheet — the file the ground team works from
+ * when the farm has no network. Block and plot are assigned in the system
+ * before the day, so the sheet carries them out and brings back only the tick.
+ */
+export type EventConfirmationRow = {
+  __typename?: 'EventConfirmationRow';
+  /** The stable key. The ground team never edits this column. */
+  attendance_id: Scalars['ID']['output'];
+  boarded: Scalars['Boolean']['output'];
+  confirmed_at?: Maybe<Scalars['Date']['output']>;
+  /** land | land_and_dev_levy */
+  eligibility_tier?: Maybe<Scalars['String']['output']>;
+  email?: Maybe<Scalars['String']['output']>;
+  /** Already recorded as having been shown their land. */
+  given: Scalars['Boolean']['output'];
+  name?: Maybe<Scalars['String']['output']>;
+  phone?: Maybe<Scalars['String']['output']>;
+  pickup_location?: Maybe<Scalars['String']['output']>;
+  /** Their plots, flattened for a spreadsheet — C 14, or C 14, C 15 for two. */
+  plots: Scalars['String']['output'];
+  size_reserved: Scalars['Int']['output'];
+};
+
+export type EventConfirmationUploadRow = {
+  attendanceId: Scalars['ID']['input'];
+  given: Scalars['Boolean']['input'];
+};
+
+/** A client who has finished paying and is not yet committed to any event. */
+export type EventEligibleClient = {
+  __typename?: 'EventEligibleClient';
+  /** The tier's threshold. Null where the plan matches no tier. */
+  allocation_qualification?: Maybe<Scalars['Float']['output']>;
+  /** Which of the event's estates this client's plan belongs to. */
+  asset?: Maybe<Scalars['ID']['output']>;
+  /** flex | full-ownership */
+  asset_type?: Maybe<Scalars['String']['output']>;
+  /** land | land_and_dev_levy */
+  eligibility_tier: Scalars['String']['output'];
+  email?: Maybe<Scalars['String']['output']>;
+  /** Null for a flex buyer who qualified on threshold rather than by paying off. */
+  land_completed_at?: Maybe<Scalars['Date']['output']>;
+  name: Scalars['String']['output'];
+  no_of_units: Scalars['Int']['output'];
+  payment_plan: Scalars['ID']['output'];
+  /** How much of the plan they have paid, to one decimal place. */
+  percent_paid: Scalars['Float']['output'];
+  phone?: Maybe<Scalars['String']['output']>;
+  /**
+   * Why they are on this list: "fully_paid", or "qualification_threshold" for a
+   * flex buyer past the percentage their tier sets.
+   */
+  qualified_by: Scalars['String']['output'];
+  size: Scalars['Int']['output'];
+  /** size × no_of_units — what the event's capacity is actually charged. */
+  total_size: Scalars['Int']['output'];
+  user?: Maybe<Scalars['ID']['output']>;
+};
+
+export type EventEligibleClientFilterInput = {
+  eligibility_tier?: InputMaybe<Scalars['String']['input']>;
+  /** Matches name, email or phone. */
+  search?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type EventEligibleClientListPayload = {
+  __typename?: 'EventEligibleClientListPayload';
+  count: Scalars['Int']['output'];
+  data: Array<EventEligibleClient>;
+};
+
+export type EventFunnel = {
+  __typename?: 'EventFunnel';
+  /** Of those, how many are being given land. */
+  allocated: Scalars['Int']['output'];
+  /** Everyone expected — allocated and registrants together. This is the bus number. */
+  attending: Scalars['Int']['output'];
+  checked_in: Scalars['Int']['output'];
+  confirmed: Scalars['Int']['output'];
+  registered: Scalars['Int']['output'];
+  /** Of the registered, those being given land. */
+  registered_allocated: Scalars['Int']['output'];
+  /** Of the registered, those who signed themselves up. */
+  registered_registrants: Scalars['Int']['output'];
+  /** And how many signed themselves up with no allocation. */
+  registrants: Scalars['Int']['output'];
+};
+
+export type EventPickupLoad = {
+  __typename?: 'EventPickupLoad';
+  id: Scalars['ID']['output'];
+  name: Scalars['String']['output'];
+  registered: Scalars['Int']['output'];
+  seat_limit?: Maybe<Scalars['Int']['output']>;
+};
+
+export type EventPickupLocation = {
+  __typename?: 'EventPickupLocation';
+  id: Scalars['ID']['output'];
+  name: Scalars['String']['output'];
+  /** Null means the bus from this point is uncapped. */
+  seatLimit?: Maybe<Scalars['Int']['output']>;
+  /** Seats on the bus from this point. Null means uncapped. */
+  seat_limit?: Maybe<Scalars['Int']['output']>;
+};
+
+export type EventPickupLocationAdmin = {
+  __typename?: 'EventPickupLocationAdmin';
+  id: Scalars['ID']['output'];
+  name: Scalars['String']['output'];
+  seatLimit?: Maybe<Scalars['Int']['output']>;
+};
+
+export type EventPickupLocationInput = {
+  name: Scalars['String']['input'];
+  seat_limit?: InputMaybe<Scalars['Int']['input']>;
+};
+
+/** What the public form page needs to render itself. */
+export type EventRegistrationContext = {
+  __typename?: 'EventRegistrationContext';
+  /** True when the form has already been submitted — show their details, not an empty form. */
+  alreadyRegistered: Scalars['Boolean']['output'];
+  date: Scalars['String']['output'];
+  /** The name this event is addressed by in public URLs. */
+  eventSlug: Scalars['String']['output'];
+  eventTitle: Scalars['String']['output'];
+  eventType: Scalars['String']['output'];
+  pickupLocations: Array<EventPickupLocation>;
+  /** From the account, but every field stays editable: the traveller is not always the account holder. */
+  prefill: EventRegistrationPrefill;
+  startsAt: Scalars['Date']['output'];
+  time: Scalars['String']['output'];
+};
+
+export type EventRegistrationFilterInput = {
+  /** allocated | visitor — the two populations, filtered apart. */
+  attendee_type?: InputMaybe<Scalars['String']['input']>;
+  category?: InputMaybe<Scalars['String']['input']>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  /** invited | registered | checked_in | confirmed | cancelled */
+  status?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type EventRegistrationListPayload = {
+  __typename?: 'EventRegistrationListPayload';
+  count: Scalars['Int']['output'];
+  data: Array<EventRegistrationRow>;
+};
+
+export type EventRegistrationPrefill = {
+  __typename?: 'EventRegistrationPrefill';
+  email: Scalars['String']['output'];
+  fullName: Scalars['String']['output'];
+  phone: Scalars['String']['output'];
+};
+
+export type EventRegistrationResult = {
+  __typename?: 'EventRegistrationResult';
+  date: Scalars['String']['output'];
+  eventSlug: Scalars['String']['output'];
+  eventTitle: Scalars['String']['output'];
+  registered: Scalars['Boolean']['output'];
+  time: Scalars['String']['output'];
+};
+
+/**
+ * One person coming to an event — of either kind.
+ *
+ * attendee_type is the split: "allocated" means we are giving them land and
+ * invited them, "visitor" means they signed themselves up and are coming to
+ * look. Both board the same bus and both hold a pass.
+ */
+export type EventRegistrationRow = {
+  __typename?: 'EventRegistrationRow';
+  /** Null for a visitor — there is no allocation behind them. */
+  allocation?: Maybe<Scalars['ID']['output']>;
+  /** allocated | visitor */
+  attendee_type: Scalars['String']['output'];
+  /** associate_pro | associate | client. Null until they tell us. */
+  category?: Maybe<Scalars['String']['output']>;
+  checked_in_at?: Maybe<Scalars['Date']['output']>;
+  confirmed_at?: Maybe<Scalars['Date']['output']>;
+  /** form | account | none — where the three fields above came from. */
+  contact_source: Scalars['String']['output'];
+  email?: Maybe<Scalars['String']['output']>;
+  /** The same distinction as a boolean, for a column that just needs a tick. */
+  getting_land: Scalars['Boolean']['output'];
+  id: Scalars['ID']['output'];
+  invite_sent_at?: Maybe<Scalars['Date']['output']>;
+  /**
+   * The form's answer where there is one, otherwise the account's. An invited
+   * row has told us nothing yet, and rendering it blank made the list of people
+   * to chase the one list with no contact details on it.
+   */
+  name?: Maybe<Scalars['String']['output']>;
+  phone?: Maybe<Scalars['String']['output']>;
+  pickup_location?: Maybe<Scalars['String']['output']>;
+  registered_at?: Maybe<Scalars['Date']['output']>;
+  /** Somebody attending in their place, named on the form. Null for most. */
+  representative?: Maybe<EventAttendeeRepresentative>;
+  /** invited | registered | checked_in | confirmed | cancelled */
+  status: Scalars['String']['output'];
+  submitted_at?: Maybe<Scalars['Date']['output']>;
+};
+
+export type EventRegistrationSplit = {
+  __typename?: 'EventRegistrationSplit';
+  not_registered: Scalars['Int']['output'];
+  registered: Scalars['Int']['output'];
+};
+
+/** Everything a scanner caches before it loses signal. */
+export type EventRoster = {
+  __typename?: 'EventRoster';
+  attendees: Array<EventRosterEntry>;
+  count: Scalars['Int']['output'];
+  eventId: Scalars['ID']['output'];
+  title: Scalars['String']['output'];
+};
+
+export type EventRosterEntry = {
+  __typename?: 'EventRosterEntry';
+  attendance_id: Scalars['ID']['output'];
+  checked_in_at?: Maybe<Scalars['Date']['output']>;
+  confirmed_at?: Maybe<Scalars['Date']['output']>;
+  getting_land: Scalars['Boolean']['output'];
+  name?: Maybe<Scalars['String']['output']>;
+  phone?: Maybe<Scalars['String']['output']>;
+};
+
 export enum ExpiryType {
   ExpiresOn = 'expires_on',
   NoExpiry = 'no_expiry'
@@ -2278,6 +3200,12 @@ export type FaqEmailInput = {
   explanation?: InputMaybe<Scalars['String']['input']>;
   question?: InputMaybe<Scalars['String']['input']>;
 };
+
+/** Who set a value — lets AI-written fields be spot-checked and measured. */
+export enum FieldSource {
+  Ai = 'ai',
+  Human = 'human'
+}
 
 export type FilteredUserAdminDetail = {
   __typename?: 'FilteredUserAdminDetail';
@@ -2305,6 +3233,7 @@ export type FilteredUserAdminResponse = {
 };
 
 export type FiltersInput = {
+  allocationStatus?: InputMaybe<Scalars['String']['input']>;
   assetName?: InputMaybe<Scalars['String']['input']>;
   assetType?: InputMaybe<Scalars['String']['input']>;
   percentage?: InputMaybe<Scalars['Float']['input']>;
@@ -2378,6 +3307,12 @@ export type FlexAssetResponse = {
   success?: Maybe<Scalars['Boolean']['output']>;
 };
 
+export type FlexBrochureLeadInput = {
+  email: Scalars['String']['input'];
+  full_name: Scalars['String']['input'];
+  phone_number: Scalars['String']['input'];
+};
+
 export type FlexCommissionConfig = {
   __typename?: 'FlexCommissionConfig';
   direct: FlexDirectRates;
@@ -2414,6 +3349,61 @@ export type FlexDirectRatesOptional = {
   founder?: Maybe<Scalars['Float']['output']>;
   premium?: Maybe<Scalars['Float']['output']>;
 };
+
+export type FlexLead = {
+  __typename?: 'FlexLead';
+  adminNotes?: Maybe<Scalars['String']['output']>;
+  createdAt: Scalars['Date']['output'];
+  email: Scalars['String']['output'];
+  fullName: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  location?: Maybe<Scalars['String']['output']>;
+  phone: Scalars['String']['output'];
+  /** YYYY-MM-DD — site_inspection only, null for brochure leads */
+  preferredDate?: Maybe<Scalars['String']['output']>;
+  status: FlexLeadStatus;
+  type: FlexLeadType;
+  updatedAt?: Maybe<Scalars['Date']['output']>;
+};
+
+export type FlexLeadCounts = {
+  __typename?: 'FlexLeadCounts';
+  closed: Scalars['Int']['output'];
+  completed: Scalars['Int']['output'];
+  contacted: Scalars['Int']['output'];
+  new: Scalars['Int']['output'];
+  scheduled: Scalars['Int']['output'];
+};
+
+export type FlexLeadFilters = {
+  search?: InputMaybe<Scalars['String']['input']>;
+  status?: InputMaybe<FlexLeadStatus>;
+  type?: InputMaybe<FlexLeadType>;
+};
+
+export type FlexLeadListPayload = {
+  __typename?: 'FlexLeadListPayload';
+  count: Scalars['Int']['output'];
+  data: Array<FlexLead>;
+};
+
+export enum FlexLeadStatus {
+  Closed = 'closed',
+  Completed = 'completed',
+  Contacted = 'contacted',
+  New = 'new',
+  Scheduled = 'scheduled'
+}
+
+export enum FlexLeadType {
+  Brochure = 'brochure',
+  SiteInspection = 'site_inspection'
+}
+
+export enum FlexOrFullownership {
+  Flex = 'flex',
+  FullOwnership = 'full_ownership'
+}
 
 export type FlexPaymentPlan = {
   __typename?: 'FlexPaymentPlan';
@@ -2671,6 +3661,13 @@ export type HowYouHeardSource = {
   source: Scalars['String']['output'];
 };
 
+export enum IngestionRunStatus {
+  Failed = 'failed',
+  Running = 'running',
+  SkippedLocked = 'skipped_locked',
+  Success = 'success'
+}
+
 export type InitializeDocumentPaystackInput = {
   amount?: InputMaybe<Scalars['String']['input']>;
   assetId?: InputMaybe<Scalars['String']['input']>;
@@ -2720,6 +3717,58 @@ export type InitializeRecurringPaystackInput = {
   unique_asset_id?: InputMaybe<Scalars['String']['input']>;
 };
 
+export type Issue = {
+  __typename?: 'Issue';
+  _id: Scalars['ID']['output'];
+  createdAt: Scalars['Date']['output'];
+  created_by?: Maybe<Admin>;
+  description?: Maybe<Scalars['String']['output']>;
+  /** When we FIRST believed it was fixed. Survives every reopen. */
+  first_resolved_at?: Maybe<Scalars['Date']['output']>;
+  issue_ref: Scalars['String']['output'];
+  owner?: Maybe<Admin>;
+  /** Times this has come back after being resolved. Three reopens is not a resolved incident. */
+  reopen_count: Scalars['Int']['output'];
+  reopened_at?: Maybe<Scalars['Date']['output']>;
+  resolution_note?: Maybe<Scalars['String']['output']>;
+  resolved_at?: Maybe<Scalars['Date']['output']>;
+  resolved_by?: Maybe<Admin>;
+  status: IssueStatus;
+  ticketCount?: Maybe<Scalars['Int']['output']>;
+  title: Scalars['String']['output'];
+  updatedAt: Scalars['Date']['output'];
+};
+
+export type IssueDetail = {
+  __typename?: 'IssueDetail';
+  issue: Issue;
+  ticketCount: Scalars['Int']['output'];
+  tickets: Array<IssueTicketRow>;
+};
+
+export type IssueListResponse = {
+  __typename?: 'IssueListResponse';
+  count: Scalars['Int']['output'];
+  results: Array<Issue>;
+};
+
+export enum IssueStatus {
+  Identified = 'identified',
+  Investigating = 'investigating',
+  Monitoring = 'monitoring',
+  Resolved = 'resolved'
+}
+
+export type IssueTicketRow = {
+  __typename?: 'IssueTicketRow';
+  _id: Scalars['ID']['output'];
+  createdAt: Scalars['Date']['output'];
+  status: TicketStatus;
+  subject: Scalars['String']['output'];
+  ticket_ref: Scalars['String']['output'];
+  user_affected?: Maybe<User>;
+};
+
 export type JoinCommunityInput = {
   abode_email?: InputMaybe<Scalars['String']['input']>;
   user_email?: InputMaybe<Scalars['String']['input']>;
@@ -2749,6 +3798,24 @@ export type LabelCountEntry = {
   label: Scalars['String']['output'];
 };
 
+/**
+ * Why the customer bought, as a fixed list. Derived from what CSMs actually
+ * typed across 556 free-text answers — 162 spellings of eight ideas, which
+ * could not be counted. Anything outside the list goes in as "other", with the
+ * detail in notes.
+ */
+export enum LandChoiceReason {
+  Campaign = 'campaign',
+  DevelopmentInArea = 'development_in_area',
+  FlexiblePayment = 'flexible_payment',
+  Investment = 'investment',
+  Location = 'location',
+  Other = 'other',
+  PaymentDuration = 'payment_duration',
+  Price = 'price',
+  Referrer = 'referrer'
+}
+
 export type LastActiveAssetPaymentData = {
   __typename?: 'LastActiveAssetPaymentData';
   assetDetails: Asset;
@@ -2777,6 +3844,7 @@ export type LogAdmin = {
   adminId?: Maybe<Scalars['String']['output']>;
   description?: Maybe<Scalars['String']['output']>;
   metadata?: Maybe<Scalars['JSON']['output']>;
+  newState?: Maybe<Scalars['JSON']['output']>;
   oldState?: Maybe<Scalars['JSON']['output']>;
   timestamp?: Maybe<Scalars['Date']['output']>;
 };
@@ -2803,6 +3871,18 @@ export type LogOnboardingAttemptInput = {
   rescheduleTimeOfDay?: InputMaybe<OnboardingTimeOfDay>;
   support?: InputMaybe<OnboardingSupport>;
   supportOther?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type LogOnboardingCallInput = {
+  /**
+   * One of LandChoiceReason. Typed as String rather than the enum so the 556
+   * historical free-text answers still validate on the way out; the server
+   * rejects anything off the list on the way in.
+   */
+  landChoiceReason?: InputMaybe<Scalars['String']['input']>;
+  notes?: InputMaybe<Scalars['String']['input']>;
+  outcome: CustomerOnboardingOutcome;
+  paymentPlanId: Scalars['ID']['input'];
 };
 
 export type ManagerAdminInfo = {
@@ -2846,7 +3926,18 @@ export type ManagerDashboardMilestones = {
 
 export type ManagerDashboardPerformanceScore = {
   __typename?: 'ManagerDashboardPerformanceScore';
+  /** Average manual peer rating. */
   actual: Scalars['Float']['output'];
+  ratingCount: Scalars['Int']['output'];
+  /** Recruitment contribution, max 20. */
+  recruitmentComponent: Scalars['Float']['output'];
+  /** Revenue contribution, max 30. */
+  revenueComponent: Scalars['Float']['output'];
+  /** Computed score out of 100: weighted attainment of the three targets. */
+  score: Scalars['Float']['output'];
+  /** Selling-pros contribution, max 50. */
+  sellingComponent: Scalars['Float']['output'];
+  /** Manual peer-rating target (kept alongside the computed score). */
   target: Scalars['Int']['output'];
 };
 
@@ -2876,10 +3967,20 @@ export type ManagerDashboardProRow = {
 
 export type ManagerDashboardRecruitment = {
   __typename?: 'ManagerDashboardRecruitment';
+  activePromotingProsCount: Scalars['Int']['output'];
+  activeRecruitingProsCount: Scalars['Int']['output'];
+  newSignupsBySource: SourceBreakdown;
   newSignupsInPeriod: Scalars['Int']['output'];
+  onboardedCarryoverInPeriod: Scalars['Int']['output'];
+  onboardedFreshInPeriod: Scalars['Int']['output'];
   onboardedInPeriod: Scalars['Int']['output'];
   onboardingQueueCount: Scalars['Int']['output'];
+  othersNewSignupsCount: Scalars['Int']['output'];
+  othersUpgradesCount: Scalars['Int']['output'];
+  topNewSignupsContributors: Array<ProContributor>;
+  topUpgradesContributors: Array<ProContributor>;
   totalAssigned: Scalars['Int']['output'];
+  upgradesBySource: SourceBreakdown;
   upgradesInPeriod: Scalars['Int']['output'];
 };
 
@@ -2898,11 +3999,17 @@ export type ManagerDashboardResponse = {
 
 export type ManagerDashboardSalesRevenue = {
   __typename?: 'ManagerDashboardSalesRevenue';
+  activeRevenueGeneratingProsCount: Scalars['Int']['output'];
+  contractSize: Scalars['Float']['output'];
   initialSalesRevenue: Scalars['Float']['output'];
+  othersSellingRevenue: Scalars['Float']['output'];
   recurringRevenue: Scalars['Float']['output'];
+  revenueBySource: SourceBreakdownFloat;
   revenuePerSellingPro: Scalars['Float']['output'];
+  salesCountBySource: SourceBreakdown;
   sellingPros: Scalars['Int']['output'];
   sellingProsTarget: Scalars['Int']['output'];
+  topSellingContributors: Array<ProContributorFloat>;
   totalRevenue: Scalars['Float']['output'];
 };
 
@@ -2912,6 +4019,10 @@ export type ManagerDashboardTarget = {
   performanceScoreTarget: Scalars['Int']['output'];
   recruitedSoFar: Scalars['Int']['output'];
   recruitedTarget: Scalars['Int']['output'];
+  /** Cash actually received in the period on plans opened in the period. */
+  revenueSoFar: Scalars['Float']['output'];
+  /** Naira target for cash collected on plans opened in the period. */
+  revenueTarget: Scalars['Float']['output'];
   sellingSoFar: Scalars['Int']['output'];
   sellingTarget: Scalars['Int']['output'];
 };
@@ -2968,6 +4079,13 @@ export type ManualUpgradeUserInfo = {
   id: Scalars['ID']['output'];
   lastName: Scalars['String']['output'];
   referral_status: Scalars['String']['output'];
+};
+
+export type MarkDeedDeliveredResponse = {
+  __typename?: 'MarkDeedDeliveredResponse';
+  deedDeliveredAt: Scalars['Date']['output'];
+  deedDeliveredBy: Scalars['ID']['output'];
+  paymentPlanId: Scalars['ID']['output'];
 };
 
 export type MarketplaceFilterInput = {
@@ -3090,6 +4208,124 @@ export type MarketplaceUser = {
   profile_pic?: Maybe<Scalars['String']['output']>;
 };
 
+/** What a signal that did not decide had to say, kept so a wrong placement can be diagnosed. */
+export type MatchConsideration = {
+  __typename?: 'MatchConsideration';
+  note: Scalars['String']['output'];
+  signal: MatchSignal;
+  ticket_ref?: Maybe<Scalars['String']['output']>;
+};
+
+/** Which signal placed a message on this ticket. 'original' opened it. */
+export enum MatchSignal {
+  Headers = 'headers',
+  Manual = 'manual',
+  Original = 'original',
+  ReplyAddress = 'reply_address',
+  SubjectTag = 'subject_tag'
+}
+
+export type Meeting = {
+  __typename?: 'Meeting';
+  _id: Scalars['ID']['output'];
+  audience_type: MeetingAudienceType;
+  created_at: Scalars['Date']['output'];
+  google_meet_url: Scalars['String']['output'];
+  is_active: Scalars['Boolean']['output'];
+  name: Scalars['String']['output'];
+  share_url: Scalars['String']['output'];
+  slug: Scalars['String']['output'];
+  starts_at: Scalars['Date']['output'];
+  updated_at?: Maybe<Scalars['Date']['output']>;
+  verification_count: Scalars['Int']['output'];
+  verification_lead_minutes: Scalars['Int']['output'];
+};
+
+export enum MeetingAudienceType {
+  AllAssociates = 'all_associates',
+  AssociateOnly = 'associate_only',
+  AssociateProPlus = 'associate_pro_plus'
+}
+
+export type MeetingDetail = {
+  __typename?: 'MeetingDetail';
+  _id: Scalars['ID']['output'];
+  audience_type: MeetingAudienceType;
+  created_at: Scalars['Date']['output'];
+  google_meet_url: Scalars['String']['output'];
+  is_active: Scalars['Boolean']['output'];
+  name: Scalars['String']['output'];
+  share_url: Scalars['String']['output'];
+  slug: Scalars['String']['output'];
+  starts_at: Scalars['Date']['output'];
+  stats: MeetingStats;
+  updated_at?: Maybe<Scalars['Date']['output']>;
+  verification_count: Scalars['Int']['output'];
+  verification_lead_minutes: Scalars['Int']['output'];
+};
+
+export type MeetingListFilterInput = {
+  audience_type?: InputMaybe<MeetingAudienceType>;
+  is_active?: InputMaybe<Scalars['Boolean']['input']>;
+  searchQuery?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type MeetingListResponse = {
+  __typename?: 'MeetingListResponse';
+  count: Scalars['Int']['output'];
+  limit: Scalars['Int']['output'];
+  page: Scalars['Int']['output'];
+  results: Array<Meeting>;
+};
+
+export type MeetingStats = {
+  __typename?: 'MeetingStats';
+  by_referral_status: Array<MeetingStatsByReferralStatus>;
+  total_verifications: Scalars['Int']['output'];
+};
+
+export type MeetingStatsByReferralStatus = {
+  __typename?: 'MeetingStatsByReferralStatus';
+  count: Scalars['Int']['output'];
+  referral_status?: Maybe<Scalars['String']['output']>;
+};
+
+export type MeetingVerification = {
+  __typename?: 'MeetingVerification';
+  _id: Scalars['ID']['output'];
+  createdAt: Scalars['Date']['output'];
+  email: Scalars['String']['output'];
+  first_name?: Maybe<Scalars['String']['output']>;
+  last_name?: Maybe<Scalars['String']['output']>;
+  meeting: Scalars['ID']['output'];
+  phone?: Maybe<Scalars['String']['output']>;
+  referral_status?: Maybe<Scalars['String']['output']>;
+  region?: Maybe<Scalars['String']['output']>;
+  source: Scalars['String']['output'];
+  updatedAt?: Maybe<Scalars['Date']['output']>;
+  user?: Maybe<Scalars['ID']['output']>;
+  verified_at: Scalars['Date']['output'];
+};
+
+export type MeetingVerificationListResponse = {
+  __typename?: 'MeetingVerificationListResponse';
+  count: Scalars['Int']['output'];
+  limit: Scalars['Int']['output'];
+  page: Scalars['Int']['output'];
+  results: Array<MeetingVerification>;
+};
+
+export enum MessageDeliveryStatus {
+  Failed = 'failed',
+  Pending = 'pending',
+  Sent = 'sent'
+}
+
+export enum MessageDirection {
+  Inbound = 'inbound',
+  Outbound = 'outbound'
+}
+
 export type ModifyReferralInput = {
   referral_status?: InputMaybe<Scalars['String']['input']>;
   userId?: InputMaybe<Scalars['String']['input']>;
@@ -3106,11 +4342,17 @@ export type MonthlyPerformance = {
 
 export type Mutation = {
   __typename?: 'Mutation';
+  /** Set a withdrawal PIN, proved by the password. Fails if one is already set. */
   UserWithdrawPin: ResponseMessage;
   academyUserSignup: AcademySignupResponse;
   addAssociateManager: AssociateManagerType;
   addBankDetails: Scalars['String']['output'];
+  addCSManager: CsManagerAssignmentType;
   addReferralByAdmin: Scalars['String']['output'];
+  addTicketCollaborator: Ticket;
+  addTicketNote: Array<TicketNote>;
+  /** Copy somebody on this ticket from now on. They need no admin account. */
+  addTicketParticipant: TicketDetail;
   addUserAssetByAdmin: Scalars['String']['output'];
   adminRecurringAssetPaymentTransfer: Scalars['String']['output'];
   adminRecurringFullOwnershipAssetPaymentTransfer: Scalars['String']['output'];
@@ -3120,6 +4362,14 @@ export type Mutation = {
   agencyRecurringAssetPaymentTransfer: Scalars['String']['output'];
   agencyRecurringFullOwnershipAssetPaymentTransfer: Scalars['String']['output'];
   allocateLand: AllocateLandResponse;
+  /** Commit payment plans to an event's bus. Allocation events only. */
+  allocateToEvent: AllocateToEventPayload;
+  /**
+   * Apply a returned confirmation sheet. Runs as a preview unless apply is
+   * true — the file has been through a phone, a laptop and possibly Excel by
+   * the time it comes back, and the counts are how that gets noticed.
+   */
+  applyEventConfirmationSheet: ApplyConfirmationSheetResult;
   approveAssetTransaction: Scalars['String']['output'];
   approveMarketplacePurchase: AdminMarketplaceActionResponse;
   approvePaystackTransaction: Scalars['String']['output'];
@@ -3128,31 +4378,44 @@ export type Mutation = {
   approveUpgradeToAssociatePro: Scalars['String']['output'];
   approveUserBvn: Scalars['String']['output'];
   approveUserKyc: Scalars['String']['output'];
+  askAssistant: AskAssistantResponse;
   assignAssociateManagerTarget: AssociateManagerTargetType;
+  assignCSManagerTarget: CsManagerTargetType;
+  assignCustomersToCSManager: AssignCustomersResult;
+  bookSiteInspection: Scalars['String']['output'];
   bulkAssignAssociateProsToManager: AssociateManagerType;
-  buyAssetWithPaystack: BuyAssetPaystackResponse;
   buyAssetWithTransfer?: Maybe<Scalars['String']['output']>;
   buyAssetWithWallet: Scalars['String']['output'];
   buyFullOwnershipAssetByTransfer: Scalars['String']['output'];
   buyFullOwnershipAssetByWallet: Scalars['String']['output'];
-  buyFullOwnershipAssetWithPaystack: BuyFullOwnershipAssetResponse;
   buyMarketplaceListingWithReceipt: MarketplaceListingResponse;
   cancelMarketplaceListing: MarketplaceListingResponse;
+  /** Change the withdrawal PIN, proved by the password and the current PIN. */
+  changeWithdrawalPin: ResponseMessage;
+  /** Re-run classification. Never overwrites a value a human has set. */
+  classifyTicket: Ticket;
   clearUserTin: ClearTinResponse;
+  confirmPurchaseDetails: PurchaseConfirmationView;
   createAgency: CreateAgencyResponse;
   createAssetUpdateRequest: AssetUpdateRequestResponse;
   createBlock: Block;
+  createCompanyEvent: CompanyEvent;
   createCoupon: CouponResponse;
   createCustomRequest: CustomRequestResponse;
   createDocumentChangeRequest: DocumentChangeResponse;
   createFlexAsset: Asset;
   createFullOwnershipAsset: AdminAsset;
+  createIssue: Issue;
   createLocationChangeRequest: LocationChangeResponse;
   createMarketplaceListing: MarketplaceListingResponse;
+  createMeeting: Meeting;
   createPlots: Array<Scalars['Int']['output']>;
   createRole: Role;
   createSubAdmin: Scalars['String']['output'];
+  createTicket: Ticket;
   createUsersFullOwnershipAsset: Scalars['String']['output'];
+  /** Release one allocation, returning its size to the event. Idempotent. */
+  deallocateFromEvent: DeallocateFromEventPayload;
   deallocateLand: DeallocateLandResponse;
   decemberTransaction: Scalars['String']['output'];
   declineAssetTransaction: Scalars['String']['output'];
@@ -3168,7 +4431,7 @@ export type Mutation = {
   deleteUserFlexAsset: Scalars['String']['output'];
   deleteUserFullOwnershipAsset: Scalars['String']['output'];
   disableAsset: Scalars['String']['output'];
-  documentPaymentPaystack: DocumentFullownershipResponse;
+  disputePurchaseDetails: PurchaseConfirmationView;
   documentPaymentTransfer: Scalars['String']['output'];
   documentPaymentWallet: Scalars['String']['output'];
   editAgencyProfile: AgencyResponse;
@@ -3184,6 +4447,10 @@ export type Mutation = {
   editUserWalletDetailsByAdmin: Scalars['String']['output'];
   editWalletCommission: Scalars['String']['output'];
   enableAsset: Scalars['String']['output'];
+  /** Board one person. Idempotent — a second scan reports the original time. */
+  eventCheckIn: EventCheckinResult;
+  /** Apply scans taken offline. Safe to send twice; every scan gets an outcome. */
+  eventConfirmSync: ConfirmSyncResult;
   faqEmail: Scalars['String']['output'];
   initializeDocumentWithPaystack: InitializePaystackResponse;
   initializeFullOwnershipPaystackTransaction: InitializePaystackResponse;
@@ -3193,24 +4460,67 @@ export type Mutation = {
   initializeRecurringPaystack: InitializePaystackResponse;
   initializeUpgradeToAssociatePro: UpgradePaystackResponse;
   joinCommunityEmail: Scalars['String']['output'];
+  linkTicketToIssue: Ticket;
   logOnboardingAttempt: OnboardingAttempt;
+  logOnboardingCall: CustomerOnboardingAttempt;
   manualUpgradeToAssociatePro: ManualUpgradeResponse;
+  markDeedDelivered: MarkDeedDeliveredResponse;
+  mergeTickets: Ticket;
   modifyUserReferralStatus: Scalars['String']['output'];
   processCommission: Scalars['String']['output'];
   processReceipt: Scalars['String']['output'];
   reassignAssociatePro: AssociateManagerType;
   reassignLand: AllocateLandResponse;
-  reccurringAssetWithPaystack: Scalars['String']['output'];
   recurringAssetPaymentTransfer: Scalars['String']['output'];
   recurringAssetPaymentWallet: Scalars['String']['output'];
   recurringFullOwnershipAssetByTransfer: Scalars['String']['output'];
   recurringFullOwnershipAssetByWallet: Scalars['String']['output'];
-  recurringFullOwnershipAssetPaymentWithPaystack: ReoccurringFullownershipResponse;
+  /**
+   * Register an invited attendee on their behalf — for the ones who confirm by
+   * phone and never open the form. The pickup point is the only fact the admin
+   * must supply; name, phone and email come off the account unless corrected,
+   * and the category is implied by their referral status. Mints and emails
+   * their pass, exactly as the form would.
+   */
+  registerAttendeeOnBehalf: RegisterAttendeePayload;
+  /**
+   * Open registration (public): no allocation, no token, no account. Addressed by
+   * the event's slug, the same as the landing page it is posted from.
+   */
+  registerForEvent: EventRegistrationResult;
   rejectMarketplacePurchase: AdminMarketplaceActionResponse;
   removeAssociateManager: RemoveAssociateManagerResponse;
+  removeCSManager: CsManagerAssignmentType;
   removeReferralByAdmin: Scalars['String']['output'];
+  removeTicketCollaborator: Ticket;
+  /** Stop copying somebody. It cannot un-send what they already have. */
+  removeTicketParticipant: TicketDetail;
   removeUserAssetByAdmin: Scalars['String']['output'];
+  /**
+   * Email the customer. Stamps the thread headers, the plus-addressed reply-to and
+   * the subject tag, so their answer can be matched back.
+   *
+   * Goes to the customer of record and copies everyone else on the thread — not
+   * to whoever wrote most recently. The cc argument adds addresses for this reply
+   * and puts them on the thread for later ones.
+   */
+  replyToTicket: TicketDetail;
+  /**
+   * Email a 6-digit code to begin resetting a forgotten withdrawal PIN. Needs no
+   * password of its own — it writes nothing and only sends a code to the address
+   * already on the account. resetWithdrawalPin is where the proofs are demanded.
+   */
+  requestWithdrawalPinReset: ResponseMessage;
   resendEmailVerification: Scalars['String']['output'];
+  resendPurchaseConfirmationEmail: Scalars['String']['output'];
+  /**
+   * Set a new withdrawal PIN using the password and the emailed code. Works while
+   * the PIN is locked, and clears the lock.
+   */
+  resetWithdrawalPin: ResponseMessage;
+  resolveIssue: ResolveIssueResponse;
+  resolvePurchaseDispute: ResolvePurchaseDisputeResponse;
+  resolveTicket: Ticket;
   saveAsset: Scalars['String']['output'];
   sendAdminEmailVerification: EmailVerificationResponse;
   sendAllocationEmail: SendAllocationEmailResponse;
@@ -3221,9 +4531,23 @@ export type Mutation = {
   sendFlexTermsAndConditionEmail: FlexTermsEmailResponse;
   sendHamperNotificationEmail: SendHamperEmailResponse;
   sendTermsAndConditionMail: Scalars['String']['output'];
+  /**
+   * Move an attendee to a different pickup point. The one field on a filled-in
+   * registration that legitimately changes afterwards — a stop is withdrawn, or
+   * somebody moves — and the form is single-use, so this is the only way.
+   * Sends a corrected pass unless notify is false.
+   */
+  setAttendeePickup: SetAttendeePickupPayload;
+  /**
+   * draft → published | closed, published → closed, closed → published.
+   * Asking for the status it already holds is a no-op, not an error.
+   */
+  setCompanyEventStatus: CompanyEvent;
   signinAdmin: Admin;
   signinUser: AuthResponse;
   signupUser: AuthResponse;
+  submitEventRegistration: EventRegistrationResult;
+  submitFlexBrochureLead: Scalars['String']['output'];
   submitManagerRating: SubmitManagerRatingResponse;
   suspendAgency: SuspendAgencyResponse;
   suspendMarketplaceListing: AdminMarketplaceActionResponse;
@@ -3232,10 +4556,12 @@ export type Mutation = {
   systemApproveAssetUpdateRequest: SystemApproveAssetUpdateRequestResponse;
   systemApproveDocumentChangeRequest: SystemApproveDocumentChangeRequestResponse;
   systemApproveLocationChangeRequest: SystemApproveLocationChangeRequestResponse;
+  toggleMeetingActive: Meeting;
   topUpWallet: Scalars['String']['output'];
   topUpWalletTransfer: Scalars['String']['output'];
   topWalletUp: TopUpResponse;
   unSuspendPaymentPlan: Scalars['String']['output'];
+  unlinkTicketFromIssue: Ticket;
   unsuspendAgency: SuspendAgencyResponse;
   unsuspendMarketplaceListing: AdminMarketplaceActionResponse;
   unsuspendUser: Scalars['String']['output'];
@@ -3245,14 +4571,18 @@ export type Mutation = {
   updateCommissionConfig: CommissionConfig;
   updateCoupon: CouponResponse;
   updateCouponStatus: CouponResponse;
+  updateFlexLead: FlexLead;
+  updateIssue: Issue;
   updateKycInfo: User;
   updateMarketplaceListing: MarketplaceListingResponse;
+  updateMeeting: Meeting;
   updateNextofKinInfo: User;
   updatePassword: Scalars['String']['output'];
   updatePaymentPlan: Scalars['String']['output'];
   updatePlotSize: Plot;
   updateProfileInfo: User;
   updateRequestStatus: UpdateRequestResponse;
+  updateTicket: Ticket;
   updateUserAssetQuestion: Scalars['String']['output'];
   updateUserPaymentDetails: Scalars['String']['output'];
   updateUserTin: UpdateTinResponse;
@@ -3261,6 +4591,7 @@ export type Mutation = {
   upsertAssetCommissionOverride: AssetCommissionOverride;
   verifyAdminEmail: EmailVerifcation;
   verifyEmail: EmailVerifcation;
+  verifyMeetingEmail: VerifyMeetingEmailResponse;
   verifyPaystack: Scalars['String']['output'];
   withdrawWallet: Scalars['String']['output'];
   withdrawWalletOTP: Scalars['String']['output'];
@@ -3289,8 +4620,32 @@ export type MutationAddBankDetailsArgs = {
 };
 
 
+export type MutationAddCsManagerArgs = {
+  managerId: Scalars['ID']['input'];
+};
+
+
 export type MutationAddReferralByAdminArgs = {
   addReferralUpdateInput: AddReferralUpdateInput;
+};
+
+
+export type MutationAddTicketCollaboratorArgs = {
+  adminId: Scalars['ID']['input'];
+  ticketId: Scalars['ID']['input'];
+};
+
+
+export type MutationAddTicketNoteArgs = {
+  body: Scalars['String']['input'];
+  ticketId: Scalars['ID']['input'];
+};
+
+
+export type MutationAddTicketParticipantArgs = {
+  address: Scalars['String']['input'];
+  name?: InputMaybe<Scalars['String']['input']>;
+  ticketId: Scalars['ID']['input'];
 };
 
 
@@ -3340,6 +4695,19 @@ export type MutationAllocateLandArgs = {
 };
 
 
+export type MutationAllocateToEventArgs = {
+  eventId: Scalars['ID']['input'];
+  paymentPlanIds: Array<Scalars['ID']['input']>;
+};
+
+
+export type MutationApplyEventConfirmationSheetArgs = {
+  apply?: InputMaybe<Scalars['Boolean']['input']>;
+  eventId: Scalars['ID']['input'];
+  rows: Array<EventConfirmationUploadRow>;
+};
+
+
 export type MutationApproveAssetTransactionArgs = {
   id: Scalars['ID']['input'];
 };
@@ -3380,18 +4748,33 @@ export type MutationApproveUserKycArgs = {
 };
 
 
+export type MutationAskAssistantArgs = {
+  askAssistantInput: AskAssistantInput;
+};
+
+
 export type MutationAssignAssociateManagerTargetArgs = {
   input: AssignManagerTargetInput;
 };
 
 
-export type MutationBulkAssignAssociateProsToManagerArgs = {
-  input: BulkAssignAssociateProsInput;
+export type MutationAssignCsManagerTargetArgs = {
+  input: AssignCsManagerTargetInput;
 };
 
 
-export type MutationBuyAssetWithPaystackArgs = {
-  buyAssetPaystackInput: BuyAssetPaystackInput;
+export type MutationAssignCustomersToCsManagerArgs = {
+  input: AssignCustomersToCsmInput;
+};
+
+
+export type MutationBookSiteInspectionArgs = {
+  bookSiteInspectionInput: BookSiteInspectionInput;
+};
+
+
+export type MutationBulkAssignAssociateProsToManagerArgs = {
+  input: BulkAssignAssociateProsInput;
 };
 
 
@@ -3415,11 +4798,6 @@ export type MutationBuyFullOwnershipAssetByWalletArgs = {
 };
 
 
-export type MutationBuyFullOwnershipAssetWithPaystackArgs = {
-  buyFullOwnershipAssetInput: BuyFullOwnershipAssetInput;
-};
-
-
 export type MutationBuyMarketplaceListingWithReceiptArgs = {
   input: BuyMarketplaceListingReceiptInput;
 };
@@ -3430,8 +4808,23 @@ export type MutationCancelMarketplaceListingArgs = {
 };
 
 
+export type MutationChangeWithdrawalPinArgs = {
+  input: ChangeWithdrawalPinInput;
+};
+
+
+export type MutationClassifyTicketArgs = {
+  ticketId: Scalars['ID']['input'];
+};
+
+
 export type MutationClearUserTinArgs = {
   clearUserTinInput: ClearUserTinInput;
+};
+
+
+export type MutationConfirmPurchaseDetailsArgs = {
+  uniqueAssetId: Scalars['String']['input'];
 };
 
 
@@ -3449,6 +4842,11 @@ export type MutationCreateBlockArgs = {
   assetId: Scalars['ID']['input'];
   description?: InputMaybe<Scalars['String']['input']>;
   label: Scalars['String']['input'];
+};
+
+
+export type MutationCreateCompanyEventArgs = {
+  input: CreateCompanyEventInput;
 };
 
 
@@ -3477,6 +4875,11 @@ export type MutationCreateFullOwnershipAssetArgs = {
 };
 
 
+export type MutationCreateIssueArgs = {
+  input: CreateIssueInput;
+};
+
+
 export type MutationCreateLocationChangeRequestArgs = {
   createLocationChangeInput: CreateLocationChangeInput;
 };
@@ -3484,6 +4887,11 @@ export type MutationCreateLocationChangeRequestArgs = {
 
 export type MutationCreateMarketplaceListingArgs = {
   input: CreateMarketplaceListingInput;
+};
+
+
+export type MutationCreateMeetingArgs = {
+  input: CreateMeetingInput;
 };
 
 
@@ -3503,8 +4911,20 @@ export type MutationCreateSubAdminArgs = {
 };
 
 
+export type MutationCreateTicketArgs = {
+  input: CreateTicketInput;
+};
+
+
 export type MutationCreateUsersFullOwnershipAssetArgs = {
   createUsersFullOwnershipAssetInput: CreateUsersFullOwnershipAssetInput;
+};
+
+
+export type MutationDeallocateFromEventArgs = {
+  allocationId: Scalars['ID']['input'];
+  eventId: Scalars['ID']['input'];
+  reason?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -3578,8 +4998,9 @@ export type MutationDisableAssetArgs = {
 };
 
 
-export type MutationDocumentPaymentPaystackArgs = {
-  documentPaystackPaymentInput: DocumentPaystackPaymentInput;
+export type MutationDisputePurchaseDetailsArgs = {
+  note?: InputMaybe<Scalars['String']['input']>;
+  uniqueAssetId: Scalars['String']['input'];
 };
 
 
@@ -3659,6 +5080,20 @@ export type MutationEnableAssetArgs = {
 };
 
 
+export type MutationEventCheckInArgs = {
+  eventId: Scalars['ID']['input'];
+  pin: Scalars['String']['input'];
+  scan: EventCheckinScanInput;
+};
+
+
+export type MutationEventConfirmSyncArgs = {
+  eventId: Scalars['ID']['input'];
+  pin: Scalars['String']['input'];
+  scans: Array<OfflineScanInput>;
+};
+
+
 export type MutationFaqEmailArgs = {
   faqEmailInput?: InputMaybe<FaqEmailInput>;
 };
@@ -3706,8 +5141,19 @@ export type MutationJoinCommunityEmailArgs = {
 };
 
 
+export type MutationLinkTicketToIssueArgs = {
+  issueId: Scalars['ID']['input'];
+  ticketId: Scalars['ID']['input'];
+};
+
+
 export type MutationLogOnboardingAttemptArgs = {
   input: LogOnboardingAttemptInput;
+};
+
+
+export type MutationLogOnboardingCallArgs = {
+  input: LogOnboardingCallInput;
 };
 
 
@@ -3717,6 +5163,17 @@ export type MutationManualUpgradeToAssociateProArgs = {
   email: Scalars['String']['input'];
   payCommission: Scalars['Boolean']['input'];
   paymentUrl: Scalars['String']['input'];
+};
+
+
+export type MutationMarkDeedDeliveredArgs = {
+  paymentPlanId: Scalars['ID']['input'];
+};
+
+
+export type MutationMergeTicketsArgs = {
+  loserTicketId: Scalars['ID']['input'];
+  winnerTicketId: Scalars['ID']['input'];
 };
 
 
@@ -3746,11 +5203,6 @@ export type MutationReassignLandArgs = {
 };
 
 
-export type MutationReccurringAssetWithPaystackArgs = {
-  reccurringAssetPaystackInput: ReccurringAssetPaystackInput;
-};
-
-
 export type MutationRecurringAssetPaymentTransferArgs = {
   recurringAssetTransferInput: RecurringAssetTransferInput;
 };
@@ -3771,8 +5223,15 @@ export type MutationRecurringFullOwnershipAssetByWalletArgs = {
 };
 
 
-export type MutationRecurringFullOwnershipAssetPaymentWithPaystackArgs = {
-  RecurringFullOwnershipAssetPaystackInput: RecurringFullOwnershipAssetPaystackInput;
+export type MutationRegisterAttendeeOnBehalfArgs = {
+  eventId: Scalars['ID']['input'];
+  input: RegisterAttendeeInput;
+};
+
+
+export type MutationRegisterForEventArgs = {
+  event: Scalars['String']['input'];
+  input: SubmitEventRegistrationInput;
 };
 
 
@@ -3787,13 +5246,65 @@ export type MutationRemoveAssociateManagerArgs = {
 };
 
 
+export type MutationRemoveCsManagerArgs = {
+  managerId: Scalars['ID']['input'];
+};
+
+
 export type MutationRemoveReferralByAdminArgs = {
   referralUpdateInput: ReferralUpdateInput;
 };
 
 
+export type MutationRemoveTicketCollaboratorArgs = {
+  adminId: Scalars['ID']['input'];
+  ticketId: Scalars['ID']['input'];
+};
+
+
+export type MutationRemoveTicketParticipantArgs = {
+  address: Scalars['String']['input'];
+  ticketId: Scalars['ID']['input'];
+};
+
+
 export type MutationRemoveUserAssetByAdminArgs = {
   removeAssetInput: RemoveAssetInput;
+};
+
+
+export type MutationReplyToTicketArgs = {
+  attachments?: InputMaybe<Array<TicketReplyAttachmentInput>>;
+  body: Scalars['String']['input'];
+  cc?: InputMaybe<Array<Scalars['String']['input']>>;
+  ticketId: Scalars['ID']['input'];
+};
+
+
+export type MutationResendPurchaseConfirmationEmailArgs = {
+  planId: Scalars['ID']['input'];
+};
+
+
+export type MutationResetWithdrawalPinArgs = {
+  input: ResetWithdrawalPinInput;
+};
+
+
+export type MutationResolveIssueArgs = {
+  input: ResolveIssueInput;
+};
+
+
+export type MutationResolvePurchaseDisputeArgs = {
+  note: Scalars['String']['input'];
+  planId: Scalars['ID']['input'];
+  requestReconfirm?: InputMaybe<Scalars['Boolean']['input']>;
+};
+
+
+export type MutationResolveTicketArgs = {
+  input: ResolveTicketInput;
 };
 
 
@@ -3853,6 +5364,18 @@ export type MutationSendTermsAndConditionMailArgs = {
 };
 
 
+export type MutationSetAttendeePickupArgs = {
+  eventId: Scalars['ID']['input'];
+  input: SetAttendeePickupInput;
+};
+
+
+export type MutationSetCompanyEventStatusArgs = {
+  id: Scalars['ID']['input'];
+  status: Scalars['String']['input'];
+};
+
+
 export type MutationSigninAdminArgs = {
   signinAdminInput: AdminSigninInput;
 };
@@ -3865,6 +5388,17 @@ export type MutationSigninUserArgs = {
 
 export type MutationSignupUserArgs = {
   signupInput: SignupInput;
+};
+
+
+export type MutationSubmitEventRegistrationArgs = {
+  input: SubmitEventRegistrationInput;
+  token: Scalars['String']['input'];
+};
+
+
+export type MutationSubmitFlexBrochureLeadArgs = {
+  flexBrochureLeadInput: FlexBrochureLeadInput;
 };
 
 
@@ -3909,6 +5443,12 @@ export type MutationSystemApproveLocationChangeRequestArgs = {
 };
 
 
+export type MutationToggleMeetingActiveArgs = {
+  id: Scalars['ID']['input'];
+  isActive: Scalars['Boolean']['input'];
+};
+
+
 export type MutationTopUpWalletArgs = {
   topupInput?: InputMaybe<TopupInput>;
 };
@@ -3926,6 +5466,11 @@ export type MutationTopWalletUpArgs = {
 
 export type MutationUnSuspendPaymentPlanArgs = {
   id: Scalars['String']['input'];
+};
+
+
+export type MutationUnlinkTicketFromIssueArgs = {
+  ticketId: Scalars['ID']['input'];
 };
 
 
@@ -3974,6 +5519,18 @@ export type MutationUpdateCouponStatusArgs = {
 };
 
 
+export type MutationUpdateFlexLeadArgs = {
+  adminNotes?: InputMaybe<Scalars['String']['input']>;
+  id: Scalars['ID']['input'];
+  status?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationUpdateIssueArgs = {
+  input: UpdateIssueInput;
+};
+
+
 export type MutationUpdateKycInfoArgs = {
   kycInput?: InputMaybe<KycInput>;
 };
@@ -3981,6 +5538,12 @@ export type MutationUpdateKycInfoArgs = {
 
 export type MutationUpdateMarketplaceListingArgs = {
   input: UpdateMarketplaceListingInput;
+};
+
+
+export type MutationUpdateMeetingArgs = {
+  id: Scalars['ID']['input'];
+  input: UpdateMeetingInput;
 };
 
 
@@ -4013,6 +5576,11 @@ export type MutationUpdateProfileInfoArgs = {
 
 export type MutationUpdateRequestStatusArgs = {
   updateRequestInput: UpdateRequestInput;
+};
+
+
+export type MutationUpdateTicketArgs = {
+  input: UpdateTicketInput;
 };
 
 
@@ -4055,6 +5623,11 @@ export type MutationVerifyEmailArgs = {
 };
 
 
+export type MutationVerifyMeetingEmailArgs = {
+  input: VerifyMeetingEmailInput;
+};
+
+
 export type MutationWithdrawWalletArgs = {
   withdrawInput?: InputMaybe<WithdrawInput>;
 };
@@ -4092,6 +5665,44 @@ export type MyAgencyDashboardResponse = {
   success: Scalars['Boolean']['output'];
 };
 
+/** One raffle ticket the viewer earned from their own purchase. */
+export type MyPurchaseTicket = {
+  __typename?: 'MyPurchaseTicket';
+  assetName: Scalars['String']['output'];
+  purchasedAt: Scalars['Date']['output'];
+  sizePurchased: Scalars['Int']['output'];
+  ticketId: Scalars['String']['output'];
+  totalSize: Scalars['Int']['output'];
+  unitsPurchased: Scalars['Int']['output'];
+};
+
+/** Tickets the viewer earned by buying land themselves. Standing, rank and checkpoints live on myRaffleStanding, which counts referral tickets. */
+export type MyPurchaseTickets = {
+  __typename?: 'MyPurchaseTickets';
+  campaignKey: Scalars['String']['output'];
+  endDate: Scalars['Date']['output'];
+  purchases: Scalars['Int']['output'];
+  sqmPerTicket: Scalars['Int']['output'];
+  ticketCount: Scalars['Int']['output'];
+  tickets: Array<MyPurchaseTicket>;
+  totalSqm: Scalars['Int']['output'];
+};
+
+export type MyRaffleStanding = {
+  __typename?: 'MyRaffleStanding';
+  campaignKey: Scalars['String']['output'];
+  checkpoints: Array<RaffleCheckpoint>;
+  endDate: Scalars['Date']['output'];
+  gapToAbove?: Maybe<RaffleGap>;
+  nextCheckpoint?: Maybe<RaffleNextCheckpoint>;
+  rank?: Maybe<Scalars['Int']['output']>;
+  sqmPerTicket: Scalars['Int']['output'];
+  ticketCount: Scalars['Int']['output'];
+  title: Scalars['String']['output'];
+  totalParticipants: Scalars['Int']['output'];
+  totalSqm: Scalars['Int']['output'];
+};
+
 export type NextofKin = {
   __typename?: 'NextofKin';
   _id: Scalars['ID']['output'];
@@ -4118,6 +5729,11 @@ export type NextofKinResponse = {
   success: Scalars['Boolean']['output'];
 };
 
+export type OfflineScanInput = {
+  deviceId?: InputMaybe<Scalars['String']['input']>;
+  token: Scalars['String']['input'];
+};
+
 export type OnboardingAttempt = {
   __typename?: 'OnboardingAttempt';
   _id: Scalars['ID']['output'];
@@ -4142,10 +5758,34 @@ export type OnboardingAttempt = {
   updatedAt?: Maybe<Scalars['Date']['output']>;
 };
 
+export type OnboardingBacklog = {
+  __typename?: 'OnboardingBacklog';
+  callPending: Scalars['Int']['output'];
+  confirmPending: Scalars['Int']['output'];
+  disputed: Scalars['Int']['output'];
+  dueCarriedOver: Scalars['Int']['output'];
+  /**
+   * Of callPending, how many arrived in this period against how many were
+   * already waiting. "Seventy to onboard" is not a month's work and reads as an
+   * impossible target; "nine this month, sixty-one carried over" is two
+   * problems, and only the first is this month's performance.
+   * dueThisPeriod + dueCarriedOver === callPending.
+   */
+  dueThisPeriod: Scalars['Int']['output'];
+  total: Scalars['Int']['output'];
+};
+
 export enum OnboardingOutcome {
   NotAvailable = 'not_available',
   Picked = 'picked',
   Rescheduled = 'rescheduled'
+}
+
+export enum OnboardingStatus {
+  CallPending = 'call_pending',
+  Confirmed = 'confirmed',
+  Disputed = 'disputed',
+  NotApplicable = 'not_applicable'
 }
 
 export enum OnboardingSupport {
@@ -4243,6 +5883,12 @@ export type PaymentPlanInput = {
   userId?: InputMaybe<Scalars['String']['input']>;
 };
 
+export enum PaymentStatus {
+  CloseToDefault = 'close_to_default',
+  Completed = 'completed',
+  InPlan = 'in_plan'
+}
+
 export type PerformanceMetrics = {
   __typename?: 'PerformanceMetrics';
   assetValue: Scalars['Float']['output'];
@@ -4271,6 +5917,65 @@ export type PermissionResponse = {
   __typename?: 'PermissionResponse';
   data: Array<Permission>;
   success: Scalars['Boolean']['output'];
+};
+
+export type PlanRow = {
+  __typename?: 'PlanRow';
+  allocation: AllocationStatus;
+  /** When this plan started waiting for allocation; null unless allocation is 'awaiting'. */
+  allocationDueSince?: Maybe<Scalars['Date']['output']>;
+  allocationLabel?: Maybe<Scalars['String']['output']>;
+  /** pending | allocated | email_sent, as stored on the plan. */
+  allocationStatus?: Maybe<Scalars['String']['output']>;
+  /** The estate name. */
+  asset: Scalars['String']['output'];
+  /** The estate record the plan was bought on. */
+  assetId?: Maybe<Scalars['ID']['output']>;
+  customer: PlanRowCustomer;
+  doa: DoaStatus;
+  /** When this plan started waiting for its deed; null unless doa is 'not_sent'. */
+  doaDueSince?: Maybe<Scalars['Date']['output']>;
+  doaLabel?: Maybe<Scalars['String']['output']>;
+  lastActivityAt: Scalars['Date']['output'];
+  /** The most recent call on this plan, whatever came of it. Null if never tried. */
+  lastAttempt?: Maybe<PlanRowLastAttempt>;
+  /** Where the estate is, as recorded on the asset. */
+  location?: Maybe<Scalars['String']['output']>;
+  onboarding: OnboardingStatus;
+  paymentLabel: Scalars['String']['output'];
+  paymentStatus: PaymentStatus;
+  planId: Scalars['ID']['output'];
+  priorPlansCount: Scalars['Int']['output'];
+  product: FlexOrFullownership;
+  purchaseDate: Scalars['Date']['output'];
+  /** Plot size in sqm, per unit. */
+  size?: Maybe<Scalars['Float']['output']>;
+  /** Plots bought on this plan. */
+  units: Scalars['Int']['output'];
+};
+
+export type PlanRowCustomer = {
+  __typename?: 'PlanRowCustomer';
+  email: Scalars['String']['output'];
+  firstName: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  lastName: Scalars['String']['output'];
+  /** As the customer typed it — local or international, not normalised. */
+  phone: Scalars['String']['output'];
+};
+
+/**
+ * What was already tried on a plan, so the next call is an informed one.
+ * Without it a CSM who rang three times and got no answer is indistinguishable
+ * on the table from one who never picked up the phone.
+ */
+export type PlanRowLastAttempt = {
+  __typename?: 'PlanRowLastAttempt';
+  /** How many calls have been logged on this plan in total. */
+  attempts: Scalars['Int']['output'];
+  calledAt: Scalars['Date']['output'];
+  /** spoke | no_answer | rescheduled | done */
+  outcome: Scalars['String']['output'];
 };
 
 export type Plot = {
@@ -4319,9 +6024,32 @@ export type PortfolioMetrics = {
   totalValueSold?: Maybe<Scalars['Float']['output']>;
 };
 
+/** A single pro's contribution to a per-manager metric (count-based). */
+export type ProContributor = {
+  __typename?: 'ProContributor';
+  count: Scalars['Int']['output'];
+  email?: Maybe<Scalars['String']['output']>;
+  firstName?: Maybe<Scalars['String']['output']>;
+  lastName?: Maybe<Scalars['String']['output']>;
+  proId: Scalars['ID']['output'];
+};
+
+/** Float variant for revenue-based contribution lists. */
+export type ProContributorFloat = {
+  __typename?: 'ProContributorFloat';
+  amount: Scalars['Float']['output'];
+  email?: Maybe<Scalars['String']['output']>;
+  firstName?: Maybe<Scalars['String']['output']>;
+  lastName?: Maybe<Scalars['String']['output']>;
+  proId: Scalars['ID']['output'];
+};
+
 export enum ProRosterGroup {
   Abandoned = 'abandoned',
   Active = 'active',
+  ActivePromoter = 'active_promoter',
+  ActiveRecruiter = 'active_recruiter',
+  ActiveRevenueGenerator = 'active_revenue_generator',
   Inactive = 'inactive',
   OnboardedInPeriod = 'onboarded_in_period',
   RecruitedInPeriod = 'recruited_in_period',
@@ -4333,6 +6061,8 @@ export enum ProRosterGroup {
 export enum ProRosterSort {
   DateRecruitedDesc = 'date_recruited_desc',
   LastLoginDesc = 'last_login_desc',
+  LastRecruitDesc = 'last_recruit_desc',
+  LastSaleDesc = 'last_sale_desc',
   OnboardedAtDesc = 'onboarded_at_desc',
   RevenueDesc = 'revenue_desc',
   TotalSalesDesc = 'total_sales_desc'
@@ -4383,6 +6113,29 @@ export type PromoDetailsHamper = {
   totalPromoDays?: Maybe<Scalars['Int']['output']>;
 };
 
+export type PublicEventContext = {
+  __typename?: 'PublicEventContext';
+  date: Scalars['String']['output'];
+  /** The name this event is addressed by in public URLs. */
+  eventSlug: Scalars['String']['output'];
+  eventTitle: Scalars['String']['output'];
+  eventType: Scalars['String']['output'];
+  /** False while the event is a draft, once it has closed, or if it is invitation only. */
+  open: Scalars['Boolean']['output'];
+  pickupLocations: Array<EventPickupLocation>;
+  startsAt: Scalars['Date']['output'];
+  time: Scalars['String']['output'];
+};
+
+export type PublicMeeting = {
+  __typename?: 'PublicMeeting';
+  is_active: Scalars['Boolean']['output'];
+  name: Scalars['String']['output'];
+  slug: Scalars['String']['output'];
+  starts_at: Scalars['Date']['output'];
+  verification_opens_at: Scalars['Date']['output'];
+};
+
 export type Purchase = {
   __typename?: 'Purchase';
   _id: Scalars['ID']['output'];
@@ -4391,6 +6144,83 @@ export type Purchase = {
   total_amount: Scalars['Float']['output'];
   units: Scalars['Int']['output'];
   user_id: Scalars['ID']['output'];
+};
+
+export type PurchaseConfirmationAdminRow = {
+  __typename?: 'PurchaseConfirmationAdminRow';
+  asset?: Maybe<Scalars['String']['output']>;
+  buyer?: Maybe<PurchaseConfirmationBuyer>;
+  confirmedAt?: Maybe<Scalars['Date']['output']>;
+  createdAt?: Maybe<Scalars['Date']['output']>;
+  disputes: Array<PurchaseDisputeEntry>;
+  emailSentAt?: Maybe<Scalars['Date']['output']>;
+  escalatedAt?: Maybe<Scalars['Date']['output']>;
+  id: Scalars['ID']['output'];
+  openDisputeNote?: Maybe<Scalars['String']['output']>;
+  planId: Scalars['ID']['output'];
+  referrer?: Maybe<Scalars['String']['output']>;
+  remindersSent: Array<Scalars['Date']['output']>;
+  snapshot: PurchaseSnapshot;
+  status: Scalars['String']['output'];
+  uniqueAssetId: Scalars['String']['output'];
+};
+
+export type PurchaseConfirmationBuyer = {
+  __typename?: 'PurchaseConfirmationBuyer';
+  email?: Maybe<Scalars['String']['output']>;
+  firstName?: Maybe<Scalars['String']['output']>;
+  id?: Maybe<Scalars['ID']['output']>;
+  lastName?: Maybe<Scalars['String']['output']>;
+  phoneNumber?: Maybe<Scalars['String']['output']>;
+};
+
+export type PurchaseConfirmationCounts = {
+  __typename?: 'PurchaseConfirmationCounts';
+  confirmed: Scalars['Int']['output'];
+  disputed: Scalars['Int']['output'];
+  waiting: Scalars['Int']['output'];
+};
+
+export type PurchaseConfirmationFilterInput = {
+  product?: InputMaybe<Scalars['String']['input']>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  status?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type PurchaseConfirmationListResponse = {
+  __typename?: 'PurchaseConfirmationListResponse';
+  count: Scalars['Int']['output'];
+  data: Array<PurchaseConfirmationAdminRow>;
+};
+
+export type PurchaseConfirmationView = {
+  __typename?: 'PurchaseConfirmationView';
+  confirmedAt?: Maybe<Scalars['Date']['output']>;
+  disputes: Array<PurchaseDisputeEntry>;
+  emailSentAt?: Maybe<Scalars['Date']['output']>;
+  snapshot: PurchaseSnapshot;
+  status: Scalars['String']['output'];
+  uniqueAssetId: Scalars['String']['output'];
+};
+
+export type PurchaseDisputeEntry = {
+  __typename?: 'PurchaseDisputeEntry';
+  disputed_at?: Maybe<Scalars['Date']['output']>;
+  note?: Maybe<Scalars['String']['output']>;
+  resolution_note?: Maybe<Scalars['String']['output']>;
+  resolved_at?: Maybe<Scalars['Date']['output']>;
+};
+
+export type PurchaseSnapshot = {
+  __typename?: 'PurchaseSnapshot';
+  development_levy?: Maybe<Scalars['Float']['output']>;
+  land_amount?: Maybe<Scalars['Float']['output']>;
+  name_on_document?: Maybe<Scalars['String']['output']>;
+  plan_label?: Maybe<Scalars['String']['output']>;
+  product?: Maybe<Scalars['String']['output']>;
+  size?: Maybe<Scalars['Float']['output']>;
+  total?: Maybe<Scalars['Float']['output']>;
+  units?: Maybe<Scalars['Int']['output']>;
 };
 
 export type QualifiedUser = {
@@ -4414,14 +6244,41 @@ export type Query = {
   __typename?: 'Query';
   adminGetManagerDashboard: ManagerDashboardResponse;
   adminGetManagerSalesRecord?: Maybe<SalesRecordResponse>;
+  /** The caller's own identity and standing. Cheap, and safe to poll. */
+  adminSession: AdminSession;
   adminTransactionDataPoint?: Maybe<DataPointResponse>;
+  assistantQueryCounts: AssistantQueryCounts;
   clientAssets: ClientAssetListResponse;
   clientDashboardOverview: ClientDashboardOverviewResponse;
   clientPaymentSchedule: ClientPaymentScheduleResponse;
   clientTransactions: ClientTransactionListResponse;
+  companyEvent: CompanyEvent;
+  /** Allocation events only. */
+  companyEventAnalytics: CompanyEventAnalytics;
+  companyEvents: CompanyEventListPayload;
   eligibleClientsForLand: EligibleClientsForLandResponse;
+  /** Includes cancelled rows — a released seat is part of the event's history. */
+  eventAllocations: EventAllocationListPayload;
+  /** Full boarded list for offline use, cached before signal is lost. */
+  eventCheckinRoster: EventRoster;
+  /** Find somebody by name or phone when their QR will not scan. */
+  eventCheckinSearch: Array<EventAttendee>;
+  /** Allocation events running today. PIN-gated — the kiosk has no session. */
+  eventCheckinSessions: Array<EventCheckinSession>;
+  eventCheckinStats: EventCheckinStats;
+  /**
+   * The confirmation sheet for an event, for a day with no network. Optionally
+   * narrowed to one pickup point, so the team meeting a given bus gets its own.
+   */
+  eventConfirmationSheet: Array<EventConfirmationRow>;
+  /** Allocation events only. */
+  eventEligibleClients: EventEligibleClientListPayload;
+  eventRegistrationContext: EventRegistrationContext;
+  eventRegistrations: EventRegistrationListPayload;
   exportManagerDashboardPros: Array<ManagerDashboardProRow>;
   exportManagerSalesRecord: SalesRecordResponse;
+  findSimilarTickets: Array<IssueTicketRow>;
+  flexLeadCounts: FlexLeadCounts;
   flexQualifiedUsers?: Maybe<QualifiedUsersResponse>;
   fullownershipQualifiedUsers?: Maybe<QualifiedUsersResponse>;
   generateAdminOtp?: Maybe<Scalars['String']['output']>;
@@ -4440,6 +6297,14 @@ export type Query = {
   getAllAdminAssets?: Maybe<AssetAdminResponse>;
   getAllAdminLogs?: Maybe<LogAdminResponse>;
   getAllAdminWithRoles: AdminRoleResponse;
+  /**
+   * Every CS Manager's book combined. Top-level admins only.
+   *
+   * The manager field comes back null -- the view names nobody rather than
+   * inventing a synthetic one. Count targets are summed across managers; the
+   * ticket resolution target is averaged, because it is a percentage.
+   */
+  getAllCSManagersDashboard: CsManagerDashboardResponse;
   getAllClientRequests: Scalars['JSON']['output'];
   getAllCoupons: CouponsResponse;
   getAllDefaultUsers?: Maybe<UserAdminResponse>;
@@ -4457,6 +6322,7 @@ export type Query = {
   getAssetInventoryData?: Maybe<AssetInventoryResponse>;
   getAssetTransaction?: Maybe<TransactionAdminResponse>;
   getAssetTransactionData?: Maybe<TransactionAdminAssetResponse>;
+  getAssistantQueries: AssistantQueryListPayload;
   getAssociateManager?: Maybe<AssociateManagerType>;
   getAssociateManagerTarget?: Maybe<AssociateManagerTargetType>;
   getAssociateManagers: AssociateManagerListResponse;
@@ -4464,6 +6330,8 @@ export type Query = {
   getAvailableAssets?: Maybe<AssetResponse>;
   getAvailablePlotsForAsset: Array<Plot>;
   getBlockPlots: Array<Plot>;
+  getCSManagerDashboard: CsManagerDashboardResponse;
+  getCSManagerTarget?: Maybe<CsManagerTargetType>;
   getCampaignDashboard: CampaignDashboard;
   getCampaignHampers?: Maybe<CampaignHamperResponse>;
   getCampaignPaymentPlans?: Maybe<CampaignPaymentPlansResponse>;
@@ -4475,7 +6343,10 @@ export type Query = {
   getCoupon: CouponResponse;
   getCustomerAsset?: Maybe<Array<Maybe<UserAsset>>>;
   getDocumentTransaction?: Maybe<TransactionAdminResponse>;
+  getFlexLeads: FlexLeadListPayload;
   getHamperLeaderboard: Array<HamperLeaderboardEntry>;
+  getIssue: IssueDetail;
+  getIssues: IssueListResponse;
   getLastActiveAssetPayment: LastActiveAssetPaymentResponse;
   getListOfAllTransactions?: Maybe<TransactionAdminResponse>;
   getListOfBankDetails?: Maybe<Scalars['JSON']['output']>;
@@ -4485,6 +6356,10 @@ export type Query = {
   getManagerRatingSeries: Array<ManagerRatingSeriesPoint>;
   getManagerSalesRecord?: Maybe<SalesRecordResponse>;
   getMarketplaceDashboard: AdminMarketplaceDashboard;
+  getMeetingById: MeetingDetail;
+  getMeetingBySlug: PublicMeeting;
+  getMeetingVerifications: MeetingVerificationListResponse;
+  getMeetings: MeetingListResponse;
   getMyAgencyDashboard: MyAgencyDashboardResponse;
   getMyRequests?: Maybe<Scalars['JSON']['output']>;
   getOnboardingAttempts: Array<OnboardingAttempt>;
@@ -4504,6 +6379,8 @@ export type Query = {
   getSuspendedPaymentPlansSummary?: Maybe<SuspendedPaymentPlansSummary>;
   getSystemAssociatesDashboard: ManagerDashboardResponse;
   getSystemUsersOverview: SystemUsersOverviewResponse;
+  getTicket: TicketDetail;
+  getTickets: TicketListResponse;
   getTopAssociates?: Maybe<AssociateResponse>;
   getTopupTransaction?: Maybe<TransactionAdminResponse>;
   getTransactionCommissionDetails: CommissionResponse;
@@ -4512,6 +6389,7 @@ export type Query = {
   getTrendingAssets?: Maybe<AssetResponse>;
   getUnassignedAssociatePros: UnassignedAssociateProsResponse;
   getUnassignedAssociateProsCount: Scalars['Int']['output'];
+  getUpcomingMeetings: Array<PublicMeeting>;
   getUserAnalytics: UserAnalyticsResponse;
   getUserAssetFinancialOverview?: Maybe<AssetFinancialOverview>;
   getUserBankDetails?: Maybe<BankDetailResponse>;
@@ -4525,10 +6403,35 @@ export type Query = {
   getUsersWithZeroBalance: ZeroBalanceResponse;
   getWithdrawalTransaction?: Maybe<TransactionAdminResponse>;
   listAssociateManagerTargets: Array<AssociateManagerTargetType>;
+  listCSManagerTargets: Array<CsManagerTargetType>;
+  listCSManagers: Array<CsManagerSummary>;
+  listOnboardingAttempts: Array<CustomerOnboardingAttempt>;
+  listUnassignedCustomers: UnassignedCustomerListResponse;
   managerDashboard: ManagerDashboardResponse;
+  myPurchaseTickets: MyPurchaseTickets;
+  myRaffleStanding: MyRaffleStanding;
+  /**
+   * Public event landing page — anyone may open it, for either event type.
+   * Addressed by the slug in the URL ("the-district-allocation-day-3-oct-2026");
+   * an id still resolves, for a link pasted out of the admin.
+   */
+  publicEventContext: PublicEventContext;
+  purchaseConfirmationCounts: PurchaseConfirmationCounts;
+  raffleLeaderboard: RaffleLeaderboard;
   removeUserBankDetails: Scalars['String']['output'];
   searchAcademyUsers: Array<AcademyUserSearchResult>;
   sendOtpVerfication?: Maybe<Scalars['String']['output']>;
+  suggestIssuesForTicket: Array<TicketIssueSuggestion>;
+  suggestUsersForTicket: Array<TicketUserSuggestion>;
+  /** Support ticket aggregates over a date range. Omit both dates for all time. */
+  supportTicketAnalytics: SupportTicketAnalytics;
+  /** The category list the classifier is constrained to. */
+  ticketCategories: Array<Scalars['String']['output']>;
+  ticketIngestionStatus: TicketIngestionStatus;
+  /** Tickets in against tickets out, by calendar month. Scoped to the caller. */
+  ticketMonthlyFlow: Array<TicketMonthlyFlow>;
+  /** The numbers above the ticket table, scoped to the caller and narrowed by the same filter as getTickets. */
+  ticketQueueStats: TicketQueueStats;
   usersWithAsset?: Maybe<UserAssetResponse>;
   validateAdminOtp?: Maybe<Scalars['String']['output']>;
   viewAllAssets?: Maybe<AssetResponse>;
@@ -4549,6 +6452,8 @@ export type Query = {
   viewMyMarketplaceListings: Array<MarketplaceListing>;
   viewMyTransferHistory: Array<MarketplaceTransferHistory>;
   viewPendingMarketplaceApprovals: AdminMarketplaceListingsResponse;
+  viewPurchaseConfirmation: PurchaseConfirmationView;
+  viewPurchaseConfirmations: PurchaseConfirmationListResponse;
   viewSavedAssets?: Maybe<AssetResponse>;
   viewSubscribedAssets?: Maybe<SubscribedAssetResponse>;
   viewSubscribedCustomersOnAsset: SubscribedCustomerDetailsResponse;
@@ -4556,6 +6461,12 @@ export type Query = {
   viewUserAssetByAdmin?: Maybe<Array<Maybe<SubscribedAssets>>>;
   viewUserAssetByUniqueId: SubscribedAssetDetails;
   viewUserReferralsByAdmin?: Maybe<Array<Maybe<AdminReferral>>>;
+  whatsappContacts: WhatsappContactListPayload;
+  /**
+   * Page 1 is the **most recent** page of messages, returned oldest-first;
+   * higher pages walk backwards through the history.
+   */
+  whatsappConversation: WhatsappConversationPayload;
 };
 
 
@@ -4596,10 +6507,86 @@ export type QueryClientTransactionsArgs = {
 };
 
 
+export type QueryCompanyEventArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
+export type QueryCompanyEventAnalyticsArgs = {
+  eventId: Scalars['ID']['input'];
+};
+
+
+export type QueryCompanyEventsArgs = {
+  filter?: InputMaybe<CompanyEventFilterInput>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
 export type QueryEligibleClientsForLandArgs = {
   filters?: InputMaybe<FiltersInput>;
   limit: Scalars['Int']['input'];
   page: Scalars['Int']['input'];
+};
+
+
+export type QueryEventAllocationsArgs = {
+  eventId: Scalars['ID']['input'];
+  filter?: InputMaybe<EventAllocationFilterInput>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
+export type QueryEventCheckinRosterArgs = {
+  eventId: Scalars['ID']['input'];
+  pin: Scalars['String']['input'];
+};
+
+
+export type QueryEventCheckinSearchArgs = {
+  eventId: Scalars['ID']['input'];
+  pin: Scalars['String']['input'];
+  query?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryEventCheckinSessionsArgs = {
+  pin: Scalars['String']['input'];
+};
+
+
+export type QueryEventCheckinStatsArgs = {
+  eventId: Scalars['ID']['input'];
+  pin: Scalars['String']['input'];
+};
+
+
+export type QueryEventConfirmationSheetArgs = {
+  eventId: Scalars['ID']['input'];
+  pickupLocationId?: InputMaybe<Scalars['ID']['input']>;
+};
+
+
+export type QueryEventEligibleClientsArgs = {
+  eventId: Scalars['ID']['input'];
+  filter?: InputMaybe<EventEligibleClientFilterInput>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
+export type QueryEventRegistrationContextArgs = {
+  token: Scalars['String']['input'];
+};
+
+
+export type QueryEventRegistrationsArgs = {
+  eventId: Scalars['ID']['input'];
+  filter?: InputMaybe<EventRegistrationFilterInput>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -4612,6 +6599,11 @@ export type QueryExportManagerDashboardProsArgs = {
 export type QueryExportManagerSalesRecordArgs = {
   filters?: InputMaybe<SalesRecordFilters>;
   managerId?: InputMaybe<Scalars['ID']['input']>;
+};
+
+
+export type QueryFindSimilarTicketsArgs = {
+  search: Scalars['String']['input'];
 };
 
 
@@ -4685,6 +6677,18 @@ export type QueryGetAllAdminLogsArgs = {
 };
 
 
+export type QueryGetAllCsManagersDashboardArgs = {
+  estate?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<CsPlanFilter>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  month?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<CsPlanSort>;
+  year?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
 export type QueryGetAllClientRequestsArgs = {
   filters?: InputMaybe<ClientRequestFilters>;
   limit?: InputMaybe<Scalars['Int']['input']>;
@@ -4713,10 +6717,13 @@ export type QueryGetAllSuspendedUsersArgs = {
 
 export type QueryGetAllUpgradeRequestsArgs = {
   adminStatus?: InputMaybe<AdminStatus>;
+  endDate?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
   page?: InputMaybe<Scalars['Int']['input']>;
   search?: InputMaybe<Scalars['String']['input']>;
+  startDate?: InputMaybe<Scalars['String']['input']>;
   transactionType?: InputMaybe<TransactionType>;
+  upgradeType?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -4786,6 +6793,13 @@ export type QueryGetAssetTransactionDataArgs = {
 };
 
 
+export type QueryGetAssistantQueriesArgs = {
+  filters?: InputMaybe<AssistantQueryFilters>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
 export type QueryGetAssociateManagerArgs = {
   managerId: Scalars['ID']['input'];
 };
@@ -4815,6 +6829,26 @@ export type QueryGetBlockPlotsArgs = {
   blockId: Scalars['ID']['input'];
   size?: InputMaybe<Scalars['Int']['input']>;
   status?: InputMaybe<PlotStatus>;
+};
+
+
+export type QueryGetCsManagerDashboardArgs = {
+  estate?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<CsPlanFilter>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  managerId: Scalars['ID']['input'];
+  month?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<CsPlanSort>;
+  year?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
+export type QueryGetCsManagerTargetArgs = {
+  managerId: Scalars['ID']['input'];
+  month?: InputMaybe<Scalars['Int']['input']>;
+  year?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -4871,9 +6905,11 @@ export type QueryGetCouponArgs = {
 
 
 export type QueryGetDocumentTransactionArgs = {
+  assetType?: InputMaybe<Scalars['String']['input']>;
   endDate?: InputMaybe<Scalars['Date']['input']>;
   limit: Scalars['Int']['input'];
   page: Scalars['Int']['input'];
+  salesType?: InputMaybe<Scalars['String']['input']>;
   search?: InputMaybe<Scalars['String']['input']>;
   startDate?: InputMaybe<Scalars['Date']['input']>;
   status?: InputMaybe<Scalars['String']['input']>;
@@ -4881,9 +6917,29 @@ export type QueryGetDocumentTransactionArgs = {
 };
 
 
+export type QueryGetFlexLeadsArgs = {
+  filters?: InputMaybe<FlexLeadFilters>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
 export type QueryGetHamperLeaderboardArgs = {
   endDate?: InputMaybe<Scalars['String']['input']>;
   startDate?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryGetIssueArgs = {
+  issueId: Scalars['ID']['input'];
+};
+
+
+export type QueryGetIssuesArgs = {
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  status?: InputMaybe<IssueStatus>;
 };
 
 
@@ -4915,6 +6971,30 @@ export type QueryGetManagerSalesRecordArgs = {
   filters?: InputMaybe<SalesRecordFilters>;
   limit: Scalars['Int']['input'];
   page: Scalars['Int']['input'];
+};
+
+
+export type QueryGetMeetingByIdArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
+export type QueryGetMeetingBySlugArgs = {
+  slug: Scalars['String']['input'];
+};
+
+
+export type QueryGetMeetingVerificationsArgs = {
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  meetingId: Scalars['ID']['input'];
+  page?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
+export type QueryGetMeetingsArgs = {
+  filter?: InputMaybe<MeetingListFilterInput>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -5022,6 +7102,18 @@ export type QueryGetSystemUsersOverviewArgs = {
 };
 
 
+export type QueryGetTicketArgs = {
+  ticketId: Scalars['ID']['input'];
+};
+
+
+export type QueryGetTicketsArgs = {
+  filter?: InputMaybe<TicketListFilterInput>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
 export type QueryGetTopAssociatesArgs = {
   assetName?: InputMaybe<Scalars['String']['input']>;
   assetType?: InputMaybe<Scalars['String']['input']>;
@@ -5105,13 +7197,60 @@ export type QueryListAssociateManagerTargetsArgs = {
 };
 
 
+export type QueryListCsManagerTargetsArgs = {
+  managerId: Scalars['ID']['input'];
+};
+
+
+export type QueryListOnboardingAttemptsArgs = {
+  paymentPlanId: Scalars['ID']['input'];
+};
+
+
+export type QueryListUnassignedCustomersArgs = {
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
 export type QueryManagerDashboardArgs = {
   filter?: InputMaybe<ManagerDashboardFilterInput>;
 };
 
 
+export type QueryPublicEventContextArgs = {
+  event: Scalars['String']['input'];
+};
+
+
 export type QuerySearchAcademyUsersArgs = {
   query: Scalars['String']['input'];
+};
+
+
+export type QuerySuggestIssuesForTicketArgs = {
+  ticketId: Scalars['ID']['input'];
+};
+
+
+export type QuerySuggestUsersForTicketArgs = {
+  ticketId: Scalars['ID']['input'];
+};
+
+
+export type QuerySupportTicketAnalyticsArgs = {
+  from?: InputMaybe<Scalars['Date']['input']>;
+  to?: InputMaybe<Scalars['Date']['input']>;
+};
+
+
+export type QueryTicketMonthlyFlowArgs = {
+  months?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
+export type QueryTicketQueueStatsArgs = {
+  filter?: InputMaybe<TicketListFilterInput>;
 };
 
 
@@ -5191,6 +7330,18 @@ export type QueryViewPendingMarketplaceApprovalsArgs = {
 };
 
 
+export type QueryViewPurchaseConfirmationArgs = {
+  uniqueAssetId: Scalars['String']['input'];
+};
+
+
+export type QueryViewPurchaseConfirmationsArgs = {
+  filter?: InputMaybe<PurchaseConfirmationFilterInput>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
 export type QueryViewSubscribedAssetsArgs = {
   assetType: Scalars['String']['input'];
 };
@@ -5226,6 +7377,20 @@ export type QueryViewUserReferralsByAdminArgs = {
   id: Scalars['ID']['input'];
 };
 
+
+export type QueryWhatsappContactsArgs = {
+  filters?: InputMaybe<WhatsappContactFilters>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
+export type QueryWhatsappConversationArgs = {
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
+  phoneNumber: Scalars['String']['input'];
+};
+
 export type RaffleAsset = {
   __typename?: 'RaffleAsset';
   _id: Scalars['ID']['output'];
@@ -5236,6 +7401,45 @@ export type RaffleAsset = {
   asset_type?: Maybe<Scalars['String']['output']>;
   asset_unit?: Maybe<Scalars['Int']['output']>;
   title?: Maybe<Scalars['String']['output']>;
+};
+
+export type RaffleCheckpoint = {
+  __typename?: 'RaffleCheckpoint';
+  key: Scalars['String']['output'];
+  label: Scalars['String']['output'];
+  prize: Scalars['String']['output'];
+  reached: Scalars['Boolean']['output'];
+  reachedAt?: Maybe<Scalars['Date']['output']>;
+  sqm: Scalars['Int']['output'];
+};
+
+export type RaffleGap = {
+  __typename?: 'RaffleGap';
+  name: Scalars['String']['output'];
+  tickets: Scalars['Int']['output'];
+};
+
+export type RaffleLeaderboard = {
+  __typename?: 'RaffleLeaderboard';
+  rows: Array<RaffleLeaderboardRow>;
+  totalParticipants: Scalars['Int']['output'];
+};
+
+export type RaffleLeaderboardRow = {
+  __typename?: 'RaffleLeaderboardRow';
+  isViewer: Scalars['Boolean']['output'];
+  name: Scalars['String']['output'];
+  rank: Scalars['Int']['output'];
+  tickets: Scalars['Int']['output'];
+  totalSqm: Scalars['Int']['output'];
+};
+
+export type RaffleNextCheckpoint = {
+  __typename?: 'RaffleNextCheckpoint';
+  key: Scalars['String']['output'];
+  label: Scalars['String']['output'];
+  prize: Scalars['String']['output'];
+  sqmRemaining: Scalars['Int']['output'];
 };
 
 export type RaffleTicket = {
@@ -5380,9 +7584,17 @@ export type ReferralUpgrade = {
   _id: Scalars['ID']['output'];
   admin_status?: Maybe<Scalars['String']['output']>;
   associate?: Maybe<User>;
+  bankName?: Maybe<Scalars['String']['output']>;
   createdAt?: Maybe<Scalars['String']['output']>;
   fee_amount?: Maybe<Scalars['Float']['output']>;
   file_Url?: Maybe<Scalars['String']['output']>;
+  reference_no?: Maybe<Scalars['String']['output']>;
+  /**
+   * Which channel the request came from: absent for the app, "whatsapp" for the
+   * chat flow. A WhatsApp receipt's file_Url is a signed link that expires, so it
+   * has to be opened from a fresh read rather than bookmarked.
+   */
+  submitted_via?: Maybe<Scalars['String']['output']>;
   transaction_type?: Maybe<Scalars['String']['output']>;
   user?: Maybe<User>;
   user_upgrade_type?: Maybe<Scalars['String']['output']>;
@@ -5415,6 +7627,38 @@ export type ReferrerWithHampers = {
   hamperCount?: Maybe<Scalars['Int']['output']>;
   name?: Maybe<Scalars['String']['output']>;
   totalSqmReferred?: Maybe<Scalars['Float']['output']>;
+};
+
+export type RegisterAttendeeInput = {
+  /** associate_pro | associate | client. Defaults from their referral status. */
+  category?: InputMaybe<Scalars['String']['input']>;
+  email?: InputMaybe<Scalars['String']['input']>;
+  /** Only where the account's details are wrong or missing. */
+  name?: InputMaybe<Scalars['String']['input']>;
+  phone?: InputMaybe<Scalars['String']['input']>;
+  /** Required where the event has pickup locations. */
+  pickupLocationId?: InputMaybe<Scalars['ID']['input']>;
+  /** The attendance row being filled in — an EventRegistrationRow id. */
+  registrationId: Scalars['ID']['input'];
+};
+
+export type RegisterAttendeePayload = {
+  __typename?: 'RegisterAttendeePayload';
+  /** False when the pass could not be mailed — the registration still stands. */
+  pass_sent: Scalars['Boolean']['output'];
+  registered: Scalars['Boolean']['output'];
+  registration: RegisteredAttendee;
+};
+
+export type RegisteredAttendee = {
+  __typename?: 'RegisteredAttendee';
+  category: Scalars['String']['output'];
+  email: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  name: Scalars['String']['output'];
+  phone?: Maybe<Scalars['String']['output']>;
+  pickup_location?: Maybe<Scalars['String']['output']>;
+  status: Scalars['String']['output'];
 };
 
 export type RegistrationTrendEntry = {
@@ -5460,6 +7704,49 @@ export type RequestStatistics = {
   totalFeesCollected?: Maybe<Scalars['Float']['output']>;
   totalRequests?: Maybe<Scalars['Int']['output']>;
   unpaidRequests?: Maybe<Scalars['Int']['output']>;
+};
+
+/**
+ * Finishing a reset with the account password and the 6-digit code emailed by
+ * requestWithdrawalPinReset. The code is only good for this — codes from email
+ * verification or WhatsApp account checks are refused here, and this one is
+ * refused there.
+ */
+export type ResetWithdrawalPinInput = {
+  new_pin: Scalars['String']['input'];
+  otp: Scalars['String']['input'];
+  password: Scalars['String']['input'];
+};
+
+export type ResolveIssueInput = {
+  /** Required. Nothing is sent automatically, so closing these must be a deliberate act. */
+  confirmCustomersContacted: Scalars['Boolean']['input'];
+  /** Linked tickets to leave open -- the escape hatch for a ticket raising more than one problem. */
+  excludeTicketIds?: InputMaybe<Array<Scalars['ID']['input']>>;
+  issueId: Scalars['ID']['input'];
+  resolutionNote: Scalars['String']['input'];
+};
+
+export type ResolveIssueResponse = {
+  __typename?: 'ResolveIssueResponse';
+  /** Distinct customers behind those tickets -- one person with three tickets counts once. */
+  customersAffected: Scalars['Int']['output'];
+  issue: Issue;
+  ticketsExcluded: Scalars['Int']['output'];
+  ticketsResolved: Scalars['Int']['output'];
+};
+
+export type ResolvePurchaseDisputeResponse = {
+  __typename?: 'ResolvePurchaseDisputeResponse';
+  planId: Scalars['ID']['output'];
+  resent: Scalars['Boolean']['output'];
+  status: Scalars['String']['output'];
+};
+
+export type ResolveTicketInput = {
+  /** Optional. A short note on how it was resolved; leave it out or blank to resolve without one. */
+  resolution?: InputMaybe<Scalars['String']['input']>;
+  ticketId: Scalars['ID']['input'];
 };
 
 export type ResponseMessage = {
@@ -5619,6 +7906,8 @@ export type SalesPaymentHealth = {
 
 export type SalesRecord = {
   __typename?: 'SalesRecord';
+  /** The address the buyer gave for their documents, from the asset questions. Null where they were never asked -- not the account address. */
+  address_on_document?: Maybe<Scalars['String']['output']>;
   allocation_date?: Maybe<Scalars['Date']['output']>;
   allocation_status?: Maybe<Scalars['String']['output']>;
   amount_paid?: Maybe<Scalars['Float']['output']>;
@@ -5639,9 +7928,13 @@ export type SalesRecord = {
   fullownerhsip_landprice?: Maybe<Scalars['Float']['output']>;
   is_defaulted: Scalars['Boolean']['output'];
   is_suspended: Scalars['Boolean']['output'];
+  /** When the land was fully paid for. Null does not mean unpaid -- it is stamped on completion, and is effectively never set on flex plans. */
+  land_payment_completed_date?: Maybe<Scalars['Date']['output']>;
   month_remaining?: Maybe<Scalars['Int']['output']>;
   month_subscription?: Maybe<Scalars['Int']['output']>;
   months_covered?: Maybe<Scalars['Int']['output']>;
+  /** The name the buyer asked to have on their documents, from the asset questions. Null where they were never asked. */
+  name_on_document?: Maybe<Scalars['String']['output']>;
   next_date?: Maybe<Scalars['Date']['output']>;
   no_of_units?: Maybe<Scalars['Int']['output']>;
   payment_plan_created_at?: Maybe<Scalars['Date']['output']>;
@@ -5681,6 +7974,10 @@ export type SalesRecord = {
 };
 
 export type SalesRecordFilters = {
+  /** Estate location, matched loosely. */
+  assetLocation?: InputMaybe<Scalars['String']['input']>;
+  /** Estate name, matched loosely — the same filter the allocation list uses. */
+  assetName?: InputMaybe<Scalars['String']['input']>;
   assetType?: InputMaybe<Scalars['String']['input']>;
   endDate?: InputMaybe<Scalars['Date']['input']>;
   nextDate?: InputMaybe<Scalars['Date']['input']>;
@@ -5722,6 +8019,20 @@ export type SendHamperEmailResponse = {
   referrerName?: Maybe<Scalars['String']['output']>;
   success: Scalars['Boolean']['output'];
   totalSqm?: Maybe<Scalars['Float']['output']>;
+};
+
+export type SetAttendeePickupInput = {
+  /** Defaults true. A corrected pass, because the old one names the old stop. */
+  notify?: InputMaybe<Scalars['Boolean']['input']>;
+  pickupLocationId: Scalars['ID']['input'];
+  registrationId: Scalars['ID']['input'];
+};
+
+export type SetAttendeePickupPayload = {
+  __typename?: 'SetAttendeePickupPayload';
+  pass_sent: Scalars['Boolean']['output'];
+  pickup_location?: Maybe<Scalars['String']['output']>;
+  updated: Scalars['Boolean']['output'];
 };
 
 export type SigninInput = {
@@ -5772,6 +8083,7 @@ export type SingleLog = {
   adminId?: Maybe<Scalars['String']['output']>;
   description?: Maybe<Scalars['String']['output']>;
   metadata?: Maybe<Scalars['JSON']['output']>;
+  newState?: Maybe<Scalars['JSON']['output']>;
   oldState?: Maybe<Scalars['JSON']['output']>;
   timestamp?: Maybe<Scalars['Date']['output']>;
 };
@@ -5780,6 +8092,24 @@ export enum SortOrder {
   Asc = 'asc',
   Desc = 'desc'
 }
+
+/** Aggregation grouped by the referrer's role/assignment status. */
+export type SourceBreakdown = {
+  __typename?: 'SourceBreakdown';
+  associate: Scalars['Int']['output'];
+  managed: Scalars['Int']['output'];
+  unassigned: Scalars['Int']['output'];
+  users: Scalars['Int']['output'];
+};
+
+/** Float variant for revenue splits (naira). */
+export type SourceBreakdownFloat = {
+  __typename?: 'SourceBreakdownFloat';
+  associate: Scalars['Float']['output'];
+  managed: Scalars['Float']['output'];
+  unassigned: Scalars['Float']['output'];
+  users: Scalars['Float']['output'];
+};
 
 export type StatementSendResponse = {
   __typename?: 'StatementSendResponse';
@@ -5794,6 +8124,23 @@ export type StatementSendResponse = {
 export type SubAdminInput = {
   email?: InputMaybe<Scalars['String']['input']>;
   role?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type SubmitEventRegistrationInput = {
+  /** client | associate | associate_pro */
+  category: Scalars['String']['input'];
+  email: Scalars['String']['input'];
+  fullName: Scalars['String']['input'];
+  phone: Scalars['String']['input'];
+  /** Must be one of the event's own pickup locations. */
+  preferredPickupLocationId?: InputMaybe<Scalars['ID']['input']>;
+  representativeEmail?: InputMaybe<Scalars['String']['input']>;
+  /**
+   * Somebody attending in their place. Both are needed together, or neither.
+   * The representative is emailed the same QR code — it is the same seat — and
+   * the registrant keeps their own copy.
+   */
+  representativeName?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type SubmitManagerRatingInput = {
@@ -5872,6 +8219,23 @@ export type SubscribedCustomerDetailsResponse = {
   totalSubscribers: Scalars['Int']['output'];
   unitSold: Scalars['Int']['output'];
   userDetails: Array<SubscribedCustomersDetails>;
+};
+
+/** Support ticket aggregates. Unrelated to ticketMetrics / CampaignTicketMetrics, which count raffle entries. */
+export type SupportTicketAnalytics = {
+  __typename?: 'SupportTicketAnalytics';
+  backlog: TicketBacklogStats;
+  byAdmin: Array<TicketAdminLoad>;
+  byCategory: Array<TicketBucket>;
+  byChannel: Array<TicketBucket>;
+  byStatus: Array<TicketBucket>;
+  byType: Array<TicketBucket>;
+  classifier: TicketClassifierStats;
+  /** Distinct people, not tickets — one customer with three tickets counts once. */
+  customersAffected: Scalars['Int']['output'];
+  resolution: TicketResolutionStats;
+  total: Scalars['Int']['output'];
+  volumeOverTime: Array<TicketVolumePoint>;
 };
 
 export type SuspendAgencyInput = {
@@ -5961,13 +8325,147 @@ export type SystemUsersOverviewResponse = {
   success: Scalars['Boolean']['output'];
 };
 
+export type Ticket = {
+  __typename?: 'Ticket';
+  _id: Scalars['ID']['output'];
+  /** What the classifier proposed, whether or not it was applied. */
+  ai?: Maybe<TicketClassification>;
+  /** The accountable owner. Auto-set to the customer's CS Manager when userAffected is linked. */
+  assigned_admin?: Maybe<Admin>;
+  /** Why the current owner was selected. Null on tickets created before assignment tracking. */
+  assigned_admin_source?: Maybe<TicketAssignmentSource>;
+  attachments: Array<TicketAttachment>;
+  body?: Maybe<Scalars['String']['output']>;
+  category?: Maybe<Scalars['String']['output']>;
+  category_source?: Maybe<FieldSource>;
+  channel: TicketChannel;
+  /** Specialists pulled in to help. They can act and close; the owner stays accountable. */
+  collaborators: Array<Admin>;
+  createdAt: Scalars['Date']['output'];
+  issue?: Maybe<TicketIssueRef>;
+  /** Set when merged into another ticket; drops out of every queue. */
+  merged_into?: Maybe<Scalars['ID']['output']>;
+  /** Everyone on the email thread. Replies go to the customer and copy the rest. */
+  participants: Array<TicketParticipant>;
+  /** The ticket this one continues, when a reply arrived too late to reopen it. Both stay in the queues. */
+  related_ticket?: Maybe<Scalars['ID']['output']>;
+  resolution?: Maybe<Scalars['String']['output']>;
+  resolved_at?: Maybe<Scalars['Date']['output']>;
+  resolved_by?: Maybe<Admin>;
+  sender?: Maybe<User>;
+  /** The raw address or number. Kept even after sender resolves -- the address is the fact, the link is an interpretation. */
+  source_reference?: Maybe<Scalars['String']['output']>;
+  status: TicketStatus;
+  subject: Scalars['String']['output'];
+  ticket_ref: Scalars['String']['output'];
+  type?: Maybe<TicketType>;
+  type_source?: Maybe<FieldSource>;
+  updatedAt: Scalars['Date']['output'];
+  user_affected?: Maybe<User>;
+  user_affected_source?: Maybe<FieldSource>;
+};
+
+export type TicketAdminLoad = {
+  __typename?: 'TicketAdminLoad';
+  admin: Admin;
+  assigned: Scalars['Int']['output'];
+  resolved: Scalars['Int']['output'];
+};
+
+export type TicketAffectedHint = {
+  __typename?: 'TicketAffectedHint';
+  kind: Scalars['String']['output'];
+  note?: Maybe<Scalars['String']['output']>;
+  value: Scalars['String']['output'];
+};
+
+export enum TicketAssignmentSource {
+  CustomerManager = 'customer_manager',
+  FallbackLeastLoaded = 'fallback_least_loaded',
+  Human = 'human',
+  SenderManager = 'sender_manager'
+}
+
+export type TicketAttachment = {
+  __typename?: 'TicketAttachment';
+  filename?: Maybe<Scalars['String']['output']>;
+  mime?: Maybe<Scalars['String']['output']>;
+  size?: Maybe<Scalars['Int']['output']>;
+  url: Scalars['String']['output'];
+};
+
+export type TicketAttachmentInput = {
+  filename?: InputMaybe<Scalars['String']['input']>;
+  mime?: InputMaybe<Scalars['String']['input']>;
+  size?: InputMaybe<Scalars['Int']['input']>;
+  url: Scalars['String']['input'];
+};
+
+export type TicketBacklogStats = {
+  __typename?: 'TicketBacklogStats';
+  olderThan48h: Scalars['Int']['output'];
+  /** Age of the oldest unresolved ticket. The number that matters day to day. */
+  oldestOpenHours?: Maybe<Scalars['Float']['output']>;
+  open: Scalars['Int']['output'];
+};
+
+/** One bucket of a support-ticket breakdown. An unset value reads as 'unset'. */
+export type TicketBucket = {
+  __typename?: 'TicketBucket';
+  count: Scalars['Int']['output'];
+  key: Scalars['String']['output'];
+};
+
+export enum TicketChannel {
+  Email = 'email',
+  InPerson = 'in_person',
+  Other = 'other',
+  Phone = 'phone',
+  Whatsapp = 'whatsapp'
+}
+
+export type TicketClassification = {
+  __typename?: 'TicketClassification';
+  action_confidence?: Maybe<Scalars['Float']['output']>;
+  affected_hints: Array<TicketAffectedHint>;
+  category_confidence?: Maybe<Scalars['Float']['output']>;
+  classified_at?: Maybe<Scalars['Date']['output']>;
+  /** Legacy combined category/type score. New clients should use the field-specific scores. */
+  confidence?: Maybe<Scalars['Float']['output']>;
+  /** Set when classification failed. Ticket creation never depends on it. */
+  error?: Maybe<Scalars['String']['output']>;
+  model?: Maybe<Scalars['String']['output']>;
+  requires_action?: Maybe<Scalars['Boolean']['output']>;
+  sender_confidence?: Maybe<Scalars['Float']['output']>;
+  sender_is_affected?: Maybe<Scalars['Boolean']['output']>;
+  suggested_category?: Maybe<Scalars['String']['output']>;
+  suggested_type?: Maybe<TicketType>;
+  type_confidence?: Maybe<Scalars['Float']['output']>;
+};
+
+export type TicketClassifierStats = {
+  __typename?: 'TicketClassifierStats';
+  aiSet: Scalars['Int']['output'];
+  humanSet: Scalars['Int']['output'];
+  /** Share of categorised tickets still carrying the machine's guess. Review coverage, not accuracy. */
+  unreviewedRate?: Maybe<Scalars['Float']['output']>;
+};
+
 export type TicketDetail = {
   __typename?: 'TicketDetail';
   amountPaid: Scalars['Float']['output'];
   createdDate: Scalars['Date']['output'];
+  /** The customer's CS Manager. Context only -- not the assignee. */
+  csManager?: Maybe<Admin>;
+  /** Recent open tickets from the same address -- the cheap stand-in for threading. */
+  duplicates: Array<DuplicateCandidate>;
   isActive: Scalars['Boolean']['output'];
+  /** The conversation, oldest first. A ticket opened before threading has one message. */
+  messages: Array<TicketMessage>;
+  notes: Array<TicketNote>;
   referrerEmail?: Maybe<Scalars['String']['output']>;
   referrerFullName?: Maybe<Scalars['String']['output']>;
+  ticket: Ticket;
   ticketId: Scalars['String']['output'];
   ticketType: Scalars['String']['output'];
   userEmail?: Maybe<Scalars['String']['output']>;
@@ -5975,10 +8473,167 @@ export type TicketDetail = {
   userId: Scalars['ID']['output'];
 };
 
+/** Queue chips. Narrow the list only -- ticketFilterCounts stays book-wide. */
+export enum TicketFilter {
+  All = 'all',
+  BlockedOnIssue = 'blocked_on_issue',
+  /** Owned by me, or I was pulled in as a collaborator. */
+  Mine = 'mine',
+  Open = 'open',
+  Resolved = 'resolved',
+  Unassigned = 'unassigned',
+  Unlinked = 'unlinked',
+  WaitingCustomer = 'waiting_customer'
+}
+
+/** Book-wide counts per chip, unaffected by the active chip. */
+export type TicketFilterCounts = {
+  __typename?: 'TicketFilterCounts';
+  all: Scalars['Int']['output'];
+  blockedOnIssue: Scalars['Int']['output'];
+  mine: Scalars['Int']['output'];
+  open: Scalars['Int']['output'];
+  resolved: Scalars['Int']['output'];
+  unassigned: Scalars['Int']['output'];
+  unlinked: Scalars['Int']['output'];
+  waitingCustomer: Scalars['Int']['output'];
+};
+
 export type TicketHoldersResponse = {
   __typename?: 'TicketHoldersResponse';
   tickets: Array<TicketDetail>;
   totalTickets: Scalars['Int']['output'];
+};
+
+export type TicketIngestionRun = {
+  __typename?: 'TicketIngestionRun';
+  _id: Scalars['ID']['output'];
+  classified: Scalars['Int']['output'];
+  created: Scalars['Int']['output'];
+  error?: Maybe<Scalars['String']['output']>;
+  finished_at?: Maybe<Scalars['Date']['output']>;
+  /** Highest mailbox UID handled. The next sweep resumes from here, so a stalled value means no new mail, not a stalled sweep. */
+  last_uid?: Maybe<Scalars['Int']['output']>;
+  mailbox: Scalars['String']['output'];
+  scanned: Scalars['Int']['output'];
+  skipped: Scalars['Int']['output'];
+  started_at: Scalars['Date']['output'];
+  status: IngestionRunStatus;
+  /** cron or manual — a hand-run should not read as a healthy schedule. */
+  trigger: Scalars['String']['output'];
+};
+
+/** Whether the mailbox is actually being swept. An empty queue is otherwise ambiguous. */
+export type TicketIngestionStatus = {
+  __typename?: 'TicketIngestionStatus';
+  /** Failures since the last success. Non-zero means the queue is stale. */
+  consecutiveFailures: Scalars['Int']['output'];
+  lastRun?: Maybe<TicketIngestionRun>;
+  lastSuccessAt?: Maybe<Scalars['Date']['output']>;
+  recent: Array<TicketIngestionRun>;
+};
+
+export type TicketIssueRef = {
+  __typename?: 'TicketIssueRef';
+  _id: Scalars['ID']['output'];
+  issue_ref: Scalars['String']['output'];
+  status: IssueStatus;
+  title: Scalars['String']['output'];
+};
+
+/** Candidate issue for a ticket, by keyword overlap. Suggestion only — nothing is linked. */
+export type TicketIssueSuggestion = {
+  __typename?: 'TicketIssueSuggestion';
+  issue: TicketIssueRef;
+  matchedTerms: Array<Scalars['String']['output']>;
+  score: Scalars['Float']['output'];
+};
+
+export type TicketListFilterInput = {
+  /** Who is working the ticket. */
+  assignedAdminId?: InputMaybe<Scalars['ID']['input']>;
+  category?: InputMaybe<Scalars['String']['input']>;
+  channel?: InputMaybe<TicketChannel>;
+  /** Whose book the customer sits in. A different question from assignedAdminId -- the two routinely disagree. */
+  csManagerId?: InputMaybe<Scalars['ID']['input']>;
+  filter?: InputMaybe<TicketFilter>;
+  /**
+   * When the ticket came in. Both bounds are inclusive days: a bare
+   * yyyy-mm-dd "to" covers that whole day rather than stopping at midnight.
+   * Narrows the list, the chip counts and the queue tiles alike.
+   */
+  from?: InputMaybe<Scalars['Date']['input']>;
+  issueId?: InputMaybe<Scalars['ID']['input']>;
+  /** Matches ticket ref, subject, body or source reference. */
+  search?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<TicketSort>;
+  to?: InputMaybe<Scalars['Date']['input']>;
+  type?: InputMaybe<TicketType>;
+};
+
+export type TicketListResponse = {
+  __typename?: 'TicketListResponse';
+  count: Scalars['Int']['output'];
+  filterCounts: TicketFilterCounts;
+  results: Array<Ticket>;
+};
+
+export type TicketMessage = {
+  __typename?: 'TicketMessage';
+  _id: Scalars['ID']['output'];
+  attachments: Array<TicketMessageAttachment>;
+  /** Who sent it -- an admin for outbound, the customer's account for inbound where known. */
+  author_admin?: Maybe<Admin>;
+  author_user?: Maybe<User>;
+  body: Scalars['String']['output'];
+  /** Everyone else copied on this message. */
+  cc_addresses: Array<Scalars['String']['output']>;
+  channel: Scalars['String']['output'];
+  createdAt: Scalars['Date']['output'];
+  delivery?: Maybe<TicketMessageDelivery>;
+  direction: MessageDirection;
+  from_address?: Maybe<Scalars['String']['output']>;
+  match?: Maybe<TicketMessageMatch>;
+  /** The message's own Date header, or when we saw it. */
+  sent_at: Scalars['Date']['output'];
+  subject?: Maybe<Scalars['String']['output']>;
+  to_address?: Maybe<Scalars['String']['output']>;
+};
+
+/**
+ * A file that arrived on, or went out with, one message.
+ *
+ * The url is a permanent, public Cloudinary link: anyone holding it can open the
+ * file, with no login. Support mail carries ID documents and bank statements, so
+ * treat these links as sensitive and do not paste them anywhere public.
+ */
+export type TicketMessageAttachment = {
+  __typename?: 'TicketMessageAttachment';
+  filename: Scalars['String']['output'];
+  /** Set when the mail client embedded it in the body rather than attaching it. */
+  inline: Scalars['Boolean']['output'];
+  mime: Scalars['String']['output'];
+  size: Scalars['Int']['output'];
+  /** Public and permanent. Null only on a row stored before urls were kept. */
+  url?: Maybe<Scalars['String']['output']>;
+};
+
+/** Outbound only. A failed reply stays in the conversation and must not read as a sent one. */
+export type TicketMessageDelivery = {
+  __typename?: 'TicketMessageDelivery';
+  error?: Maybe<Scalars['String']['output']>;
+  provider?: Maybe<Scalars['String']['output']>;
+  /** The transport's own request id. NOT a Message-ID -- Zepto does not report one. */
+  provider_ref?: Maybe<Scalars['String']['output']>;
+  status: MessageDeliveryStatus;
+};
+
+export type TicketMessageMatch = {
+  __typename?: 'TicketMessageMatch';
+  /** Two exact signals named different tickets; the header won. */
+  conflict: Scalars['Boolean']['output'];
+  considered: Array<MatchConsideration>;
+  signal: MatchSignal;
 };
 
 export type TicketMetrics = {
@@ -5990,11 +8645,126 @@ export type TicketMetrics = {
   userTicketPercentage?: Maybe<Scalars['Float']['output']>;
 };
 
+/**
+ * One month of support, in the only two numbers that answer "are we keeping up":
+ * what arrived and what was cleared. A ticket counts in the month it ARRIVED
+ * and, separately, in the month it was RESOLVED — which is often a different
+ * one, and conflating them makes a month of clean-up look like a quiet month.
+ */
+export type TicketMonthlyFlow = {
+  __typename?: 'TicketMonthlyFlow';
+  created: Scalars['Int']['output'];
+  /** yyyy-mm, in Lagos time. */
+  month: Scalars['String']['output'];
+  resolved: Scalars['Int']['output'];
+};
+
+export type TicketNote = {
+  __typename?: 'TicketNote';
+  _id: Scalars['ID']['output'];
+  admin?: Maybe<Admin>;
+  body: Scalars['String']['output'];
+  createdAt: Scalars['Date']['output'];
+};
+
+/**
+ * Somebody on a ticket's email thread.
+ *
+ * Distinct from a collaborator: a collaborator is an admin who can act on the
+ * ticket, a participant is an address that gets copied. Someone outside the
+ * company can be the second and never the first.
+ */
+export type TicketParticipant = {
+  __typename?: 'TicketParticipant';
+  added_at: Scalars['Date']['output'];
+  /** original | inbound | outbound | manual */
+  added_via: Scalars['String']['output'];
+  address: Scalars['String']['output'];
+  name?: Maybe<Scalars['String']['output']>;
+  /** customer — the person the ticket is for, and who replies are addressed to. cc — everybody else. */
+  role: Scalars['String']['output'];
+};
+
+/**
+ * The reader's own queue in a handful of numbers -- what sits above the ticket
+ * table. Scoped exactly like the table beneath it: a CS Manager reads the book,
+ * everyone else reads only what they are party to.
+ */
+export type TicketQueueStats = {
+  __typename?: 'TicketQueueStats';
+  /**
+   * Waiting on US: never answered, or the customer has written since we last
+   * did. Replaces the old "older than 48 hours", which counted 88% of the
+   * unresolved queue on production and so pointed at nothing in particular.
+   */
+  awaitingReply: Scalars['Int']['output'];
+  inProgress: Scalars['Int']['output'];
+  /** Tickets the current filters match — the strip and the table describe the same set. */
+  matching: Scalars['Int']['output'];
+  /** How long the oldest ticket we owe a reply on has been waiting, in hours. */
+  oldestAwaitingHours?: Maybe<Scalars['Float']['output']>;
+  open: Scalars['Int']['output'];
+  resolvedLast7Days: Scalars['Int']['output'];
+  waitingCustomer: Scalars['Int']['output'];
+};
+
+/** A Cloudinary file uploaded by an admin and sent with one email reply. */
+export type TicketReplyAttachmentInput = {
+  filename: Scalars['String']['input'];
+  format: Scalars['String']['input'];
+  mime: Scalars['String']['input'];
+  public_id: Scalars['String']['input'];
+  resource_type: Scalars['String']['input'];
+  size: Scalars['Int']['input'];
+  url: Scalars['String']['input'];
+};
+
+export type TicketResolutionStats = {
+  __typename?: 'TicketResolutionStats';
+  medianHours?: Maybe<Scalars['Float']['output']>;
+  p90Hours?: Maybe<Scalars['Float']['output']>;
+  resolved: Scalars['Int']['output'];
+};
+
+export enum TicketSort {
+  NewestFirst = 'newest_first',
+  OldestFirst = 'oldest_first',
+  RecentlyUpdated = 'recently_updated'
+}
+
+export enum TicketStatus {
+  InProgress = 'in_progress',
+  Open = 'open',
+  Resolved = 'resolved',
+  WaitingCustomer = 'waiting_customer'
+}
+
+/** What kind of message this is, independent of what it is about. */
+export enum TicketType {
+  Enquiry = 'enquiry',
+  Fault = 'fault',
+  Request = 'request'
+}
+
 export enum TicketTypeFilter {
   All = 'ALL',
   Referral = 'REFERRAL',
   User = 'USER'
 }
+
+/** Ranked candidate for userAffected, with why it was suggested. Never auto-applied. */
+export type TicketUserSuggestion = {
+  __typename?: 'TicketUserSuggestion';
+  confidence: Scalars['String']['output'];
+  reason: Scalars['String']['output'];
+  user: User;
+};
+
+export type TicketVolumePoint = {
+  __typename?: 'TicketVolumePoint';
+  count: Scalars['Int']['output'];
+  date: Scalars['String']['output'];
+};
 
 export type TokenInput = {
   token: Scalars['String']['input'];
@@ -6149,6 +8919,24 @@ export type UnassignedAssociateProsResponse = {
   results: Array<AssociateManagerProSummary>;
 };
 
+export type UnassignedCustomer = {
+  __typename?: 'UnassignedCustomer';
+  _id: Scalars['ID']['output'];
+  daysUnassigned: Scalars['Int']['output'];
+  email: Scalars['String']['output'];
+  firstName: Scalars['String']['output'];
+  firstPurchaseAt: Scalars['Date']['output'];
+  lastName: Scalars['String']['output'];
+  phone?: Maybe<Scalars['String']['output']>;
+  planCount: Scalars['Int']['output'];
+};
+
+export type UnassignedCustomerListResponse = {
+  __typename?: 'UnassignedCustomerListResponse';
+  count: Scalars['Int']['output'];
+  results: Array<UnassignedCustomer>;
+};
+
 export type UpcomingPayment = {
   __typename?: 'UpcomingPayment';
   amountDue: Scalars['Float']['output'];
@@ -6220,12 +9008,29 @@ export type UpdateFlexAssetInput = {
   title?: InputMaybe<Scalars['String']['input']>;
 };
 
+export type UpdateIssueInput = {
+  description?: InputMaybe<Scalars['String']['input']>;
+  issueId: Scalars['ID']['input'];
+  ownerId?: InputMaybe<Scalars['ID']['input']>;
+  resolutionNote?: InputMaybe<Scalars['String']['input']>;
+  status?: InputMaybe<IssueStatus>;
+  title?: InputMaybe<Scalars['String']['input']>;
+};
+
 export type UpdateMarketplaceListingInput = {
   commission_percentage?: InputMaybe<Scalars['Float']['input']>;
   listingId: Scalars['ID']['input'];
   listing_description?: InputMaybe<Scalars['String']['input']>;
   listing_price?: InputMaybe<Scalars['Float']['input']>;
   reason_for_selling?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type UpdateMeetingInput = {
+  audience_type?: InputMaybe<MeetingAudienceType>;
+  google_meet_url?: InputMaybe<Scalars['String']['input']>;
+  name?: InputMaybe<Scalars['String']['input']>;
+  starts_at?: InputMaybe<Scalars['Date']['input']>;
+  verification_lead_minutes?: InputMaybe<Scalars['Int']['input']>;
 };
 
 export type UpdateRequestInput = {
@@ -6240,6 +9045,16 @@ export type UpdateRequestResponse = {
   __typename?: 'UpdateRequestResponse';
   message: Scalars['String']['output'];
   success: Scalars['Boolean']['output'];
+};
+
+export type UpdateTicketInput = {
+  assignedAdminId?: InputMaybe<Scalars['ID']['input']>;
+  category?: InputMaybe<Scalars['String']['input']>;
+  status?: InputMaybe<TicketStatus>;
+  subject?: InputMaybe<Scalars['String']['input']>;
+  ticketId: Scalars['ID']['input'];
+  type?: InputMaybe<TicketType>;
+  userAffectedId?: InputMaybe<Scalars['ID']['input']>;
 };
 
 export type UpdateTinResponse = {
@@ -6301,6 +9116,18 @@ export type User = {
   facial_recognitation_verification_status?: Maybe<Scalars['Boolean']['output']>;
   firstName: Scalars['String']['output'];
   gender?: Maybe<Scalars['String']['output']>;
+  /**
+   * True when a withdrawal PIN has been set on this account. A boolean, never the
+   * PIN or its hash.
+   *
+   * The hash used to be selectable here as withdrawal_pin, which was harmless
+   * while nothing verified it and fatal once something did: four digits is ten
+   * thousand candidates, so a single leaked profile response is a few seconds of
+   * offline work away from the PIN itself. The password hash was selectable for
+   * the same reason and is gone with it — a client that needs to change either
+   * sends the new value in, and never reads the old one back.
+   */
+  has_withdrawal_pin?: Maybe<Scalars['Boolean']['output']>;
   is_processing?: Maybe<Scalars['Boolean']['output']>;
   kyc?: Maybe<Kyc>;
   kyc_verification_status?: Maybe<Scalars['Boolean']['output']>;
@@ -6311,7 +9138,6 @@ export type User = {
   message: Scalars['String']['output'];
   nextofKin?: Maybe<NextofKin>;
   occupation?: Maybe<Scalars['String']['output']>;
-  password: Scalars['String']['output'];
   payment_plan?: Maybe<PaymentPlan>;
   phoneNumber: Scalars['String']['output'];
   profile_pic?: Maybe<Scalars['String']['output']>;
@@ -6325,7 +9151,6 @@ export type User = {
   virtual_networth?: Maybe<Scalars['Float']['output']>;
   virtual_subscriptions?: Maybe<Scalars['Int']['output']>;
   wallet?: Maybe<Wallet>;
-  withdrawal_pin?: Maybe<Scalars['String']['output']>;
 };
 
 export type UserAcquisition = {
@@ -6348,6 +9173,7 @@ export type UserAdmin = {
   facial_recognitation_verification_status?: Maybe<Scalars['Boolean']['output']>;
   firstName: Scalars['String']['output'];
   gender?: Maybe<Scalars['String']['output']>;
+  hasAsset?: Maybe<Scalars['String']['output']>;
   howYouHearAboutUs?: Maybe<Scalars['String']['output']>;
   is_suspended?: Maybe<Scalars['Boolean']['output']>;
   kyc_verification_status?: Maybe<Scalars['Boolean']['output']>;
@@ -6517,6 +9343,12 @@ export type UserDetails = {
   facial_recognitation_verification_status?: Maybe<Scalars['Boolean']['output']>;
   firstName: Scalars['String']['output'];
   gender?: Maybe<Scalars['String']['output']>;
+  /**
+   * True when a withdrawal PIN has been set. Duplicated from User because the
+   * profile screens read getUserRefreshDetails, which returns this type — a flag
+   * only on User would be invisible to the one caller that needs it.
+   */
+  has_withdrawal_pin?: Maybe<Scalars['Boolean']['output']>;
   howYouHearAboutUs?: Maybe<Scalars['String']['output']>;
   is_processing?: Maybe<Scalars['Boolean']['output']>;
   kyc?: Maybe<Kyc>;
@@ -6640,6 +9472,18 @@ export type UserWithTicket = {
   ticketId?: Maybe<Scalars['String']['output']>;
 };
 
+export type VerifyMeetingEmailInput = {
+  email: Scalars['String']['input'];
+  slug: Scalars['String']['input'];
+};
+
+export type VerifyMeetingEmailResponse = {
+  __typename?: 'VerifyMeetingEmailResponse';
+  google_meet_url?: Maybe<Scalars['String']['output']>;
+  status: Scalars['String']['output'];
+  verification_opens_at?: Maybe<Scalars['Date']['output']>;
+};
+
 export type ViewAssetDetails = {
   __typename?: 'ViewAssetDetails';
   _id?: Maybe<Scalars['ID']['output']>;
@@ -6692,6 +9536,108 @@ export type WalletResponse = {
   __typename?: 'WalletResponse';
   data?: Maybe<Wallet>;
   success: Scalars['Boolean']['output'];
+};
+
+export type WhatsappContact = {
+  __typename?: 'WhatsappContact';
+  /** Where the conversation stood at the last message, e.g. AWAITING_RECEIPT. */
+  conversationStep?: Maybe<Scalars['String']['output']>;
+  e164?: Maybe<Scalars['String']['output']>;
+  email?: Maybe<Scalars['String']['output']>;
+  /** Messages that threw in the handler or were dropped by the rate limiter. */
+  failedCount: Scalars['Int']['output'];
+  firstMessageAt?: Maybe<Scalars['Date']['output']>;
+  firstName?: Maybe<Scalars['String']['output']>;
+  inboundCount: Scalars['Int']['output'];
+  isSuspended: Scalars['Boolean']['output'];
+  lastMessageAt?: Maybe<Scalars['Date']['output']>;
+  lastMessageDirection: WhatsappDirection;
+  /** One line for the list — the message text, or a bracketed stand-in for media. */
+  lastMessagePreview?: Maybe<Scalars['String']['output']>;
+  lastMessageStatus?: Maybe<Scalars['String']['output']>;
+  lastName?: Maybe<Scalars['String']['output']>;
+  messageCount: Scalars['Int']['output'];
+  optedOut: Scalars['Boolean']['output'];
+  outboundCount: Scalars['Int']['output'];
+  phoneNumber: Scalars['String']['output'];
+  referralStatus?: Maybe<Scalars['String']['output']>;
+  userId?: Maybe<Scalars['ID']['output']>;
+};
+
+export type WhatsappContactFilters = {
+  /** Substring match on the phone number. */
+  search?: InputMaybe<Scalars['String']['input']>;
+  /** Only conversations with a failed or rate-limited message in them. */
+  unresolvedOnly?: InputMaybe<Scalars['Boolean']['input']>;
+};
+
+/**
+ * Who a number belongs to, or as much of it as can be said safely. Every field is
+ * null for a number that matched no account **and** for one that matched several —
+ * naming the wrong customer against a conversation is worse than naming none.
+ */
+export type WhatsappContactIdentity = {
+  __typename?: 'WhatsappContactIdentity';
+  /** Canonical digits-only E.164, or null if the number could not be one. */
+  e164?: Maybe<Scalars['String']['output']>;
+  email?: Maybe<Scalars['String']['output']>;
+  firstName?: Maybe<Scalars['String']['output']>;
+  isSuspended: Scalars['Boolean']['output'];
+  lastName?: Maybe<Scalars['String']['output']>;
+  /** true when this number has sent STOP — no further notices go to it. */
+  optedOut: Scalars['Boolean']['output'];
+  /** Meta's E.164-without-plus form, as the sender arrives on the webhook. */
+  phoneNumber: Scalars['String']['output'];
+  referralStatus?: Maybe<Scalars['String']['output']>;
+  userId?: Maybe<Scalars['ID']['output']>;
+};
+
+export type WhatsappContactListPayload = {
+  __typename?: 'WhatsappContactListPayload';
+  count: Scalars['Int']['output'];
+  data: Array<WhatsappContact>;
+};
+
+export type WhatsappConversationPayload = {
+  __typename?: 'WhatsappConversationPayload';
+  contact: WhatsappContactIdentity;
+  /** Total messages with this number, not the number on this page. */
+  count: Scalars['Int']['output'];
+  /** Oldest first, the way a chat pane reads. */
+  messages: Array<WhatsappMessage>;
+};
+
+export enum WhatsappDirection {
+  Inbound = 'inbound',
+  Outbound = 'outbound'
+}
+
+export type WhatsappMessage = {
+  __typename?: 'WhatsappMessage';
+  conversationStep?: Maybe<Scalars['String']['output']>;
+  createdAt: Scalars['Date']['output'];
+  direction: WhatsappDirection;
+  durationMs?: Maybe<Scalars['Int']['output']>;
+  /** Why it failed, was skipped, or was rejected. */
+  error?: Maybe<Scalars['String']['output']>;
+  id: Scalars['ID']['output'];
+  /** Meta's wamid. Null on a send that failed before Meta issued one. */
+  messageId?: Maybe<Scalars['String']['output']>;
+  /** Meta's own type string: text, image, document, interactive, template. */
+  messageType?: Maybe<Scalars['String']['output']>;
+  payload?: Maybe<Scalars['JSON']['output']>;
+  /** text, or a bracketed stand-in when there is none. */
+  preview?: Maybe<Scalars['String']['output']>;
+  /** received | processed | failed | rate_limited | skipped | rejected | sent */
+  status: Scalars['String']['output'];
+  /** Outbound templates only: the approved template that was sent. */
+  templateName?: Maybe<Scalars['String']['output']>;
+  /**
+   * The message body. Empty for media, and literally "[otp redacted]" for an
+   * inbound account-verification code — those are stripped at write time so they
+   * never sit in the log for its ninety-day retention.
+   */
+  text: Scalars['String']['output'];
 };
 
 export type WithdrawInput = {
@@ -6798,7 +9744,16 @@ export type SubscribedCustomersDetails = {
   unitPurchased: Scalars['Int']['output'];
 };
 
+/**
+ * Setting a withdrawal PIN for the first time. Replacing one goes through
+ * ChangeWithdrawalPinInput or the reset flow instead.
+ *
+ * The account password is required, here and on every other route that writes a
+ * PIN: a session token proves only that somebody once signed in on some device,
+ * and a PIN that a hijacked session can replace protects nothing.
+ */
 export type WithdrawalPin = {
+  password: Scalars['String']['input'];
   withdrawal_pin: Scalars['String']['input'];
 };
 
@@ -6999,7 +9954,6 @@ export type ViewAssetOptionDataByNameQuery = { __typename?: 'Query', viewAssetOp
 
 export type GetAvailablePlotsForAssetQueryVariables = Exact<{
   assetId: Scalars['ID']['input'];
-  size?: InputMaybe<Scalars['Int']['input']>;
 }>;
 
 
@@ -7049,6 +10003,20 @@ export type UpdateAssetMutationVariables = Exact<{
 
 export type UpdateAssetMutation = { __typename?: 'Mutation', updateAsset: string };
 
+export type GetAssistantQueriesQueryVariables = Exact<{
+  page?: InputMaybe<Scalars['Int']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  filters?: InputMaybe<AssistantQueryFilters>;
+}>;
+
+
+export type GetAssistantQueriesQuery = { __typename?: 'Query', getAssistantQueries: { __typename?: 'AssistantQueryListPayload', count: number, data: Array<{ __typename?: 'AssistantQuestion', id: string, email: string, firstName?: string | null, lastName?: string | null, audience: AssistantAudience, question: string, answer?: string | null, answered: boolean, createdAt: any }> } };
+
+export type GetAssistantQueryCountsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GetAssistantQueryCountsQuery = { __typename?: 'Query', assistantQueryCounts: { __typename?: 'AssistantQueryCounts', customer: number, associate: number, answered: number, noAnswer: number, total: number } };
+
 export type AddAssociateManagerMutationVariables = Exact<{
   input: AddRemoveManagerInput;
 }>;
@@ -7063,14 +10031,14 @@ export type GetAllManagersDashboardQueryVariables = Exact<{
 }>;
 
 
-export type GetAllManagersDashboardQuery = { __typename?: 'Query', getAllManagersDashboard: { __typename?: 'ManagerDashboardResponse', associateProsGroupTotal: number, period: { __typename?: 'ManagerDashboardPeriod', periodType: PeriodType, month?: number | null, year?: number | null, start: any, end: any }, target: { __typename?: 'ManagerDashboardTarget', recruitedTarget: number, recruitedSoFar: number, sellingTarget: number, sellingSoFar: number, performanceScoreTarget: number, performanceScoreSoFar: number }, recruitment: { __typename?: 'ManagerDashboardRecruitment', newSignupsInPeriod: number, upgradesInPeriod: number, onboardedInPeriod: number, totalAssigned: number, onboardingQueueCount: number }, salesAndRevenue: { __typename?: 'ManagerDashboardSalesRevenue', sellingPros: number, sellingProsTarget: number, totalRevenue: number, initialSalesRevenue: number, recurringRevenue: number, revenuePerSellingPro: number }, activity: { __typename?: 'ManagerDashboardActivity', activeCount: number, activePct: number, recentLoginCount: number, recentSaleCount: number, recentRecruitCount: number, inactiveCount: number, inactivePct: number, abandonedCount: number, abandonedPct: number }, milestones: { __typename?: 'ManagerDashboardMilestones', earlySellers: number, lateFirstSellers: number }, performanceScore: { __typename?: 'ManagerDashboardPerformanceScore', target: number, actual: number }, associatePros: Array<{ __typename?: 'ManagerDashboardProRow', id: string, firstName?: string | null, lastName?: string | null, email?: string | null, phoneNumber?: string | null, status: string, dateRecruited?: any | null, totalSales: number, revenueGenerated: number, lastLogin?: any | null, onboardedAt?: any | null }> } };
+export type GetAllManagersDashboardQuery = { __typename?: 'Query', getAllManagersDashboard: { __typename?: 'ManagerDashboardResponse', associateProsGroupTotal: number, period: { __typename?: 'ManagerDashboardPeriod', periodType: PeriodType, month?: number | null, year?: number | null, start: any, end: any }, target: { __typename?: 'ManagerDashboardTarget', recruitedTarget: number, recruitedSoFar: number, sellingTarget: number, sellingSoFar: number, revenueTarget: number, revenueSoFar: number, performanceScoreTarget: number, performanceScoreSoFar: number }, recruitment: { __typename?: 'ManagerDashboardRecruitment', newSignupsInPeriod: number, upgradesInPeriod: number, onboardedInPeriod: number, onboardedFreshInPeriod: number, onboardedCarryoverInPeriod: number, totalAssigned: number, onboardingQueueCount: number, othersNewSignupsCount: number, othersUpgradesCount: number, activeRecruitingProsCount: number, activePromotingProsCount: number, newSignupsBySource: { __typename?: 'SourceBreakdown', managed: number, unassigned: number, users: number, associate: number }, upgradesBySource: { __typename?: 'SourceBreakdown', managed: number, unassigned: number, users: number, associate: number }, topNewSignupsContributors: Array<{ __typename?: 'ProContributor', proId: string, firstName?: string | null, lastName?: string | null, email?: string | null, count: number }>, topUpgradesContributors: Array<{ __typename?: 'ProContributor', proId: string, firstName?: string | null, lastName?: string | null, email?: string | null, count: number }> }, salesAndRevenue: { __typename?: 'ManagerDashboardSalesRevenue', sellingPros: number, sellingProsTarget: number, totalRevenue: number, initialSalesRevenue: number, recurringRevenue: number, revenuePerSellingPro: number, contractSize: number, othersSellingRevenue: number, activeRevenueGeneratingProsCount: number, salesCountBySource: { __typename?: 'SourceBreakdown', managed: number, unassigned: number, users: number, associate: number }, revenueBySource: { __typename?: 'SourceBreakdownFloat', managed: number, unassigned: number, users: number, associate: number }, topSellingContributors: Array<{ __typename?: 'ProContributorFloat', proId: string, firstName?: string | null, lastName?: string | null, email?: string | null, amount: number }> }, activity: { __typename?: 'ManagerDashboardActivity', activeCount: number, activePct: number, recentLoginCount: number, recentSaleCount: number, recentRecruitCount: number, inactiveCount: number, inactivePct: number, abandonedCount: number, abandonedPct: number }, milestones: { __typename?: 'ManagerDashboardMilestones', earlySellers: number, lateFirstSellers: number }, performanceScore: { __typename?: 'ManagerDashboardPerformanceScore', score: number, sellingComponent: number, revenueComponent: number, recruitmentComponent: number, target: number, actual: number, ratingCount: number }, associatePros: Array<{ __typename?: 'ManagerDashboardProRow', id: string, firstName?: string | null, lastName?: string | null, email?: string | null, phoneNumber?: string | null, status: string, dateRecruited?: any | null, totalSales: number, revenueGenerated: number, lastLogin?: any | null, onboardedAt?: any | null }> } };
 
 export type AssignAssociateManagerTargetMutationVariables = Exact<{
   input: AssignManagerTargetInput;
 }>;
 
 
-export type AssignAssociateManagerTargetMutation = { __typename?: 'Mutation', assignAssociateManagerTarget: { __typename?: 'AssociateManagerTargetType', _id: string, manager: string, month: number, year: number, associate_pro_recruited_target: number, selling_associate_pro_target: number, performance_score_target: number, createdAt?: any | null, updatedAt?: any | null } };
+export type AssignAssociateManagerTargetMutation = { __typename?: 'Mutation', assignAssociateManagerTarget: { __typename?: 'AssociateManagerTargetType', _id: string, manager: string, month: number, year: number, associate_pro_recruited_target: number, selling_associate_pro_target: number, revenue_target: number, performance_score_target: number, createdAt?: any | null, updatedAt?: any | null } };
 
 export type GetAssociateManagersQueryVariables = Exact<{
   page: Scalars['Int']['input'];
@@ -7157,21 +10125,21 @@ export type AdminGetManagerDashboardQueryVariables = Exact<{
 }>;
 
 
-export type AdminGetManagerDashboardQuery = { __typename?: 'Query', adminGetManagerDashboard: { __typename?: 'ManagerDashboardResponse', associateProsGroupTotal: number, period: { __typename?: 'ManagerDashboardPeriod', periodType: PeriodType, month?: number | null, year?: number | null, start: any, end: any }, target: { __typename?: 'ManagerDashboardTarget', recruitedTarget: number, recruitedSoFar: number, sellingTarget: number, sellingSoFar: number, performanceScoreTarget: number, performanceScoreSoFar: number }, recruitment: { __typename?: 'ManagerDashboardRecruitment', newSignupsInPeriod: number, upgradesInPeriod: number, onboardedInPeriod: number, totalAssigned: number, onboardingQueueCount: number }, salesAndRevenue: { __typename?: 'ManagerDashboardSalesRevenue', sellingPros: number, sellingProsTarget: number, totalRevenue: number, initialSalesRevenue: number, recurringRevenue: number, revenuePerSellingPro: number }, activity: { __typename?: 'ManagerDashboardActivity', activeCount: number, activePct: number, recentLoginCount: number, recentSaleCount: number, recentRecruitCount: number, inactiveCount: number, inactivePct: number, abandonedCount: number, abandonedPct: number }, milestones: { __typename?: 'ManagerDashboardMilestones', earlySellers: number, lateFirstSellers: number }, performanceScore: { __typename?: 'ManagerDashboardPerformanceScore', target: number, actual: number }, associatePros: Array<{ __typename?: 'ManagerDashboardProRow', id: string, firstName?: string | null, lastName?: string | null, email?: string | null, phoneNumber?: string | null, status: string, dateRecruited?: any | null, totalSales: number, revenueGenerated: number, lastLogin?: any | null, onboardedAt?: any | null }> } };
+export type AdminGetManagerDashboardQuery = { __typename?: 'Query', adminGetManagerDashboard: { __typename?: 'ManagerDashboardResponse', associateProsGroupTotal: number, period: { __typename?: 'ManagerDashboardPeriod', periodType: PeriodType, month?: number | null, year?: number | null, start: any, end: any }, target: { __typename?: 'ManagerDashboardTarget', recruitedTarget: number, recruitedSoFar: number, sellingTarget: number, sellingSoFar: number, revenueTarget: number, revenueSoFar: number, performanceScoreTarget: number, performanceScoreSoFar: number }, recruitment: { __typename?: 'ManagerDashboardRecruitment', newSignupsInPeriod: number, upgradesInPeriod: number, onboardedInPeriod: number, onboardedFreshInPeriod: number, onboardedCarryoverInPeriod: number, totalAssigned: number, onboardingQueueCount: number, othersNewSignupsCount: number, othersUpgradesCount: number, activeRecruitingProsCount: number, activePromotingProsCount: number, newSignupsBySource: { __typename?: 'SourceBreakdown', managed: number, unassigned: number, users: number, associate: number }, upgradesBySource: { __typename?: 'SourceBreakdown', managed: number, unassigned: number, users: number, associate: number }, topNewSignupsContributors: Array<{ __typename?: 'ProContributor', proId: string, firstName?: string | null, lastName?: string | null, email?: string | null, count: number }>, topUpgradesContributors: Array<{ __typename?: 'ProContributor', proId: string, firstName?: string | null, lastName?: string | null, email?: string | null, count: number }> }, salesAndRevenue: { __typename?: 'ManagerDashboardSalesRevenue', sellingPros: number, sellingProsTarget: number, totalRevenue: number, initialSalesRevenue: number, recurringRevenue: number, revenuePerSellingPro: number, contractSize: number, othersSellingRevenue: number, activeRevenueGeneratingProsCount: number, salesCountBySource: { __typename?: 'SourceBreakdown', managed: number, unassigned: number, users: number, associate: number }, revenueBySource: { __typename?: 'SourceBreakdownFloat', managed: number, unassigned: number, users: number, associate: number }, topSellingContributors: Array<{ __typename?: 'ProContributorFloat', proId: string, firstName?: string | null, lastName?: string | null, email?: string | null, amount: number }> }, activity: { __typename?: 'ManagerDashboardActivity', activeCount: number, activePct: number, recentLoginCount: number, recentSaleCount: number, recentRecruitCount: number, inactiveCount: number, inactivePct: number, abandonedCount: number, abandonedPct: number }, milestones: { __typename?: 'ManagerDashboardMilestones', earlySellers: number, lateFirstSellers: number }, performanceScore: { __typename?: 'ManagerDashboardPerformanceScore', score: number, sellingComponent: number, revenueComponent: number, recruitmentComponent: number, target: number, actual: number, ratingCount: number }, associatePros: Array<{ __typename?: 'ManagerDashboardProRow', id: string, firstName?: string | null, lastName?: string | null, email?: string | null, phoneNumber?: string | null, status: string, dateRecruited?: any | null, totalSales: number, revenueGenerated: number, lastLogin?: any | null, onboardedAt?: any | null }> } };
 
 export type ManagerDashboardQueryVariables = Exact<{
   filter?: InputMaybe<ManagerDashboardFilterInput>;
 }>;
 
 
-export type ManagerDashboardQuery = { __typename?: 'Query', managerDashboard: { __typename?: 'ManagerDashboardResponse', associateProsGroupTotal: number, period: { __typename?: 'ManagerDashboardPeriod', periodType: PeriodType, month?: number | null, year?: number | null, start: any, end: any }, target: { __typename?: 'ManagerDashboardTarget', recruitedTarget: number, recruitedSoFar: number, sellingTarget: number, sellingSoFar: number, performanceScoreTarget: number, performanceScoreSoFar: number }, recruitment: { __typename?: 'ManagerDashboardRecruitment', newSignupsInPeriod: number, upgradesInPeriod: number, onboardedInPeriod: number, totalAssigned: number, onboardingQueueCount: number }, salesAndRevenue: { __typename?: 'ManagerDashboardSalesRevenue', sellingPros: number, sellingProsTarget: number, totalRevenue: number, initialSalesRevenue: number, recurringRevenue: number, revenuePerSellingPro: number }, activity: { __typename?: 'ManagerDashboardActivity', activeCount: number, activePct: number, recentLoginCount: number, recentSaleCount: number, recentRecruitCount: number, inactiveCount: number, inactivePct: number, abandonedCount: number, abandonedPct: number }, milestones: { __typename?: 'ManagerDashboardMilestones', earlySellers: number, lateFirstSellers: number }, performanceScore: { __typename?: 'ManagerDashboardPerformanceScore', target: number, actual: number }, associatePros: Array<{ __typename?: 'ManagerDashboardProRow', id: string, firstName?: string | null, lastName?: string | null, email?: string | null, phoneNumber?: string | null, status: string, dateRecruited?: any | null, totalSales: number, revenueGenerated: number, lastLogin?: any | null, onboardedAt?: any | null }> } };
+export type ManagerDashboardQuery = { __typename?: 'Query', managerDashboard: { __typename?: 'ManagerDashboardResponse', associateProsGroupTotal: number, period: { __typename?: 'ManagerDashboardPeriod', periodType: PeriodType, month?: number | null, year?: number | null, start: any, end: any }, target: { __typename?: 'ManagerDashboardTarget', recruitedTarget: number, recruitedSoFar: number, sellingTarget: number, sellingSoFar: number, revenueTarget: number, revenueSoFar: number, performanceScoreTarget: number, performanceScoreSoFar: number }, recruitment: { __typename?: 'ManagerDashboardRecruitment', newSignupsInPeriod: number, upgradesInPeriod: number, onboardedInPeriod: number, onboardedFreshInPeriod: number, onboardedCarryoverInPeriod: number, totalAssigned: number, onboardingQueueCount: number, othersNewSignupsCount: number, othersUpgradesCount: number, activeRecruitingProsCount: number, activePromotingProsCount: number, newSignupsBySource: { __typename?: 'SourceBreakdown', managed: number, unassigned: number, users: number, associate: number }, upgradesBySource: { __typename?: 'SourceBreakdown', managed: number, unassigned: number, users: number, associate: number }, topNewSignupsContributors: Array<{ __typename?: 'ProContributor', proId: string, firstName?: string | null, lastName?: string | null, email?: string | null, count: number }>, topUpgradesContributors: Array<{ __typename?: 'ProContributor', proId: string, firstName?: string | null, lastName?: string | null, email?: string | null, count: number }> }, salesAndRevenue: { __typename?: 'ManagerDashboardSalesRevenue', sellingPros: number, sellingProsTarget: number, totalRevenue: number, initialSalesRevenue: number, recurringRevenue: number, revenuePerSellingPro: number, contractSize: number, othersSellingRevenue: number, activeRevenueGeneratingProsCount: number, salesCountBySource: { __typename?: 'SourceBreakdown', managed: number, unassigned: number, users: number, associate: number }, revenueBySource: { __typename?: 'SourceBreakdownFloat', managed: number, unassigned: number, users: number, associate: number }, topSellingContributors: Array<{ __typename?: 'ProContributorFloat', proId: string, firstName?: string | null, lastName?: string | null, email?: string | null, amount: number }> }, activity: { __typename?: 'ManagerDashboardActivity', activeCount: number, activePct: number, recentLoginCount: number, recentSaleCount: number, recentRecruitCount: number, inactiveCount: number, inactivePct: number, abandonedCount: number, abandonedPct: number }, milestones: { __typename?: 'ManagerDashboardMilestones', earlySellers: number, lateFirstSellers: number }, performanceScore: { __typename?: 'ManagerDashboardPerformanceScore', score: number, sellingComponent: number, revenueComponent: number, recruitmentComponent: number, target: number, actual: number, ratingCount: number }, associatePros: Array<{ __typename?: 'ManagerDashboardProRow', id: string, firstName?: string | null, lastName?: string | null, email?: string | null, phoneNumber?: string | null, status: string, dateRecruited?: any | null, totalSales: number, revenueGenerated: number, lastLogin?: any | null, onboardedAt?: any | null }> } };
 
 export type ListAssociateManagerTargetsQueryVariables = Exact<{
   managerId: Scalars['ID']['input'];
 }>;
 
 
-export type ListAssociateManagerTargetsQuery = { __typename?: 'Query', listAssociateManagerTargets: Array<{ __typename?: 'AssociateManagerTargetType', _id: string, manager: string, month: number, year: number, associate_pro_recruited_target: number, selling_associate_pro_target: number, performance_score_target: number, createdAt?: any | null, updatedAt?: any | null }> };
+export type ListAssociateManagerTargetsQuery = { __typename?: 'Query', listAssociateManagerTargets: Array<{ __typename?: 'AssociateManagerTargetType', _id: string, manager: string, month: number, year: number, associate_pro_recruited_target: number, selling_associate_pro_target: number, revenue_target: number, performance_score_target: number, createdAt?: any | null, updatedAt?: any | null }> };
 
 export type GetAssociateManagerTargetQueryVariables = Exact<{
   managerId: Scalars['ID']['input'];
@@ -7180,7 +10148,7 @@ export type GetAssociateManagerTargetQueryVariables = Exact<{
 }>;
 
 
-export type GetAssociateManagerTargetQuery = { __typename?: 'Query', getAssociateManagerTarget?: { __typename?: 'AssociateManagerTargetType', _id: string, manager: string, month: number, year: number, associate_pro_recruited_target: number, selling_associate_pro_target: number, performance_score_target: number, createdAt?: any | null, updatedAt?: any | null } | null };
+export type GetAssociateManagerTargetQuery = { __typename?: 'Query', getAssociateManagerTarget?: { __typename?: 'AssociateManagerTargetType', _id: string, manager: string, month: number, year: number, associate_pro_recruited_target: number, selling_associate_pro_target: number, revenue_target: number, performance_score_target: number, createdAt?: any | null, updatedAt?: any | null } | null };
 
 export type GetOnboardingAttemptsQueryVariables = Exact<{
   proId: Scalars['ID']['input'];
@@ -7210,7 +10178,7 @@ export type GetSystemAssociatesDashboardQueryVariables = Exact<{
 }>;
 
 
-export type GetSystemAssociatesDashboardQuery = { __typename?: 'Query', getSystemAssociatesDashboard: { __typename?: 'ManagerDashboardResponse', associateProsGroupTotal: number, period: { __typename?: 'ManagerDashboardPeriod', periodType: PeriodType, month?: number | null, year?: number | null, start: any, end: any }, recruitment: { __typename?: 'ManagerDashboardRecruitment', newSignupsInPeriod: number, upgradesInPeriod: number, onboardedInPeriod: number, totalAssigned: number, onboardingQueueCount: number }, salesAndRevenue: { __typename?: 'ManagerDashboardSalesRevenue', sellingPros: number, sellingProsTarget: number, totalRevenue: number, initialSalesRevenue: number, recurringRevenue: number, revenuePerSellingPro: number }, activity: { __typename?: 'ManagerDashboardActivity', activeCount: number, activePct: number, recentLoginCount: number, recentSaleCount: number, recentRecruitCount: number, inactiveCount: number, inactivePct: number, abandonedCount: number, abandonedPct: number }, milestones: { __typename?: 'ManagerDashboardMilestones', earlySellers: number, lateFirstSellers: number }, performanceScore: { __typename?: 'ManagerDashboardPerformanceScore', target: number, actual: number }, associatePros: Array<{ __typename?: 'ManagerDashboardProRow', id: string, firstName?: string | null, lastName?: string | null, email?: string | null, phoneNumber?: string | null, status: string, dateRecruited?: any | null, totalSales: number, revenueGenerated: number, lastLogin?: any | null, onboardedAt?: any | null }> } };
+export type GetSystemAssociatesDashboardQuery = { __typename?: 'Query', getSystemAssociatesDashboard: { __typename?: 'ManagerDashboardResponse', associateProsGroupTotal: number, period: { __typename?: 'ManagerDashboardPeriod', periodType: PeriodType, month?: number | null, year?: number | null, start: any, end: any }, recruitment: { __typename?: 'ManagerDashboardRecruitment', newSignupsInPeriod: number, upgradesInPeriod: number, onboardedInPeriod: number, onboardedFreshInPeriod: number, onboardedCarryoverInPeriod: number, totalAssigned: number, onboardingQueueCount: number, othersNewSignupsCount: number, othersUpgradesCount: number, activeRecruitingProsCount: number, activePromotingProsCount: number, newSignupsBySource: { __typename?: 'SourceBreakdown', managed: number, unassigned: number, users: number, associate: number }, upgradesBySource: { __typename?: 'SourceBreakdown', managed: number, unassigned: number, users: number, associate: number }, topNewSignupsContributors: Array<{ __typename?: 'ProContributor', proId: string, firstName?: string | null, lastName?: string | null, email?: string | null, count: number }>, topUpgradesContributors: Array<{ __typename?: 'ProContributor', proId: string, firstName?: string | null, lastName?: string | null, email?: string | null, count: number }> }, salesAndRevenue: { __typename?: 'ManagerDashboardSalesRevenue', sellingPros: number, sellingProsTarget: number, totalRevenue: number, initialSalesRevenue: number, recurringRevenue: number, revenuePerSellingPro: number, contractSize: number, othersSellingRevenue: number, activeRevenueGeneratingProsCount: number, salesCountBySource: { __typename?: 'SourceBreakdown', managed: number, unassigned: number, users: number, associate: number }, revenueBySource: { __typename?: 'SourceBreakdownFloat', managed: number, unassigned: number, users: number, associate: number }, topSellingContributors: Array<{ __typename?: 'ProContributorFloat', proId: string, firstName?: string | null, lastName?: string | null, email?: string | null, amount: number }> }, activity: { __typename?: 'ManagerDashboardActivity', activeCount: number, activePct: number, recentLoginCount: number, recentSaleCount: number, recentRecruitCount: number, inactiveCount: number, inactivePct: number, abandonedCount: number, abandonedPct: number }, milestones: { __typename?: 'ManagerDashboardMilestones', earlySellers: number, lateFirstSellers: number }, performanceScore: { __typename?: 'ManagerDashboardPerformanceScore', score: number, sellingComponent: number, revenueComponent: number, recruitmentComponent: number, target: number, actual: number, ratingCount: number }, associatePros: Array<{ __typename?: 'ManagerDashboardProRow', id: string, firstName?: string | null, lastName?: string | null, email?: string | null, phoneNumber?: string | null, status: string, dateRecruited?: any | null, totalSales: number, revenueGenerated: number, lastLogin?: any | null, onboardedAt?: any | null }> } };
 
 export type GetManagerSalesRecordQueryVariables = Exact<{
   filters?: InputMaybe<SalesRecordFilters>;
@@ -7324,6 +10292,10 @@ export type ExportUpgradeRequestsQueryVariables = Exact<{
   page: Scalars['Int']['input'];
   limit: Scalars['Int']['input'];
   adminStatus?: InputMaybe<AdminStatus>;
+  transactionType?: InputMaybe<TransactionType>;
+  upgradeType?: InputMaybe<Scalars['String']['input']>;
+  startDate?: InputMaybe<Scalars['String']['input']>;
+  endDate?: InputMaybe<Scalars['String']['input']>;
   search?: InputMaybe<Scalars['String']['input']>;
 }>;
 
@@ -7334,6 +10306,10 @@ export type GetAllUpgradeRequestsQueryVariables = Exact<{
   page: Scalars['Int']['input'];
   limit: Scalars['Int']['input'];
   adminStatus?: InputMaybe<AdminStatus>;
+  transactionType?: InputMaybe<TransactionType>;
+  upgradeType?: InputMaybe<Scalars['String']['input']>;
+  startDate?: InputMaybe<Scalars['String']['input']>;
+  endDate?: InputMaybe<Scalars['String']['input']>;
   search?: InputMaybe<Scalars['String']['input']>;
 }>;
 
@@ -7501,6 +10477,169 @@ export type GetHamperLeaderboardQueryVariables = Exact<{
 
 export type GetHamperLeaderboardQuery = { __typename?: 'Query', getHamperLeaderboard: Array<{ __typename?: 'HamperLeaderboardEntry', email: string, hamperCount: number, name: string, numberOfReferredUsers: number, phoneNumber: string, referrerId: string, totalAmountPaid: number, totalAssetValue: number, totalBalance: number, totalLandPrice: number, totalSqmSold: number }> };
 
+export type GetCompanyEventAssetsQueryVariables = Exact<{
+  page: Scalars['Int']['input'];
+  limit: Scalars['Int']['input'];
+}>;
+
+
+export type GetCompanyEventAssetsQuery = { __typename?: 'Query', getAllAdminAssets?: { __typename?: 'AssetAdminResponse', data: Array<{ __typename?: 'Asset', _id?: string | null, asset_name?: string | null, asset_location?: string | null, asset_type?: string | null, asset_option?: Array<{ __typename?: 'AssetOption', size?: number | null } | null> | null } | null> } | null };
+
+export type GetCompanyEventAssetNamesQueryVariables = Exact<{
+  page: Scalars['Int']['input'];
+  limit: Scalars['Int']['input'];
+}>;
+
+
+export type GetCompanyEventAssetNamesQuery = { __typename?: 'Query', getAllAdminAssets?: { __typename?: 'AssetAdminResponse', data: Array<{ __typename?: 'Asset', _id?: string | null, asset_name?: string | null, asset_type?: string | null } | null> } | null };
+
+export type DeallocateFromEventMutationVariables = Exact<{
+  eventId: Scalars['ID']['input'];
+  allocationId: Scalars['ID']['input'];
+  reason?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+
+export type DeallocateFromEventMutation = { __typename?: 'Mutation', deallocateFromEvent: { __typename?: 'DeallocateFromEventPayload', deallocated: boolean, already_cancelled: boolean, freed: number } };
+
+export type GetEventEligibleClientsQueryVariables = Exact<{
+  eventId: Scalars['ID']['input'];
+  filter?: InputMaybe<EventEligibleClientFilterInput>;
+  page: Scalars['Int']['input'];
+  limit: Scalars['Int']['input'];
+}>;
+
+
+export type GetEventEligibleClientsQuery = { __typename?: 'Query', eventEligibleClients: { __typename?: 'EventEligibleClientListPayload', count: number, data: Array<{ __typename?: 'EventEligibleClient', payment_plan: string, user?: string | null, name: string, email?: string | null, phone?: string | null, size: number, no_of_units: number, total_size: number, eligibility_tier: string, land_completed_at?: any | null, asset?: string | null, asset_type?: string | null, qualified_by: string, percent_paid: number, allocation_qualification?: number | null }> } };
+
+export type AllocateToEventMutationVariables = Exact<{
+  eventId: Scalars['ID']['input'];
+  paymentPlanIds: Array<Scalars['ID']['input']> | Scalars['ID']['input'];
+}>;
+
+
+export type AllocateToEventMutation = { __typename?: 'Mutation', allocateToEvent: { __typename?: 'AllocateToEventPayload', remaining_capacity: number, succeeded: Array<{ __typename?: 'EventAllocationSuccess', payment_plans: Array<string>, id: string, size_reserved: number }>, failed: Array<{ __typename?: 'EventAllocationFailure', payment_plan: string, reason: string }> } };
+
+export type SetCompanyEventStatusMutationVariables = Exact<{
+  id: Scalars['ID']['input'];
+  status: Scalars['String']['input'];
+}>;
+
+
+export type SetCompanyEventStatusMutation = { __typename?: 'Mutation', setCompanyEventStatus: { __typename?: 'CompanyEvent', id: string, status: string } };
+
+export type GetCsManagerDashboardQueryVariables = Exact<{
+  managerId: Scalars['ID']['input'];
+  month?: InputMaybe<Scalars['Int']['input']>;
+  year?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  filter?: InputMaybe<CsPlanFilter>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  estate?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<CsPlanSort>;
+}>;
+
+
+export type GetCsManagerDashboardQuery = { __typename?: 'Query', getCSManagerDashboard: { __typename?: 'CSManagerDashboardResponse', plansTotal: number, period: { __typename?: 'CSManagerPeriod', periodType: string, month?: number | null, year?: number | null, start: any, end: any }, manager?: { __typename?: 'Admin', _id: string, userName: string, email: string, role: string } | null, target: { __typename?: 'CSManagerTargets', allocatedTarget: number, allocatedSoFar: number, onboardedTarget: number, onboardedSoFar: number, ticketsResolvedTarget: number, ticketsEntered: number, ticketsResolved: number, ticketResolutionRate?: number | null, ticketFlow: Array<{ __typename?: 'TicketMonthlyFlow', month: string, created: number, resolved: number }> }, performanceScore: { __typename?: 'CSManagerPerformanceScore', score: number, allocatedComponent: number, onboardedComponent: number, ticketsComponent: number }, obligation: { __typename?: 'CSManagerObligation', paidNotAllocatedThisPeriod: number }, backlogs: { __typename?: 'CSManagerBacklogs', allocation: { __typename?: 'AgeSplitBacklog', total: number, thisMonth: number, lastMonth: number, older: number }, onboarding: { __typename?: 'OnboardingBacklog', total: number, callPending: number, confirmPending: number, disputed: number, dueThisPeriod: number, dueCarriedOver: number }, doa: { __typename?: 'AgeSplitBacklog', total: number, thisMonth: number, lastMonth: number, older: number } }, portfolio: { __typename?: 'CSManagerPortfolio', totalAssigned: number, completedPayment: number, withinPaymentPeriod: number, closeToDefaulting: number }, plans: Array<{ __typename?: 'PlanRow', planId: string, priorPlansCount: number, asset: string, assetId?: string | null, location?: string | null, size?: number | null, units: number, allocationStatus?: string | null, product: FlexOrFullownership, purchaseDate: any, paymentStatus: PaymentStatus, paymentLabel: string, onboarding: OnboardingStatus, allocation: AllocationStatus, allocationLabel?: string | null, doa: DoaStatus, doaLabel?: string | null, lastActivityAt: any, customer: { __typename?: 'PlanRowCustomer', id: string, firstName: string, lastName: string, email: string, phone: string }, lastAttempt?: { __typename?: 'PlanRowLastAttempt', outcome: string, calledAt: any, attempts: number } | null }>, filterCounts: { __typename?: 'CSPlanFilterCounts', all: number, dueAllocation: number, onboardingPending: number, neverAttempted: number, noAnswer: number, rescheduled: number, dueDoa: number, defaultingSoon: number, completedPayment: number }, estates: Array<{ __typename?: 'CSEstateOption', name: string, plans: number, dueAllocation: number }> } };
+
+export type GetAllCsManagersDashboardQueryVariables = Exact<{
+  month?: InputMaybe<Scalars['Int']['input']>;
+  year?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  filter?: InputMaybe<CsPlanFilter>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  estate?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<CsPlanSort>;
+}>;
+
+
+export type GetAllCsManagersDashboardQuery = { __typename?: 'Query', getAllCSManagersDashboard: { __typename?: 'CSManagerDashboardResponse', plansTotal: number, period: { __typename?: 'CSManagerPeriod', periodType: string, month?: number | null, year?: number | null, start: any, end: any }, manager?: { __typename?: 'Admin', _id: string, userName: string, email: string, role: string } | null, target: { __typename?: 'CSManagerTargets', allocatedTarget: number, allocatedSoFar: number, onboardedTarget: number, onboardedSoFar: number, ticketsResolvedTarget: number, ticketsEntered: number, ticketsResolved: number, ticketResolutionRate?: number | null, ticketFlow: Array<{ __typename?: 'TicketMonthlyFlow', month: string, created: number, resolved: number }> }, performanceScore: { __typename?: 'CSManagerPerformanceScore', score: number, allocatedComponent: number, onboardedComponent: number, ticketsComponent: number }, obligation: { __typename?: 'CSManagerObligation', paidNotAllocatedThisPeriod: number }, backlogs: { __typename?: 'CSManagerBacklogs', allocation: { __typename?: 'AgeSplitBacklog', total: number, thisMonth: number, lastMonth: number, older: number }, onboarding: { __typename?: 'OnboardingBacklog', total: number, callPending: number, confirmPending: number, disputed: number, dueThisPeriod: number, dueCarriedOver: number }, doa: { __typename?: 'AgeSplitBacklog', total: number, thisMonth: number, lastMonth: number, older: number } }, portfolio: { __typename?: 'CSManagerPortfolio', totalAssigned: number, completedPayment: number, withinPaymentPeriod: number, closeToDefaulting: number }, plans: Array<{ __typename?: 'PlanRow', planId: string, priorPlansCount: number, asset: string, assetId?: string | null, location?: string | null, size?: number | null, units: number, allocationStatus?: string | null, product: FlexOrFullownership, purchaseDate: any, paymentStatus: PaymentStatus, paymentLabel: string, onboarding: OnboardingStatus, allocation: AllocationStatus, allocationLabel?: string | null, doa: DoaStatus, doaLabel?: string | null, lastActivityAt: any, customer: { __typename?: 'PlanRowCustomer', id: string, firstName: string, lastName: string, email: string, phone: string }, lastAttempt?: { __typename?: 'PlanRowLastAttempt', outcome: string, calledAt: any, attempts: number } | null }>, filterCounts: { __typename?: 'CSPlanFilterCounts', all: number, dueAllocation: number, onboardingPending: number, neverAttempted: number, noAnswer: number, rescheduled: number, dueDoa: number, defaultingSoon: number, completedPayment: number }, estates: Array<{ __typename?: 'CSEstateOption', name: string, plans: number, dueAllocation: number }> } };
+
+export type AddCsManagerMutationVariables = Exact<{
+  managerId: Scalars['ID']['input'];
+}>;
+
+
+export type AddCsManagerMutation = { __typename?: 'Mutation', addCSManager: { __typename?: 'CSManagerAssignmentType', _id: string, manager: string, assigned_from: any, assigned_to?: any | null, created_by: string, createdAt?: any | null, updatedAt?: any | null } };
+
+export type RemoveCsManagerMutationVariables = Exact<{
+  managerId: Scalars['ID']['input'];
+}>;
+
+
+export type RemoveCsManagerMutation = { __typename?: 'Mutation', removeCSManager: { __typename?: 'CSManagerAssignmentType', _id: string, manager: string, assigned_from: any, assigned_to?: any | null, created_by: string, createdAt?: any | null, updatedAt?: any | null } };
+
+export type AssignCustomersToCsManagerMutationVariables = Exact<{
+  input: AssignCustomersToCsmInput;
+}>;
+
+
+export type AssignCustomersToCsManagerMutation = { __typename?: 'Mutation', assignCustomersToCSManager: { __typename?: 'AssignCustomersResult', assigned: number, managerId: string } };
+
+export type AssignCsManagerTargetMutationVariables = Exact<{
+  input: AssignCsManagerTargetInput;
+}>;
+
+
+export type AssignCsManagerTargetMutation = { __typename?: 'Mutation', assignCSManagerTarget: { __typename?: 'CSManagerTargetType', _id: string, manager: string, month: number, year: number, customers_allocated_target: number, customers_onboarded_target: number, tickets_resolved_target: number, createdAt?: any | null, updatedAt?: any | null } };
+
+export type ListCsManagerTargetsQueryVariables = Exact<{
+  managerId: Scalars['ID']['input'];
+}>;
+
+
+export type ListCsManagerTargetsQuery = { __typename?: 'Query', listCSManagerTargets: Array<{ __typename?: 'CSManagerTargetType', _id: string, manager: string, month: number, year: number, customers_allocated_target: number, customers_onboarded_target: number, tickets_resolved_target: number, createdAt?: any | null, updatedAt?: any | null }> };
+
+export type GetCsManagerTargetQueryVariables = Exact<{
+  managerId: Scalars['ID']['input'];
+  month?: InputMaybe<Scalars['Int']['input']>;
+  year?: InputMaybe<Scalars['Int']['input']>;
+}>;
+
+
+export type GetCsManagerTargetQuery = { __typename?: 'Query', getCSManagerTarget?: { __typename?: 'CSManagerTargetType', _id: string, manager: string, month: number, year: number, customers_allocated_target: number, customers_onboarded_target: number, tickets_resolved_target: number, createdAt?: any | null, updatedAt?: any | null } | null };
+
+export type ListAdminsForCsmPickerQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type ListAdminsForCsmPickerQuery = { __typename?: 'Query', getAllAdminWithRoles: { __typename?: 'AdminRoleResponse', data: Array<{ __typename?: 'AdminRoles', adminId: string, adminName: string, adminEmail: string, role: string }> } };
+
+export type ListCsManagersQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type ListCsManagersQuery = { __typename?: 'Query', listCSManagers: Array<{ __typename?: 'CSManagerSummary', _id: string, assignedCustomersCount: number, assignedPlansCount: number, currentPeriodScore?: number | null, activeSince: any, manager: { __typename?: 'Admin', _id: string, userName: string, email: string, role: string } }> };
+
+export type ListUnassignedCustomersQueryVariables = Exact<{
+  page?: InputMaybe<Scalars['Int']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+}>;
+
+
+export type ListUnassignedCustomersQuery = { __typename?: 'Query', listUnassignedCustomers: { __typename?: 'UnassignedCustomerListResponse', count: number, results: Array<{ __typename?: 'UnassignedCustomer', _id: string, firstName: string, lastName: string, email: string, phone?: string | null, firstPurchaseAt: any, daysUnassigned: number, planCount: number }> } };
+
+export type ListCustomerOnboardingAttemptsQueryVariables = Exact<{
+  paymentPlanId: Scalars['ID']['input'];
+}>;
+
+
+export type ListCustomerOnboardingAttemptsQuery = { __typename?: 'Query', listOnboardingAttempts: Array<{ __typename?: 'CustomerOnboardingAttempt', _id: string, payment_plan: string, customer: string, csm: string, outcome: CustomerOnboardingOutcome, land_choice_reason?: string | null, notes?: string | null, called_at: any, createdAt?: any | null }> };
+
+export type LogOnboardingCallMutationVariables = Exact<{
+  input: LogOnboardingCallInput;
+}>;
+
+
+export type LogOnboardingCallMutation = { __typename?: 'Mutation', logOnboardingCall: { __typename?: 'CustomerOnboardingAttempt', _id: string, payment_plan: string, outcome: CustomerOnboardingOutcome, land_choice_reason?: string | null, notes?: string | null, called_at: any } };
+
+export type MarkDeedDeliveredMutationVariables = Exact<{
+  paymentPlanId: Scalars['ID']['input'];
+}>;
+
+
+export type MarkDeedDeliveredMutation = { __typename?: 'Mutation', markDeedDelivered: { __typename?: 'MarkDeedDeliveredResponse', paymentPlanId: string, deedDeliveredAt: any, deedDeliveredBy: string } };
+
 export type DashboardQuickOverview_DataFragment = { __typename?: 'AdminDashboard', users?: number | null, monthly_recurring_revenue?: number | null, associate_users?: number | null, associate_pro_users?: number | null, total_asset?: number | null, default_users?: number | null, suspended_users?: number | null, suspended_payment_plans?: number | null, total_payable?: number | null, sales?: number | null, inflow?: number | null, outflow?: number | null, total_wallet_balance?: number | null } & { ' $fragmentName'?: 'DashboardQuickOverview_DataFragment' };
 
 export type TopAssociates_DataFragment = { __typename?: 'UserReferralAdmin', userName: string, email: string, firstName: string, lastName: string, amount_brought?: number | null, no_of_referral?: number | null, phoneNumber: string } & { ' $fragmentName'?: 'TopAssociates_DataFragment' };
@@ -7530,6 +10669,36 @@ export type InviteAdminMutationVariables = Exact<{
 
 
 export type InviteAdminMutation = { __typename?: 'Mutation', createSubAdmin: string };
+
+export type ResolvePurchaseDisputeMutationVariables = Exact<{
+  planId: Scalars['ID']['input'];
+  note: Scalars['String']['input'];
+  requestReconfirm?: InputMaybe<Scalars['Boolean']['input']>;
+}>;
+
+
+export type ResolvePurchaseDisputeMutation = { __typename?: 'Mutation', resolvePurchaseDispute: { __typename?: 'ResolvePurchaseDisputeResponse', planId: string, status: string, resent: boolean } };
+
+export type ResendPurchaseConfirmationEmailMutationVariables = Exact<{
+  planId: Scalars['ID']['input'];
+}>;
+
+
+export type ResendPurchaseConfirmationEmailMutation = { __typename?: 'Mutation', resendPurchaseConfirmationEmail: string };
+
+export type ViewPurchaseConfirmationsQueryVariables = Exact<{
+  filter?: InputMaybe<PurchaseConfirmationFilterInput>;
+  page?: InputMaybe<Scalars['Int']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+}>;
+
+
+export type ViewPurchaseConfirmationsQuery = { __typename?: 'Query', viewPurchaseConfirmations: { __typename?: 'PurchaseConfirmationListResponse', count: number, data: Array<{ __typename?: 'PurchaseConfirmationAdminRow', planId: string, uniqueAssetId: string, status: string, referrer?: string | null, asset?: string | null, emailSentAt?: any | null, confirmedAt?: any | null, remindersSent: Array<any>, openDisputeNote?: string | null, createdAt?: any | null, buyer?: { __typename?: 'PurchaseConfirmationBuyer', firstName?: string | null, lastName?: string | null, email?: string | null } | null, snapshot: { __typename?: 'PurchaseSnapshot', name_on_document?: string | null, size?: number | null, units?: number | null, plan_label?: string | null, total?: number | null, product?: string | null }, disputes: Array<{ __typename?: 'PurchaseDisputeEntry', note?: string | null, disputed_at?: any | null, resolved_at?: any | null }> }> } };
+
+export type PurchaseConfirmationCountsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type PurchaseConfirmationCountsQuery = { __typename?: 'Query', purchaseConfirmationCounts: { __typename?: 'PurchaseConfirmationCounts', disputed: number, waiting: number, confirmed: number } };
 
 export type UpdateRequestStatusMutationVariables = Exact<{
   updateRequestInput: UpdateRequestInput;
@@ -7616,9 +10785,17 @@ export type UpdateAdminRoleMutationVariables = Exact<{
 
 export type UpdateAdminRoleMutation = { __typename?: 'Mutation', updateAdminRole: string };
 
-export type SalesRowFragmentFragment = { __typename?: 'SalesRecord', user_firstName?: string | null, user_lastName?: string | null, email?: string | null, user_phone?: string | null, referrer_name?: string | null, referrer_email?: string | null, referrer_phone?: string | null, asset_name?: string | null, asset_type?: string | null, no_of_units?: number | null, document_amount_paid?: number | null, fullownerhsip_documentprice?: number | null, month_subscription?: number | null, size?: number | null, price?: number | null, amount_paid?: number | null, amount_payable?: number | null, balance?: number | null, default_amount?: number | null, is_suspended: boolean, start_date?: any | null, next_date?: any | null } & { ' $fragmentName'?: 'SalesRowFragmentFragment' };
+export type SalesRowFragmentFragment = { __typename?: 'SalesRecord', user_firstName?: string | null, user_lastName?: string | null, email?: string | null, user_phone?: string | null, referrer_name?: string | null, referrer_email?: string | null, referrer_phone?: string | null, asset_name?: string | null, asset_type?: string | null, no_of_units?: number | null, document_amount_paid?: number | null, fullownerhsip_documentprice?: number | null, month_subscription?: number | null, size?: number | null, price?: number | null, amount_paid?: number | null, amount_payable?: number | null, balance?: number | null, default_amount?: number | null, is_suspended: boolean, start_date?: any | null, next_date?: any | null, block?: string | null, plot?: string | null, land_payment_completed_date?: any | null, name_on_document?: string | null } & { ' $fragmentName'?: 'SalesRowFragmentFragment' };
 
 export type SummaryCards_DashboardFragment = { __typename?: 'SalesDashboard', totalTransactionValue?: number | null, expectedTransactionValue?: number | null, totalReceivedTransactionValue?: number | null, outstandingTransactionValue?: number | null, totalFlexTransactionValue?: number | null, expectedFlexTransactionValue?: number | null, totalReceivedFlexTransactionValue?: number | null, outstandingFlexTransactionValue?: number | null, totalFullOwnershipTransactionValue?: number | null, expectedFullOwnershipTransactionValue?: number | null, totalReceivedFullOwnershipTransactionValue?: number | null, outstandingFullOwnershipTransactionValue?: number | null } & { ' $fragmentName'?: 'SummaryCards_DashboardFragment' };
+
+export type GetSalesAssetOptionsQueryVariables = Exact<{
+  page: Scalars['Int']['input'];
+  limit: Scalars['Int']['input'];
+}>;
+
+
+export type GetSalesAssetOptionsQuery = { __typename?: 'Query', getAllAdminAssets?: { __typename?: 'AssetAdminResponse', data: Array<{ __typename?: 'Asset', _id?: string | null, asset_name?: string | null, asset_location?: string | null } | null> } | null };
 
 export type ExportSalesQueryVariables = Exact<{
   filters?: InputMaybe<SalesRecordFilters>;
@@ -7627,7 +10804,7 @@ export type ExportSalesQueryVariables = Exact<{
 }>;
 
 
-export type ExportSalesQuery = { __typename?: 'Query', getSalesRecord?: { __typename?: 'SalesRecordResponse', data?: Array<{ __typename?: 'SalesRecord', user_firstName?: string | null, user_lastName?: string | null, email?: string | null, user_phone?: string | null, referrer_name?: string | null, referrer_email?: string | null, referrer_phone?: string | null, asset_name?: string | null, asset_type?: string | null, no_of_units?: number | null, size?: number | null, price?: number | null, amount_paid?: number | null, fullownerhsip_documentprice?: number | null, document_amount_paid?: number | null, month_subscription?: number | null, start_date?: any | null, next_date?: any | null, default_amount?: number | null, is_suspended: boolean, amount_payable?: number | null, balance?: number | null, payment_plan_id?: string | null, unique_asset_id?: string | null, months_covered?: number | null, month_remaining?: number | null, allocation_status?: string | null, payment_plan_created_at?: any | null, payment_plan_updated_at?: any | null } | null> | null } | null };
+export type ExportSalesQuery = { __typename?: 'Query', getSalesRecord?: { __typename?: 'SalesRecordResponse', data?: Array<{ __typename?: 'SalesRecord', user_firstName?: string | null, user_lastName?: string | null, email?: string | null, user_phone?: string | null, referrer_name?: string | null, referrer_email?: string | null, referrer_phone?: string | null, asset_name?: string | null, asset_type?: string | null, no_of_units?: number | null, size?: number | null, price?: number | null, amount_paid?: number | null, fullownerhsip_documentprice?: number | null, document_amount_paid?: number | null, month_subscription?: number | null, start_date?: any | null, next_date?: any | null, default_amount?: number | null, is_suspended: boolean, amount_payable?: number | null, balance?: number | null, payment_plan_id?: string | null, unique_asset_id?: string | null, months_covered?: number | null, month_remaining?: number | null, allocation_status?: string | null, payment_plan_created_at?: any | null, payment_plan_updated_at?: any | null, block?: string | null, plot?: string | null, land_payment_completed_date?: any | null, name_on_document?: string | null, address_on_document?: string | null } | null> | null } | null };
 
 export type GetSalesRecordQueryVariables = Exact<{
   filters?: InputMaybe<SalesRecordFilters>;
@@ -7661,6 +10838,202 @@ export type GetSalesStatusCountsQueryVariables = Exact<{
 
 export type GetSalesStatusCountsQuery = { __typename?: 'Query', getSalesRecord?: { __typename?: 'SalesRecordResponse', count?: number | null, data?: Array<{ __typename?: 'SalesRecord', amount_paid?: number | null, amount_payable?: number | null, balance?: number | null, price?: number | null } | null> | null } | null };
 
+export type TicketTimeline_MessageFragment = { __typename?: 'TicketMessage', _id: string, direction: MessageDirection, channel: string, body: string, from_address?: string | null, sent_at: any, author_admin?: { __typename?: 'Admin', _id: string, userName: string, email: string } | null, author_user?: { __typename?: 'User', _id: string, firstName: string, lastName: string, email: string } | null, attachments: Array<{ __typename?: 'TicketMessageAttachment', filename: string, mime: string, size: number, url?: string | null, inline: boolean }>, delivery?: { __typename?: 'TicketMessageDelivery', status: MessageDeliveryStatus, error?: string | null } | null, match?: { __typename?: 'TicketMessageMatch', signal: MatchSignal, conflict: boolean } | null } & { ' $fragmentName'?: 'TicketTimeline_MessageFragment' };
+
+export type TicketTimeline_NoteFragment = { __typename?: 'TicketNote', _id: string, body: string, createdAt: any, admin?: { __typename?: 'Admin', _id: string, userName: string, email: string } | null } & { ' $fragmentName'?: 'TicketTimeline_NoteFragment' };
+
+export type GetIssuesQueryVariables = Exact<{
+  status?: InputMaybe<IssueStatus>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+}>;
+
+
+export type GetIssuesQuery = { __typename?: 'Query', getIssues: { __typename?: 'IssueListResponse', count: number, results: Array<{ __typename?: 'Issue', _id: string, issue_ref: string, title: string, description?: string | null, status: IssueStatus, ticketCount?: number | null, reopen_count: number, reopened_at?: any | null, first_resolved_at?: any | null, createdAt: any, updatedAt: any, owner?: { __typename?: 'Admin', _id: string, userName: string, email: string } | null }> } };
+
+export type GetIssueQueryVariables = Exact<{
+  issueId: Scalars['ID']['input'];
+}>;
+
+
+export type GetIssueQuery = { __typename?: 'Query', getIssue: { __typename?: 'IssueDetail', ticketCount: number, issue: { __typename?: 'Issue', _id: string, issue_ref: string, title: string, description?: string | null, status: IssueStatus, resolution_note?: string | null, resolved_at?: any | null, reopen_count: number, reopened_at?: any | null, first_resolved_at?: any | null, ticketCount?: number | null, createdAt: any, updatedAt: any, owner?: { __typename?: 'Admin', _id: string, userName: string, email: string } | null, resolved_by?: { __typename?: 'Admin', _id: string, userName: string, email: string } | null, created_by?: { __typename?: 'Admin', _id: string, userName: string, email: string } | null }, tickets: Array<{ __typename?: 'IssueTicketRow', _id: string, ticket_ref: string, subject: string, status: TicketStatus, createdAt: any, user_affected?: { __typename?: 'User', _id: string, firstName: string, lastName: string, email: string } | null }> } };
+
+export type CreateIssueMutationVariables = Exact<{
+  input: CreateIssueInput;
+}>;
+
+
+export type CreateIssueMutation = { __typename?: 'Mutation', createIssue: { __typename?: 'Issue', _id: string, issue_ref: string, title: string, status: IssueStatus } };
+
+export type UpdateIssueMutationVariables = Exact<{
+  input: UpdateIssueInput;
+}>;
+
+
+export type UpdateIssueMutation = { __typename?: 'Mutation', updateIssue: { __typename?: 'Issue', _id: string, title: string, description?: string | null, status: IssueStatus, owner?: { __typename?: 'Admin', _id: string, userName: string, email: string } | null } };
+
+export type ResolveIssueMutationVariables = Exact<{
+  input: ResolveIssueInput;
+}>;
+
+
+export type ResolveIssueMutation = { __typename?: 'Mutation', resolveIssue: { __typename?: 'ResolveIssueResponse', ticketsResolved: number, ticketsExcluded: number, customersAffected: number, issue: { __typename?: 'Issue', _id: string, status: IssueStatus, resolution_note?: string | null, resolved_at?: any | null } } };
+
+export type ListCsManagersForTicketFilterQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type ListCsManagersForTicketFilterQuery = { __typename?: 'Query', listCSManagers: Array<{ __typename?: 'CSManagerSummary', _id: string, manager: { __typename?: 'Admin', _id: string, userName: string, email: string } }> };
+
+export type CreateTicketMutationVariables = Exact<{
+  input: CreateTicketInput;
+}>;
+
+
+export type CreateTicketMutation = { __typename?: 'Mutation', createTicket: { __typename?: 'Ticket', _id: string, ticket_ref: string } };
+
+export type UpdateTicketMutationVariables = Exact<{
+  input: UpdateTicketInput;
+}>;
+
+
+export type UpdateTicketMutation = { __typename?: 'Mutation', updateTicket: { __typename?: 'Ticket', _id: string, ticket_ref: string, status: TicketStatus, subject: string, category?: string | null, updatedAt: any, assigned_admin?: { __typename?: 'Admin', _id: string, userName: string, email: string } | null, user_affected?: { __typename?: 'User', _id: string, firstName: string, lastName: string, email: string } | null } };
+
+export type ResolveTicketMutationVariables = Exact<{
+  input: ResolveTicketInput;
+}>;
+
+
+export type ResolveTicketMutation = { __typename?: 'Mutation', resolveTicket: { __typename?: 'Ticket', _id: string, ticket_ref: string, status: TicketStatus, resolution?: string | null, resolved_at?: any | null, resolved_by?: { __typename?: 'Admin', _id: string, userName: string, email: string } | null } };
+
+export type AddTicketNoteMutationVariables = Exact<{
+  ticketId: Scalars['ID']['input'];
+  body: Scalars['String']['input'];
+}>;
+
+
+export type AddTicketNoteMutation = { __typename?: 'Mutation', addTicketNote: Array<{ __typename?: 'TicketNote', _id: string, body: string, createdAt: any, admin?: { __typename?: 'Admin', _id: string, userName: string, email: string } | null }> };
+
+export type MergeTicketsMutationVariables = Exact<{
+  loserTicketId: Scalars['ID']['input'];
+  winnerTicketId: Scalars['ID']['input'];
+}>;
+
+
+export type MergeTicketsMutation = { __typename?: 'Mutation', mergeTickets: { __typename?: 'Ticket', _id: string, ticket_ref: string, merged_into?: string | null } };
+
+export type LinkTicketToIssueMutationVariables = Exact<{
+  ticketId: Scalars['ID']['input'];
+  issueId: Scalars['ID']['input'];
+}>;
+
+
+export type LinkTicketToIssueMutation = { __typename?: 'Mutation', linkTicketToIssue: { __typename?: 'Ticket', _id: string, issue?: { __typename?: 'TicketIssueRef', _id: string, issue_ref: string, title: string, status: IssueStatus } | null } };
+
+export type UnlinkTicketFromIssueMutationVariables = Exact<{
+  ticketId: Scalars['ID']['input'];
+}>;
+
+
+export type UnlinkTicketFromIssueMutation = { __typename?: 'Mutation', unlinkTicketFromIssue: { __typename?: 'Ticket', _id: string, issue?: { __typename?: 'TicketIssueRef', _id: string, issue_ref: string, title: string, status: IssueStatus } | null } };
+
+export type AddTicketCollaboratorMutationVariables = Exact<{
+  ticketId: Scalars['ID']['input'];
+  adminId: Scalars['ID']['input'];
+}>;
+
+
+export type AddTicketCollaboratorMutation = { __typename?: 'Mutation', addTicketCollaborator: { __typename?: 'Ticket', _id: string, ticket_ref: string, updatedAt: any, assigned_admin?: { __typename?: 'Admin', _id: string, userName: string, email: string } | null, collaborators: Array<{ __typename?: 'Admin', _id: string, userName: string, email: string, role: string }> } };
+
+export type RemoveTicketCollaboratorMutationVariables = Exact<{
+  ticketId: Scalars['ID']['input'];
+  adminId: Scalars['ID']['input'];
+}>;
+
+
+export type RemoveTicketCollaboratorMutation = { __typename?: 'Mutation', removeTicketCollaborator: { __typename?: 'Ticket', _id: string, ticket_ref: string, updatedAt: any, assigned_admin?: { __typename?: 'Admin', _id: string, userName: string, email: string } | null, collaborators: Array<{ __typename?: 'Admin', _id: string, userName: string, email: string, role: string }> } };
+
+export type ClassifyTicketMutationVariables = Exact<{
+  ticketId: Scalars['ID']['input'];
+}>;
+
+
+export type ClassifyTicketMutation = { __typename?: 'Mutation', classifyTicket: { __typename?: 'Ticket', _id: string, category?: string | null, type?: TicketType | null, category_source?: FieldSource | null, type_source?: FieldSource | null, updatedAt: any, ai?: { __typename?: 'TicketClassification', suggested_category?: string | null, suggested_type?: TicketType | null, confidence?: number | null, model?: string | null, classified_at?: any | null, error?: string | null } | null } };
+
+export type ListAdminsForTicketPickerQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type ListAdminsForTicketPickerQuery = { __typename?: 'Query', getAllAdminWithRoles: { __typename?: 'AdminRoleResponse', data: Array<{ __typename?: 'AdminRoles', adminId: string, adminName: string, adminEmail: string, role: string }> } };
+
+export type SearchUsersForTicketPickerQueryVariables = Exact<{
+  page: Scalars['Int']['input'];
+  limit: Scalars['Int']['input'];
+  searchQuery?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+
+export type SearchUsersForTicketPickerQuery = { __typename?: 'Query', getAllUsersWithFilters?: { __typename?: 'FilteredUserAdminResponse', count?: number | null, data?: Array<{ __typename?: 'FilteredUserAdminDetail', _id?: string | null, firstName?: string | null, lastName?: string | null, email?: string | null, phoneNumber?: string | null } | null> | null } | null };
+
+export type ReplyToTicketMutationVariables = Exact<{
+  ticketId: Scalars['ID']['input'];
+  body: Scalars['String']['input'];
+  attachments?: InputMaybe<Array<TicketReplyAttachmentInput> | TicketReplyAttachmentInput>;
+}>;
+
+
+export type ReplyToTicketMutation = { __typename?: 'Mutation', replyToTicket: { __typename?: 'TicketDetail', ticket: { __typename?: 'Ticket', _id: string, status: TicketStatus, updatedAt: any }, messages: Array<(
+      { __typename?: 'TicketMessage' }
+      & { ' $fragmentRefs'?: { 'TicketTimeline_MessageFragment': TicketTimeline_MessageFragment } }
+    )> } };
+
+export type GetTicketsQueryVariables = Exact<{
+  filter?: InputMaybe<TicketListFilterInput>;
+  page?: InputMaybe<Scalars['Int']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+}>;
+
+
+export type GetTicketsQuery = { __typename?: 'Query', getTickets: { __typename?: 'TicketListResponse', count: number, results: Array<{ __typename?: 'Ticket', _id: string, ticket_ref: string, channel: TicketChannel, source_reference?: string | null, subject: string, body?: string | null, category?: string | null, type?: TicketType | null, category_source?: FieldSource | null, type_source?: FieldSource | null, status: TicketStatus, resolution?: string | null, resolved_at?: any | null, merged_into?: string | null, createdAt: any, updatedAt: any, sender?: { __typename?: 'User', _id: string, firstName: string, lastName: string, email: string } | null, user_affected?: { __typename?: 'User', _id: string, firstName: string, lastName: string, email: string, phoneNumber: string } | null, assigned_admin?: { __typename?: 'Admin', _id: string, userName: string, email: string } | null, collaborators: Array<{ __typename?: 'Admin', _id: string, userName: string, email: string, role: string }>, issue?: { __typename?: 'TicketIssueRef', _id: string, issue_ref: string, title: string, status: IssueStatus } | null }>, filterCounts: { __typename?: 'TicketFilterCounts', all: number, mine: number, unassigned: number, unlinked: number, open: number, waitingCustomer: number, blockedOnIssue: number, resolved: number } } };
+
+export type GetTicketQueryVariables = Exact<{
+  ticketId: Scalars['ID']['input'];
+}>;
+
+
+export type GetTicketQuery = { __typename?: 'Query', getTicket: { __typename?: 'TicketDetail', ticket: { __typename?: 'Ticket', _id: string, ticket_ref: string, channel: TicketChannel, source_reference?: string | null, subject: string, body?: string | null, category?: string | null, type?: TicketType | null, category_source?: FieldSource | null, type_source?: FieldSource | null, status: TicketStatus, resolution?: string | null, resolved_at?: any | null, merged_into?: string | null, createdAt: any, updatedAt: any, ai?: { __typename?: 'TicketClassification', suggested_category?: string | null, suggested_type?: TicketType | null, confidence?: number | null, model?: string | null, classified_at?: any | null, error?: string | null, affected_hints: Array<{ __typename?: 'TicketAffectedHint', value: string, kind: string, note?: string | null }> } | null, sender?: { __typename?: 'User', _id: string, firstName: string, lastName: string, email: string } | null, user_affected?: { __typename?: 'User', _id: string, firstName: string, lastName: string, email: string, phoneNumber: string } | null, assigned_admin?: { __typename?: 'Admin', _id: string, userName: string, email: string } | null, collaborators: Array<{ __typename?: 'Admin', _id: string, userName: string, email: string, role: string }>, issue?: { __typename?: 'TicketIssueRef', _id: string, issue_ref: string, title: string, status: IssueStatus } | null, attachments: Array<{ __typename?: 'TicketAttachment', url: string, filename?: string | null, mime?: string | null, size?: number | null }>, resolved_by?: { __typename?: 'Admin', _id: string, userName: string, email: string } | null }, messages: Array<(
+      { __typename?: 'TicketMessage' }
+      & { ' $fragmentRefs'?: { 'TicketTimeline_MessageFragment': TicketTimeline_MessageFragment } }
+    )>, notes: Array<(
+      { __typename?: 'TicketNote' }
+      & { ' $fragmentRefs'?: { 'TicketTimeline_NoteFragment': TicketTimeline_NoteFragment } }
+    )>, duplicates: Array<{ __typename?: 'DuplicateCandidate', _id: string, ticket_ref: string, subject: string, status: TicketStatus, createdAt: any }>, csManager?: { __typename?: 'Admin', _id: string, userName: string, email: string } | null } };
+
+export type SuggestUsersForTicketQueryVariables = Exact<{
+  ticketId: Scalars['ID']['input'];
+}>;
+
+
+export type SuggestUsersForTicketQuery = { __typename?: 'Query', suggestUsersForTicket: Array<{ __typename?: 'TicketUserSuggestion', reason: string, confidence: string, user: { __typename?: 'User', _id: string, firstName: string, lastName: string, email: string, phoneNumber: string } }> };
+
+export type FindSimilarTicketsQueryVariables = Exact<{
+  search: Scalars['String']['input'];
+}>;
+
+
+export type FindSimilarTicketsQuery = { __typename?: 'Query', findSimilarTickets: Array<{ __typename?: 'IssueTicketRow', _id: string, ticket_ref: string, subject: string, status: TicketStatus, createdAt: any, user_affected?: { __typename?: 'User', _id: string, firstName: string, lastName: string, email: string } | null }> };
+
+export type TicketCategoriesQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type TicketCategoriesQuery = { __typename?: 'Query', ticketCategories: Array<string> };
+
+export type SuggestIssuesForTicketQueryVariables = Exact<{
+  ticketId: Scalars['ID']['input'];
+}>;
+
+
+export type SuggestIssuesForTicketQuery = { __typename?: 'Query', suggestIssuesForTicket: Array<{ __typename?: 'TicketIssueSuggestion', matchedTerms: Array<string>, score: number, issue: { __typename?: 'TicketIssueRef', _id: string, issue_ref: string, title: string, status: IssueStatus } }> };
+
 export type AssetTransactionsTable_DataFragment = { __typename?: 'AdminTransactions', _id: string, amount?: string | null, description?: string | null, admin_status?: string | null, plot_size?: string | null, asset_type?: string | null, referral?: string | null, property_owner?: string | null, transaction_type?: string | null, time_of_transaction?: any | null, transfer_file?: { __typename?: 'TransferFile', file?: string | null } | null, user?: { __typename?: 'UserAdmin', firstName: string, lastName: string, _id: string } | null } & { ' $fragmentName'?: 'AssetTransactionsTable_DataFragment' };
 
 export type CommissionTransactionsTable_DataFragment = { __typename?: 'AdminTransactions', _id: string, tin?: string | null, admin_status?: string | null, amount?: string | null, asset_type?: string | null, description?: string | null, plot_size?: string | null, status?: string | null, referral?: string | null, transaction_type?: string | null, time_of_transaction?: any | null, user?: { __typename?: 'UserAdmin', _id: string, firstName: string, lastName: string, referrer?: string | null, referral_status?: string | null, email: string, tin?: string | null } | null } & { ' $fragmentName'?: 'CommissionTransactionsTable_DataFragment' };
@@ -7688,6 +11061,9 @@ export type ExportDocumentTransactionsQueryVariables = Exact<{
   page: Scalars['Int']['input'];
   limit: Scalars['Int']['input'];
   status?: InputMaybe<Scalars['String']['input']>;
+  transactionType?: InputMaybe<Scalars['String']['input']>;
+  assetType?: InputMaybe<Scalars['String']['input']>;
+  salesType?: InputMaybe<Scalars['String']['input']>;
   startDate?: InputMaybe<Scalars['Date']['input']>;
   endDate?: InputMaybe<Scalars['Date']['input']>;
   search?: InputMaybe<Scalars['String']['input']>;
@@ -7780,6 +11156,9 @@ export type GetDocumentTransactionQueryVariables = Exact<{
   page: Scalars['Int']['input'];
   limit: Scalars['Int']['input'];
   status?: InputMaybe<Scalars['String']['input']>;
+  transactionType?: InputMaybe<Scalars['String']['input']>;
+  assetType?: InputMaybe<Scalars['String']['input']>;
+  salesType?: InputMaybe<Scalars['String']['input']>;
   startDate?: InputMaybe<Scalars['Date']['input']>;
   endDate?: InputMaybe<Scalars['Date']['input']>;
   search?: InputMaybe<Scalars['String']['input']>;
@@ -7829,7 +11208,7 @@ export type DefaultUsersRow_UserFragment = { __typename?: 'UserAdmin', _id: stri
 
 export type SuspendedPaymentPlansRow_PlanFragment = { __typename?: 'SuspendedPaymentPlans', firstName?: string | null, lastName?: string | null, email?: string | null, phoneNumber?: string | null, referrer?: string | null, asset_name?: string | null, size?: number | null, asset_type?: string | null, no_of_units?: number | null, amount_paid?: number | null, balance?: number | null, start_date?: any | null, next_date?: any | null, user_id?: string | null, unique_asset_id?: string | null, is_suspended?: boolean | null } & { ' $fragmentName'?: 'SuspendedPaymentPlansRow_PlanFragment' };
 
-export type SuspendedUsersRow_UserFragment = { __typename?: 'UserAdmin', _id: string, firstName: string, lastName: string, email: string, phoneNumber?: string | null, createdAt?: any | null, referrer?: string | null, subscriptions?: number | null, is_suspended?: boolean | null, referral_status?: string | null, gender?: string | null, country?: string | null, Networth?: number | null } & { ' $fragmentName'?: 'SuspendedUsersRow_UserFragment' };
+export type SuspendedUsersRow_UserFragment = { __typename?: 'UserAdmin', _id: string, firstName: string, lastName: string, email: string, phoneNumber?: string | null, createdAt?: any | null, referrer?: string | null, subscriptions?: number | null, is_suspended?: boolean | null, referral_status?: string | null, gender?: string | null, country?: string | null, Networth?: number | null, hasAsset?: string | null } & { ' $fragmentName'?: 'SuspendedUsersRow_UserFragment' };
 
 export type GetAllDefaultUsersQueryVariables = Exact<{
   page: Scalars['Int']['input'];
@@ -8012,6 +11391,11 @@ export type MetricsQueryVariables = Exact<{
 
 export type MetricsQuery = { __typename?: 'Query', getSystemUsersOverview: { __typename?: 'SystemUsersOverviewResponse', metrics: { __typename?: 'SystemUsersMetrics', totalUsers: number, noReferralUsers: number, users_with_assets: number, flexSubscribers: number, fullOwnershipSubscribers: number, defaultUsers: number, overdueUsers: number, active_associate: number, active_associate_pro: number, referralStatusCounts: { __typename?: 'ReferralStatusCounts', user: number, associate: number, associatePro: number } } } };
 
+export type AdminSessionQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type AdminSessionQuery = { __typename?: 'Query', adminSession: { __typename?: 'AdminSession', _id: string, userName?: string | null, email: string, role: string, isCSManager: boolean, canRouteTickets: boolean, canManageAllTickets: boolean, canDecideTicketRouting: boolean, permissions: Array<string> } };
+
 export type SendAssetStatementsToAdminMutationVariables = Exact<{
   assetId: Scalars['ID']['input'];
   adminEmail: Scalars['String']['input'];
@@ -8070,8 +11454,10 @@ export const AdminDetailFragmentFragmentDoc = {"kind":"Document","definitions":[
 export const AdminRowFragmentFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"AdminRowFragment"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"AdminRoles"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"adminEmail"}},{"kind":"Field","name":{"kind":"Name","value":"adminId"}},{"kind":"Field","name":{"kind":"Name","value":"adminName"}},{"kind":"Field","name":{"kind":"Name","value":"permissions"}},{"kind":"Field","name":{"kind":"Name","value":"role"}},{"kind":"Field","name":{"kind":"Name","value":"roleId"}}]}}]} as unknown as DocumentNode<AdminRowFragmentFragment, unknown>;
 export const PermissionOptionFragmentFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"PermissionOptionFragment"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Permission"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"description"}}]}}]} as unknown as DocumentNode<PermissionOptionFragmentFragment, unknown>;
 export const RoleCardFragmentFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"RoleCardFragment"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Role"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"permissions"}}]}}]} as unknown as DocumentNode<RoleCardFragmentFragment, unknown>;
-export const SalesRowFragmentFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"SalesRowFragment"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"SalesRecord"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"user_firstName"}},{"kind":"Field","name":{"kind":"Name","value":"user_lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"user_phone"}},{"kind":"Field","name":{"kind":"Name","value":"referrer_name"}},{"kind":"Field","name":{"kind":"Name","value":"referrer_email"}},{"kind":"Field","name":{"kind":"Name","value":"referrer_phone"}},{"kind":"Field","name":{"kind":"Name","value":"asset_name"}},{"kind":"Field","name":{"kind":"Name","value":"asset_type"}},{"kind":"Field","name":{"kind":"Name","value":"no_of_units"}},{"kind":"Field","name":{"kind":"Name","value":"document_amount_paid"}},{"kind":"Field","name":{"kind":"Name","value":"fullownerhsip_documentprice"}},{"kind":"Field","name":{"kind":"Name","value":"month_subscription"}},{"kind":"Field","name":{"kind":"Name","value":"size"}},{"kind":"Field","name":{"kind":"Name","value":"price"}},{"kind":"Field","name":{"kind":"Name","value":"amount_paid"}},{"kind":"Field","name":{"kind":"Name","value":"amount_payable"}},{"kind":"Field","name":{"kind":"Name","value":"balance"}},{"kind":"Field","name":{"kind":"Name","value":"default_amount"}},{"kind":"Field","name":{"kind":"Name","value":"is_suspended"}},{"kind":"Field","name":{"kind":"Name","value":"start_date"}},{"kind":"Field","name":{"kind":"Name","value":"next_date"}}]}}]} as unknown as DocumentNode<SalesRowFragmentFragment, unknown>;
+export const SalesRowFragmentFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"SalesRowFragment"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"SalesRecord"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"user_firstName"}},{"kind":"Field","name":{"kind":"Name","value":"user_lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"user_phone"}},{"kind":"Field","name":{"kind":"Name","value":"referrer_name"}},{"kind":"Field","name":{"kind":"Name","value":"referrer_email"}},{"kind":"Field","name":{"kind":"Name","value":"referrer_phone"}},{"kind":"Field","name":{"kind":"Name","value":"asset_name"}},{"kind":"Field","name":{"kind":"Name","value":"asset_type"}},{"kind":"Field","name":{"kind":"Name","value":"no_of_units"}},{"kind":"Field","name":{"kind":"Name","value":"document_amount_paid"}},{"kind":"Field","name":{"kind":"Name","value":"fullownerhsip_documentprice"}},{"kind":"Field","name":{"kind":"Name","value":"month_subscription"}},{"kind":"Field","name":{"kind":"Name","value":"size"}},{"kind":"Field","name":{"kind":"Name","value":"price"}},{"kind":"Field","name":{"kind":"Name","value":"amount_paid"}},{"kind":"Field","name":{"kind":"Name","value":"amount_payable"}},{"kind":"Field","name":{"kind":"Name","value":"balance"}},{"kind":"Field","name":{"kind":"Name","value":"default_amount"}},{"kind":"Field","name":{"kind":"Name","value":"is_suspended"}},{"kind":"Field","name":{"kind":"Name","value":"start_date"}},{"kind":"Field","name":{"kind":"Name","value":"next_date"}},{"kind":"Field","name":{"kind":"Name","value":"block"}},{"kind":"Field","name":{"kind":"Name","value":"plot"}},{"kind":"Field","name":{"kind":"Name","value":"land_payment_completed_date"}},{"kind":"Field","name":{"kind":"Name","value":"name_on_document"}}]}}]} as unknown as DocumentNode<SalesRowFragmentFragment, unknown>;
 export const SummaryCards_DashboardFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"SummaryCards_dashboard"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"SalesDashboard"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"totalTransactionValue"}},{"kind":"Field","name":{"kind":"Name","value":"expectedTransactionValue"}},{"kind":"Field","name":{"kind":"Name","value":"totalReceivedTransactionValue"}},{"kind":"Field","name":{"kind":"Name","value":"outstandingTransactionValue"}},{"kind":"Field","name":{"kind":"Name","value":"totalFlexTransactionValue"}},{"kind":"Field","name":{"kind":"Name","value":"expectedFlexTransactionValue"}},{"kind":"Field","name":{"kind":"Name","value":"totalReceivedFlexTransactionValue"}},{"kind":"Field","name":{"kind":"Name","value":"outstandingFlexTransactionValue"}},{"kind":"Field","name":{"kind":"Name","value":"totalFullOwnershipTransactionValue"}},{"kind":"Field","name":{"kind":"Name","value":"expectedFullOwnershipTransactionValue"}},{"kind":"Field","name":{"kind":"Name","value":"totalReceivedFullOwnershipTransactionValue"}},{"kind":"Field","name":{"kind":"Name","value":"outstandingFullOwnershipTransactionValue"}}]}}]} as unknown as DocumentNode<SummaryCards_DashboardFragment, unknown>;
+export const TicketTimeline_MessageFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"TicketTimeline_message"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"TicketMessage"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"direction"}},{"kind":"Field","name":{"kind":"Name","value":"channel"}},{"kind":"Field","name":{"kind":"Name","value":"body"}},{"kind":"Field","name":{"kind":"Name","value":"from_address"}},{"kind":"Field","name":{"kind":"Name","value":"sent_at"}},{"kind":"Field","name":{"kind":"Name","value":"author_admin"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}},{"kind":"Field","name":{"kind":"Name","value":"author_user"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}},{"kind":"Field","name":{"kind":"Name","value":"attachments"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"filename"}},{"kind":"Field","name":{"kind":"Name","value":"mime"}},{"kind":"Field","name":{"kind":"Name","value":"size"}},{"kind":"Field","name":{"kind":"Name","value":"url"}},{"kind":"Field","name":{"kind":"Name","value":"inline"}}]}},{"kind":"Field","name":{"kind":"Name","value":"delivery"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"error"}}]}},{"kind":"Field","name":{"kind":"Name","value":"match"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"signal"}},{"kind":"Field","name":{"kind":"Name","value":"conflict"}}]}}]}}]} as unknown as DocumentNode<TicketTimeline_MessageFragment, unknown>;
+export const TicketTimeline_NoteFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"TicketTimeline_note"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"TicketNote"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"body"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"admin"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}}]}}]} as unknown as DocumentNode<TicketTimeline_NoteFragment, unknown>;
 export const AssetTransactionsTable_DataFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"AssetTransactionsTable_data"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"AdminTransactions"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"amount"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"admin_status"}},{"kind":"Field","name":{"kind":"Name","value":"plot_size"}},{"kind":"Field","name":{"kind":"Name","value":"asset_type"}},{"kind":"Field","name":{"kind":"Name","value":"referral"}},{"kind":"Field","name":{"kind":"Name","value":"property_owner"}},{"kind":"Field","name":{"kind":"Name","value":"transaction_type"}},{"kind":"Field","name":{"kind":"Name","value":"transfer_file"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"file"}}]}},{"kind":"Field","name":{"kind":"Name","value":"user"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"_id"}}]}},{"kind":"Field","name":{"kind":"Name","value":"time_of_transaction"}}]}}]} as unknown as DocumentNode<AssetTransactionsTable_DataFragment, unknown>;
 export const CommissionTransactionsTable_DataFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"CommissionTransactionsTable_data"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"AdminTransactions"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"tin"}},{"kind":"Field","name":{"kind":"Name","value":"admin_status"}},{"kind":"Field","name":{"kind":"Name","value":"amount"}},{"kind":"Field","name":{"kind":"Name","value":"asset_type"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"user"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"referrer"}},{"kind":"Field","name":{"kind":"Name","value":"referral_status"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"tin"}}]}},{"kind":"Field","name":{"kind":"Name","value":"plot_size"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"referral"}},{"kind":"Field","name":{"kind":"Name","value":"transaction_type"}},{"kind":"Field","name":{"kind":"Name","value":"time_of_transaction"}}]}}]} as unknown as DocumentNode<CommissionTransactionsTable_DataFragment, unknown>;
 export const CompleteAssetPaymentsTable_DataFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"CompleteAssetPaymentsTable_data"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"ZeroBalance"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phone_number"}},{"kind":"Field","name":{"kind":"Name","value":"sales_person"}},{"kind":"Field","name":{"kind":"Name","value":"asset_name"}},{"kind":"Field","name":{"kind":"Name","value":"unit"}},{"kind":"Field","name":{"kind":"Name","value":"size"}},{"kind":"Field","name":{"kind":"Name","value":"price"}},{"kind":"Field","name":{"kind":"Name","value":"amount_paid"}},{"kind":"Field","name":{"kind":"Name","value":"month_subscription"}},{"kind":"Field","name":{"kind":"Name","value":"start_date"}},{"kind":"Field","name":{"kind":"Name","value":"next_payment_date"}}]}}]} as unknown as DocumentNode<CompleteAssetPaymentsTable_DataFragment, unknown>;
@@ -8081,7 +11467,7 @@ export const WithdrawalTransactionsTable_DataFragmentDoc = {"kind":"Document","d
 export const UsersTableFragmentFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"UsersTableFragment"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"UserAdmin"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"referral_status"}},{"kind":"Field","name":{"kind":"Name","value":"referrer"}},{"kind":"Field","name":{"kind":"Name","value":"howYouHearAboutUs"}},{"kind":"Field","name":{"kind":"Name","value":"virtual_subscriptions"}},{"kind":"Field","name":{"kind":"Name","value":"virtual_networth"}}]}}]} as unknown as DocumentNode<UsersTableFragmentFragment, unknown>;
 export const DefaultUsersRow_UserFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"DefaultUsersRow_user"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"UserAdmin"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"referrer"}},{"kind":"Field","name":{"kind":"Name","value":"subscriptions"}},{"kind":"Field","name":{"kind":"Name","value":"Networth"}}]}}]} as unknown as DocumentNode<DefaultUsersRow_UserFragment, unknown>;
 export const SuspendedPaymentPlansRow_PlanFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"SuspendedPaymentPlansRow_plan"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"SuspendedPaymentPlans"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}},{"kind":"Field","name":{"kind":"Name","value":"referrer"}},{"kind":"Field","name":{"kind":"Name","value":"asset_name"}},{"kind":"Field","name":{"kind":"Name","value":"size"}},{"kind":"Field","name":{"kind":"Name","value":"asset_type"}},{"kind":"Field","name":{"kind":"Name","value":"no_of_units"}},{"kind":"Field","name":{"kind":"Name","value":"amount_paid"}},{"kind":"Field","name":{"kind":"Name","value":"balance"}},{"kind":"Field","name":{"kind":"Name","value":"start_date"}},{"kind":"Field","name":{"kind":"Name","value":"next_date"}},{"kind":"Field","name":{"kind":"Name","value":"user_id"}},{"kind":"Field","name":{"kind":"Name","value":"unique_asset_id"}},{"kind":"Field","name":{"kind":"Name","value":"is_suspended"}}]}}]} as unknown as DocumentNode<SuspendedPaymentPlansRow_PlanFragment, unknown>;
-export const SuspendedUsersRow_UserFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"SuspendedUsersRow_user"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"UserAdmin"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"referrer"}},{"kind":"Field","name":{"kind":"Name","value":"subscriptions"}},{"kind":"Field","name":{"kind":"Name","value":"is_suspended"}},{"kind":"Field","name":{"kind":"Name","value":"referral_status"}},{"kind":"Field","name":{"kind":"Name","value":"gender"}},{"kind":"Field","name":{"kind":"Name","value":"country"}},{"kind":"Field","name":{"kind":"Name","value":"Networth"}}]}}]} as unknown as DocumentNode<SuspendedUsersRow_UserFragment, unknown>;
+export const SuspendedUsersRow_UserFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"SuspendedUsersRow_user"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"UserAdmin"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"referrer"}},{"kind":"Field","name":{"kind":"Name","value":"subscriptions"}},{"kind":"Field","name":{"kind":"Name","value":"is_suspended"}},{"kind":"Field","name":{"kind":"Name","value":"referral_status"}},{"kind":"Field","name":{"kind":"Name","value":"gender"}},{"kind":"Field","name":{"kind":"Name","value":"country"}},{"kind":"Field","name":{"kind":"Name","value":"Networth"}},{"kind":"Field","name":{"kind":"Name","value":"hasAsset"}}]}}]} as unknown as DocumentNode<SuspendedUsersRow_UserFragment, unknown>;
 export const ExportAdminLogsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ExportAdminLogs"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"adminEmail"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"action"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAllAdminLogs"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}},{"kind":"Argument","name":{"kind":"Name","value":"adminEmail"},"value":{"kind":"Variable","name":{"kind":"Name","value":"adminEmail"}}},{"kind":"Argument","name":{"kind":"Name","value":"action"},"value":{"kind":"Variable","name":{"kind":"Name","value":"action"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"timestamp"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"action"}},{"kind":"Field","name":{"kind":"Name","value":"adminEmail"}},{"kind":"Field","name":{"kind":"Name","value":"adminId"}},{"kind":"Field","name":{"kind":"Name","value":"metadata"}},{"kind":"Field","name":{"kind":"Name","value":"oldState"}},{"kind":"Field","name":{"kind":"Name","value":"_id"}}]}}]}}]}}]} as unknown as DocumentNode<ExportAdminLogsQuery, ExportAdminLogsQueryVariables>;
 export const GetAllAdminLogsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetAllAdminLogs"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"adminEmail"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"action"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAllAdminLogs"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}},{"kind":"Argument","name":{"kind":"Name","value":"adminEmail"},"value":{"kind":"Variable","name":{"kind":"Name","value":"adminEmail"}}},{"kind":"Argument","name":{"kind":"Name","value":"action"},"value":{"kind":"Variable","name":{"kind":"Name","value":"action"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"AdminLogsRowFragment"}}]}},{"kind":"Field","name":{"kind":"Name","value":"count"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"AdminLogsRowFragment"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"LogAdmin"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"timestamp"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"action"}},{"kind":"Field","name":{"kind":"Name","value":"adminEmail"}},{"kind":"Field","name":{"kind":"Name","value":"adminId"}},{"kind":"Field","name":{"kind":"Name","value":"metadata"}},{"kind":"Field","name":{"kind":"Name","value":"oldState"}}]}}]} as unknown as DocumentNode<GetAllAdminLogsQuery, GetAllAdminLogsQueryVariables>;
 export const GetAllocationAssetsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetAllocationAssets"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAllAdminAssets"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"IntValue","value":"1"}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"IntValue","value":"1000"}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"AllocationAssetOptionFragment"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"AllocationAssetOptionFragment"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Asset"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"asset_name"}},{"kind":"Field","name":{"kind":"Name","value":"asset_type"}},{"kind":"Field","name":{"kind":"Name","value":"asset_option"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"size"}}]}}]}}]} as unknown as DocumentNode<GetAllocationAssetsQuery, GetAllocationAssetsQueryVariables>;
@@ -8100,16 +11486,18 @@ export const FeatureAssetStatisticsDocument = {"kind":"Document","definitions":[
 export const GetAssetAnalyticsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetAssetAnalytics"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"assetId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filter"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"startDate"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Date"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"endDate"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Date"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAssetAnalytics"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"assetId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"assetId"}}},{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filter"}}},{"kind":"Argument","name":{"kind":"Name","value":"startDate"},"value":{"kind":"Variable","name":{"kind":"Name","value":"startDate"}}},{"kind":"Argument","name":{"kind":"Name","value":"endDate"},"value":{"kind":"Variable","name":{"kind":"Name","value":"endDate"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"statistics"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"AssetHealthBar_statistics"}},{"kind":"FragmentSpread","name":{"kind":"Name","value":"PaymentPlanMatrix_statistics"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"AssetHealthBar_statistics"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"AssetAnalyticsStatistics"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"totalInventory"}},{"kind":"Field","name":{"kind":"Name","value":"totalRealised"}},{"kind":"Field","name":{"kind":"Name","value":"remainingValue"}},{"kind":"Field","name":{"kind":"Name","value":"totalSqmSold"}},{"kind":"Field","name":{"kind":"Name","value":"totalSqmRemaining"}},{"kind":"Field","name":{"kind":"Name","value":"efficiencyRate"}},{"kind":"Field","name":{"kind":"Name","value":"totalActiveCustomers"}},{"kind":"Field","name":{"kind":"Name","value":"defaulting"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"totalDefaultingCustomers"}},{"kind":"Field","name":{"kind":"Name","value":"totalDefaultedAssetValue"}},{"kind":"Field","name":{"kind":"Name","value":"totalDefaultedOutstandingValue"}}]}},{"kind":"Field","name":{"kind":"Name","value":"terminated"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"totalTerminatedCustomers"}},{"kind":"Field","name":{"kind":"Name","value":"totalTerminatedAssetValue"}},{"kind":"Field","name":{"kind":"Name","value":"totalTerminatedBalance"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"PaymentPlanMatrix_statistics"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"AssetAnalyticsStatistics"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"sizePlanBreakdown"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"size"}},{"kind":"Field","name":{"kind":"Name","value":"plans"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"startValue"}},{"kind":"Field","name":{"kind":"Name","value":"soldValue"}},{"kind":"Field","name":{"kind":"Name","value":"totalSqmSold"}},{"kind":"Field","name":{"kind":"Name","value":"totalSqmRemaining"}},{"kind":"Field","name":{"kind":"Name","value":"totalPlans"}},{"kind":"Field","name":{"kind":"Name","value":"totalDefaultingUsers"}},{"kind":"Field","name":{"kind":"Name","value":"totalDefaultedValue"}},{"kind":"Field","name":{"kind":"Name","value":"totalDefaultedBalance"}},{"kind":"Field","name":{"kind":"Name","value":"totalBalance"}},{"kind":"Field","name":{"kind":"Name","value":"totalTerminatedPlans"}},{"kind":"Field","name":{"kind":"Name","value":"totalTerminatedValue"}},{"kind":"Field","name":{"kind":"Name","value":"totalTerminatedBalance"}},{"kind":"Field","name":{"kind":"Name","value":"efficiency"}}]}}]}}]}}]} as unknown as DocumentNode<GetAssetAnalyticsQuery, GetAssetAnalyticsQueryVariables>;
 export const ViewAssetByNameDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ViewAssetByName"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"assetName"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"assetType"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"viewAssetByName"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"assetName"},"value":{"kind":"Variable","name":{"kind":"Name","value":"assetName"}}},{"kind":"Argument","name":{"kind":"Name","value":"assetType"},"value":{"kind":"Variable","name":{"kind":"Name","value":"assetType"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"available_unit"}},{"kind":"Field","name":{"kind":"Name","value":"unit_sold"}},{"kind":"Field","name":{"kind":"Name","value":"expected_return"}},{"kind":"Field","name":{"kind":"Name","value":"total_value"}},{"kind":"Field","name":{"kind":"Name","value":"sizes"}}]}}]}}]} as unknown as DocumentNode<ViewAssetByNameQuery, ViewAssetByNameQueryVariables>;
 export const ViewAssetOptionDataByNameDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ViewAssetOptionDataByName"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"assetName"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"assetType"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"viewAssetOptionDataByName"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"assetName"},"value":{"kind":"Variable","name":{"kind":"Name","value":"assetName"}}},{"kind":"Argument","name":{"kind":"Name","value":"assetType"},"value":{"kind":"Variable","name":{"kind":"Name","value":"assetType"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"sizes"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"size"}},{"kind":"Field","name":{"kind":"Name","value":"available_unit"}},{"kind":"Field","name":{"kind":"Name","value":"value"}},{"kind":"Field","name":{"kind":"Name","value":"unit_sold"}},{"kind":"Field","name":{"kind":"Name","value":"expected_return"}}]}}]}}]}}]} as unknown as DocumentNode<ViewAssetOptionDataByNameQuery, ViewAssetOptionDataByNameQueryVariables>;
-export const GetAvailablePlotsForAssetDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetAvailablePlotsForAsset"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"assetId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"size"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAvailablePlotsForAsset"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"assetId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"assetId"}}},{"kind":"Argument","name":{"kind":"Name","value":"size"},"value":{"kind":"Variable","name":{"kind":"Name","value":"size"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"block"}},{"kind":"Field","name":{"kind":"Name","value":"block_label"}},{"kind":"Field","name":{"kind":"Name","value":"plot_number"}},{"kind":"Field","name":{"kind":"Name","value":"size"}},{"kind":"Field","name":{"kind":"Name","value":"status"}}]}}]}}]} as unknown as DocumentNode<GetAvailablePlotsForAssetQuery, GetAvailablePlotsForAssetQueryVariables>;
+export const GetAvailablePlotsForAssetDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetAvailablePlotsForAsset"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"assetId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAvailablePlotsForAsset"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"assetId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"assetId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"block"}},{"kind":"Field","name":{"kind":"Name","value":"block_label"}},{"kind":"Field","name":{"kind":"Name","value":"plot_number"}},{"kind":"Field","name":{"kind":"Name","value":"size"}},{"kind":"Field","name":{"kind":"Name","value":"status"}}]}}]}}]} as unknown as DocumentNode<GetAvailablePlotsForAssetQuery, GetAvailablePlotsForAssetQueryVariables>;
 export const GetAssetBlocksDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetAssetBlocks"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"assetId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAssetBlocks"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"assetId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"assetId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"asset"}},{"kind":"Field","name":{"kind":"Name","value":"label"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}}]}}]} as unknown as DocumentNode<GetAssetBlocksQuery, GetAssetBlocksQueryVariables>;
 export const CreateBlockDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateBlock"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"assetId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"label"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"description"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createBlock"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"assetId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"assetId"}}},{"kind":"Argument","name":{"kind":"Name","value":"label"},"value":{"kind":"Variable","name":{"kind":"Name","value":"label"}}},{"kind":"Argument","name":{"kind":"Name","value":"description"},"value":{"kind":"Variable","name":{"kind":"Name","value":"description"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"asset"}},{"kind":"Field","name":{"kind":"Name","value":"label"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}}]}}]} as unknown as DocumentNode<CreateBlockMutation, CreateBlockMutationVariables>;
 export const DeleteBlockDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"DeleteBlock"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"blockId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deleteBlock"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"blockId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"blockId"}}}]}]}}]} as unknown as DocumentNode<DeleteBlockMutation, DeleteBlockMutationVariables>;
 export const CreateFlexAssetDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateFlexAsset"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"createFlexAssetInput"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"CreateFlexAssetInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createFlexAsset"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"createFlexAssetInput"},"value":{"kind":"Variable","name":{"kind":"Name","value":"createFlexAssetInput"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"asset_name"}}]}}]}}]} as unknown as DocumentNode<CreateFlexAssetMutation, CreateFlexAssetMutationVariables>;
 export const CreateFullOwnershipAssetDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateFullOwnershipAsset"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"createFullOwnershipAssetInput"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"CreateFullOwnershipAssetInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createFullOwnershipAsset"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"createFullOwnershipAssetInput"},"value":{"kind":"Variable","name":{"kind":"Name","value":"createFullOwnershipAssetInput"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"asset_name"}}]}}]}}]} as unknown as DocumentNode<CreateFullOwnershipAssetMutation, CreateFullOwnershipAssetMutationVariables>;
 export const UpdateAssetDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"UpdateAsset"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"updateAssetInput"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"UpdateFlexAssetInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"updateAsset"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"updateAssetInput"},"value":{"kind":"Variable","name":{"kind":"Name","value":"updateAssetInput"}}}]}]}}]} as unknown as DocumentNode<UpdateAssetMutation, UpdateAssetMutationVariables>;
+export const GetAssistantQueriesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetAssistantQueries"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filters"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"AssistantQueryFilters"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAssistantQueries"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}},{"kind":"Argument","name":{"kind":"Name","value":"filters"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filters"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"count"}},{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"audience"}},{"kind":"Field","name":{"kind":"Name","value":"question"}},{"kind":"Field","name":{"kind":"Name","value":"answer"}},{"kind":"Field","name":{"kind":"Name","value":"answered"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}}]}}]}}]} as unknown as DocumentNode<GetAssistantQueriesQuery, GetAssistantQueriesQueryVariables>;
+export const GetAssistantQueryCountsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetAssistantQueryCounts"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"assistantQueryCounts"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"customer"}},{"kind":"Field","name":{"kind":"Name","value":"associate"}},{"kind":"Field","name":{"kind":"Name","value":"answered"}},{"kind":"Field","name":{"kind":"Name","value":"noAnswer"}},{"kind":"Field","name":{"kind":"Name","value":"total"}}]}}]}}]} as unknown as DocumentNode<GetAssistantQueryCountsQuery, GetAssistantQueryCountsQueryVariables>;
 export const AddAssociateManagerDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"AddAssociateManager"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"AddRemoveManagerInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"addAssociateManager"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"manager"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"role"}}]}},{"kind":"Field","name":{"kind":"Name","value":"associate_pros"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}}]}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<AddAssociateManagerMutation, AddAssociateManagerMutationVariables>;
-export const GetAllManagersDashboardDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetAllManagersDashboard"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filter"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"ManagerDashboardFilterInput"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAllManagersDashboard"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filter"}}},{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"period"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"periodType"}},{"kind":"Field","name":{"kind":"Name","value":"month"}},{"kind":"Field","name":{"kind":"Name","value":"year"}},{"kind":"Field","name":{"kind":"Name","value":"start"}},{"kind":"Field","name":{"kind":"Name","value":"end"}}]}},{"kind":"Field","name":{"kind":"Name","value":"target"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"recruitedTarget"}},{"kind":"Field","name":{"kind":"Name","value":"recruitedSoFar"}},{"kind":"Field","name":{"kind":"Name","value":"sellingTarget"}},{"kind":"Field","name":{"kind":"Name","value":"sellingSoFar"}},{"kind":"Field","name":{"kind":"Name","value":"performanceScoreTarget"}},{"kind":"Field","name":{"kind":"Name","value":"performanceScoreSoFar"}}]}},{"kind":"Field","name":{"kind":"Name","value":"recruitment"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"newSignupsInPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"upgradesInPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedInPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"totalAssigned"}},{"kind":"Field","name":{"kind":"Name","value":"onboardingQueueCount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"salesAndRevenue"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"sellingPros"}},{"kind":"Field","name":{"kind":"Name","value":"sellingProsTarget"}},{"kind":"Field","name":{"kind":"Name","value":"totalRevenue"}},{"kind":"Field","name":{"kind":"Name","value":"initialSalesRevenue"}},{"kind":"Field","name":{"kind":"Name","value":"recurringRevenue"}},{"kind":"Field","name":{"kind":"Name","value":"revenuePerSellingPro"}}]}},{"kind":"Field","name":{"kind":"Name","value":"activity"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"activeCount"}},{"kind":"Field","name":{"kind":"Name","value":"activePct"}},{"kind":"Field","name":{"kind":"Name","value":"recentLoginCount"}},{"kind":"Field","name":{"kind":"Name","value":"recentSaleCount"}},{"kind":"Field","name":{"kind":"Name","value":"recentRecruitCount"}},{"kind":"Field","name":{"kind":"Name","value":"inactiveCount"}},{"kind":"Field","name":{"kind":"Name","value":"inactivePct"}},{"kind":"Field","name":{"kind":"Name","value":"abandonedCount"}},{"kind":"Field","name":{"kind":"Name","value":"abandonedPct"}}]}},{"kind":"Field","name":{"kind":"Name","value":"milestones"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"earlySellers"}},{"kind":"Field","name":{"kind":"Name","value":"lateFirstSellers"}}]}},{"kind":"Field","name":{"kind":"Name","value":"performanceScore"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"target"}},{"kind":"Field","name":{"kind":"Name","value":"actual"}}]}},{"kind":"Field","name":{"kind":"Name","value":"associatePros"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"dateRecruited"}},{"kind":"Field","name":{"kind":"Name","value":"totalSales"}},{"kind":"Field","name":{"kind":"Name","value":"revenueGenerated"}},{"kind":"Field","name":{"kind":"Name","value":"lastLogin"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedAt"}}]}},{"kind":"Field","name":{"kind":"Name","value":"associateProsGroupTotal"}}]}}]}}]} as unknown as DocumentNode<GetAllManagersDashboardQuery, GetAllManagersDashboardQueryVariables>;
-export const AssignAssociateManagerTargetDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"AssignAssociateManagerTarget"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"AssignManagerTargetInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"assignAssociateManagerTarget"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"manager"}},{"kind":"Field","name":{"kind":"Name","value":"month"}},{"kind":"Field","name":{"kind":"Name","value":"year"}},{"kind":"Field","name":{"kind":"Name","value":"associate_pro_recruited_target"}},{"kind":"Field","name":{"kind":"Name","value":"selling_associate_pro_target"}},{"kind":"Field","name":{"kind":"Name","value":"performance_score_target"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<AssignAssociateManagerTargetMutation, AssignAssociateManagerTargetMutationVariables>;
+export const GetAllManagersDashboardDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetAllManagersDashboard"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filter"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"ManagerDashboardFilterInput"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAllManagersDashboard"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filter"}}},{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"period"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"periodType"}},{"kind":"Field","name":{"kind":"Name","value":"month"}},{"kind":"Field","name":{"kind":"Name","value":"year"}},{"kind":"Field","name":{"kind":"Name","value":"start"}},{"kind":"Field","name":{"kind":"Name","value":"end"}}]}},{"kind":"Field","name":{"kind":"Name","value":"target"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"recruitedTarget"}},{"kind":"Field","name":{"kind":"Name","value":"recruitedSoFar"}},{"kind":"Field","name":{"kind":"Name","value":"sellingTarget"}},{"kind":"Field","name":{"kind":"Name","value":"sellingSoFar"}},{"kind":"Field","name":{"kind":"Name","value":"revenueTarget"}},{"kind":"Field","name":{"kind":"Name","value":"revenueSoFar"}},{"kind":"Field","name":{"kind":"Name","value":"performanceScoreTarget"}},{"kind":"Field","name":{"kind":"Name","value":"performanceScoreSoFar"}}]}},{"kind":"Field","name":{"kind":"Name","value":"recruitment"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"newSignupsInPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"upgradesInPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedInPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedFreshInPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedCarryoverInPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"totalAssigned"}},{"kind":"Field","name":{"kind":"Name","value":"onboardingQueueCount"}},{"kind":"Field","name":{"kind":"Name","value":"newSignupsBySource"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"managed"}},{"kind":"Field","name":{"kind":"Name","value":"unassigned"}},{"kind":"Field","name":{"kind":"Name","value":"users"}},{"kind":"Field","name":{"kind":"Name","value":"associate"}}]}},{"kind":"Field","name":{"kind":"Name","value":"upgradesBySource"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"managed"}},{"kind":"Field","name":{"kind":"Name","value":"unassigned"}},{"kind":"Field","name":{"kind":"Name","value":"users"}},{"kind":"Field","name":{"kind":"Name","value":"associate"}}]}},{"kind":"Field","name":{"kind":"Name","value":"topNewSignupsContributors"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"proId"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"count"}}]}},{"kind":"Field","name":{"kind":"Name","value":"topUpgradesContributors"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"proId"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"count"}}]}},{"kind":"Field","name":{"kind":"Name","value":"othersNewSignupsCount"}},{"kind":"Field","name":{"kind":"Name","value":"othersUpgradesCount"}},{"kind":"Field","name":{"kind":"Name","value":"activeRecruitingProsCount"}},{"kind":"Field","name":{"kind":"Name","value":"activePromotingProsCount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"salesAndRevenue"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"sellingPros"}},{"kind":"Field","name":{"kind":"Name","value":"sellingProsTarget"}},{"kind":"Field","name":{"kind":"Name","value":"totalRevenue"}},{"kind":"Field","name":{"kind":"Name","value":"initialSalesRevenue"}},{"kind":"Field","name":{"kind":"Name","value":"recurringRevenue"}},{"kind":"Field","name":{"kind":"Name","value":"revenuePerSellingPro"}},{"kind":"Field","name":{"kind":"Name","value":"contractSize"}},{"kind":"Field","name":{"kind":"Name","value":"salesCountBySource"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"managed"}},{"kind":"Field","name":{"kind":"Name","value":"unassigned"}},{"kind":"Field","name":{"kind":"Name","value":"users"}},{"kind":"Field","name":{"kind":"Name","value":"associate"}}]}},{"kind":"Field","name":{"kind":"Name","value":"revenueBySource"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"managed"}},{"kind":"Field","name":{"kind":"Name","value":"unassigned"}},{"kind":"Field","name":{"kind":"Name","value":"users"}},{"kind":"Field","name":{"kind":"Name","value":"associate"}}]}},{"kind":"Field","name":{"kind":"Name","value":"topSellingContributors"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"proId"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"othersSellingRevenue"}},{"kind":"Field","name":{"kind":"Name","value":"activeRevenueGeneratingProsCount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"activity"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"activeCount"}},{"kind":"Field","name":{"kind":"Name","value":"activePct"}},{"kind":"Field","name":{"kind":"Name","value":"recentLoginCount"}},{"kind":"Field","name":{"kind":"Name","value":"recentSaleCount"}},{"kind":"Field","name":{"kind":"Name","value":"recentRecruitCount"}},{"kind":"Field","name":{"kind":"Name","value":"inactiveCount"}},{"kind":"Field","name":{"kind":"Name","value":"inactivePct"}},{"kind":"Field","name":{"kind":"Name","value":"abandonedCount"}},{"kind":"Field","name":{"kind":"Name","value":"abandonedPct"}}]}},{"kind":"Field","name":{"kind":"Name","value":"milestones"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"earlySellers"}},{"kind":"Field","name":{"kind":"Name","value":"lateFirstSellers"}}]}},{"kind":"Field","name":{"kind":"Name","value":"performanceScore"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"score"}},{"kind":"Field","name":{"kind":"Name","value":"sellingComponent"}},{"kind":"Field","name":{"kind":"Name","value":"revenueComponent"}},{"kind":"Field","name":{"kind":"Name","value":"recruitmentComponent"}},{"kind":"Field","name":{"kind":"Name","value":"target"}},{"kind":"Field","name":{"kind":"Name","value":"actual"}},{"kind":"Field","name":{"kind":"Name","value":"ratingCount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"associatePros"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"dateRecruited"}},{"kind":"Field","name":{"kind":"Name","value":"totalSales"}},{"kind":"Field","name":{"kind":"Name","value":"revenueGenerated"}},{"kind":"Field","name":{"kind":"Name","value":"lastLogin"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedAt"}}]}},{"kind":"Field","name":{"kind":"Name","value":"associateProsGroupTotal"}}]}}]}}]} as unknown as DocumentNode<GetAllManagersDashboardQuery, GetAllManagersDashboardQueryVariables>;
+export const AssignAssociateManagerTargetDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"AssignAssociateManagerTarget"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"AssignManagerTargetInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"assignAssociateManagerTarget"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"manager"}},{"kind":"Field","name":{"kind":"Name","value":"month"}},{"kind":"Field","name":{"kind":"Name","value":"year"}},{"kind":"Field","name":{"kind":"Name","value":"associate_pro_recruited_target"}},{"kind":"Field","name":{"kind":"Name","value":"selling_associate_pro_target"}},{"kind":"Field","name":{"kind":"Name","value":"revenue_target"}},{"kind":"Field","name":{"kind":"Name","value":"performance_score_target"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<AssignAssociateManagerTargetMutation, AssignAssociateManagerTargetMutationVariables>;
 export const GetAssociateManagersDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetAssociateManagers"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"searchQuery"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAssociateManagers"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}},{"kind":"Argument","name":{"kind":"Name","value":"searchQuery"},"value":{"kind":"Variable","name":{"kind":"Name","value":"searchQuery"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"count"}},{"kind":"Field","name":{"kind":"Name","value":"page"}},{"kind":"Field","name":{"kind":"Name","value":"limit"}},{"kind":"Field","name":{"kind":"Name","value":"results"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"manager"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"role"}}]}},{"kind":"Field","name":{"kind":"Name","value":"associate_pros_count"}},{"kind":"Field","name":{"kind":"Name","value":"associate_pros"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}},{"kind":"Field","name":{"kind":"Name","value":"last_login"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]}}]} as unknown as DocumentNode<GetAssociateManagersQuery, GetAssociateManagersQueryVariables>;
 export const GetAssociateManagerDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetAssociateManager"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAssociateManager"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"managerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"manager"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"role"}}]}},{"kind":"Field","name":{"kind":"Name","value":"associate_pros"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}},{"kind":"Field","name":{"kind":"Name","value":"last_login"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<GetAssociateManagerQuery, GetAssociateManagerQueryVariables>;
 export const BulkAssignAssociateProsToManagerDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"BulkAssignAssociateProsToManager"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"BulkAssignAssociateProsInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"bulkAssignAssociateProsToManager"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"manager"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}}]}},{"kind":"Field","name":{"kind":"Name","value":"associate_pros"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}}]}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<BulkAssignAssociateProsToManagerMutation, BulkAssignAssociateProsToManagerMutationVariables>;
@@ -8120,16 +11508,16 @@ export const SystemDashboardProsGroupDocument = {"kind":"Document","definitions"
 export const ExportManagerDashboardProsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ExportManagerDashboardPros"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filter"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"ManagerDashboardFilterInput"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"exportManagerDashboardPros"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"managerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}}},{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filter"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"dateRecruited"}},{"kind":"Field","name":{"kind":"Name","value":"totalSales"}},{"kind":"Field","name":{"kind":"Name","value":"revenueGenerated"}},{"kind":"Field","name":{"kind":"Name","value":"lastLogin"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedAt"}}]}}]}}]} as unknown as DocumentNode<ExportManagerDashboardProsQuery, ExportManagerDashboardProsQueryVariables>;
 export const ExportManagerSalesRecordDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ExportManagerSalesRecord"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filters"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"SalesRecordFilters"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"exportManagerSalesRecord"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"managerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}}},{"kind":"Argument","name":{"kind":"Name","value":"filters"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filters"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"user_firstName"}},{"kind":"Field","name":{"kind":"Name","value":"user_lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"user_phone"}},{"kind":"Field","name":{"kind":"Name","value":"referrer_name"}},{"kind":"Field","name":{"kind":"Name","value":"referrer_email"}},{"kind":"Field","name":{"kind":"Name","value":"referrer_phone"}},{"kind":"Field","name":{"kind":"Name","value":"asset_name"}},{"kind":"Field","name":{"kind":"Name","value":"asset_type"}},{"kind":"Field","name":{"kind":"Name","value":"no_of_units"}},{"kind":"Field","name":{"kind":"Name","value":"size"}},{"kind":"Field","name":{"kind":"Name","value":"price"}},{"kind":"Field","name":{"kind":"Name","value":"amount_paid"}},{"kind":"Field","name":{"kind":"Name","value":"amount_payable"}},{"kind":"Field","name":{"kind":"Name","value":"balance"}},{"kind":"Field","name":{"kind":"Name","value":"default_amount"}},{"kind":"Field","name":{"kind":"Name","value":"is_suspended"}},{"kind":"Field","name":{"kind":"Name","value":"start_date"}},{"kind":"Field","name":{"kind":"Name","value":"next_date"}}]}}]}}]}}]} as unknown as DocumentNode<ExportManagerSalesRecordQuery, ExportManagerSalesRecordQueryVariables>;
 export const LogOnboardingAttemptDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"LogOnboardingAttempt"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"LogOnboardingAttemptInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"logOnboardingAttempt"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"pro"}},{"kind":"Field","name":{"kind":"Name","value":"outcome"}},{"kind":"Field","name":{"kind":"Name","value":"attemptNumber"}},{"kind":"Field","name":{"kind":"Name","value":"isOverdue"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}}]}}]} as unknown as DocumentNode<LogOnboardingAttemptMutation, LogOnboardingAttemptMutationVariables>;
-export const AdminGetManagerDashboardDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"AdminGetManagerDashboard"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filter"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"ManagerDashboardFilterInput"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"adminGetManagerDashboard"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"managerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}}},{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filter"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"period"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"periodType"}},{"kind":"Field","name":{"kind":"Name","value":"month"}},{"kind":"Field","name":{"kind":"Name","value":"year"}},{"kind":"Field","name":{"kind":"Name","value":"start"}},{"kind":"Field","name":{"kind":"Name","value":"end"}}]}},{"kind":"Field","name":{"kind":"Name","value":"target"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"recruitedTarget"}},{"kind":"Field","name":{"kind":"Name","value":"recruitedSoFar"}},{"kind":"Field","name":{"kind":"Name","value":"sellingTarget"}},{"kind":"Field","name":{"kind":"Name","value":"sellingSoFar"}},{"kind":"Field","name":{"kind":"Name","value":"performanceScoreTarget"}},{"kind":"Field","name":{"kind":"Name","value":"performanceScoreSoFar"}}]}},{"kind":"Field","name":{"kind":"Name","value":"recruitment"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"newSignupsInPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"upgradesInPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedInPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"totalAssigned"}},{"kind":"Field","name":{"kind":"Name","value":"onboardingQueueCount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"salesAndRevenue"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"sellingPros"}},{"kind":"Field","name":{"kind":"Name","value":"sellingProsTarget"}},{"kind":"Field","name":{"kind":"Name","value":"totalRevenue"}},{"kind":"Field","name":{"kind":"Name","value":"initialSalesRevenue"}},{"kind":"Field","name":{"kind":"Name","value":"recurringRevenue"}},{"kind":"Field","name":{"kind":"Name","value":"revenuePerSellingPro"}}]}},{"kind":"Field","name":{"kind":"Name","value":"activity"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"activeCount"}},{"kind":"Field","name":{"kind":"Name","value":"activePct"}},{"kind":"Field","name":{"kind":"Name","value":"recentLoginCount"}},{"kind":"Field","name":{"kind":"Name","value":"recentSaleCount"}},{"kind":"Field","name":{"kind":"Name","value":"recentRecruitCount"}},{"kind":"Field","name":{"kind":"Name","value":"inactiveCount"}},{"kind":"Field","name":{"kind":"Name","value":"inactivePct"}},{"kind":"Field","name":{"kind":"Name","value":"abandonedCount"}},{"kind":"Field","name":{"kind":"Name","value":"abandonedPct"}}]}},{"kind":"Field","name":{"kind":"Name","value":"milestones"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"earlySellers"}},{"kind":"Field","name":{"kind":"Name","value":"lateFirstSellers"}}]}},{"kind":"Field","name":{"kind":"Name","value":"performanceScore"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"target"}},{"kind":"Field","name":{"kind":"Name","value":"actual"}}]}},{"kind":"Field","name":{"kind":"Name","value":"associatePros"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"dateRecruited"}},{"kind":"Field","name":{"kind":"Name","value":"totalSales"}},{"kind":"Field","name":{"kind":"Name","value":"revenueGenerated"}},{"kind":"Field","name":{"kind":"Name","value":"lastLogin"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedAt"}}]}},{"kind":"Field","name":{"kind":"Name","value":"associateProsGroupTotal"}}]}}]}}]} as unknown as DocumentNode<AdminGetManagerDashboardQuery, AdminGetManagerDashboardQueryVariables>;
-export const ManagerDashboardDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ManagerDashboard"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filter"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"ManagerDashboardFilterInput"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"managerDashboard"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filter"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"period"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"periodType"}},{"kind":"Field","name":{"kind":"Name","value":"month"}},{"kind":"Field","name":{"kind":"Name","value":"year"}},{"kind":"Field","name":{"kind":"Name","value":"start"}},{"kind":"Field","name":{"kind":"Name","value":"end"}}]}},{"kind":"Field","name":{"kind":"Name","value":"target"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"recruitedTarget"}},{"kind":"Field","name":{"kind":"Name","value":"recruitedSoFar"}},{"kind":"Field","name":{"kind":"Name","value":"sellingTarget"}},{"kind":"Field","name":{"kind":"Name","value":"sellingSoFar"}},{"kind":"Field","name":{"kind":"Name","value":"performanceScoreTarget"}},{"kind":"Field","name":{"kind":"Name","value":"performanceScoreSoFar"}}]}},{"kind":"Field","name":{"kind":"Name","value":"recruitment"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"newSignupsInPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"upgradesInPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedInPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"totalAssigned"}},{"kind":"Field","name":{"kind":"Name","value":"onboardingQueueCount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"salesAndRevenue"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"sellingPros"}},{"kind":"Field","name":{"kind":"Name","value":"sellingProsTarget"}},{"kind":"Field","name":{"kind":"Name","value":"totalRevenue"}},{"kind":"Field","name":{"kind":"Name","value":"initialSalesRevenue"}},{"kind":"Field","name":{"kind":"Name","value":"recurringRevenue"}},{"kind":"Field","name":{"kind":"Name","value":"revenuePerSellingPro"}}]}},{"kind":"Field","name":{"kind":"Name","value":"activity"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"activeCount"}},{"kind":"Field","name":{"kind":"Name","value":"activePct"}},{"kind":"Field","name":{"kind":"Name","value":"recentLoginCount"}},{"kind":"Field","name":{"kind":"Name","value":"recentSaleCount"}},{"kind":"Field","name":{"kind":"Name","value":"recentRecruitCount"}},{"kind":"Field","name":{"kind":"Name","value":"inactiveCount"}},{"kind":"Field","name":{"kind":"Name","value":"inactivePct"}},{"kind":"Field","name":{"kind":"Name","value":"abandonedCount"}},{"kind":"Field","name":{"kind":"Name","value":"abandonedPct"}}]}},{"kind":"Field","name":{"kind":"Name","value":"milestones"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"earlySellers"}},{"kind":"Field","name":{"kind":"Name","value":"lateFirstSellers"}}]}},{"kind":"Field","name":{"kind":"Name","value":"performanceScore"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"target"}},{"kind":"Field","name":{"kind":"Name","value":"actual"}}]}},{"kind":"Field","name":{"kind":"Name","value":"associatePros"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"dateRecruited"}},{"kind":"Field","name":{"kind":"Name","value":"totalSales"}},{"kind":"Field","name":{"kind":"Name","value":"revenueGenerated"}},{"kind":"Field","name":{"kind":"Name","value":"lastLogin"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedAt"}}]}},{"kind":"Field","name":{"kind":"Name","value":"associateProsGroupTotal"}}]}}]}}]} as unknown as DocumentNode<ManagerDashboardQuery, ManagerDashboardQueryVariables>;
-export const ListAssociateManagerTargetsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ListAssociateManagerTargets"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"listAssociateManagerTargets"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"managerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"manager"}},{"kind":"Field","name":{"kind":"Name","value":"month"}},{"kind":"Field","name":{"kind":"Name","value":"year"}},{"kind":"Field","name":{"kind":"Name","value":"associate_pro_recruited_target"}},{"kind":"Field","name":{"kind":"Name","value":"selling_associate_pro_target"}},{"kind":"Field","name":{"kind":"Name","value":"performance_score_target"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<ListAssociateManagerTargetsQuery, ListAssociateManagerTargetsQueryVariables>;
-export const GetAssociateManagerTargetDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetAssociateManagerTarget"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"month"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"year"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAssociateManagerTarget"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"managerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}}},{"kind":"Argument","name":{"kind":"Name","value":"month"},"value":{"kind":"Variable","name":{"kind":"Name","value":"month"}}},{"kind":"Argument","name":{"kind":"Name","value":"year"},"value":{"kind":"Variable","name":{"kind":"Name","value":"year"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"manager"}},{"kind":"Field","name":{"kind":"Name","value":"month"}},{"kind":"Field","name":{"kind":"Name","value":"year"}},{"kind":"Field","name":{"kind":"Name","value":"associate_pro_recruited_target"}},{"kind":"Field","name":{"kind":"Name","value":"selling_associate_pro_target"}},{"kind":"Field","name":{"kind":"Name","value":"performance_score_target"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<GetAssociateManagerTargetQuery, GetAssociateManagerTargetQueryVariables>;
+export const AdminGetManagerDashboardDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"AdminGetManagerDashboard"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filter"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"ManagerDashboardFilterInput"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"adminGetManagerDashboard"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"managerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}}},{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filter"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"period"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"periodType"}},{"kind":"Field","name":{"kind":"Name","value":"month"}},{"kind":"Field","name":{"kind":"Name","value":"year"}},{"kind":"Field","name":{"kind":"Name","value":"start"}},{"kind":"Field","name":{"kind":"Name","value":"end"}}]}},{"kind":"Field","name":{"kind":"Name","value":"target"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"recruitedTarget"}},{"kind":"Field","name":{"kind":"Name","value":"recruitedSoFar"}},{"kind":"Field","name":{"kind":"Name","value":"sellingTarget"}},{"kind":"Field","name":{"kind":"Name","value":"sellingSoFar"}},{"kind":"Field","name":{"kind":"Name","value":"revenueTarget"}},{"kind":"Field","name":{"kind":"Name","value":"revenueSoFar"}},{"kind":"Field","name":{"kind":"Name","value":"performanceScoreTarget"}},{"kind":"Field","name":{"kind":"Name","value":"performanceScoreSoFar"}}]}},{"kind":"Field","name":{"kind":"Name","value":"recruitment"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"newSignupsInPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"upgradesInPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedInPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedFreshInPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedCarryoverInPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"totalAssigned"}},{"kind":"Field","name":{"kind":"Name","value":"onboardingQueueCount"}},{"kind":"Field","name":{"kind":"Name","value":"newSignupsBySource"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"managed"}},{"kind":"Field","name":{"kind":"Name","value":"unassigned"}},{"kind":"Field","name":{"kind":"Name","value":"users"}},{"kind":"Field","name":{"kind":"Name","value":"associate"}}]}},{"kind":"Field","name":{"kind":"Name","value":"upgradesBySource"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"managed"}},{"kind":"Field","name":{"kind":"Name","value":"unassigned"}},{"kind":"Field","name":{"kind":"Name","value":"users"}},{"kind":"Field","name":{"kind":"Name","value":"associate"}}]}},{"kind":"Field","name":{"kind":"Name","value":"topNewSignupsContributors"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"proId"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"count"}}]}},{"kind":"Field","name":{"kind":"Name","value":"topUpgradesContributors"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"proId"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"count"}}]}},{"kind":"Field","name":{"kind":"Name","value":"othersNewSignupsCount"}},{"kind":"Field","name":{"kind":"Name","value":"othersUpgradesCount"}},{"kind":"Field","name":{"kind":"Name","value":"activeRecruitingProsCount"}},{"kind":"Field","name":{"kind":"Name","value":"activePromotingProsCount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"salesAndRevenue"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"sellingPros"}},{"kind":"Field","name":{"kind":"Name","value":"sellingProsTarget"}},{"kind":"Field","name":{"kind":"Name","value":"totalRevenue"}},{"kind":"Field","name":{"kind":"Name","value":"initialSalesRevenue"}},{"kind":"Field","name":{"kind":"Name","value":"recurringRevenue"}},{"kind":"Field","name":{"kind":"Name","value":"revenuePerSellingPro"}},{"kind":"Field","name":{"kind":"Name","value":"contractSize"}},{"kind":"Field","name":{"kind":"Name","value":"salesCountBySource"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"managed"}},{"kind":"Field","name":{"kind":"Name","value":"unassigned"}},{"kind":"Field","name":{"kind":"Name","value":"users"}},{"kind":"Field","name":{"kind":"Name","value":"associate"}}]}},{"kind":"Field","name":{"kind":"Name","value":"revenueBySource"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"managed"}},{"kind":"Field","name":{"kind":"Name","value":"unassigned"}},{"kind":"Field","name":{"kind":"Name","value":"users"}},{"kind":"Field","name":{"kind":"Name","value":"associate"}}]}},{"kind":"Field","name":{"kind":"Name","value":"topSellingContributors"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"proId"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"othersSellingRevenue"}},{"kind":"Field","name":{"kind":"Name","value":"activeRevenueGeneratingProsCount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"activity"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"activeCount"}},{"kind":"Field","name":{"kind":"Name","value":"activePct"}},{"kind":"Field","name":{"kind":"Name","value":"recentLoginCount"}},{"kind":"Field","name":{"kind":"Name","value":"recentSaleCount"}},{"kind":"Field","name":{"kind":"Name","value":"recentRecruitCount"}},{"kind":"Field","name":{"kind":"Name","value":"inactiveCount"}},{"kind":"Field","name":{"kind":"Name","value":"inactivePct"}},{"kind":"Field","name":{"kind":"Name","value":"abandonedCount"}},{"kind":"Field","name":{"kind":"Name","value":"abandonedPct"}}]}},{"kind":"Field","name":{"kind":"Name","value":"milestones"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"earlySellers"}},{"kind":"Field","name":{"kind":"Name","value":"lateFirstSellers"}}]}},{"kind":"Field","name":{"kind":"Name","value":"performanceScore"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"score"}},{"kind":"Field","name":{"kind":"Name","value":"sellingComponent"}},{"kind":"Field","name":{"kind":"Name","value":"revenueComponent"}},{"kind":"Field","name":{"kind":"Name","value":"recruitmentComponent"}},{"kind":"Field","name":{"kind":"Name","value":"target"}},{"kind":"Field","name":{"kind":"Name","value":"actual"}},{"kind":"Field","name":{"kind":"Name","value":"ratingCount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"associatePros"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"dateRecruited"}},{"kind":"Field","name":{"kind":"Name","value":"totalSales"}},{"kind":"Field","name":{"kind":"Name","value":"revenueGenerated"}},{"kind":"Field","name":{"kind":"Name","value":"lastLogin"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedAt"}}]}},{"kind":"Field","name":{"kind":"Name","value":"associateProsGroupTotal"}}]}}]}}]} as unknown as DocumentNode<AdminGetManagerDashboardQuery, AdminGetManagerDashboardQueryVariables>;
+export const ManagerDashboardDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ManagerDashboard"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filter"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"ManagerDashboardFilterInput"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"managerDashboard"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filter"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"period"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"periodType"}},{"kind":"Field","name":{"kind":"Name","value":"month"}},{"kind":"Field","name":{"kind":"Name","value":"year"}},{"kind":"Field","name":{"kind":"Name","value":"start"}},{"kind":"Field","name":{"kind":"Name","value":"end"}}]}},{"kind":"Field","name":{"kind":"Name","value":"target"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"recruitedTarget"}},{"kind":"Field","name":{"kind":"Name","value":"recruitedSoFar"}},{"kind":"Field","name":{"kind":"Name","value":"sellingTarget"}},{"kind":"Field","name":{"kind":"Name","value":"sellingSoFar"}},{"kind":"Field","name":{"kind":"Name","value":"revenueTarget"}},{"kind":"Field","name":{"kind":"Name","value":"revenueSoFar"}},{"kind":"Field","name":{"kind":"Name","value":"performanceScoreTarget"}},{"kind":"Field","name":{"kind":"Name","value":"performanceScoreSoFar"}}]}},{"kind":"Field","name":{"kind":"Name","value":"recruitment"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"newSignupsInPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"upgradesInPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedInPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedFreshInPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedCarryoverInPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"totalAssigned"}},{"kind":"Field","name":{"kind":"Name","value":"onboardingQueueCount"}},{"kind":"Field","name":{"kind":"Name","value":"newSignupsBySource"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"managed"}},{"kind":"Field","name":{"kind":"Name","value":"unassigned"}},{"kind":"Field","name":{"kind":"Name","value":"users"}},{"kind":"Field","name":{"kind":"Name","value":"associate"}}]}},{"kind":"Field","name":{"kind":"Name","value":"upgradesBySource"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"managed"}},{"kind":"Field","name":{"kind":"Name","value":"unassigned"}},{"kind":"Field","name":{"kind":"Name","value":"users"}},{"kind":"Field","name":{"kind":"Name","value":"associate"}}]}},{"kind":"Field","name":{"kind":"Name","value":"topNewSignupsContributors"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"proId"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"count"}}]}},{"kind":"Field","name":{"kind":"Name","value":"topUpgradesContributors"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"proId"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"count"}}]}},{"kind":"Field","name":{"kind":"Name","value":"othersNewSignupsCount"}},{"kind":"Field","name":{"kind":"Name","value":"othersUpgradesCount"}},{"kind":"Field","name":{"kind":"Name","value":"activeRecruitingProsCount"}},{"kind":"Field","name":{"kind":"Name","value":"activePromotingProsCount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"salesAndRevenue"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"sellingPros"}},{"kind":"Field","name":{"kind":"Name","value":"sellingProsTarget"}},{"kind":"Field","name":{"kind":"Name","value":"totalRevenue"}},{"kind":"Field","name":{"kind":"Name","value":"initialSalesRevenue"}},{"kind":"Field","name":{"kind":"Name","value":"recurringRevenue"}},{"kind":"Field","name":{"kind":"Name","value":"revenuePerSellingPro"}},{"kind":"Field","name":{"kind":"Name","value":"contractSize"}},{"kind":"Field","name":{"kind":"Name","value":"salesCountBySource"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"managed"}},{"kind":"Field","name":{"kind":"Name","value":"unassigned"}},{"kind":"Field","name":{"kind":"Name","value":"users"}},{"kind":"Field","name":{"kind":"Name","value":"associate"}}]}},{"kind":"Field","name":{"kind":"Name","value":"revenueBySource"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"managed"}},{"kind":"Field","name":{"kind":"Name","value":"unassigned"}},{"kind":"Field","name":{"kind":"Name","value":"users"}},{"kind":"Field","name":{"kind":"Name","value":"associate"}}]}},{"kind":"Field","name":{"kind":"Name","value":"topSellingContributors"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"proId"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"othersSellingRevenue"}},{"kind":"Field","name":{"kind":"Name","value":"activeRevenueGeneratingProsCount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"activity"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"activeCount"}},{"kind":"Field","name":{"kind":"Name","value":"activePct"}},{"kind":"Field","name":{"kind":"Name","value":"recentLoginCount"}},{"kind":"Field","name":{"kind":"Name","value":"recentSaleCount"}},{"kind":"Field","name":{"kind":"Name","value":"recentRecruitCount"}},{"kind":"Field","name":{"kind":"Name","value":"inactiveCount"}},{"kind":"Field","name":{"kind":"Name","value":"inactivePct"}},{"kind":"Field","name":{"kind":"Name","value":"abandonedCount"}},{"kind":"Field","name":{"kind":"Name","value":"abandonedPct"}}]}},{"kind":"Field","name":{"kind":"Name","value":"milestones"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"earlySellers"}},{"kind":"Field","name":{"kind":"Name","value":"lateFirstSellers"}}]}},{"kind":"Field","name":{"kind":"Name","value":"performanceScore"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"score"}},{"kind":"Field","name":{"kind":"Name","value":"sellingComponent"}},{"kind":"Field","name":{"kind":"Name","value":"revenueComponent"}},{"kind":"Field","name":{"kind":"Name","value":"recruitmentComponent"}},{"kind":"Field","name":{"kind":"Name","value":"target"}},{"kind":"Field","name":{"kind":"Name","value":"actual"}},{"kind":"Field","name":{"kind":"Name","value":"ratingCount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"associatePros"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"dateRecruited"}},{"kind":"Field","name":{"kind":"Name","value":"totalSales"}},{"kind":"Field","name":{"kind":"Name","value":"revenueGenerated"}},{"kind":"Field","name":{"kind":"Name","value":"lastLogin"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedAt"}}]}},{"kind":"Field","name":{"kind":"Name","value":"associateProsGroupTotal"}}]}}]}}]} as unknown as DocumentNode<ManagerDashboardQuery, ManagerDashboardQueryVariables>;
+export const ListAssociateManagerTargetsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ListAssociateManagerTargets"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"listAssociateManagerTargets"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"managerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"manager"}},{"kind":"Field","name":{"kind":"Name","value":"month"}},{"kind":"Field","name":{"kind":"Name","value":"year"}},{"kind":"Field","name":{"kind":"Name","value":"associate_pro_recruited_target"}},{"kind":"Field","name":{"kind":"Name","value":"selling_associate_pro_target"}},{"kind":"Field","name":{"kind":"Name","value":"revenue_target"}},{"kind":"Field","name":{"kind":"Name","value":"performance_score_target"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<ListAssociateManagerTargetsQuery, ListAssociateManagerTargetsQueryVariables>;
+export const GetAssociateManagerTargetDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetAssociateManagerTarget"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"month"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"year"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAssociateManagerTarget"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"managerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}}},{"kind":"Argument","name":{"kind":"Name","value":"month"},"value":{"kind":"Variable","name":{"kind":"Name","value":"month"}}},{"kind":"Argument","name":{"kind":"Name","value":"year"},"value":{"kind":"Variable","name":{"kind":"Name","value":"year"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"manager"}},{"kind":"Field","name":{"kind":"Name","value":"month"}},{"kind":"Field","name":{"kind":"Name","value":"year"}},{"kind":"Field","name":{"kind":"Name","value":"associate_pro_recruited_target"}},{"kind":"Field","name":{"kind":"Name","value":"selling_associate_pro_target"}},{"kind":"Field","name":{"kind":"Name","value":"revenue_target"}},{"kind":"Field","name":{"kind":"Name","value":"performance_score_target"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<GetAssociateManagerTargetQuery, GetAssociateManagerTargetQueryVariables>;
 export const GetOnboardingAttemptsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetOnboardingAttempts"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"proId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getOnboardingAttempts"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"proId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"proId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"pro"}},{"kind":"Field","name":{"kind":"Name","value":"outcome"}},{"kind":"Field","name":{"kind":"Name","value":"attemptNumber"}},{"kind":"Field","name":{"kind":"Name","value":"isOverdue"}},{"kind":"Field","name":{"kind":"Name","value":"manager"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"role"}}]}},{"kind":"Field","name":{"kind":"Name","value":"motivation"}},{"kind":"Field","name":{"kind":"Name","value":"experience"}},{"kind":"Field","name":{"kind":"Name","value":"experienceLength"}},{"kind":"Field","name":{"kind":"Name","value":"prospects"}},{"kind":"Field","name":{"kind":"Name","value":"incomeGoal"}},{"kind":"Field","name":{"kind":"Name","value":"support"}},{"kind":"Field","name":{"kind":"Name","value":"supportOther"}},{"kind":"Field","name":{"kind":"Name","value":"readDocs"}},{"kind":"Field","name":{"kind":"Name","value":"gotGuide"}},{"kind":"Field","name":{"kind":"Name","value":"rescheduleDate"}},{"kind":"Field","name":{"kind":"Name","value":"rescheduleTimeOfDay"}},{"kind":"Field","name":{"kind":"Name","value":"rescheduleNote"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}}]}}]} as unknown as DocumentNode<GetOnboardingAttemptsQuery, GetOnboardingAttemptsQueryVariables>;
 export const ReassignAssociateProDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"ReassignAssociatePro"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ReassignAssociateProInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"reassignAssociatePro"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"manager"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}}]}},{"kind":"Field","name":{"kind":"Name","value":"associate_pros"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}}]}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<ReassignAssociateProMutation, ReassignAssociateProMutationVariables>;
 export const RemoveAssociateManagerDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"RemoveAssociateManager"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"AddRemoveManagerInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"removeAssociateManager"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"managerId"}},{"kind":"Field","name":{"kind":"Name","value":"removed"}}]}}]}}]} as unknown as DocumentNode<RemoveAssociateManagerMutation, RemoveAssociateManagerMutationVariables>;
-export const GetSystemAssociatesDashboardDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetSystemAssociatesDashboard"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filter"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"ManagerDashboardFilterInput"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getSystemAssociatesDashboard"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filter"}}},{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"period"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"periodType"}},{"kind":"Field","name":{"kind":"Name","value":"month"}},{"kind":"Field","name":{"kind":"Name","value":"year"}},{"kind":"Field","name":{"kind":"Name","value":"start"}},{"kind":"Field","name":{"kind":"Name","value":"end"}}]}},{"kind":"Field","name":{"kind":"Name","value":"recruitment"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"newSignupsInPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"upgradesInPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedInPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"totalAssigned"}},{"kind":"Field","name":{"kind":"Name","value":"onboardingQueueCount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"salesAndRevenue"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"sellingPros"}},{"kind":"Field","name":{"kind":"Name","value":"sellingProsTarget"}},{"kind":"Field","name":{"kind":"Name","value":"totalRevenue"}},{"kind":"Field","name":{"kind":"Name","value":"initialSalesRevenue"}},{"kind":"Field","name":{"kind":"Name","value":"recurringRevenue"}},{"kind":"Field","name":{"kind":"Name","value":"revenuePerSellingPro"}}]}},{"kind":"Field","name":{"kind":"Name","value":"activity"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"activeCount"}},{"kind":"Field","name":{"kind":"Name","value":"activePct"}},{"kind":"Field","name":{"kind":"Name","value":"recentLoginCount"}},{"kind":"Field","name":{"kind":"Name","value":"recentSaleCount"}},{"kind":"Field","name":{"kind":"Name","value":"recentRecruitCount"}},{"kind":"Field","name":{"kind":"Name","value":"inactiveCount"}},{"kind":"Field","name":{"kind":"Name","value":"inactivePct"}},{"kind":"Field","name":{"kind":"Name","value":"abandonedCount"}},{"kind":"Field","name":{"kind":"Name","value":"abandonedPct"}}]}},{"kind":"Field","name":{"kind":"Name","value":"milestones"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"earlySellers"}},{"kind":"Field","name":{"kind":"Name","value":"lateFirstSellers"}}]}},{"kind":"Field","name":{"kind":"Name","value":"performanceScore"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"target"}},{"kind":"Field","name":{"kind":"Name","value":"actual"}}]}},{"kind":"Field","name":{"kind":"Name","value":"associatePros"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"dateRecruited"}},{"kind":"Field","name":{"kind":"Name","value":"totalSales"}},{"kind":"Field","name":{"kind":"Name","value":"revenueGenerated"}},{"kind":"Field","name":{"kind":"Name","value":"lastLogin"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedAt"}}]}},{"kind":"Field","name":{"kind":"Name","value":"associateProsGroupTotal"}}]}}]}}]} as unknown as DocumentNode<GetSystemAssociatesDashboardQuery, GetSystemAssociatesDashboardQueryVariables>;
-export const GetManagerSalesRecordDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetManagerSalesRecord"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filters"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"SalesRecordFilters"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getManagerSalesRecord"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"filters"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filters"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}},{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"SalesRowFragment"}}]}},{"kind":"Field","name":{"kind":"Name","value":"count"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"SalesRowFragment"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"SalesRecord"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"user_firstName"}},{"kind":"Field","name":{"kind":"Name","value":"user_lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"user_phone"}},{"kind":"Field","name":{"kind":"Name","value":"referrer_name"}},{"kind":"Field","name":{"kind":"Name","value":"referrer_email"}},{"kind":"Field","name":{"kind":"Name","value":"referrer_phone"}},{"kind":"Field","name":{"kind":"Name","value":"asset_name"}},{"kind":"Field","name":{"kind":"Name","value":"asset_type"}},{"kind":"Field","name":{"kind":"Name","value":"no_of_units"}},{"kind":"Field","name":{"kind":"Name","value":"document_amount_paid"}},{"kind":"Field","name":{"kind":"Name","value":"fullownerhsip_documentprice"}},{"kind":"Field","name":{"kind":"Name","value":"month_subscription"}},{"kind":"Field","name":{"kind":"Name","value":"size"}},{"kind":"Field","name":{"kind":"Name","value":"price"}},{"kind":"Field","name":{"kind":"Name","value":"amount_paid"}},{"kind":"Field","name":{"kind":"Name","value":"amount_payable"}},{"kind":"Field","name":{"kind":"Name","value":"balance"}},{"kind":"Field","name":{"kind":"Name","value":"default_amount"}},{"kind":"Field","name":{"kind":"Name","value":"is_suspended"}},{"kind":"Field","name":{"kind":"Name","value":"start_date"}},{"kind":"Field","name":{"kind":"Name","value":"next_date"}}]}}]} as unknown as DocumentNode<GetManagerSalesRecordQuery, GetManagerSalesRecordQueryVariables>;
-export const AdminGetManagerSalesRecordDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"AdminGetManagerSalesRecord"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filters"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"SalesRecordFilters"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"adminGetManagerSalesRecord"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"managerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}}},{"kind":"Argument","name":{"kind":"Name","value":"filters"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filters"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}},{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"SalesRowFragment"}}]}},{"kind":"Field","name":{"kind":"Name","value":"count"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"SalesRowFragment"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"SalesRecord"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"user_firstName"}},{"kind":"Field","name":{"kind":"Name","value":"user_lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"user_phone"}},{"kind":"Field","name":{"kind":"Name","value":"referrer_name"}},{"kind":"Field","name":{"kind":"Name","value":"referrer_email"}},{"kind":"Field","name":{"kind":"Name","value":"referrer_phone"}},{"kind":"Field","name":{"kind":"Name","value":"asset_name"}},{"kind":"Field","name":{"kind":"Name","value":"asset_type"}},{"kind":"Field","name":{"kind":"Name","value":"no_of_units"}},{"kind":"Field","name":{"kind":"Name","value":"document_amount_paid"}},{"kind":"Field","name":{"kind":"Name","value":"fullownerhsip_documentprice"}},{"kind":"Field","name":{"kind":"Name","value":"month_subscription"}},{"kind":"Field","name":{"kind":"Name","value":"size"}},{"kind":"Field","name":{"kind":"Name","value":"price"}},{"kind":"Field","name":{"kind":"Name","value":"amount_paid"}},{"kind":"Field","name":{"kind":"Name","value":"amount_payable"}},{"kind":"Field","name":{"kind":"Name","value":"balance"}},{"kind":"Field","name":{"kind":"Name","value":"default_amount"}},{"kind":"Field","name":{"kind":"Name","value":"is_suspended"}},{"kind":"Field","name":{"kind":"Name","value":"start_date"}},{"kind":"Field","name":{"kind":"Name","value":"next_date"}}]}}]} as unknown as DocumentNode<AdminGetManagerSalesRecordQuery, AdminGetManagerSalesRecordQueryVariables>;
+export const GetSystemAssociatesDashboardDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetSystemAssociatesDashboard"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filter"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"ManagerDashboardFilterInput"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getSystemAssociatesDashboard"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filter"}}},{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"period"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"periodType"}},{"kind":"Field","name":{"kind":"Name","value":"month"}},{"kind":"Field","name":{"kind":"Name","value":"year"}},{"kind":"Field","name":{"kind":"Name","value":"start"}},{"kind":"Field","name":{"kind":"Name","value":"end"}}]}},{"kind":"Field","name":{"kind":"Name","value":"recruitment"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"newSignupsInPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"upgradesInPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedInPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedFreshInPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedCarryoverInPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"totalAssigned"}},{"kind":"Field","name":{"kind":"Name","value":"onboardingQueueCount"}},{"kind":"Field","name":{"kind":"Name","value":"newSignupsBySource"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"managed"}},{"kind":"Field","name":{"kind":"Name","value":"unassigned"}},{"kind":"Field","name":{"kind":"Name","value":"users"}},{"kind":"Field","name":{"kind":"Name","value":"associate"}}]}},{"kind":"Field","name":{"kind":"Name","value":"upgradesBySource"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"managed"}},{"kind":"Field","name":{"kind":"Name","value":"unassigned"}},{"kind":"Field","name":{"kind":"Name","value":"users"}},{"kind":"Field","name":{"kind":"Name","value":"associate"}}]}},{"kind":"Field","name":{"kind":"Name","value":"topNewSignupsContributors"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"proId"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"count"}}]}},{"kind":"Field","name":{"kind":"Name","value":"topUpgradesContributors"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"proId"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"count"}}]}},{"kind":"Field","name":{"kind":"Name","value":"othersNewSignupsCount"}},{"kind":"Field","name":{"kind":"Name","value":"othersUpgradesCount"}},{"kind":"Field","name":{"kind":"Name","value":"activeRecruitingProsCount"}},{"kind":"Field","name":{"kind":"Name","value":"activePromotingProsCount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"salesAndRevenue"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"sellingPros"}},{"kind":"Field","name":{"kind":"Name","value":"sellingProsTarget"}},{"kind":"Field","name":{"kind":"Name","value":"totalRevenue"}},{"kind":"Field","name":{"kind":"Name","value":"initialSalesRevenue"}},{"kind":"Field","name":{"kind":"Name","value":"recurringRevenue"}},{"kind":"Field","name":{"kind":"Name","value":"revenuePerSellingPro"}},{"kind":"Field","name":{"kind":"Name","value":"contractSize"}},{"kind":"Field","name":{"kind":"Name","value":"salesCountBySource"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"managed"}},{"kind":"Field","name":{"kind":"Name","value":"unassigned"}},{"kind":"Field","name":{"kind":"Name","value":"users"}},{"kind":"Field","name":{"kind":"Name","value":"associate"}}]}},{"kind":"Field","name":{"kind":"Name","value":"revenueBySource"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"managed"}},{"kind":"Field","name":{"kind":"Name","value":"unassigned"}},{"kind":"Field","name":{"kind":"Name","value":"users"}},{"kind":"Field","name":{"kind":"Name","value":"associate"}}]}},{"kind":"Field","name":{"kind":"Name","value":"topSellingContributors"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"proId"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"othersSellingRevenue"}},{"kind":"Field","name":{"kind":"Name","value":"activeRevenueGeneratingProsCount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"activity"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"activeCount"}},{"kind":"Field","name":{"kind":"Name","value":"activePct"}},{"kind":"Field","name":{"kind":"Name","value":"recentLoginCount"}},{"kind":"Field","name":{"kind":"Name","value":"recentSaleCount"}},{"kind":"Field","name":{"kind":"Name","value":"recentRecruitCount"}},{"kind":"Field","name":{"kind":"Name","value":"inactiveCount"}},{"kind":"Field","name":{"kind":"Name","value":"inactivePct"}},{"kind":"Field","name":{"kind":"Name","value":"abandonedCount"}},{"kind":"Field","name":{"kind":"Name","value":"abandonedPct"}}]}},{"kind":"Field","name":{"kind":"Name","value":"milestones"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"earlySellers"}},{"kind":"Field","name":{"kind":"Name","value":"lateFirstSellers"}}]}},{"kind":"Field","name":{"kind":"Name","value":"performanceScore"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"score"}},{"kind":"Field","name":{"kind":"Name","value":"sellingComponent"}},{"kind":"Field","name":{"kind":"Name","value":"revenueComponent"}},{"kind":"Field","name":{"kind":"Name","value":"recruitmentComponent"}},{"kind":"Field","name":{"kind":"Name","value":"target"}},{"kind":"Field","name":{"kind":"Name","value":"actual"}},{"kind":"Field","name":{"kind":"Name","value":"ratingCount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"associatePros"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"dateRecruited"}},{"kind":"Field","name":{"kind":"Name","value":"totalSales"}},{"kind":"Field","name":{"kind":"Name","value":"revenueGenerated"}},{"kind":"Field","name":{"kind":"Name","value":"lastLogin"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedAt"}}]}},{"kind":"Field","name":{"kind":"Name","value":"associateProsGroupTotal"}}]}}]}}]} as unknown as DocumentNode<GetSystemAssociatesDashboardQuery, GetSystemAssociatesDashboardQueryVariables>;
+export const GetManagerSalesRecordDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetManagerSalesRecord"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filters"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"SalesRecordFilters"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getManagerSalesRecord"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"filters"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filters"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}},{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"SalesRowFragment"}}]}},{"kind":"Field","name":{"kind":"Name","value":"count"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"SalesRowFragment"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"SalesRecord"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"user_firstName"}},{"kind":"Field","name":{"kind":"Name","value":"user_lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"user_phone"}},{"kind":"Field","name":{"kind":"Name","value":"referrer_name"}},{"kind":"Field","name":{"kind":"Name","value":"referrer_email"}},{"kind":"Field","name":{"kind":"Name","value":"referrer_phone"}},{"kind":"Field","name":{"kind":"Name","value":"asset_name"}},{"kind":"Field","name":{"kind":"Name","value":"asset_type"}},{"kind":"Field","name":{"kind":"Name","value":"no_of_units"}},{"kind":"Field","name":{"kind":"Name","value":"document_amount_paid"}},{"kind":"Field","name":{"kind":"Name","value":"fullownerhsip_documentprice"}},{"kind":"Field","name":{"kind":"Name","value":"month_subscription"}},{"kind":"Field","name":{"kind":"Name","value":"size"}},{"kind":"Field","name":{"kind":"Name","value":"price"}},{"kind":"Field","name":{"kind":"Name","value":"amount_paid"}},{"kind":"Field","name":{"kind":"Name","value":"amount_payable"}},{"kind":"Field","name":{"kind":"Name","value":"balance"}},{"kind":"Field","name":{"kind":"Name","value":"default_amount"}},{"kind":"Field","name":{"kind":"Name","value":"is_suspended"}},{"kind":"Field","name":{"kind":"Name","value":"start_date"}},{"kind":"Field","name":{"kind":"Name","value":"next_date"}},{"kind":"Field","name":{"kind":"Name","value":"block"}},{"kind":"Field","name":{"kind":"Name","value":"plot"}},{"kind":"Field","name":{"kind":"Name","value":"land_payment_completed_date"}},{"kind":"Field","name":{"kind":"Name","value":"name_on_document"}}]}}]} as unknown as DocumentNode<GetManagerSalesRecordQuery, GetManagerSalesRecordQueryVariables>;
+export const AdminGetManagerSalesRecordDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"AdminGetManagerSalesRecord"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filters"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"SalesRecordFilters"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"adminGetManagerSalesRecord"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"managerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}}},{"kind":"Argument","name":{"kind":"Name","value":"filters"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filters"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}},{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"SalesRowFragment"}}]}},{"kind":"Field","name":{"kind":"Name","value":"count"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"SalesRowFragment"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"SalesRecord"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"user_firstName"}},{"kind":"Field","name":{"kind":"Name","value":"user_lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"user_phone"}},{"kind":"Field","name":{"kind":"Name","value":"referrer_name"}},{"kind":"Field","name":{"kind":"Name","value":"referrer_email"}},{"kind":"Field","name":{"kind":"Name","value":"referrer_phone"}},{"kind":"Field","name":{"kind":"Name","value":"asset_name"}},{"kind":"Field","name":{"kind":"Name","value":"asset_type"}},{"kind":"Field","name":{"kind":"Name","value":"no_of_units"}},{"kind":"Field","name":{"kind":"Name","value":"document_amount_paid"}},{"kind":"Field","name":{"kind":"Name","value":"fullownerhsip_documentprice"}},{"kind":"Field","name":{"kind":"Name","value":"month_subscription"}},{"kind":"Field","name":{"kind":"Name","value":"size"}},{"kind":"Field","name":{"kind":"Name","value":"price"}},{"kind":"Field","name":{"kind":"Name","value":"amount_paid"}},{"kind":"Field","name":{"kind":"Name","value":"amount_payable"}},{"kind":"Field","name":{"kind":"Name","value":"balance"}},{"kind":"Field","name":{"kind":"Name","value":"default_amount"}},{"kind":"Field","name":{"kind":"Name","value":"is_suspended"}},{"kind":"Field","name":{"kind":"Name","value":"start_date"}},{"kind":"Field","name":{"kind":"Name","value":"next_date"}},{"kind":"Field","name":{"kind":"Name","value":"block"}},{"kind":"Field","name":{"kind":"Name","value":"plot"}},{"kind":"Field","name":{"kind":"Name","value":"land_payment_completed_date"}},{"kind":"Field","name":{"kind":"Name","value":"name_on_document"}}]}}]} as unknown as DocumentNode<AdminGetManagerSalesRecordQuery, AdminGetManagerSalesRecordQueryVariables>;
 export const GetUnassignedAssociateProsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetUnassignedAssociatePros"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"searchQuery"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getUnassignedAssociatePros"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}},{"kind":"Argument","name":{"kind":"Name","value":"searchQuery"},"value":{"kind":"Variable","name":{"kind":"Name","value":"searchQuery"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"count"}},{"kind":"Field","name":{"kind":"Name","value":"page"}},{"kind":"Field","name":{"kind":"Name","value":"limit"}},{"kind":"Field","name":{"kind":"Name","value":"results"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}},{"kind":"Field","name":{"kind":"Name","value":"last_login"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}}]}}]}}]} as unknown as DocumentNode<GetUnassignedAssociateProsQuery, GetUnassignedAssociateProsQueryVariables>;
 export const GetUnassignedAssociateProsCountDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetUnassignedAssociateProsCount"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"searchQuery"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getUnassignedAssociateProsCount"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"searchQuery"},"value":{"kind":"Variable","name":{"kind":"Name","value":"searchQuery"}}}]}]}}]} as unknown as DocumentNode<GetUnassignedAssociateProsCountQuery, GetUnassignedAssociateProsCountQueryVariables>;
 export const ApproveUpgradeToAssociateDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"ApproveUpgradeToAssociate"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"approveUpgradeToAssociate"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}]}]}}]} as unknown as DocumentNode<ApproveUpgradeToAssociateMutation, ApproveUpgradeToAssociateMutationVariables>;
@@ -8141,8 +11529,8 @@ export const DeleteCouponDocument = {"kind":"Document","definitions":[{"kind":"O
 export const UpdateCouponDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"UpdateCoupon"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"UpdateCouponInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"updateCoupon"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"updateCouponInput"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"message"}},{"kind":"Field","name":{"kind":"Name","value":"success"}},{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}}]}}]}}]}}]} as unknown as DocumentNode<UpdateCouponMutation, UpdateCouponMutationVariables>;
 export const ManualUpgradeToAssociateProDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"ManualUpgradeToAssociatePro"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"email"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"amount"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Float"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"payCommission"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Boolean"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"paymentUrl"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"commissionableAmount"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Float"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"manualUpgradeToAssociatePro"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"email"},"value":{"kind":"Variable","name":{"kind":"Name","value":"email"}}},{"kind":"Argument","name":{"kind":"Name","value":"amount"},"value":{"kind":"Variable","name":{"kind":"Name","value":"amount"}}},{"kind":"Argument","name":{"kind":"Name","value":"payCommission"},"value":{"kind":"Variable","name":{"kind":"Name","value":"payCommission"}}},{"kind":"Argument","name":{"kind":"Name","value":"paymentUrl"},"value":{"kind":"Variable","name":{"kind":"Name","value":"paymentUrl"}}},{"kind":"Argument","name":{"kind":"Name","value":"commissionableAmount"},"value":{"kind":"Variable","name":{"kind":"Name","value":"commissionableAmount"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"success"}},{"kind":"Field","name":{"kind":"Name","value":"message"}}]}}]}}]} as unknown as DocumentNode<ManualUpgradeToAssociateProMutation, ManualUpgradeToAssociateProMutationVariables>;
 export const DeclineUpgradeRequestDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"DeclineUpgradeRequest"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"declineUpgradeRequest"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}]}]}}]} as unknown as DocumentNode<DeclineUpgradeRequestMutation, DeclineUpgradeRequestMutationVariables>;
-export const ExportUpgradeRequestsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ExportUpgradeRequests"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"adminStatus"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"AdminStatus"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"search"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAllUpgradeRequests"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}},{"kind":"Argument","name":{"kind":"Name","value":"adminStatus"},"value":{"kind":"Variable","name":{"kind":"Name","value":"adminStatus"}}},{"kind":"Argument","name":{"kind":"Name","value":"search"},"value":{"kind":"Variable","name":{"kind":"Name","value":"search"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"upgradeRequests"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"admin_status"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"fee_amount"}},{"kind":"Field","name":{"kind":"Name","value":"transaction_type"}},{"kind":"Field","name":{"kind":"Name","value":"user_upgrade_type"}},{"kind":"Field","name":{"kind":"Name","value":"file_Url"}},{"kind":"Field","name":{"kind":"Name","value":"user"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}}]}},{"kind":"Field","name":{"kind":"Name","value":"associate"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"pagination"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"currentPage"}},{"kind":"Field","name":{"kind":"Name","value":"limit"}},{"kind":"Field","name":{"kind":"Name","value":"totalCount"}},{"kind":"Field","name":{"kind":"Name","value":"totalPages"}}]}}]}}]}}]} as unknown as DocumentNode<ExportUpgradeRequestsQuery, ExportUpgradeRequestsQueryVariables>;
-export const GetAllUpgradeRequestsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetAllUpgradeRequests"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"adminStatus"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"AdminStatus"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"search"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAllUpgradeRequests"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}},{"kind":"Argument","name":{"kind":"Name","value":"adminStatus"},"value":{"kind":"Variable","name":{"kind":"Name","value":"adminStatus"}}},{"kind":"Argument","name":{"kind":"Name","value":"search"},"value":{"kind":"Variable","name":{"kind":"Name","value":"search"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"upgradeRequests"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"UpgradeRowFragment"}}]}},{"kind":"Field","name":{"kind":"Name","value":"pagination"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"currentPage"}},{"kind":"Field","name":{"kind":"Name","value":"limit"}},{"kind":"Field","name":{"kind":"Name","value":"totalCount"}},{"kind":"Field","name":{"kind":"Name","value":"totalPages"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"UpgradeRowFragment"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"ReferralUpgrade"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"admin_status"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"fee_amount"}},{"kind":"Field","name":{"kind":"Name","value":"transaction_type"}},{"kind":"Field","name":{"kind":"Name","value":"user_upgrade_type"}},{"kind":"Field","name":{"kind":"Name","value":"file_Url"}},{"kind":"Field","name":{"kind":"Name","value":"user"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}}]}},{"kind":"Field","name":{"kind":"Name","value":"associate"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}}]}}]}}]} as unknown as DocumentNode<GetAllUpgradeRequestsQuery, GetAllUpgradeRequestsQueryVariables>;
+export const ExportUpgradeRequestsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ExportUpgradeRequests"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"adminStatus"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"AdminStatus"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"transactionType"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"TransactionType"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"upgradeType"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"startDate"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"endDate"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"search"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAllUpgradeRequests"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}},{"kind":"Argument","name":{"kind":"Name","value":"adminStatus"},"value":{"kind":"Variable","name":{"kind":"Name","value":"adminStatus"}}},{"kind":"Argument","name":{"kind":"Name","value":"transactionType"},"value":{"kind":"Variable","name":{"kind":"Name","value":"transactionType"}}},{"kind":"Argument","name":{"kind":"Name","value":"upgradeType"},"value":{"kind":"Variable","name":{"kind":"Name","value":"upgradeType"}}},{"kind":"Argument","name":{"kind":"Name","value":"startDate"},"value":{"kind":"Variable","name":{"kind":"Name","value":"startDate"}}},{"kind":"Argument","name":{"kind":"Name","value":"endDate"},"value":{"kind":"Variable","name":{"kind":"Name","value":"endDate"}}},{"kind":"Argument","name":{"kind":"Name","value":"search"},"value":{"kind":"Variable","name":{"kind":"Name","value":"search"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"upgradeRequests"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"admin_status"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"fee_amount"}},{"kind":"Field","name":{"kind":"Name","value":"transaction_type"}},{"kind":"Field","name":{"kind":"Name","value":"user_upgrade_type"}},{"kind":"Field","name":{"kind":"Name","value":"file_Url"}},{"kind":"Field","name":{"kind":"Name","value":"user"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}}]}},{"kind":"Field","name":{"kind":"Name","value":"associate"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"pagination"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"currentPage"}},{"kind":"Field","name":{"kind":"Name","value":"limit"}},{"kind":"Field","name":{"kind":"Name","value":"totalCount"}},{"kind":"Field","name":{"kind":"Name","value":"totalPages"}}]}}]}}]}}]} as unknown as DocumentNode<ExportUpgradeRequestsQuery, ExportUpgradeRequestsQueryVariables>;
+export const GetAllUpgradeRequestsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetAllUpgradeRequests"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"adminStatus"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"AdminStatus"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"transactionType"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"TransactionType"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"upgradeType"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"startDate"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"endDate"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"search"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAllUpgradeRequests"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}},{"kind":"Argument","name":{"kind":"Name","value":"adminStatus"},"value":{"kind":"Variable","name":{"kind":"Name","value":"adminStatus"}}},{"kind":"Argument","name":{"kind":"Name","value":"transactionType"},"value":{"kind":"Variable","name":{"kind":"Name","value":"transactionType"}}},{"kind":"Argument","name":{"kind":"Name","value":"upgradeType"},"value":{"kind":"Variable","name":{"kind":"Name","value":"upgradeType"}}},{"kind":"Argument","name":{"kind":"Name","value":"startDate"},"value":{"kind":"Variable","name":{"kind":"Name","value":"startDate"}}},{"kind":"Argument","name":{"kind":"Name","value":"endDate"},"value":{"kind":"Variable","name":{"kind":"Name","value":"endDate"}}},{"kind":"Argument","name":{"kind":"Name","value":"search"},"value":{"kind":"Variable","name":{"kind":"Name","value":"search"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"upgradeRequests"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"UpgradeRowFragment"}}]}},{"kind":"Field","name":{"kind":"Name","value":"pagination"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"currentPage"}},{"kind":"Field","name":{"kind":"Name","value":"limit"}},{"kind":"Field","name":{"kind":"Name","value":"totalCount"}},{"kind":"Field","name":{"kind":"Name","value":"totalPages"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"UpgradeRowFragment"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"ReferralUpgrade"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"admin_status"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"fee_amount"}},{"kind":"Field","name":{"kind":"Name","value":"transaction_type"}},{"kind":"Field","name":{"kind":"Name","value":"user_upgrade_type"}},{"kind":"Field","name":{"kind":"Name","value":"file_Url"}},{"kind":"Field","name":{"kind":"Name","value":"user"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}}]}},{"kind":"Field","name":{"kind":"Name","value":"associate"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}}]}}]}}]} as unknown as DocumentNode<GetAllUpgradeRequestsQuery, GetAllUpgradeRequestsQueryVariables>;
 export const SearchUpgradeUsersDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"SearchUpgradeUsers"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"searchQuery"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAllUsers"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"searchQuery"},"value":{"kind":"Variable","name":{"kind":"Name","value":"searchQuery"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}},{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}}]}}]}}]} as unknown as DocumentNode<SearchUpgradeUsersQuery, SearchUpgradeUsersQueryVariables>;
 export const ViewAssetRaffledrawPerformanceDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ViewAssetRaffledrawPerformance"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"viewAssetRaffledrawPerformance"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"salesMetrics"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"RaffleSalesMetrics"}}]}},{"kind":"Field","name":{"kind":"Name","value":"financialMetrics"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"RaffleFinancialMetrics"}}]}},{"kind":"Field","name":{"kind":"Name","value":"promoDetails"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"RafflePromoDetails"}}]}},{"kind":"Field","name":{"kind":"Name","value":"ticketMetrics"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"RaffleTicketMetrics"}}]}},{"kind":"Field","name":{"kind":"Name","value":"assetBreakdown"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"RaffleAssetBreakdown"}}]}},{"kind":"Field","name":{"kind":"Name","value":"usersWithTickets"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"RaffleUserTicket"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"RaffleSalesMetrics"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"SalesMetrics"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"dailySqmTargetRemaining"}},{"kind":"Field","name":{"kind":"Name","value":"percentageSold"}},{"kind":"Field","name":{"kind":"Name","value":"sqmRemainingToSell"}},{"kind":"Field","name":{"kind":"Name","value":"targetSqm"}},{"kind":"Field","name":{"kind":"Name","value":"totalSqmSold"}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"RaffleFinancialMetrics"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"FinancialMetrics"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"totalRevenueGenerated"}},{"kind":"Field","name":{"kind":"Name","value":"totalAssetValueSold"}},{"kind":"Field","name":{"kind":"Name","value":"averagePaymentPerPlan"}},{"kind":"Field","name":{"kind":"Name","value":"totalBalance"}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"RafflePromoDetails"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"PromoDetails"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"daysElapsed"}},{"kind":"Field","name":{"kind":"Name","value":"daysRemaining"}},{"kind":"Field","name":{"kind":"Name","value":"endDate"}},{"kind":"Field","name":{"kind":"Name","value":"percentageDaysRemaining"}},{"kind":"Field","name":{"kind":"Name","value":"totalPromoDays"}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"RaffleTicketMetrics"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"TicketMetrics"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"totalTicketsIssued"}},{"kind":"Field","name":{"kind":"Name","value":"regularUsersWithTickets"}},{"kind":"Field","name":{"kind":"Name","value":"associatesWithTickets"}},{"kind":"Field","name":{"kind":"Name","value":"userTicketPercentage"}},{"kind":"Field","name":{"kind":"Name","value":"associatePercentage"}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"RaffleAssetBreakdown"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"AssetBreakdown"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"assetName"}},{"kind":"Field","name":{"kind":"Name","value":"percentageOfTotal"}},{"kind":"Field","name":{"kind":"Name","value":"totalSqmSold"}},{"kind":"Field","name":{"kind":"Name","value":"totalTickets"}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"RaffleUserTicket"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"UserWithTicket"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"ticketId"}}]}}]} as unknown as DocumentNode<ViewAssetRaffledrawPerformanceQuery, ViewAssetRaffledrawPerformanceQueryVariables>;
 export const ViewAssetHamperPerformanceDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ViewAssetHamperPerformance"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"viewAssetHamperPerformance"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"assetBreakdown"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"HamperAssetBreakdown"}}]}},{"kind":"Field","name":{"kind":"Name","value":"financialMetrics"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"HamperFinancialMetrics"}}]}},{"kind":"Field","name":{"kind":"Name","value":"salesMetrics"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"HamperSalesMetrics"}}]}},{"kind":"Field","name":{"kind":"Name","value":"referrersWithHampers"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"HamperReferrer"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"HamperAssetBreakdown"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"AssetBreakdownHamper"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"assetName"}},{"kind":"Field","name":{"kind":"Name","value":"percentageOfTotal"}},{"kind":"Field","name":{"kind":"Name","value":"totalSqmSold"}},{"kind":"Field","name":{"kind":"Name","value":"totalHampers"}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"HamperFinancialMetrics"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"FinancialMetricsHamper"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"totalRevenueGenerated"}},{"kind":"Field","name":{"kind":"Name","value":"totalAssetValueSold"}},{"kind":"Field","name":{"kind":"Name","value":"averagePaymentPerPlan"}},{"kind":"Field","name":{"kind":"Name","value":"totalBalance"}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"HamperSalesMetrics"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"SalesMetricsHamper"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"dailySqmTargetRemaining"}},{"kind":"Field","name":{"kind":"Name","value":"percentageSold"}},{"kind":"Field","name":{"kind":"Name","value":"sqmRemainingToSell"}},{"kind":"Field","name":{"kind":"Name","value":"targetSqm"}},{"kind":"Field","name":{"kind":"Name","value":"totalSqmSold"}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"HamperReferrer"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"ReferrerWithHampers"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"hamperCount"}},{"kind":"Field","name":{"kind":"Name","value":"totalSqmReferred"}}]}}]} as unknown as DocumentNode<ViewAssetHamperPerformanceQuery, ViewAssetHamperPerformanceQueryVariables>;
@@ -8152,8 +11540,32 @@ export const GetCampaignPaymentPlansDocument = {"kind":"Document","definitions":
 export const GetRaffleTicketsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetRaffleTickets"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ticketType"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"TicketTypeFilter"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getRaffleTickets"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"ticketType"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ticketType"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"referral_ticket"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"ticket_id"}},{"kind":"Field","name":{"kind":"Name","value":"user_id"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"user_id"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}}]}},{"kind":"Field","name":{"kind":"Name","value":"asset_name"}},{"kind":"Field","name":{"kind":"Name","value":"ticket_id"}},{"kind":"Field","name":{"kind":"Name","value":"total_size"}},{"kind":"Field","name":{"kind":"Name","value":"units_purchased"}},{"kind":"Field","name":{"kind":"Name","value":"size_purchased"}},{"kind":"Field","name":{"kind":"Name","value":"created_date"}}]}}]}}]}}]} as unknown as DocumentNode<GetRaffleTicketsQuery, GetRaffleTicketsQueryVariables>;
 export const GetHamperTransactionsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetHamperTransactions"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getCampaignPaymentPlans"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"count"}},{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"assetName"}},{"kind":"Field","name":{"kind":"Name","value":"dateStarted"}},{"kind":"Field","name":{"kind":"Name","value":"documentAmountPaid"}},{"kind":"Field","name":{"kind":"Name","value":"documentPrice"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"landAmountPaid"}},{"kind":"Field","name":{"kind":"Name","value":"landPrice"}},{"kind":"Field","name":{"kind":"Name","value":"monthsOfSubscription"}},{"kind":"Field","name":{"kind":"Name","value":"nextDateOfPayment"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"size"}},{"kind":"Field","name":{"kind":"Name","value":"unit"}},{"kind":"Field","name":{"kind":"Name","value":"userId"}}]}}]}}]}}]} as unknown as DocumentNode<GetHamperTransactionsQuery, GetHamperTransactionsQueryVariables>;
 export const GetHamperLeaderboardDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetHamperLeaderboard"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"startDate"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"endDate"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getHamperLeaderboard"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"startDate"},"value":{"kind":"Variable","name":{"kind":"Name","value":"startDate"}}},{"kind":"Argument","name":{"kind":"Name","value":"endDate"},"value":{"kind":"Variable","name":{"kind":"Name","value":"endDate"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"hamperCount"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"numberOfReferredUsers"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}},{"kind":"Field","name":{"kind":"Name","value":"referrerId"}},{"kind":"Field","name":{"kind":"Name","value":"totalAmountPaid"}},{"kind":"Field","name":{"kind":"Name","value":"totalAssetValue"}},{"kind":"Field","name":{"kind":"Name","value":"totalBalance"}},{"kind":"Field","name":{"kind":"Name","value":"totalLandPrice"}},{"kind":"Field","name":{"kind":"Name","value":"totalSqmSold"}}]}}]}}]} as unknown as DocumentNode<GetHamperLeaderboardQuery, GetHamperLeaderboardQueryVariables>;
+export const GetCompanyEventAssetsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetCompanyEventAssets"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAllAdminAssets"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"asset_name"}},{"kind":"Field","name":{"kind":"Name","value":"asset_location"}},{"kind":"Field","name":{"kind":"Name","value":"asset_type"}},{"kind":"Field","name":{"kind":"Name","value":"asset_option"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"size"}}]}}]}}]}}]}}]} as unknown as DocumentNode<GetCompanyEventAssetsQuery, GetCompanyEventAssetsQueryVariables>;
+export const GetCompanyEventAssetNamesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetCompanyEventAssetNames"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAllAdminAssets"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"asset_name"}},{"kind":"Field","name":{"kind":"Name","value":"asset_type"}}]}}]}}]}}]} as unknown as DocumentNode<GetCompanyEventAssetNamesQuery, GetCompanyEventAssetNamesQueryVariables>;
+export const DeallocateFromEventDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"DeallocateFromEvent"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"eventId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"allocationId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"reason"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deallocateFromEvent"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"eventId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"eventId"}}},{"kind":"Argument","name":{"kind":"Name","value":"allocationId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"allocationId"}}},{"kind":"Argument","name":{"kind":"Name","value":"reason"},"value":{"kind":"Variable","name":{"kind":"Name","value":"reason"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deallocated"}},{"kind":"Field","name":{"kind":"Name","value":"already_cancelled"}},{"kind":"Field","name":{"kind":"Name","value":"freed"}}]}}]}}]} as unknown as DocumentNode<DeallocateFromEventMutation, DeallocateFromEventMutationVariables>;
+export const GetEventEligibleClientsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetEventEligibleClients"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"eventId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filter"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"EventEligibleClientFilterInput"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"eventEligibleClients"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"eventId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"eventId"}}},{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filter"}}},{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"count"}},{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"payment_plan"}},{"kind":"Field","name":{"kind":"Name","value":"user"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phone"}},{"kind":"Field","name":{"kind":"Name","value":"size"}},{"kind":"Field","name":{"kind":"Name","value":"no_of_units"}},{"kind":"Field","name":{"kind":"Name","value":"total_size"}},{"kind":"Field","name":{"kind":"Name","value":"eligibility_tier"}},{"kind":"Field","name":{"kind":"Name","value":"land_completed_at"}},{"kind":"Field","name":{"kind":"Name","value":"asset"}},{"kind":"Field","name":{"kind":"Name","value":"asset_type"}},{"kind":"Field","name":{"kind":"Name","value":"qualified_by"}},{"kind":"Field","name":{"kind":"Name","value":"percent_paid"}},{"kind":"Field","name":{"kind":"Name","value":"allocation_qualification"}}]}}]}}]}}]} as unknown as DocumentNode<GetEventEligibleClientsQuery, GetEventEligibleClientsQueryVariables>;
+export const AllocateToEventDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"AllocateToEvent"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"eventId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"paymentPlanIds"}},"type":{"kind":"NonNullType","type":{"kind":"ListType","type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"allocateToEvent"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"eventId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"eventId"}}},{"kind":"Argument","name":{"kind":"Name","value":"paymentPlanIds"},"value":{"kind":"Variable","name":{"kind":"Name","value":"paymentPlanIds"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"remaining_capacity"}},{"kind":"Field","name":{"kind":"Name","value":"succeeded"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"payment_plans"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"size_reserved"}}]}},{"kind":"Field","name":{"kind":"Name","value":"failed"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"payment_plan"}},{"kind":"Field","name":{"kind":"Name","value":"reason"}}]}}]}}]}}]} as unknown as DocumentNode<AllocateToEventMutation, AllocateToEventMutationVariables>;
+export const SetCompanyEventStatusDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"SetCompanyEventStatus"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"status"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"setCompanyEventStatus"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}},{"kind":"Argument","name":{"kind":"Name","value":"status"},"value":{"kind":"Variable","name":{"kind":"Name","value":"status"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"status"}}]}}]}}]} as unknown as DocumentNode<SetCompanyEventStatusMutation, SetCompanyEventStatusMutationVariables>;
+export const GetCsManagerDashboardDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetCSManagerDashboard"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"month"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"year"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filter"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"CSPlanFilter"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"search"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"estate"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"sort"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"CSPlanSort"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getCSManagerDashboard"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"managerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}}},{"kind":"Argument","name":{"kind":"Name","value":"month"},"value":{"kind":"Variable","name":{"kind":"Name","value":"month"}}},{"kind":"Argument","name":{"kind":"Name","value":"year"},"value":{"kind":"Variable","name":{"kind":"Name","value":"year"}}},{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}},{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filter"}}},{"kind":"Argument","name":{"kind":"Name","value":"search"},"value":{"kind":"Variable","name":{"kind":"Name","value":"search"}}},{"kind":"Argument","name":{"kind":"Name","value":"estate"},"value":{"kind":"Variable","name":{"kind":"Name","value":"estate"}}},{"kind":"Argument","name":{"kind":"Name","value":"sort"},"value":{"kind":"Variable","name":{"kind":"Name","value":"sort"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"period"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"periodType"}},{"kind":"Field","name":{"kind":"Name","value":"month"}},{"kind":"Field","name":{"kind":"Name","value":"year"}},{"kind":"Field","name":{"kind":"Name","value":"start"}},{"kind":"Field","name":{"kind":"Name","value":"end"}}]}},{"kind":"Field","name":{"kind":"Name","value":"manager"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"role"}}]}},{"kind":"Field","name":{"kind":"Name","value":"target"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"allocatedTarget"}},{"kind":"Field","name":{"kind":"Name","value":"allocatedSoFar"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedTarget"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedSoFar"}},{"kind":"Field","name":{"kind":"Name","value":"ticketsResolvedTarget"}},{"kind":"Field","name":{"kind":"Name","value":"ticketsEntered"}},{"kind":"Field","name":{"kind":"Name","value":"ticketsResolved"}},{"kind":"Field","name":{"kind":"Name","value":"ticketResolutionRate"}},{"kind":"Field","name":{"kind":"Name","value":"ticketFlow"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"month"}},{"kind":"Field","name":{"kind":"Name","value":"created"}},{"kind":"Field","name":{"kind":"Name","value":"resolved"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"performanceScore"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"score"}},{"kind":"Field","name":{"kind":"Name","value":"allocatedComponent"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedComponent"}},{"kind":"Field","name":{"kind":"Name","value":"ticketsComponent"}}]}},{"kind":"Field","name":{"kind":"Name","value":"obligation"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"paidNotAllocatedThisPeriod"}}]}},{"kind":"Field","name":{"kind":"Name","value":"backlogs"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"allocation"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"total"}},{"kind":"Field","name":{"kind":"Name","value":"thisMonth"}},{"kind":"Field","name":{"kind":"Name","value":"lastMonth"}},{"kind":"Field","name":{"kind":"Name","value":"older"}}]}},{"kind":"Field","name":{"kind":"Name","value":"onboarding"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"total"}},{"kind":"Field","name":{"kind":"Name","value":"callPending"}},{"kind":"Field","name":{"kind":"Name","value":"confirmPending"}},{"kind":"Field","name":{"kind":"Name","value":"disputed"}},{"kind":"Field","name":{"kind":"Name","value":"dueThisPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"dueCarriedOver"}}]}},{"kind":"Field","name":{"kind":"Name","value":"doa"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"total"}},{"kind":"Field","name":{"kind":"Name","value":"thisMonth"}},{"kind":"Field","name":{"kind":"Name","value":"lastMonth"}},{"kind":"Field","name":{"kind":"Name","value":"older"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"portfolio"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"totalAssigned"}},{"kind":"Field","name":{"kind":"Name","value":"completedPayment"}},{"kind":"Field","name":{"kind":"Name","value":"withinPaymentPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"closeToDefaulting"}}]}},{"kind":"Field","name":{"kind":"Name","value":"plans"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"planId"}},{"kind":"Field","name":{"kind":"Name","value":"customer"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phone"}}]}},{"kind":"Field","name":{"kind":"Name","value":"priorPlansCount"}},{"kind":"Field","name":{"kind":"Name","value":"asset"}},{"kind":"Field","name":{"kind":"Name","value":"assetId"}},{"kind":"Field","name":{"kind":"Name","value":"location"}},{"kind":"Field","name":{"kind":"Name","value":"size"}},{"kind":"Field","name":{"kind":"Name","value":"units"}},{"kind":"Field","name":{"kind":"Name","value":"allocationStatus"}},{"kind":"Field","name":{"kind":"Name","value":"product"}},{"kind":"Field","name":{"kind":"Name","value":"purchaseDate"}},{"kind":"Field","name":{"kind":"Name","value":"paymentStatus"}},{"kind":"Field","name":{"kind":"Name","value":"paymentLabel"}},{"kind":"Field","name":{"kind":"Name","value":"onboarding"}},{"kind":"Field","name":{"kind":"Name","value":"lastAttempt"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"outcome"}},{"kind":"Field","name":{"kind":"Name","value":"calledAt"}},{"kind":"Field","name":{"kind":"Name","value":"attempts"}}]}},{"kind":"Field","name":{"kind":"Name","value":"allocation"}},{"kind":"Field","name":{"kind":"Name","value":"allocationLabel"}},{"kind":"Field","name":{"kind":"Name","value":"doa"}},{"kind":"Field","name":{"kind":"Name","value":"doaLabel"}},{"kind":"Field","name":{"kind":"Name","value":"lastActivityAt"}}]}},{"kind":"Field","name":{"kind":"Name","value":"plansTotal"}},{"kind":"Field","name":{"kind":"Name","value":"filterCounts"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"all"}},{"kind":"Field","name":{"kind":"Name","value":"dueAllocation"}},{"kind":"Field","name":{"kind":"Name","value":"onboardingPending"}},{"kind":"Field","name":{"kind":"Name","value":"neverAttempted"}},{"kind":"Field","name":{"kind":"Name","value":"noAnswer"}},{"kind":"Field","name":{"kind":"Name","value":"rescheduled"}},{"kind":"Field","name":{"kind":"Name","value":"dueDoa"}},{"kind":"Field","name":{"kind":"Name","value":"defaultingSoon"}},{"kind":"Field","name":{"kind":"Name","value":"completedPayment"}}]}},{"kind":"Field","name":{"kind":"Name","value":"estates"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"plans"}},{"kind":"Field","name":{"kind":"Name","value":"dueAllocation"}}]}}]}}]}}]} as unknown as DocumentNode<GetCsManagerDashboardQuery, GetCsManagerDashboardQueryVariables>;
+export const GetAllCsManagersDashboardDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetAllCSManagersDashboard"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"month"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"year"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filter"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"CSPlanFilter"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"search"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"estate"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"sort"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"CSPlanSort"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAllCSManagersDashboard"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"month"},"value":{"kind":"Variable","name":{"kind":"Name","value":"month"}}},{"kind":"Argument","name":{"kind":"Name","value":"year"},"value":{"kind":"Variable","name":{"kind":"Name","value":"year"}}},{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}},{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filter"}}},{"kind":"Argument","name":{"kind":"Name","value":"search"},"value":{"kind":"Variable","name":{"kind":"Name","value":"search"}}},{"kind":"Argument","name":{"kind":"Name","value":"estate"},"value":{"kind":"Variable","name":{"kind":"Name","value":"estate"}}},{"kind":"Argument","name":{"kind":"Name","value":"sort"},"value":{"kind":"Variable","name":{"kind":"Name","value":"sort"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"period"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"periodType"}},{"kind":"Field","name":{"kind":"Name","value":"month"}},{"kind":"Field","name":{"kind":"Name","value":"year"}},{"kind":"Field","name":{"kind":"Name","value":"start"}},{"kind":"Field","name":{"kind":"Name","value":"end"}}]}},{"kind":"Field","name":{"kind":"Name","value":"manager"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"role"}}]}},{"kind":"Field","name":{"kind":"Name","value":"target"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"allocatedTarget"}},{"kind":"Field","name":{"kind":"Name","value":"allocatedSoFar"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedTarget"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedSoFar"}},{"kind":"Field","name":{"kind":"Name","value":"ticketsResolvedTarget"}},{"kind":"Field","name":{"kind":"Name","value":"ticketsEntered"}},{"kind":"Field","name":{"kind":"Name","value":"ticketsResolved"}},{"kind":"Field","name":{"kind":"Name","value":"ticketResolutionRate"}},{"kind":"Field","name":{"kind":"Name","value":"ticketFlow"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"month"}},{"kind":"Field","name":{"kind":"Name","value":"created"}},{"kind":"Field","name":{"kind":"Name","value":"resolved"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"performanceScore"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"score"}},{"kind":"Field","name":{"kind":"Name","value":"allocatedComponent"}},{"kind":"Field","name":{"kind":"Name","value":"onboardedComponent"}},{"kind":"Field","name":{"kind":"Name","value":"ticketsComponent"}}]}},{"kind":"Field","name":{"kind":"Name","value":"obligation"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"paidNotAllocatedThisPeriod"}}]}},{"kind":"Field","name":{"kind":"Name","value":"backlogs"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"allocation"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"total"}},{"kind":"Field","name":{"kind":"Name","value":"thisMonth"}},{"kind":"Field","name":{"kind":"Name","value":"lastMonth"}},{"kind":"Field","name":{"kind":"Name","value":"older"}}]}},{"kind":"Field","name":{"kind":"Name","value":"onboarding"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"total"}},{"kind":"Field","name":{"kind":"Name","value":"callPending"}},{"kind":"Field","name":{"kind":"Name","value":"confirmPending"}},{"kind":"Field","name":{"kind":"Name","value":"disputed"}},{"kind":"Field","name":{"kind":"Name","value":"dueThisPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"dueCarriedOver"}}]}},{"kind":"Field","name":{"kind":"Name","value":"doa"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"total"}},{"kind":"Field","name":{"kind":"Name","value":"thisMonth"}},{"kind":"Field","name":{"kind":"Name","value":"lastMonth"}},{"kind":"Field","name":{"kind":"Name","value":"older"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"portfolio"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"totalAssigned"}},{"kind":"Field","name":{"kind":"Name","value":"completedPayment"}},{"kind":"Field","name":{"kind":"Name","value":"withinPaymentPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"closeToDefaulting"}}]}},{"kind":"Field","name":{"kind":"Name","value":"plans"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"planId"}},{"kind":"Field","name":{"kind":"Name","value":"customer"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phone"}}]}},{"kind":"Field","name":{"kind":"Name","value":"priorPlansCount"}},{"kind":"Field","name":{"kind":"Name","value":"asset"}},{"kind":"Field","name":{"kind":"Name","value":"assetId"}},{"kind":"Field","name":{"kind":"Name","value":"location"}},{"kind":"Field","name":{"kind":"Name","value":"size"}},{"kind":"Field","name":{"kind":"Name","value":"units"}},{"kind":"Field","name":{"kind":"Name","value":"allocationStatus"}},{"kind":"Field","name":{"kind":"Name","value":"product"}},{"kind":"Field","name":{"kind":"Name","value":"purchaseDate"}},{"kind":"Field","name":{"kind":"Name","value":"paymentStatus"}},{"kind":"Field","name":{"kind":"Name","value":"paymentLabel"}},{"kind":"Field","name":{"kind":"Name","value":"onboarding"}},{"kind":"Field","name":{"kind":"Name","value":"lastAttempt"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"outcome"}},{"kind":"Field","name":{"kind":"Name","value":"calledAt"}},{"kind":"Field","name":{"kind":"Name","value":"attempts"}}]}},{"kind":"Field","name":{"kind":"Name","value":"allocation"}},{"kind":"Field","name":{"kind":"Name","value":"allocationLabel"}},{"kind":"Field","name":{"kind":"Name","value":"doa"}},{"kind":"Field","name":{"kind":"Name","value":"doaLabel"}},{"kind":"Field","name":{"kind":"Name","value":"lastActivityAt"}}]}},{"kind":"Field","name":{"kind":"Name","value":"plansTotal"}},{"kind":"Field","name":{"kind":"Name","value":"filterCounts"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"all"}},{"kind":"Field","name":{"kind":"Name","value":"dueAllocation"}},{"kind":"Field","name":{"kind":"Name","value":"onboardingPending"}},{"kind":"Field","name":{"kind":"Name","value":"neverAttempted"}},{"kind":"Field","name":{"kind":"Name","value":"noAnswer"}},{"kind":"Field","name":{"kind":"Name","value":"rescheduled"}},{"kind":"Field","name":{"kind":"Name","value":"dueDoa"}},{"kind":"Field","name":{"kind":"Name","value":"defaultingSoon"}},{"kind":"Field","name":{"kind":"Name","value":"completedPayment"}}]}},{"kind":"Field","name":{"kind":"Name","value":"estates"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"plans"}},{"kind":"Field","name":{"kind":"Name","value":"dueAllocation"}}]}}]}}]}}]} as unknown as DocumentNode<GetAllCsManagersDashboardQuery, GetAllCsManagersDashboardQueryVariables>;
+export const AddCsManagerDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"AddCSManager"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"addCSManager"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"managerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"manager"}},{"kind":"Field","name":{"kind":"Name","value":"assigned_from"}},{"kind":"Field","name":{"kind":"Name","value":"assigned_to"}},{"kind":"Field","name":{"kind":"Name","value":"created_by"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<AddCsManagerMutation, AddCsManagerMutationVariables>;
+export const RemoveCsManagerDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"RemoveCSManager"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"removeCSManager"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"managerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"manager"}},{"kind":"Field","name":{"kind":"Name","value":"assigned_from"}},{"kind":"Field","name":{"kind":"Name","value":"assigned_to"}},{"kind":"Field","name":{"kind":"Name","value":"created_by"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<RemoveCsManagerMutation, RemoveCsManagerMutationVariables>;
+export const AssignCustomersToCsManagerDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"AssignCustomersToCSManager"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"AssignCustomersToCSMInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"assignCustomersToCSManager"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"assigned"}},{"kind":"Field","name":{"kind":"Name","value":"managerId"}}]}}]}}]} as unknown as DocumentNode<AssignCustomersToCsManagerMutation, AssignCustomersToCsManagerMutationVariables>;
+export const AssignCsManagerTargetDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"AssignCSManagerTarget"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"AssignCSManagerTargetInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"assignCSManagerTarget"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"manager"}},{"kind":"Field","name":{"kind":"Name","value":"month"}},{"kind":"Field","name":{"kind":"Name","value":"year"}},{"kind":"Field","name":{"kind":"Name","value":"customers_allocated_target"}},{"kind":"Field","name":{"kind":"Name","value":"customers_onboarded_target"}},{"kind":"Field","name":{"kind":"Name","value":"tickets_resolved_target"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<AssignCsManagerTargetMutation, AssignCsManagerTargetMutationVariables>;
+export const ListCsManagerTargetsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ListCSManagerTargets"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"listCSManagerTargets"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"managerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"manager"}},{"kind":"Field","name":{"kind":"Name","value":"month"}},{"kind":"Field","name":{"kind":"Name","value":"year"}},{"kind":"Field","name":{"kind":"Name","value":"customers_allocated_target"}},{"kind":"Field","name":{"kind":"Name","value":"customers_onboarded_target"}},{"kind":"Field","name":{"kind":"Name","value":"tickets_resolved_target"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<ListCsManagerTargetsQuery, ListCsManagerTargetsQueryVariables>;
+export const GetCsManagerTargetDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetCSManagerTarget"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"month"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"year"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getCSManagerTarget"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"managerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"managerId"}}},{"kind":"Argument","name":{"kind":"Name","value":"month"},"value":{"kind":"Variable","name":{"kind":"Name","value":"month"}}},{"kind":"Argument","name":{"kind":"Name","value":"year"},"value":{"kind":"Variable","name":{"kind":"Name","value":"year"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"manager"}},{"kind":"Field","name":{"kind":"Name","value":"month"}},{"kind":"Field","name":{"kind":"Name","value":"year"}},{"kind":"Field","name":{"kind":"Name","value":"customers_allocated_target"}},{"kind":"Field","name":{"kind":"Name","value":"customers_onboarded_target"}},{"kind":"Field","name":{"kind":"Name","value":"tickets_resolved_target"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<GetCsManagerTargetQuery, GetCsManagerTargetQueryVariables>;
+export const ListAdminsForCsmPickerDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ListAdminsForCSMPicker"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAllAdminWithRoles"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"adminId"}},{"kind":"Field","name":{"kind":"Name","value":"adminName"}},{"kind":"Field","name":{"kind":"Name","value":"adminEmail"}},{"kind":"Field","name":{"kind":"Name","value":"role"}}]}}]}}]}}]} as unknown as DocumentNode<ListAdminsForCsmPickerQuery, ListAdminsForCsmPickerQueryVariables>;
+export const ListCsManagersDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ListCSManagers"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"listCSManagers"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"manager"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"role"}}]}},{"kind":"Field","name":{"kind":"Name","value":"assignedCustomersCount"}},{"kind":"Field","name":{"kind":"Name","value":"assignedPlansCount"}},{"kind":"Field","name":{"kind":"Name","value":"currentPeriodScore"}},{"kind":"Field","name":{"kind":"Name","value":"activeSince"}}]}}]}}]} as unknown as DocumentNode<ListCsManagersQuery, ListCsManagersQueryVariables>;
+export const ListUnassignedCustomersDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ListUnassignedCustomers"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"listUnassignedCustomers"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"count"}},{"kind":"Field","name":{"kind":"Name","value":"results"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phone"}},{"kind":"Field","name":{"kind":"Name","value":"firstPurchaseAt"}},{"kind":"Field","name":{"kind":"Name","value":"daysUnassigned"}},{"kind":"Field","name":{"kind":"Name","value":"planCount"}}]}}]}}]}}]} as unknown as DocumentNode<ListUnassignedCustomersQuery, ListUnassignedCustomersQueryVariables>;
+export const ListCustomerOnboardingAttemptsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ListCustomerOnboardingAttempts"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"paymentPlanId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"listOnboardingAttempts"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"paymentPlanId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"paymentPlanId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"payment_plan"}},{"kind":"Field","name":{"kind":"Name","value":"customer"}},{"kind":"Field","name":{"kind":"Name","value":"csm"}},{"kind":"Field","name":{"kind":"Name","value":"outcome"}},{"kind":"Field","name":{"kind":"Name","value":"land_choice_reason"}},{"kind":"Field","name":{"kind":"Name","value":"notes"}},{"kind":"Field","name":{"kind":"Name","value":"called_at"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}}]}}]} as unknown as DocumentNode<ListCustomerOnboardingAttemptsQuery, ListCustomerOnboardingAttemptsQueryVariables>;
+export const LogOnboardingCallDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"LogOnboardingCall"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"LogOnboardingCallInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"logOnboardingCall"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"payment_plan"}},{"kind":"Field","name":{"kind":"Name","value":"outcome"}},{"kind":"Field","name":{"kind":"Name","value":"land_choice_reason"}},{"kind":"Field","name":{"kind":"Name","value":"notes"}},{"kind":"Field","name":{"kind":"Name","value":"called_at"}}]}}]}}]} as unknown as DocumentNode<LogOnboardingCallMutation, LogOnboardingCallMutationVariables>;
+export const MarkDeedDeliveredDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"MarkDeedDelivered"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"paymentPlanId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"markDeedDelivered"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"paymentPlanId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"paymentPlanId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"paymentPlanId"}},{"kind":"Field","name":{"kind":"Name","value":"deedDeliveredAt"}},{"kind":"Field","name":{"kind":"Name","value":"deedDeliveredBy"}}]}}]}}]} as unknown as DocumentNode<MarkDeedDeliveredMutation, MarkDeedDeliveredMutationVariables>;
 export const GetAdminDashboardDetailsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetAdminDashboardDetails"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"startDate"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"endDate"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAdminDashboardDetails"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"startDate"},"value":{"kind":"Variable","name":{"kind":"Name","value":"startDate"}}},{"kind":"Argument","name":{"kind":"Name","value":"endDate"},"value":{"kind":"Variable","name":{"kind":"Name","value":"endDate"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"DashboardQuickOverview_data"}},{"kind":"Field","name":{"kind":"Name","value":"top_associates"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"TopAssociates_data"}}]}},{"kind":"Field","name":{"kind":"Name","value":"top_selling_prop"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"TopSellingProducts_data"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"DashboardQuickOverview_data"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"AdminDashboard"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"users"}},{"kind":"Field","name":{"kind":"Name","value":"monthly_recurring_revenue"}},{"kind":"Field","name":{"kind":"Name","value":"associate_users"}},{"kind":"Field","name":{"kind":"Name","value":"associate_pro_users"}},{"kind":"Field","name":{"kind":"Name","value":"total_asset"}},{"kind":"Field","name":{"kind":"Name","value":"default_users"}},{"kind":"Field","name":{"kind":"Name","value":"suspended_users"}},{"kind":"Field","name":{"kind":"Name","value":"suspended_payment_plans"}},{"kind":"Field","name":{"kind":"Name","value":"total_payable"}},{"kind":"Field","name":{"kind":"Name","value":"sales"}},{"kind":"Field","name":{"kind":"Name","value":"inflow"}},{"kind":"Field","name":{"kind":"Name","value":"outflow"}},{"kind":"Field","name":{"kind":"Name","value":"total_wallet_balance"}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"TopAssociates_data"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"UserReferralAdmin"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"amount_brought"}},{"kind":"Field","name":{"kind":"Name","value":"no_of_referral"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"TopSellingProducts_data"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"AssetDashBoard"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"asset_name"}},{"kind":"Field","name":{"kind":"Name","value":"asset_pictures"}},{"kind":"Field","name":{"kind":"Name","value":"asset_location"}},{"kind":"Field","name":{"kind":"Name","value":"units_subscribed"}},{"kind":"Field","name":{"kind":"Name","value":"amount_broughtin"}}]}}]} as unknown as DocumentNode<GetAdminDashboardDetailsQuery, GetAdminDashboardDetailsQueryVariables>;
 export const InviteAdminDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"InviteAdmin"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"SubAdminInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createSubAdmin"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"subAdminInput"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}]}]}}]} as unknown as DocumentNode<InviteAdminMutation, InviteAdminMutationVariables>;
+export const ResolvePurchaseDisputeDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"ResolvePurchaseDispute"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"planId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"note"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"requestReconfirm"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Boolean"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"resolvePurchaseDispute"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"planId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"planId"}}},{"kind":"Argument","name":{"kind":"Name","value":"note"},"value":{"kind":"Variable","name":{"kind":"Name","value":"note"}}},{"kind":"Argument","name":{"kind":"Name","value":"requestReconfirm"},"value":{"kind":"Variable","name":{"kind":"Name","value":"requestReconfirm"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"planId"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"resent"}}]}}]}}]} as unknown as DocumentNode<ResolvePurchaseDisputeMutation, ResolvePurchaseDisputeMutationVariables>;
+export const ResendPurchaseConfirmationEmailDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"ResendPurchaseConfirmationEmail"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"planId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"resendPurchaseConfirmationEmail"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"planId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"planId"}}}]}]}}]} as unknown as DocumentNode<ResendPurchaseConfirmationEmailMutation, ResendPurchaseConfirmationEmailMutationVariables>;
+export const ViewPurchaseConfirmationsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ViewPurchaseConfirmations"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filter"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"PurchaseConfirmationFilterInput"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"viewPurchaseConfirmations"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filter"}}},{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"count"}},{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"planId"}},{"kind":"Field","name":{"kind":"Name","value":"uniqueAssetId"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"buyer"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}},{"kind":"Field","name":{"kind":"Name","value":"referrer"}},{"kind":"Field","name":{"kind":"Name","value":"asset"}},{"kind":"Field","name":{"kind":"Name","value":"snapshot"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name_on_document"}},{"kind":"Field","name":{"kind":"Name","value":"size"}},{"kind":"Field","name":{"kind":"Name","value":"units"}},{"kind":"Field","name":{"kind":"Name","value":"plan_label"}},{"kind":"Field","name":{"kind":"Name","value":"total"}},{"kind":"Field","name":{"kind":"Name","value":"product"}}]}},{"kind":"Field","name":{"kind":"Name","value":"emailSentAt"}},{"kind":"Field","name":{"kind":"Name","value":"confirmedAt"}},{"kind":"Field","name":{"kind":"Name","value":"remindersSent"}},{"kind":"Field","name":{"kind":"Name","value":"openDisputeNote"}},{"kind":"Field","name":{"kind":"Name","value":"disputes"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"note"}},{"kind":"Field","name":{"kind":"Name","value":"disputed_at"}},{"kind":"Field","name":{"kind":"Name","value":"resolved_at"}}]}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}}]}}]}}]} as unknown as DocumentNode<ViewPurchaseConfirmationsQuery, ViewPurchaseConfirmationsQueryVariables>;
+export const PurchaseConfirmationCountsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"PurchaseConfirmationCounts"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"purchaseConfirmationCounts"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"disputed"}},{"kind":"Field","name":{"kind":"Name","value":"waiting"}},{"kind":"Field","name":{"kind":"Name","value":"confirmed"}}]}}]}}]} as unknown as DocumentNode<PurchaseConfirmationCountsQuery, PurchaseConfirmationCountsQueryVariables>;
 export const UpdateRequestStatusDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"UpdateRequestStatus"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"updateRequestInput"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"UpdateRequestInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"updateRequestStatus"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"updateRequestInput"},"value":{"kind":"Variable","name":{"kind":"Name","value":"updateRequestInput"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"success"}},{"kind":"Field","name":{"kind":"Name","value":"message"}}]}}]}}]} as unknown as DocumentNode<UpdateRequestStatusMutation, UpdateRequestStatusMutationVariables>;
 export const SystemApproveLocationChangeRequestDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"SystemApproveLocationChangeRequest"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"requestId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"systemApproveLocationChangeRequest"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"requestId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"requestId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"success"}},{"kind":"Field","name":{"kind":"Name","value":"message"}}]}}]}}]} as unknown as DocumentNode<SystemApproveLocationChangeRequestMutation, SystemApproveLocationChangeRequestMutationVariables>;
 export const SystemApproveDocumentChangeRequestDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"SystemApproveDocumentChangeRequest"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"requestId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"systemApproveDocumentChangeRequest"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"requestId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"requestId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"success"}},{"kind":"Field","name":{"kind":"Name","value":"message"}}]}}]}}]} as unknown as DocumentNode<SystemApproveDocumentChangeRequestMutation, SystemApproveDocumentChangeRequestMutationVariables>;
@@ -8164,12 +11576,38 @@ export const CreateRoleDocument = {"kind":"Document","definitions":[{"kind":"Ope
 export const GetAllPermissionsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetAllPermissions"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAllPermissions"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"PermissionOptionFragment"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"PermissionOptionFragment"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Permission"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"description"}}]}}]} as unknown as DocumentNode<GetAllPermissionsQuery, GetAllPermissionsQueryVariables>;
 export const GetAllRolesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetAllRoles"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAllRoles"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"RoleCardFragment"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"RoleCardFragment"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Role"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"permissions"}}]}}]} as unknown as DocumentNode<GetAllRolesQuery, GetAllRolesQueryVariables>;
 export const UpdateAdminRoleDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"UpdateAdminRole"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"UpdateAdminRoleInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"updateAdminRole"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"updateAdminRoleInput"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}]}]}}]} as unknown as DocumentNode<UpdateAdminRoleMutation, UpdateAdminRoleMutationVariables>;
-export const ExportSalesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ExportSales"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filters"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"SalesRecordFilters"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getSalesRecord"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"filters"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filters"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}},{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"user_firstName"}},{"kind":"Field","name":{"kind":"Name","value":"user_lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"user_phone"}},{"kind":"Field","name":{"kind":"Name","value":"referrer_name"}},{"kind":"Field","name":{"kind":"Name","value":"referrer_email"}},{"kind":"Field","name":{"kind":"Name","value":"referrer_phone"}},{"kind":"Field","name":{"kind":"Name","value":"asset_name"}},{"kind":"Field","name":{"kind":"Name","value":"asset_type"}},{"kind":"Field","name":{"kind":"Name","value":"no_of_units"}},{"kind":"Field","name":{"kind":"Name","value":"size"}},{"kind":"Field","name":{"kind":"Name","value":"price"}},{"kind":"Field","name":{"kind":"Name","value":"amount_paid"}},{"kind":"Field","name":{"kind":"Name","value":"fullownerhsip_documentprice"}},{"kind":"Field","name":{"kind":"Name","value":"document_amount_paid"}},{"kind":"Field","name":{"kind":"Name","value":"month_subscription"}},{"kind":"Field","name":{"kind":"Name","value":"start_date"}},{"kind":"Field","name":{"kind":"Name","value":"next_date"}},{"kind":"Field","name":{"kind":"Name","value":"default_amount"}},{"kind":"Field","name":{"kind":"Name","value":"is_suspended"}},{"kind":"Field","name":{"kind":"Name","value":"amount_payable"}},{"kind":"Field","name":{"kind":"Name","value":"balance"}},{"kind":"Field","name":{"kind":"Name","value":"payment_plan_id"}},{"kind":"Field","name":{"kind":"Name","value":"unique_asset_id"}},{"kind":"Field","name":{"kind":"Name","value":"months_covered"}},{"kind":"Field","name":{"kind":"Name","value":"month_remaining"}},{"kind":"Field","name":{"kind":"Name","value":"allocation_status"}},{"kind":"Field","name":{"kind":"Name","value":"payment_plan_created_at"}},{"kind":"Field","name":{"kind":"Name","value":"payment_plan_updated_at"}}]}}]}}]}}]} as unknown as DocumentNode<ExportSalesQuery, ExportSalesQueryVariables>;
-export const GetSalesRecordDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetSalesRecord"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filters"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"SalesRecordFilters"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getSalesRecord"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"filters"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filters"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}},{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"SalesRowFragment"}}]}},{"kind":"Field","name":{"kind":"Name","value":"count"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"SalesRowFragment"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"SalesRecord"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"user_firstName"}},{"kind":"Field","name":{"kind":"Name","value":"user_lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"user_phone"}},{"kind":"Field","name":{"kind":"Name","value":"referrer_name"}},{"kind":"Field","name":{"kind":"Name","value":"referrer_email"}},{"kind":"Field","name":{"kind":"Name","value":"referrer_phone"}},{"kind":"Field","name":{"kind":"Name","value":"asset_name"}},{"kind":"Field","name":{"kind":"Name","value":"asset_type"}},{"kind":"Field","name":{"kind":"Name","value":"no_of_units"}},{"kind":"Field","name":{"kind":"Name","value":"document_amount_paid"}},{"kind":"Field","name":{"kind":"Name","value":"fullownerhsip_documentprice"}},{"kind":"Field","name":{"kind":"Name","value":"month_subscription"}},{"kind":"Field","name":{"kind":"Name","value":"size"}},{"kind":"Field","name":{"kind":"Name","value":"price"}},{"kind":"Field","name":{"kind":"Name","value":"amount_paid"}},{"kind":"Field","name":{"kind":"Name","value":"amount_payable"}},{"kind":"Field","name":{"kind":"Name","value":"balance"}},{"kind":"Field","name":{"kind":"Name","value":"default_amount"}},{"kind":"Field","name":{"kind":"Name","value":"is_suspended"}},{"kind":"Field","name":{"kind":"Name","value":"start_date"}},{"kind":"Field","name":{"kind":"Name","value":"next_date"}}]}}]} as unknown as DocumentNode<GetSalesRecordQuery, GetSalesRecordQueryVariables>;
+export const GetSalesAssetOptionsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetSalesAssetOptions"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAllAdminAssets"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"asset_name"}},{"kind":"Field","name":{"kind":"Name","value":"asset_location"}}]}}]}}]}}]} as unknown as DocumentNode<GetSalesAssetOptionsQuery, GetSalesAssetOptionsQueryVariables>;
+export const ExportSalesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ExportSales"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filters"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"SalesRecordFilters"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getSalesRecord"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"filters"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filters"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}},{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"user_firstName"}},{"kind":"Field","name":{"kind":"Name","value":"user_lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"user_phone"}},{"kind":"Field","name":{"kind":"Name","value":"referrer_name"}},{"kind":"Field","name":{"kind":"Name","value":"referrer_email"}},{"kind":"Field","name":{"kind":"Name","value":"referrer_phone"}},{"kind":"Field","name":{"kind":"Name","value":"asset_name"}},{"kind":"Field","name":{"kind":"Name","value":"asset_type"}},{"kind":"Field","name":{"kind":"Name","value":"no_of_units"}},{"kind":"Field","name":{"kind":"Name","value":"size"}},{"kind":"Field","name":{"kind":"Name","value":"price"}},{"kind":"Field","name":{"kind":"Name","value":"amount_paid"}},{"kind":"Field","name":{"kind":"Name","value":"fullownerhsip_documentprice"}},{"kind":"Field","name":{"kind":"Name","value":"document_amount_paid"}},{"kind":"Field","name":{"kind":"Name","value":"month_subscription"}},{"kind":"Field","name":{"kind":"Name","value":"start_date"}},{"kind":"Field","name":{"kind":"Name","value":"next_date"}},{"kind":"Field","name":{"kind":"Name","value":"default_amount"}},{"kind":"Field","name":{"kind":"Name","value":"is_suspended"}},{"kind":"Field","name":{"kind":"Name","value":"amount_payable"}},{"kind":"Field","name":{"kind":"Name","value":"balance"}},{"kind":"Field","name":{"kind":"Name","value":"payment_plan_id"}},{"kind":"Field","name":{"kind":"Name","value":"unique_asset_id"}},{"kind":"Field","name":{"kind":"Name","value":"months_covered"}},{"kind":"Field","name":{"kind":"Name","value":"month_remaining"}},{"kind":"Field","name":{"kind":"Name","value":"allocation_status"}},{"kind":"Field","name":{"kind":"Name","value":"payment_plan_created_at"}},{"kind":"Field","name":{"kind":"Name","value":"payment_plan_updated_at"}},{"kind":"Field","name":{"kind":"Name","value":"block"}},{"kind":"Field","name":{"kind":"Name","value":"plot"}},{"kind":"Field","name":{"kind":"Name","value":"land_payment_completed_date"}},{"kind":"Field","name":{"kind":"Name","value":"name_on_document"}},{"kind":"Field","name":{"kind":"Name","value":"address_on_document"}}]}}]}}]}}]} as unknown as DocumentNode<ExportSalesQuery, ExportSalesQueryVariables>;
+export const GetSalesRecordDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetSalesRecord"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filters"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"SalesRecordFilters"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getSalesRecord"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"filters"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filters"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}},{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"SalesRowFragment"}}]}},{"kind":"Field","name":{"kind":"Name","value":"count"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"SalesRowFragment"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"SalesRecord"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"user_firstName"}},{"kind":"Field","name":{"kind":"Name","value":"user_lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"user_phone"}},{"kind":"Field","name":{"kind":"Name","value":"referrer_name"}},{"kind":"Field","name":{"kind":"Name","value":"referrer_email"}},{"kind":"Field","name":{"kind":"Name","value":"referrer_phone"}},{"kind":"Field","name":{"kind":"Name","value":"asset_name"}},{"kind":"Field","name":{"kind":"Name","value":"asset_type"}},{"kind":"Field","name":{"kind":"Name","value":"no_of_units"}},{"kind":"Field","name":{"kind":"Name","value":"document_amount_paid"}},{"kind":"Field","name":{"kind":"Name","value":"fullownerhsip_documentprice"}},{"kind":"Field","name":{"kind":"Name","value":"month_subscription"}},{"kind":"Field","name":{"kind":"Name","value":"size"}},{"kind":"Field","name":{"kind":"Name","value":"price"}},{"kind":"Field","name":{"kind":"Name","value":"amount_paid"}},{"kind":"Field","name":{"kind":"Name","value":"amount_payable"}},{"kind":"Field","name":{"kind":"Name","value":"balance"}},{"kind":"Field","name":{"kind":"Name","value":"default_amount"}},{"kind":"Field","name":{"kind":"Name","value":"is_suspended"}},{"kind":"Field","name":{"kind":"Name","value":"start_date"}},{"kind":"Field","name":{"kind":"Name","value":"next_date"}},{"kind":"Field","name":{"kind":"Name","value":"block"}},{"kind":"Field","name":{"kind":"Name","value":"plot"}},{"kind":"Field","name":{"kind":"Name","value":"land_payment_completed_date"}},{"kind":"Field","name":{"kind":"Name","value":"name_on_document"}}]}}]} as unknown as DocumentNode<GetSalesRecordQuery, GetSalesRecordQueryVariables>;
 export const GetSalesDashboardDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetSalesDashboard"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"startDate"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"endDate"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getSalesDashboard"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"startDate"},"value":{"kind":"Variable","name":{"kind":"Name","value":"startDate"}}},{"kind":"Argument","name":{"kind":"Name","value":"endDate"},"value":{"kind":"Variable","name":{"kind":"Name","value":"endDate"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"SummaryCards_dashboard"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"SummaryCards_dashboard"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"SalesDashboard"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"totalTransactionValue"}},{"kind":"Field","name":{"kind":"Name","value":"expectedTransactionValue"}},{"kind":"Field","name":{"kind":"Name","value":"totalReceivedTransactionValue"}},{"kind":"Field","name":{"kind":"Name","value":"outstandingTransactionValue"}},{"kind":"Field","name":{"kind":"Name","value":"totalFlexTransactionValue"}},{"kind":"Field","name":{"kind":"Name","value":"expectedFlexTransactionValue"}},{"kind":"Field","name":{"kind":"Name","value":"totalReceivedFlexTransactionValue"}},{"kind":"Field","name":{"kind":"Name","value":"outstandingFlexTransactionValue"}},{"kind":"Field","name":{"kind":"Name","value":"totalFullOwnershipTransactionValue"}},{"kind":"Field","name":{"kind":"Name","value":"expectedFullOwnershipTransactionValue"}},{"kind":"Field","name":{"kind":"Name","value":"totalReceivedFullOwnershipTransactionValue"}},{"kind":"Field","name":{"kind":"Name","value":"outstandingFullOwnershipTransactionValue"}}]}}]} as unknown as DocumentNode<GetSalesDashboardQuery, GetSalesDashboardQueryVariables>;
 export const GetSalesStatusCountsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetSalesStatusCounts"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filters"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"SalesRecordFilters"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getSalesRecord"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"filters"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filters"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}},{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"count"}},{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount_paid"}},{"kind":"Field","name":{"kind":"Name","value":"amount_payable"}},{"kind":"Field","name":{"kind":"Name","value":"balance"}},{"kind":"Field","name":{"kind":"Name","value":"price"}}]}}]}}]}}]} as unknown as DocumentNode<GetSalesStatusCountsQuery, GetSalesStatusCountsQueryVariables>;
+export const GetIssuesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetIssues"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"status"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"IssueStatus"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"search"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getIssues"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"status"},"value":{"kind":"Variable","name":{"kind":"Name","value":"status"}}},{"kind":"Argument","name":{"kind":"Name","value":"search"},"value":{"kind":"Variable","name":{"kind":"Name","value":"search"}}},{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"count"}},{"kind":"Field","name":{"kind":"Name","value":"results"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"issue_ref"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"ticketCount"}},{"kind":"Field","name":{"kind":"Name","value":"reopen_count"}},{"kind":"Field","name":{"kind":"Name","value":"reopened_at"}},{"kind":"Field","name":{"kind":"Name","value":"first_resolved_at"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}},{"kind":"Field","name":{"kind":"Name","value":"owner"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}}]}}]}}]}}]} as unknown as DocumentNode<GetIssuesQuery, GetIssuesQueryVariables>;
+export const GetIssueDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetIssue"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"issueId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getIssue"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"issueId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"issueId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"issue"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"issue_ref"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"resolution_note"}},{"kind":"Field","name":{"kind":"Name","value":"resolved_at"}},{"kind":"Field","name":{"kind":"Name","value":"reopen_count"}},{"kind":"Field","name":{"kind":"Name","value":"reopened_at"}},{"kind":"Field","name":{"kind":"Name","value":"first_resolved_at"}},{"kind":"Field","name":{"kind":"Name","value":"ticketCount"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}},{"kind":"Field","name":{"kind":"Name","value":"owner"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}},{"kind":"Field","name":{"kind":"Name","value":"resolved_by"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}},{"kind":"Field","name":{"kind":"Name","value":"created_by"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"ticketCount"}},{"kind":"Field","name":{"kind":"Name","value":"tickets"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"ticket_ref"}},{"kind":"Field","name":{"kind":"Name","value":"subject"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"user_affected"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}}]}}]}}]}}]} as unknown as DocumentNode<GetIssueQuery, GetIssueQueryVariables>;
+export const CreateIssueDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateIssue"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"CreateIssueInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createIssue"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"issue_ref"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"status"}}]}}]}}]} as unknown as DocumentNode<CreateIssueMutation, CreateIssueMutationVariables>;
+export const UpdateIssueDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"UpdateIssue"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"UpdateIssueInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"updateIssue"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"owner"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}}]}}]}}]} as unknown as DocumentNode<UpdateIssueMutation, UpdateIssueMutationVariables>;
+export const ResolveIssueDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"ResolveIssue"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ResolveIssueInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"resolveIssue"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"issue"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"resolution_note"}},{"kind":"Field","name":{"kind":"Name","value":"resolved_at"}}]}},{"kind":"Field","name":{"kind":"Name","value":"ticketsResolved"}},{"kind":"Field","name":{"kind":"Name","value":"ticketsExcluded"}},{"kind":"Field","name":{"kind":"Name","value":"customersAffected"}}]}}]}}]} as unknown as DocumentNode<ResolveIssueMutation, ResolveIssueMutationVariables>;
+export const ListCsManagersForTicketFilterDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ListCSManagersForTicketFilter"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"listCSManagers"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"manager"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}}]}}]}}]} as unknown as DocumentNode<ListCsManagersForTicketFilterQuery, ListCsManagersForTicketFilterQueryVariables>;
+export const CreateTicketDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateTicket"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"CreateTicketInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createTicket"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"ticket_ref"}}]}}]}}]} as unknown as DocumentNode<CreateTicketMutation, CreateTicketMutationVariables>;
+export const UpdateTicketDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"UpdateTicket"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"UpdateTicketInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"updateTicket"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"ticket_ref"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"subject"}},{"kind":"Field","name":{"kind":"Name","value":"category"}},{"kind":"Field","name":{"kind":"Name","value":"assigned_admin"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}},{"kind":"Field","name":{"kind":"Name","value":"user_affected"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<UpdateTicketMutation, UpdateTicketMutationVariables>;
+export const ResolveTicketDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"ResolveTicket"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ResolveTicketInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"resolveTicket"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"ticket_ref"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"resolution"}},{"kind":"Field","name":{"kind":"Name","value":"resolved_at"}},{"kind":"Field","name":{"kind":"Name","value":"resolved_by"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}}]}}]}}]} as unknown as DocumentNode<ResolveTicketMutation, ResolveTicketMutationVariables>;
+export const AddTicketNoteDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"AddTicketNote"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ticketId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"body"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"addTicketNote"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"ticketId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ticketId"}}},{"kind":"Argument","name":{"kind":"Name","value":"body"},"value":{"kind":"Variable","name":{"kind":"Name","value":"body"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"body"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"admin"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}}]}}]}}]} as unknown as DocumentNode<AddTicketNoteMutation, AddTicketNoteMutationVariables>;
+export const MergeTicketsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"MergeTickets"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"loserTicketId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"winnerTicketId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"mergeTickets"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"loserTicketId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"loserTicketId"}}},{"kind":"Argument","name":{"kind":"Name","value":"winnerTicketId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"winnerTicketId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"ticket_ref"}},{"kind":"Field","name":{"kind":"Name","value":"merged_into"}}]}}]}}]} as unknown as DocumentNode<MergeTicketsMutation, MergeTicketsMutationVariables>;
+export const LinkTicketToIssueDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"LinkTicketToIssue"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ticketId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"issueId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"linkTicketToIssue"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"ticketId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ticketId"}}},{"kind":"Argument","name":{"kind":"Name","value":"issueId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"issueId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"issue"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"issue_ref"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"status"}}]}}]}}]}}]} as unknown as DocumentNode<LinkTicketToIssueMutation, LinkTicketToIssueMutationVariables>;
+export const UnlinkTicketFromIssueDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"UnlinkTicketFromIssue"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ticketId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"unlinkTicketFromIssue"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"ticketId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ticketId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"issue"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"issue_ref"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"status"}}]}}]}}]}}]} as unknown as DocumentNode<UnlinkTicketFromIssueMutation, UnlinkTicketFromIssueMutationVariables>;
+export const AddTicketCollaboratorDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"AddTicketCollaborator"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ticketId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"adminId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"addTicketCollaborator"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"ticketId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ticketId"}}},{"kind":"Argument","name":{"kind":"Name","value":"adminId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"adminId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"ticket_ref"}},{"kind":"Field","name":{"kind":"Name","value":"assigned_admin"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}},{"kind":"Field","name":{"kind":"Name","value":"collaborators"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"role"}}]}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<AddTicketCollaboratorMutation, AddTicketCollaboratorMutationVariables>;
+export const RemoveTicketCollaboratorDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"RemoveTicketCollaborator"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ticketId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"adminId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"removeTicketCollaborator"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"ticketId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ticketId"}}},{"kind":"Argument","name":{"kind":"Name","value":"adminId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"adminId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"ticket_ref"}},{"kind":"Field","name":{"kind":"Name","value":"assigned_admin"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}},{"kind":"Field","name":{"kind":"Name","value":"collaborators"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"role"}}]}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<RemoveTicketCollaboratorMutation, RemoveTicketCollaboratorMutationVariables>;
+export const ClassifyTicketDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"ClassifyTicket"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ticketId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"classifyTicket"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"ticketId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ticketId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"category"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"category_source"}},{"kind":"Field","name":{"kind":"Name","value":"type_source"}},{"kind":"Field","name":{"kind":"Name","value":"ai"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"suggested_category"}},{"kind":"Field","name":{"kind":"Name","value":"suggested_type"}},{"kind":"Field","name":{"kind":"Name","value":"confidence"}},{"kind":"Field","name":{"kind":"Name","value":"model"}},{"kind":"Field","name":{"kind":"Name","value":"classified_at"}},{"kind":"Field","name":{"kind":"Name","value":"error"}}]}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<ClassifyTicketMutation, ClassifyTicketMutationVariables>;
+export const ListAdminsForTicketPickerDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ListAdminsForTicketPicker"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAllAdminWithRoles"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"adminId"}},{"kind":"Field","name":{"kind":"Name","value":"adminName"}},{"kind":"Field","name":{"kind":"Name","value":"adminEmail"}},{"kind":"Field","name":{"kind":"Name","value":"role"}}]}}]}}]}}]} as unknown as DocumentNode<ListAdminsForTicketPickerQuery, ListAdminsForTicketPickerQueryVariables>;
+export const SearchUsersForTicketPickerDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"SearchUsersForTicketPicker"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"searchQuery"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAllUsersWithFilters"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}},{"kind":"Argument","name":{"kind":"Name","value":"searchQuery"},"value":{"kind":"Variable","name":{"kind":"Name","value":"searchQuery"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"count"}},{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}}]}}]}}]}}]} as unknown as DocumentNode<SearchUsersForTicketPickerQuery, SearchUsersForTicketPickerQueryVariables>;
+export const ReplyToTicketDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"ReplyToTicket"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ticketId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"body"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"attachments"}},"type":{"kind":"ListType","type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"TicketReplyAttachmentInput"}}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"replyToTicket"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"ticketId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ticketId"}}},{"kind":"Argument","name":{"kind":"Name","value":"body"},"value":{"kind":"Variable","name":{"kind":"Name","value":"body"}}},{"kind":"Argument","name":{"kind":"Name","value":"attachments"},"value":{"kind":"Variable","name":{"kind":"Name","value":"attachments"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"ticket"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}},{"kind":"Field","name":{"kind":"Name","value":"messages"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"TicketTimeline_message"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"TicketTimeline_message"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"TicketMessage"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"direction"}},{"kind":"Field","name":{"kind":"Name","value":"channel"}},{"kind":"Field","name":{"kind":"Name","value":"body"}},{"kind":"Field","name":{"kind":"Name","value":"from_address"}},{"kind":"Field","name":{"kind":"Name","value":"sent_at"}},{"kind":"Field","name":{"kind":"Name","value":"author_admin"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}},{"kind":"Field","name":{"kind":"Name","value":"author_user"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}},{"kind":"Field","name":{"kind":"Name","value":"attachments"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"filename"}},{"kind":"Field","name":{"kind":"Name","value":"mime"}},{"kind":"Field","name":{"kind":"Name","value":"size"}},{"kind":"Field","name":{"kind":"Name","value":"url"}},{"kind":"Field","name":{"kind":"Name","value":"inline"}}]}},{"kind":"Field","name":{"kind":"Name","value":"delivery"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"error"}}]}},{"kind":"Field","name":{"kind":"Name","value":"match"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"signal"}},{"kind":"Field","name":{"kind":"Name","value":"conflict"}}]}}]}}]} as unknown as DocumentNode<ReplyToTicketMutation, ReplyToTicketMutationVariables>;
+export const GetTicketsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetTickets"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filter"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"TicketListFilterInput"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getTickets"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filter"}}},{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"count"}},{"kind":"Field","name":{"kind":"Name","value":"results"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"ticket_ref"}},{"kind":"Field","name":{"kind":"Name","value":"channel"}},{"kind":"Field","name":{"kind":"Name","value":"source_reference"}},{"kind":"Field","name":{"kind":"Name","value":"subject"}},{"kind":"Field","name":{"kind":"Name","value":"body"}},{"kind":"Field","name":{"kind":"Name","value":"category"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"category_source"}},{"kind":"Field","name":{"kind":"Name","value":"type_source"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"resolution"}},{"kind":"Field","name":{"kind":"Name","value":"resolved_at"}},{"kind":"Field","name":{"kind":"Name","value":"merged_into"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}},{"kind":"Field","name":{"kind":"Name","value":"sender"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}},{"kind":"Field","name":{"kind":"Name","value":"user_affected"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}}]}},{"kind":"Field","name":{"kind":"Name","value":"assigned_admin"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}},{"kind":"Field","name":{"kind":"Name","value":"collaborators"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"role"}}]}},{"kind":"Field","name":{"kind":"Name","value":"issue"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"issue_ref"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"status"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"filterCounts"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"all"}},{"kind":"Field","name":{"kind":"Name","value":"mine"}},{"kind":"Field","name":{"kind":"Name","value":"unassigned"}},{"kind":"Field","name":{"kind":"Name","value":"unlinked"}},{"kind":"Field","name":{"kind":"Name","value":"open"}},{"kind":"Field","name":{"kind":"Name","value":"waitingCustomer"}},{"kind":"Field","name":{"kind":"Name","value":"blockedOnIssue"}},{"kind":"Field","name":{"kind":"Name","value":"resolved"}}]}}]}}]}}]} as unknown as DocumentNode<GetTicketsQuery, GetTicketsQueryVariables>;
+export const GetTicketDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetTicket"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ticketId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getTicket"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"ticketId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ticketId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"ticket"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"ticket_ref"}},{"kind":"Field","name":{"kind":"Name","value":"channel"}},{"kind":"Field","name":{"kind":"Name","value":"source_reference"}},{"kind":"Field","name":{"kind":"Name","value":"subject"}},{"kind":"Field","name":{"kind":"Name","value":"body"}},{"kind":"Field","name":{"kind":"Name","value":"category"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"category_source"}},{"kind":"Field","name":{"kind":"Name","value":"type_source"}},{"kind":"Field","name":{"kind":"Name","value":"ai"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"suggested_category"}},{"kind":"Field","name":{"kind":"Name","value":"suggested_type"}},{"kind":"Field","name":{"kind":"Name","value":"confidence"}},{"kind":"Field","name":{"kind":"Name","value":"model"}},{"kind":"Field","name":{"kind":"Name","value":"classified_at"}},{"kind":"Field","name":{"kind":"Name","value":"error"}},{"kind":"Field","name":{"kind":"Name","value":"affected_hints"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"value"}},{"kind":"Field","name":{"kind":"Name","value":"kind"}},{"kind":"Field","name":{"kind":"Name","value":"note"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"resolution"}},{"kind":"Field","name":{"kind":"Name","value":"resolved_at"}},{"kind":"Field","name":{"kind":"Name","value":"merged_into"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}},{"kind":"Field","name":{"kind":"Name","value":"sender"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}},{"kind":"Field","name":{"kind":"Name","value":"user_affected"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}}]}},{"kind":"Field","name":{"kind":"Name","value":"assigned_admin"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}},{"kind":"Field","name":{"kind":"Name","value":"collaborators"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"role"}}]}},{"kind":"Field","name":{"kind":"Name","value":"issue"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"issue_ref"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"status"}}]}},{"kind":"Field","name":{"kind":"Name","value":"attachments"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"url"}},{"kind":"Field","name":{"kind":"Name","value":"filename"}},{"kind":"Field","name":{"kind":"Name","value":"mime"}},{"kind":"Field","name":{"kind":"Name","value":"size"}}]}},{"kind":"Field","name":{"kind":"Name","value":"resolved_by"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"messages"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"TicketTimeline_message"}}]}},{"kind":"Field","name":{"kind":"Name","value":"notes"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"TicketTimeline_note"}}]}},{"kind":"Field","name":{"kind":"Name","value":"duplicates"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"ticket_ref"}},{"kind":"Field","name":{"kind":"Name","value":"subject"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}},{"kind":"Field","name":{"kind":"Name","value":"csManager"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"TicketTimeline_message"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"TicketMessage"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"direction"}},{"kind":"Field","name":{"kind":"Name","value":"channel"}},{"kind":"Field","name":{"kind":"Name","value":"body"}},{"kind":"Field","name":{"kind":"Name","value":"from_address"}},{"kind":"Field","name":{"kind":"Name","value":"sent_at"}},{"kind":"Field","name":{"kind":"Name","value":"author_admin"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}},{"kind":"Field","name":{"kind":"Name","value":"author_user"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}},{"kind":"Field","name":{"kind":"Name","value":"attachments"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"filename"}},{"kind":"Field","name":{"kind":"Name","value":"mime"}},{"kind":"Field","name":{"kind":"Name","value":"size"}},{"kind":"Field","name":{"kind":"Name","value":"url"}},{"kind":"Field","name":{"kind":"Name","value":"inline"}}]}},{"kind":"Field","name":{"kind":"Name","value":"delivery"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"error"}}]}},{"kind":"Field","name":{"kind":"Name","value":"match"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"signal"}},{"kind":"Field","name":{"kind":"Name","value":"conflict"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"TicketTimeline_note"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"TicketNote"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"body"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"admin"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}}]}}]} as unknown as DocumentNode<GetTicketQuery, GetTicketQueryVariables>;
+export const SuggestUsersForTicketDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"SuggestUsersForTicket"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ticketId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"suggestUsersForTicket"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"ticketId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ticketId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"reason"}},{"kind":"Field","name":{"kind":"Name","value":"confidence"}},{"kind":"Field","name":{"kind":"Name","value":"user"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}}]}}]}}]}}]} as unknown as DocumentNode<SuggestUsersForTicketQuery, SuggestUsersForTicketQueryVariables>;
+export const FindSimilarTicketsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"FindSimilarTickets"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"search"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"findSimilarTickets"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"search"},"value":{"kind":"Variable","name":{"kind":"Name","value":"search"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"ticket_ref"}},{"kind":"Field","name":{"kind":"Name","value":"subject"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"user_affected"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}}]}}]}}]} as unknown as DocumentNode<FindSimilarTicketsQuery, FindSimilarTicketsQueryVariables>;
+export const TicketCategoriesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"TicketCategories"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"ticketCategories"}}]}}]} as unknown as DocumentNode<TicketCategoriesQuery, TicketCategoriesQueryVariables>;
+export const SuggestIssuesForTicketDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"SuggestIssuesForTicket"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ticketId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"suggestIssuesForTicket"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"ticketId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ticketId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"matchedTerms"}},{"kind":"Field","name":{"kind":"Name","value":"score"}},{"kind":"Field","name":{"kind":"Name","value":"issue"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"issue_ref"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"status"}}]}}]}}]}}]} as unknown as DocumentNode<SuggestIssuesForTicketQuery, SuggestIssuesForTicketQueryVariables>;
 export const GetUsersWithZeroBalanceDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetUsersWithZeroBalance"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getUsersWithZeroBalance"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"count"}},{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"CompleteAssetPaymentsTable_data"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"CompleteAssetPaymentsTable_data"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"ZeroBalance"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phone_number"}},{"kind":"Field","name":{"kind":"Name","value":"sales_person"}},{"kind":"Field","name":{"kind":"Name","value":"asset_name"}},{"kind":"Field","name":{"kind":"Name","value":"unit"}},{"kind":"Field","name":{"kind":"Name","value":"size"}},{"kind":"Field","name":{"kind":"Name","value":"price"}},{"kind":"Field","name":{"kind":"Name","value":"amount_paid"}},{"kind":"Field","name":{"kind":"Name","value":"month_subscription"}},{"kind":"Field","name":{"kind":"Name","value":"start_date"}},{"kind":"Field","name":{"kind":"Name","value":"next_payment_date"}}]}}]} as unknown as DocumentNode<GetUsersWithZeroBalanceQuery, GetUsersWithZeroBalanceQueryVariables>;
-export const ExportDocumentTransactionsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ExportDocumentTransactions"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"status"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"startDate"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Date"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"endDate"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Date"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"search"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getDocumentTransaction"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}},{"kind":"Argument","name":{"kind":"Name","value":"status"},"value":{"kind":"Variable","name":{"kind":"Name","value":"status"}}},{"kind":"Argument","name":{"kind":"Name","value":"startDate"},"value":{"kind":"Variable","name":{"kind":"Name","value":"startDate"}}},{"kind":"Argument","name":{"kind":"Name","value":"endDate"},"value":{"kind":"Variable","name":{"kind":"Name","value":"endDate"}}},{"kind":"Argument","name":{"kind":"Name","value":"search"},"value":{"kind":"Variable","name":{"kind":"Name","value":"search"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"count"}},{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"amount"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"admin_status"}},{"kind":"Field","name":{"kind":"Name","value":"plot_size"}},{"kind":"Field","name":{"kind":"Name","value":"asset_type"}},{"kind":"Field","name":{"kind":"Name","value":"referral"}},{"kind":"Field","name":{"kind":"Name","value":"transaction_type"}},{"kind":"Field","name":{"kind":"Name","value":"user"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}},{"kind":"Field","name":{"kind":"Name","value":"referral_status"}},{"kind":"Field","name":{"kind":"Name","value":"_id"}}]}},{"kind":"Field","name":{"kind":"Name","value":"time_of_transaction"}}]}}]}}]}}]} as unknown as DocumentNode<ExportDocumentTransactionsQuery, ExportDocumentTransactionsQueryVariables>;
+export const ExportDocumentTransactionsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ExportDocumentTransactions"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"status"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"transactionType"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"assetType"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"salesType"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"startDate"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Date"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"endDate"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Date"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"search"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getDocumentTransaction"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}},{"kind":"Argument","name":{"kind":"Name","value":"status"},"value":{"kind":"Variable","name":{"kind":"Name","value":"status"}}},{"kind":"Argument","name":{"kind":"Name","value":"transactionType"},"value":{"kind":"Variable","name":{"kind":"Name","value":"transactionType"}}},{"kind":"Argument","name":{"kind":"Name","value":"assetType"},"value":{"kind":"Variable","name":{"kind":"Name","value":"assetType"}}},{"kind":"Argument","name":{"kind":"Name","value":"salesType"},"value":{"kind":"Variable","name":{"kind":"Name","value":"salesType"}}},{"kind":"Argument","name":{"kind":"Name","value":"startDate"},"value":{"kind":"Variable","name":{"kind":"Name","value":"startDate"}}},{"kind":"Argument","name":{"kind":"Name","value":"endDate"},"value":{"kind":"Variable","name":{"kind":"Name","value":"endDate"}}},{"kind":"Argument","name":{"kind":"Name","value":"search"},"value":{"kind":"Variable","name":{"kind":"Name","value":"search"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"count"}},{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"amount"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"admin_status"}},{"kind":"Field","name":{"kind":"Name","value":"plot_size"}},{"kind":"Field","name":{"kind":"Name","value":"asset_type"}},{"kind":"Field","name":{"kind":"Name","value":"referral"}},{"kind":"Field","name":{"kind":"Name","value":"transaction_type"}},{"kind":"Field","name":{"kind":"Name","value":"user"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}},{"kind":"Field","name":{"kind":"Name","value":"referral_status"}},{"kind":"Field","name":{"kind":"Name","value":"_id"}}]}},{"kind":"Field","name":{"kind":"Name","value":"time_of_transaction"}}]}}]}}]}}]} as unknown as DocumentNode<ExportDocumentTransactionsQuery, ExportDocumentTransactionsQueryVariables>;
 export const ApproveTransactionDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"ApproveTransaction"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"approveTransactionId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"approveTransaction"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"approveTransactionId"}}}]}]}}]} as unknown as DocumentNode<ApproveTransactionMutation, ApproveTransactionMutationVariables>;
 export const DeclineTransactionDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"DeclineTransaction"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"declineTransactionInput"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"DeclineTransactionInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"declineTransaction"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"declineTransactionInput"},"value":{"kind":"Variable","name":{"kind":"Name","value":"declineTransactionInput"}}}]}]}}]} as unknown as DocumentNode<DeclineTransactionMutation, DeclineTransactionMutationVariables>;
 export const ApprovePaystackTransactionDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"ApprovePaystackTransaction"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"approvePaystackTransactionId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"approvePaystackTransaction"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"approvePaystackTransactionId"}}}]}]}}]} as unknown as DocumentNode<ApprovePaystackTransactionMutation, ApprovePaystackTransactionMutationVariables>;
@@ -8180,7 +11618,7 @@ export const ProcessReceiptDocument = {"kind":"Document","definitions":[{"kind":
 export const DeclineAssetTransactionDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"DeclineAssetTransaction"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"declineTransactionInput"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"DeclineTransactionInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"declineAssetTransaction"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"declineTransactionInput"},"value":{"kind":"Variable","name":{"kind":"Name","value":"declineTransactionInput"}}}]}]}}]} as unknown as DocumentNode<DeclineAssetTransactionMutation, DeclineAssetTransactionMutationVariables>;
 export const GetTopupTransactionDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetTopupTransaction"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getTopupTransaction"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"count"}},{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"TopupTransactionsTable_data"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"TopupTransactionsTable_data"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"AdminTransactions"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"amount"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"admin_status"}},{"kind":"Field","name":{"kind":"Name","value":"time_of_transaction"}},{"kind":"Field","name":{"kind":"Name","value":"transaction_type"}},{"kind":"Field","name":{"kind":"Name","value":"transfer_file"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"file"}}]}},{"kind":"Field","name":{"kind":"Name","value":"user"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"_id"}}]}}]}}]} as unknown as DocumentNode<GetTopupTransactionQuery, GetTopupTransactionQueryVariables>;
 export const GetWithdrawalTransactionDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetWithdrawalTransaction"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"status"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"search"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getWithdrawalTransaction"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}},{"kind":"Argument","name":{"kind":"Name","value":"status"},"value":{"kind":"Variable","name":{"kind":"Name","value":"status"}}},{"kind":"Argument","name":{"kind":"Name","value":"search"},"value":{"kind":"Variable","name":{"kind":"Name","value":"search"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"count"}},{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"WithdrawalTransactionsTable_data"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"WithdrawalTransactionsTable_data"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"AdminTransactions"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"admin_status"}},{"kind":"Field","name":{"kind":"Name","value":"amount"}},{"kind":"Field","name":{"kind":"Name","value":"time_of_transaction"}},{"kind":"Field","name":{"kind":"Name","value":"processing_type"}},{"kind":"Field","name":{"kind":"Name","value":"tin"}},{"kind":"Field","name":{"kind":"Name","value":"bank_details"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"accountNumber"}},{"kind":"Field","name":{"kind":"Name","value":"bankName"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}},{"kind":"Field","name":{"kind":"Name","value":"user"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"tin"}}]}}]}}]} as unknown as DocumentNode<GetWithdrawalTransactionQuery, GetWithdrawalTransactionQueryVariables>;
-export const GetDocumentTransactionDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetDocumentTransaction"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"status"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"startDate"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Date"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"endDate"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Date"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"search"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getDocumentTransaction"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}},{"kind":"Argument","name":{"kind":"Name","value":"status"},"value":{"kind":"Variable","name":{"kind":"Name","value":"status"}}},{"kind":"Argument","name":{"kind":"Name","value":"startDate"},"value":{"kind":"Variable","name":{"kind":"Name","value":"startDate"}}},{"kind":"Argument","name":{"kind":"Name","value":"endDate"},"value":{"kind":"Variable","name":{"kind":"Name","value":"endDate"}}},{"kind":"Argument","name":{"kind":"Name","value":"search"},"value":{"kind":"Variable","name":{"kind":"Name","value":"search"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"DocumentTransactionsTable_data"}}]}},{"kind":"Field","name":{"kind":"Name","value":"count"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"DocumentTransactionsTable_data"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"AdminTransactions"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"amount"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"admin_status"}},{"kind":"Field","name":{"kind":"Name","value":"plot_size"}},{"kind":"Field","name":{"kind":"Name","value":"asset_type"}},{"kind":"Field","name":{"kind":"Name","value":"referral"}},{"kind":"Field","name":{"kind":"Name","value":"transaction_type"}},{"kind":"Field","name":{"kind":"Name","value":"transfer_file"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"file"}}]}},{"kind":"Field","name":{"kind":"Name","value":"user"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"_id"}}]}},{"kind":"Field","name":{"kind":"Name","value":"time_of_transaction"}}]}}]} as unknown as DocumentNode<GetDocumentTransactionQuery, GetDocumentTransactionQueryVariables>;
+export const GetDocumentTransactionDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetDocumentTransaction"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"status"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"transactionType"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"assetType"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"salesType"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"startDate"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Date"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"endDate"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Date"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"search"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getDocumentTransaction"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}},{"kind":"Argument","name":{"kind":"Name","value":"status"},"value":{"kind":"Variable","name":{"kind":"Name","value":"status"}}},{"kind":"Argument","name":{"kind":"Name","value":"transactionType"},"value":{"kind":"Variable","name":{"kind":"Name","value":"transactionType"}}},{"kind":"Argument","name":{"kind":"Name","value":"assetType"},"value":{"kind":"Variable","name":{"kind":"Name","value":"assetType"}}},{"kind":"Argument","name":{"kind":"Name","value":"salesType"},"value":{"kind":"Variable","name":{"kind":"Name","value":"salesType"}}},{"kind":"Argument","name":{"kind":"Name","value":"startDate"},"value":{"kind":"Variable","name":{"kind":"Name","value":"startDate"}}},{"kind":"Argument","name":{"kind":"Name","value":"endDate"},"value":{"kind":"Variable","name":{"kind":"Name","value":"endDate"}}},{"kind":"Argument","name":{"kind":"Name","value":"search"},"value":{"kind":"Variable","name":{"kind":"Name","value":"search"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"DocumentTransactionsTable_data"}}]}},{"kind":"Field","name":{"kind":"Name","value":"count"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"DocumentTransactionsTable_data"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"AdminTransactions"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"amount"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"admin_status"}},{"kind":"Field","name":{"kind":"Name","value":"plot_size"}},{"kind":"Field","name":{"kind":"Name","value":"asset_type"}},{"kind":"Field","name":{"kind":"Name","value":"referral"}},{"kind":"Field","name":{"kind":"Name","value":"transaction_type"}},{"kind":"Field","name":{"kind":"Name","value":"transfer_file"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"file"}}]}},{"kind":"Field","name":{"kind":"Name","value":"user"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"_id"}}]}},{"kind":"Field","name":{"kind":"Name","value":"time_of_transaction"}}]}}]} as unknown as DocumentNode<GetDocumentTransactionQuery, GetDocumentTransactionQueryVariables>;
 export const AdminTransactionDataPointDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"AdminTransactionDataPoint"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"dataPointInput"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"DataPointInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"adminTransactionDataPoint"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"dataPointInput"},"value":{"kind":"Variable","name":{"kind":"Name","value":"dataPointInput"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"pending_transaction"}},{"kind":"Field","name":{"kind":"Name","value":"approved_transaction"}},{"kind":"Field","name":{"kind":"Name","value":"rejected_transaction"}},{"kind":"Field","name":{"kind":"Name","value":"commission_transaction"}},{"kind":"Field","name":{"kind":"Name","value":"users_wallet_balance"}},{"kind":"Field","name":{"kind":"Name","value":"auto_approved_transaction"}},{"kind":"Field","name":{"kind":"Name","value":"auto_failed_transaction"}}]}}]}}]} as unknown as DocumentNode<AdminTransactionDataPointQuery, AdminTransactionDataPointQueryVariables>;
 export const GetAssetTransactionDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetAssetTransaction"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"assetType"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"transactionType"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"status"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"startDate"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Date"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"endDate"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Date"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"salesType"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"search"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAssetTransaction"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"assetType"},"value":{"kind":"Variable","name":{"kind":"Name","value":"assetType"}}},{"kind":"Argument","name":{"kind":"Name","value":"transactionType"},"value":{"kind":"Variable","name":{"kind":"Name","value":"transactionType"}}},{"kind":"Argument","name":{"kind":"Name","value":"status"},"value":{"kind":"Variable","name":{"kind":"Name","value":"status"}}},{"kind":"Argument","name":{"kind":"Name","value":"startDate"},"value":{"kind":"Variable","name":{"kind":"Name","value":"startDate"}}},{"kind":"Argument","name":{"kind":"Name","value":"endDate"},"value":{"kind":"Variable","name":{"kind":"Name","value":"endDate"}}},{"kind":"Argument","name":{"kind":"Name","value":"salesType"},"value":{"kind":"Variable","name":{"kind":"Name","value":"salesType"}}},{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}},{"kind":"Argument","name":{"kind":"Name","value":"search"},"value":{"kind":"Variable","name":{"kind":"Name","value":"search"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"AssetTransactionsTable_data"}}]}},{"kind":"Field","name":{"kind":"Name","value":"count"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"AssetTransactionsTable_data"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"AdminTransactions"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"amount"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"admin_status"}},{"kind":"Field","name":{"kind":"Name","value":"plot_size"}},{"kind":"Field","name":{"kind":"Name","value":"asset_type"}},{"kind":"Field","name":{"kind":"Name","value":"referral"}},{"kind":"Field","name":{"kind":"Name","value":"property_owner"}},{"kind":"Field","name":{"kind":"Name","value":"transaction_type"}},{"kind":"Field","name":{"kind":"Name","value":"transfer_file"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"file"}}]}},{"kind":"Field","name":{"kind":"Name","value":"user"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"_id"}}]}},{"kind":"Field","name":{"kind":"Name","value":"time_of_transaction"}}]}}]} as unknown as DocumentNode<GetAssetTransactionQuery, GetAssetTransactionQueryVariables>;
 export const GetAssetTransactionsStatisticsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetAssetTransactionsStatistics"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filters"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"AssetTransactionFilters"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAssetTransactionData"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"filters"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filters"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"statistics"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"totalTransactions"}},{"kind":"Field","name":{"kind":"Name","value":"approvedTransactions"}},{"kind":"Field","name":{"kind":"Name","value":"totalApprovedAmount"}},{"kind":"Field","name":{"kind":"Name","value":"pendingTransactions"}},{"kind":"Field","name":{"kind":"Name","value":"totalPendingAmount"}},{"kind":"Field","name":{"kind":"Name","value":"declinedTransactions"}},{"kind":"Field","name":{"kind":"Name","value":"totalDeclinedAmount"}},{"kind":"Field","name":{"kind":"Name","value":"new_sales"}},{"kind":"Field","name":{"kind":"Name","value":"total_new_sales"}},{"kind":"Field","name":{"kind":"Name","value":"flexTransactions"}},{"kind":"Field","name":{"kind":"Name","value":"totalFlexAmount"}},{"kind":"Field","name":{"kind":"Name","value":"new_flex_sales"}},{"kind":"Field","name":{"kind":"Name","value":"flex_recurring_sales"}},{"kind":"Field","name":{"kind":"Name","value":"total_flex_recurring_sales"}},{"kind":"Field","name":{"kind":"Name","value":"fullOwnershipTransactions"}},{"kind":"Field","name":{"kind":"Name","value":"totalFullOwnershipAmount"}},{"kind":"Field","name":{"kind":"Name","value":"new_fullOwnership_sales"}},{"kind":"Field","name":{"kind":"Name","value":"total_new_fullOwnership_sales"}},{"kind":"Field","name":{"kind":"Name","value":"fullOwnership_recurring_sales"}},{"kind":"Field","name":{"kind":"Name","value":"total_fullOwnership_recurring_sales"}}]}}]}}]}}]} as unknown as DocumentNode<GetAssetTransactionsStatisticsQuery, GetAssetTransactionsStatisticsQueryVariables>;
@@ -8189,8 +11627,8 @@ export const ExportDefaultUsersDocument = {"kind":"Document","definitions":[{"ki
 export const GetSuspendedPaymentPlansDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetSuspendedPaymentPlans"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"searchQuery"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"assetType"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getSuspendedPaymentPlans"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}},{"kind":"Argument","name":{"kind":"Name","value":"searchQuery"},"value":{"kind":"Variable","name":{"kind":"Name","value":"searchQuery"}}},{"kind":"Argument","name":{"kind":"Name","value":"assetType"},"value":{"kind":"Variable","name":{"kind":"Name","value":"assetType"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"count"}},{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"SuspendedPaymentPlansRow_plan"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"SuspendedPaymentPlansRow_plan"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"SuspendedPaymentPlans"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}},{"kind":"Field","name":{"kind":"Name","value":"referrer"}},{"kind":"Field","name":{"kind":"Name","value":"asset_name"}},{"kind":"Field","name":{"kind":"Name","value":"size"}},{"kind":"Field","name":{"kind":"Name","value":"asset_type"}},{"kind":"Field","name":{"kind":"Name","value":"no_of_units"}},{"kind":"Field","name":{"kind":"Name","value":"amount_paid"}},{"kind":"Field","name":{"kind":"Name","value":"balance"}},{"kind":"Field","name":{"kind":"Name","value":"start_date"}},{"kind":"Field","name":{"kind":"Name","value":"next_date"}},{"kind":"Field","name":{"kind":"Name","value":"user_id"}},{"kind":"Field","name":{"kind":"Name","value":"unique_asset_id"}},{"kind":"Field","name":{"kind":"Name","value":"is_suspended"}}]}}]} as unknown as DocumentNode<GetSuspendedPaymentPlansQuery, GetSuspendedPaymentPlansQueryVariables>;
 export const ExportSuspendedPaymentPlansDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ExportSuspendedPaymentPlans"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"searchQuery"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"assetType"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getSuspendedPaymentPlans"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}},{"kind":"Argument","name":{"kind":"Name","value":"searchQuery"},"value":{"kind":"Variable","name":{"kind":"Name","value":"searchQuery"}}},{"kind":"Argument","name":{"kind":"Name","value":"assetType"},"value":{"kind":"Variable","name":{"kind":"Name","value":"assetType"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"SuspendedPaymentPlansRow_plan"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"SuspendedPaymentPlansRow_plan"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"SuspendedPaymentPlans"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}},{"kind":"Field","name":{"kind":"Name","value":"referrer"}},{"kind":"Field","name":{"kind":"Name","value":"asset_name"}},{"kind":"Field","name":{"kind":"Name","value":"size"}},{"kind":"Field","name":{"kind":"Name","value":"asset_type"}},{"kind":"Field","name":{"kind":"Name","value":"no_of_units"}},{"kind":"Field","name":{"kind":"Name","value":"amount_paid"}},{"kind":"Field","name":{"kind":"Name","value":"balance"}},{"kind":"Field","name":{"kind":"Name","value":"start_date"}},{"kind":"Field","name":{"kind":"Name","value":"next_date"}},{"kind":"Field","name":{"kind":"Name","value":"user_id"}},{"kind":"Field","name":{"kind":"Name","value":"unique_asset_id"}},{"kind":"Field","name":{"kind":"Name","value":"is_suspended"}}]}}]} as unknown as DocumentNode<ExportSuspendedPaymentPlansQuery, ExportSuspendedPaymentPlansQueryVariables>;
 export const GetSuspendedPaymentPlansSummaryDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetSuspendedPaymentPlansSummary"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"searchQuery"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"assetType"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getSuspendedPaymentPlansSummary"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"searchQuery"},"value":{"kind":"Variable","name":{"kind":"Name","value":"searchQuery"}}},{"kind":"Argument","name":{"kind":"Name","value":"assetType"},"value":{"kind":"Variable","name":{"kind":"Name","value":"assetType"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"totalPlans"}},{"kind":"Field","name":{"kind":"Name","value":"totalUnits"}},{"kind":"Field","name":{"kind":"Name","value":"totalAmountPaid"}},{"kind":"Field","name":{"kind":"Name","value":"totalOutstanding"}},{"kind":"Field","name":{"kind":"Name","value":"flexPlans"}},{"kind":"Field","name":{"kind":"Name","value":"fullOwnershipPlans"}}]}}]}}]} as unknown as DocumentNode<GetSuspendedPaymentPlansSummaryQuery, GetSuspendedPaymentPlansSummaryQueryVariables>;
-export const GetAllSuspendedUsersDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetAllSuspendedUsers"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAllSuspendedUsers"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"count"}},{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"SuspendedUsersRow_user"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"SuspendedUsersRow_user"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"UserAdmin"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"referrer"}},{"kind":"Field","name":{"kind":"Name","value":"subscriptions"}},{"kind":"Field","name":{"kind":"Name","value":"is_suspended"}},{"kind":"Field","name":{"kind":"Name","value":"referral_status"}},{"kind":"Field","name":{"kind":"Name","value":"gender"}},{"kind":"Field","name":{"kind":"Name","value":"country"}},{"kind":"Field","name":{"kind":"Name","value":"Networth"}}]}}]} as unknown as DocumentNode<GetAllSuspendedUsersQuery, GetAllSuspendedUsersQueryVariables>;
-export const ExportSuspendedUsersDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ExportSuspendedUsers"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAllSuspendedUsers"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"SuspendedUsersRow_user"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"SuspendedUsersRow_user"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"UserAdmin"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"referrer"}},{"kind":"Field","name":{"kind":"Name","value":"subscriptions"}},{"kind":"Field","name":{"kind":"Name","value":"is_suspended"}},{"kind":"Field","name":{"kind":"Name","value":"referral_status"}},{"kind":"Field","name":{"kind":"Name","value":"gender"}},{"kind":"Field","name":{"kind":"Name","value":"country"}},{"kind":"Field","name":{"kind":"Name","value":"Networth"}}]}}]} as unknown as DocumentNode<ExportSuspendedUsersQuery, ExportSuspendedUsersQueryVariables>;
+export const GetAllSuspendedUsersDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetAllSuspendedUsers"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAllSuspendedUsers"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"count"}},{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"SuspendedUsersRow_user"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"SuspendedUsersRow_user"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"UserAdmin"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"referrer"}},{"kind":"Field","name":{"kind":"Name","value":"subscriptions"}},{"kind":"Field","name":{"kind":"Name","value":"is_suspended"}},{"kind":"Field","name":{"kind":"Name","value":"referral_status"}},{"kind":"Field","name":{"kind":"Name","value":"gender"}},{"kind":"Field","name":{"kind":"Name","value":"country"}},{"kind":"Field","name":{"kind":"Name","value":"Networth"}},{"kind":"Field","name":{"kind":"Name","value":"hasAsset"}}]}}]} as unknown as DocumentNode<GetAllSuspendedUsersQuery, GetAllSuspendedUsersQueryVariables>;
+export const ExportSuspendedUsersDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ExportSuspendedUsers"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAllSuspendedUsers"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"SuspendedUsersRow_user"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"SuspendedUsersRow_user"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"UserAdmin"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"referrer"}},{"kind":"Field","name":{"kind":"Name","value":"subscriptions"}},{"kind":"Field","name":{"kind":"Name","value":"is_suspended"}},{"kind":"Field","name":{"kind":"Name","value":"referral_status"}},{"kind":"Field","name":{"kind":"Name","value":"gender"}},{"kind":"Field","name":{"kind":"Name","value":"country"}},{"kind":"Field","name":{"kind":"Name","value":"Networth"}},{"kind":"Field","name":{"kind":"Name","value":"hasAsset"}}]}}]} as unknown as DocumentNode<ExportSuspendedUsersQuery, ExportSuspendedUsersQueryVariables>;
 export const UnsuspendUserDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"UnsuspendUser"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"unsuspendUser"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}]}]}}]} as unknown as DocumentNode<UnsuspendUserMutation, UnsuspendUserMutationVariables>;
 export const EditUserDetailsByAdminDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"EditUserDetailsByAdmin"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"userDetailsInput"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"UserDetailsInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"editUserDetailsByAdmin"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"userDetailsInput"},"value":{"kind":"Variable","name":{"kind":"Name","value":"userDetailsInput"}}}]}]}}]} as unknown as DocumentNode<EditUserDetailsByAdminMutation, EditUserDetailsByAdminMutationVariables>;
 export const EditUserWalletDetailsByAdminDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"EditUserWalletDetailsByAdmin"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"adminWalletInput"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"AdminWalletInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"editUserWalletDetailsByAdmin"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"adminWalletInput"},"value":{"kind":"Variable","name":{"kind":"Name","value":"adminWalletInput"}}}]}]}}]} as unknown as DocumentNode<EditUserWalletDetailsByAdminMutation, EditUserWalletDetailsByAdminMutationVariables>;
@@ -8204,6 +11642,7 @@ export const RemoveReferralByAdminDocument = {"kind":"Document","definitions":[{
 export const GetAllUsersDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetAllUsers"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"searchQuery"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"hasReferral"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Boolean"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"hasAsset"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Boolean"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"referralStatus"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"howDidYouHearAboutUs"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"startDate"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"endDate"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAllUsers"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"searchQuery"},"value":{"kind":"Variable","name":{"kind":"Name","value":"searchQuery"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}},{"kind":"Argument","name":{"kind":"Name","value":"hasReferral"},"value":{"kind":"Variable","name":{"kind":"Name","value":"hasReferral"}}},{"kind":"Argument","name":{"kind":"Name","value":"hasAsset"},"value":{"kind":"Variable","name":{"kind":"Name","value":"hasAsset"}}},{"kind":"Argument","name":{"kind":"Name","value":"referralStatus"},"value":{"kind":"Variable","name":{"kind":"Name","value":"referralStatus"}}},{"kind":"Argument","name":{"kind":"Name","value":"howDidYouHearAboutUs"},"value":{"kind":"Variable","name":{"kind":"Name","value":"howDidYouHearAboutUs"}}},{"kind":"Argument","name":{"kind":"Name","value":"startDate"},"value":{"kind":"Variable","name":{"kind":"Name","value":"startDate"}}},{"kind":"Argument","name":{"kind":"Name","value":"endDate"},"value":{"kind":"Variable","name":{"kind":"Name","value":"endDate"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"count"}},{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"UsersTableFragment"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"UsersTableFragment"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"UserAdmin"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"referral_status"}},{"kind":"Field","name":{"kind":"Name","value":"referrer"}},{"kind":"Field","name":{"kind":"Name","value":"howYouHearAboutUs"}},{"kind":"Field","name":{"kind":"Name","value":"virtual_subscriptions"}},{"kind":"Field","name":{"kind":"Name","value":"virtual_networth"}}]}}]} as unknown as DocumentNode<GetAllUsersQuery, GetAllUsersQueryVariables>;
 export const GetUserDetailsByAdminDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetUserDetailsByAdmin"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"getUserDetailsByAdminId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getUserDetailsByAdmin"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"getUserDetailsByAdminId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"Networth"}},{"kind":"Field","name":{"kind":"Name","value":"virtual_networth"}},{"kind":"Field","name":{"kind":"Name","value":"virtual_subscriptions"}},{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"address"}},{"kind":"Field","name":{"kind":"Name","value":"amount_paid"}},{"kind":"Field","name":{"kind":"Name","value":"amount_payable"}},{"kind":"Field","name":{"kind":"Name","value":"balance_payable"}},{"kind":"Field","name":{"kind":"Name","value":"referral_status"}},{"kind":"Field","name":{"kind":"Name","value":"country"}},{"kind":"Field","name":{"kind":"Name","value":"date_of_birth"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"last_login"}},{"kind":"Field","name":{"kind":"Name","value":"default_status"}},{"kind":"Field","name":{"kind":"Name","value":"employment_status"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"gender"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"marital_status"}},{"kind":"Field","name":{"kind":"Name","value":"occupation"}},{"kind":"Field","name":{"kind":"Name","value":"phoneNumber"}},{"kind":"Field","name":{"kind":"Name","value":"is_suspended"}},{"kind":"Field","name":{"kind":"Name","value":"profile_pic"}},{"kind":"Field","name":{"kind":"Name","value":"referral"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}},{"kind":"Field","name":{"kind":"Name","value":"associate_manager"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}}]}},{"kind":"Field","name":{"kind":"Name","value":"kyc"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"tin"}}]}},{"kind":"Field","name":{"kind":"Name","value":"subscriptions"}},{"kind":"Field","name":{"kind":"Name","value":"transaction"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"time_of_transaction"}},{"kind":"Field","name":{"kind":"Name","value":"amount"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"transaction_type"}},{"kind":"Field","name":{"kind":"Name","value":"paystack_reference"}},{"kind":"Field","name":{"kind":"Name","value":"transfer_reference"}},{"kind":"Field","name":{"kind":"Name","value":"transfer_file"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"file"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"wallet"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"balance"}}]}},{"kind":"Field","name":{"kind":"Name","value":"units_purchased"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"next_date_of_payment"}}]}}]}}]} as unknown as DocumentNode<GetUserDetailsByAdminQuery, GetUserDetailsByAdminQueryVariables>;
 export const MetricsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"Metrics"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"startDate"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"endDate"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getSystemUsersOverview"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"startDate"},"value":{"kind":"Variable","name":{"kind":"Name","value":"startDate"}}},{"kind":"Argument","name":{"kind":"Name","value":"endDate"},"value":{"kind":"Variable","name":{"kind":"Name","value":"endDate"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"metrics"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"totalUsers"}},{"kind":"Field","name":{"kind":"Name","value":"referralStatusCounts"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"user"}},{"kind":"Field","name":{"kind":"Name","value":"associate"}},{"kind":"Field","name":{"kind":"Name","value":"associatePro"}}]}},{"kind":"Field","name":{"kind":"Name","value":"noReferralUsers"}},{"kind":"Field","name":{"kind":"Name","value":"users_with_assets"}},{"kind":"Field","name":{"kind":"Name","value":"flexSubscribers"}},{"kind":"Field","name":{"kind":"Name","value":"fullOwnershipSubscribers"}},{"kind":"Field","name":{"kind":"Name","value":"defaultUsers"}},{"kind":"Field","name":{"kind":"Name","value":"overdueUsers"}},{"kind":"Field","name":{"kind":"Name","value":"active_associate"}},{"kind":"Field","name":{"kind":"Name","value":"active_associate_pro"}}]}}]}}]}}]} as unknown as DocumentNode<MetricsQuery, MetricsQueryVariables>;
+export const AdminSessionDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"AdminSession"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"adminSession"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"userName"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"role"}},{"kind":"Field","name":{"kind":"Name","value":"isCSManager"}},{"kind":"Field","name":{"kind":"Name","value":"canRouteTickets"}},{"kind":"Field","name":{"kind":"Name","value":"canManageAllTickets"}},{"kind":"Field","name":{"kind":"Name","value":"canDecideTicketRouting"}},{"kind":"Field","name":{"kind":"Name","value":"permissions"}}]}}]}}]} as unknown as DocumentNode<AdminSessionQuery, AdminSessionQueryVariables>;
 export const SendAssetStatementsToAdminDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"SendAssetStatementsToAdmin"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"assetId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"adminEmail"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"sendAssetStatementsToAdmin"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"assetId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"assetId"}}},{"kind":"Argument","name":{"kind":"Name","value":"adminEmail"},"value":{"kind":"Variable","name":{"kind":"Name","value":"adminEmail"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"success"}},{"kind":"Field","name":{"kind":"Name","value":"statementsCount"}}]}}]}}]} as unknown as DocumentNode<SendAssetStatementsToAdminMutation, SendAssetStatementsToAdminMutationVariables>;
 export const GetAllAdminAssetsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetAllAdminAssets"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAllAdminAssets"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"count"}},{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"_id"}},{"kind":"Field","name":{"kind":"Name","value":"asset_location"}},{"kind":"Field","name":{"kind":"Name","value":"asset_name"}},{"kind":"Field","name":{"kind":"Name","value":"asset_price"}},{"kind":"Field","name":{"kind":"Name","value":"asset_size"}},{"kind":"Field","name":{"kind":"Name","value":"asset_type"}},{"kind":"Field","name":{"kind":"Name","value":"asset_unit"}},{"kind":"Field","name":{"kind":"Name","value":"asset_pictures"}},{"kind":"Field","name":{"kind":"Name","value":"sold"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"newAsset"}},{"kind":"Field","name":{"kind":"Name","value":"asset_option"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"size"}},{"kind":"Field","name":{"kind":"Name","value":"unit"}},{"kind":"Field","name":{"kind":"Name","value":"price"}},{"kind":"Field","name":{"kind":"Name","value":"zero_months"}},{"kind":"Field","name":{"kind":"Name","value":"three_months"}},{"kind":"Field","name":{"kind":"Name","value":"six_months"}},{"kind":"Field","name":{"kind":"Name","value":"five_months"}},{"kind":"Field","name":{"kind":"Name","value":"seven_months"}},{"kind":"Field","name":{"kind":"Name","value":"one_month"}},{"kind":"Field","name":{"kind":"Name","value":"one_month_initial_payment"}},{"kind":"Field","name":{"kind":"Name","value":"twelve_months"}},{"kind":"Field","name":{"kind":"Name","value":"initial_payment"}},{"kind":"Field","name":{"kind":"Name","value":"five_months_initial_payment"}},{"kind":"Field","name":{"kind":"Name","value":"seven_months_initial_payment"}},{"kind":"Field","name":{"kind":"Name","value":"development_fee"}},{"kind":"Field","name":{"kind":"Name","value":"monthly_installment"}},{"kind":"Field","name":{"kind":"Name","value":"flex_payment_plans"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"duration_months"}},{"kind":"Field","name":{"kind":"Name","value":"initial_payment"}},{"kind":"Field","name":{"kind":"Name","value":"monthly_installment"}},{"kind":"Field","name":{"kind":"Name","value":"price"}},{"kind":"Field","name":{"kind":"Name","value":"unit"}}]}}]}}]}}]}}]}}]} as unknown as DocumentNode<GetAllAdminAssetsQuery, GetAllAdminAssetsQueryVariables>;
 export const StatisticsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"Statistics"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getAssetInventoryData"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"statistics"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"assetsSummary"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"totalAssets"}},{"kind":"Field","name":{"kind":"Name","value":"totalWorth"}},{"kind":"Field","name":{"kind":"Name","value":"totalFlexAssets"}},{"kind":"Field","name":{"kind":"Name","value":"totalFlexWorth"}},{"kind":"Field","name":{"kind":"Name","value":"totalFullOwnershipAssets"}},{"kind":"Field","name":{"kind":"Name","value":"totalFullOwnershipWorth"}}]}}]}}]}}]}}]} as unknown as DocumentNode<StatisticsQuery, StatisticsQueryVariables>;

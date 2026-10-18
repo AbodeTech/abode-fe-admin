@@ -29,16 +29,16 @@ export function UserProfileHeader({ user }: UserProfileHeaderProps) {
       <div className="flex flex-col md:flex-row justify-between items-start gap-6">
         <div className="flex items-start gap-4">
           <Avatar className="h-20 w-20 border-2 border-white shadow-sm">
-            <AvatarImage src={user.profile_pic} alt={`${user.firstName} ${user.lastName}`} />
+            <AvatarImage src={user.profile_pic} alt={`${user.lastName} ${user.firstName}`} />
             <AvatarFallback className="bg-[#F2F4F7] text-[#475467] text-xl font-semibold">
-              {getInitials(user.firstName, user.lastName)}
+              {getInitials(user.lastName, user.firstName)}
             </AvatarFallback>
           </Avatar>
 
           <div>
             <div className="flex items-center gap-3 mb-1">
               <h1 className="text-2xl font-bold text-[#101828]">
-                {user.firstName} {user.lastName}
+                {user.lastName} {user.firstName}
               </h1>
               <Badge variant="outline" className={`
                 ${user.is_suspended
