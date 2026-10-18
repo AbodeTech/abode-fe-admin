@@ -4,7 +4,6 @@ export { ForgotPasswordForm } from './components/ForgotPasswordForm';
 export { ResetPasswordForm } from './components/ResetPasswordForm';
 export { ChangePasswordForm } from './components/ChangePasswordForm';
 export { AdminSessionGate } from './components/AdminSessionGate';
-export { MaintenanceNotice } from './components/MaintenanceNotice';
 
 // Hooks
 export { useAdminLogin } from './hooks/use-admin-login';

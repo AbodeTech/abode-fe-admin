@@ -1,14 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
-import { Loader2, Lock, Send } from "lucide-react";
+import { FileText, Loader2, Lock, Paperclip, Send, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { useAddTicketNote } from "../hooks/use-ticket-mutations";
-import { MIN_NOTE_LENGTH } from "../lib/ticket-errors";
+import {
+  MAX_ATTACHMENT_BYTES,
+  MAX_REPLY_ATTACHMENTS,
+  MAX_REPLY_TOTAL_BYTES,
+  MIN_NOTE_LENGTH,
+} from "../lib/ticket-errors";
 import { useReplyToTicket } from "../hooks/use-ticket-reply";
 import { CHANNEL_LABELS } from "../lib/ticket-display";
 import { type TicketChannel } from "../schemas/ticket.schema";
@@ -20,6 +25,7 @@ interface Props {
 }
 
 type Mode = "reply" | "note";
+const ACCEPTED_FILE_TYPES = ".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx";
 
 /**
  * Reply to the customer, or write for the record.
@@ -37,6 +43,8 @@ export function TicketComposer({ ticketId, channel, mergedInto }: Props) {
   const [mode, setMode] = useState<Mode>(canReply ? "reply" : "note");
   const [body, setBody] = useState("");
   const [cc, setCc] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const reply = useReplyToTicket();
   const addNote = useAddTicketNote();
@@ -57,7 +65,7 @@ export function TicketComposer({ ticketId, channel, mergedInto }: Props) {
     if (!text || isPending) return;
     try {
       if (activeMode === "reply") {
-        await reply.mutateAsync({ ticketId, body: text, cc: cc.split(",").map((address) => address.trim()).filter(Boolean) });
+        await reply.mutateAsync({ ticketId, body: text, cc: cc.split(",").map((address) => address.trim()).filter(Boolean), files });
         toast.success("Reply sent to the customer");
       } else {
         await addNote.mutateAsync({ ticketId, body: text });
@@ -65,6 +73,7 @@ export function TicketComposer({ ticketId, channel, mergedInto }: Props) {
       }
       setBody("");
       setCc("");
+      setFiles([]);
     } catch (err: unknown) {
       toast.error(
         err instanceof Error
@@ -76,11 +85,42 @@ export function TicketComposer({ ticketId, channel, mergedInto }: Props) {
     }
   };
 
+  // The BE's limits, checked as files are picked rather than after the upload
+  // the BE would then refuse.
+  const addFiles = (incoming: FileList | null) => {
+    if (!incoming) return;
+    const next = [...files];
+    let total = next.reduce((sum, file) => sum + file.size, 0);
+    for (const file of Array.from(incoming)) {
+      if (next.length >= MAX_REPLY_ATTACHMENTS) {
+        toast.error(`You can attach at most ${MAX_REPLY_ATTACHMENTS} files`);
+        break;
+      }
+      if (file.size > MAX_ATTACHMENT_BYTES) {
+        toast.error(`${file.name} is larger than 15MB`);
+        continue;
+      }
+      if (next.some((current) => current.name === file.name && current.size === file.size)) {
+        continue;
+      }
+      if (total + file.size > MAX_REPLY_TOTAL_BYTES) {
+        toast.error(`${file.name} would take the attachments past 25MB in total`);
+        continue;
+      }
+      next.push(file);
+      total += file.size;
+    }
+    setFiles(next);
+    // Cleared so picking the same file again, after removing it, still fires.
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
   return (
     // The composer sits under the timeline in a fixed-height column. It may
     // take up to two-thirds of that column, and shrinks rather than overflow
-    // it; only the reply box gives way inside it, so the mode tabs, CC field
-    // and Send row always stay in view, however long the reply.
+    // it; only the reply box gives way inside it, so the mode tabs, CC field,
+    // attachments and Attach/Send row always stay in view, however long the
+    // reply.
     <div className="border-t border-gray-200 bg-gray-50/60 p-3 flex flex-col gap-2 min-h-0 max-h-[66%]">
       <div className="flex items-center gap-1.5 shrink-0">
         <ModeTab
@@ -158,20 +198,72 @@ export function TicketComposer({ ticketId, channel, mergedInto }: Props) {
         )}
       />
 
+      {/* Capped and scrolling, so five long filenames cannot push the Send
+          row out the way a long reply used to. */}
+      {activeMode === "reply" && files.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 shrink-0 max-h-16 overflow-y-auto">
+          {files.map((file) => (
+            <span
+              key={`${file.name}-${file.size}`}
+              className="inline-flex max-w-full items-center gap-1 rounded border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700"
+            >
+              <FileText className="h-3 w-3 shrink-0" />
+              <span className="max-w-48 truncate">{file.name}</span>
+              <span className="text-gray-400">{Math.max(1, Math.round(file.size / 1024))} KB</span>
+              <button
+                type="button"
+                aria-label={`Remove ${file.name}`}
+                onClick={() => setFiles((current) => current.filter((f) => f !== file))}
+                disabled={isPending}
+                className="ml-0.5 text-gray-400 hover:text-[#AD1F2A]"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
       <div className="flex items-center justify-between gap-2 shrink-0">
         <p className="text-[10px] text-gray-500">
           {activeMode === "reply"
             ? "Sent as email, threaded so their answer returns to this ticket."
             : "Never sent to the customer."}
         </p>
-        <Button size="sm" onClick={handleSend} disabled={!canSend || isPending}>
-          {isPending ? (
-            <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-          ) : (
-            <Send className="h-3.5 w-3.5 mr-1.5" />
+        <div className="ml-auto flex items-center gap-1.5">
+          {/* A note is never sent, so there is nothing to attach it to. */}
+          {activeMode === "reply" && (
+            <>
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept={ACCEPTED_FILE_TYPES}
+                className="hidden"
+                onChange={(event) => addFiles(event.target.files)}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isPending || files.length >= MAX_REPLY_ATTACHMENTS}
+                title="Attach files (at most 5, 15MB each, 25MB in total)"
+              >
+                <Paperclip className="h-3.5 w-3.5 mr-1.5" />
+                Attach
+              </Button>
+            </>
           )}
-          {activeMode === "reply" ? "Send" : "Add note"}
-        </Button>
+          <Button size="sm" onClick={handleSend} disabled={!canSend || isPending}>
+            {isPending ? (
+              <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+            ) : (
+              <Send className="h-3.5 w-3.5 mr-1.5" />
+            )}
+            {activeMode === "reply" ? "Send" : "Add note"}
+          </Button>
+        </div>
       </div>
     </div>
   );

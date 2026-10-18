@@ -20,6 +20,8 @@ export const useExportDashboardPlans = () =>
       year?: number;
       filter?: PlanFilterKey;
       search?: string;
+      /** The same estate as the table, so the file holds the rows on screen. */
+      estate?: string;
       sort?: PlanSortKey;
     }) => {
       if (isMockApiEnabled()) {
@@ -28,7 +30,11 @@ export const useExportDashboardPlans = () =>
 
       const { managerId, ...query } = params;
       const response = await apiClient.get(`/admin/cs-managers/${managerId}/exports/plans`, {
-        params: { ...query, search: query.search || undefined },
+        params: {
+          ...query,
+          search: query.search?.trim() || undefined,
+          estate: query.estate?.trim() || undefined,
+        },
         responseType: 'blob',
       });
 

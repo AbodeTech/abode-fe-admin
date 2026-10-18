@@ -33,6 +33,7 @@ type SalesTableRow = Pick<
   | "source_type"
   | "created_by_admin"
   | "admin_creation_subtype"
+  | "address_on_document"
 >;
 
 const formatCurrency = (amount: number) =>
@@ -91,6 +92,7 @@ export function SalesTable({ records }: SalesTableProps) {
             return (
               <AdminMobileCard key={sale.id} title={sale.buyer.name ?? "No name"} subtitle={sale.buyer.email ?? undefined}>
                 <AdminMobileField label="Status" value={<PlanStatusBadge row={sale} />} />
+                <AdminMobileField label="Address on document" value={sale.address_on_document || "—"} />
                 <AdminMobileField label="Referrer" value={sale.referrer?.name || "No referrer"} />
                 <AdminMobileField label="Referrer email" value={sale.referrer?.email || "—"} />
                 <AdminMobileField label="Asset" value={sale.asset.name ?? "—"} />
@@ -131,6 +133,7 @@ export function SalesTable({ records }: SalesTableProps) {
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
+                <TableHead>Address on Document</TableHead>
                 <TableHead>Referrer</TableHead>
                 <TableHead>Asset Name</TableHead>
                 <TableHead>Asset Type</TableHead>
@@ -156,6 +159,11 @@ export function SalesTable({ records }: SalesTableProps) {
                     <TableRow key={sale.id}>
                       <TableCell className="font-medium">{sale.buyer.name ?? "No name"}</TableCell>
                       <TableCell>{sale.buyer.email ?? "—"}</TableCell>
+                      {/* As the buyer gave it on the asset questions; blank stays blank,
+                          never the account address. */}
+                      <TableCell className="min-w-48 max-w-72 whitespace-normal">
+                        {sale.address_on_document || <span className="text-muted-foreground">—</span>}
+                      </TableCell>
                       <TableCell>{sale.referrer?.name || "No referrer"}</TableCell>
                       <TableCell>{sale.asset.name ?? "—"}</TableCell>
                       <TableCell>
@@ -185,7 +193,7 @@ export function SalesTable({ records }: SalesTableProps) {
                 })
               ) : (
                 <TableRow>
-                  <TableCell colSpan={16} className="py-4 text-center">
+                  <TableCell colSpan={17} className="py-4 text-center">
                     No sales records found
                   </TableCell>
                 </TableRow>

@@ -153,10 +153,21 @@ export function pickerRowInitials(row: AdminPickerRow): string {
  * GET /admin/cs-managers/:manager_id/exports/plans.
  * ============================================================ */
 
+/*
+ * abode-be-v2 `port/v1-sep-oct` (2026-10-17) adds the estate filter, the phone
+ * and last call on each row, the three "what was tried" chips, the split of the
+ * onboarding backlog and `estates[]`. Read from `csm-dashboard.derive.ts` and
+ * `dto/cs-manager-requests.dto.ts` on that branch. The new response fields
+ * default or stay optional, so the page still renders against a BE without
+ * them (a chip with no count is hidden rather than shown as 0).
+ */
 export const PLAN_FILTER_KEYS = [
   'all',
   'due_allocation',
   'onboarding_pending',
+  'never_attempted',
+  'no_answer',
+  'rescheduled',
   'due_doa',
   'defaulting_soon',
   'completed_payment',
@@ -181,6 +192,16 @@ const AgeSplitBacklogSchema = z.object({
   older: z.number(),
 });
 
+/** The most recent onboarding call on a plan, whatever came of it. */
+export const LastAttemptSchema = z.object({
+  outcome: z.string(),
+  called_at: z.string(),
+  /** Every call logged on the plan, this one included. */
+  attempts: z.number(),
+});
+
+export type LastAttempt = z.infer<typeof LastAttemptSchema>;
+
 /** One row of the dashboard's plans table. */
 export const PlanRowSchema = z.object({
   plan_id: z.string(),
@@ -189,10 +210,20 @@ export const PlanRowSchema = z.object({
     first_name: z.string(),
     last_name: z.string(),
     email: z.string(),
+    /** As the customer typed it (0803…, +234…), not normalised. Empty when none. */
+    phone: z.string().default(''),
   }),
   prior_plans_count: z.number(),
+  /** The estate name. */
   asset: z.string(),
-  product: z.enum(['flex', 'full_ownership']),
+  asset_id: z.string().nullable().default(null),
+  location: z.string().nullable().default(null),
+  /** sqm per unit; the plan's land is `size × units`. */
+  size: z.number().nullable().default(null),
+  units: z.number().default(1),
+  /** As stored on the plan (`pending`, `allocated`, …) — distinct from the derived `allocation`. */
+  allocation_status: z.string().nullable().default(null),
+  product: z.enum(['flex', 'full_ownership', 'commercial']),
   purchase_date: z.string().nullable(),
   payment_status: z.enum(['in_plan', 'completed', 'close_to_default']),
   payment_label: z.string(),
@@ -202,9 +233,25 @@ export const PlanRowSchema = z.object({
   doa: z.enum(['not_sent', 'sent', 'not_applicable']),
   doa_label: z.string().nullable(),
   last_activity_at: z.string().nullable(),
+  /** Null when nobody has rung yet. */
+  last_attempt: LastAttemptSchema.nullable().default(null),
 });
 
 export type PlanRow = z.infer<typeof PlanRowSchema>;
+
+/**
+ * One estate in the book, for the estate filter. Counted over the whole book
+ * before any estate, chip or search, and grouped by name (flex and
+ * full-ownership of one estate are one option).
+ */
+export const EstateOptionSchema = z.object({
+  name: z.string(),
+  plans: z.number(),
+  /** Of those plans, fully paid and waiting for a plot. */
+  due_allocation: z.number(),
+});
+
+export type EstateOption = z.infer<typeof EstateOptionSchema>;
 
 export const CSManagerDashboardSchema = z.object({
   period: z.object({
@@ -253,6 +300,12 @@ export const CSManagerDashboardSchema = z.object({
     onboarding: z.object({
       total: z.number(),
       call_pending: z.number(),
+      /**
+       * `call_pending` split by purchase date: bought in the selected period
+       * against already waiting before it. Always sums to `call_pending`.
+       */
+      call_pending_this_period: z.number().optional(),
+      call_pending_carried_over: z.number().optional(),
       confirm_pending: z.number(),
       disputed: z.number(),
     }),
@@ -266,14 +319,20 @@ export const CSManagerDashboardSchema = z.object({
   }),
   plans: z.array(PlanRowSchema),
   plans_total: z.number(),
+  /** Per chip, narrowed by the estate but not by the active chip or search. */
   filter_counts: z.object({
     all: z.number(),
     due_allocation: z.number(),
     onboarding_pending: z.number(),
+    never_attempted: z.number().optional(),
+    no_answer: z.number().optional(),
+    rescheduled: z.number().optional(),
     due_doa: z.number(),
     defaulting_soon: z.number(),
     completed_payment: z.number(),
   }),
+  /** Every estate in the book, whatever the estate, chip or search. */
+  estates: z.array(EstateOptionSchema).default([]),
 });
 
 export type CSManagerDashboard = z.infer<typeof CSManagerDashboardSchema>;
@@ -291,12 +350,53 @@ export const ONBOARDING_CALL_OUTCOMES = ['done', 'spoke', 'no_answer', 'reschedu
 export const OnboardingCallOutcomeSchema = z.enum(ONBOARDING_CALL_OUTCOMES);
 export type OnboardingCallOutcome = z.infer<typeof OnboardingCallOutcomeSchema>;
 
+/**
+ * Why the customer bought — `LAND_CHOICE_REASONS` on the BE, which rejects
+ * anything off this list when a call is logged. Taken from what CSMs actually
+ * typed across 556 free-text answers, in order of how often each came up.
+ */
+export const LAND_CHOICE_REASONS = [
+  'investment',
+  'location',
+  'campaign',
+  'referrer',
+  'price',
+  'flexible_payment',
+  'payment_duration',
+  'development_in_area',
+  'other',
+] as const;
+export const LandChoiceReasonSchema = z.enum(LAND_CHOICE_REASONS);
+export type LandChoiceReason = z.infer<typeof LandChoiceReasonSchema>;
+
+export const LAND_CHOICE_REASON_LABELS: Record<LandChoiceReason, string> = {
+  investment: 'Investment',
+  location: 'Location',
+  campaign: 'Campaign',
+  referrer: 'Referrer',
+  price: 'Price',
+  flexible_payment: 'Flexible payment',
+  payment_duration: 'Payment duration',
+  development_in_area: 'Development in the area',
+  other: 'Other',
+};
+
+/**
+ * The label for a reason on the list, or the stored text as-is: calls logged
+ * before the list hold free text, and the BE returns them unchanged.
+ */
+export function landChoiceReasonLabel(reason: string): string {
+  const parsed = LandChoiceReasonSchema.safeParse(reason);
+  return parsed.success ? LAND_CHOICE_REASON_LABELS[parsed.data] : reason;
+}
+
 export const CustomerOnboardingAttemptSchema = z.object({
   id: z.string(),
   payment_plan: z.string(),
   customer: z.string(),
   csm: z.string(),
   outcome: OnboardingCallOutcomeSchema,
+  /** A LAND_CHOICE_REASONS value, or free text on calls logged before the list. */
   land_choice_reason: z.string().nullable(),
   notes: z.string().nullable(),
   called_at: z.string(),
@@ -305,9 +405,35 @@ export const CustomerOnboardingAttemptSchema = z.object({
 
 export type CustomerOnboardingAttempt = z.infer<typeof CustomerOnboardingAttemptSchema>;
 
+/** LogOnboardingCallDto — `called_at` is also accepted but this form never sends it. */
 export type LogOnboardingCallPayload = {
   outcome: OnboardingCallOutcome;
-  land_choice_reason?: string;
+  land_choice_reason?: LandChoiceReason;
   notes?: string;
 };
+
+/* ============================================================
+ * Auto-assign — GET /admin/cs-managers/auto-assign/preview (super admin).
+ *
+ * A dry run of the job that gives every buyer with no CS Manager the manager
+ * with the smallest book. Writes nothing, whatever the flag. The job itself
+ * only runs when the BE env `CS_MANAGER_AUTO_ASSIGN=true`.
+ * ============================================================ */
+
+export const AUTO_ASSIGN_STATUSES = ['ok', 'dry_run', 'disabled', 'locked', 'no_managers'] as const;
+
+export const AutoAssignPreviewSchema = z.object({
+  /** `dry_run`, or `no_managers` when buyers are waiting and no CS Manager is active. */
+  status: z.enum(AUTO_ASSIGN_STATUSES),
+  /** Whether `CS_MANAGER_AUTO_ASSIGN` is on. */
+  enabled: z.boolean(),
+  /** Buyers with no CS Manager right now. */
+  pending: z.number(),
+  /** How many the next run would assign. */
+  assigned: z.number(),
+  /** `manager_id` is the admin id, as on `CSManagerSummary.manager.id`. */
+  by_manager: z.array(z.object({ manager_id: z.string(), assigned: z.number() })),
+});
+
+export type AutoAssignPreview = z.infer<typeof AutoAssignPreviewSchema>;
 

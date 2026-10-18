@@ -1,3 +1,4 @@
+import { LAND_CHOICE_REASONS } from '@/features/cs-managers/schemas/cs-manager.schema';
 import { MockHttpError, type MockRoutes } from '../router';
 import { body } from './util';
 import { findPerson } from './people';
@@ -6,15 +7,20 @@ import { findPerson } from './people';
  * CS Managers mocks — role management, targets, unassigned customers, the
  * admin picker (`GET /admin/admins`, claimed here narrowly — no other
  * feature has migrated off GraphQL for it yet; extend rather than
- * re-register when roles-permissions migrates), the performance dashboard,
- * and per-plan onboarding-call / deed-delivery actions.
+ * re-register when roles-permissions migrates), the performance dashboard
+ * (one manager and `dashboard/all`), the auto-assign dry run, and per-plan
+ * onboarding calls.
  *
  * The dashboard mock is a simplified stand-in for `csm-dashboard.derive.ts`
- * (CSM-21) — same filter/backlog/portfolio semantics, computed over a fixed
- * plan fixture set per manager rather than a real aggregation.
+ * (CSM-21) — same estate/filter/search/backlog/portfolio semantics as
+ * abode-be-v2 `port/v1-sep-oct`, computed over a fixed plan fixture set per
+ * manager rather than a real aggregation.
  * ============================================================ */
 
 const daysAgo = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString();
+
+/** `CS_MANAGER_AUTO_ASSIGN` — off by default on the BE. Flip to see the preview's "on" state. */
+const AUTO_ASSIGN_ENABLED = false;
 
 export type MockAdmin = {
   _id: string;
@@ -176,7 +182,12 @@ type MockPlan = {
   customer_id: string;
   prior_plans_count: number;
   asset: string;
-  product: 'flex' | 'full_ownership';
+  asset_id: string;
+  location: string;
+  size: number;
+  units: number;
+  allocation_status: string;
+  product: 'flex' | 'full_ownership' | 'commercial';
   purchase_date: string;
   payment_status: MockPaymentStatus;
   payment_label: string;
@@ -195,6 +206,11 @@ const plans: MockPlan[] = [
     customer_id: '665fcccc00000000000000c1',
     prior_plans_count: 0,
     asset: 'Aviation City',
+    asset_id: '665fasst00000000000000a1',
+    location: 'Epe, Lagos',
+    size: 500,
+    units: 1,
+    allocation_status: 'allocated',
     product: 'flex',
     purchase_date: daysAgo(20),
     payment_status: 'in_plan',
@@ -212,6 +228,11 @@ const plans: MockPlan[] = [
     customer_id: '665fcccc00000000000000c1',
     prior_plans_count: 1,
     asset: 'Aviation City',
+    asset_id: '665fasst00000000000000a1',
+    location: 'Epe, Lagos',
+    size: 500,
+    units: 2,
+    allocation_status: 'pending',
     product: 'flex',
     purchase_date: daysAgo(3),
     payment_status: 'completed',
@@ -229,6 +250,11 @@ const plans: MockPlan[] = [
     customer_id: '665fcccc00000000000000c2',
     prior_plans_count: 0,
     asset: 'Harmony Gardens',
+    asset_id: '665fasst00000000000000a2',
+    location: 'Ibeju-Lekki, Lagos',
+    size: 600,
+    units: 1,
+    allocation_status: 'allocated',
     product: 'full_ownership',
     purchase_date: daysAgo(60),
     payment_status: 'close_to_default',
@@ -246,6 +272,11 @@ const plans: MockPlan[] = [
     customer_id: '665fcccc00000000000000c3',
     prior_plans_count: 0,
     asset: 'Harmony Gardens',
+    asset_id: '665fasst00000000000000a2',
+    location: 'Ibeju-Lekki, Lagos',
+    size: 450,
+    units: 1,
+    allocation_status: 'allocated',
     product: 'full_ownership',
     purchase_date: daysAgo(90),
     payment_status: 'completed',
@@ -263,6 +294,11 @@ const plans: MockPlan[] = [
     customer_id: '665fcccc00000000000000c4',
     prior_plans_count: 0,
     asset: 'Aviation City',
+    asset_id: '665fasst00000000000000a1',
+    location: 'Epe, Lagos',
+    size: 300,
+    units: 1,
+    allocation_status: 'pending',
     product: 'flex',
     purchase_date: daysAgo(1),
     payment_status: 'in_plan',
@@ -280,6 +316,11 @@ const plans: MockPlan[] = [
     customer_id: '665fcccc00000000000000c5',
     prior_plans_count: 0,
     asset: 'Harmony Gardens',
+    asset_id: '665fasst00000000000000a2',
+    location: 'Ibeju-Lekki, Lagos',
+    size: 600,
+    units: 2,
+    allocation_status: 'allocated',
     product: 'full_ownership',
     purchase_date: daysAgo(45),
     payment_status: 'completed',
@@ -290,6 +331,75 @@ const plans: MockPlan[] = [
     doa: 'not_sent',
     doa_label: null,
     last_activity_at: daysAgo(10),
+  },
+  // Three more of d2's buyers still waiting on onboarding, one per "what was
+  // tried" chip: rung twice without an answer, a call booked, and never rung
+  // since before this month (the carried-over half of the backlog split).
+  {
+    plan_id: '665fplan000000000000cm07',
+    manager: '665fadmn00000000000000d2',
+    customer_id: '665fcccc00000000000000c6',
+    prior_plans_count: 0,
+    asset: 'Aviation City',
+    asset_id: '665fasst00000000000000a1',
+    location: 'Epe, Lagos',
+    size: 300,
+    units: 3,
+    allocation_status: 'pending',
+    product: 'flex',
+    purchase_date: daysAgo(50),
+    payment_status: 'in_plan',
+    payment_label: '2 of 12 months paid',
+    onboarding: 'call_pending',
+    allocation: 'not_applicable',
+    allocation_label: null,
+    doa: 'not_applicable',
+    doa_label: null,
+    last_activity_at: daysAgo(4),
+  },
+  {
+    plan_id: '665fplan000000000000cm08',
+    manager: '665fadmn00000000000000d2',
+    customer_id: '665fcccc00000000000000c9',
+    prior_plans_count: 0,
+    asset: 'Harmony Gardens',
+    asset_id: '665fasst00000000000000a2',
+    location: 'Ibeju-Lekki, Lagos',
+    size: 500,
+    units: 1,
+    allocation_status: 'pending',
+    product: 'full_ownership',
+    purchase_date: daysAgo(25),
+    payment_status: 'in_plan',
+    payment_label: 'Land 40% paid',
+    onboarding: 'call_pending',
+    allocation: 'not_applicable',
+    allocation_label: null,
+    doa: 'not_applicable',
+    doa_label: null,
+    last_activity_at: daysAgo(6),
+  },
+  {
+    plan_id: '665fplan000000000000cm09',
+    manager: '665fadmn00000000000000d2',
+    customer_id: '665fcccc00000000000000c7',
+    prior_plans_count: 0,
+    asset: 'Harmony Gardens',
+    asset_id: '665fasst00000000000000a2',
+    location: 'Ibeju-Lekki, Lagos',
+    size: 600,
+    units: 1,
+    allocation_status: 'pending',
+    product: 'full_ownership',
+    purchase_date: daysAgo(75),
+    payment_status: 'in_plan',
+    payment_label: 'Land 15% paid',
+    onboarding: 'call_pending',
+    allocation: 'not_applicable',
+    allocation_label: null,
+    doa: 'not_applicable',
+    doa_label: null,
+    last_activity_at: daysAgo(75),
   },
 ];
 
@@ -306,6 +416,7 @@ type MockOnboardingAttempt = {
 
 const onboardingAttempts: MockOnboardingAttempt[] = [
   {
+    // Logged before the fixed list — free text, which the drawer shows as typed.
     _id: '665fcsat00000000000000j1',
     plan_id: '665fplan000000000000cm04',
     customer_id: '665fcccc00000000000000c3',
@@ -314,6 +425,46 @@ const onboardingAttempts: MockOnboardingAttempt[] = [
     notes: 'Very responsive, no concerns.',
     called_at: daysAgo(88),
     createdAt: daysAgo(88),
+  },
+  {
+    _id: '665fcsat00000000000000j3',
+    plan_id: '665fplan000000000000cm01',
+    customer_id: '665fcccc00000000000000c1',
+    outcome: 'done',
+    land_choice_reason: 'investment',
+    notes: null,
+    called_at: daysAgo(18),
+    createdAt: daysAgo(18),
+  },
+  {
+    _id: '665fcsat00000000000000j4',
+    plan_id: '665fplan000000000000cm07',
+    customer_id: '665fcccc00000000000000c6',
+    outcome: 'no_answer',
+    land_choice_reason: null,
+    notes: null,
+    called_at: daysAgo(9),
+    createdAt: daysAgo(9),
+  },
+  {
+    _id: '665fcsat00000000000000j5',
+    plan_id: '665fplan000000000000cm07',
+    customer_id: '665fcccc00000000000000c6',
+    outcome: 'no_answer',
+    land_choice_reason: null,
+    notes: 'Straight to voicemail.',
+    called_at: daysAgo(4),
+    createdAt: daysAgo(4),
+  },
+  {
+    _id: '665fcsat00000000000000j6',
+    plan_id: '665fplan000000000000cm08',
+    customer_id: '665fcccc00000000000000c9',
+    outcome: 'rescheduled',
+    land_choice_reason: null,
+    notes: 'Asked for a call on Friday afternoon.',
+    called_at: daysAgo(6),
+    createdAt: daysAgo(6),
   },
   {
     _id: '665fcsat00000000000000j2',
@@ -341,20 +492,62 @@ const monthBucket = (iso: string, now: Date): 'this_month' | 'last_month' | 'old
 
 const emptyAgeSplit = () => ({ total: 0, this_month: 0, last_month: 0, older: 0 });
 
+const attemptsFor = (planId: string) =>
+  onboardingAttempts
+    .filter((a) => a.plan_id === planId)
+    .sort((a, b) => new Date(a.called_at).getTime() - new Date(b.called_at).getTime());
+
+/** The newest call on a plan and how many there have been — the row's `last_attempt`. */
+function lastAttemptOf(planId: string) {
+  const attempts = attemptsFor(planId);
+  const last = attempts.at(-1);
+  return last ? { outcome: last.outcome, called_at: last.called_at, attempts: attempts.length } : null;
+}
+
 const PLAN_FILTERS: Record<string, (p: MockPlan) => boolean> = {
   due_allocation: (p) => p.allocation === 'awaiting',
   onboarding_pending: (p) => p.onboarding === 'call_pending' || p.onboarding === 'disputed',
+  never_attempted: (p) => p.onboarding === 'call_pending' && !lastAttemptOf(p.plan_id),
+  no_answer: (p) => p.onboarding === 'call_pending' && lastAttemptOf(p.plan_id)?.outcome === 'no_answer',
+  rescheduled: (p) =>
+    p.onboarding === 'call_pending' && lastAttemptOf(p.plan_id)?.outcome === 'rescheduled',
   due_doa: (p) => p.doa === 'not_sent',
   defaulting_soon: (p) => p.payment_status === 'close_to_default',
   completed_payment: (p) => p.payment_status === 'completed',
 };
 
-function derive(managerPlans: MockPlan[]) {
+const filterCountsOf = (rows: MockPlan[]) => ({
+  all: rows.length,
+  ...Object.fromEntries(
+    Object.entries(PLAN_FILTERS).map(([key, predicate]) => [key, rows.filter(predicate).length])
+  ),
+});
+
+/** Estate names compare whole, ignoring case and stray spacing — `estateKey` on the BE. */
+const estateKey = (name: string) => name.trim().replace(/\s+/g, ' ').toLowerCase();
+
+/** `estates[]`: counted over the whole book, before any estate, chip or search. */
+function estatesOf(rows: MockPlan[]) {
+  const byKey = new Map<string, { name: string; plans: number; due_allocation: number }>();
+  for (const p of rows) {
+    const key = estateKey(p.asset);
+    if (!key) continue;
+    const option = byKey.get(key) ?? { name: p.asset.trim(), plans: 0, due_allocation: 0 };
+    option.plans += 1;
+    if (PLAN_FILTERS.due_allocation(p)) option.due_allocation += 1;
+    byKey.set(key, option);
+  }
+  return [...byKey.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function derive(managerPlans: MockPlan[], periodStart: Date, periodEnd: Date) {
   const now = new Date();
 
   const allocationBacklog = emptyAgeSplit();
   const doaBacklog = emptyAgeSplit();
   let onboardingCallPending = 0;
+  let callPendingThisPeriod = 0;
+  let callPendingCarriedOver = 0;
   const onboardingConfirmPending = 0;
   let onboardingDisputed = 0;
 
@@ -367,7 +560,14 @@ function derive(managerPlans: MockPlan[]) {
       doaBacklog.total += 1;
       doaBacklog[monthBucket(p.purchase_date, now)] += 1;
     }
-    if (p.onboarding === 'call_pending') onboardingCallPending += 1;
+    // As on the BE, "call pending" is a plan nobody has rung yet, split by
+    // whether it was bought inside the selected period or before it.
+    if (p.onboarding === 'call_pending' && !lastAttemptOf(p.plan_id)) {
+      onboardingCallPending += 1;
+      const bought = new Date(p.purchase_date);
+      if (bought >= periodStart && bought <= periodEnd) callPendingThisPeriod += 1;
+      else callPendingCarriedOver += 1;
+    }
     if (p.onboarding === 'disputed') onboardingDisputed += 1;
     // "Called, confirmation pending" has no direct row-state in this
     // simplified mock (the real BE derives it from a 'spoke' attempt with
@@ -380,6 +580,8 @@ function derive(managerPlans: MockPlan[]) {
       onboarding: {
         total: onboardingCallPending + onboardingConfirmPending + onboardingDisputed,
         call_pending: onboardingCallPending,
+        call_pending_this_period: callPendingThisPeriod,
+        call_pending_carried_over: callPendingCarriedOver,
         confirm_pending: onboardingConfirmPending,
         disputed: onboardingDisputed,
       },
@@ -390,14 +592,6 @@ function derive(managerPlans: MockPlan[]) {
       completed_payment: managerPlans.filter((p) => p.payment_status === 'completed').length,
       within_payment_period: managerPlans.filter((p) => p.payment_status === 'in_plan').length,
       close_to_defaulting: managerPlans.filter((p) => p.payment_status === 'close_to_default').length,
-    },
-    filter_counts: {
-      all: managerPlans.length,
-      due_allocation: managerPlans.filter(PLAN_FILTERS.due_allocation).length,
-      onboarding_pending: managerPlans.filter(PLAN_FILTERS.onboarding_pending).length,
-      due_doa: managerPlans.filter(PLAN_FILTERS.due_doa).length,
-      defaulting_soon: managerPlans.filter(PLAN_FILTERS.defaulting_soon).length,
-      completed_payment: managerPlans.filter(PLAN_FILTERS.completed_payment).length,
     },
   };
 }
@@ -411,9 +605,15 @@ function toPlanRow(p: MockPlan) {
       first_name: person?.firstName ?? 'Unknown',
       last_name: person?.lastName ?? 'Buyer',
       email: person?.email ?? '',
+      phone: person?.phoneNumber ?? '',
     },
     prior_plans_count: p.prior_plans_count,
     asset: p.asset,
+    asset_id: p.asset_id,
+    location: p.location,
+    size: p.size,
+    units: p.units,
+    allocation_status: p.allocation_status,
     product: p.product,
     purchase_date: p.purchase_date,
     payment_status: p.payment_status,
@@ -424,6 +624,124 @@ function toPlanRow(p: MockPlan) {
     doa: p.doa,
     doa_label: p.doa_label,
     last_activity_at: p.last_activity_at,
+    last_attempt: lastAttemptOf(p.plan_id),
+  };
+}
+
+/** Name, email or estate; or a phone number as 4+ digits, in any spacing — `applyPlanSearch`. */
+function matchesSearch(p: MockPlan, raw: string): boolean {
+  const needle = raw.trim().toLowerCase();
+  if (!needle) return true;
+  const person = findPerson(p.customer_id);
+  const needleDigits = needle.replace(/\D/g, '');
+  if (needleDigits.length >= 4 && (person?.phoneNumber ?? '').replace(/\D/g, '').includes(needleDigits)) {
+    return true;
+  }
+  const name = person ? `${person.firstName} ${person.lastName}`.toLowerCase() : '';
+  return (
+    name.includes(needle) ||
+    (person?.email.toLowerCase().includes(needle) ?? false) ||
+    p.asset.toLowerCase().includes(needle)
+  );
+}
+
+/**
+ * Both dashboards: one manager's book, or every active manager's (`managerId`
+ * null, as `dashboard/all`). The estate narrows the table and its chip counts
+ * only; backlogs, portfolio and targets describe the whole book.
+ */
+function dashboardFor(managerId: string | null, query: Record<string, unknown>) {
+  const admin = managerId ? findAdmin(managerId) : undefined;
+  const now = new Date();
+  const year = Number(query.year ?? now.getUTCFullYear());
+  const month = Number(query.month ?? now.getUTCMonth() + 1);
+  const periodStart = new Date(Date.UTC(year, month - 1, 1));
+  const periodEnd = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
+
+  const book = managerId
+    ? plans.filter((p) => p.manager === managerId)
+    : plans.filter((p) => csManagers.some((m) => m.managerId === p.manager));
+  const { backlogs, portfolio } = derive(book, periodStart, periodEnd);
+
+  const monthTargets = targets.filter(
+    (t) => t.year === year && t.month === month && (!managerId || t.manager === managerId)
+  );
+  const sumOf = (pick: (t: MockTarget) => number) => monthTargets.reduce((n, t) => n + pick(t), 0);
+  const targetsOut = {
+    allocated_target: sumOf((t) => t.customers_allocated_target),
+    allocated_so_far: book.filter((p) => p.allocation === 'allocated').length,
+    onboarded_target: sumOf((t) => t.customers_onboarded_target),
+    onboarded_so_far: book.filter((p) => p.onboarding === 'confirmed').length,
+    // The third component is a RATE against a rate, not a count against a
+    // count — see the note on the schema.
+    tickets_resolved_target: monthTargets.length
+      ? Math.round(sumOf((t) => t.tickets_resolved_target) / monthTargets.length)
+      : 0,
+    ticket_resolution_rate: 62,
+    tickets_entered: 21,
+    tickets_resolved: 13,
+    ticket_flow: [],
+  };
+
+  const ratio = (actual: number, tgt: number) => (tgt > 0 ? Math.min(actual / tgt, 1) * 100 : 0);
+  const round1 = (n: number) => Math.round(n * 10) / 10;
+  const allocatedComponent = round1(ratio(targetsOut.allocated_so_far, targetsOut.allocated_target) * 0.4);
+  const onboardedComponent = round1(ratio(targetsOut.onboarded_so_far, targetsOut.onboarded_target) * 0.3);
+  const ticketsComponent = round1(
+    ratio(targetsOut.ticket_resolution_rate ?? 0, targetsOut.tickets_resolved_target) * 0.3,
+  );
+
+  // Estate, then chip, then search — `planTable` on the BE.
+  const estate = estateKey(String(query.estate ?? ''));
+  const estateRows = estate ? book.filter((p) => estateKey(p.asset) === estate) : book;
+  let filtered = estateRows;
+  const filterKey = String(query.filter ?? 'all');
+  if (filterKey !== 'all' && PLAN_FILTERS[filterKey]) {
+    filtered = filtered.filter(PLAN_FILTERS[filterKey]);
+  }
+  const search = String(query.search ?? '');
+  filtered = filtered.filter((p) => matchesSearch(p, search));
+  const sorted = [...filtered].sort(
+    (a, b) => new Date(b.last_activity_at).getTime() - new Date(a.last_activity_at).getTime()
+  );
+
+  const page = Math.max(1, Number(query.page ?? 1) || 1);
+  const limit = Math.max(1, Number(query.limit ?? 20) || 20);
+  const start_idx = (page - 1) * limit;
+  const pageRows = sorted.slice(start_idx, start_idx + limit).map(toPlanRow);
+
+  return {
+    period: {
+      period_type: 'MONTH',
+      month,
+      year,
+      start: periodStart.toISOString(),
+      end: periodEnd.toISOString(),
+    },
+    manager: admin
+      ? {
+          id: admin._id,
+          user_name: admin.userName,
+          first_name: admin.firstName,
+          last_name: admin.lastName,
+          email: admin.email,
+          role: admin.role,
+        }
+      : null,
+    target: targetsOut,
+    performance_score: {
+      score: round1(allocatedComponent + onboardedComponent + ticketsComponent),
+      allocated_component: allocatedComponent,
+      onboarded_component: onboardedComponent,
+      tickets_component: ticketsComponent,
+    },
+    obligation: { paid_not_allocated_this_period: book.filter(PLAN_FILTERS.due_allocation).length },
+    backlogs,
+    portfolio,
+    plans: pageRows,
+    plans_total: filtered.length,
+    filter_counts: filterCountsOf(estateRows),
+    estates: estatesOf(book),
   };
 }
 
@@ -547,86 +865,38 @@ export const csManagerRoutes: MockRoutes = {
     return toTarget(target);
   },
 
-  'GET /admin/cs-managers/:manager_id/dashboard': ({ params, query }) => {
-    const admin = findAdmin(params.manager_id);
-    const now = new Date();
-    const year = Number(query.year ?? now.getUTCFullYear());
-    const month = Number(query.month ?? now.getUTCMonth() + 1);
-    const start = new Date(Date.UTC(year, month - 1, 1)).toISOString();
-    const end = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999)).toISOString();
+  'GET /admin/cs-managers/:manager_id/dashboard': ({ params, query }) =>
+    dashboardFor(params.manager_id, query),
 
-    const managerPlans = plans.filter((p) => p.manager === params.manager_id);
-    const { backlogs, portfolio, filter_counts } = derive(managerPlans);
+  'GET /admin/cs-managers/dashboard/all': ({ query }) => dashboardFor(null, query),
 
-    const target = targets.find((t) => t.manager === params.manager_id && t.year === year && t.month === month);
-    const targetsOut = {
-      allocated_target: target?.customers_allocated_target ?? 0,
-      allocated_so_far: managerPlans.filter((p) => p.allocation === 'allocated').length,
-      onboarded_target: target?.customers_onboarded_target ?? 0,
-      onboarded_so_far: managerPlans.filter((p) => p.onboarding === 'confirmed').length,
-      // The third component is a RATE against a rate, not a count against a
-      // count — see the note on the schema.
-      tickets_resolved_target: target?.tickets_resolved_target ?? 0,
-      ticket_resolution_rate: 62,
-      tickets_entered: 21,
-      tickets_resolved: 13,
-    };
-
-    const ratio = (actual: number, tgt: number) => (tgt > 0 ? Math.min(actual / tgt, 1) * 100 : 0);
-    const round1 = (n: number) => Math.round(n * 10) / 10;
-    const allocatedComponent = round1(ratio(targetsOut.allocated_so_far, targetsOut.allocated_target) * 0.4);
-    const onboardedComponent = round1(ratio(targetsOut.onboarded_so_far, targetsOut.onboarded_target) * 0.3);
-    const ticketsComponent = round1(
-      ratio(targetsOut.ticket_resolution_rate ?? 0, targetsOut.tickets_resolved_target) * 0.3,
-    );
-
-    let filtered = managerPlans;
-    const filterKey = String(query.filter ?? 'all');
-    if (filterKey !== 'all' && PLAN_FILTERS[filterKey]) {
-      filtered = filtered.filter(PLAN_FILTERS[filterKey]);
+  // A dry run over the unassigned fixture, as the BE's: each waiting buyer goes
+  // to the smallest book, recounted as it goes; ties to the longest-serving
+  // manager. The mock has no orphaned assignments, so every one is eligible.
+  'GET /admin/cs-managers/auto-assign/preview': () => {
+    const pending = unassignedCustomers.length;
+    if (pending > 0 && csManagers.length === 0) {
+      return { status: 'no_managers', enabled: AUTO_ASSIGN_ENABLED, pending, assigned: 0, by_manager: [] };
     }
-    const search = String(query.search ?? '').trim().toLowerCase();
-    if (search) {
-      filtered = filtered.filter((p) => {
-        const person = findPerson(p.customer_id);
-        const name = person ? `${person.firstName} ${person.lastName}`.toLowerCase() : '';
-        return name.includes(search) || (person?.email.toLowerCase().includes(search) ?? false);
-      });
+    const books = csManagers.map((m) => ({
+      manager: m.managerId,
+      customers: m.assigned_customers_count,
+      from: new Date(m.assigned_from).getTime(),
+    }));
+    const byManager = new Map<string, number>();
+    for (let i = 0; i < pending; i++) {
+      const [book] = [...books].sort(
+        (a, b) => a.customers - b.customers || a.from - b.from || a.manager.localeCompare(b.manager)
+      );
+      book.customers += 1;
+      byManager.set(book.manager, (byManager.get(book.manager) ?? 0) + 1);
     }
-    const sorted = [...filtered].sort(
-      (a, b) => new Date(b.last_activity_at).getTime() - new Date(a.last_activity_at).getTime()
-    );
-
-    const page = Math.max(1, Number(query.page ?? 1) || 1);
-    const limit = Math.max(1, Number(query.limit ?? 20) || 20);
-    const start_idx = (page - 1) * limit;
-    const pageRows = sorted.slice(start_idx, start_idx + limit).map(toPlanRow);
-
     return {
-      period: { period_type: 'MONTH', month, year, start, end },
-      manager: admin
-        ? {
-            id: admin._id,
-            user_name: admin.userName,
-            first_name: admin.firstName,
-            last_name: admin.lastName,
-            email: admin.email,
-            role: admin.role,
-          }
-        : null,
-      target: targetsOut,
-      performance_score: {
-        score: round1(allocatedComponent + onboardedComponent + ticketsComponent),
-        allocated_component: allocatedComponent,
-        onboarded_component: onboardedComponent,
-        tickets_component: ticketsComponent,
-      },
-      obligation: { paid_not_allocated_this_period: filter_counts.due_allocation },
-      backlogs,
-      portfolio,
-      plans: pageRows,
-      plans_total: filtered.length,
-      filter_counts,
+      status: 'dry_run',
+      enabled: AUTO_ASSIGN_ENABLED,
+      pending,
+      assigned: pending,
+      by_manager: [...byManager].map(([manager_id, assigned]) => ({ manager_id, assigned })),
     };
   },
 
@@ -649,13 +919,22 @@ export const csManagerRoutes: MockRoutes = {
   'POST /admin/payment-plans/:plan_id/onboarding-attempts': ({ params, body: raw }) => {
     const plan = findPlan(params.plan_id);
     const dto = body<{ outcome: 'done' | 'spoke' | 'no_answer' | 'rescheduled'; land_choice_reason?: string; notes?: string }>(raw);
+    // LogOnboardingCallDto: an empty reason is no reason; anything else must be on the list.
+    const reason = dto.land_choice_reason === '' ? undefined : dto.land_choice_reason;
+    if (reason !== undefined && !(LAND_CHOICE_REASONS as readonly string[]).includes(reason)) {
+      throw new MockHttpError(
+        400,
+        `land_choice_reason must be one of the following values: ${LAND_CHOICE_REASONS.join(', ')}`,
+        'VALIDATION_ERROR'
+      );
+    }
     const now = new Date().toISOString();
     const attempt: MockOnboardingAttempt = {
       _id: `665fcsat${Date.now().toString(16).slice(-16)}`,
       plan_id: plan.plan_id,
       customer_id: plan.customer_id,
       outcome: dto.outcome,
-      land_choice_reason: dto.land_choice_reason ?? null,
+      land_choice_reason: reason ?? null,
       notes: dto.notes ?? null,
       called_at: now,
       createdAt: now,

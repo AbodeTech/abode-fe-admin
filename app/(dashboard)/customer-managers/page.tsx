@@ -4,7 +4,9 @@ import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Loader2, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useHasPermission } from "@/hooks/use-admin-permission";
 import { CSManagerTicketFlow } from "@/features/cs-managers/components/CSManagerTicketFlow";
+import { AllocationModal, ALLOCATION_STATUSES, type AllocationModalClient } from "@/features/allocation";
 import {
   CSPerformanceHeader,
   CSManagerSnapshot,
@@ -16,9 +18,11 @@ import {
   useCSManagerDashboard,
   useCSManagers,
   useIsCurrentCSManager,
+  useRefreshCSManagerDashboards,
   adminMinName,
+  effectivePlanSort,
   type PlanFilterKey,
-  type PlanSortKey,
+  type PlanRow,
 } from "@/features/cs-managers";
 import { useAuthStore } from "@/store/auth-store";
 
@@ -42,10 +46,35 @@ function NotAuthorized() {
 /** Plans are paginated server-side; the dashboard returns plans_total for the page count. */
 const PLANS_PER_PAGE = 20;
 
+/**
+ * A plans-table row as the allocation window reads it. The row only offers
+ * Allocate when it has an estate id and a size. A stored status the window
+ * doesn't know counts as pending: the row is awaiting a plot, and anything
+ * else would open it as a reassignment.
+ */
+const toAllocationClient = (plan: PlanRow): AllocationModalClient => ({
+  payment_plan_id: plan.plan_id,
+  name: [plan.customer.last_name, plan.customer.first_name].filter(Boolean).join(" "),
+  email: plan.customer.email,
+  asset_id: plan.asset_id ?? "",
+  asset_name: plan.asset,
+  size: plan.size ?? 0,
+  no_of_units: plan.units,
+  allocation_status: ALLOCATION_STATUSES.find((s) => s === plan.allocation_status) ?? "pending",
+});
+
 function CustomerManagersContent() {
   const searchParams = useSearchParams();
   const { user } = useAuthStore();
   const [targetsDialogOpen, setTargetsDialogOpen] = useState(false);
+  const [allocatingPlan, setAllocatingPlan] = useState<PlanRow | null>(null);
+  const refreshDashboards = useRefreshCSManagerDashboards();
+
+  // The allocation window reads available plots (view_allocations) and writes
+  // the allocation (allocate_land); the BE checks both.
+  const canAllocateLand = useHasPermission("allocate_land");
+  const canViewAllocations = useHasPermission("view_allocations");
+  const canAllocate = canAllocateLand && canViewAllocations;
 
   // Role gating, mirroring the Associate Manager dashboard: Super Admins
   // (the `is_super_admin` role flag) get the picker across every manager. Any other admin
@@ -67,7 +96,10 @@ function CustomerManagersContent() {
   const page = Number(searchParams.get("page")) || 1;
   const filter = (searchParams.get("filter") as PlanFilterKey | null) ?? undefined;
   const search = searchParams.get("search") ?? undefined;
-  const sort = (searchParams.get("sort") as PlanSortKey | null) ?? undefined;
+  const estate = searchParams.get("estate") ?? undefined;
+  // Unsorted URLs take the queue's own default rather than the BE's — see
+  // defaultPlanSort. CustomersTable derives the same value for its controls.
+  const sort = effectivePlanSort(filter ?? "all", searchParams.get("sort"));
 
   const managersQuery = useCSManagers();
   const managers = managersQuery.data ?? [];
@@ -87,6 +119,7 @@ function CustomerManagersContent() {
     limit: PLANS_PER_PAGE,
     filter,
     search,
+    estate,
     sort,
     enabled: isAuthorized && !!activeManagerId,
   });
@@ -170,6 +203,7 @@ function CustomerManagersContent() {
           target={data.target}
           score={data.performance_score}
           obligation={data.obligation}
+          onboardingBacklog={data.backlogs.onboarding}
           totalAssigned={data.portfolio.total_assigned}
           // Setting targets is super-admin only, so a CS Manager gets the
           // read-only snapshot with no CTA.
@@ -178,7 +212,7 @@ function CustomerManagersContent() {
 
         <CSManagerTicketFlow flow={data.target.ticket_flow} />
 
-        <BacklogsSection backlogs={data.backlogs} />
+        <BacklogsSection backlogs={data.backlogs} period={data.period} />
 
         <PortfolioHealthStrip portfolio={data.portfolio} />
 
@@ -188,11 +222,26 @@ function CustomerManagersContent() {
           totalAssigned={data.portfolio.total_assigned}
           totalPlans={data.plans_total}
           filterCounts={data.filter_counts}
+          estates={data.estates}
           page={page}
           limit={PLANS_PER_PAGE}
           isFetching={dashboardQuery.isFetching}
+          onAllocate={canAllocate ? setAllocatingPlan : undefined}
         />
       </div>
+
+      {/* The same window the Allocation page opens. */}
+      <AllocationModal
+        open={!!allocatingPlan}
+        mode="send"
+        client={allocatingPlan ? toAllocationClient(allocatingPlan) : null}
+        onOpenChange={(open) => {
+          if (open) return;
+          setAllocatingPlan(null);
+          // The allocation hooks only refresh allocation data.
+          refreshDashboards();
+        }}
+      />
 
       {viewAs === "super-admin" && data.manager && (
         <ManageCSTargetsDialog

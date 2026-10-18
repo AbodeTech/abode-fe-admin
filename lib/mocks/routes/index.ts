@@ -14,6 +14,7 @@ import { assetTransactionRoutes } from './asset-transactions';
 import { salesRoutes } from './sales';
 import { requestRoutes } from './requests';
 import { amarisRoutes } from './amaris';
+import { whatsappRoutes } from './whatsapp';
 import { flexLeadRoutes } from './flex-leads';
 import { flexPricingRoutes } from './flex-pricing';
 import { couponRoutes } from './coupons';
@@ -42,6 +43,7 @@ import { fieldOperationsRoutes } from './field-operations';
 import { courseRoutes } from './courses';
 import { divisionRoutes } from './division';
 import { standingRoutes } from './standing';
+import { ticketRoutes } from './tickets';
 
 /* ============================================================
  * Route registration. Importing this module (via lib/mocks/index.ts)
@@ -255,6 +257,13 @@ import { standingRoutes } from './standing';
  *               but unclaimed — no FE screen calls them yet. "Roads and
  *               services" (non-saleable land) is a DIFFERENT real module
  *               (asset/land — see land-configuration.ts), not this one.
+ * tickets     — /admin/tickets list, stats, categories, :id detail, PATCH
+ *               :id, :id/reply (with attachments), :id/notes, :id/resolve,
+ *               and empty :id/suggest-users|suggest-issues. Real module
+ *               (`support-ticket-admin.controller.ts`). Create, classify,
+ *               merge, collaborators, participants, note edit/delete and
+ *               /admin/issues/* are unclaimed and 404 in mock mode. Reads
+ *               cs-managers.ts's ADMINS in-process for admin refs.
  * ============================================================ */
 
 let registered = false;
@@ -277,6 +286,7 @@ export function ensureRoutesRegistered(): void {
   registerRoutes(salesRoutes);
   registerRoutes(requestRoutes);
   registerRoutes(amarisRoutes);
+  registerRoutes(whatsappRoutes);
   registerRoutes(flexLeadRoutes);
   registerRoutes(flexPricingRoutes);
   registerRoutes(couponRoutes);
@@ -308,6 +318,7 @@ export function ensureRoutesRegistered(): void {
   registerRoutes(assetSubscribersRoutes);
   registerRoutes(siteSetupRoutes);
   registerRoutes(fieldOperationsRoutes);
+  registerRoutes(ticketRoutes);
 
   // Only mark done after every domain registered — a throw mid-way must allow retry.
   registered = true;

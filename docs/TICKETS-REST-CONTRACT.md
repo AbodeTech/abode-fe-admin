@@ -68,8 +68,10 @@ or the user meets a 400 they can't act on.
 unconditional. `ResolveIssueDialog` should ask for the confirmation only when
 the operator turns notification off.
 
-**4. Minimum lengths are validated server-side.** Resolution ≥ 20 chars, note
-≥ 5. Mirror both client-side so the composer says so before the round trip.
+**4. Minimum lengths are validated server-side.** An issue's resolution note
+≥ 20 chars, note ≥ 5. Mirror both client-side so the composer says so before
+the round trip. A ticket's resolution summary is optional, with no minimum;
+blank is sent as `null`.
 
 **5. `PATCH` refuses `status: 'resolved'`** with a specific message pointing at
 the resolve endpoint. The status dropdown already omits it — keep that.

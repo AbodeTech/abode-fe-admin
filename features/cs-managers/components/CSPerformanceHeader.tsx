@@ -104,7 +104,7 @@ export function CSPerformanceHeader({
                 </button>
               )}
 
-              <ManageCSManagersMenu activeManager={activeManager} />
+              <ManageCSManagersMenu activeManager={activeManager} managers={managers} />
             </>
           )}
         </div>

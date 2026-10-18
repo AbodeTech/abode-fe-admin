@@ -3,10 +3,15 @@ import { ApiClientError } from '@/lib/api-client';
 /**
  * Server-side validation the UI mirrors, so a user is told before the round
  * trip rather than by a 400. Kept in step with
- * abode-be-v2/src/modules/support-ticket/support-ticket.constants.ts.
+ * abode-be-v2/src/modules/support-ticket/support-ticket.constants.ts, and the
+ * reply attachment limits with attachments/ticket-attachment.service.ts.
  */
+/** An issue's resolution note. A ticket's resolution summary is optional, with no minimum. */
 export const MIN_RESOLUTION_LENGTH = 20;
 export const MIN_NOTE_LENGTH = 5;
+export const MAX_REPLY_ATTACHMENTS = 5;
+export const MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024;
+export const MAX_REPLY_TOTAL_BYTES = 25 * 1024 * 1024;
 /** Unresolved past this is "breaching" in the queue strip. */
 export const BREACH_AFTER_HOURS = 48;
 
