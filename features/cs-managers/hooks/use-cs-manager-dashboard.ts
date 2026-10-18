@@ -1,6 +1,6 @@
 'use client';
 
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { apiGet } from '@/lib/api-client';
 
@@ -60,3 +60,13 @@ export const useCSManagerDashboard = ({
     enabled: enabled && !!managerId,
     placeholderData: keepPreviousData,
   });
+
+/**
+ * Refetch every CS dashboard — for writes made through another feature's UI
+ * (allocating a plot from the plans table), whose own hooks only refresh their
+ * own data. The row then leaves "Due allocation".
+ */
+export const useRefreshCSManagerDashboards = () => {
+  const queryClient = useQueryClient();
+  return () => queryClient.invalidateQueries({ queryKey: csManagerKeys.dashboards() });
+};

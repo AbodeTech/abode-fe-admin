@@ -50,10 +50,27 @@ export type AllocationModalMode = "send" | "resend";
 /** `REASON_MIN_LENGTH` in abode-be-v2's allocation.constants.ts — enforced server-side too. */
 const REASON_MIN_LENGTH = 20;
 
+/**
+ * The fields the modal reads — narrower than an eligible-clients row, so a
+ * screen with a different row shape (the CS manager's plans table) can open it
+ * without inventing amounts and dates it doesn't have.
+ */
+export type AllocationModalClient = Pick<
+  AllocationTableRow,
+  | "payment_plan_id"
+  | "name"
+  | "email"
+  | "asset_id"
+  | "asset_name"
+  | "size"
+  | "no_of_units"
+  | "allocation_status"
+>;
+
 interface AllocationModalProps {
   open: boolean;
   mode: AllocationModalMode;
-  client?: AllocationTableRow | null;
+  client?: AllocationModalClient | null;
   onOpenChange: (open: boolean) => void;
 }
 

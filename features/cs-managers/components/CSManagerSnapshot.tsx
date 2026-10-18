@@ -180,6 +180,23 @@ export function CSManagerSnapshot({
           noData={target.tickets_entered === 0}
           noDataLabel="No tickets came in"
           tooltip={`Of the tickets assigned to this manager that were raised this period, how many are now resolved — ${target.tickets_resolved} of ${target.tickets_entered}. Measured as of now, not month-end, so a ticket raised on the 30th still counts once it closes.`}
+          // The two counts the rate is made of, on the tile rather than only in
+          // the tooltip: 60% of five tickets and 60% of two hundred are the
+          // same percentage and not the same month.
+          footer={
+            target.tickets_entered > 0 ? (
+              <p className="mt-3 pt-3 border-t border-dashed border-gray-200 text-xs text-gray-500">
+                <span className="font-semibold tabular-nums text-gray-700">
+                  {target.tickets_resolved.toLocaleString()}
+                </span>{" "}
+                resolved of{" "}
+                <span className="font-semibold tabular-nums text-gray-700">
+                  {target.tickets_entered.toLocaleString()}
+                </span>{" "}
+                that came in
+              </p>
+            ) : null
+          }
         />
 
         <KpiTile

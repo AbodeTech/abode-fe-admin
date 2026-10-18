@@ -13,7 +13,10 @@ export {
   useAssignCustomersToCSM,
   useUpsertCSManagerTarget,
 } from './hooks/use-cs-manager-mutations';
-export { useCSManagerDashboard } from './hooks/use-cs-manager-dashboard';
+export {
+  useCSManagerDashboard,
+  useRefreshCSManagerDashboards,
+} from './hooks/use-cs-manager-dashboard';
 export {
   useCustomerOnboardingAttempts,
   useLogOnboardingCall,
@@ -37,6 +40,9 @@ export { BacklogsSection } from './components/BacklogsSection';
 export { PortfolioHealthStrip } from './components/PortfolioHealthStrip';
 export { CustomersTable } from './components/CustomersTable';
 export { PlanDetailDrawer } from './components/PlanDetailDrawer';
+
+// Lib
+export { PLAN_SORTS, defaultPlanSort, effectivePlanSort } from './lib/plan-sort';
 
 // Schemas
 export {

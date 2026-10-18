@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowRight, Download, Loader2, Repeat } from "lucide-react";
+import { ArrowDown, ArrowRight, ArrowUp, Download, LandPlot, Loader2, Repeat } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,7 +21,9 @@ import type {
   EstateOption,
   PlanFilterKey,
   PlanRow,
+  PlanSortKey,
 } from "../schemas/cs-manager.schema";
+import { PLAN_SORTS, effectivePlanSort } from "../lib/plan-sort";
 import {
   AllocationPill,
   DoaPill,
@@ -53,6 +55,11 @@ interface Props {
   page: number;
   limit: number;
   isFetching?: boolean;
+  /**
+   * Opens allocation for a fully paid plan still without a plot. Omitted when
+   * the viewer can't allocate, which hides the button.
+   */
+  onAllocate?: (plan: PlanRow) => void;
 }
 
 const FILTERS: { key: PlanFilterKey; label: string }[] = [
@@ -85,6 +92,22 @@ const timeAgo = (iso: string | null) => {
   return `${weeks}w ago`;
 };
 
+/**
+ * How long this buyer has been on the books — the age of the row in a queue,
+ * read at a glance next to the date itself.
+ */
+const monthsSince = (iso: string | null) => {
+  if (!iso) return null;
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
+  if (days < 1) return "today";
+  if (days < 31) return `${days}d ago`;
+  const months = Math.floor(days / 30.44);
+  if (months < 12) return `${months}mo ago`;
+  const years = Math.floor(months / 12);
+  const rest = months % 12;
+  return rest ? `${years}y ${rest}mo ago` : `${years}y ago`;
+};
+
 export function CustomersTable({
   managerId,
   plans,
@@ -95,6 +118,7 @@ export function CustomersTable({
   page,
   limit,
   isFetching = false,
+  onAllocate,
 }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -107,6 +131,9 @@ export function CustomersTable({
   const activeFilter = (searchParams.get("filter") as PlanFilterKey | null) ?? "all";
   const searchParam = searchParams.get("search") ?? "";
   const estateParam = searchParams.get("estate") ?? "";
+  // Mirrors what the page sends, so the control shows the order on screen even
+  // when the URL carries no sort and the queue default is in force.
+  const activeSort = effectivePlanSort(activeFilter, searchParams.get("sort"));
 
   // Local input state so typing stays responsive; the URL (and the query)
   // only move once typing settles.
@@ -153,6 +180,15 @@ export function CustomersTable({
       if (name === ALL_ESTATES) p.delete("estate");
       else p.set("estate", name);
     });
+
+  const setSort = (next: PlanSortKey) => pushParams((p) => p.set("sort", next));
+
+  const boughtSortActive =
+    activeSort === "purchase_date_asc" || activeSort === "purchase_date_desc";
+
+  /** Header click: first click oldest-first, thereafter flip. */
+  const toggleBoughtSort = () =>
+    setSort(activeSort === "purchase_date_asc" ? "purchase_date_desc" : "purchase_date_asc");
 
   // A chip whose count the BE doesn't send yet would 400 on click — hide it.
   const visibleFilters = FILTERS.filter((f) => filterCounts[f.key] !== undefined);
@@ -262,6 +298,18 @@ export function CustomersTable({
               title="A phone number matches on 4 or more digits, in any spacing"
               className="h-8 text-xs w-56"
             />
+            <Select value={activeSort} onValueChange={(v) => setSort(v as PlanSortKey)}>
+              <SelectTrigger size="sm" className="h-8 text-xs w-fit min-w-40 bg-white" aria-label="Sort plans">
+                <SelectValue placeholder="Sort" />
+              </SelectTrigger>
+              <SelectContent>
+                {PLAN_SORTS.map((s) => (
+                  <SelectItem key={s.value} value={s.value} className="text-xs">
+                    {s.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             {managerId && <Button
               variant="outline"
               size="sm"
@@ -286,6 +334,25 @@ export function CustomersTable({
                 <th className="px-4 py-2.5 font-medium">Customer</th>
                 <th className="px-4 py-2.5 font-medium">Phone</th>
                 <th className="px-4 py-2.5 font-medium">Plan</th>
+                <th className="px-4 py-2.5 font-medium">
+                  <button
+                    type="button"
+                    onClick={toggleBoughtSort}
+                    className={cn(
+                      "inline-flex items-center gap-1 uppercase tracking-wide hover:text-gray-700",
+                      boughtSortActive && "text-[#00695C]"
+                    )}
+                    title="Sort by when the plan was bought"
+                  >
+                    Bought
+                    {boughtSortActive &&
+                      (activeSort === "purchase_date_asc" ? (
+                        <ArrowUp className="h-3 w-3" />
+                      ) : (
+                        <ArrowDown className="h-3 w-3" />
+                      ))}
+                  </button>
+                </th>
                 <th className="px-4 py-2.5 font-medium">Payment</th>
                 <th className="px-4 py-2.5 font-medium">Onboarding</th>
                 <th className="px-4 py-2.5 font-medium">Allocation</th>
@@ -297,7 +364,7 @@ export function CustomersTable({
             <tbody>
               {plans.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-8 text-center text-gray-500 text-sm">
+                  <td colSpan={10} className="px-4 py-8 text-center text-gray-500 text-sm">
                     {searchParam || estateParam || activeFilter !== "all"
                       ? "No plans match this filter."
                       : "No plans in this book yet."}
@@ -347,9 +414,15 @@ export function CustomersTable({
                       <p className="text-xs text-gray-500 leading-tight">
                         {[r.location, planLandLabel(r)].filter(Boolean).join(" · ")}
                       </p>
-                      <p className="text-xs text-gray-500 leading-tight">
-                        {productLabel(r.product)} · opened {formatShortDate(r.purchase_date)}
-                      </p>
+                      <p className="text-xs text-gray-500 leading-tight">{productLabel(r.product)}</p>
+                    </td>
+                    <td className="px-4 py-3 text-gray-700 whitespace-nowrap">
+                      <p className="leading-tight">{formatShortDate(r.purchase_date)}</p>
+                      {r.purchase_date && (
+                        <p className="text-xs text-gray-500 leading-tight tabular-nums">
+                          {monthsSince(r.purchase_date)}
+                        </p>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <PaymentPill status={r.payment_status} label={r.payment_label} />
@@ -376,14 +449,30 @@ export function CustomersTable({
                       {timeAgo(r.last_activity_at)}
                     </td>
                     <td className="px-4 py-3">
-                      <button
-                        type="button"
-                        onClick={() => setOpenPlanId(r.plan_id)}
-                        className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-[#00695C] border border-gray-200 rounded-md px-2 py-1"
-                      >
-                        Open
-                        <ArrowRight className="h-3 w-3" />
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        {/* Fully paid and still without a plot — the dashboard's
+                            100% rule. The allocation window needs the estate and
+                            the plan's size to find plots, so rows without them
+                            can't open it. */}
+                        {onAllocate && r.allocation === "awaiting" && r.asset_id && r.size != null && (
+                          <button
+                            type="button"
+                            onClick={() => onAllocate(r)}
+                            className="inline-flex items-center gap-1 text-xs text-white bg-[#00695C] hover:bg-[#00574d] rounded-md px-2 py-1"
+                          >
+                            <LandPlot className="h-3 w-3" />
+                            Allocate
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setOpenPlanId(r.plan_id)}
+                          className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-[#00695C] border border-gray-200 rounded-md px-2 py-1"
+                        >
+                          Open
+                          <ArrowRight className="h-3 w-3" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
