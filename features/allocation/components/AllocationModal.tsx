@@ -35,8 +35,10 @@ import {
   Trash2,
   Mail,
   Shuffle,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { suggestPlotCombination } from "../lib/suggest-plots";
 import { useAvailablePlotsForAsset, type Plot } from "../hooks/use-available-plots";
 import { useAllocateLand } from "../hooks/use-allocate-land";
 import { useDeallocateLand } from "../hooks/use-deallocate-land";
@@ -71,11 +73,11 @@ export function AllocationModal({
     allocationClient && allocationClient.allocation_status !== "pending"
   );
 
+  // No `size` filter: the BE then returns only plots of exactly that size,
+  // which hides the mixed-size combinations the suggester needs. The picker
+  // sums each plot's own `size`, so a mixed list needs nothing else.
   const { data: availablePlots = [], isLoading: isLoadingPlots } =
-    useAvailablePlotsForAsset({
-      assetId,
-      size: assetSize || undefined,
-    });
+    useAvailablePlotsForAsset({ assetId });
 
   const [selectedPlotIds, setSelectedPlotIds] = useState<Set<string>>(new Set());
   const [selectedPlotsMeta, setSelectedPlotsMeta] = useState<
@@ -144,6 +146,19 @@ export function AllocationModal({
     }
     return Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b));
   }, [availablePlots]);
+
+  // Replaces the current selection outright — the admin can still adjust after.
+  const handleSuggest = () => {
+    const suggestion = suggestPlotCombination(availablePlots, requiredSqm);
+    if (!suggestion) {
+      toast.error(
+        `No combination of available plots adds up to ${requiredSqm.toLocaleString()} sqm.`
+      );
+      return;
+    }
+    setSelectedPlotIds(new Set(suggestion.map((p) => p._id)));
+    setSelectedPlotsMeta(Object.fromEntries(suggestion.map((p) => [p._id, p])));
+  };
 
   const handleAllocate = () => {
     if (!isMatch || !paymentPlanId) return;
@@ -338,6 +353,19 @@ export function AllocationModal({
                 </div>
               ) : (
                 <div className="space-y-3">
+                  {requiredSqm > 0 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      onClick={handleSuggest}
+                      disabled={anyMutationPending}
+                    >
+                      <Sparkles className="h-4 w-4 mr-1.5" />
+                      Suggest plots for {requiredSqm.toLocaleString()} sqm
+                    </Button>
+                  )}
                   {plotsByBlock.map(([blockLabel, plots]) => (
                     <BlockPlotPicker
                       key={blockLabel}
