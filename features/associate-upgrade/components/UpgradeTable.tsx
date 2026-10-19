@@ -5,6 +5,7 @@ import type { TypedDocumentNode } from "@graphql-typed-document-node/core";
 import { graphql } from "@/lib/gql";
 import { FragmentType, useFragment as getFragmentData } from "@/lib/gql";
 import type { UpgradeRowFragmentFragment } from "@/lib/gql/graphql";
+import { READ_ONLY } from "@/lib/read-only";
 import {
   Table,
   TableBody,
@@ -72,7 +73,8 @@ interface UpgradeTableProps {
 
 export function UpgradeTable({ data, onApprove, onDecline }: UpgradeTableProps) {
   const { user } = useAuthStore();
-  const canManageUpgrade = (user?.permissions ?? []).includes("withdrawals") || user?.role === "admin";
+  const canManageUpgrade =
+    !READ_ONLY && ((user?.permissions ?? []).includes("withdrawals") || user?.role === "admin");
   const safeRows = (data ?? []).filter(
     (item): item is NonNullable<typeof item> => item !== null
   );

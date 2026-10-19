@@ -53,6 +53,7 @@ import {
   sendReceiptEmail,
 } from "@/lib/api/admin/transactions.client"
 import revalidate from "@/lib/serverActions/admin/revalidate"
+import { READ_ONLY } from "@/lib/read-only"
 import { ViewTransactionEvidenceModal } from "../../modals/ViewTransactionEvidenceModal"
 import { getErrorMessage } from "../../../utils/error-message"
 import {
@@ -236,24 +237,28 @@ export function OtherTransactionsTable({ transactions }: OtherTransactionsTableP
                           ) : (
                             <DropdownMenuItem disabled>View Receipt (N/A)</DropdownMenuItem>
                           )}
-                          <DropdownMenuItem
-                            disabled={!canReprocess || isProcessing}
-                            onSelect={(event) => {
-                              event.preventDefault()
-                              handleOpenConfirm(transaction._id)
-                            }}
-                          >
-                            {isProcessing ? "Reprocessing..." : "Reprocess Transaction"}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            disabled={!canSendReceipt || isSendingReceipt}
-                            onSelect={async (event) => {
-                              event.preventDefault()
-                              await handleSendReceipt(transaction._id)
-                            }}
-                          >
-                            {isSendingReceipt ? "Sending..." : "Send Receipt Email"}
-                          </DropdownMenuItem>
+                          {!READ_ONLY && (
+                            <>
+                              <DropdownMenuItem
+                                disabled={!canReprocess || isProcessing}
+                                onSelect={(event) => {
+                                  event.preventDefault()
+                                  handleOpenConfirm(transaction._id)
+                                }}
+                              >
+                                {isProcessing ? "Reprocessing..." : "Reprocess Transaction"}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                disabled={!canSendReceipt || isSendingReceipt}
+                                onSelect={async (event) => {
+                                  event.preventDefault()
+                                  await handleSendReceipt(transaction._id)
+                                }}
+                              >
+                                {isSendingReceipt ? "Sending..." : "Send Receipt Email"}
+                              </DropdownMenuItem>
+                            </>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
@@ -357,27 +362,31 @@ export function OtherTransactionsTable({ transactions }: OtherTransactionsTableP
                                 <DropdownMenuItem disabled>View Receipt (N/A)</DropdownMenuItem>
                               )}
 
-                              {/* Reprocess */}
-                              <DropdownMenuItem
-                                disabled={!canReprocess || isProcessing}
-                                onSelect={(event) => {
-                                  event.preventDefault()
-                                  handleOpenConfirm(transaction._id)
-                                }}
-                              >
-                                {isProcessing ? "Reprocessing..." : "Reprocess Transaction"}
-                              </DropdownMenuItem>
+                              {!READ_ONLY && (
+                                <>
+                                  {/* Reprocess */}
+                                  <DropdownMenuItem
+                                    disabled={!canReprocess || isProcessing}
+                                    onSelect={(event) => {
+                                      event.preventDefault()
+                                      handleOpenConfirm(transaction._id)
+                                    }}
+                                  >
+                                    {isProcessing ? "Reprocessing..." : "Reprocess Transaction"}
+                                  </DropdownMenuItem>
 
-                              {/* Send Receipt */}
-                              <DropdownMenuItem
-                                disabled={!canSendReceipt || isSendingReceipt}
-                                onSelect={async (event) => {
-                                  event.preventDefault()
-                                  await handleSendReceipt(transaction._id)
-                                }}
-                              >
-                                {isSendingReceipt ? "Sending..." : "Send Receipt Email"}
-                              </DropdownMenuItem>
+                                  {/* Send Receipt */}
+                                  <DropdownMenuItem
+                                    disabled={!canSendReceipt || isSendingReceipt}
+                                    onSelect={async (event) => {
+                                      event.preventDefault()
+                                      await handleSendReceipt(transaction._id)
+                                    }}
+                                  >
+                                    {isSendingReceipt ? "Sending..." : "Send Receipt Email"}
+                                  </DropdownMenuItem>
+                                </>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>

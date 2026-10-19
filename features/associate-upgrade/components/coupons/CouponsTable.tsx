@@ -17,6 +17,7 @@ import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, A
 import { MoreVertical, Ticket } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
+import { READ_ONLY } from "@/lib/read-only";
 import { EditCouponDialog } from "./EditCouponDialog";
 import type { Coupon } from "@/lib/gql/graphql";
 import {
@@ -99,7 +100,7 @@ export function CouponsTable({ data, onStatusChange, onDelete, onUpdate, onViewU
                   </Badge>
                 }
               />
-              <div className="flex justify-end border-t border-[#E5EAEF] pt-2">
+              {!READ_ONLY && <div className="flex justify-end border-t border-[#E5EAEF] pt-2">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="sm">
@@ -129,7 +130,7 @@ export function CouponsTable({ data, onStatusChange, onDelete, onUpdate, onViewU
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-              </div>
+              </div>}
             </AdminMobileCard>
           );
         })}
@@ -150,13 +151,13 @@ export function CouponsTable({ data, onStatusChange, onDelete, onUpdate, onViewU
             <TableHead className="py-4 font-semibold">Usage Limit</TableHead>
             <TableHead className="py-4 font-semibold">Expiry</TableHead>
             <TableHead className="py-4 font-semibold">Status</TableHead>
-            <TableHead className="py-4 font-semibold">Actions</TableHead>
+            {!READ_ONLY && <TableHead className="py-4 font-semibold">Actions</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
           {rows.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={6} className="text-center text-sm text-muted-foreground">
+              <TableCell colSpan={READ_ONLY ? 5 : 6} className="text-center text-sm text-muted-foreground">
                 No coupons found.
               </TableCell>
             </TableRow>
@@ -179,7 +180,7 @@ export function CouponsTable({ data, onStatusChange, onDelete, onUpdate, onViewU
                       {coupon.status}
                     </Badge>
                   </TableCell>
-                  <TableCell className="py-4">
+                  {!READ_ONLY && <TableCell className="py-4">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon">
@@ -208,7 +209,7 @@ export function CouponsTable({ data, onStatusChange, onDelete, onUpdate, onViewU
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
-                  </TableCell>
+                  </TableCell>}
                 </TableRow>
               );
             })

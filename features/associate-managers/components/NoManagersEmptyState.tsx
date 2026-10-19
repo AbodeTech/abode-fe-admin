@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { UserCog, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { READ_ONLY } from "@/lib/read-only";
 import { AddManagerDialog } from "./dialogs/AddManagerDialog";
 
 /**
@@ -36,20 +37,24 @@ export function NoManagersEmptyState() {
               <h2 className="text-lg font-semibold text-gray-900">
                 No Associate Managers yet
               </h2>
-              <p className="text-sm text-gray-600">
-                Promote an existing admin to Associate Manager to start
-                tracking their roster, targets, and recruitment performance.
-              </p>
+              {!READ_ONLY && (
+                <p className="text-sm text-gray-600">
+                  Promote an existing admin to Associate Manager to start
+                  tracking their roster, targets, and recruitment performance.
+                </p>
+              )}
             </div>
-            <Button onClick={() => setAddOpen(true)} className="mt-2">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Associate Manager
-            </Button>
+            {!READ_ONLY && (
+              <Button onClick={() => setAddOpen(true)} className="mt-2">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Associate Manager
+              </Button>
+            )}
           </div>
         </div>
       </div>
 
-      <AddManagerDialog open={addOpen} onOpenChange={setAddOpen} />
+      {!READ_ONLY && <AddManagerDialog open={addOpen} onOpenChange={setAddOpen} />}
     </>
   );
 }

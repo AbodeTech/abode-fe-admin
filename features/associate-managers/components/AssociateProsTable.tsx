@@ -25,6 +25,7 @@ import {
 import { FilterSelect } from "@/components/shared/FilterSelect";
 import { Pagination } from "@/components/shared/Pagination";
 import { cn } from "@/lib/utils";
+import { READ_ONLY } from "@/lib/read-only";
 import { ReassignProDialog } from "./dialogs/ReassignProDialog";
 import { BulkReassignDialog } from "./dialogs/BulkReassignDialog";
 import { OnboardingDialog } from "./dialogs/OnboardingDialog";
@@ -285,19 +286,21 @@ export function AssociateProsTable({
           <Table>
             <TableHeader>
               <TableRow className="bg-gray-50/60">
-                <TableHead className="w-10">
-                  <Checkbox
-                    checked={
-                      allOnPageSelected
-                        ? true
-                        : someOnPageSelected
-                          ? "indeterminate"
-                          : false
-                    }
-                    onCheckedChange={togglePage}
-                    aria-label="Select all on this page"
-                  />
-                </TableHead>
+                {!READ_ONLY && (
+                  <TableHead className="w-10">
+                    <Checkbox
+                      checked={
+                        allOnPageSelected
+                          ? true
+                          : someOnPageSelected
+                            ? "indeterminate"
+                            : false
+                      }
+                      onCheckedChange={togglePage}
+                      aria-label="Select all on this page"
+                    />
+                  </TableHead>
+                )}
                 <TableHead className="font-semibold text-gray-700">Name</TableHead>
                 <TableHead className="font-semibold text-gray-700">Status</TableHead>
                 <TableHead className="font-semibold text-gray-700">Date Recruited</TableHead>
@@ -310,7 +313,7 @@ export function AssociateProsTable({
             <TableBody>
               {paginated.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-10 text-gray-500">
+                  <TableCell colSpan={READ_ONLY ? 7 : 8} className="text-center py-10 text-gray-500">
                     No Associate Pros match the current filters.
                   </TableCell>
                 </TableRow>
@@ -325,13 +328,15 @@ export function AssociateProsTable({
                         isSelected && "bg-[#E0F2F1]/40"
                       )}
                     >
-                      <TableCell>
-                        <Checkbox
-                          checked={isSelected}
-                          onCheckedChange={() => togglePro(pro.id)}
-                          aria-label={`Select ${fullName(pro)}`}
-                        />
-                      </TableCell>
+                      {!READ_ONLY && (
+                        <TableCell>
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => togglePro(pro.id)}
+                            aria-label={`Select ${fullName(pro)}`}
+                          />
+                        </TableCell>
+                      )}
                       <TableCell>
                         <div className="flex flex-col gap-0.5">
                           <div className="flex items-center gap-2 flex-wrap">
@@ -370,33 +375,41 @@ export function AssociateProsTable({
                         {formatRelativeOrDate(pro.lastLogin)}
                       </TableCell>
                       <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              aria-label="Row actions"
-                            >
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onSelect={() => setOnboardingFor(pro)}
-                            >
-                              {pro.onboardedAt
-                                ? "View onboarding"
-                                : "Onboard Associate Pro"}
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onSelect={() => setSingleReassign(pro)}
-                            >
-                              Reassign to manager
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        {/* Read-only keeps the menu only where there's a
+                            finished onboarding record to look at. */}
+                        {(!READ_ONLY || pro.onboardedAt) && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                aria-label="Row actions"
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onSelect={() => setOnboardingFor(pro)}
+                              >
+                                {pro.onboardedAt
+                                  ? "View onboarding"
+                                  : "Onboard Associate Pro"}
+                              </DropdownMenuItem>
+                              {!READ_ONLY && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onSelect={() => setSingleReassign(pro)}
+                                  >
+                                    Reassign to manager
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
                       </TableCell>
                     </TableRow>
                   );
@@ -418,7 +431,7 @@ export function AssociateProsTable({
       </div>
 
       {/* Bulk action bar — sticky to viewport bottom */}
-      {selected.size > 0 && (
+      {!READ_ONLY && selected.size > 0 && (
         <div className="fixed inset-x-0 bottom-4 z-30 flex justify-center px-4 pointer-events-none">
           <div className="pointer-events-auto bg-gray-900 text-white rounded-full shadow-lg pl-5 pr-2 py-2 flex items-center gap-4">
             <span className="text-sm font-medium">
@@ -446,7 +459,7 @@ export function AssociateProsTable({
         </div>
       )}
 
-      <ReassignProDialog
+      {!READ_ONLY && <ReassignProDialog
         open={!!singleReassign}
         onOpenChange={(open) => !open && setSingleReassign(null)}
         pro={
@@ -459,9 +472,9 @@ export function AssociateProsTable({
             : null
         }
         currentManagerId={sourceManagerId}
-      />
+      />}
 
-      <BulkReassignDialog
+      {!READ_ONLY && <BulkReassignDialog
         open={bulkOpen}
         onOpenChange={(open) => {
           setBulkOpen(open);
@@ -469,7 +482,7 @@ export function AssociateProsTable({
         }}
         pros={selectedProsLegacy}
         sourceManagerId={sourceManagerId}
-      />
+      />}
 
       <OnboardingDialog
         open={!!onboardingFor}

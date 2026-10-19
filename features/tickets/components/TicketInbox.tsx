@@ -14,6 +14,7 @@ import {
   TicketSort,
   TicketType,
 } from "@/lib/gql/graphql";
+import { READ_ONLY } from "@/lib/read-only";
 import { useTickets, DEFAULT_TICKETS_LIMIT } from "../hooks/use-tickets";
 import { TicketFilterChips } from "./TicketFilterChips";
 import { TicketQueueStrip } from "./TicketQueueStrip";
@@ -139,10 +140,12 @@ export function TicketInbox() {
                 : "Tickets assigned to you, and the ones you've been pulled onto."}
           </p>
         </div>
-        <Button onClick={() => setCreateOpen(true)}>
-          <Plus className="mr-1.5 h-4 w-4" />
-          New ticket
-        </Button>
+        {!READ_ONLY && (
+          <Button onClick={() => setCreateOpen(true)}>
+            <Plus className="mr-1.5 h-4 w-4" />
+            New ticket
+          </Button>
+        )}
       </div>
 
       {activeTicketId ? (
@@ -248,11 +251,13 @@ export function TicketInbox() {
         </>
       )}
 
-      <CreateTicketDialog
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        onCreated={(id) => updateParams({ ticket: id })}
-      />
+      {!READ_ONLY && (
+        <CreateTicketDialog
+          open={createOpen}
+          onOpenChange={setCreateOpen}
+          onCreated={(id) => updateParams({ ticket: id })}
+        />
+      )}
     </div>
   );
 }

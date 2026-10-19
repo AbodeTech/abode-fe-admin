@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { READ_ONLY } from "@/lib/read-only";
 import { DashboardPeriodFilter } from "./DashboardPeriodFilter";
 import { ManageManagersMenu } from "./ManageManagersMenu";
 import { ChangeManagerDialog } from "./dialogs/ChangeManagerDialog";
@@ -106,7 +107,13 @@ export function PerformanceHeader({
 
           {viewAs === "super-admin" && (
             <>
-              {unassignedCount > 0 && (
+              {unassignedCount > 0 && READ_ONLY && (
+                <span className="inline-flex items-center gap-2 rounded-full bg-amber-50 text-amber-800 px-3 py-1.5 text-xs font-medium border border-amber-200">
+                  <Inbox className="h-3.5 w-3.5" />
+                  {unassignedCount} unassigned
+                </span>
+              )}
+              {unassignedCount > 0 && !READ_ONLY && (
                 <button
                   type="button"
                   onClick={() => setUnassignedDialogOpen(true)}
@@ -118,18 +125,20 @@ export function PerformanceHeader({
                 </button>
               )}
 
-              <ManageManagersMenu activeManager={activeManager} />
+              {!READ_ONLY && <ManageManagersMenu activeManager={activeManager} />}
             </>
           )}
         </div>
       </div>
 
       {/* Pre-targets the dialog at the Unassigned Pool */}
-      <ChangeManagerDialog
-        open={unassignedDialogOpen}
-        onOpenChange={setUnassignedDialogOpen}
-        startFromUnassigned
-      />
+      {!READ_ONLY && (
+        <ChangeManagerDialog
+          open={unassignedDialogOpen}
+          onOpenChange={setUnassignedDialogOpen}
+          startFromUnassigned
+        />
+      )}
     </>
   );
 }

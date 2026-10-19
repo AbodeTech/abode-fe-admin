@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { READ_ONLY } from "@/lib/read-only";
 import { useAdminSession } from "@/hooks/use-admin-session";
 import { TicketStatus, type GetTicketQuery } from "@/lib/gql/graphql";
 import {
@@ -74,7 +75,8 @@ const displayUser = (
  */
 export function TicketContextPanel({ detail }: Props) {
   const ticket = detail.ticket;
-  const { canDecideTicketRouting } = useAdminSession();
+  const session = useAdminSession();
+  const canDecideTicketRouting = !READ_ONLY && session.canDecideTicketRouting;
   const [assignAdminOpen, setAssignAdminOpen] = useState(false);
   const [addCollaboratorOpen, setAddCollaboratorOpen] = useState(false);
   const [assignUserOpen, setAssignUserOpen] = useState(false);

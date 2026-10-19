@@ -2,6 +2,7 @@
 
 import { PageContentLoader } from "@/components/shared/page-content-loader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { READ_ONLY } from "@/lib/read-only";
 import {
   useCommissionConfig,
   CommissionRatesCard,
@@ -40,12 +41,14 @@ export default function CommissionConfigPage() {
         <div className="min-w-0">
           <h1 className="text-2xl font-bold tracking-tight">Commission Configuration</h1>
           <p className="text-muted-foreground">
-            Manage commission rates, fees, and thresholds.
+            {READ_ONLY ? "Commission rates, fees, and thresholds." : "Manage commission rates, fees, and thresholds."}
           </p>
         </div>
-        <div className="w-full sm:ml-auto sm:w-auto">
-          <EditCommissionConfigDialog config={config} />
-        </div>
+        {!READ_ONLY && (
+          <div className="w-full sm:ml-auto sm:w-auto">
+            <EditCommissionConfigDialog config={config} />
+          </div>
+        )}
       </div>
 
       <Tabs defaultValue="current" className="min-w-0">

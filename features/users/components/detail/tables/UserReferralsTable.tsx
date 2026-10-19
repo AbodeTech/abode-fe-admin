@@ -5,6 +5,7 @@ import { useParams } from "next/navigation"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { useAuthStore } from "@/store/auth-store"
+import { READ_ONLY } from "@/lib/read-only"
 import {
   Table,
   TableBody,
@@ -74,7 +75,8 @@ export function UserReferralsTable({ referrals }: UserReferralsTableProps) {
   const params = useParams<{ id: string }>()
   const userId = params.id
   const user = useAuthStore((state) => state.user)
-  const canAddReferral = user?.role === "admin" || (user?.permissions ?? []).includes("add-referral")
+  const canAddReferral =
+    !READ_ONLY && (user?.role === "admin" || (user?.permissions ?? []).includes("add-referral"))
   const queryClient = useQueryClient()
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [isAddOpen, setIsAddOpen] = useState(false)

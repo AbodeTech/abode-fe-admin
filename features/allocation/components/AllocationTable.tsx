@@ -3,6 +3,7 @@
 import React from "react";
 import { graphql } from "@/lib/gql";
 import { FragmentType, useFragment as getFragmentData } from "@/lib/gql";
+import { READ_ONLY } from "@/lib/read-only";
 import {
   Table,
   TableBody,
@@ -172,19 +173,21 @@ export function AllocationTable({ rows, isLoading, onSend, onManage }: Allocatio
                   {hasAllocation && (
                     <AdminMobileField label="Allocated on" value={formatDate(client.allocationDate)} />
                   )}
-                  <div className="border-t border-border pt-2">
-                    {hasAllocation ? (
-                      <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => onManage(row)}>
-                        <Settings2 className="h-4 w-4" />
-                        Manage
-                      </Button>
-                    ) : (
-                      <Button size="sm" className="w-full gap-2" onClick={() => onSend(row)}>
-                        <Send className="h-4 w-4" />
-                        Assign Plots
-                      </Button>
-                    )}
-                  </div>
+                  {!READ_ONLY && (
+                    <div className="border-t border-border pt-2">
+                      {hasAllocation ? (
+                        <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => onManage(row)}>
+                          <Settings2 className="h-4 w-4" />
+                          Manage
+                        </Button>
+                      ) : (
+                        <Button size="sm" className="w-full gap-2" onClick={() => onSend(row)}>
+                          <Send className="h-4 w-4" />
+                          Assign Plots
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </AdminMobileCard>
               );
             })
@@ -234,16 +237,18 @@ export function AllocationTable({ rows, isLoading, onSend, onManage }: Allocatio
               <TableHead className="min-w-36 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Email Status
               </TableHead>
-              <TableHead className="min-w-38 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Action
-              </TableHead>
+              {!READ_ONLY && (
+                <TableHead className="min-w-38 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Action
+                </TableHead>
+              )}
             </TableRow>
           </TableHeader>
           <TableBody>
             {safeRows.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={14}
+                  colSpan={READ_ONLY ? 13 : 14}
                   className="whitespace-normal px-4 py-12 text-center text-sm text-muted-foreground"
                 >
                   No eligible clients found.
@@ -320,28 +325,30 @@ export function AllocationTable({ rows, isLoading, onSend, onManage }: Allocatio
                     <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed">
                       <EmailStatusBadge status={client.allocationStatus} />
                     </TableCell>
-                    <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4">
-                      {hasAllocation ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex h-auto min-h-10 w-full flex-col gap-1.5 whitespace-normal px-3 py-2.5 text-center text-sm leading-snug sm:h-9 sm:min-h-0 sm:w-auto sm:flex-row sm:items-center sm:justify-center sm:gap-2"
-                          onClick={() => onManage(row)}
-                        >
-                          <Settings2 className="h-4 w-4 shrink-0" />
-                          Manage
-                        </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          className="flex h-auto min-h-10 w-full flex-col gap-1.5 whitespace-normal px-3 py-2.5 text-center text-sm leading-snug sm:h-9 sm:min-h-0 sm:w-auto sm:flex-row sm:items-center sm:justify-center sm:gap-2"
-                          onClick={() => onSend(row)}
-                        >
-                          <Send className="h-4 w-4 shrink-0" />
-                          Assign Plots
-                        </Button>
-                      )}
-                    </TableCell>
+                    {!READ_ONLY && (
+                      <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4">
+                        {hasAllocation ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex h-auto min-h-10 w-full flex-col gap-1.5 whitespace-normal px-3 py-2.5 text-center text-sm leading-snug sm:h-9 sm:min-h-0 sm:w-auto sm:flex-row sm:items-center sm:justify-center sm:gap-2"
+                            onClick={() => onManage(row)}
+                          >
+                            <Settings2 className="h-4 w-4 shrink-0" />
+                            Manage
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            className="flex h-auto min-h-10 w-full flex-col gap-1.5 whitespace-normal px-3 py-2.5 text-center text-sm leading-snug sm:h-9 sm:min-h-0 sm:w-auto sm:flex-row sm:items-center sm:justify-center sm:gap-2"
+                            onClick={() => onSend(row)}
+                          >
+                            <Send className="h-4 w-4 shrink-0" />
+                            Assign Plots
+                          </Button>
+                        )}
+                      </TableCell>
+                    )}
                   </TableRow>
                 );
               })

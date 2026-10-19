@@ -3,6 +3,7 @@
 import { AlertTriangle, Bot, Loader2, RefreshCw, Sparkles, User2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { READ_ONLY } from "@/lib/read-only";
 import {
   FieldSource,
   TicketType,
@@ -56,7 +57,8 @@ const formatWhen = (iso: string) => {
  * a control that just stops working reads as a bug.
  */
 export function TicketClassificationPanel({ ticket }: Props) {
-  const { canDecideTicketRouting } = useAdminSession();
+  const session = useAdminSession();
+  const canDecideTicketRouting = !READ_ONLY && session.canDecideTicketRouting;
   const { data: categories = [] } = useTicketCategories(canDecideTicketRouting);
   const update = useUpdateTicket();
   const classify = useClassifyTicket();
@@ -163,7 +165,7 @@ export function TicketClassificationPanel({ ticket }: Props) {
         </Field>
       </div>
 
-      {!canDecideTicketRouting && (
+      {!canDecideTicketRouting && !READ_ONLY && (
         <p className="text-[11px] text-gray-500">
           Classification is set by the CS Manager. Add an internal note if you
           think it&apos;s wrong.
@@ -185,7 +187,7 @@ export function TicketClassificationPanel({ ticket }: Props) {
           <AlertTriangle className="h-3.5 w-3.5 text-amber-700 mt-0.5 shrink-0" />
           <div className="text-[11px] text-amber-900">
             <p className="font-medium">Classification didn&apos;t run</p>
-            <p>{ai.error} — classify by hand above, or re-run.</p>
+            <p>{ai.error}{!READ_ONLY && " — classify by hand above, or re-run."}</p>
           </div>
         </div>
       ) : ai?.classified_at ? (

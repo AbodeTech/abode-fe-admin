@@ -18,6 +18,8 @@ import Link from "next/link";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
+import { READ_ONLY } from "@/lib/read-only";
+
 import { AgencyUsersTable, AgencyUserRow } from "./AgencyUsersTable";
 import { AgencyTransactionsTable, AgencyTransactionRow } from "./AgencyTransactionsTable";
 import { useReactivateAgency, useSuspendAgency, useUpdateAgencyCommission } from "../hooks/use-agency-actions";
@@ -155,18 +157,22 @@ export function AgencyDetailView({ agency, statistics, users, transactions }: Ag
           <Button variant="outline" className="w-full sm:w-auto" asChild>
             <Link href={`/agency/transactions/${agency._id}`}>View Transactions</Link>
           </Button>
-          <Button variant="outline" className="w-full sm:w-auto" onClick={() => setCommissionOpen(true)}>
-            Edit Commission
-          </Button>
-          {agency.is_suspended ? (
-            <Button className="w-full sm:w-auto" onClick={handleReactivate} disabled={reactivating}>
-              {reactivating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Reactivate Agency
-            </Button>
-          ) : (
-            <Button variant="destructive" className="w-full sm:w-auto" onClick={() => setSuspendOpen(true)}>
-              Suspend Agency
-            </Button>
+          {!READ_ONLY && (
+            <>
+              <Button variant="outline" className="w-full sm:w-auto" onClick={() => setCommissionOpen(true)}>
+                Edit Commission
+              </Button>
+              {agency.is_suspended ? (
+                <Button className="w-full sm:w-auto" onClick={handleReactivate} disabled={reactivating}>
+                  {reactivating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Reactivate Agency
+                </Button>
+              ) : (
+                <Button variant="destructive" className="w-full sm:w-auto" onClick={() => setSuspendOpen(true)}>
+                  Suspend Agency
+                </Button>
+              )}
+            </>
           )}
         </div>
       </div>

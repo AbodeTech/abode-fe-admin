@@ -23,6 +23,7 @@ import {
 } from "@/features/associate-upgrade";
 import { FragmentType, useFragment as getFragmentData } from "@/lib/gql";
 import { Pagination } from "@/components/shared/Pagination";
+import { READ_ONLY } from "@/lib/read-only";
 
 function AssociateUpgradeContent() {
   const searchParams = useSearchParams();
@@ -158,7 +159,7 @@ function AssociateUpgradeContent() {
         <div className="min-w-0">
           <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Associate Upgrade Requests</h1>
           <p className="text-sm text-muted-foreground sm:text-base">
-            Review and manage associate/associate-pro upgrade submissions.
+            {READ_ONLY ? "Review" : "Review and manage"} associate/associate-pro upgrade submissions.
           </p>
         </div>
         <div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end">
@@ -170,9 +171,9 @@ function AssociateUpgradeContent() {
             endDate={endDateParam}
             search={searchParam}
           />
-          <CreateUpgradeTransactionDialog />
+          {!READ_ONLY && <CreateUpgradeTransactionDialog />}
           <Button asChild className="w-full shrink-0 sm:w-auto">
-            <Link href="/associate-upgrade/coupons">Coupon Management</Link>
+            <Link href="/associate-upgrade/coupons">{READ_ONLY ? "Coupons" : "Coupon Management"}</Link>
           </Button>
         </div>
       </div>

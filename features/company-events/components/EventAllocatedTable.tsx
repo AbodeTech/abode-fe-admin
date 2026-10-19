@@ -20,6 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { READ_ONLY } from "@/lib/read-only";
 
 import type { EventAllocationRow } from "../hooks/use-event-allocations";
 import type {
@@ -133,7 +134,7 @@ export function EventAllocatedTable({
                 <AdminMobileField label="Size reserved" value={`${formatNumber(row.size_reserved)} ${unit}`} />
                 <AdminMobileField label="Pickup" value={row.pickup_location ?? "—"} />
                 <AdminMobileField label="Allocated on" value={formatDate(row.createdAt)} />
-                {row.allocation_status !== "cancelled" && (
+                {!READ_ONLY && row.allocation_status !== "cancelled" && (
                   <div className="border-t border-border pt-2">
                     <Button
                       variant="outline"
@@ -175,15 +176,17 @@ export function EventAllocatedTable({
                 <TableHead className="min-w-34 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Allocated On
                 </TableHead>
-                <TableHead className="min-w-28 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Action
-                </TableHead>
+                {!READ_ONLY && (
+                  <TableHead className="min-w-28 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Action
+                  </TableHead>
+                )}
               </TableRow>
             </TableHeader>
             <TableBody>
               {safeRows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="whitespace-normal px-4 py-12 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={READ_ONLY ? 5 : 6}className="whitespace-normal px-4 py-12 text-center text-sm text-muted-foreground">
                     No one has been allocated yet.
                   </TableCell>
                 </TableRow>
@@ -206,26 +209,28 @@ export function EventAllocatedTable({
                     <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed wrap-break-word">
                       {formatDate(row.createdAt)}
                     </TableCell>
-                    <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4">
-                      {row.allocation_status !== "cancelled" ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="gap-2"
-                          onClick={() => onRemove(row)}
-                          disabled={removingId === row.id}
-                        >
-                          {removingId === row.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <X className="h-4 w-4" />
-                          )}
-                          Remove
-                        </Button>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
+                    {!READ_ONLY && (
+                      <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4">
+                        {row.allocation_status !== "cancelled" ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-2"
+                            onClick={() => onRemove(row)}
+                            disabled={removingId === row.id}
+                          >
+                            {removingId === row.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <X className="h-4 w-4" />
+                            )}
+                            Remove
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))
               )}

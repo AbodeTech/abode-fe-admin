@@ -3,6 +3,7 @@
 import React from "react";
 import { graphql } from "@/lib/gql";
 import { FragmentType, useFragment as getFragmentData } from "@/lib/gql";
+import { READ_ONLY } from "@/lib/read-only";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -55,9 +56,11 @@ export function RolesGrid({ roles, isLoading }: RolesGridProps) {
           <Shield className="h-5 w-5 shrink-0 text-muted-foreground" />
           <h2 className="min-w-0 text-2xl font-semibold text-foreground">Roles Management</h2>
         </div>
-        <div className="w-full sm:ml-auto sm:w-auto">
-          <CreateRoleDialog />
-        </div>
+        {!READ_ONLY && (
+          <div className="w-full sm:ml-auto sm:w-auto">
+            <CreateRoleDialog />
+          </div>
+        )}
       </div>
 
       <div className="grid min-w-0 grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -72,9 +75,11 @@ export function RolesGrid({ roles, isLoading }: RolesGridProps) {
                   </CardTitle>
                   <p className="mt-1 text-sm text-muted-foreground">{data.description}</p>
                 </div>
-                <Button variant="ghost" size="icon" className="text-destructive" disabled>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                {!READ_ONLY && (
+                  <Button variant="ghost" size="icon" className="text-destructive" disabled>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
               </CardHeader>
               <CardContent className="space-y-3">
                 <p className="text-sm font-medium text-muted-foreground">

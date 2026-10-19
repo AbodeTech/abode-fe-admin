@@ -18,6 +18,7 @@ import {
   useAllocationExport,
 } from "@/features/allocation";
 import { FragmentType, useFragment as getFragmentData } from "@/lib/gql";
+import { READ_ONLY } from "@/lib/read-only";
 // @ts-expect-error - json2csv does not ship complete ESM typings in this setup.
 import { Parser } from "json2csv";
 import { saveAs } from "file-saver";
@@ -184,7 +185,7 @@ function AllocationContent() {
         <div className="min-w-0">
           <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Land Allocation System</h1>
           <p className="text-sm text-muted-foreground sm:text-base">
-            Manage and track allocations for eligible clients.
+            {READ_ONLY ? "Track" : "Manage and track"} allocations for eligible clients.
           </p>
         </div>
         <Button
@@ -233,12 +234,14 @@ function AllocationContent() {
         limit={DEFAULT_ALLOCATION_LIMIT}
       />
 
-      <AllocationModal
-        open={modalOpen}
-        mode={modalMode}
-        client={modalClient}
-        onOpenChange={setModalOpen}
-      />
+      {!READ_ONLY && (
+        <AllocationModal
+          open={modalOpen}
+          mode={modalMode}
+          client={modalClient}
+          onOpenChange={setModalOpen}
+        />
+      )}
     </div>
   );
 }

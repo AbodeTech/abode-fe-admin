@@ -34,6 +34,7 @@ import {
   DollarSign,
   FileText,
 } from "lucide-react";
+import { READ_ONLY } from "@/lib/read-only";
 import { useActionRequests } from "../hooks/use-action-requests";
 import type { ClientRequest } from "../hooks/use-client-requests";
 
@@ -303,7 +304,7 @@ export function RequestDetailModal({ request }: RequestDetailModalProps) {
           </ScrollArea>
 
           {/* ── Sticky footer with actions ── */}
-          {isPending && (
+          {isPending && !READ_ONLY && (
             <div className="p-6 border-t bg-gray-50 flex flex-wrap gap-3 justify-end flex-shrink-0">
               <Button
                 variant="outline"

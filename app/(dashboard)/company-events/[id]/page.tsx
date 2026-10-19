@@ -15,6 +15,7 @@ import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { Pagination } from "@/components/shared/Pagination";
 import { SuspensePageFallback } from "@/components/shared/page-content-loader";
 import { toast } from "sonner";
+import { READ_ONLY } from "@/lib/read-only";
 
 import {
   DEFAULT_EVENT_ALLOCATIONS_LIMIT,
@@ -450,7 +451,7 @@ function EventDetailContent() {
             <Badge variant="secondary">{event.type === "allocation" ? "Allocation" : "Site Inspection"}</Badge>
             <Badge variant="outline">{event.status}</Badge>
           </div>
-          <div className="flex items-center gap-2">
+          {!READ_ONLY && <div className="flex items-center gap-2">
             {event.status === "draft" && (
               <Button size="sm" onClick={handlePublish} disabled={updateEventStatus.isPending}>
                 {updateEventStatus.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
@@ -473,7 +474,7 @@ function EventDetailContent() {
                 Reopen
               </Button>
             )}
-          </div>
+          </div>}
         </div>
         <p className="text-sm text-muted-foreground">
           {event.asset_label} · {new Date(event.date).toLocaleDateString()} at {event.time}
@@ -632,7 +633,9 @@ function EventDetailContent() {
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h2 className="text-lg font-semibold">Allocated</h2>
-                <p className="text-sm text-muted-foreground">Saved into this event&apos;s batch. Remove frees their reserved size.</p>
+                <p className="text-sm text-muted-foreground">
+                  Saved into this event&apos;s batch.{!READ_ONLY && " Remove frees their reserved size."}
+                </p>
               </div>
               <Button variant="outline" size="sm" onClick={handleExportAllocated} disabled={exportAllocations.isPending}>
                 {exportAllocations.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}

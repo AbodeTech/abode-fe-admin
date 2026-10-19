@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Loader2, Plus } from "lucide-react";
 
+import { READ_ONLY } from "@/lib/read-only";
 import { Button } from "@/components/ui/button";
 import { AgencyDashboardPanels, useAgencyDashboard } from "@/features/agency";
 import { getErrorMessage } from "@/features/agency/utils/error-message";
@@ -46,12 +47,14 @@ export default function AgencyDashboardPage() {
           <Button variant="outline" className="w-full sm:w-auto" asChild>
             <Link href="/agency/lists">View All Agencies</Link>
           </Button>
-          <Button className="w-full sm:w-auto" asChild>
-            <Link href="/agency/new">
-              <Plus className="mr-2 h-4 w-4" />
-              Onboard Agency
-            </Link>
-          </Button>
+          {!READ_ONLY && (
+            <Button className="w-full sm:w-auto" asChild>
+              <Link href="/agency/new">
+                <Plus className="mr-2 h-4 w-4" />
+                Onboard Agency
+              </Link>
+            </Button>
+          )}
         </div>
       </div>
 

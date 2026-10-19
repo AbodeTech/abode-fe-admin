@@ -46,6 +46,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { cn } from "@/lib/utils";
+import { READ_ONLY } from "@/lib/read-only";
 import type {
   CustomerOnboardingOutcome,
   LogOnboardingCallInput,
@@ -277,6 +278,10 @@ export function PlanDetailDrawer({ plan, open, onOpenChange }: Props) {
                 {plan.doaLabel ?? "Delivered"}. Marking a deed delivered can&apos;t be
                 undone from the admin.
               </div>
+            ) : deedEligible && READ_ONLY ? (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                Eligible — the deed hasn&apos;t gone out yet.
+              </div>
             ) : deedEligible ? (
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-2.5">
                 <p className="text-xs text-amber-900">
@@ -400,7 +405,7 @@ export function PlanDetailDrawer({ plan, open, onOpenChange }: Props) {
             )}
 
             {/* --------------------------------------------------- log a call */}
-            <Form {...form}>
+            {!READ_ONLY && <Form {...form}>
               <form
                 onSubmit={form.handleSubmit(onSubmit)}
                 className="rounded-lg border border-gray-200 p-3 space-y-4"
@@ -530,7 +535,7 @@ export function PlanDetailDrawer({ plan, open, onOpenChange }: Props) {
                   </Button>
                 </div>
               </form>
-            </Form>
+            </Form>}
           </section>
         </div>
       </SheetContent>

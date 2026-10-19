@@ -12,6 +12,7 @@ import { useAuthStore } from "@/store/auth-store";
 import { SuspensePageFallback, PageContentLoader } from "@/components/shared/page-content-loader";
 import { DateFilter } from "@/components/shared/DateFilter";
 import { isTopLevelAdmin } from "@/lib/admin-roles";
+import { READ_ONLY } from "@/lib/read-only";
 import { useSearchParams } from "next/navigation";
 
 function DashboardContent() {
@@ -53,7 +54,7 @@ function DashboardContent() {
           <div className="min-w-0 flex-1 sm:flex-initial">
             <DateFilter />
           </div>
-          {isAdmin && (
+          {isAdmin && !READ_ONLY && (
             <div className="shrink-0 [&_button]:w-full sm:[&_button]:w-auto">
               <InviteAdminDialog />
             </div>

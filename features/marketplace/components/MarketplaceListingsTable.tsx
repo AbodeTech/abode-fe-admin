@@ -69,6 +69,8 @@ export function MarketplaceListingsTable({
   onSuspend,
   onUnsuspend,
 }: MarketplaceListingsTableProps) {
+  const hasActions = !!(onSuspend || onUnsuspend);
+
   if (isLoading) {
     return <div className="p-8 text-center text-gray-500">Loading listings...</div>;
   }
@@ -108,20 +110,22 @@ export function MarketplaceListingsTable({
               }
             />
             <AdminMobileField label="Listed" value={formatDate(listing.listed_at || listing.createdAt)} />
-            <div className="flex justify-end gap-1 border-t border-border pt-2">
-              {listing.status === "active" && onSuspend && (
-                <Button variant="outline" size="sm" onClick={() => onSuspend(listing)}>
-                  <Ban className="mr-1 h-4 w-4" />
-                  Suspend
-                </Button>
-              )}
-              {listing.status === "suspended" && onUnsuspend && (
-                <Button variant="outline" size="sm" onClick={() => onUnsuspend(listing)}>
-                  <CheckCircle className="mr-1 h-4 w-4" />
-                  Unsuspend
-                </Button>
-              )}
-            </div>
+            {hasActions && (
+              <div className="flex justify-end gap-1 border-t border-border pt-2">
+                {listing.status === "active" && onSuspend && (
+                  <Button variant="outline" size="sm" onClick={() => onSuspend(listing)}>
+                    <Ban className="mr-1 h-4 w-4" />
+                    Suspend
+                  </Button>
+                )}
+                {listing.status === "suspended" && onUnsuspend && (
+                  <Button variant="outline" size="sm" onClick={() => onUnsuspend(listing)}>
+                    <CheckCircle className="mr-1 h-4 w-4" />
+                    Unsuspend
+                  </Button>
+                )}
+              </div>
+            )}
           </AdminMobileCard>
         ))}
       </AdminMobileStack>
@@ -150,7 +154,7 @@ export function MarketplaceListingsTable({
                 Listed
               </div>
             </TableHead>
-            <TableHead className="px-3 py-3 font-medium sm:px-4 sm:py-4">Actions</TableHead>
+            {hasActions && <TableHead className="px-3 py-3 font-medium sm:px-4 sm:py-4">Actions</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -191,7 +195,7 @@ export function MarketplaceListingsTable({
               <TableCell className="whitespace-nowrap px-3 py-4 text-sm text-[#333333] sm:px-4 sm:py-5">
                 {formatDate(listing.listed_at || listing.createdAt)}
               </TableCell>
-              <TableCell className="px-3 py-4 sm:px-4 sm:py-5">
+              {hasActions && <TableCell className="px-3 py-4 sm:px-4 sm:py-5">
                 <div className="flex items-center gap-1">
                   {listing.status === "active" && onSuspend && (
                     <Button
@@ -216,7 +220,7 @@ export function MarketplaceListingsTable({
                     </Button>
                   )}
                 </div>
-              </TableCell>
+              </TableCell>}
             </TableRow>
           ))}
         </TableBody>

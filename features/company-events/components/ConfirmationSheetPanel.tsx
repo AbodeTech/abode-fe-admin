@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { READ_ONLY } from "@/lib/read-only";
 import { downloadCsv } from "../lib/csv";
 import {
   fetchConfirmationSheet,
@@ -131,9 +132,9 @@ export function ConfirmationSheetPanel({ eventId, eventTitle, pickupLocations = 
     <div className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
       <h3 className="text-sm font-semibold text-slate-900">Allocation day sheet</h3>
       <p className="mt-1 text-xs text-slate-500">
-        For a site with no network. Export once the buses are loaded, tick people off
-        on the land, then upload the file when you are back in signal. Ticking someone
-        records them as having been shown their plot; an untick never removes one.
+        {READ_ONLY
+          ? "Download who is being given land on this event, with their block and plot."
+          : "For a site with no network. Export once the buses are loaded, tick people off on the land, then upload the file when you are back in signal. Ticking someone records them as having been shown their plot; an untick never removes one."}
       </p>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -168,7 +169,7 @@ export function ConfirmationSheetPanel({ eventId, eventTitle, pickupLocations = 
           </Button>
         ))}
 
-        <div className="ml-auto">
+        {!READ_ONLY && <div className="ml-auto">
           <input
             ref={fileRef}
             type="file"
@@ -190,7 +191,7 @@ export function ConfirmationSheetPanel({ eventId, eventTitle, pickupLocations = 
             )}
             Upload filled sheet
           </Button>
-        </div>
+        </div>}
       </div>
 
       <Dialog open={!!preview} onOpenChange={(o) => !o && setPreview(null)}>

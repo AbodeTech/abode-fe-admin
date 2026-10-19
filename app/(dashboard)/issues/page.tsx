@@ -9,6 +9,7 @@ import { Pagination } from "@/components/shared/Pagination";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useAdminSession } from "@/hooks/use-admin-session";
 import { IssueStatus } from "@/lib/gql/graphql";
+import { READ_ONLY } from "@/lib/read-only";
 import {
   useIssues,
   DEFAULT_ISSUES_LIMIT,
@@ -37,7 +38,8 @@ const parseStatus = (v: string | null): IssueStatus | null => {
 function IssuesContent() {
   const router = useRouter();
   const search = useSearchParams();
-  const { canDecideTicketRouting } = useAdminSession();
+  const session = useAdminSession();
+  const canDecideTicketRouting = !READ_ONLY && session.canDecideTicketRouting;
 
   const status = parseStatus(search.get("status"));
   const page = Math.max(1, Number(search.get("page") ?? "1") || 1);
@@ -72,8 +74,9 @@ function IssuesContent() {
         <div>
           <h1 className="text-xl font-semibold text-gray-900">Issues</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Root-cause grouping for ticket clusters. Resolve the issue
-            and every linked ticket closes with it in one deliberate act.
+            {READ_ONLY
+              ? "Root-cause grouping for ticket clusters."
+              : "Root-cause grouping for ticket clusters. Resolve the issue and every linked ticket closes with it in one deliberate act."}
           </p>
         </div>
         {canDecideTicketRouting && (

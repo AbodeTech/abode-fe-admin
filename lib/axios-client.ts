@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { useAuthStore } from '@/store/auth-store';
 import { getAccessToken, clearAuthCookies } from '@/lib/utils/cookies';
+import { assertNotMutation } from '@/lib/read-only';
 
 const API_ENDPOINT = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -15,6 +16,13 @@ export const apiClient = axios.create({
   },
 });
 
+// Request interceptor - block writes while read-only
+apiClient.interceptors.request.use((config) => {
+  const body = typeof config.data === 'string' ? safeJsonParse(config.data) : config.data;
+  assertNotMutation(body?.query);
+  return config;
+});
+
 // Request interceptor - add auth token
 apiClient.interceptors.request.use((config) => {
   const token = getAccessToken() || useAuthStore.getState().user?.authToken;
@@ -23,6 +31,14 @@ apiClient.interceptors.request.use((config) => {
   }
   return config;
 });
+
+function safeJsonParse(value: string) {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return undefined;
+  }
+}
 
 // Response interceptor - handle 401 unauthorized
 apiClient.interceptors.response.use(

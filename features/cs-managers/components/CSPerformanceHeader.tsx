@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Inbox } from "lucide-react";
+import { READ_ONLY } from "@/lib/read-only";
 import {
   Select,
   SelectContent,
@@ -116,7 +117,13 @@ export function CSPerformanceHeader({
 
           {isSuperAdmin && (
             <>
-              {unassignedCount > 0 && (
+              {unassignedCount > 0 && READ_ONLY && (
+                <span className="inline-flex items-center gap-2 rounded-full bg-amber-50 text-amber-800 px-3 py-1.5 text-xs font-medium border border-amber-200">
+                  <Inbox className="h-3.5 w-3.5" />
+                  {unassignedCount} unassigned
+                </span>
+              )}
+              {unassignedCount > 0 && !READ_ONLY && (
                 <button
                   type="button"
                   onClick={() => setUnassignedOpen(true)}
@@ -130,15 +137,17 @@ export function CSPerformanceHeader({
 
               {/* Nobody is selected in the combined view, so there is no
                   manager to remove — the menu still offers "Add". */}
-              <ManageCSManagersMenu
-                activeManager={isAllManagers ? null : activeManager}
-              />
+              {!READ_ONLY && (
+                <ManageCSManagersMenu
+                  activeManager={isAllManagers ? null : activeManager}
+                />
+              )}
             </>
           )}
         </div>
       </div>
 
-      {isSuperAdmin && (
+      {isSuperAdmin && !READ_ONLY && (
         <UnassignedCustomersDialog
           open={unassignedOpen}
           onOpenChange={setUnassignedOpen}

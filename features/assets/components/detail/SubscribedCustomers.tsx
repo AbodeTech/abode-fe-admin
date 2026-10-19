@@ -11,6 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import * as XLSX from "xlsx";
 import { cn } from "@/lib/utils";
+import { READ_ONLY } from "@/lib/read-only";
 import { saveAs } from "file-saver";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { FilterSelect } from "@/components/shared/FilterSelect";
@@ -142,7 +143,7 @@ export function SubscribedCustomers({ assetName, assetType }: Props) {
               <p className="text-xs text-muted-foreground font-medium mt-1 uppercase tracking-wider">Granular Customer Collection Tracking</p>
             </div>
             <div className="flex gap-2">
-              <SendAssetStatementsModal assetId={assetId} />
+              {!READ_ONLY && <SendAssetStatementsModal assetId={assetId} />}
               <Button 
                 variant="outline" 
                 size="sm" 

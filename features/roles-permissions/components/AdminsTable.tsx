@@ -3,6 +3,7 @@
 import React from "react";
 import { graphql } from "@/lib/gql";
 import { FragmentType, useFragment as getFragmentData } from "@/lib/gql";
+import { READ_ONLY } from "@/lib/read-only";
 import { Card } from "@/components/ui/card";
 import {
   Table,
@@ -99,7 +100,7 @@ export function AdminsTable({ admins, isLoading }: AdminsTableProps) {
                 )}
               </div>
               <div className="flex flex-wrap gap-2 border-t border-border pt-3">
-                <ChangeRoleDialog admin={admin} />
+                {!READ_ONLY && <ChangeRoleDialog admin={admin} />}
                 <Button variant="outline" size="sm" asChild>
                   <Link href={`/security/roles/${admin.adminId}`}>View</Link>
                 </Button>
@@ -156,7 +157,7 @@ export function AdminsTable({ admins, isLoading }: AdminsTableProps) {
                     </TableCell>
                     <TableCell>
                       <div className="flex min-w-0 flex-wrap items-center gap-2">
-                        <ChangeRoleDialog admin={admin} />
+                        {!READ_ONLY && <ChangeRoleDialog admin={admin} />}
                         <Button variant="outline" size="sm" asChild>
                           <Link href={`/security/roles/${admin.adminId}`}>View</Link>
                         </Button>

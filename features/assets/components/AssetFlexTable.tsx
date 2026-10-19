@@ -19,6 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { MoreVertical } from "lucide-react";
 import { graphql, FragmentType, useFragment } from "@/lib/gql";
+import { READ_ONLY } from "@/lib/read-only";
 
 import { AssetFlexTable_AssetFragment } from "@/lib/gql/graphql";
 import {
@@ -147,11 +148,13 @@ export function FlexAssetsTable({ data }: Props) {
                     View
                   </Link>
                 </Button>
-                <Button variant="outline" size="sm" asChild>
-                  <Link href={`/assets/flex/${asset.name}/edit`} onClick={() => updateAssetId(asset.id || "")}>
-                    Edit
-                  </Link>
-                </Button>
+                {!READ_ONLY && (
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={`/assets/flex/${asset.name}/edit`} onClick={() => updateAssetId(asset.id || "")}>
+                      Edit
+                    </Link>
+                  </Button>
+                )}
               </div>
             </AdminMobileCard>
           ))
@@ -229,14 +232,16 @@ export function FlexAssetsTable({ data }: Props) {
                           View Details
                         </Link>
                       </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link
-                          href={`/assets/flex/${asset.name}/edit`}
-                          onClick={() => updateAssetId(asset.id || "")}
-                        >
-                          Modify Asset
-                        </Link>
-                      </DropdownMenuItem>
+                      {!READ_ONLY && (
+                        <DropdownMenuItem asChild>
+                          <Link
+                            href={`/assets/flex/${asset.name}/edit`}
+                            onClick={() => updateAssetId(asset.id || "")}
+                          >
+                            Modify Asset
+                          </Link>
+                        </DropdownMenuItem>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
