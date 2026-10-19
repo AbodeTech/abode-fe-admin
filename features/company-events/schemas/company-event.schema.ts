@@ -8,23 +8,9 @@ import { z } from 'zod';
  * `company-events-admin.controller.ts` / `.service.ts` / `dto/company-event.dto.ts`
  * / `schemas/company-event.schema.ts` on that branch, not speculative.
  *
- * PR #69 ("company-events-offline") then added the three admin endpoints
- * that were the one real gap: `GET /:id/allocations`, `GET /:id/analytics`,
- * `GET /:id/registrations` — all gated on `view_allocations`, confirmed
- * against the same files. Every shape below is now real; nothing in this
- * file is mock-only or simulated anymore.
- *
- * Per the finalized decisions doc, still true on the real backend:
- * - No waitlist state, no auto-revert-on-no-show (decisions #3/#4) — an
- *   `EventAllocation`, once created, stands until an admin explicitly
- *   removes it.
- * - No `EventAllocationHistory` *endpoint* exposed to the admin (the
- *   collection exists server-side for audit, per decision #12, but nothing
- *   here reads it).
- * - Decision #9 said pickup-location seat limits were "removed, not needed"
- *   — the real backend built `seat_limit` anyway (optional, on both the
- *   create DTO and the response). Modeled here since it's real data when
- *   present, but no create-form UI was added for it, matching the decision.
+ * The current `abode-be-v2` staging contract also supports open registration,
+ * visitor attendance, attendee actions and offline confirmation sheets.
+ * Land allocation and attendance remain separate states.
  * ============================================================ */
 
 export const COMPANY_EVENT_TYPES = ['site_inspection', 'allocation'] as const;
@@ -61,6 +47,7 @@ export type PickupLocation = z.infer<typeof PickupLocationSchema>;
  */
 export const CompanyEventSchema = z.object({
   id: z.string(),
+  slug: z.string().nullable().optional(),
   title: z.string(),
   type: CompanyEventTypeSchema,
   asset_id: z.string(),
@@ -77,6 +64,7 @@ export const CompanyEventSchema = z.object({
   remaining_capacity: z.number().nullable(),
   size_unit: z.string().nullable().optional(),
   status: CompanyEventStatusSchema,
+  open_registration: z.boolean().optional(),
   created_by: z.string().nullable().optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -135,6 +123,7 @@ export const EventEligibleClientSchema = z.object({
 export type EventEligibleClient = z.infer<typeof EventEligibleClientSchema>;
 
 export const EVENT_ALLOCATION_STATUSES = [
+  'invited',
   'allocated',
   'email_sent',
   'registered',
@@ -163,6 +152,7 @@ export type RegistrationCategory = z.infer<typeof RegistrationCategorySchema>;
  */
 export const EventAllocationSchema = z.object({
   allocation_id: z.string(),
+  attendance_id: z.string().nullable().optional(),
   user_id: z.string().nullable(),
   payment_plan_id: z.string().nullable(),
   name: z.string(),
@@ -171,6 +161,7 @@ export const EventAllocationSchema = z.object({
   category: RegistrationCategorySchema.nullable(),
   pickup_location: z.string().nullable(),
   status: EventAllocationStatusSchema,
+  allocation_status: z.enum(['allocated', 'cancelled']).optional(),
   eligibility_tier: EligibilityTierSchema,
   size_reserved: z.number(),
   email_status: InviteEmailStatusSchema,
@@ -243,11 +234,17 @@ export type DeallocateResult = z.infer<typeof DeallocateResultSchema>;
 export const EventRegistrationRowSchema = z.object({
   registration_id: z.string(),
   allocation_id: z.string().nullable(),
+  getting_land: z.boolean().optional(),
+  status: EventAllocationStatusSchema.optional(),
   name: z.string(),
   phone: z.string(),
   email: z.string(),
   category: RegistrationCategorySchema,
   pickup_location: z.string().nullable(),
+  pickup_location_id: z.string().nullable().optional(),
+  waitlisted: z.boolean().optional(),
+  checked_in_at: z.string().nullable().optional(),
+  confirmed_at: z.string().nullable().optional(),
   submitted_at: z.string().nullable(),
 });
 export type EventRegistrationRow = z.infer<typeof EventRegistrationRowSchema>;
@@ -265,8 +262,12 @@ export const EventAnalyticsSchema = z.object({
   event_id: z.string(),
   title: z.string(),
   funnel: z.object({
+    attending: z.number().optional(),
+    registrants: z.number().optional(),
     allocated: z.number(),
     registered: z.number(),
+    registered_allocated: z.number().optional(),
+    registered_registrants: z.number().optional(),
     checked_in: z.number(),
     confirmed: z.number(),
   }),

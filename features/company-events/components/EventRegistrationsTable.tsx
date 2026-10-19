@@ -7,6 +7,7 @@ import {
   AdminMobileStack,
 } from "@/components/shared/admin-responsive-table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -36,9 +37,10 @@ const formatDateTime = (value?: string | null) => {
 interface EventRegistrationsTableProps {
   rows?: EventRegistrationRow[] | null;
   isLoading?: boolean;
+  onChangePickup?: (row: EventRegistrationRow) => void;
 }
 
-export function EventRegistrationsTable({ rows, isLoading }: EventRegistrationsTableProps) {
+export function EventRegistrationsTable({ rows, isLoading, onChangePickup }: EventRegistrationsTableProps) {
   if (isLoading) {
     return (
       <Card className="min-w-0 border-none shadow-sm">
@@ -64,8 +66,11 @@ export function EventRegistrationsTable({ rows, isLoading }: EventRegistrationsT
             safeRows.map((row) => (
               <AdminMobileCard key={row.registration_id} title={row.name} subtitle={row.email}>
                 <AdminMobileField label="Category" value={<Badge variant="secondary">{CATEGORY_LABELS[row.category]}</Badge>} />
+                <AdminMobileField label="Attending as" value={row.getting_land ? 'Getting land' : 'Visitor'} />
+                <AdminMobileField label="Status" value={row.status ?? 'Registered'} />
                 <AdminMobileField label="Pickup" value={row.pickup_location ?? "—"} />
                 <AdminMobileField label="Submitted" value={formatDateTime(row.submitted_at)} />
+                {onChangePickup && row.status !== 'cancelled' && <Button variant="outline" size="sm" onClick={() => onChangePickup(row)}>Change pickup</Button>}
               </AdminMobileCard>
             ))
           )}
@@ -84,18 +89,21 @@ export function EventRegistrationsTable({ rows, isLoading }: EventRegistrationsT
                 <TableHead className="min-w-28 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Category
                 </TableHead>
+                <TableHead className="min-w-28 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Attending as</TableHead>
+                <TableHead className="min-w-28 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</TableHead>
                 <TableHead className="min-w-40 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Pickup
                 </TableHead>
                 <TableHead className="min-w-40 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Submitted
                 </TableHead>
+                <TableHead className="min-w-28 px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {safeRows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="whitespace-normal px-4 py-12 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={8} className="whitespace-normal px-4 py-12 text-center text-sm text-muted-foreground">
                     No one has registered yet.
                   </TableCell>
                 </TableRow>
@@ -112,12 +120,15 @@ export function EventRegistrationsTable({ rows, isLoading }: EventRegistrationsT
                     <TableCell className="align-top whitespace-nowrap px-4 py-4">
                       <Badge variant="secondary">{CATEGORY_LABELS[row.category]}</Badge>
                     </TableCell>
+                    <TableCell className="align-top px-4 py-4">{row.getting_land ? 'Getting land' : 'Visitor'}</TableCell>
+                    <TableCell className="align-top px-4 py-4">{row.status ?? 'Registered'}</TableCell>
                     <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed wrap-break-word">
                       {row.pickup_location ?? "—"}
                     </TableCell>
                     <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed wrap-break-word">
                       {formatDateTime(row.submitted_at)}
                     </TableCell>
+                    <TableCell className="align-top px-4 py-4">{onChangePickup && row.status !== 'cancelled' && <Button variant="outline" size="sm" onClick={() => onChangePickup(row)}>Change pickup</Button>}</TableCell>
                   </TableRow>
                 ))
               )}

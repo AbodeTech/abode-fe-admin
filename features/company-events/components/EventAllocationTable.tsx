@@ -61,6 +61,9 @@ interface EventAllocationTableProps {
   rows?: EventEligibleClient[] | null;
   isLoading?: boolean;
   selected: Set<string>;
+  selectedSize: number;
+  selectedPeopleCount: number;
+  selectedPlotCount: number;
   onToggle: (row: EventEligibleClient) => void;
   availableSize?: number | null;
   sizeUnit?: string | null;
@@ -74,6 +77,9 @@ export function EventAllocationTable({
   rows,
   isLoading,
   selected,
+  selectedSize,
+  selectedPeopleCount,
+  selectedPlotCount,
   onToggle,
   availableSize,
   sizeUnit,
@@ -95,9 +101,6 @@ export function EventAllocationTable({
   }
 
   const safeRows = rows ?? [];
-  const selectedSize = safeRows
-    .filter((row) => selected.has(row.payment_plan_id))
-    .reduce((sum, row) => sum + totalSize(row), 0);
   const grandTotal = usedSize + selectedSize;
   const capacity = availableSize ?? null;
   const percent = capacity ? Math.min(100, Math.round((grandTotal / capacity) * 100)) : 0;
@@ -129,7 +132,7 @@ export function EventAllocationTable({
                     ? `${formatNumber(grandTotal)} / ${formatNumber(capacity)} ${unit} allocated`
                     : `${formatNumber(grandTotal)} ${unit} allocated (no capacity set)`}
                 </span>
-                <span className="font-medium">{selected.size} selected</span>
+                <span className="font-medium">{selectedPeopleCount} people · {selectedPlotCount} plots selected</span>
               </div>
               {capacity != null && (
                 <Progress value={percent} className={cn(atOrOverCapacity && "[&>div]:bg-destructive")} />
@@ -150,6 +153,7 @@ export function EventAllocationTable({
               )}
             </Button>
           </div>
+          {selected.size > 0 && <p className="mt-2 text-xs text-muted-foreground">Saving allocates these plans and queues invitation emails to the customers and their realtors.</p>}
         </div>
 
         <AdminMobileStack>

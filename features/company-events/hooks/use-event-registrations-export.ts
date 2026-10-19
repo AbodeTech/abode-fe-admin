@@ -34,7 +34,7 @@ export const fetchEventRegistrationsExportRows = async (
       `/admin/company-events/${eventId}/registrations`,
       EventRegistrationRowSchema,
       {
-        params: { page, limit: EXPORT_PAGE_SIZE, category: filters.category, search: filters.search || undefined },
+        params: { page, limit: EXPORT_PAGE_SIZE, category: filters.category, status: filters.status, pickup_location_id: filters.pickupLocationId, search: filters.search || undefined },
       }
     );
     total = meta.total ?? items.length;

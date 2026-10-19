@@ -17,6 +17,7 @@ export interface CreateCompanyEventInput {
   sizeUnit?: string;
   /** Free-text location names — the BE assigns each an `_id`. */
   pickupLocations?: string[];
+  openRegistration?: boolean;
 }
 
 /** `POST /admin/company-events` — creates either tab's event shape. */
@@ -32,6 +33,7 @@ export const useCreateCompanyEvent = () => {
       availableSize,
       sizeUnit,
       pickupLocations,
+      openRegistration,
     }: CreateCompanyEventInput) =>
       apiPost(
         '/admin/company-events',
@@ -46,6 +48,7 @@ export const useCreateCompanyEvent = () => {
           ...(pickupLocations?.length
             ? { pickup_locations: pickupLocations.map((name) => ({ name })) }
             : {}),
+          ...(openRegistration !== undefined ? { open_registration: openRegistration } : {}),
         },
         CompanyEventSchema
       ),

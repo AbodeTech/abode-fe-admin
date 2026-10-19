@@ -33,6 +33,7 @@ const formatDate = (value?: string | null) => {
 };
 
 const STATUS_LABELS: Record<EventAllocationStatus, string> = {
+  invited: "Invited",
   allocated: "Allocated",
   email_sent: "Invite sent",
   registered: "Registered",
@@ -42,6 +43,7 @@ const STATUS_LABELS: Record<EventAllocationStatus, string> = {
 };
 
 const STATUS_VARIANTS: Record<EventAllocationStatus, "secondary" | "outline" | "default"> = {
+  invited: "secondary",
   allocated: "secondary",
   email_sent: "secondary",
   registered: "outline",
@@ -50,11 +52,12 @@ const STATUS_VARIANTS: Record<EventAllocationStatus, "secondary" | "outline" | "
   cancelled: "outline",
 };
 
-function StatusBadge({ status }: { status: EventAllocationStatus }) {
+function StatusBadge({ status, landStatus }: { status: EventAllocationStatus; landStatus?: 'allocated' | 'cancelled' }) {
   return (
-    <Badge variant={STATUS_VARIANTS[status]} className={status === "cancelled" ? "text-muted-foreground" : undefined}>
-      {STATUS_LABELS[status]}
-    </Badge>
+    <div className="space-y-1">
+      <Badge variant={STATUS_VARIANTS[status]} className={status === "cancelled" ? "text-muted-foreground" : undefined}>{STATUS_LABELS[status]}</Badge>
+      {landStatus === 'cancelled' && <span className="block text-xs text-muted-foreground">Land released</span>}
+    </div>
   );
 }
 
@@ -63,6 +66,8 @@ interface EventAllocatedTableProps {
   isLoading?: boolean;
   sizeUnit?: string | null;
   onRemove: (row: EventAllocation) => void;
+  onRegister?: (row: EventAllocation) => void;
+  onChangePickup?: (row: EventAllocation) => void;
   removingId?: string | null;
 }
 
@@ -71,6 +76,8 @@ export function EventAllocatedTable({
   isLoading,
   sizeUnit,
   onRemove,
+  onRegister,
+  onChangePickup,
   removingId,
 }: EventAllocatedTableProps) {
   if (isLoading) {
@@ -98,11 +105,13 @@ export function EventAllocatedTable({
           ) : (
             safeRows.map((row) => (
               <AdminMobileCard key={row.allocation_id} title={row.name} subtitle={row.email ?? undefined}>
-                <AdminMobileField label="Status" value={<StatusBadge status={row.status} />} />
+                <AdminMobileField label="Attendance" value={<StatusBadge status={row.status} landStatus={row.allocation_status} />} />
                 <AdminMobileField label="Size reserved" value={`${formatNumber(row.size_reserved)} ${unit}`} />
                 <AdminMobileField label="Pickup" value={row.pickup_location ?? "—"} />
                 <AdminMobileField label="Allocated on" value={formatDate(row.created_at)} />
-                {row.status !== "cancelled" && (
+                {row.attendance_id && row.status === 'invited' && onRegister && <Button variant="outline" size="sm" onClick={() => onRegister(row)}>Register on behalf</Button>}
+                {row.attendance_id && row.status !== 'invited' && row.status !== 'cancelled' && onChangePickup && <Button variant="outline" size="sm" onClick={() => onChangePickup(row)}>Change pickup</Button>}
+                {row.allocation_status !== 'cancelled' && row.status !== "cancelled" && (
                   <div className="border-t border-border pt-2">
                     <Button
                       variant="outline"
@@ -167,7 +176,7 @@ export function EventAllocatedTable({
                       <span className="block text-muted-foreground">{row.phone || "—"}</span>
                     </TableCell>
                     <TableCell className="align-top whitespace-nowrap px-4 py-4">
-                      <StatusBadge status={row.status} />
+                      <StatusBadge status={row.status} landStatus={row.allocation_status} />
                     </TableCell>
                     <TableCell className="align-top whitespace-nowrap px-4 py-4 tabular-nums leading-relaxed">
                       {formatNumber(row.size_reserved)} {unit}
@@ -176,7 +185,10 @@ export function EventAllocatedTable({
                       {formatDate(row.created_at)}
                     </TableCell>
                     <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4">
-                      {row.status !== "cancelled" ? (
+                      <div className="flex flex-wrap gap-2">
+                      {row.attendance_id && row.status === 'invited' && onRegister && <Button variant="outline" size="sm" onClick={() => onRegister(row)}>Register on behalf</Button>}
+                      {row.attendance_id && row.status !== 'invited' && row.status !== 'cancelled' && onChangePickup && <Button variant="outline" size="sm" onClick={() => onChangePickup(row)}>Change pickup</Button>}
+                      {row.allocation_status !== 'cancelled' && row.status !== "cancelled" ? (
                         <Button
                           variant="outline"
                           size="sm"
@@ -194,6 +206,7 @@ export function EventAllocatedTable({
                       ) : (
                         <span className="text-xs text-muted-foreground">—</span>
                       )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
