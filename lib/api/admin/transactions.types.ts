@@ -128,6 +128,9 @@ export interface ProcessCommissionInput {
   commissionTypes: ("direct" | "topline" | "upline")[]
 }
 
+/** Who recorded a transaction: the user themselves, an admin, or a scheduled job. */
+export type TransactionCreatedVia = 'user' | 'admin' | 'cron';
+
 // User Transaction Type
 export interface TransactionListResponse {
   _id: string;
@@ -143,6 +146,7 @@ export interface TransactionListResponse {
   transfer_file?: {
     file: string;
   } | null;
+  created_via?: TransactionCreatedVia | null;
   // Optional fields for flexibility or deprecated usage
   user?: {
     firstName: string;

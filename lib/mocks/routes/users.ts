@@ -252,7 +252,7 @@ export const userRoutes: MockRoutes = {
         document_price: 500_000,
         payment_type_snapshot: 'all-inclusive',
         asset: { name: 'Abode Gardens', asset_type: 'full-ownership' },
-        document_plan: { amount_paid: 100_000, balance: 400_000, asset_price: 500_000 },
+        document_plan: { amount_paid: 100_000, balance: 400_000, document_fee_total: 500_000 },
         acquisition: {
           name_of_property: `${person.firstName} ${person.lastName}`,
           address: 'Sangotedo',
@@ -294,6 +294,19 @@ export const userRoutes: MockRoutes = {
         description: 'Plan installment',
         payment_method: 'paystack',
         paystack_reference: 'PSK_abc',
+        created_via: 'user',
+      },
+      {
+        _id: `tx-a-${person._id}`,
+        type: 'payment',
+        status: 'completed',
+        amount: 150_000,
+        createdAt: '2026-08-20T10:00:00.000Z',
+        description: 'AP: Abode Gardens',
+        payment_method: 'transfer',
+        transfer_reference_no: 'TRF-20260820-001',
+        transfer_receipt_url: 'https://res.cloudinary.com/demo/image/upload/sample.jpg',
+        created_via: 'admin',
       },
     ];
     const category = String(query.category ?? 'all');
