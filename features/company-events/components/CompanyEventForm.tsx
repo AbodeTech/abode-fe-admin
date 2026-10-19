@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -44,6 +45,7 @@ const formSchema = z
     available_size: z.union([z.number(), z.nan()]).optional(),
     size_unit: z.string().optional(),
     pickup_locations: z.array(z.string()),
+    open_registration: z.boolean(),
   })
   .superRefine((values, ctx) => {
     if (values.type !== "allocation") return;
@@ -88,6 +90,7 @@ export function CompanyEventForm() {
       available_size: undefined,
       size_unit: "sqm",
       pickup_locations: [],
+      open_registration: true,
     },
   });
 
@@ -103,6 +106,7 @@ export function CompanyEventForm() {
         assetId: values.asset_id,
         date: values.date,
         time: values.time,
+        ...(values.type === 'allocation' ? { openRegistration: values.open_registration } : {}),
         ...(values.type === "allocation"
           ? {
               availableSize: values.available_size,
@@ -262,6 +266,22 @@ export function CompanyEventForm() {
             />
           </div>
         )}
+
+        {activeType === 'allocation' && <FormField
+          control={form.control}
+          name="open_registration"
+          render={({ field }) => (
+            <FormItem className="flex items-start gap-3 rounded-lg border p-4">
+              <FormControl>
+                <Checkbox checked={field.value} onCheckedChange={(checked) => field.onChange(checked === true)} />
+              </FormControl>
+              <div>
+                <FormLabel>Open registration</FormLabel>
+                <p className="text-sm text-muted-foreground">Allow visitors to register from the public event link, even when they are not receiving land.</p>
+              </div>
+            </FormItem>
+          )}
+        />}
 
         <Button type="submit" disabled={createEvent.isPending} className="w-full sm:w-auto">
           {createEvent.isPending ? (

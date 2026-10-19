@@ -21,6 +21,8 @@ import {
   DEFAULT_EVENT_ELIGIBLE_LIMIT,
   DEFAULT_EVENT_REGISTRATIONS_LIMIT,
   EventAllocatedTable,
+  AttendeeActionDialog,
+  ConfirmationSheetPanel,
   EventAllocationFilters,
   EventAllocationTable,
   EventMetricsPanel,
@@ -40,6 +42,7 @@ import {
   type EligibilityTier,
   type EventAllocation,
   type EventEligibleClient,
+  type EventRegistrationRow,
   type RegistrationCategory,
 } from "@/features/company-events";
 
@@ -57,11 +60,21 @@ function EventDetailContent() {
   const regPage = Number(searchParams.get("reg_page")) || 1;
   const regSearchParam = searchParams.get("reg_search") || "";
   const regCategoryParam = (searchParams.get("reg_category") as RegistrationCategory | null) ?? null;
+  const regStatusParam = (searchParams.get("reg_status") as EventAllocation['status'] | null) ?? null;
+  const regPickupParam = searchParams.get("reg_pickup") ?? "";
 
   const [searchTerm, setSearchTerm] = useState(searchParam);
   const [regSearchTerm, setRegSearchTerm] = useState(regSearchParam);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [selected, setSelected] = useState<Map<string, EventEligibleClient>>(new Map());
+  const selectedIds = new Set(selected.keys());
+  const selectedSize = Array.from(selected.values()).reduce((sum, row) => sum + row.size * row.no_of_units, 0);
+  const selectedPeopleCount = new Set(Array.from(selected.values()).map((row) => row.user_id)).size;
+  const selectedPlotCount = Array.from(selected.values()).reduce((sum, row) => sum + row.no_of_units, 0);
   const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [attendeeAction, setAttendeeAction] = useState<{
+    mode: 'register' | 'pickup'; registrationId: string; name: string; email: string | null; phone: string | null;
+  } | null>(null);
 
   const { data: event, isLoading: eventLoading } = useCompanyEvent(eventId);
   const isAllocationEvent = event?.type === "allocation";
@@ -98,13 +111,15 @@ function EventDetailContent() {
   // still committed, with a toggle to review them when wanted.
   const visibleAllocatedRows = showCancelledAllocations
     ? allocatedData?.items
-    : allocatedData?.items?.filter((row) => row.status !== "cancelled");
+    : allocatedData?.items?.filter((row) => row.allocation_status !== "cancelled" && row.status !== "cancelled");
 
   const registrationFilters = {
     page: regPage,
     limit: DEFAULT_EVENT_REGISTRATIONS_LIMIT,
     search: regSearchParam || undefined,
     category: regCategoryParam ?? undefined,
+    status: regStatusParam ?? undefined,
+    pickupLocationId: regPickupParam || undefined,
   };
   // Real for both event types — `listEventRegistrations` doesn't gate on
   // `type` (only `getEventAnalytics` does), so a site-inspection event's
@@ -128,7 +143,12 @@ function EventDetailContent() {
 
   // Not personalized like the allocation flow's per-person emailed link —
   // one public URL per event, shared however the admin chooses.
-  const registrationLink = eventId ? `${process.env.NEXT_PUBLIC_FE_APP_URL ?? ""}/site-inspection/${eventId}` : "";
+  const publicBase = (process.env.NEXT_PUBLIC_FE_APP_URL ?? "").replace(/\/$/, "");
+  const registrationLink = publicBase && eventId
+    ? event?.type === "allocation"
+      ? event.slug ? `${publicBase}/${event.slug}` : ""
+      : `${publicBase}/site-inspection/${eventId}`
+    : "";
 
   const handleCopyLink = async () => {
     if (!registrationLink) return;
@@ -179,11 +199,11 @@ function EventDetailContent() {
 
   const handleToggle = (row: EventEligibleClient) => {
     setSelected((prev) => {
-      const next = new Set(prev);
+      const next = new Map(prev);
       if (next.has(row.payment_plan_id)) {
         next.delete(row.payment_plan_id);
       } else {
-        next.add(row.payment_plan_id);
+        next.set(row.payment_plan_id, row);
       }
       return next;
     });
@@ -192,12 +212,15 @@ function EventDetailContent() {
   const handleSave = () => {
     if (!eventId || selected.size === 0) return;
     saveAllocations.mutate(
-      { eventId, paymentPlanIds: Array.from(selected) },
+      { eventId, paymentPlanIds: Array.from(selected.keys()) },
       {
         onSuccess: (result) => {
-          setSelected(new Set());
+          setSelected(new Map());
           if (result.succeeded.length > 0) {
-            toast.success(`${result.succeeded.length} client${result.succeeded.length === 1 ? "" : "s"} allocated`);
+            const savedRows = result.succeeded.map((saved) => selected.get(saved.payment_plan_id)).filter((row): row is EventEligibleClient => !!row);
+            const people = new Set(savedRows.map((row) => row.user_id)).size;
+            const plots = savedRows.reduce((sum, row) => sum + row.no_of_units, 0);
+            toast.success(`${people} clients, covering ${plots} plots allocated`);
           }
           if (result.failed.length > 0) {
             toast.error(
@@ -219,6 +242,15 @@ function EventDetailContent() {
         onError: (error) => toast.error(error.message || "Failed to remove allocation"),
       }
     );
+  };
+
+  const openAllocatedAction = (row: EventAllocation, mode: 'register' | 'pickup') => {
+    if (!row.attendance_id) return;
+    setAttendeeAction({ mode, registrationId: row.attendance_id, name: row.name, email: row.email, phone: row.phone });
+  };
+
+  const openRegistrationAction = (row: EventRegistrationRow) => {
+    setAttendeeAction({ mode: 'pickup', registrationId: row.registration_id, name: row.name, email: row.email, phone: row.phone });
   };
 
   const handleExportEligible = () => {
@@ -266,11 +298,14 @@ function EventDetailContent() {
             email: row.email ?? "",
             phone: row.phone ?? "",
             status: row.status,
+            land_status: row.allocation_status ?? 'allocated',
             category: row.category ?? "",
             pickup_location: row.pickup_location ?? "",
             size_reserved: row.size_reserved,
             eligibility_tier: row.eligibility_tier,
             allocated_on: row.created_at,
+            checked_in_at: row.checked_in_at ?? '',
+            confirmed_at: row.confirmed_at ?? '',
           })),
           `allocated-clients_${eventId}.csv`
         );
@@ -284,7 +319,7 @@ function EventDetailContent() {
   const handleExportRegistrations = () => {
     if (!eventId) return;
     exportRegistrations.mutate(
-      { eventId, filters: { search: regSearchParam || undefined, category: regCategoryParam ?? undefined } },
+      { eventId, filters: { search: regSearchParam || undefined, category: regCategoryParam ?? undefined, status: regStatusParam ?? undefined, pickupLocationId: regPickupParam || undefined } },
       {
         onSuccess: ({ rows, truncated }) => {
           if (!rows.length) {
@@ -297,7 +332,11 @@ function EventDetailContent() {
               email: row.email,
               phone: row.phone,
               category: row.category,
+              attending_as: row.getting_land ? 'Getting land' : 'Visitor',
+              status: row.status ?? '',
               pickup_location: row.pickup_location ?? "",
+              checked_in_at: row.checked_in_at ?? '',
+              confirmed_at: row.confirmed_at ?? '',
               submitted_at: row.submitted_at ?? "",
             })),
             `registrations_${eventId}.csv`
@@ -416,6 +455,34 @@ function EventDetailContent() {
         )}
       </div>
 
+      {isAllocationEvent && (
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-900">Public registration</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {event.open_registration === false
+                  ? 'Invitation only — visitors cannot sign up from this link.'
+                  : 'Share this link with visitors who are coming to the allocation day.'}
+              </p>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => setSheetOpen(true)}>
+              Confirmation sheet
+            </Button>
+          </div>
+          {event.status === 'published' && event.open_registration !== false && registrationLink && (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <code className="min-w-0 flex-1 truncate rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                {registrationLink}
+              </code>
+              <Button variant="outline" size="sm" onClick={handleCopyLink}>
+                <Copy className="mr-2 size-4" /> Copy link
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
       {!isAllocationEvent ? (
         <div className="space-y-6">
           <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
@@ -428,7 +495,7 @@ function EventDetailContent() {
               <p className="mt-3 text-sm text-amber-600">
                 This event is still a draft — publish it before sharing the link.
               </p>
-            ) : (
+            ) : registrationLink ? (
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <code className="min-w-0 flex-1 truncate rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
                   {registrationLink}
@@ -438,6 +505,8 @@ function EventDetailContent() {
                   Copy link
                 </Button>
               </div>
+            ) : (
+              <p className="mt-3 text-sm text-muted-foreground">The public registration link is unavailable.</p>
             )}
           </div>
 
@@ -464,8 +533,13 @@ function EventDetailContent() {
           <EventRegistrationFilters
             search={regSearchTerm}
             category={regCategoryParam ?? "all"}
+            status={regStatusParam ?? 'all'}
+            pickupLocationId={regPickupParam}
+            pickupLocations={event.pickup_locations}
             onSearchChange={setRegSearchTerm}
             onCategoryChange={(value) => updateParams({ reg_category: value === "all" ? null : value, reg_page: 1 })}
+            onStatusChange={(value) => updateParams({ reg_status: value === 'all' ? null : value, reg_page: 1 })}
+            onPickupChange={(value) => updateParams({ reg_pickup: value || null, reg_page: 1 })}
           />
 
           <EventRegistrationsTable rows={registrationsData?.items} isLoading={registrationsLoading} />
@@ -490,8 +564,9 @@ function EventDetailContent() {
               <div>
                 <h2 className="text-lg font-semibold">Eligible clients</h2>
                 <p className="text-sm text-muted-foreground">
-                  First-come-first-served, already excluding anyone who has received land at this site before.
+                  First-come-first-served, for plans with completed land payments and no active event allocation.
                 </p>
+                <p className="text-xs text-muted-foreground">{eligibleData?.meta.total ?? 0} plans match these filters.</p>
               </div>
               <Button variant="outline" size="sm" onClick={handleExportEligible} disabled={exportEligible.isPending}>
                 {exportEligible.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
@@ -511,7 +586,10 @@ function EventDetailContent() {
             <EventAllocationTable
               rows={eligibleData?.items}
               isLoading={eligibleLoading}
-              selected={selected}
+              selected={selectedIds}
+              selectedSize={selectedSize}
+              selectedPeopleCount={selectedPeopleCount}
+              selectedPlotCount={selectedPlotCount}
               onToggle={handleToggle}
               availableSize={event.available_size}
               sizeUnit={event.size_unit}
@@ -550,6 +628,8 @@ function EventDetailContent() {
               isLoading={allocatedLoading}
               sizeUnit={event.size_unit}
               onRemove={handleRemove}
+              onRegister={(row) => openAllocatedAction(row, 'register')}
+              onChangePickup={(row) => openAllocatedAction(row, 'pickup')}
               removingId={deallocateClient.isPending ? deallocateClient.variables?.eventAllocationId ?? null : null}
             />
           </TabsContent>
@@ -557,8 +637,8 @@ function EventDetailContent() {
           <TabsContent value="registrations" className="space-y-6 pt-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h2 className="text-lg font-semibold">Registrations</h2>
-                <p className="text-sm text-muted-foreground">Public form submissions for this event.</p>
+                <h2 className="text-lg font-semibold">Registered attendees</h2>
+                <p className="text-sm text-muted-foreground">{registrationsData?.meta.total ?? 0} people match these filters, including visitors and people getting land. Invited people appear in the Allocated table until they register.</p>
               </div>
               <Button variant="outline" size="sm" onClick={handleExportRegistrations} disabled={exportRegistrations.isPending}>
                 {exportRegistrations.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
@@ -569,13 +649,18 @@ function EventDetailContent() {
             <EventRegistrationFilters
               search={regSearchTerm}
               category={regCategoryParam ?? "all"}
+              status={regStatusParam ?? 'all'}
+              pickupLocationId={regPickupParam}
+              pickupLocations={event.pickup_locations}
               onSearchChange={setRegSearchTerm}
               onCategoryChange={(value) =>
                 updateParams({ reg_category: value === "all" ? null : value, reg_page: 1 })
               }
+              onStatusChange={(value) => updateParams({ reg_status: value === 'all' ? null : value, reg_page: 1 })}
+              onPickupChange={(value) => updateParams({ reg_pickup: value || null, reg_page: 1 })}
             />
 
-            <EventRegistrationsTable rows={registrationsData?.items} isLoading={registrationsLoading} />
+            <EventRegistrationsTable rows={registrationsData?.items} isLoading={registrationsLoading} onChangePickup={openRegistrationAction} />
 
             <Pagination
               count={registrationsData?.meta.total ?? 0}
@@ -610,6 +695,20 @@ function EventDetailContent() {
         onConfirm={handleClose}
         destructive
       />
+      <ConfirmationSheetPanel open={sheetOpen} onOpenChange={setSheetOpen} eventId={eventId} pickupLocations={event.pickup_locations} />
+      {attendeeAction && (
+        <AttendeeActionDialog
+          open
+          onOpenChange={(open) => { if (!open) setAttendeeAction(null); }}
+          eventId={eventId}
+          registrationId={attendeeAction.registrationId}
+          name={attendeeAction.name}
+          email={attendeeAction.email}
+          phone={attendeeAction.phone}
+          pickupLocations={event.pickup_locations}
+          mode={attendeeAction.mode}
+        />
+      )}
     </div>
   );
 }

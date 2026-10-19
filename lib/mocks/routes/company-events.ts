@@ -29,6 +29,8 @@ type MockPickupLocation = { id: string; name: string; seat_limit: number | null 
 
 type MockCompanyEvent = {
   id: string;
+  slug: string;
+  open_registration: boolean;
   title: string;
   type: 'site_inspection' | 'allocation';
   asset_id: string;
@@ -106,6 +108,8 @@ type MockEventRegistration = {
   category: RegistrantCategory;
   preferred_pickup_location_id: string;
   submitted_at: string;
+  status?: 'invited' | 'registered' | 'checked_in' | 'confirmed' | 'cancelled';
+  confirmed_at?: string | null;
 };
 
 /** ~30 rows per asset — enough to demo pagination, capacity fill, and FCFS ordering. */
@@ -187,6 +191,8 @@ function publicEvent(e: MockCompanyEvent) {
   const remaining_capacity = e.available_size == null ? null : Math.max(0, e.available_size - e.reserved_size);
   return {
     id: e.id,
+    slug: e.slug,
+    open_registration: e.open_registration,
     title: e.title,
     type: e.type,
     asset_id: e.asset_id,
@@ -228,6 +234,7 @@ function publicAllocation(a: MockEventAllocation, event: MockCompanyEvent) {
   const registration = registrations.find((r) => r.event_allocation_id === a.allocation_id) ?? null;
   return {
     allocation_id: a.allocation_id,
+    attendance_id: registration?.registration_id ?? `evt-reg-inv-${a.allocation_id}`,
     user_id: a.user_id,
     payment_plan_id: a.payment_plan_id,
     name: a.name,
@@ -235,7 +242,8 @@ function publicAllocation(a: MockEventAllocation, event: MockCompanyEvent) {
     phone: a.phone,
     category: registration?.category ?? null,
     pickup_location: registration ? pickupNameFor(event, registration.preferred_pickup_location_id) : null,
-    status: a.status,
+    status: a.status === 'allocated' || a.status === 'email_sent' ? 'invited' : a.status,
+    allocation_status: a.status === 'cancelled' ? 'cancelled' : 'allocated',
     eligibility_tier: a.eligibility_tier,
     size_reserved: a.size_reserved,
     email_status: a.email_status,
@@ -357,9 +365,26 @@ function seedIfNeeded(): void {
           category: REGISTRANT_CATEGORIES[i % REGISTRANT_CATEGORIES.length],
           preferred_pickup_location_id: location?.id ?? '',
           submitted_at: formatMockDate(-18),
+          status: status === 'checked_in' || status === 'confirmed' ? status : 'registered',
+          confirmed_at: status === 'confirmed' ? formatMockDate(-14) : null,
         });
       }
     });
+
+  MOCK_USERS.slice(0, 3).forEach((user, index) => {
+    registrations.push({
+      registration_id: `evt-reg-visitor-${++registrationSeq}`,
+      event_allocation_id: null,
+      event_id: allocation.id,
+      full_name: `${user.firstName} ${user.lastName}`,
+      phone: user.phoneNumber,
+      email: user.email,
+      category: 'client',
+      preferred_pickup_location_id: allocation.pickup_locations[index % allocation.pickup_locations.length]?.id ?? '',
+      submitted_at: formatMockDate(-3),
+      status: 'registered',
+    });
+  });
 }
 
 function createEvent(input: {
@@ -371,6 +396,7 @@ function createEvent(input: {
   pickup_locations: (string | { name: string; seat_limit?: number })[];
   available_size: number | null;
   size_unit: string | null;
+  open_registration?: boolean;
 }): MockCompanyEvent {
   const assetName = assetNameFor(input.asset_id);
   if (!assetName) throw new MockHttpError(404, 'Asset not found', 'ASSET_NOT_FOUND');
@@ -380,6 +406,8 @@ function createEvent(input: {
   const isAllocation = input.type === 'allocation';
   const event: MockCompanyEvent = {
     id,
+    slug: `${input.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${input.date}`,
+    open_registration: input.open_registration !== false,
     title: input.title,
     type: input.type,
     asset_id: input.asset_id,
@@ -451,6 +479,7 @@ export const companyEventsRoutes: MockRoutes = {
       available_size?: number;
       size_unit?: string;
       pickup_locations?: { name: string; seat_limit?: number }[];
+      open_registration?: boolean;
     }>(raw);
 
     if (!dto.title?.trim()) throw new MockHttpError(400, 'title is required', 'VALIDATION_ERROR');
@@ -470,6 +499,7 @@ export const companyEventsRoutes: MockRoutes = {
       pickup_locations: dto.pickup_locations ?? [],
       available_size: dto.available_size ?? null,
       size_unit: dto.size_unit ?? 'sqm',
+      open_registration: dto.open_registration,
     });
     return publicEvent(event);
   },
@@ -651,6 +681,8 @@ export const companyEventsRoutes: MockRoutes = {
     void body<{ reason?: string }>(raw); // accepted, not stored — no admin-facing history endpoint exists.
     alloc.status = 'cancelled';
     alloc.cancelled_at = new Date().toISOString();
+    const registration = registrations.find((row) => row.event_allocation_id === alloc.allocation_id);
+    if (registration) registration.status = 'cancelled';
     event.reserved_size = Math.max(0, event.reserved_size - alloc.size_reserved);
     event.updatedAt = new Date().toISOString();
 
@@ -689,8 +721,8 @@ export const companyEventsRoutes: MockRoutes = {
     return {
       event_id: event.id,
       title: event.title,
-      funnel: { allocated, registered, checked_in, confirmed },
-      registration_split: { registered, not_registered: Math.max(0, allocated - registered) },
+      funnel: { allocated, attending: allocated + eventRegistrations.filter((r) => !r.event_allocation_id).length, registrants: eventRegistrations.filter((r) => !r.event_allocation_id).length, registered: eventRegistrations.length, checked_in, confirmed },
+      registration_split: { registered: eventRegistrations.length, not_registered: Math.max(0, allocated - registered) },
       no_show,
       cancelled,
       category_mix,
@@ -717,6 +749,10 @@ export const companyEventsRoutes: MockRoutes = {
 
     const category = query.category ? String(query.category) : null;
     if (category) rows = rows.filter((r) => r.category === category);
+    const status = query.status ? String(query.status) : null;
+    if (status) rows = rows.filter((r) => (r.status ?? 'registered') === status);
+    const pickup = query.pickup_location_id ? String(query.pickup_location_id) : null;
+    if (pickup) rows = rows.filter((r) => r.preferred_pickup_location_id === pickup);
 
     const search = String(query.search ?? '').trim().toLowerCase();
     if (search) {
@@ -736,13 +772,79 @@ export const companyEventsRoutes: MockRoutes = {
       data: result.data.map((r) => ({
         registration_id: r.registration_id,
         allocation_id: r.event_allocation_id,
+        getting_land: !!r.event_allocation_id,
+        status: r.status ?? 'registered',
         name: r.full_name,
         phone: r.phone,
         email: r.email,
         category: r.category,
         pickup_location: pickupNameFor(event, r.preferred_pickup_location_id),
+        pickup_location_id: r.preferred_pickup_location_id || null,
+        waitlisted: false,
+        checked_in_at: null,
+        confirmed_at: r.confirmed_at ?? null,
         submitted_at: r.submitted_at,
       })),
     };
+  },
+
+  'POST /admin/company-events/:id/registrations/:registrationId/register': ({ params, body: raw }) => {
+    seedIfNeeded();
+    const event = requireAllocationEvent(params.id);
+    const allocation = allocations.find((row) => `evt-reg-inv-${row.allocation_id}` === params.registrationId && row.event_id === event.id);
+    if (!allocation) throw new MockHttpError(404, 'Attendee not found', 'ATTENDEE_NOT_FOUND');
+    const dto = body<{ pickup_location_id?: string; category?: RegistrantCategory; name?: string; email?: string; phone?: string }>(raw);
+    if (event.pickup_locations.length && !event.pickup_locations.some((pickup) => pickup.id === dto.pickup_location_id)) throw new MockHttpError(400, 'Choose a pickup', 'PICKUP_LOCATION_REQUIRED');
+    const registration: MockEventRegistration = {
+      registration_id: params.registrationId,
+      event_allocation_id: allocation.allocation_id,
+      event_id: event.id,
+      full_name: dto.name || allocation.name,
+      phone: dto.phone || allocation.phone,
+      email: dto.email || allocation.email,
+      category: dto.category || 'client',
+      preferred_pickup_location_id: dto.pickup_location_id || '',
+      submitted_at: new Date().toISOString(),
+      status: 'registered',
+    };
+    registrations.push(registration);
+    allocation.status = 'registered';
+    allocation.registered_at = registration.submitted_at;
+    return { registered: true, pass_sent: true, waitlisted: false, registration: { id: registration.registration_id } };
+  },
+
+  'PATCH /admin/company-events/:id/registrations/:registrationId/pickup': ({ params, body: raw }) => {
+    seedIfNeeded();
+    const event = requireAllocationEvent(params.id);
+    const registration = registrations.find((row) => row.registration_id === params.registrationId && row.event_id === event.id);
+    if (!registration) throw new MockHttpError(404, 'Attendee not found', 'ATTENDEE_NOT_FOUND');
+    const dto = body<{ pickup_location_id?: string; notify?: boolean }>(raw);
+    if (!event.pickup_locations.some((pickup) => pickup.id === dto.pickup_location_id)) throw new MockHttpError(400, 'Choose a pickup', 'PICKUP_LOCATION_INVALID');
+    registration.preferred_pickup_location_id = dto.pickup_location_id!;
+    return { updated: true, pass_sent: dto.notify !== false, pickup_location: pickupNameFor(event, registration.preferred_pickup_location_id) };
+  },
+
+  'GET /admin/company-events/:id/confirmation-sheet': ({ params, query }) => {
+    seedIfNeeded();
+    const event = requireAllocationEvent(params.id);
+    const pickupId = query.pickup_location_id ? String(query.pickup_location_id) : null;
+    const rows = registrations.filter((r) => r.event_id === event.id && r.event_allocation_id && (!pickupId || r.preferred_pickup_location_id === pickupId)).map((r) => {
+      const allocation = allocations.find((a) => a.allocation_id === r.event_allocation_id)!;
+      return { attendance_id: r.registration_id, name: r.full_name, phone: r.phone, email: r.email, pickup_location: pickupNameFor(event, r.preferred_pickup_location_id), size_reserved: allocation.size_reserved, eligibility_tier: allocation.eligibility_tier, plots: '', boarded: !!allocation.checked_in_at, given: !!r.confirmed_at, confirmed_at: r.confirmed_at ?? null };
+    });
+    return { event_id: event.id, title: event.title, date: event.date, count: rows.length, rows };
+  },
+
+  'POST /admin/company-events/:id/confirmation-sheet': ({ params, body: raw }) => {
+    seedIfNeeded();
+    const event = requireAllocationEvent(params.id);
+    const dto = body<{ rows?: { attendance_id: string; given: boolean }[]; apply?: boolean }>(raw);
+    const ticked = (dto.rows ?? []).filter((row) => row.given);
+    const matched = ticked.map((row) => registrations.find((r) => r.registration_id === row.attendance_id && r.event_id === event.id && r.event_allocation_id));
+    const unmatched = ticked.filter((_, index) => !matched[index]).map((row) => row.attendance_id);
+    const already = matched.filter((row) => row?.confirmed_at).length;
+    const newly = matched.filter((row) => row && !row.confirmed_at).length;
+    if (dto.apply) matched.forEach((row) => { if (row && !row.confirmed_at) { row.confirmed_at = new Date().toISOString(); row.status = 'confirmed'; const allocation = allocations.find((a) => a.allocation_id === row.event_allocation_id); if (allocation) { allocation.confirmed_at = row.confirmed_at; allocation.status = 'confirmed'; } } });
+    return { rows_received: dto.rows?.length ?? 0, ticked: ticked.length, newly_confirmed: newly, already_confirmed: already, unmatched, applied: !!dto.apply };
   },
 };

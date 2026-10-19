@@ -154,7 +154,7 @@ const funnelChartConfig: ChartConfig = {
 /** Ordered stages, one hue, magnitude comparison — value at each bar's tip. */
 function RegistrationFunnelChart({ funnel }: { funnel: EventAnalytics["funnel"] }) {
   const data = [
-    { stage: "Allocated", count: funnel.allocated },
+    { stage: "Attending", count: funnel.attending ?? funnel.allocated },
     { stage: "Registered", count: funnel.registered },
     { stage: "Checked-in", count: funnel.checked_in },
     { stage: "Confirmed", count: funnel.confirmed },
@@ -353,8 +353,12 @@ export function EventMetricsPanel({
       ) : analytics ? (
         <>
           <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
-            <h3 className="mb-3 text-sm font-semibold text-slate-900">Registration funnel</h3>
+            <h3 className="mb-3 text-sm font-semibold text-slate-900">Attendance funnel</h3>
             <RegistrationFunnelChart funnel={analytics.funnel} />
+            <div className="mt-4 flex flex-wrap items-center gap-5 border-t border-slate-100 pt-3 text-sm">
+              <span>Getting land <Badge variant="secondary">{formatNumber(analytics.funnel.allocated)}</Badge></span>
+              <span>Visitors <Badge variant="secondary">{formatNumber(analytics.funnel.registrants ?? 0)}</Badge></span>
+            </div>
             <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3">
               <div className="flex items-center gap-2">
                 <span className="text-sm text-slate-500">No-show</span>

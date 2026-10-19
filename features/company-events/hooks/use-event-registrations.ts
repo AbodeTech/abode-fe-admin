@@ -4,13 +4,15 @@ import { useQuery } from '@tanstack/react-query';
 
 import { apiGetPaged } from '@/lib/api-client';
 
-import { EventRegistrationRowSchema, type RegistrationCategory } from '../schemas/company-event.schema';
+import { EventRegistrationRowSchema, type EventAllocationStatus, type RegistrationCategory } from '../schemas/company-event.schema';
 import { companyEventKeys } from './query-keys';
 
 export interface EventRegistrationsListFilters {
   page?: number;
   limit?: number;
   category?: RegistrationCategory;
+  status?: EventAllocationStatus;
+  pickupLocationId?: string;
   search?: string;
   [key: string]: unknown;
 }
@@ -27,13 +29,13 @@ export const useEventRegistrations = (
   eventId: string | undefined,
   filters: EventRegistrationsListFilters = {}
 ) => {
-  const { page = 1, limit = DEFAULT_EVENT_REGISTRATIONS_LIMIT, category, search } = filters;
+  const { page = 1, limit = DEFAULT_EVENT_REGISTRATIONS_LIMIT, category, status, pickupLocationId, search } = filters;
 
   return useQuery({
     queryKey: companyEventKeys.registrations(eventId ?? '', filters),
     queryFn: () =>
       apiGetPaged(`/admin/company-events/${eventId}/registrations`, EventRegistrationRowSchema, {
-        params: { page, limit, category, search: search || undefined },
+        params: { page, limit, category, status, pickup_location_id: pickupLocationId, search: search || undefined },
       }),
     enabled: !!eventId,
   });
