@@ -76,6 +76,22 @@ const COMMISSION_TYPE_OPTIONS = [
   { label: "Upline Commission", value: "upline" },
 ] as const
 
+/** Type badge, plus an "Admin" badge when an admin recorded the transaction. */
+function TransactionTypeBadges({ transaction }: { transaction: TransactionListResponse }) {
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      <Badge variant="outline" className={getTypeColor(transaction.type)}>
+        {formatTransactionType(transaction.type)}
+      </Badge>
+      {transaction.created_via === "admin" && (
+        <Badge variant="outline" className="border-violet-200 bg-violet-50 text-violet-700">
+          Admin
+        </Badge>
+      )}
+    </div>
+  )
+}
+
 export function OtherTransactionsTable({ transactions }: OtherTransactionsTableProps) {
   const [sortField, setSortField] = useState<string>("time_of_transaction")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc")
@@ -198,11 +214,7 @@ export function OtherTransactionsTable({ transactions }: OtherTransactionsTableP
                   <AdminMobileCard key={transaction._id} title={transaction._id} subtitle={formatDate(transaction.time_of_transaction)}>
                     <AdminMobileField
                       label="Type"
-                      value={
-                        <Badge variant="outline" className={getTypeColor(transaction.type)}>
-                          {formatTransactionType(transaction.type)}
-                        </Badge>
-                      }
+                      value={<TransactionTypeBadges transaction={transaction} />}
                     />
                     <AdminMobileField
                       label="Payment method"
@@ -322,9 +334,7 @@ export function OtherTransactionsTable({ transactions }: OtherTransactionsTableP
                         <TableCell className="font-medium">{transaction._id}</TableCell>
                         <TableCell>{formatDate(transaction.time_of_transaction)}</TableCell>
                         <TableCell>
-                          <Badge variant="outline" className={getTypeColor(transaction.type)}>
-                            {formatTransactionType(transaction.type)}
-                          </Badge>
+                          <TransactionTypeBadges transaction={transaction} />
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline" className={getPaymentMethodColor(transaction.payment_method)}>

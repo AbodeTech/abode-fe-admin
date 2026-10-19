@@ -1,5 +1,8 @@
 import type { UserAsset } from '@/lib/api/admin/user-assets.types';
-import type { TransactionListResponse } from '@/lib/api/admin/transactions.types';
+import type {
+  TransactionCreatedVia,
+  TransactionListResponse,
+} from '@/lib/api/admin/transactions.types';
 import type { UserReferralResponse } from '@/lib/api/admin/referrals.types';
 
 import type { UserDetail } from '../types/user.types';
@@ -175,7 +178,9 @@ export function toUserAsset(raw: Record<string, unknown>): UserAsset {
       ? {
           amount_paid: asNumber(documentPlan.amount_paid),
           balance: asNumber(documentPlan.balance),
-          asset_price: asNumber(documentPlan.asset_price),
+          // v2 stores the documentation price as document_fee_total; asset_price
+          // was v1's name and is never set on a v2 document plan.
+          asset_price: asNumber(documentPlan.document_fee_total ?? documentPlan.asset_price),
         }
       : undefined,
     asset_questions: acquisition
@@ -192,6 +197,7 @@ export function toUserAsset(raw: Record<string, unknown>): UserAsset {
 
 export function toUserTransaction(raw: Record<string, unknown>): TransactionListResponse {
   const file = asRecord(raw.transfer_file);
+  const createdVia = asString(raw.created_via);
   return {
     _id: asString(raw._id || raw.id),
     time_of_transaction: asDateString(
@@ -206,8 +212,17 @@ export function toUserTransaction(raw: Record<string, unknown>): TransactionList
     // commissions as "system-charge".
     payment_method: asString(raw.payment_method),
     paystack_reference: asString(raw.paystack_reference) || undefined,
-    transfer_reference: asString(raw.transfer_reference) || undefined,
-    transfer_file: file ? { file: asString(file.file) } : null,
+    // v2 sends transfer_reference_no and transfer_receipt_url; transfer_reference
+    // and transfer_file are v1's names, kept as fallbacks.
+    transfer_reference: asString(raw.transfer_reference_no ?? raw.transfer_reference) || undefined,
+    transfer_file: raw.transfer_receipt_url
+      ? { file: asString(raw.transfer_receipt_url) }
+      : file
+        ? { file: asString(file.file) }
+        : null,
+    created_via: ['user', 'admin', 'cron'].includes(createdVia)
+      ? (createdVia as TransactionCreatedVia)
+      : null,
   };
 }
 
