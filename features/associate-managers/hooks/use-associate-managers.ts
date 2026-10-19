@@ -22,7 +22,10 @@ interface UseAssociateManagersParams {
  * caps it to keep the list query cheap. Use `roster_size` for counts and the
  * detail route when the full roster is needed.
  */
-export const useAssociateManagers = (params?: UseAssociateManagersParams) => {
+export const useAssociateManagers = (
+  params?: UseAssociateManagersParams,
+  { enabled = true }: { enabled?: boolean } = {}
+) => {
   const page = params?.page ?? 1;
   const limit = params?.limit ?? DEFAULT_MANAGER_LIST_LIMIT;
   const q = params?.q ?? null;
@@ -33,6 +36,8 @@ export const useAssociateManagers = (params?: UseAssociateManagersParams) => {
       apiGetPaged('/admin/managers', ManagerListItemSchema, {
         params: { page, limit, ...(q ? { q } : {}) },
       }),
+    // Needs view_manager_tracker; a manager without it would 403.
+    enabled,
   });
 };
 

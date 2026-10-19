@@ -51,6 +51,8 @@ interface Props {
   periodFilter: ManagerDashboardParams;
   roster?: "associate-pro" | "associate";
   exportManagerId?: string | null;
+  /** False hides Export when the viewer can't export this roster. */
+  allowExport?: boolean;
 }
 
 type ProStatus = "active" | "inactive" | "abandoned";
@@ -158,6 +160,7 @@ export function ProGroupDrawer({
   periodFilter,
   roster = "associate-pro",
   exportManagerId = null,
+  allowExport = true,
 }: Props) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -213,7 +216,8 @@ export function ProGroupDrawer({
   } as const;
   const exportScope = EXPORT_SCOPE[viewMode];
   // `single` needs a manager to scope to; the org-wide scopes never do.
-  const canExport = exportScope !== "single" || !!exportManagerId;
+  const canExport =
+    allowExport && (exportScope !== "single" || !!exportManagerId);
 
   const handleExport = async () => {
     if (!canExport || !openGroup) return;

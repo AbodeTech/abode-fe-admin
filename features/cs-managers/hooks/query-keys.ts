@@ -1,6 +1,8 @@
 export const csManagerKeys = {
   all: ['cs-managers'] as const,
   list: () => [...csManagerKeys.all, 'list'] as const,
+  /** GET /admin/cs-managers/me — "am I a CS Manager, and which one?" */
+  me: () => [...csManagerKeys.all, 'me'] as const,
   unassigned: (page: number, limit: number) =>
     [...csManagerKeys.all, 'unassigned', page, limit] as const,
   targets: (managerId: string) => [...csManagerKeys.all, 'targets', managerId] as const,

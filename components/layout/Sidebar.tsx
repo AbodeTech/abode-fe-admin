@@ -51,6 +51,7 @@ import LogOutModal from "@/components/settings/LogOutModal";
 import { useAuthStore } from "@/store/auth-store";
 import { useAdminPermissions, type AdminPermission } from "@/hooks/use-admin-permission";
 import { useIsCurrentUserManager } from "@/features/associate-managers";
+import { useIsCurrentCSManager } from "@/features/cs-managers";
 
 // Grouped Navigation Items
 const navGroups = [
@@ -108,7 +109,7 @@ const navGroups = [
       { name: "Associates Upgrade", link: "/associate-upgrade", icon: <UserPlus /> },
       { name: "Top associates", link: "/associates", icon: <TrendingUp /> },
       { name: "Associate Performance", link: "/associates/performance", icon: <Activity />, requiresSuperAdmin: true },
-      { name: "Manager Performance", link: "/associates/managers", icon: <ShieldCheck />, requiresAdminOrManager: true },
+      { name: "Manager Performance", link: "/associates/managers", icon: <ShieldCheck />, requiresTrackerAccess: "associate" },
       // Division sits with the associates rather than beside Portfolio Standing:
       // the two screens are built the same way, but this one is read as "how is
       // the sales floor doing this season", which is an associates question.
@@ -129,14 +130,14 @@ const navGroups = [
     isCollapsible: true,
     icon: <UserCog />,
     items: [
-      { name: "CS Manager Performance", link: "/customer-managers", icon: <ShieldCheck /> },
+      { name: "CS Manager Performance", link: "/customer-managers", icon: <ShieldCheck />, requiresTrackerAccess: "cs" },
       { name: "Tickets", link: "/tickets", icon: <Inbox /> },
       { name: "Issues", link: "/issues", icon: <AlertOctagon /> },
     ]
   },
   {
-    // No permission gate, same as CS Manager Performance: the page itself
-    // admits only super admins and promoted Financial Officers.
+    // No permission gate: the page itself admits only super admins and
+    // promoted Financial Officers.
     title: "Finance",
     isCollapsible: true,
     icon: <Landmark />,
@@ -226,6 +227,7 @@ const Sidebar = () => {
   const { isSidebarCollapsed, isMobileNavOpen, closeMobileNav } = useUIStore();
   const { user } = useAuthStore();
   const { isManager } = useIsCurrentUserManager();
+  const { isCSManager } = useIsCurrentCSManager();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   /** Manual open/close overrides; cleared on navigation so route-driven opens win. */
   const [manualOpenGroups, setManualOpenGroups] = useState<Record<string, boolean>>({});
@@ -268,7 +270,7 @@ const Sidebar = () => {
       items: group.items.filter((item) => {
         const flags = item as {
           restrictedToRoles?: string[];
-          requiresAdminOrManager?: boolean;
+          requiresTrackerAccess?: "associate" | "cs";
           requiresSuperAdmin?: boolean;
           requiresPermission?: AdminPermission;
         };
@@ -278,8 +280,14 @@ const Sidebar = () => {
         if (flags.requiresSuperAdmin) {
           return isSuperAdmin;
         }
-        if (flags.requiresAdminOrManager) {
-          return isSuperAdmin || isManager;
+        // A manager tracker opens to its own managers on any role (being a
+        // manager is the manager record, not a permission), and to anyone
+        // who may view every manager's team.
+        if (flags.requiresTrackerAccess === "associate") {
+          return permissions.has("view_manager_tracker") || isManager;
+        }
+        if (flags.requiresTrackerAccess === "cs") {
+          return permissions.has("view_cs_manager_tracker") || isCSManager;
         }
         if (flags.restrictedToRoles) {
           // Matches on the role NAME — roles are records now, not strings.

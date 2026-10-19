@@ -52,8 +52,13 @@ interface Props {
   /** Filtered roster count from the server (`associate_pros_group_total`). */
   groupTotal?: number;
   isLoading?: boolean;
+  /** Omitted when the viewer can't export this roster, which hides the button. */
   onExport?: () => void;
   isExporting?: boolean;
+  /** The viewer's own team, or they hold manage_manager_tracker. */
+  canLogCalls: boolean;
+  /** manage_manager_tracker: move pros between managers. */
+  canReassign: boolean;
 }
 
 const formatCurrency = (n: number) =>
@@ -162,6 +167,8 @@ export function AssociateProsTable({
   isLoading = false,
   onExport,
   isExporting = false,
+  canLogCalls,
+  canReassign,
 }: Props) {
   const searchParams = useSearchParams();
   const page = Number(searchParams.get("page")) || 1;
@@ -296,19 +303,22 @@ export function AssociateProsTable({
           <Table>
             <TableHeader>
               <TableRow className="bg-gray-50/60">
-                <TableHead className="w-10">
-                  <Checkbox
-                    checked={
-                      allOnPageSelected
-                        ? true
-                        : someOnPageSelected
-                          ? "indeterminate"
-                          : false
-                    }
-                    onCheckedChange={togglePage}
-                    aria-label="Select all on this page"
-                  />
-                </TableHead>
+                {/* Selection only feeds bulk reassign. */}
+                {canReassign && (
+                  <TableHead className="w-10">
+                    <Checkbox
+                      checked={
+                        allOnPageSelected
+                          ? true
+                          : someOnPageSelected
+                            ? "indeterminate"
+                            : false
+                      }
+                      onCheckedChange={togglePage}
+                      aria-label="Select all on this page"
+                    />
+                  </TableHead>
+                )}
                 <TableHead className="font-semibold text-gray-700">Name</TableHead>
                 <TableHead className="font-semibold text-gray-700">Status</TableHead>
                 <TableHead className="font-semibold text-gray-700">Date Recruited</TableHead>
@@ -321,13 +331,16 @@ export function AssociateProsTable({
             <TableBody>
               {paginated.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-10 text-gray-500">
+                  <TableCell colSpan={canReassign ? 8 : 7} className="text-center py-10 text-gray-500">
                     No Associate Pros match the current filters.
                   </TableCell>
                 </TableRow>
               ) : (
                 paginated.map((pro) => {
                   const isSelected = selected.has(pro.id);
+                  // A finished onboarding is a read-only record; logging a
+                  // new call needs canLogCalls.
+                  const showOnboarding = canLogCalls || Boolean(pro.onboarded_at);
                   return (
                     <TableRow
                       key={pro.id}
@@ -336,13 +349,15 @@ export function AssociateProsTable({
                         isSelected && "bg-[#E0F2F1]/40"
                       )}
                     >
-                      <TableCell>
-                        <Checkbox
-                          checked={isSelected}
-                          onCheckedChange={() => togglePro(pro.id)}
-                          aria-label={`Select ${fullName(pro)}`}
-                        />
-                      </TableCell>
+                      {canReassign && (
+                        <TableCell>
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => togglePro(pro.id)}
+                            aria-label={`Select ${fullName(pro)}`}
+                          />
+                        </TableCell>
+                      )}
                       <TableCell>
                         <div className="flex flex-col gap-0.5">
                           <div className="flex items-center gap-2 flex-wrap">
@@ -381,33 +396,39 @@ export function AssociateProsTable({
                         {formatRelativeOrDate(pro.last_login)}
                       </TableCell>
                       <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              aria-label="Row actions"
-                            >
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onSelect={() => setOnboardingFor(pro)}
-                            >
-                              {pro.onboarded_at
-                                ? "View onboarding"
-                                : "Onboard Associate Pro"}
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onSelect={() => setSingleReassign(pro)}
-                            >
-                              Reassign to manager
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        {(showOnboarding || canReassign) && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                aria-label="Row actions"
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              {showOnboarding && (
+                                <DropdownMenuItem
+                                  onSelect={() => setOnboardingFor(pro)}
+                                >
+                                  {pro.onboarded_at
+                                    ? "View onboarding"
+                                    : "Onboard Associate Pro"}
+                                </DropdownMenuItem>
+                              )}
+                              {showOnboarding && canReassign && <DropdownMenuSeparator />}
+                              {canReassign && (
+                                <DropdownMenuItem
+                                  onSelect={() => setSingleReassign(pro)}
+                                >
+                                  Reassign to manager
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
                       </TableCell>
                     </TableRow>
                   );
@@ -429,7 +450,7 @@ export function AssociateProsTable({
       </div>
 
       {/* Bulk action bar — sticky to viewport bottom */}
-      {selected.size > 0 && (
+      {canReassign && selected.size > 0 && (
         <div className="fixed inset-x-0 bottom-4 z-30 flex justify-center px-4 pointer-events-none">
           <div className="pointer-events-auto bg-gray-900 text-white rounded-full shadow-lg pl-5 pr-2 py-2 flex items-center gap-4">
             <span className="text-sm font-medium">

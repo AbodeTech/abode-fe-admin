@@ -15,11 +15,15 @@ import { z } from 'zod';
 
 export const DEFAULT_UNASSIGNED_LIMIT = 20;
 
-/** GET /admin/cs-managers — bare array, no pagination. */
-export const useCSManagers = () =>
+/**
+ * GET /admin/cs-managers — bare array, no pagination. Needs
+ * `view_cs_manager_tracker`; pass `enabled: false` to callers without it.
+ */
+export const useCSManagers = ({ enabled = true }: { enabled?: boolean } = {}) =>
   useQuery({
     queryKey: csManagerKeys.list(),
     queryFn: () => apiGet('/admin/cs-managers', z.array(CSManagerSummarySchema)),
+    enabled,
   });
 
 /** GET /admin/cs-managers/unassigned-customers — {count, results}, not the standard paged envelope. */

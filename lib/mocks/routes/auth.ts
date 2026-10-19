@@ -97,7 +97,7 @@ function issueSession(admin: MockAdmin) {
   return { accessToken: nextToken('access'), refreshToken, admin };
 }
 
-function requireSession(): MockAdmin {
+export function requireSession(): MockAdmin {
   const current = loadSession();
   if (!current) {
     throw new MockHttpError(401, 'Missing, invalid, or non-admin token');

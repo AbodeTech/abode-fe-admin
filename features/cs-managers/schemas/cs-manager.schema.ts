@@ -56,6 +56,18 @@ export const CSManagerSummarySchema = z.object({
 
 export type CSManagerSummary = z.infer<typeof CSManagerSummarySchema>;
 
+/**
+ * GET /admin/cs-managers/me (BE e660a21), mirroring GET /admin/managers/me:
+ * a body, not a 403, when the caller has no book.
+ * `manager` is the same row GET /admin/cs-managers lists.
+ */
+export const CSManagerProfileSchema = z.object({
+  is_cs_manager: z.boolean(),
+  manager: CSManagerSummarySchema.nullable(),
+});
+
+export type CSManagerProfile = z.infer<typeof CSManagerProfileSchema>;
+
 /** POST /admin/cs-managers, DELETE /admin/cs-managers/:manager_id */
 export const CSManagerAssignmentSchema = z.object({
   id: z.string(),

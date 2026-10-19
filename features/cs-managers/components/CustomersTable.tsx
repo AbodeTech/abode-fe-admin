@@ -43,6 +43,10 @@ import { useExportDashboardPlans } from "../hooks/use-export-dashboard-plans";
 
 interface Props {
   managerId: string | null;
+  /** The viewer's own book, or they hold export_cs_manager_tracker. */
+  canExport: boolean;
+  /** The viewer is this book's CS Manager, or a super admin. */
+  canLogCalls: boolean;
   /** One page of plans, already filtered/searched/sorted by the BE. */
   plans: PlanRow[];
   totalAssigned: number;
@@ -110,6 +114,8 @@ const monthsSince = (iso: string | null) => {
 
 export function CustomersTable({
   managerId,
+  canExport,
+  canLogCalls,
   plans,
   totalAssigned,
   totalPlans,
@@ -310,7 +316,7 @@ export function CustomersTable({
                 ))}
               </SelectContent>
             </Select>
-            {managerId && <Button
+            {managerId && canExport && <Button
               variant="outline"
               size="sm"
               className="h-8 text-xs gap-1.5"
@@ -489,7 +495,7 @@ export function CustomersTable({
         </div>
       </div>
 
-      <PlanDetailDrawer plan={openPlan} open={!!openPlan} onOpenChange={(o) => !o && setOpenPlanId(null)} />
+      <PlanDetailDrawer plan={openPlan} open={!!openPlan} onOpenChange={(o) => !o && setOpenPlanId(null)} canLogCall={canLogCalls} />
     </section>
   );
 }
