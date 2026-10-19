@@ -46,6 +46,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { READ_ONLY } from "@/lib/read-only";
 import {
   useAssetBlocks,
   useAssetIdByName,
@@ -127,17 +128,19 @@ export function BlocksManager({ assetName, assetType }: BlocksManagerProps) {
             Block Inventory
           </CardTitle>
           <p className="text-xs text-muted-foreground mt-1">
-            Manage blocks and their plots for {decodedAssetName}.
+            {READ_ONLY ? "Blocks and their plots" : "Manage blocks and their plots"} for {decodedAssetName}.
           </p>
         </div>
-        <Button
-          size="sm"
-          onClick={() => setIsCreateOpen(true)}
-          disabled={!assetId || isLoading}
-        >
-          <Plus className="h-4 w-4 mr-1" />
-          Add Block
-        </Button>
+        {!READ_ONLY && (
+          <Button
+            size="sm"
+            onClick={() => setIsCreateOpen(true)}
+            disabled={!assetId || isLoading}
+          >
+            <Plus className="h-4 w-4 mr-1" />
+            Add Block
+          </Button>
+        )}
       </CardHeader>
 
       <CardContent>
@@ -159,15 +162,17 @@ export function BlocksManager({ assetName, assetType }: BlocksManagerProps) {
             <p className="text-sm text-muted-foreground">
               No blocks seeded yet.
             </p>
-            <Button
-              variant="link"
-              size="sm"
-              className="mt-2"
-              onClick={() => setIsCreateOpen(true)}
-              disabled={!assetId}
-            >
-              Add your first block
-            </Button>
+            {!READ_ONLY && (
+              <Button
+                variant="link"
+                size="sm"
+                className="mt-2"
+                onClick={() => setIsCreateOpen(true)}
+                disabled={!assetId}
+              >
+                Add your first block
+              </Button>
+            )}
           </div>
         ) : (
           <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
@@ -299,19 +304,27 @@ function BlockCard({ block, onManage, onDelete }: BlockCardProps) {
           className="flex-1 h-8 text-xs"
           onClick={onManage}
         >
-          <Pencil className="h-3 w-3 mr-1" />
-          Manage plots
+          {READ_ONLY ? (
+            "View plots"
+          ) : (
+            <>
+              <Pencil className="h-3 w-3 mr-1" />
+              Manage plots
+            </>
+          )}
         </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-8 w-8 p-0 text-rose-600 hover:text-rose-700 hover:bg-rose-50"
-          onClick={onDelete}
-          disabled={stats.total > 0}
-          title={stats.total > 0 ? "Cannot delete — has plots" : "Delete block"}
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </Button>
+        {!READ_ONLY && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0 text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+            onClick={onDelete}
+            disabled={stats.total > 0}
+            title={stats.total > 0 ? "Cannot delete — has plots" : "Delete block"}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        )}
       </div>
     </div>
   );
@@ -457,7 +470,7 @@ function ManageBlockPlotsDialog({ block, onClose }: ManageBlockPlotsDialogProps)
             </Badge>
           </DialogTitle>
           <DialogDescription>
-            {block.description || "Add plots and edit their sizes."}
+            {block.description || (READ_ONLY ? "Plots in this block." : "Add plots and edit their sizes.")}
           </DialogDescription>
         </DialogHeader>
 
@@ -465,10 +478,12 @@ function ManageBlockPlotsDialog({ block, onClose }: ManageBlockPlotsDialogProps)
           <p className="text-xs text-muted-foreground">
             Plot numbers must be unique within this block. Sizes are in sqm.
           </p>
-          <Button size="sm" onClick={() => setIsAddOpen(true)}>
-            <Plus className="h-3.5 w-3.5 mr-1" />
-            Add plots
-          </Button>
+          {!READ_ONLY && (
+            <Button size="sm" onClick={() => setIsAddOpen(true)}>
+              <Plus className="h-3.5 w-3.5 mr-1" />
+              Add plots
+            </Button>
+          )}
         </div>
 
         <div className="rounded-md border max-h-[400px] overflow-y-auto">
@@ -480,7 +495,7 @@ function ManageBlockPlotsDialog({ block, onClose }: ManageBlockPlotsDialogProps)
           ) : plots.length === 0 ? (
             <div className="py-12 text-center">
               <p className="text-sm text-muted-foreground">
-                No plots in this block. Click &quot;Add plots&quot; to seed.
+                No plots in this block.{!READ_ONLY && <> Click &quot;Add plots&quot; to seed.</>}
               </p>
             </div>
           ) : (
@@ -513,14 +528,16 @@ function ManageBlockPlotsDialog({ block, onClose }: ManageBlockPlotsDialogProps)
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2"
-                        onClick={() => setEditingPlot(plot)}
-                      >
-                        <Pencil className="h-3 w-3" />
-                      </Button>
+                      {!READ_ONLY && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2"
+                          onClick={() => setEditingPlot(plot)}
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

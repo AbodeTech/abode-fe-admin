@@ -19,6 +19,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { READ_ONLY } from "@/lib/read-only";
 import { ManageTargetsDialog } from "./dialogs/ManageTargetsDialog";
 import type {
   AssociateManagerListItem,
@@ -258,7 +259,7 @@ function NoActiveTargetBanner({
           {viewAs === "manager" && " Ask Super Admin to set one."}
         </span>
       </div>
-      {viewAs === "super-admin" && (
+      {viewAs === "super-admin" && !READ_ONLY && (
         <Button
           size="sm"
           variant="outline"
@@ -379,7 +380,7 @@ export function ManagerSnapshot({ viewAs, manager, dashboard }: Props) {
             </div>
           )}
 
-          {viewAs === "super-admin" && active && manager && (
+          {viewAs === "super-admin" && active && manager && !READ_ONLY && (
             <Button
               variant="outline"
               size="sm"
@@ -463,12 +464,14 @@ export function ManagerSnapshot({ viewAs, manager, dashboard }: Props) {
         />
       </div>
 
-      <ManageTargetsDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        managerId={managerAdminId}
-        managerName={fullName(manager?.manager)}
-      />
+      {!READ_ONLY && (
+        <ManageTargetsDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          managerId={managerAdminId}
+          managerName={fullName(manager?.manager)}
+        />
+      )}
     </>
   );
 }

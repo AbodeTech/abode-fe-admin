@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { READ_ONLY } from "@/lib/read-only";
 import {
   PaymentPlanTerminationStatus,
   suspendedToPaymentPlanTermination,
@@ -69,6 +70,10 @@ export function PaymentPlanTerminationStatusSelect({
   };
 
   const nextIsTerminated = pendingStatus === "terminated";
+
+  if (READ_ONLY) {
+    return <span className="text-sm">{currentStatus === "terminated" ? "Terminated" : "Active"}</span>;
+  }
 
   return (
     <>

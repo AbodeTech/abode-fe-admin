@@ -24,6 +24,7 @@ import { useAuthStore } from "@/store/auth-store";
 import { CsPlanFilter } from "@/lib/gql/graphql";
 import type { CsPlanSort } from "@/lib/gql/graphql";
 import { isTopLevelAdmin } from "@/lib/admin-roles";
+import { READ_ONLY } from "@/lib/read-only";
 
 /** Friendly empty state for admins who shouldn't be here. */
 function NotAuthorized() {
@@ -242,7 +243,7 @@ function CustomerManagersContent() {
           // Setting targets is super-admin only (assignCSManagerTarget),
           // so a CS Manager gets the read-only snapshot with no CTA.
           onManageTargets={
-            viewAs === "super-admin"
+            viewAs === "super-admin" && !READ_ONLY
               ? () => setTargetsDialogOpen(true)
               : undefined
           }
@@ -266,7 +267,7 @@ function CustomerManagersContent() {
 
       {/* Targets are set per manager, so there is nothing to set in the
           combined view — the snapshot hides its CTA there too. */}
-      {viewAs === "super-admin" && data.manager && (
+      {viewAs === "super-admin" && !READ_ONLY && data.manager && (
         <ManageCSTargetsDialog
           open={targetsDialogOpen}
           onOpenChange={setTargetsDialogOpen}

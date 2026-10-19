@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Plus } from "lucide-react";
 
+import { READ_ONLY } from "@/lib/read-only";
 import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/shared/Pagination";
 import { SuspensePageFallback } from "@/components/shared/page-content-loader";
@@ -80,12 +81,14 @@ function AgencyListContent() {
             Manage agency partners and view their performance.
           </p>
         </div>
-        <Button className="w-full shrink-0 sm:w-auto" asChild>
-          <Link href="/agency/new">
-            <Plus className="h-4 w-4 mr-2" />
-            Onboard Agency
-          </Link>
-        </Button>
+        {!READ_ONLY && (
+          <Button className="w-full shrink-0 sm:w-auto" asChild>
+            <Link href="/agency/new">
+              <Plus className="h-4 w-4 mr-2" />
+              Onboard Agency
+            </Link>
+          </Button>
+        )}
       </div>
 
       <AgencyListFilters search={query} onSearchChange={setQuery} />

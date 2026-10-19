@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Eye, Mail, Wrench } from "lucide-react";
+import { READ_ONLY } from "@/lib/read-only";
 import {
   AdminDesktopTableWrap,
   AdminMobileCard,
@@ -88,7 +89,7 @@ export function PurchaseConfirmationsTable({
         <Eye className="h-4 w-4" />
         View
       </Button>
-      {row.status === "disputed" && (
+      {!READ_ONLY && row.status === "disputed" && (
         <Button
           size="sm"
           className={mobile ? "w-full gap-2" : "gap-2"}
@@ -98,7 +99,7 @@ export function PurchaseConfirmationsTable({
           Resolve
         </Button>
       )}
-      {row.status === "waiting" && (
+      {!READ_ONLY && row.status === "waiting" && (
         <Button
           variant="outline"
           size="sm"

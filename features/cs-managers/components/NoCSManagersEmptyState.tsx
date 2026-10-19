@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Plus, UserCog } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { READ_ONLY } from "@/lib/read-only";
 import { AddCSManagerDialog } from "./AddCSManagerDialog";
 
 /**
@@ -36,20 +37,24 @@ export function NoCSManagersEmptyState() {
               <h2 className="text-lg font-semibold text-gray-900">
                 No CS Managers yet
               </h2>
-              <p className="text-sm text-gray-600">
-                Promote an existing admin to CS Manager to start tracking their
-                onboarding calls, allocations and deed deliveries.
-              </p>
+              {!READ_ONLY && (
+                <p className="text-sm text-gray-600">
+                  Promote an existing admin to CS Manager to start tracking their
+                  onboarding calls, allocations and deed deliveries.
+                </p>
+              )}
             </div>
-            <Button onClick={() => setAddOpen(true)} className="mt-2">
-              <Plus className="h-4 w-4 mr-2" />
-              Add CS Manager
-            </Button>
+            {!READ_ONLY && (
+              <Button onClick={() => setAddOpen(true)} className="mt-2">
+                <Plus className="h-4 w-4 mr-2" />
+                Add CS Manager
+              </Button>
+            )}
           </div>
         </div>
       </div>
 
-      <AddCSManagerDialog open={addOpen} onOpenChange={setAddOpen} />
+      {!READ_ONLY && <AddCSManagerDialog open={addOpen} onOpenChange={setAddOpen} />}
     </>
   );
 }

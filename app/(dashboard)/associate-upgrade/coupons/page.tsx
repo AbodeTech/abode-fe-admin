@@ -6,6 +6,7 @@ import { CouponsTable } from "@/features/associate-upgrade/components/coupons/Co
 import { CouponFilters } from "@/features/associate-upgrade/components/coupons/CouponFilters";
 import { CreateCouponDialog } from "@/features/associate-upgrade/components/coupons/CreateCouponDialog";
 import { toast } from "sonner";
+import { READ_ONLY } from "@/lib/read-only";
 
 export default function CouponsPage() {
   const { data, isLoading, error } = useCoupons();
@@ -77,11 +78,15 @@ export default function CouponsPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Associate Upgrade Coupons</h1>
-          <p className="text-sm text-muted-foreground sm:text-base">Manage discount codes for upgrade flows.</p>
+          <p className="text-sm text-muted-foreground sm:text-base">
+            {READ_ONLY ? "Discount codes for upgrade flows." : "Manage discount codes for upgrade flows."}
+          </p>
         </div>
-        <div className="w-full shrink-0 sm:w-auto">
-          <CreateCouponDialog />
-        </div>
+        {!READ_ONLY && (
+          <div className="w-full shrink-0 sm:w-auto">
+            <CreateCouponDialog />
+          </div>
+        )}
       </div>
 
       <CouponFilters status={status} onStatusChange={setStatus} search={search} onSearchChange={setSearch} />

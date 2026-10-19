@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { SuspensePageFallback } from "@/components/shared/page-content-loader";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { READ_ONLY } from "@/lib/read-only";
 import {
   useMarketplaceListings,
   usePendingApprovals,
@@ -137,8 +138,8 @@ function MarketplaceContent() {
           <MarketplaceListingsTable
             data={listingsQuery.data?.listings}
             isLoading={listingsQuery.isLoading}
-            onSuspend={(listing) => setSuspendListing(listing)}
-            onUnsuspend={handleUnsuspend}
+            onSuspend={READ_ONLY ? undefined : (listing) => setSuspendListing(listing)}
+            onUnsuspend={READ_ONLY ? undefined : handleUnsuspend}
           />
 
           {/* Pagination */}
@@ -176,8 +177,8 @@ function MarketplaceContent() {
           <PendingApprovalsTable
             data={pendingQuery.data?.listings}
             isLoading={pendingQuery.isLoading}
-            onApprove={(listing) => setApproveListing(listing)}
-            onReject={(listing) => setRejectListing(listing)}
+            onApprove={READ_ONLY ? undefined : (listing) => setApproveListing(listing)}
+            onReject={READ_ONLY ? undefined : (listing) => setRejectListing(listing)}
           />
           {pendingQuery.data?.pagination && pendingQuery.data.pagination.totalPages > 1 && (
             <div className="flex flex-col items-stretch gap-2 py-4 sm:flex-row sm:items-center sm:justify-center sm:gap-2">
@@ -209,21 +210,25 @@ function MarketplaceContent() {
       )}
 
       {/* Dialogs */}
-      <MarketplaceSuspendDialog
-        listingId={suspendListing?._id || null}
-        isOpen={!!suspendListing}
-        onClose={() => setSuspendListing(null)}
-      />
-      <MarketplaceApproveDialog
-        listing={approveListing}
-        isOpen={!!approveListing}
-        onClose={() => setApproveListing(null)}
-      />
-      <MarketplaceRejectDialog
-        listing={rejectListing}
-        isOpen={!!rejectListing}
-        onClose={() => setRejectListing(null)}
-      />
+      {!READ_ONLY && (
+        <>
+          <MarketplaceSuspendDialog
+            listingId={suspendListing?._id || null}
+            isOpen={!!suspendListing}
+            onClose={() => setSuspendListing(null)}
+          />
+          <MarketplaceApproveDialog
+            listing={approveListing}
+            isOpen={!!approveListing}
+            onClose={() => setApproveListing(null)}
+          />
+          <MarketplaceRejectDialog
+            listing={rejectListing}
+            isOpen={!!rejectListing}
+            onClose={() => setRejectListing(null)}
+          />
+        </>
+      )}
     </div>
   );
 }

@@ -21,6 +21,7 @@ import { ClearUserTinModal } from "../modals/ClearUserTinModal"
 import { UserDetail } from "../../types/user.types"
 import { useAuthStore } from "@/store/auth-store"
 import { isTopLevelAdmin } from "@/lib/admin-roles"
+import { READ_ONLY } from "@/lib/read-only"
 
 interface UserEditActionsProps {
   user: UserDetail
@@ -70,7 +71,7 @@ export function UserEditActions({ user }: UserEditActionsProps) {
     router.push(next ? `?${next}` : "?", { scroll: false })
   }
 
-  if (!isAdmin || (!canEditUser && !canModifyRefStatus)) {
+  if (READ_ONLY || !isAdmin || (!canEditUser && !canModifyRefStatus)) {
     return null
   }
 

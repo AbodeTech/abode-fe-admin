@@ -6,6 +6,7 @@ import { AlertTriangle, CheckCircle2, RotateCcw, User2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAdminSession } from "@/hooks/use-admin-session";
 import { cn } from "@/lib/utils";
+import { READ_ONLY } from "@/lib/read-only";
 import { IssueStatus, TicketStatus, type GetIssueQuery } from "@/lib/gql/graphql";
 import {
   ISSUE_STATUS_LABELS,
@@ -41,7 +42,8 @@ export function IssueDetail({ detail }: Props) {
   // Closing an issue closes every ticket hanging off it, for customers who may
   // not have been told anything. That is the CS Manager's call, and the BE
   // refuses it from anyone else.
-  const { canDecideTicketRouting } = useAdminSession();
+  const session = useAdminSession();
+  const canDecideTicketRouting = !READ_ONLY && session.canDecideTicketRouting;
   const [resolveOpen, setResolveOpen] = useState(false);
   const { issue, tickets, ticketCount } = detail;
   const isResolved = issue.status === IssueStatus.Resolved;

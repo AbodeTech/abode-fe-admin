@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Loader2, Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { READ_ONLY } from "@/lib/read-only";
 import {
   useAssetCommissionOverrides,
   useDeleteAssetCommissionOverride,
@@ -101,10 +102,12 @@ export function AssetOverrideList() {
         <p className="min-w-0 text-sm text-muted-foreground">
           {total} asset{total !== 1 ? "s" : ""} with custom commission rates
         </p>
-        <Button size="sm" className="w-full shrink-0 sm:w-auto" onClick={() => setCreateOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Override
-        </Button>
+        {!READ_ONLY && (
+          <Button size="sm" className="w-full shrink-0 sm:w-auto" onClick={() => setCreateOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Override
+          </Button>
+        )}
       </div>
 
       {overrides.length === 0 ? (
@@ -120,7 +123,7 @@ export function AssetOverrideList() {
               <TableHead>Asset Type</TableHead>
               <TableHead>Overridden Fields</TableHead>
               <TableHead className="w-[160px]">Last Modified</TableHead>
-              <TableHead className="w-[120px]">Actions</TableHead>
+              {!READ_ONLY && <TableHead className="w-[120px]">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -144,24 +147,26 @@ export function AssetOverrideList() {
                     minute: "2-digit",
                   })}
                 </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setEditOverride(override)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setDeleteTarget(override)}
-                    >
-                      <Trash2 className="h-4 w-4 text-red-500" />
-                    </Button>
-                  </div>
-                </TableCell>
+                {!READ_ONLY && (
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setEditOverride(override)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setDeleteTarget(override)}
+                      >
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>
@@ -198,14 +203,16 @@ export function AssetOverrideList() {
       )}
 
       {/* Create dialog */}
-      <EditAssetOverrideDialog
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        override={null}
-      />
+      {!READ_ONLY && (
+        <EditAssetOverrideDialog
+          open={createOpen}
+          onOpenChange={setCreateOpen}
+          override={null}
+        />
+      )}
 
       {/* Edit dialog */}
-      {editOverride && (
+      {!READ_ONLY && editOverride && (
         <EditAssetOverrideDialog
           open={!!editOverride}
           onOpenChange={(open) => { if (!open) setEditOverride(null); }}

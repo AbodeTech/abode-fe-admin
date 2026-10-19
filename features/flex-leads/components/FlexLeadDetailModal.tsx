@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { READ_ONLY } from "@/lib/read-only";
 
 import type { FlexLeadRow, FlexLeadStatus } from "../hooks/types";
 import { useUpdateFlexLead } from "../hooks/use-flex-lead-actions";
@@ -128,11 +129,17 @@ export function FlexLeadDetailModal({
           <Separator className="my-2" />
           <DetailRow label="Submitted" value={formatDateTime(row.createdAt)} />
           <DetailRow label="Last updated" value={formatDateTime(row.updatedAt)} />
+          {READ_ONLY && (
+            <>
+              <Separator className="my-2" />
+              <DetailRow label="Admin notes" value={row.adminNotes?.trim() || "—"} />
+            </>
+          )}
         </div>
 
-        <Separator />
+        {!READ_ONLY && <Separator />}
 
-        <div className="space-y-3">
+        {!READ_ONLY && <div className="space-y-3">
           <div className="space-y-2">
             <Label htmlFor="flex-lead-status" className="text-sm">
               Status
@@ -166,25 +173,27 @@ export function FlexLeadDetailModal({
               placeholder="Internal follow-up notes…"
             />
           </div>
-        </div>
+        </div>}
 
         <DialogFooter className="gap-2 sm:gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Close
           </Button>
-          <Button
-            onClick={handleSave}
-            disabled={!dirty || updateLead.isPending}
-          >
-            {updateLead.isPending ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving…
-              </>
-            ) : (
-              "Save changes"
-            )}
-          </Button>
+          {!READ_ONLY && (
+            <Button
+              onClick={handleSave}
+              disabled={!dirty || updateLead.isPending}
+            >
+              {updateLead.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving…
+                </>
+              ) : (
+                "Save changes"
+              )}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

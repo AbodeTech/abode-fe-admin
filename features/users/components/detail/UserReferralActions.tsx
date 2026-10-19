@@ -23,6 +23,7 @@ import { MoreVertical, Loader2, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { removeReferralByAdmin } from "@/lib/api/admin/referrals.client"
 import revalidate from "@/lib/serverActions/admin/revalidate"
+import { READ_ONLY } from "@/lib/read-only"
 import { getErrorMessage } from "../../utils/error-message"
 import { useSelectedClientStore } from "@/store/selected-client-store"
 
@@ -37,7 +38,8 @@ export function UserReferralActions({ referralId, referralName }: UserReferralAc
   const searchParams = useSearchParams()
   const userId = params.id
   const user = useAuthStore((state) => state.user)
-  const canDeleteReferral = user?.role === "admin" || (user?.permissions ?? []).includes("remove-referral")
+  const canDeleteReferral =
+    !READ_ONLY && (user?.role === "admin" || (user?.permissions ?? []).includes("remove-referral"))
   const { setClient } = useSelectedClientStore()
 
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)

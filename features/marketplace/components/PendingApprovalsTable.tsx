@@ -48,6 +48,8 @@ export function PendingApprovalsTable({
   onApprove,
   onReject,
 }: PendingApprovalsTableProps) {
+  const hasActions = !!(onApprove || onReject);
+
   if (isLoading) {
     return <div className="p-8 text-center text-gray-500">Loading pending approvals...</div>;
   }
@@ -95,20 +97,22 @@ export function PendingApprovalsTable({
             />
             <AdminMobileField label="Reference" value={listing.receipt_reference || "N/A"} />
             <AdminMobileField label="Submitted" value={formatDate(listing.createdAt)} />
-            <div className="flex justify-end gap-2 border-t border-border pt-2">
-              {onApprove && (
-                <Button variant="outline" size="sm" onClick={() => onApprove(listing)}>
-                  <CheckCircle className="mr-1 h-4 w-4" />
-                  Approve
-                </Button>
-              )}
-              {onReject && (
-                <Button variant="outline" size="sm" onClick={() => onReject(listing)}>
-                  <XCircle className="mr-1 h-4 w-4" />
-                  Reject
-                </Button>
-              )}
-            </div>
+            {hasActions && (
+              <div className="flex justify-end gap-2 border-t border-border pt-2">
+                {onApprove && (
+                  <Button variant="outline" size="sm" onClick={() => onApprove(listing)}>
+                    <CheckCircle className="mr-1 h-4 w-4" />
+                    Approve
+                  </Button>
+                )}
+                {onReject && (
+                  <Button variant="outline" size="sm" onClick={() => onReject(listing)}>
+                    <XCircle className="mr-1 h-4 w-4" />
+                    Reject
+                  </Button>
+                )}
+              </div>
+            )}
           </AdminMobileCard>
         ))}
       </AdminMobileStack>
@@ -138,7 +142,7 @@ export function PendingApprovalsTable({
             <TableHead className="px-3 py-3 font-medium sm:px-4 sm:py-4">Receipt Amt</TableHead>
             <TableHead className="px-3 py-3 font-medium sm:px-4 sm:py-4">Reference</TableHead>
             <TableHead className="px-3 py-3 font-medium sm:px-4 sm:py-4">Submitted</TableHead>
-            <TableHead className="px-3 py-3 font-medium sm:px-4 sm:py-4">Actions</TableHead>
+            {hasActions && <TableHead className="px-3 py-3 font-medium sm:px-4 sm:py-4">Actions</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -192,7 +196,7 @@ export function PendingApprovalsTable({
               <TableCell className="whitespace-nowrap px-3 py-4 text-sm text-[#333333] sm:px-4 sm:py-5">
                 {formatDate(listing.createdAt)}
               </TableCell>
-              <TableCell className="px-3 py-4 sm:px-4 sm:py-5">
+              {hasActions && <TableCell className="px-3 py-4 sm:px-4 sm:py-5">
                 <div className="flex items-center gap-1">
                   {onApprove && (
                     <Button
@@ -217,7 +221,7 @@ export function PendingApprovalsTable({
                     </Button>
                   )}
                 </div>
-              </TableCell>
+              </TableCell>}
             </TableRow>
           ))}
         </TableBody>

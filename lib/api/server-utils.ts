@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { TypedDocumentNode } from "@graphql-typed-document-node/core";
 import { print } from "graphql";
+import { assertNotMutation } from "@/lib/read-only";
 
 const API_URL =
   process.env.API_BASE_URL ||
@@ -25,6 +26,7 @@ export async function fetchServerGraphql<TResult, TVariables = Record<string, an
   }
 
   const query = typeof document === 'string' ? document : print(document);
+  assertNotMutation(query);
 
   const response = await fetch(API_URL, {
     method: "POST",

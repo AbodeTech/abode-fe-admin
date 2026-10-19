@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { AlertCircle, Pencil, UserPlus, UserCog } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { READ_ONLY } from "@/lib/read-only";
 import { ReassignProDialog } from "./dialogs/ReassignProDialog";
 
 interface AssignedManager {
@@ -66,32 +67,36 @@ export function ManagerAssignmentCard({ user }: Props) {
             </div>
           </div>
 
-          <Button variant="outline" size="sm" onClick={() => setDialogOpen(true)}>
-            {currentManager ? (
-              <>
-                <Pencil className="h-3.5 w-3.5 mr-2" />
-                Change
-              </>
-            ) : (
-              <>
-                <UserPlus className="h-3.5 w-3.5 mr-2" />
-                Assign
-              </>
-            )}
-          </Button>
+          {!READ_ONLY && (
+            <Button variant="outline" size="sm" onClick={() => setDialogOpen(true)}>
+              {currentManager ? (
+                <>
+                  <Pencil className="h-3.5 w-3.5 mr-2" />
+                  Change
+                </>
+              ) : (
+                <>
+                  <UserPlus className="h-3.5 w-3.5 mr-2" />
+                  Assign
+                </>
+              )}
+            </Button>
+          )}
         </div>
       </div>
 
-      <ReassignProDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        pro={{
-          id: user._id,
-          name: proFullName,
-          email: user.email ?? "",
-        }}
-        currentManagerId={currentManager?._id ?? null}
-      />
+      {!READ_ONLY && (
+        <ReassignProDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          pro={{
+            id: user._id,
+            name: proFullName,
+            email: user.email ?? "",
+          }}
+          currentManagerId={currentManager?._id ?? null}
+        />
+      )}
     </>
   );
 }

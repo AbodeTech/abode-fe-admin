@@ -23,6 +23,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { READ_ONLY } from "@/lib/read-only";
 
 import type { EventEligibleClientRow } from "../hooks/use-event-eligible-clients";
 import type { EligibilityTier } from "../schemas/company-event.schema";
@@ -149,7 +150,7 @@ export function EventAllocationTable({
     capacity != null && !selected.has(row.payment_plan) && grandTotal + totalSize(row) > capacity;
 
   const handleRowClick = (row: EventEligibleClientRow, disabled: boolean) => {
-    if (disabled) return;
+    if (disabled || READ_ONLY) return;
     onToggle(row);
   };
 
@@ -170,9 +171,11 @@ export function EventAllocationTable({
                     ? `${formatNumber(grandTotal)} / ${formatNumber(capacity)} ${unit} allocated`
                     : `${formatNumber(grandTotal)} ${unit} allocated (no capacity set)`}
                 </span>
-                <span className="font-medium">
-                  {selectedClients} {selectedClients === 1 ? "person" : "people"} selected
-                </span>
+                {!READ_ONLY && (
+                  <span className="font-medium">
+                    {selectedClients} {selectedClients === 1 ? "person" : "people"} selected
+                  </span>
+                )}
               </div>
               {capacity != null && (
                 <Progress value={percent} className={cn(atOrOverCapacity && "[&>div]:bg-destructive")} />
@@ -187,22 +190,24 @@ export function EventAllocationTable({
                 </p>
               )}
             </div>
-            <Button
-              onClick={onSave}
-              disabled={isSaving || selected.size === 0 || (capacity != null && grandTotal > capacity)}
-              className="w-full shrink-0 sm:w-auto"
-            >
-              {isSaving ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Confirming...
-                </>
-              ) : selectedClients ? (
-                `Confirm ${selectedClients} for this event`
-              ) : (
-                "Confirm for this event"
-              )}
-            </Button>
+            {!READ_ONLY && (
+              <Button
+                onClick={onSave}
+                disabled={isSaving || selected.size === 0 || (capacity != null && grandTotal > capacity)}
+                className="w-full shrink-0 sm:w-auto"
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Confirming...
+                  </>
+                ) : selectedClients ? (
+                  `Confirm ${selectedClients} for this event`
+                ) : (
+                  "Confirm for this event"
+                )}
+              </Button>
+            )}
           </div>
         </div>
 
@@ -218,7 +223,7 @@ export function EventAllocationTable({
                   key={row.payment_plan}
                   title={row.name}
                   subtitle={row.email}
-                  onClick={disabled ? undefined : () => onToggle(row)}
+                  onClick={disabled || READ_ONLY ? undefined : () => onToggle(row)}
                   className={cn(isSelected && "border-primary/50 bg-primary/5", disabled && "opacity-60")}
                 >
                   <AdminMobileField label="Phone" value={row.phone || "—"} />
@@ -226,16 +231,18 @@ export function EventAllocationTable({
                   <AdminMobileField label="Eligibility" value={<EligibilityBadge tier={row.eligibility_tier} />} />
                   <AdminMobileField label="Qualified" value={<QualifiedCell row={row} />} />
                   <AdminMobileField label="Land completed" value={formatDate(row.land_completed_at)} />
-                  <div className="flex items-center justify-between border-t border-border pt-2">
-                    <span className="text-sm text-muted-foreground">Select for allocation</span>
-                    <Checkbox
-                      checked={isSelected}
-                      disabled={disabled}
-                      onCheckedChange={() => onToggle(row)}
-                      onClick={(e) => e.stopPropagation()}
-                      className="size-5"
-                    />
-                  </div>
+                  {!READ_ONLY && (
+                    <div className="flex items-center justify-between border-t border-border pt-2">
+                      <span className="text-sm text-muted-foreground">Select for allocation</span>
+                      <Checkbox
+                        checked={isSelected}
+                        disabled={disabled}
+                        onCheckedChange={() => onToggle(row)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="size-5"
+                      />
+                    </div>
+                  )}
                 </AdminMobileCard>
               );
             })
@@ -246,7 +253,7 @@ export function EventAllocationTable({
           <Table className="w-full table-auto text-sm">
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead className="w-12 px-4 py-3.5" />
+                {!READ_ONLY && <TableHead className="w-12 px-4 py-3.5" />}
                 <TableHead className="min-w-44 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Client Name
                 </TableHead>
@@ -270,7 +277,7 @@ export function EventAllocationTable({
             <TableBody>
               {safeRows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="whitespace-normal px-4 py-12 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={READ_ONLY ? 6 : 7}className="whitespace-normal px-4 py-12 text-center text-sm text-muted-foreground">
                     No eligible clients found.
                   </TableCell>
                 </TableRow>
@@ -283,18 +290,20 @@ export function EventAllocationTable({
                       key={row.payment_plan}
                       onClick={() => handleRowClick(row, disabled)}
                       className={cn(
-                        disabled ? "opacity-60" : "cursor-pointer hover:bg-muted/40",
+                        READ_ONLY ? undefined : disabled ? "opacity-60" : "cursor-pointer hover:bg-muted/40",
                         isSelected && "bg-primary/5 hover:bg-primary/10"
                       )}
                     >
-                      <TableCell className="px-4 py-4 align-top" onClick={(e) => e.stopPropagation()}>
-                        <Checkbox
-                          checked={isSelected}
-                          disabled={disabled}
-                          onCheckedChange={() => onToggle(row)}
-                          className="size-5"
-                        />
-                      </TableCell>
+                      {!READ_ONLY && (
+                        <TableCell className="px-4 py-4 align-top" onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            checked={isSelected}
+                            disabled={disabled}
+                            onCheckedChange={() => onToggle(row)}
+                            className="size-5"
+                          />
+                        </TableCell>
+                      )}
                       <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed">
                         <span className="block wrap-break-word font-medium">{row.name}</span>
                       </TableCell>

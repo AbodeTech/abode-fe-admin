@@ -9,13 +9,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { PlusCircle } from "lucide-react";
 import Link from "next/link";
+import { READ_ONLY } from "@/lib/read-only";
 // Importing permission store if it exists, otherwise defaulting to true for now
 // import { usePermissionStore } from "@/store/store/admin/usePermissionsStore";
 
 export function AssetPageHeader() {
   // const { permissions } = usePermissionStore();
   // const canCreate = permissions.includes("manage_assets");
-  const canCreate = true; // Temporary default until permission store is ported
+  const canCreate = !READ_ONLY;
 
   return (
     <div className="mb-6 flex min-w-0 flex-col gap-3 sm:mb-8 sm:flex-row sm:items-center sm:justify-between">

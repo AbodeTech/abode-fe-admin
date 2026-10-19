@@ -26,6 +26,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { READ_ONLY } from "@/lib/read-only";
 
 import { RegisterAttendeeDialog, type EventPickupOption } from "./dialogs/RegisterAttendeeDialog";
 import { ChangePickupDialog } from "./dialogs/ChangePickupDialog";
@@ -110,7 +111,7 @@ export function EventRegistrationsTable({
   // and re-deriving them from a refetched page would blank the dialog mid-edit.
   const [registering, setRegistering] = useState<EventRegistrationRow | null>(null);
   const [movingPickup, setMovingPickup] = useState<EventRegistrationRow | null>(null);
-  const canAct = !!eventId;
+  const canAct = !!eventId && !READ_ONLY;
   const stops = pickupLocations ?? [];
   if (isLoading) {
     return (

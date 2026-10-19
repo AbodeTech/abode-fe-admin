@@ -22,6 +22,7 @@ import {
 import Link from "next/link";
 import { format } from "date-fns";
 import { graphql, useFragment as getFragmentData, FragmentType } from "@/lib/gql";
+import { READ_ONLY } from "@/lib/read-only";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -143,21 +144,23 @@ export function SuspendedUsersTable({ users }: SuspendedUsersTableProps) {
                 user.Networth !== undefined && user.Networth !== null ? `N${user.Networth.toLocaleString()}` : "-"
               }
             />
-            <div className="border-t border-border pt-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="w-full" disabled={isPending}>
-                    <MoreVertical className="mr-2 h-4 w-4" />
-                    Actions
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <UnsuspendMenuItem userId={user._id} disabled={isPending} onConfirm={handleUnsuspend} />
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+            {!READ_ONLY && (
+              <div className="border-t border-border pt-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="w-full" disabled={isPending}>
+                      <MoreVertical className="mr-2 h-4 w-4" />
+                      Actions
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <UnsuspendMenuItem userId={user._id} disabled={isPending} onConfirm={handleUnsuspend} />
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            )}
           </AdminMobileCard>
         ))}
       </AdminMobileStack>
@@ -174,7 +177,7 @@ export function SuspendedUsersTable({ users }: SuspendedUsersTableProps) {
                 <TableHead>Referrer</TableHead>
                 <TableHead>Product Purchased</TableHead>
                 <TableHead>Has Asset</TableHead>
-                <TableHead>Actions</TableHead>
+                {!READ_ONLY && <TableHead>Actions</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -196,20 +199,22 @@ export function SuspendedUsersTable({ users }: SuspendedUsersTableProps) {
                   <TableCell className="!py-3.5">{user.referrer || "No Referer"}</TableCell>
                   <TableCell className="!py-3.5">{user.subscriptions ?? 0}</TableCell>
                   <TableCell className="!py-3.5">{formatHasAsset(user.hasAsset)}</TableCell>
-                  <TableCell className="!py-3.5">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" disabled={isPending}>
-                          <MoreVertical className="h-5 w-5" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <UnsuspendMenuItem userId={user._id} disabled={isPending} onConfirm={handleUnsuspend} />
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
+                  {!READ_ONLY && (
+                    <TableCell className="!py-3.5">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" disabled={isPending}>
+                            <MoreVertical className="h-5 w-5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <UnsuspendMenuItem userId={user._id} disabled={isPending} onConfirm={handleUnsuspend} />
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>

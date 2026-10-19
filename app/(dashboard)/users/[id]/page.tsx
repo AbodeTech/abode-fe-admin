@@ -17,6 +17,7 @@ import type { UserReferralResponse } from "@/lib/api/admin/referrals.types";
 import type { TransactionListResponse } from "@/lib/api/admin/transactions.types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useParams } from "next/navigation";
+import { READ_ONLY } from "@/lib/read-only";
 
 export default function UserDetailsPage() {
   const params = useParams<{ id: string }>();
@@ -79,7 +80,7 @@ export default function UserDetailsPage() {
       <UserStats user={userData} />
 
       {/* Assets List Component - To be fully implemented with data logic */}
-      <UserAssetsList userId={params.id} userEmail={userData.email} />
+      <UserAssetsList userId={params.id} userEmail={userData.email} readOnly={READ_ONLY} />
 
       <UserTransactions transactions={transactionRows} />
 

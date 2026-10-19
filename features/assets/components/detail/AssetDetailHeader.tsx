@@ -21,6 +21,7 @@ import {
 import { useState } from "react";
 import Link from "next/link";
 import { useAssetIdStore } from "@/store/assetid-store";
+import { READ_ONLY } from "@/lib/read-only";
 // import { usePermissionStore } from "@/store/usePermissionStore"; // TODO: Port permission store
 
 interface AssetDetailHeaderProps {
@@ -32,7 +33,7 @@ export function AssetDetailHeader({ assetName, assetType }: AssetDetailHeaderPro
   const { assetId } = useAssetIdStore()
   // const { permissions } = usePermissionStore()
   // const canDisable = permissions.includes("manage_assets")
-  const canDisable = true; // Mocking permissions for now matching other parts of migration
+  const canDisable = !READ_ONLY;
 
   const [showDisableDialog, setShowDisableDialog] = useState(false);
 

@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { READ_ONLY } from "@/lib/read-only";
 
 const CUSTOM_REASON_VALUE = "Other";
 
@@ -96,6 +97,12 @@ export function AssetTransactionAction({ status, assetId, onApprove, onDecline }
       setCustomReason("");
     }
   };
+
+  // Read-only keeps the column but swaps the approve/decline buttons for the
+  // same status bar settled rows get, in the pending colour.
+  if (READ_ONLY && status?.toLowerCase() === "pending") {
+    return <div className="w-6 h-2 rounded-2xl bg-[#F79009]" title="Pending" />;
+  }
 
   if (status?.toLowerCase() !== "pending") {
     return (

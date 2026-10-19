@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { READ_ONLY } from "@/lib/read-only";
 import { CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -44,6 +45,11 @@ export function TransactionAction({
   onDecline,
 }: TransactionActionProps) {
   const normalizedStatus = (status || "").toLowerCase();
+
+  // Read-only shows a pending row the same status bar settled rows get.
+  if (READ_ONLY && normalizedStatus === "pending") {
+    return <div className="w-6 h-2 rounded-2xl bg-[#F79009]" title="Pending" />;
+  }
 
   if (normalizedStatus === "pending") {
     return (

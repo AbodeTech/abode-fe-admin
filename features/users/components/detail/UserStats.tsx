@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { getErrorMessage } from "../../utils/error-message";
 import { useAuthStore } from "@/store/auth-store";
 import { isTopLevelAdmin } from "@/lib/admin-roles";
+import { READ_ONLY } from "@/lib/read-only";
 
 interface UserStatsProps {
   user: UserDetail;
@@ -65,7 +66,7 @@ export function UserStats({ user }: UserStatsProps) {
   const isAdmin = isTopLevelAdmin(currentUser?.role);
   const canSuspendUser = permissions.includes("suspend-user");
   const canUnsuspendUser = permissions.includes("unsuspend-user");
-  const canToggleStatus = isAdmin && (isSuspended ? canUnsuspendUser : canSuspendUser);
+  const canToggleStatus = !READ_ONLY && isAdmin && (isSuspended ? canUnsuspendUser : canSuspendUser);
 
   const handleUserStatusToggle = async () => {
     try {

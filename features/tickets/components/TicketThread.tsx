@@ -32,6 +32,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { READ_ONLY } from "@/lib/read-only";
 import { useAdminSession } from "@/hooks/use-admin-session";
 import { TicketChannel, TicketStatus } from "@/lib/gql/graphql";
 import { useTicket } from "../hooks/use-tickets";
@@ -193,7 +194,7 @@ export function TicketThread({ ticketId, onBack }: Props) {
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            {!isResolved && (
+            {!isResolved && !READ_ONLY && (
               <>
                 <select
                   value={ticket.status}
@@ -247,12 +248,14 @@ export function TicketThread({ ticketId, onBack }: Props) {
         {/* Keyed on the ticket so switching tickets remounts a clean composer.
             Without it React reuses the instance and an unsent draft follows you
             onto the next ticket — one customer's words, addressed to another. */}
-        <TicketComposer
-          key={ticket._id}
-          ticketId={ticket._id}
-          channel={ticket.channel}
-          mergedInto={ticket.merged_into}
-        />
+        {!READ_ONLY && (
+          <TicketComposer
+            key={ticket._id}
+            ticketId={ticket._id}
+            channel={ticket.channel}
+            mergedInto={ticket.merged_into}
+          />
+        )}
       </div>
 
       <aside className="hidden xl:block w-80 shrink-0 border-l border-gray-200 bg-gray-50/30">
