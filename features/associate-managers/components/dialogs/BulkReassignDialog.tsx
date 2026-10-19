@@ -42,7 +42,9 @@ export function BulkReassignDialog({
   sourceManagerId,
 }: Props) {
   const [targetManagerId, setTargetManagerId] = useState<string>("");
-  const { data: managersList } = useAssociateManagers({ page: 1, limit: 100 });
+  // Only while open: the list needs view_manager_tracker, and this dialog
+  // stays mounted in the Manager view too.
+  const { data: managersList } = useAssociateManagers({ page: 1, limit: 100 }, { enabled: open });
   const { mutateAsync, isPending } = useBulkAssignPros();
 
   useEffect(() => {

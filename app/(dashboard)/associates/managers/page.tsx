@@ -4,6 +4,8 @@ import { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Lock, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { ApiClientError } from "@/lib/api-client";
+import { useAdminPermissions } from "@/hooks/use-admin-permission";
 import type { ProGroup } from "@/features/associate-managers/schemas/manager-dashboard.schema";
 import {
   PerformanceHeader,
@@ -25,10 +27,13 @@ import {
   ProGroupDrawer,
 } from "@/features/associate-managers";
 import { buildManagerDashboardFilter, buildManagerDashboardPeriodFilter } from "@/features/associate-managers/lib/dashboard-filter";
-import { useAuthStore } from "@/store/auth-store";
 
-/** Friendly empty state for users who shouldn't be here. */
-function NotAuthorized() {
+/**
+ * Friendly empty state for users who shouldn't be here. `message` is the BE's
+ * own reason when it refused (NOT_A_MANAGER, NOT_YOUR_TEAM, a missing
+ * permission).
+ */
+function NotAuthorized({ message }: { message?: string }) {
   return (
     <div className="flex items-center justify-center h-[calc(100vh-200px)]">
       <div className="max-w-md text-center space-y-3">
@@ -39,8 +44,8 @@ function NotAuthorized() {
           Manager Performance is restricted
         </h2>
         <p className="text-sm text-gray-600">
-          This page is for Super Admins and assigned Associate Managers. Ask
-          your admin if you need access.
+          {message ||
+            "This page is for Associate Managers and admins who can view the manager tracker. Ask your admin if you need access."}
         </p>
       </div>
     </div>
@@ -50,7 +55,7 @@ function NotAuthorized() {
 function AssociateManagersContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { user } = useAuthStore();
+  const permissions = useAdminPermissions();
 
   /** Opens the side drawer for a KPI cohort (does not change the main table filter). */
   const openGroup = (group: ProGroup) => {
@@ -60,23 +65,24 @@ function AssociateManagersContent() {
     router.push(`?${params.toString()}`, { scroll: false });
   };
 
-  // Real role gating: super admins (the `is_super_admin` role flag) get the Super
-  // Admin view. Any other admin who is also an Associate Manager (regardless
-  // of their base role — subadmin / moderator / viewer) gets the Manager
-  // view. `?view=manager` lets super admins preview the Manager layout.
-  const isSuperAdmin = Boolean(user?.role?.is_super_admin);
+  // Being a manager is the manager record (GET /admin/managers/me), not a
+  // permission: a manager on any role, viewer included, gets the Manager view
+  // of their own team. view_manager_tracker opens the Admin view — the picker,
+  // every other team, the combined and unassigned views. `?view=manager`
+  // previews the Manager layout.
+  const canViewAllTeams = permissions.has("view_manager_tracker");
+  const canManageTeams = permissions.has("manage_manager_tracker");
+  const canExportAnyTeam = permissions.has("export_manager_tracker");
   const {
     isManager,
     managerId: selfManagerId,
     isLoading: managerCheckLoading,
   } = useIsCurrentUserManager();
   const wantsManagerView = searchParams.get("view") === "manager";
-  const isAuthorized = isSuperAdmin || isManager || wantsManagerView;
+  const isAuthorized = canViewAllTeams || isManager || wantsManagerView;
 
-  const viewAs: "super-admin" | "manager" =
-    wantsManagerView || (!isSuperAdmin && isManager)
-      ? "manager"
-      : "super-admin";
+  const viewAs: "admin" | "manager" =
+    wantsManagerView || (!canViewAllTeams && isManager) ? "manager" : "admin";
 
   const managerIdParam = searchParams.get("manager");
   const startDate = searchParams.get("start_date");
@@ -104,9 +110,13 @@ function AssociateManagersContent() {
   const { mutateAsync: exportPros, isPending: isExportingPros } =
     useExportManagerDashboardPros();
 
-  // Super Admin: list managers for the dropdown. Limit 200 covers most orgs;
-  // bump to a server-side search if rosters grow beyond that.
-  const managersQuery = useAssociateManagers({ page: 1, limit: 100 });
+  // Admin view: list managers for the dropdown. Limit 100 covers most orgs;
+  // bump to a server-side search if rosters grow beyond that. The list needs
+  // view_manager_tracker, so the Manager view never asks for it.
+  const managersQuery = useAssociateManagers(
+    { page: 1, limit: 100 },
+    { enabled: viewAs === "admin" }
+  );
   const managers = managersQuery.data?.items ?? [];
 
   // Resolve the active manager id from URL, fall back to first.
@@ -120,7 +130,17 @@ function AssociateManagersContent() {
     ? null
     : managers.find((m) => m.manager_id === activeManagerId) ?? null;
 
-  // Dashboard data — three super-admin endpoints + one self endpoint.
+  // A manager works their own team on any role: logging calls and exporting
+  // it need no tracker permission. Another manager's team needs
+  // manage_manager_tracker to log calls and export_manager_tracker to export;
+  // the combined view exports only with the latter.
+  const isOwnTeam =
+    viewAs === "manager" ||
+    (!isAllManagers && !!selfManagerId && activeManagerId === selfManagerId);
+  const canLogCalls = isOwnTeam || canManageTeams;
+  const canExportTeam = isAllManagers ? canExportAnyTeam : isOwnTeam || canExportAnyTeam;
+
+  // Dashboard data — three admin endpoints + one self endpoint.
   // All gated on `isAuthorized` so unauthorized users skip the round-trip.
   // KPI sections use period/date only; roster group/sort refetch the table query.
   const adminKpiQuery = useAdminManagerDashboard(
@@ -128,7 +148,7 @@ function AssociateManagersContent() {
     periodFilter,
     {
       enabled:
-        isAuthorized && viewAs === "super-admin" && !isAllManagers,
+        isAuthorized && viewAs === "admin" && !isAllManagers,
     }
   );
   const adminTableQuery = useAdminManagerDashboard(
@@ -136,12 +156,12 @@ function AssociateManagersContent() {
     filter,
     {
       enabled:
-        isAuthorized && viewAs === "super-admin" && !isAllManagers,
+        isAuthorized && viewAs === "admin" && !isAllManagers,
       keepPreviousData: true,
     }
   );
-  const allManagersKpiQuery = useAllManagersDashboard(periodFilter, { enabled: isAuthorized && viewAs === "super-admin" && isAllManagers });
-  const allManagersTableQuery = useAllManagersDashboard(filter, { enabled: isAuthorized && viewAs === "super-admin" && isAllManagers, keepPreviousData: true });
+  const allManagersKpiQuery = useAllManagersDashboard(periodFilter, { enabled: isAuthorized && viewAs === "admin" && isAllManagers });
+  const allManagersTableQuery = useAllManagersDashboard(filter, { enabled: isAuthorized && viewAs === "admin" && isAllManagers, keepPreviousData: true });
   const selfKpiQuery = useManagerDashboard(periodFilter, {
     enabled: isAuthorized && viewAs === "manager",
   });
@@ -167,13 +187,13 @@ function AssociateManagersContent() {
   }
 
   const kpiQuery =
-    viewAs === "super-admin"
+    viewAs === "admin"
       ? isAllManagers
         ? allManagersKpiQuery
         : adminKpiQuery
       : selfKpiQuery;
   const tableQuery =
-    viewAs === "super-admin"
+    viewAs === "admin"
       ? isAllManagers
         ? allManagersTableQuery
         : adminTableQuery
@@ -182,10 +202,13 @@ function AssociateManagersContent() {
   const dashboard = kpiQuery.data;
   const tableData = tableQuery.data;
 
+  // The manager list only matters to the Admin view. Its cache entry is
+  // shared with the reassign dialogs, so ignore it entirely otherwise.
+  const listQuery = viewAs === "admin" ? managersQuery : null;
   const isPageLoading =
-    managersQuery.isLoading || (kpiQuery.isLoading && !kpiQuery.data);
+    Boolean(listQuery?.isLoading) || (kpiQuery.isLoading && !kpiQuery.data);
   const tableLoading = tableQuery.isFetching;
-  const error = managersQuery.error || kpiQuery.error || tableQuery.error;
+  const error = listQuery?.error || kpiQuery.error || tableQuery.error;
 
   if (isPageLoading) {
     return (
@@ -196,13 +219,13 @@ function AssociateManagersContent() {
   }
 
   if (error) {
-    // BE auth errors land here too (e.g. a non-manager forced ?view=manager
-    // through, or a non-admin reached the super-admin endpoint via URL).
+    // BE refusals land here too: NOT_A_MANAGER for a non-manager who forced
+    // ?view=manager, NOT_YOUR_TEAM for another manager's id in the URL, or a
+    // missing tracker permission. Each says why in its message.
     const message = (error as Error).message ?? "";
-    const isAuthError =
-      /not authorized|only assigned managers|only super admins/i.test(message);
-
-    if (isAuthError) return <NotAuthorized />;
+    if (error instanceof ApiClientError && error.statusCode === 403) {
+      return <NotAuthorized message={message} />;
+    }
 
     return (
       <div className="p-4 rounded-md bg-red-50 text-red-500 border border-red-200">
@@ -213,9 +236,9 @@ function AssociateManagersContent() {
   }
 
   // No Associate Managers exist yet — show a friendly empty state with a
-  // primary "Add" CTA instead of dead-ending on "No dashboard data". Only
-  // Super Admin can land here (a manager would always have at least themselves).
-  if (viewAs === "super-admin" && managers.length === 0) {
+  // primary "Add" CTA instead of dead-ending on "No dashboard data". Only the
+  // Admin view can land here (a manager would always have at least themselves).
+  if (viewAs === "admin" && managers.length === 0) {
     return <NoManagersEmptyState />;
   }
 
@@ -250,6 +273,7 @@ function AssociateManagersContent() {
     <div className="space-y-6">
       <PerformanceHeader
         viewAs={viewAs}
+        canManage={canManageTeams}
         managers={managers}
         activeManagerId={activeManagerId}
         isAllManagers={isAllManagers}
@@ -258,18 +282,18 @@ function AssociateManagersContent() {
 
       <ManagerSnapshot
         viewAs={viewAs}
+        canManageTargets={canManageTeams}
         manager={activeManager}
         dashboard={dashboard}
       />
 
       {/* Rating trend — only meaningful when a specific manager is in focus.
           Hidden in the combined "all managers" view (no single manager to
-          series-plot). Manager viewing themselves passes null → the BE service
-          resolves to the caller's own admin id. */}
+          series-plot). There is no self route: a manager viewing themselves
+          names their own id, which the BE accepts on any role. */}
       {!isAllManagers && (
         <RatingTrendPanel
-          managerId={viewAs === "manager" ? null : activeManagerId}
-          enabled={viewAs === "manager" || Boolean(activeManagerId)}
+          managerId={viewAs === "manager" ? selfManagerId : activeManagerId}
         />
       )}
 
@@ -289,6 +313,7 @@ function AssociateManagersContent() {
         managerId={activeManagerId}
         periodFilter={periodFilter}
         exportManagerId={viewAs === "manager" ? selfManagerId : activeManagerId}
+        allowExport={canExportTeam}
       />
 
       <AssociateProsTable
@@ -299,8 +324,10 @@ function AssociateManagersContent() {
           tableData?.associate_pros_group_total ?? dashboard.associate_pros_group_total
         }
         isLoading={tableLoading}
-        onExport={isAllManagers ? undefined : handleExportPros}
+        onExport={isAllManagers || !canExportTeam ? undefined : handleExportPros}
         isExporting={isExportingPros}
+        canLogCalls={canLogCalls}
+        canReassign={canManageTeams}
       />
 
       {/* Team sales is scoped to a single manager's roster — skip it when the
@@ -308,6 +335,7 @@ function AssociateManagersContent() {
       {!isAllManagers && (
         <TeamSalesSection
           viewAs={viewAs}
+          canExport={canExportTeam}
           activeManagerId={activeManagerId}
           selfManagerId={selfManagerId}
           startDate={startDate}

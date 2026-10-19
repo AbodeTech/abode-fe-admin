@@ -15,7 +15,9 @@ import {
 import { useExportManagerSalesRecord } from "../hooks/use-export-manager-sales";
 
 interface Props {
-  viewAs: "super-admin" | "manager";
+  viewAs: "admin" | "manager";
+  /** The viewer's own team, or they hold export_manager_tracker. */
+  canExport: boolean;
   activeManagerId: string | null;
   /**
    * The signed-in manager's own id, from `useIsCurrentUserManager`. The sales
@@ -30,6 +32,7 @@ interface Props {
 
 export function TeamSalesSection({
   viewAs,
+  canExport,
   activeManagerId,
   selfManagerId = null,
   startDate,
@@ -49,7 +52,7 @@ export function TeamSalesSection({
     page,
     limit: DEFAULT_TEAM_SALES_LIMIT,
     filters,
-    enabled: viewAs === "super-admin",
+    enabled: viewAs === "admin",
   });
   const selfQuery = useManagerTeamSales({
     page,
@@ -58,7 +61,7 @@ export function TeamSalesSection({
     enabled: viewAs === "manager",
   });
 
-  const query = viewAs === "super-admin" ? adminQuery : selfQuery;
+  const query = viewAs === "admin" ? adminQuery : selfQuery;
   // apiGetPaged returns { items, meta } — rows are non-nullable on the REST
   // shape, so the old null filter is gone with the GraphQL query.
   const records = query.data?.items ?? [];
@@ -110,16 +113,18 @@ export function TeamSalesSection({
               }}
             />
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            className="h-10 bg-white"
-            onClick={handleExportSales}
-            disabled={isExportingSales}
-          >
-            <Download className="h-4 w-4 mr-2" />
-            {isExportingSales ? "Exporting…" : "Export CSV"}
-          </Button>
+          {canExport && (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 bg-white"
+              onClick={handleExportSales}
+              disabled={isExportingSales}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              {isExportingSales ? "Exporting…" : "Export CSV"}
+            </Button>
+          )}
         </div>
       </div>
 

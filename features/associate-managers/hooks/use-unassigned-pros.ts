@@ -36,7 +36,10 @@ export const useUnassignedPros = (params?: UseUnassignedProsParams) => {
  * There is no count-only endpoint; the paged route's `meta.total` is the count,
  * so this asks for a single row and reads the meta.
  */
-export const useUnassignedProsCount = (q?: string | null) =>
+export const useUnassignedProsCount = (
+  q?: string | null,
+  { enabled = true }: { enabled?: boolean } = {}
+) =>
   useQuery({
     queryKey: managerKeys.unassignedList({ page: 1, limit: 1, q: q ?? null }),
     queryFn: () =>
@@ -44,4 +47,5 @@ export const useUnassignedProsCount = (q?: string | null) =>
         params: { page: 1, limit: 1, ...(q ? { q } : {}) },
       }),
     select: (result) => result.meta.total ?? 0,
+    enabled,
   });

@@ -29,7 +29,9 @@ import type { ManagerDashboard } from "../schemas/manager-dashboard.schema";
 import { formatCurrencyShort as formatNairaShort } from "../lib/attribution";
 
 interface Props {
-  viewAs: "super-admin" | "manager";
+  viewAs: "admin" | "manager";
+  /** manage_manager_tracker: set and change a manager's targets. */
+  canManageTargets: boolean;
   /** Active manager (from the managers list lookup). Null for manager view. */
   manager: ManagerListItem | null;
   dashboard: ManagerDashboard;
@@ -237,9 +239,11 @@ function ActiveTargetPill({
 
 function NoActiveTargetBanner({
   viewAs,
+  canSetTargets,
   onSet,
 }: {
   viewAs: Props["viewAs"];
+  canSetTargets: boolean;
   onSet: () => void;
 }) {
   return (
@@ -251,7 +255,7 @@ function NoActiveTargetBanner({
           {viewAs === "manager" && " Ask Super Admin to set one."}
         </span>
       </div>
-      {viewAs === "super-admin" && (
+      {canSetTargets && (
         <Button
           size="sm"
           variant="outline"
@@ -265,7 +269,7 @@ function NoActiveTargetBanner({
   );
 }
 
-export function ManagerSnapshot({ viewAs, manager, dashboard }: Props) {
+export function ManagerSnapshot({ viewAs, canManageTargets, manager, dashboard }: Props) {
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const target = dashboard.target;
@@ -302,7 +306,7 @@ export function ManagerSnapshot({ viewAs, manager, dashboard }: Props) {
   return (
     <>
       <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-5">
-        {viewAs === "super-admin" && manager && (
+        {viewAs === "admin" && manager && (
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-full bg-[#E0F2F1] text-[#00695C] flex items-center justify-center font-semibold text-sm">
               {managerInitials(manager)}
@@ -329,13 +333,14 @@ export function ManagerSnapshot({ viewAs, manager, dashboard }: Props) {
               {manager && (
                 <NoActiveTargetBanner
                   viewAs={viewAs}
+                  canSetTargets={canManageTargets}
                   onSet={() => setDialogOpen(true)}
                 />
               )}
             </div>
           )}
 
-          {viewAs === "super-admin" && active && manager && (
+          {canManageTargets && active && manager && (
             <Button
               variant="outline"
               size="sm"

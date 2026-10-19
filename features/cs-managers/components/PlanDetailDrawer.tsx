@@ -75,6 +75,11 @@ interface Props {
   plan: PlanRow | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /**
+   * The BE takes a call only from the customer's assigned CS Manager or a
+   * super admin (NOT_THE_ASSIGNED_CSM otherwise), whatever their role.
+   */
+  canLogCall: boolean;
 }
 
 const OUTCOMES: {
@@ -135,7 +140,7 @@ const formatDateTime = (iso: string) => {
   })}`;
 };
 
-export function PlanDetailDrawer({ plan, open, onOpenChange }: Props) {
+export function PlanDetailDrawer({ plan, open, onOpenChange, canLogCall }: Props) {
   const form = useForm<OnboardingCallFormValues>({
     resolver: zodResolver(onboardingCallSchema),
     defaultValues: DEFAULTS,
@@ -349,116 +354,122 @@ export function PlanDetailDrawer({ plan, open, onOpenChange }: Props) {
             )}
 
             {/* --------------------------------------------------- log a call */}
-            <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit(onSubmit)}
-                className="rounded-lg border border-gray-200 p-3 space-y-4"
-              >
-                <p className="text-xs font-medium text-gray-900">Log a call</p>
+            {canLogCall ? (
+              <Form {...form}>
+                <form
+                  onSubmit={form.handleSubmit(onSubmit)}
+                  className="rounded-lg border border-gray-200 p-3 space-y-4"
+                >
+                  <p className="text-xs font-medium text-gray-900">Log a call</p>
 
-                <FormField
-                  control={form.control}
-                  name="outcome"
-                  render={({ field }) => (
-                    <FormItem className="space-y-2">
-                      <FormLabel className="text-xs text-gray-600">What happened?</FormLabel>
-                      <FormControl>
-                        <div className="grid grid-cols-2 gap-2">
-                          {OUTCOMES.map((o) => {
-                            const Icon = o.icon;
-                            const active = field.value === o.value;
-                            return (
-                              <button
-                                key={o.value}
-                                type="button"
-                                onClick={() => field.onChange(o.value)}
-                                className={cn(
-                                  "text-left rounded-lg border p-2.5 transition-colors",
-                                  active ? "border-[#00695C] bg-[#E0F2F1]/50" : "border-gray-200 hover:border-gray-300"
-                                )}
-                              >
-                                <span className="flex items-center gap-1.5">
-                                  <Icon className={cn("h-3.5 w-3.5", o.tone)} />
-                                  <span className="text-xs font-medium text-gray-900">{o.label}</span>
-                                </span>
-                                <span className="block text-[11px] text-gray-500 mt-0.5 leading-snug">
-                                  {o.description}
-                                </span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="landChoiceReason"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-xs text-gray-600">
-                        Why the customer chose this land
-                        {outcome === "done" && <span className="text-[#AD1F2A]"> *</span>}
-                      </FormLabel>
-                      {/* A list, not a box: free text gave 162 spellings of
-                          eight ideas, which can't be counted — and counting
-                          them is why the question is asked. */}
-                      <Select value={field.value ?? ""} onValueChange={field.onChange}>
+                  <FormField
+                    control={form.control}
+                    name="outcome"
+                    render={({ field }) => (
+                      <FormItem className="space-y-2">
+                        <FormLabel className="text-xs text-gray-600">What happened?</FormLabel>
                         <FormControl>
-                          <SelectTrigger className="w-full text-xs">
-                            <SelectValue placeholder="Pick the main reason" />
-                          </SelectTrigger>
+                          <div className="grid grid-cols-2 gap-2">
+                            {OUTCOMES.map((o) => {
+                              const Icon = o.icon;
+                              const active = field.value === o.value;
+                              return (
+                                <button
+                                  key={o.value}
+                                  type="button"
+                                  onClick={() => field.onChange(o.value)}
+                                  className={cn(
+                                    "text-left rounded-lg border p-2.5 transition-colors",
+                                    active ? "border-[#00695C] bg-[#E0F2F1]/50" : "border-gray-200 hover:border-gray-300"
+                                  )}
+                                >
+                                  <span className="flex items-center gap-1.5">
+                                    <Icon className={cn("h-3.5 w-3.5", o.tone)} />
+                                    <span className="text-xs font-medium text-gray-900">{o.label}</span>
+                                  </span>
+                                  <span className="block text-[11px] text-gray-500 mt-0.5 leading-snug">
+                                    {o.description}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
                         </FormControl>
-                        <SelectContent>
-                          {LAND_CHOICE_REASONS.map((reason) => (
-                            <SelectItem key={reason} value={reason} className="text-xs">
-                              {reason === "other"
-                                ? "Other — say more in the notes"
-                                : LAND_CHOICE_REASON_LABELS[reason]}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormDescription className="text-[11px]">
-                        {outcome === "done"
-                          ? "Anything that doesn't fit: pick Other and write it in the notes."
-                          : "Optional unless you mark the call done."}
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                <FormField
-                  control={form.control}
-                  name="notes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-xs text-gray-600">Notes</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          {...field}
-                          rows={2}
-                          className="text-xs"
-                          placeholder="Anything else worth keeping on the record."
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                  <FormField
+                    control={form.control}
+                    name="landChoiceReason"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs text-gray-600">
+                          Why the customer chose this land
+                          {outcome === "done" && <span className="text-[#AD1F2A]"> *</span>}
+                        </FormLabel>
+                        {/* A list, not a box: free text gave 162 spellings of
+                            eight ideas, which can't be counted — and counting
+                            them is why the question is asked. */}
+                        <Select value={field.value ?? ""} onValueChange={field.onChange}>
+                          <FormControl>
+                            <SelectTrigger className="w-full text-xs">
+                              <SelectValue placeholder="Pick the main reason" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {LAND_CHOICE_REASONS.map((reason) => (
+                              <SelectItem key={reason} value={reason} className="text-xs">
+                                {reason === "other"
+                                  ? "Other — say more in the notes"
+                                  : LAND_CHOICE_REASON_LABELS[reason]}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormDescription className="text-[11px]">
+                          {outcome === "done"
+                            ? "Anything that doesn't fit: pick Other and write it in the notes."
+                            : "Optional unless you mark the call done."}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                <div className="flex justify-end">
-                  <Button type="submit" size="sm" className="h-8 text-xs" disabled={logCall.isPending}>
-                    {logCall.isPending && <Loader2 className="h-3 w-3 animate-spin" />}
-                    Log call
-                  </Button>
-                </div>
-              </form>
-            </Form>
+                  <FormField
+                    control={form.control}
+                    name="notes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs text-gray-600">Notes</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            {...field}
+                            rows={2}
+                            className="text-xs"
+                            placeholder="Anything else worth keeping on the record."
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="flex justify-end">
+                    <Button type="submit" size="sm" className="h-8 text-xs" disabled={logCall.isPending}>
+                      {logCall.isPending && <Loader2 className="h-3 w-3 animate-spin" />}
+                      Log call
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            ) : (
+              <p className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600">
+                Only this customer&apos;s CS Manager can log calls.
+              </p>
+            )}
           </section>
         </div>
       </SheetContent>

@@ -20,7 +20,13 @@ import {
 } from "../schemas/associate-manager.schema";
 
 interface Props {
-  viewAs: "super-admin" | "manager";
+  /**
+   * `admin` holds view_manager_tracker and picks any manager; `manager` is an
+   * Associate Manager without it, who only ever sees their own team.
+   */
+  viewAs: "admin" | "manager";
+  /** manage_manager_tracker: add and remove managers. */
+  canManage: boolean;
   managers: ManagerListItem[];
   activeManagerId: string | null;
   /** True when the combined "all managers" view is active. */
@@ -31,6 +37,7 @@ interface Props {
 
 export function PerformanceHeader({
   viewAs,
+  canManage,
   managers,
   activeManagerId,
   isAllManagers = false,
@@ -40,7 +47,10 @@ export function PerformanceHeader({
   const searchParams = useSearchParams();
   const [unassignedDialogOpen, setUnassignedDialogOpen] = useState(false);
 
-  const unassignedCountQuery = useUnassignedProsCount(null);
+  // Needs view_manager_tracker — don't fire it in the manager view.
+  const unassignedCountQuery = useUnassignedProsCount(null, {
+    enabled: viewAs === "admin",
+  });
   const unassignedCount = unassignedCountQuery.data ?? 0;
 
   const activeManager =
@@ -61,14 +71,14 @@ export function PerformanceHeader({
             Associate Manager Performance
           </h1>
           <p className="text-muted-foreground">
-            {viewAs === "super-admin"
+            {viewAs === "admin"
               ? "Performance and recruitment metrics scoped per manager."
               : `Your performance dashboard — ${assignedProsCount} Associate Pros assigned.`}
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          {viewAs === "super-admin" && (
+          {viewAs === "admin" && (
             <Select
               value={isAllManagers ? "all" : (activeManagerId ?? "")}
               onValueChange={handleManagerChange}
@@ -97,7 +107,7 @@ export function PerformanceHeader({
 
           <DashboardPeriodFilter />
 
-          {viewAs === "super-admin" && (
+          {viewAs === "admin" && (
             <>
               {unassignedCount > 0 && (
                 <button
@@ -111,7 +121,7 @@ export function PerformanceHeader({
                 </button>
               )}
 
-              <ManageManagersMenu activeManager={activeManager} />
+              {canManage && <ManageManagersMenu activeManager={activeManager} />}
             </>
           )}
         </div>

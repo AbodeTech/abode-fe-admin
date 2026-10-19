@@ -131,6 +131,16 @@ export const ADMIN_PERMISSIONS = [
   'generate_reports',
   'view_audit_logs',
 
+  // Associate Manager and CS Manager trackers. These open OTHER managers'
+  // teams; a manager works their own team on any role, because being a
+  // manager is the manager record, not a permission (BE ca633ff).
+  'view_manager_tracker',
+  'manage_manager_tracker',
+  'export_manager_tracker',
+  'view_cs_manager_tracker',
+  'manage_cs_manager_tracker',
+  'export_cs_manager_tracker',
+
   'view_meetings',
   'manage_meetings',
 

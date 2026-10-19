@@ -17,8 +17,16 @@ import { useUnassignedCustomers } from "../hooks/use-cs-managers";
 import { adminMinName, type CSManagerSummary } from "../schemas/cs-manager.schema";
 
 interface Props {
-  /** Super admins pick any manager; a CS Manager only ever sees their own. */
-  viewAs: "super-admin" | "manager";
+  /**
+   * `admin` holds view_cs_manager_tracker and picks any manager; `manager` is
+   * a CS Manager without it, who only ever sees their own book.
+   */
+  viewAs: "admin" | "manager";
+  /**
+   * The combined view and adding/removing CS Managers are super-admin only on
+   * the BE, so a moderator in the admin view doesn't get them.
+   */
+  isSuperAdmin: boolean;
   managers: CSManagerSummary[];
   activeManagerId: string | null;
   /** From the dashboard payload: portfolio.total_assigned. */
@@ -27,6 +35,7 @@ interface Props {
 
 export function CSPerformanceHeader({
   viewAs,
+  isSuperAdmin,
   managers,
   activeManagerId,
   assignedCustomersCount,
@@ -35,10 +44,10 @@ export function CSPerformanceHeader({
   const searchParams = useSearchParams();
   const [unassignedOpen, setUnassignedOpen] = useState(false);
 
-  const isSuperAdmin = viewAs === "super-admin";
+  const isAdminView = viewAs === "admin";
 
-  // Super-admin only endpoint — don't fire it in the manager view.
-  const { data: unassignedResponse } = useUnassignedCustomers({ enabled: isSuperAdmin });
+  // Needs view_cs_manager_tracker — don't fire it in the manager view.
+  const { data: unassignedResponse } = useUnassignedCustomers({ enabled: isAdminView });
   const unassignedCount = unassignedResponse?.count ?? 0;
 
   const activeManager = managers.find((m) => m.manager?.id === activeManagerId) ?? null;
@@ -57,7 +66,7 @@ export function CSPerformanceHeader({
         <div>
           <h1 className="text-2xl font-bold tracking-tight">CS Manager Performance</h1>
           <p className="text-muted-foreground">
-            {!isSuperAdmin
+            {!isAdminView
               ? `Your dashboard — ${assignedCustomersCount} customer${assignedCustomersCount === 1 ? "" : "s"} assigned.`
               : activeManagerId === "all"
                 ? `${assignedCustomersCount} customers across all CS Managers.`
@@ -68,13 +77,13 @@ export function CSPerformanceHeader({
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          {isSuperAdmin && (
+          {isAdminView && (
             <Select value={activeManagerId ?? ""} onValueChange={handleManagerChange}>
               <SelectTrigger className="w-fit min-w-55 bg-white">
                 <SelectValue placeholder="Select CS Manager" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All CS Managers</SelectItem>
+                {isSuperAdmin && <SelectItem value="all">All CS Managers</SelectItem>}
                 {managers.length === 0 ? (
                   <div className="px-2 py-1.5 text-sm text-gray-500">No CS Managers yet</div>
                 ) : (
@@ -90,7 +99,7 @@ export function CSPerformanceHeader({
 
           <MonthPeriodFilter />
 
-          {isSuperAdmin && (
+          {isAdminView && (
             <>
               {unassignedCount > 0 && (
                 <button
@@ -104,13 +113,15 @@ export function CSPerformanceHeader({
                 </button>
               )}
 
-              <ManageCSManagersMenu activeManager={activeManager} managers={managers} />
+              {isSuperAdmin && (
+                <ManageCSManagersMenu activeManager={activeManager} managers={managers} />
+              )}
             </>
           )}
         </div>
       </div>
 
-      {isSuperAdmin && (
+      {isAdminView && (
         <UnassignedCustomersDialog open={unassignedOpen} onOpenChange={setUnassignedOpen} />
       )}
     </>

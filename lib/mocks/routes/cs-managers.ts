@@ -2,6 +2,7 @@ import { LAND_CHOICE_REASONS } from '@/features/cs-managers/schemas/cs-manager.s
 import { MockHttpError, type MockRoutes } from '../router';
 import { body } from './util';
 import { findPerson } from './people';
+import { requireSession } from './auth';
 
 /* ============================================================
  * CS Managers mocks — role management, targets, unassigned customers, the
@@ -755,6 +756,13 @@ export const csManagerRoutes: MockRoutes = {
   'GET /admin/admins': () => ADMINS,
 
   'GET /admin/cs-managers': () => csManagers.map(toSummary),
+
+  // The caller's own book, if any.
+  'GET /admin/cs-managers/me': () => {
+    const admin = requireSession();
+    const own = csManagers.find((m) => m.managerId === admin.id);
+    return { is_cs_manager: !!own, manager: own ? toSummary(own) : null };
+  },
 
   'POST /admin/cs-managers': ({ body: raw }) => {
     const dto = body<{ admin_id: string }>(raw);
