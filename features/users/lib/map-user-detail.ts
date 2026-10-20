@@ -37,6 +37,13 @@ function asNumber(value: unknown): number {
   return 0;
 }
 
+/** Like asNumber, but keeps "not set" apart from 0. */
+function asNullableNumber(value: unknown): number | null {
+  if (value == null || value === '') return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
 function asDateString(value: unknown): string {
   if (!value) return '';
   if (value instanceof Date) return value.toISOString();
@@ -223,6 +230,13 @@ export function toUserTransaction(raw: Record<string, unknown>): TransactionList
     created_via: ['user', 'admin', 'cron'].includes(createdVia)
       ? (createdVia as TransactionCreatedVia)
       : null,
+    commission_type: asString(raw.commissionType) || null,
+    source_user_name: asString(raw.source_user_name_denormalized) || null,
+    source_asset_name: asString(raw.source_asset_name_denormalized) || null,
+    rate_applied: asNullableNumber(raw.rate_applied),
+    gross_commission: asNullableNumber(raw.gross_commission),
+    wht_deducted: asNullableNumber(raw.wht_deducted),
+    wallet_balance_after: asNullableNumber(raw.wallet_balance_after),
   };
 }
 
