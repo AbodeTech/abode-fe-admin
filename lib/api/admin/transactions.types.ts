@@ -147,6 +147,16 @@ export interface TransactionListResponse {
     file: string;
   } | null;
   created_via?: TransactionCreatedVia | null;
+  // Commission fields written by v2. Null on commissions migrated from v1,
+  // whose details live only in the description.
+  commission_type?: string | null;
+  source_user_name?: string | null;
+  source_asset_name?: string | null;
+  /** A fraction: 0.15 means 15%. */
+  rate_applied?: number | null;
+  gross_commission?: number | null;
+  wht_deducted?: number | null;
+  wallet_balance_after?: number | null;
   // Optional fields for flexibility or deprecated usage
   user?: {
     firstName: string;

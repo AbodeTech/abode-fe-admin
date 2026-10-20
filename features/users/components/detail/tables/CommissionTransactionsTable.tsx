@@ -25,26 +25,58 @@ interface CommissionTransactionsTableProps {
   transactions: TransactionListResponse[]
 }
 
-type SortValue = string | number | null | undefined
+const EMPTY = "—"
+
+function toNumber(value: string | number | null | undefined): number | null {
+  if (value == null || value === "") return null
+  const n = Number(value)
+  return Number.isFinite(n) ? n : null
+}
+
+// v2 commissions carry their details as fields. Commissions migrated from v1
+// don't, so fall back to parsing v1's description
+// ("Commission: <asset> by <client> with WHT: X & Balance at Transaction: Y").
+function toCommissionRow(transaction: TransactionListResponse) {
+  const parsed = parseCommissionDescription(transaction.description)
+  const fromV1 = parsed.isCommission
+  return {
+    ...transaction,
+    commissionType: transaction.commission_type ?? null,
+    clientName: transaction.source_user_name || (fromV1 ? parsed.clientName : null) || null,
+    assetName: transaction.source_asset_name || (fromV1 ? parsed.assetType : null) || null,
+    rate: transaction.rate_applied ?? null,
+    gross: transaction.gross_commission ?? null,
+    // v1's description figure is the payment the commission came from, not
+    // tax, so v1 rows have no WHT to show.
+    wht: transaction.wht_deducted ?? null,
+    balance: transaction.wallet_balance_after ?? (fromV1 ? toNumber(parsed.balance) : null),
+  }
+}
+
+type CommissionRow = ReturnType<typeof toCommissionRow>
+type SortField = keyof CommissionRow
+
+const NUMERIC_FIELDS = new Set<SortField>(["amount", "rate", "gross", "wht", "balance"])
+
+const formatMoney = (value: number | null) => (value == null ? EMPTY : formatAmount(value))
+const formatRate = (rate: number | null) =>
+  rate == null ? EMPTY : `${Number((rate * 100).toFixed(2))}%`
+const formatType = (type: string | null) =>
+  type ? type.charAt(0).toUpperCase() + type.slice(1) : EMPTY
+
+function sortValue(row: CommissionRow, field: SortField): string | number | null {
+  if (field === "time_of_transaction") return new Date(row.time_of_transaction).getTime()
+  const value = row[field]
+  if (value == null || value === "") return null
+  if (NUMERIC_FIELDS.has(field)) return Number(value)
+  return typeof value === "number" ? value : String(value)
+}
 
 export function CommissionTransactionsTable({ transactions }: CommissionTransactionsTableProps) {
-  const [sortField, setSortField] = useState<string>("time_of_transaction")
+  const [sortField, setSortField] = useState<SortField>("time_of_transaction")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc")
 
-  // Process transactions to extract commission details
-  const processedTransactions = transactions.map((transaction) => {
-    const parsedDescription = parseCommissionDescription(transaction.description)
-    return {
-      ...transaction,
-      assetType: parsedDescription.isCommission ? parsedDescription.assetType : null,
-      clientName: parsedDescription.isCommission ? parsedDescription.clientName : null,
-      vatAmount: parsedDescription.isCommission ? parsedDescription.vatAmount : null,
-      balance: parsedDescription.isCommission ? parsedDescription.balance : null,
-    }
-  })
-
-  // Handle sort
-  const handleSort = (field: string) => {
+  const handleSort = (field: SortField) => {
     if (sortField === field) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc")
     } else {
@@ -53,38 +85,26 @@ export function CommissionTransactionsTable({ transactions }: CommissionTransact
     }
   }
 
-  // Sort transactions
-  const sortedTransactions = [...processedTransactions].sort((a, b) => {
-    let aValue: SortValue = a[sortField as keyof typeof a] as SortValue
-    let bValue: SortValue = b[sortField as keyof typeof b] as SortValue
-
-    if (sortField === "vatAmount") {
-      aValue = a.vatAmount ? Number(a.vatAmount) + Number(a.amount) : 0
-      bValue = b.vatAmount ? Number(b.vatAmount) + Number(b.amount) : 0
-    }
-
-    if (sortField === "time_of_transaction") {
-      aValue = new Date(a.time_of_transaction).getTime()
-      bValue = new Date(b.time_of_transaction).getTime()
-    }
-
-    if (sortField === "amount" || sortField === "balance") {
-      aValue = Number(aValue || 0)
-      bValue = Number(bValue || 0)
-    }
-
+  // Rows without a value sort last in either direction.
+  const sortedTransactions = transactions.map(toCommissionRow).sort((a, b) => {
+    const aValue = sortValue(a, sortField)
+    const bValue = sortValue(b, sortField)
     if (aValue === bValue) return 0
-
-    // String comparison for other fields
-    if (typeof aValue === 'string' && typeof bValue === 'string') {
-      return sortDirection === "asc" ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue)
-    }
-
-    // Number comparison
-    return sortDirection === "asc"
-      ? (Number(aValue) - Number(bValue))
-      : (Number(bValue) - Number(aValue))
+    if (aValue == null) return 1
+    if (bValue == null) return -1
+    const order =
+      typeof aValue === "string" && typeof bValue === "string"
+        ? aValue.localeCompare(bValue)
+        : Number(aValue) - Number(bValue)
+    return sortDirection === "asc" ? order : -order
   })
+
+  const sortableHead = (field: SortField, label: string, className = "") => (
+    <TableHead key={field} className={`cursor-pointer whitespace-nowrap ${className}`} onClick={() => handleSort(field)}>
+      {label}
+      {sortField === field && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-4 w-4" /> : <ArrowDownIcon className="inline ml-1 h-4 w-4" />)}
+    </TableHead>
+  )
 
   return (
     <Card className="w-full">
@@ -99,7 +119,14 @@ export function CommissionTransactionsTable({ transactions }: CommissionTransact
           ) : (
             sortedTransactions.map((transaction) => (
               <AdminMobileCard key={transaction._id} title={transaction._id} subtitle={formatDate(transaction.time_of_transaction)}>
+                <AdminMobileField label="Type" value={formatType(transaction.commissionType)} />
+                <AdminMobileField label="Client" value={transaction.clientName || EMPTY} />
+                <AdminMobileField label="Asset" value={transaction.assetName || EMPTY} />
+                <AdminMobileField label="Rate" value={formatRate(transaction.rate)} />
+                <AdminMobileField label="Gross" value={formatMoney(transaction.gross)} />
+                <AdminMobileField label="WHT" value={formatMoney(transaction.wht)} />
                 <AdminMobileField label="Amount" value={formatAmount(transaction.amount)} />
+                <AdminMobileField label="Wallet balance" value={formatMoney(transaction.balance)} />
                 <AdminMobileField
                   label="Payment method"
                   value={
@@ -107,20 +134,6 @@ export function CommissionTransactionsTable({ transactions }: CommissionTransact
                       {getPaymentMethodLabel(transaction.payment_method)}
                     </Badge>
                   }
-                />
-                <AdminMobileField
-                  label="VAT / WHT"
-                  value={
-                    transaction.vatAmount
-                      ? formatAmount(Number(transaction.vatAmount) + Number(transaction.amount))
-                      : "N/A"
-                  }
-                />
-                <AdminMobileField label="Asset" value={transaction.assetType || "N/A"} />
-                <AdminMobileField label="Client" value={transaction.clientName || "N/A"} />
-                <AdminMobileField
-                  label="Balance"
-                  value={transaction.balance ? formatAmount(transaction.balance) : "N/A"}
                 />
                 <AdminMobileField
                   label="Status"
@@ -140,42 +153,18 @@ export function CommissionTransactionsTable({ transactions }: CommissionTransact
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[150px] cursor-pointer" onClick={() => handleSort("_id")}>
-                  ID
-                  {sortField === "_id" && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-4 w-4" /> : <ArrowDownIcon className="inline ml-1 h-4 w-4" />)}
-                </TableHead>
-                <TableHead className="cursor-pointer" onClick={() => handleSort("time_of_transaction")}>
-                  Time
-                  {sortField === "time_of_transaction" && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-4 w-4" /> : <ArrowDownIcon className="inline ml-1 h-4 w-4" />)}
-                </TableHead>
-                <TableHead className="cursor-pointer" onClick={() => handleSort("amount")}>
-                  Amount
-                  {sortField === "amount" && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-4 w-4" /> : <ArrowDownIcon className="inline ml-1 h-4 w-4" />)}
-                </TableHead>
-                <TableHead className="cursor-pointer" onClick={() => handleSort("payment_method")}>
-                  Payment Method
-                  {sortField === "payment_method" && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-4 w-4" /> : <ArrowDownIcon className="inline ml-1 h-4 w-4" />)}
-                </TableHead>
-                <TableHead className="cursor-pointer" onClick={() => handleSort("vatAmount")}>
-                  Transaction Amount
-                  {sortField === "vatAmount" && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-4 w-4" /> : <ArrowDownIcon className="inline ml-1 h-4 w-4" />)}
-                </TableHead>
-                <TableHead className="cursor-pointer" onClick={() => handleSort("assetType")}>
-                  Asset Type
-                  {sortField === "assetType" && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-4 w-4" /> : <ArrowDownIcon className="inline ml-1 h-4 w-4" />)}
-                </TableHead>
-                <TableHead className="cursor-pointer" onClick={() => handleSort("clientName")}>
-                  Client Name
-                  {sortField === "clientName" && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-4 w-4" /> : <ArrowDownIcon className="inline ml-1 h-4 w-4" />)}
-                </TableHead>
-                <TableHead className="cursor-pointer" onClick={() => handleSort("balance")}>
-                  Wallet Balance
-                  {sortField === "balance" && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-4 w-4" /> : <ArrowDownIcon className="inline ml-1 h-4 w-4" />)}
-                </TableHead>
-                <TableHead className="cursor-pointer" onClick={() => handleSort("status")}>
-                  Status
-                  {sortField === "status" && (sortDirection === "asc" ? <ArrowUpIcon className="inline ml-1 h-4 w-4" /> : <ArrowDownIcon className="inline ml-1 h-4 w-4" />)}
-                </TableHead>
+                {sortableHead("_id", "ID", "w-[150px]")}
+                {sortableHead("time_of_transaction", "Time")}
+                {sortableHead("commissionType", "Type")}
+                {sortableHead("clientName", "Client")}
+                {sortableHead("assetName", "Asset")}
+                {sortableHead("rate", "Rate")}
+                {sortableHead("gross", "Gross")}
+                {sortableHead("wht", "WHT")}
+                {sortableHead("amount", "Amount")}
+                {sortableHead("balance", "Wallet Balance")}
+                {sortableHead("payment_method", "Payment Method")}
+                {sortableHead("status", "Status")}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -184,18 +173,19 @@ export function CommissionTransactionsTable({ transactions }: CommissionTransact
                   <TableRow key={transaction._id}>
                     <TableCell className="font-medium">{transaction._id}</TableCell>
                     <TableCell>{formatDate(transaction.time_of_transaction)}</TableCell>
+                    <TableCell>{formatType(transaction.commissionType)}</TableCell>
+                    <TableCell>{transaction.clientName || EMPTY}</TableCell>
+                    <TableCell>{transaction.assetName || EMPTY}</TableCell>
+                    <TableCell>{formatRate(transaction.rate)}</TableCell>
+                    <TableCell>{formatMoney(transaction.gross)}</TableCell>
+                    <TableCell>{formatMoney(transaction.wht)}</TableCell>
                     <TableCell className="font-medium">{formatAmount(transaction.amount)}</TableCell>
+                    <TableCell>{formatMoney(transaction.balance)}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className={getPaymentMethodColor(transaction.payment_method)}>
                         {getPaymentMethodLabel(transaction.payment_method)}
                       </Badge>
                     </TableCell>
-                    <TableCell>
-                      {transaction.vatAmount ? formatAmount(Number(transaction.vatAmount) + Number(transaction.amount)) : "N/A"}
-                    </TableCell>
-                    <TableCell>{transaction.assetType || "N/A"}</TableCell>
-                    <TableCell>{transaction.clientName || "N/A"}</TableCell>
-                    <TableCell>{transaction.balance ? formatAmount(transaction.balance) : "N/A"}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className={getStatusColor(transaction.status)}>
                         {transaction.status}
@@ -205,7 +195,7 @@ export function CommissionTransactionsTable({ transactions }: CommissionTransact
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-4">
+                  <TableCell colSpan={12} className="text-center py-4">
                     No commission transactions found
                   </TableCell>
                 </TableRow>
