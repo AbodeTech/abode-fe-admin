@@ -105,6 +105,7 @@ export function EventAllocationTable({
   const capacity = availableSize ?? null;
   const percent = capacity ? Math.min(100, Math.round((grandTotal / capacity) * 100)) : 0;
   const atOrOverCapacity = capacity != null && grandTotal >= capacity;
+  const remaining = capacity == null ? null : Math.max(0, capacity - grandTotal);
   const unit = sizeUnit || "sqm";
 
   const wouldExceedCapacity = (row: EventEligibleClient) =>
@@ -126,14 +127,24 @@ export function EventAllocationTable({
         <div className="rounded-lg border bg-muted/30 p-3 sm:p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0 flex-1 space-y-1.5">
-              <div className="flex items-center justify-between text-sm">
+              <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-sm">
                 <span className="text-muted-foreground">
                   {capacity != null
-                    ? `${formatNumber(grandTotal)} / ${formatNumber(capacity)} ${unit} allocated`
-                    : `${formatNumber(grandTotal)} ${unit} allocated (no capacity set)`}
+                    ? `${formatNumber(usedSize)} ${unit} already reserved / ${formatNumber(capacity)} ${unit} capacity`
+                    : `${formatNumber(usedSize)} ${unit} already reserved (no capacity set)`}
                 </span>
-                <span className="font-medium">{selectedPeopleCount} people · {selectedPlotCount} plots selected</span>
+                <span className="font-medium">
+                  {selectedPeopleCount === 0
+                    ? "No new clients selected"
+                    : `${selectedPeopleCount} new ${selectedPeopleCount === 1 ? "client" : "clients"} · ${selectedPlotCount} ${selectedPlotCount === 1 ? "unit" : "units"} selected`}
+                </span>
               </div>
+              {capacity != null && (
+                <p className="text-xs text-muted-foreground">
+                  {selectedSize > 0 && `${formatNumber(selectedSize)} ${unit} pending selection · `}
+                  {formatNumber(remaining)} {unit} remaining
+                </p>
+              )}
               {capacity != null && (
                 <Progress value={percent} className={cn(atOrOverCapacity && "[&>div]:bg-destructive")} />
               )}

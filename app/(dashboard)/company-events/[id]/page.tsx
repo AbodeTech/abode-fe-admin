@@ -143,10 +143,10 @@ function EventDetailContent() {
 
   // Not personalized like the allocation flow's per-person emailed link —
   // one public URL per event, shared however the admin chooses.
-  const publicBase = (process.env.NEXT_PUBLIC_FE_APP_URL ?? "").replace(/\/$/, "");
+  const publicBase = (process.env.NEXT_PUBLIC_FE_APP_URL || "https://app.abode.ng").replace(/\/$/, "");
   const registrationLink = publicBase && eventId
     ? event?.type === "allocation"
-      ? event.slug ? `${publicBase}/${event.slug}` : ""
+      ? `${publicBase}/${event.slug || eventId}`
       : `${publicBase}/site-inspection/${eventId}`
     : "";
 
@@ -470,6 +470,12 @@ function EventDetailContent() {
               Confirmation sheet
             </Button>
           </div>
+          {event.status === 'draft' && (
+            <p className="mt-3 text-sm text-amber-600">Publish this event to open public registration.</p>
+          )}
+          {event.status === 'closed' && (
+            <p className="mt-3 text-sm text-muted-foreground">Public registration is closed for this event.</p>
+          )}
           {event.status === 'published' && event.open_registration !== false && registrationLink && (
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <code className="min-w-0 flex-1 truncate rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
