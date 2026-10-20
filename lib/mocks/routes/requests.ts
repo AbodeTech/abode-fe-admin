@@ -43,7 +43,50 @@ const userRef = (id: string) => {
     : { id };
 };
 
+type Split = [land: number, document: number];
+
+/**
+ * An `AssetUpdateQuote` — the price change for an increase is today's price
+ * of the added portion only, added to what the plan already costs.
+ */
+const quote = (o: {
+  direction: 'increase' | 'decrease';
+  update_type: 'size' | 'units';
+  sizes: [current: number, next: number];
+  units: [current: number, next: number];
+  current: Split;
+  change: Split;
+  monthly?: { current: Split; next: Split };
+  basis?: 'catalogue' | 'pro_rata';
+  daysBack: number;
+}) => {
+  const split = ([land, document]: Split) => ({ land, document, total: land + document });
+  const pair = ([land, document]: Split) => ({ land, document });
+  return {
+    direction: o.direction,
+    update_type: o.update_type,
+    current_size: o.sizes[0],
+    current_units: o.units[0],
+    new_size: o.sizes[1],
+    new_units: o.units[1],
+    current_total: split(o.current),
+    price_change: split(o.change),
+    new_total: split([o.current[0] + o.change[0], o.current[1] + o.change[1]]),
+    ...(o.monthly ? { current_monthly: pair(o.monthly.current), new_monthly: pair(o.monthly.next) } : {}),
+    valuation_basis: o.basis ?? 'catalogue',
+    fee: { original_fee: o.direction === 'increase' ? 0 : 100_000, requires_payment: o.direction === 'decrease' },
+    overpaid_amount: 0,
+    priced_at: daysAgo(o.daysBack),
+  };
+};
+type MockQuote = ReturnType<typeof quote>;
+
 type MockRequest = {
+  /**
+   * The same change priced "today", for the approval dialog. Absent → today's
+   * price matches the quote stored at submit.
+   */
+  _today?: { quote: MockQuote | null; error: { code: string; message: string } | null };
   id: string;
   request_id: string;
   _userId: string;
@@ -100,6 +143,54 @@ const proof = (bank: string, ref: string, daysBack: number, verified: boolean) =
   submitted_at: daysAgo(daysBack),
   verified_at: verified ? daysAgo(daysBack - 0.5) : null,
   verified_by: verified ? ADMIN_ID : null,
+});
+
+// The PRD's worked example: 2 units bought at ₦6M; today 300 sqm is ₦3.5M and
+// 500 sqm is ₦5M, so moving to 500 sqm adds 2 × ₦1.5M.
+const growSize = quote({
+  direction: 'increase',
+  update_type: 'size',
+  sizes: [300, 500],
+  units: [2, 2],
+  current: [6_000_000, 0],
+  change: [3_000_000, 0],
+  monthly: { current: [250_000, 0], next: [400_000, 0] },
+  daysBack: 0.4,
+});
+
+// One more unit at today's ₦3.5M — catalogue rose to ₦3.8M since submit.
+const growUnits = quote({
+  direction: 'increase',
+  update_type: 'units',
+  sizes: [300, 300],
+  units: [1, 2],
+  current: [3_000_000, 0],
+  change: [3_500_000, 0],
+  monthly: { current: [125_000, 0], next: [300_000, 0] },
+  daysBack: 2,
+});
+const growUnitsToday = quote({
+  direction: 'increase',
+  update_type: 'units',
+  sizes: [300, 300],
+  units: [1, 2],
+  current: [3_000_000, 0],
+  change: [3_800_000, 0],
+  monthly: { current: [125_000, 0], next: [315_000, 0] },
+  daysBack: 0,
+});
+
+// Full ownership: the document fee grows with the land. 450 sqm isn't sold
+// any more, so it was valued pro rata from 600 sqm's price per sqm.
+const growOwnership = quote({
+  direction: 'increase',
+  update_type: 'size',
+  sizes: [450, 600],
+  units: [1, 1],
+  current: [9_000_000, 1_200_000],
+  change: [3_000_000, 300_000],
+  basis: 'pro_rata',
+  daysBack: 1,
 });
 
 const requests: MockRequest[] = [
@@ -290,6 +381,104 @@ const requests: MockRequest[] = [
     createdAt: daysAgo(12),
     updatedAt: daysAgo(11),
   },
+  // ── asset update, free increases (priced on the added portion) ──
+  {
+    ...blank,
+    id: '665frq00000000000000r009',
+    request_id: 'AUR-305118',
+    _userId: '665fcccc00000000000000c2',
+    request_type: 'asset_update',
+    status: 'submitted',
+    asset_update_details: {
+      asset: ASSET_AVIATION,
+      unique_asset_id: 'AVC-300-0201',
+      asset_name_snapshot: 'Aviation City',
+      update_type: 'size',
+      current_size: 300,
+      current_units: 2,
+      new_size: 500,
+      new_units: 2,
+      reason_for_update: 'We want a bigger compound on both plots — moving them to 500sqm each.',
+      computed_new_total_price: 9_000_000,
+      computed_price_delta: 3_000_000,
+      direction: 'increase',
+      quote_at_submit: growSize,
+      quote_at_approval: null,
+    },
+    processing_fee: 0,
+    original_fee: 0,
+    discount_amount: 0,
+    payment_status: 'not_applicable',
+    createdAt: daysAgo(0.4),
+    updatedAt: daysAgo(0.4),
+  },
+  {
+    ...blank,
+    _today: { quote: growUnitsToday, error: null },
+    id: '665frq00000000000000r010',
+    request_id: 'AUR-412907',
+    _userId: '665fcccc00000000000000c3',
+    request_type: 'asset_update',
+    status: 'under_review',
+    asset_update_details: {
+      asset: ASSET_AVIATION,
+      unique_asset_id: 'AVC-300-0077',
+      asset_name_snapshot: 'Aviation City',
+      update_type: 'units',
+      current_size: 300,
+      current_units: 1,
+      new_size: 300,
+      new_units: 2,
+      reason_for_update: 'Taking the adjacent 300sqm plot as well so the two can be built as one.',
+      computed_new_total_price: 6_500_000,
+      computed_price_delta: 3_500_000,
+      direction: 'increase',
+      quote_at_submit: growUnits,
+      quote_at_approval: null,
+    },
+    processing_fee: 0,
+    original_fee: 0,
+    discount_amount: 0,
+    payment_status: 'not_applicable',
+    reviewed_by: ADMIN_ID,
+    reviewed_at: daysAgo(1),
+    createdAt: daysAgo(2),
+    updatedAt: daysAgo(1),
+  },
+  {
+    ...blank,
+    _today: {
+      quote: null,
+      error: { code: 'SIZE_NOT_AVAILABLE', message: 'That size is not offered on this asset' },
+    },
+    id: '665frq00000000000000r011',
+    request_id: 'AUR-598341',
+    _userId: '665fcccc00000000000000c5',
+    request_type: 'asset_update',
+    status: 'submitted',
+    asset_update_details: {
+      asset: ASSET_HARMONY,
+      unique_asset_id: 'HRG-450-0019',
+      asset_name_snapshot: 'Harmony Gardens',
+      update_type: 'size',
+      current_size: 450,
+      current_units: 1,
+      new_size: 600,
+      new_units: 1,
+      reason_for_update: 'Upgrading to 600sqm to fit a boys quarters behind the main building.',
+      computed_new_total_price: 12_000_000,
+      computed_price_delta: 3_000_000,
+      direction: 'increase',
+      quote_at_submit: growOwnership,
+      quote_at_approval: null,
+    },
+    processing_fee: 0,
+    original_fee: 0,
+    discount_amount: 0,
+    payment_status: 'not_applicable',
+    createdAt: daysAgo(1),
+    updatedAt: daysAgo(1),
+  },
   // ── custom ──
   {
     ...blank,
@@ -342,7 +531,30 @@ const requests: MockRequest[] = [
 ];
 
 /** The wire shape — `_userId` swapped for a populated `user` ref. */
-const view = ({ _userId, ...rest }: MockRequest) => ({ ...rest, user: userRef(_userId) });
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const view = ({ _userId, _today, ...rest }: MockRequest) => ({ ...rest, user: userRef(_userId) });
+
+/**
+ * The approval dialog's re-quote. Requests made before quotes were stored
+ * have no `quote_at_submit`; today's price defaults to the stored quote
+ * re-dated, unless the row says the catalogue moved or the size went off sale.
+ */
+function requoteOf(row: MockRequest) {
+  const atSubmit = (row.asset_update_details?.quote_at_submit as MockQuote | null | undefined) ?? null;
+  const today = row._today ?? {
+    quote: atSubmit ? { ...atSubmit, priced_at: new Date().toISOString() } : null,
+    error: null,
+  };
+  return {
+    at_submit: atSubmit,
+    at_today: today.quote,
+    at_today_error: today.error,
+    price_moved: Boolean(
+      atSubmit && today.quote && atSubmit.price_change.total !== today.quote.price_change.total
+    ),
+    plan_changed_since_submit: false,
+  };
+}
 
 /**
  * Keyed on `request_id` ONLY — `findOne({ request_id })` is the backend's
@@ -474,6 +686,14 @@ export const requestRoutes: MockRoutes = {
 
   'GET /admin/requests/:request_id': ({ params }) => view(requireRequest(params.request_id)),
 
+  'GET /admin/requests/:request_id/asset-update-quote': ({ params }) => {
+    const row = requireRequest(params.request_id);
+    if (row.request_type !== 'asset_update') {
+      throw new MockHttpError(400, 'Only asset update requests have a quote', 'NOT_ASSET_UPDATE');
+    }
+    return requoteOf(row);
+  },
+
   'PATCH /admin/requests/:request_id/review': ({ params, body: raw }) => {
     const row = requireRequest(params.request_id);
     requireTransition(row, 'under_review');
@@ -489,12 +709,34 @@ export const requestRoutes: MockRoutes = {
   'POST /admin/requests/:request_id/approve': ({ params, body: raw }) => {
     const row = requireRequest(params.request_id);
     requireTransition(row, 'approved');
-    const dto = body<{ mode?: 'system' | 'manual'; admin_notes?: string; estimated_completion_hours?: number }>(raw);
+    const dto = body<{
+      mode?: 'system' | 'manual';
+      admin_notes?: string;
+      estimated_completion_hours?: number;
+      expected_price_change?: number;
+    }>(raw);
     if (dto.mode !== 'system' && dto.mode !== 'manual') {
       throw new MockHttpError(400, 'mode must be system or manual', 'VALIDATION_FAILED');
     }
     if (dto.mode === 'system' && row.request_type === 'custom_request') {
       throw new MockHttpError(400, 'Custom requests cannot be system-approved', 'CUSTOM_REQUEST_NOT_SYSTEM_APPROVABLE');
+    }
+
+    // Approval applies today's price — refuse if it can't be computed, or if
+    // it isn't the figure the admin was shown.
+    if (row.request_type === 'asset_update' && row.asset_update_details) {
+      const requote = requoteOf(row);
+      if (requote.at_today_error) {
+        throw new MockHttpError(400, requote.at_today_error.message, requote.at_today_error.code);
+      }
+      if (
+        dto.expected_price_change !== undefined &&
+        requote.at_today &&
+        requote.at_today.price_change.total !== dto.expected_price_change
+      ) {
+        throw new MockHttpError(409, "Today's price no longer matches the quote you confirmed", 'QUOTE_CHANGED');
+      }
+      row.asset_update_details.quote_at_approval = requote.at_today;
     }
 
     const now = new Date().toISOString();

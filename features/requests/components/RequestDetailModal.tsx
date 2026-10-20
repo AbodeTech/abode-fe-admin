@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import {
   Calendar,
   CheckCircle,
@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { ApiClientError } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { formatNaira } from "@/lib/utils/format";
 
@@ -46,11 +47,17 @@ import {
   PAYMENT_STATUS_LABELS,
   REQUEST_TYPE_LABELS,
   adminReasonSchema,
+  isFeeFree,
   refName,
   requestActions,
+  submittedPriceChange,
+  type AssetUpdateDetails,
+  type AssetUpdateQuote,
   type ClientRequest,
 } from "../schemas/request.schema";
+import { useAssetUpdateQuote } from "../hooks/use-client-requests";
 import {
+  QUOTE_CHANGED,
   useApproveRequest,
   useCancelRequest,
   useCompleteRequest,
@@ -151,13 +158,12 @@ function DetailsCard({ request }: { request: ClientRequest }) {
                   )
                 }
               />
-              <Field label="New total price" value={formatNaira(au.computed_new_total_price)} />
+              <Field label="New total price" value={formatNaira(submittedPriceChange(au).newTotal)} />
               <Field
-                label="Price difference"
+                label={au.direction === "increase" ? "Added portion" : "Price difference"}
                 value={
-                  <span className={au.computed_price_delta >= 0 ? "text-orange-600" : "text-green-600"}>
-                    {au.computed_price_delta >= 0 ? "+" : "−"}
-                    {formatNaira(Math.abs(au.computed_price_delta))}
+                  <span className={submittedPriceChange(au).change >= 0 ? "text-orange-600" : "text-green-600"}>
+                    {signedNaira(submittedPriceChange(au).change)}
                   </span>
                 }
               />
@@ -201,7 +207,196 @@ function DetailsCard({ request }: { request: ClientRequest }) {
   );
 }
 
+/** One column of the quote check — the figures as stored at submit, or as priced today. */
+type QuoteColumn = { current: number; change: number; newTotal: number; newMonthly: number | null };
+
+function columnOf(quote: AssetUpdateQuote): QuoteColumn {
+  return {
+    current: quote.current_total.total,
+    change: quote.price_change.total,
+    newTotal: quote.new_total.total,
+    newMonthly: quote.new_monthly ? quote.new_monthly.land + quote.new_monthly.document : null,
+  };
+}
+
+/** Requests made before quotes were stored only carry the land-only `computed_*` pair. */
+function submitColumn(details: AssetUpdateDetails, atSubmit: AssetUpdateQuote | null | undefined): QuoteColumn {
+  const quote = atSubmit ?? details.quote_at_submit;
+  if (quote) return columnOf(quote);
+  const { change, newTotal } = submittedPriceChange(details);
+  return { current: newTotal - change, change, newTotal, newMonthly: null };
+}
+
+function signedNaira(value: number) {
+  return `${value >= 0 ? "+" : "−"}${formatNaira(Math.abs(value))}`;
+}
+
+const TODAY_ERRORS: Record<string, string> = {
+  SIZE_NOT_AVAILABLE:
+    "This change can't be priced today — the size isn't offered on the plan's tenor any more. Approval would fail; decline the request or contact the customer.",
+};
+
+/**
+ * What the customer was quoted at submit next to the same change priced
+ * today, shown before an asset update is approved. Approval applies today's
+ * figure, so a catalogue price that moved since submit is called out here
+ * rather than discovered on the plan afterwards.
+ *
+ * If today's price can't be loaded the stored quote is still shown, with a
+ * note that approval reprices.
+ */
+function QuoteCheck({
+  request,
+  details,
+  quote,
+}: {
+  request: ClientRequest;
+  details: AssetUpdateDetails;
+  quote: ReturnType<typeof useAssetUpdateQuote>;
+}) {
+  if (quote.isPending) {
+    return (
+      <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        Pricing this change at today&apos;s rates…
+      </div>
+    );
+  }
+
+  const data = quote.data;
+  const submit = submitColumn(details, data?.at_submit);
+  const today = data?.at_today ? columnOf(data.at_today) : null;
+
+  const rows: { label: string; submit: string; today: string | null; moved: boolean; tone?: string }[] = [
+    {
+      label: "Current plan total",
+      submit: formatNaira(submit.current),
+      today: today && formatNaira(today.current),
+      moved: Boolean(today && today.current !== submit.current),
+    },
+    {
+      label: details.direction === "decrease" ? "Price change" : "Added portion",
+      submit: signedNaira(submit.change),
+      today: today && signedNaira(today.change),
+      moved: Boolean(today && today.change !== submit.change),
+      tone: submit.change >= 0 ? "text-orange-600" : "text-green-600",
+    },
+    {
+      label: "New total",
+      submit: formatNaira(submit.newTotal),
+      today: today && formatNaira(today.newTotal),
+      moved: Boolean(today && today.newTotal !== submit.newTotal),
+    },
+  ];
+  if (submit.newMonthly !== null || today?.newMonthly != null) {
+    rows.push({
+      label: "New monthly",
+      submit: submit.newMonthly !== null ? formatNaira(submit.newMonthly) : "—",
+      today: today?.newMonthly != null ? formatNaira(today.newMonthly) : null,
+      moved: Boolean(today && today.newMonthly !== submit.newMonthly),
+    });
+  }
+
+  const showToday = Boolean(today);
+  const todayError = data?.at_today_error;
+
+  return (
+    <div className="space-y-3 py-2 text-sm">
+      <div className="rounded-md border p-3">
+        <div className={cn("grid gap-x-4 gap-y-1.5", showToday ? "grid-cols-[1fr_auto_auto]" : "grid-cols-[1fr_auto]")}>
+          <span />
+          <span className="text-right text-xs uppercase tracking-wide text-muted-foreground">At submit</span>
+          {showToday ? (
+            <span className="text-right text-xs uppercase tracking-wide text-muted-foreground">Today</span>
+          ) : null}
+          {rows.map((row) => (
+            <Fragment key={row.label}>
+              <span className="text-muted-foreground">{row.label}</span>
+              <span className={cn("text-right font-medium tabular-nums", row.tone)}>{row.submit}</span>
+              {showToday ? (
+                <span
+                  className={cn(
+                    "text-right font-medium tabular-nums",
+                    row.moved ? "rounded bg-amber-100 px-1 text-amber-900" : row.tone
+                  )}
+                >
+                  {row.today}
+                </span>
+              ) : null}
+            </Fragment>
+          ))}
+          <span className="text-muted-foreground">Fee</span>
+          <span className="text-right font-medium">
+            {isFeeFree(request) ? "No fee" : formatNaira(request.processing_fee)}
+          </span>
+          {showToday ? <span /> : null}
+        </div>
+      </div>
+
+      {todayError ? (
+        <p className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-800">
+          {TODAY_ERRORS[todayError.code] ?? todayError.message ?? "This change can't be priced today, so approval would fail."}
+        </p>
+      ) : null}
+
+      {data?.price_moved ? (
+        <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          The price has moved since the customer submitted. Approving applies today&apos;s figure
+          {today ? ` — ${signedNaira(today.change - submit.change)} against the quote` : ""}. Contact the customer
+          or decline if they haven&apos;t agreed to it.
+        </p>
+      ) : null}
+
+      {data?.plan_changed_since_submit ? (
+        <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          The plan&apos;s size or units changed after this request was submitted. Check the plan before approving.
+        </p>
+      ) : null}
+
+      {data?.at_today?.valuation_basis === "pro_rata" ? (
+        <p className="text-xs text-muted-foreground">
+          The size the customer holds is no longer sold, so it&apos;s valued pro rata from the new size&apos;s price
+          per sqm.
+        </p>
+      ) : null}
+
+      {quote.isError ? (
+        <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          Today&apos;s price couldn&apos;t be loaded. This is the quote stored at submit — approving reprices the
+          plan at today&apos;s rates, so the figure written can differ.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 function PaymentCard({ request }: { request: ClientRequest }) {
+  // Growing a plan costs nothing — no fee was due, so there's no payment or
+  // receipt to check. (A coupon that covered a fee still shows the fee it
+  // covered, below.)
+  if (isFeeFree(request)) {
+    return (
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <DollarSign className="h-4 w-4" />
+            Payment
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm">
+            <span className="font-medium">No fee.</span>{" "}
+            <span className="text-muted-foreground">
+              {request.request_type === "asset_update"
+                ? "This request grows the plan, so there's nothing to pay and no receipt to verify."
+                : "This request type has no fee."}
+            </span>
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   const proof = request.payment_proof;
   const discounted = request.discount_amount > 0;
   return (
@@ -310,6 +505,14 @@ export function RequestDetailModal({ request }: { request: ClientRequest }) {
   const busy =
     review.isPending || approve.isPending || complete.isPending || decline.isPending || cancel.isPending;
 
+  // Both approval modes apply the change to the plan, so both get the quote check.
+  const assetUpdate = request.asset_update_details;
+  const approving = confirm === "system" || confirm === "manual";
+  const quote = useAssetUpdateQuote(request.request_id, approving && Boolean(assetUpdate));
+  // Approval would fail anyway when today's price can't be computed.
+  const quoteBlocks = approving && Boolean(assetUpdate) && (quote.isPending || Boolean(quote.data?.at_today_error));
+  const expectedPriceChange = quote.data?.at_today?.price_change.total;
+
   const actions = requestActions(request);
   const hasAnyAction =
     actions.canReview || actions.canApprove || actions.canComplete || actions.canDecline || actions.canCancel;
@@ -323,6 +526,10 @@ export function RequestDetailModal({ request }: { request: ClientRequest }) {
     setOpen(false);
   };
   const fail = (error: Error) => toast.error(error.message || "The action failed");
+  const failApprove = (error: Error) =>
+    error instanceof ApiClientError && error.code === QUOTE_CHANGED
+      ? toast.error("Today's price changed while this was open. Check the new figures and confirm again.")
+      : fail(error);
   const notesArg = notes.trim() ? { admin_notes: notes.trim() } : {};
 
   const validReason = (): string | null => {
@@ -346,13 +553,16 @@ export function RequestDetailModal({ request }: { request: ClientRequest }) {
         return review.mutate({ requestId: id, ...notesArg }, { onSuccess: done("Opened for review"), onError: fail });
       case "system":
         return approve.mutate(
-          { requestId: id, mode: "system", ...notesArg },
-          { onSuccess: done("Approved and processed — the request is complete"), onError: fail }
+          { requestId: id, mode: "system", expected_price_change: expectedPriceChange, ...notesArg },
+          { onSuccess: done("Approved and processed — the request is complete"), onError: failApprove }
         );
       case "manual":
         return approve.mutate(
-          { requestId: id, mode: "manual", ...notesArg },
-          { onSuccess: done("Approved for manual processing — mark it complete when the work is done"), onError: fail }
+          { requestId: id, mode: "manual", expected_price_change: expectedPriceChange, ...notesArg },
+          {
+            onSuccess: done("Approved for manual processing — mark it complete when the work is done"),
+            onError: failApprove,
+          }
         );
       case "complete":
         return complete.mutate({ requestId: id, ...notesArg }, { onSuccess: done("Marked complete"), onError: fail });
@@ -562,6 +772,10 @@ export function RequestDetailModal({ request }: { request: ClientRequest }) {
                 <AlertDialogDescription>{copy.body}</AlertDialogDescription>
               </AlertDialogHeader>
 
+              {approving && assetUpdate ? (
+                <QuoteCheck request={request} details={assetUpdate} quote={quote} />
+              ) : null}
+
               {copy.needsReason ? (
                 <div className="py-2">
                   <Label htmlFor="action-reason">Reason *</Label>
@@ -585,7 +799,7 @@ export function RequestDetailModal({ request }: { request: ClientRequest }) {
                     event.preventDefault();
                     run();
                   }}
-                  disabled={busy}
+                  disabled={busy || quoteBlocks}
                   className={copy.tone}
                 >
                   {busy ? (
