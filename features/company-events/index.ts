@@ -21,6 +21,7 @@ export * from './lib/csv';
 export * from './components/CompanyEventForm';
 export * from './components/PickupLocationInput';
 export * from './components/EventAllocationFilters';
+export * from './components/InvitedClientsFilters';
 export * from './components/EventAllocationTable';
 export * from './components/EventAllocatedTable';
 export * from './components/EventRegistrationFilters';

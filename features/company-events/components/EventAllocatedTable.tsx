@@ -79,6 +79,8 @@ interface EventAllocatedTableProps {
   removingId?: string | null;
   /** The row an action is running on, so its menu shows a spinner. */
   busyId?: string | null;
+  /** Shown when there are no rows, e.g. when a search or filter matches nobody. */
+  emptyMessage?: string;
 }
 
 /** One ⋮ menu per row, offering only what fits the attendee's stage. */
@@ -136,6 +138,7 @@ export function EventAllocatedTable({
   onResendInvite,
   removingId,
   busyId,
+  emptyMessage = "No one has been invited yet.",
 }: EventAllocatedTableProps) {
   if (isLoading) {
     return (
@@ -158,7 +161,7 @@ export function EventAllocatedTable({
       <CardContent className="min-w-0 space-y-3 p-3 sm:p-4">
         <AdminMobileStack>
           {safeRows.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">No one has been invited yet.</p>
+            <p className="py-8 text-center text-sm text-muted-foreground">{emptyMessage}</p>
           ) : (
             safeRows.map((row) => (
               <AdminMobileCard key={row.allocation_id} title={row.name} subtitle={row.email ?? undefined}>
@@ -209,7 +212,7 @@ export function EventAllocatedTable({
               {safeRows.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="whitespace-normal px-4 py-12 text-center text-sm text-muted-foreground">
-                    No one has been invited yet.
+                    {emptyMessage}
                   </TableCell>
                 </TableRow>
               ) : (

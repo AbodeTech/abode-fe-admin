@@ -24,6 +24,8 @@ import {
   AttendeeActionDialog,
   ConfirmationSheetPanel,
   EventAllocationFilters,
+  InvitedClientsFilters,
+  type InvitedAttendanceFilter,
   EventAllocationTable,
   EventMetricsPanel,
   EventRegistrationFilters,
@@ -99,6 +101,9 @@ function EventDetailContent() {
   );
   const showCancelledAllocations = searchParams.get("alloc_history") === "1";
   const allocPage = Number(searchParams.get("alloc_page")) || 1;
+  const allocSearchParam = searchParams.get("alloc_search") || "";
+  const allocStatusParam = (searchParams.get("alloc_status") as InvitedAttendanceFilter | null) ?? null;
+  const [allocSearchTerm, setAllocSearchTerm] = useState(allocSearchParam);
 
   const {
     data: allocatedData,
@@ -107,6 +112,8 @@ function EventDetailContent() {
     page: allocPage,
     limit: DEFAULT_EVENT_ALLOCATIONS_LIMIT,
     include_removed: showCancelledAllocations,
+    search: allocSearchParam || undefined,
+    status: allocStatusParam && allocStatusParam !== "all" ? allocStatusParam : undefined,
   });
 
   // The real backend keeps a cancelled allocation's row around as history
@@ -192,6 +199,15 @@ function EventDetailContent() {
     }, 400);
     return () => clearTimeout(timer);
   }, [searchTerm, searchParam, updateParams]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (allocSearchTerm !== allocSearchParam) {
+        updateParams({ alloc_search: allocSearchTerm || null, alloc_page: null });
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [allocSearchTerm, allocSearchParam, updateParams]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -634,6 +650,15 @@ function EventDetailContent() {
               </Button>
             </div>
 
+            <InvitedClientsFilters
+              search={allocSearchTerm}
+              attendance={allocStatusParam ?? "all"}
+              onSearchChange={setAllocSearchTerm}
+              onAttendanceChange={(value) =>
+                updateParams({ alloc_status: value === "all" ? null : value, alloc_page: null })
+              }
+            />
+
             <div className="flex w-fit items-center gap-2">
               <Checkbox
                 id="alloc-history-toggle"
@@ -654,6 +679,11 @@ function EventDetailContent() {
               onRegister={(row) => openAllocatedAction(row, 'register')}
               onChangePickup={(row) => openAllocatedAction(row, 'pickup')}
               onResendInvite={handleResendInvite}
+              emptyMessage={
+                allocSearchParam || (allocStatusParam && allocStatusParam !== "all")
+                  ? "No one matches these filters."
+                  : undefined
+              }
               removingId={deallocateClient.isPending ? deallocateClient.variables?.eventAllocationId ?? null : null}
               busyId={
                 resendInvite.isPending
