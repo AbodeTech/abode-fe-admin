@@ -284,11 +284,19 @@ export const userRoutes: MockRoutes = {
         createdAt: '2026-08-01T10:00:00.000Z',
       },
       {
-        // Migrated from v1: details only in the description.
+        // Migrated from v1: same fields as v2, but the wallet balance lives
+        // only in the description, whose "WHT" is the source payment, not tax.
         _id: `tx-c1-${person._id}`,
         type: 'commission',
         status: 'completed',
         amount: 30_000,
+        net_commission: 30_000,
+        gross_commission: 30_000,
+        wht_deducted: 0,
+        rate_applied: 0.15,
+        commissionType: 'direct',
+        source_user_name_denormalized: 'Chidi Eze',
+        source_asset_name_denormalized: 'Abode Gardens',
         payment_method: 'system',
         description:
           'Commission: full-ownership by Chidi Eze with WHT: 200000 & Balance at Transaction: 145000',

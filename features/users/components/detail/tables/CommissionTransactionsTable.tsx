@@ -33,23 +33,22 @@ function toNumber(value: string | number | null | undefined): number | null {
   return Number.isFinite(n) ? n : null
 }
 
-// v2 commissions carry their details as fields. Commissions migrated from v1
-// don't, so fall back to parsing v1's description
-// ("Commission: <asset> by <client> with WHT: X & Balance at Transaction: Y").
+// Every commission, v2 or migrated from v1, carries its details as fields.
+// The description is read only for the wallet balance, which migrated rows
+// keep there ("... & Balance at Transaction: Y"). Its "WHT" figure is the
+// payment the commission came from, not tax, so it is never shown.
 function toCommissionRow(transaction: TransactionListResponse) {
   const parsed = parseCommissionDescription(transaction.description)
-  const fromV1 = parsed.isCommission
   return {
     ...transaction,
     commissionType: transaction.commission_type ?? null,
-    clientName: transaction.source_user_name || (fromV1 ? parsed.clientName : null) || null,
-    assetName: transaction.source_asset_name || (fromV1 ? parsed.assetType : null) || null,
+    clientName: transaction.source_user_name ?? null,
+    assetName: transaction.source_asset_name ?? null,
     rate: transaction.rate_applied ?? null,
     gross: transaction.gross_commission ?? null,
-    // v1's description figure is the payment the commission came from, not
-    // tax, so v1 rows have no WHT to show.
     wht: transaction.wht_deducted ?? null,
-    balance: transaction.wallet_balance_after ?? (fromV1 ? toNumber(parsed.balance) : null),
+    balance:
+      transaction.wallet_balance_after ?? (parsed.isCommission ? toNumber(parsed.balance) : null),
   }
 }
 
