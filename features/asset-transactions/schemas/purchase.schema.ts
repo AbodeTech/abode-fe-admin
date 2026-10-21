@@ -538,7 +538,30 @@ export function propertyNameDisplay(row: Purchase): string {
     row.description?.trim() ||
     kindLabel(purchaseKind(row));
   const core = shortenPurchaseDescription(`${property}${plotSuffix}`);
-  return assetType ? `${assetType} - ${core}` : core;
+  const code = salesTypeOf(row)?.toUpperCase();
+  // v1's description carried the code; the estate name doesn't, so add it
+  // back unless the description fallback already starts with one.
+  const coded = code && !/^(AP|RAP|DP):/.test(core) ? `${code}: ${core}` : core;
+  return assetType ? `${assetType} - ${coded}` : coded;
+}
+
+/**
+ * Mirrors the BE's `transaction-kinds.ts`: AP is a first or outright payment,
+ * RAP an instalment, DP a document fee. v1 printed this as the description's
+ * prefix, which is how admins told a new purchase from an instalment.
+ */
+const SALES_TYPE_BY_KIND: Record<string, SalesType> = {
+  initial_flex_purchase: 'ap',
+  fo_installment_land: 'ap',
+  fo_outright_land: 'ap',
+  recurring_flex_payment: 'rap',
+  fo_recurring_land: 'rap',
+  fo_outright_doc: 'dp',
+  fo_doc_payment: 'dp',
+};
+
+export function salesTypeOf(row: Purchase): SalesType | null {
+  return SALES_TYPE_BY_KIND[purchaseKind(row)] ?? null;
 }
 
 export function propertyOwnerLabel(row: Purchase): string | null {
