@@ -38,6 +38,7 @@ import {
   useEventRegistrations,
   useEventRegistrationsExport,
   useSaveEventAllocations,
+  useResendEventInvite,
   useUpdateEventStatus,
   type EligibilityTier,
   type EventAllocation,
@@ -97,11 +98,16 @@ function EventDetailContent() {
     { limit: 1 }
   );
   const showCancelledAllocations = searchParams.get("alloc_history") === "1";
+  const allocPage = Number(searchParams.get("alloc_page")) || 1;
 
   const {
     data: allocatedData,
     isLoading: allocatedLoading,
-  } = useEventAllocations(isAllocationEvent ? eventId : undefined, { limit: DEFAULT_EVENT_ALLOCATIONS_LIMIT });
+  } = useEventAllocations(isAllocationEvent ? eventId : undefined, {
+    page: allocPage,
+    limit: DEFAULT_EVENT_ALLOCATIONS_LIMIT,
+    include_removed: showCancelledAllocations,
+  });
 
   // The real backend keeps a cancelled allocation's row around as history
   // rather than deleting it (so an admin can review who was removed and
@@ -109,9 +115,8 @@ function EventDetailContent() {
   // row rather than reviving the old one — the "Allocated" table hides the
   // cancelled rows by default so a removed person doesn't look like they're
   // still committed, with a toggle to review them when wanted.
-  const visibleAllocatedRows = showCancelledAllocations
-    ? allocatedData?.items
-    : allocatedData?.items?.filter((row) => row.allocation_status !== "cancelled" && row.status !== "cancelled");
+  // The server leaves removed people out unless the toggle asks for them, so paging stays right.
+  const visibleAllocatedRows = allocatedData?.items;
 
   const registrationFilters = {
     page: regPage,
@@ -220,7 +225,7 @@ function EventDetailContent() {
             const savedRows = result.succeeded.map((saved) => selected.get(saved.payment_plan_id)).filter((row): row is EventEligibleClient => !!row);
             const people = new Set(savedRows.map((row) => row.user_id)).size;
             const plots = savedRows.reduce((sum, row) => sum + row.no_of_units, 0);
-            toast.success(`${people} clients, covering ${plots} plots allocated`);
+            toast.success(`${people} clients invited, covering ${plots} plots`);
           }
           if (result.failed.length > 0) {
             toast.error(
@@ -240,6 +245,18 @@ function EventDetailContent() {
       {
         onSuccess: () => toast.success(`${row.name} removed — their spot is now open again`),
         onError: (error) => toast.error(error.message || "Failed to remove allocation"),
+      }
+    );
+  };
+
+  const resendInvite = useResendEventInvite();
+  const handleResendInvite = (row: EventAllocation) => {
+    if (!eventId || !row.attendance_id) return;
+    resendInvite.mutate(
+      { eventId, registrationId: row.attendance_id },
+      {
+        onSuccess: (result) => toast.success(`Invitation resent to ${result.email}`),
+        onError: (error) => toast.error(error.message || "Failed to resend the invitation"),
       }
     );
   };
@@ -289,7 +306,7 @@ function EventDetailContent() {
     exportAllocations.mutate(eventId, {
       onSuccess: ({ rows, truncated }) => {
         if (!rows.length) {
-          toast.info("No one has been allocated yet");
+          toast.info("No one has been invited yet");
           return;
         }
         downloadCsv(
@@ -303,11 +320,11 @@ function EventDetailContent() {
             pickup_location: row.pickup_location ?? "",
             size_reserved: row.size_reserved,
             eligibility_tier: row.eligibility_tier,
-            allocated_on: row.created_at,
+            invited_on: row.created_at,
             checked_in_at: row.checked_in_at ?? '',
             confirmed_at: row.confirmed_at ?? '',
           })),
-          `allocated-clients_${eventId}.csv`
+          `invited-clients_${eventId}.csv`
         );
         if (truncated) toast.warning("Capped at 1,000 rows.");
         else toast.success("Export ready");
@@ -608,8 +625,8 @@ function EventDetailContent() {
 
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h2 className="text-lg font-semibold">Allocated</h2>
-                <p className="text-sm text-muted-foreground">Saved into this event&apos;s batch. Remove frees their reserved size.</p>
+                <h2 className="text-lg font-semibold">Invited clients</h2>
+                <p className="text-sm text-muted-foreground">Clients saved into this event&apos;s batch and invited. Attendance shows how far each has got: invited, registered, checked in, confirmed. Remove frees their reserved size.</p>
               </div>
               <Button variant="outline" size="sm" onClick={handleExportAllocated} disabled={exportAllocations.isPending}>
                 {exportAllocations.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
@@ -622,7 +639,7 @@ function EventDetailContent() {
                 id="alloc-history-toggle"
                 className="cursor-pointer"
                 checked={showCancelledAllocations}
-                onCheckedChange={(checked) => updateParams({ alloc_history: checked === true ? "1" : null })}
+                onCheckedChange={(checked) => updateParams({ alloc_history: checked === true ? "1" : null, alloc_page: null })}
               />
               <Label htmlFor="alloc-history-toggle" className="cursor-pointer text-sm font-normal text-muted-foreground">
                 Show removed (history)
@@ -636,7 +653,20 @@ function EventDetailContent() {
               onRemove={handleRemove}
               onRegister={(row) => openAllocatedAction(row, 'register')}
               onChangePickup={(row) => openAllocatedAction(row, 'pickup')}
+              onResendInvite={handleResendInvite}
               removingId={deallocateClient.isPending ? deallocateClient.variables?.eventAllocationId ?? null : null}
+              busyId={
+                resendInvite.isPending
+                  ? visibleAllocatedRows?.find((r) => r.attendance_id === resendInvite.variables?.registrationId)?.allocation_id ?? null
+                  : null
+              }
+            />
+
+            <Pagination
+              count={allocatedData?.meta.total ?? 0}
+              currentIdx={allocPage}
+              limit={DEFAULT_EVENT_ALLOCATIONS_LIMIT}
+              pageParam="alloc_page"
             />
           </TabsContent>
 
@@ -644,7 +674,7 @@ function EventDetailContent() {
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h2 className="text-lg font-semibold">Registered attendees</h2>
-                <p className="text-sm text-muted-foreground">{registrationsData?.meta.total ?? 0} people match these filters, including visitors and people getting land. Invited people appear in the Allocated table until they register.</p>
+                <p className="text-sm text-muted-foreground">{registrationsData?.meta.total ?? 0} people match these filters, including visitors and people getting land. Invited people appear in Invited clients until they register.</p>
               </div>
               <Button variant="outline" size="sm" onClick={handleExportRegistrations} disabled={exportRegistrations.isPending}>
                 {exportRegistrations.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
@@ -680,12 +710,11 @@ function EventDetailContent() {
             {eventId && (
               <EventMetricsPanel
                 eventId={eventId}
+                eventStatus={event.status}
                 availableSize={event.available_size ?? null}
                 reservedSize={event.reserved_size}
                 sizeUnit={event.size_unit ?? null}
                 eligibleRemainingCount={eligibleTotalData?.meta.total ?? 0}
-                allocatedRows={allocatedData?.items ?? []}
-                allocatedTotal={allocatedData?.meta.total ?? 0}
               />
             )}
           </TabsContent>

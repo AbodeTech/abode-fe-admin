@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, X } from "lucide-react";
+import { Loader2, MoreVertical } from "lucide-react";
 
 import {
   AdminDesktopTableWrap,
@@ -11,6 +11,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -34,7 +41,7 @@ const formatDate = (value?: string | null) => {
 
 const STATUS_LABELS: Record<EventAllocationStatus, string> = {
   invited: "Invited",
-  allocated: "Allocated",
+  allocated: "Added",
   email_sent: "Invite sent",
   registered: "Registered",
   checked_in: "Checked in",
@@ -68,7 +75,55 @@ interface EventAllocatedTableProps {
   onRemove: (row: EventAllocation) => void;
   onRegister?: (row: EventAllocation) => void;
   onChangePickup?: (row: EventAllocation) => void;
+  onResendInvite?: (row: EventAllocation) => void;
   removingId?: string | null;
+  /** The row an action is running on, so its menu shows a spinner. */
+  busyId?: string | null;
+}
+
+/** One ⋮ menu per row, offering only what fits the attendee's stage. */
+function RowActions({
+  row,
+  onRemove,
+  onRegister,
+  onChangePickup,
+  onResendInvite,
+  busy,
+}: {
+  row: EventAllocation;
+  onRemove: (row: EventAllocation) => void;
+  onRegister?: (row: EventAllocation) => void;
+  onChangePickup?: (row: EventAllocation) => void;
+  onResendInvite?: (row: EventAllocation) => void;
+  busy: boolean;
+}) {
+  const active = row.allocation_status !== "cancelled" && row.status !== "cancelled";
+  const invited = Boolean(row.attendance_id) && row.status === "invited";
+  const registered = Boolean(row.attendance_id) && row.status !== "invited" && row.status !== "cancelled";
+  const canResend = active && invited && Boolean(onResendInvite);
+  const canRegister = active && invited && Boolean(onRegister);
+  const canPickup = active && registered && Boolean(onChangePickup);
+
+  if (!active) return <span className="text-xs text-muted-foreground">—</span>;
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className="h-8 w-8" disabled={busy} aria-label={`Actions for ${row.name}`}>
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreVertical className="h-4 w-4" />}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {canResend && <DropdownMenuItem onClick={() => onResendInvite?.(row)}>Resend invitation</DropdownMenuItem>}
+        {canRegister && <DropdownMenuItem onClick={() => onRegister?.(row)}>Register on behalf</DropdownMenuItem>}
+        {canPickup && <DropdownMenuItem onClick={() => onChangePickup?.(row)}>Change pickup</DropdownMenuItem>}
+        {(canResend || canRegister || canPickup) && <DropdownMenuSeparator />}
+        <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => onRemove(row)}>
+          Remove
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 }
 
 export function EventAllocatedTable({
@@ -78,7 +133,9 @@ export function EventAllocatedTable({
   onRemove,
   onRegister,
   onChangePickup,
+  onResendInvite,
   removingId,
+  busyId,
 }: EventAllocatedTableProps) {
   if (isLoading) {
     return (
@@ -101,34 +158,24 @@ export function EventAllocatedTable({
       <CardContent className="min-w-0 space-y-3 p-3 sm:p-4">
         <AdminMobileStack>
           {safeRows.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">No one has been allocated yet.</p>
+            <p className="py-8 text-center text-sm text-muted-foreground">No one has been invited yet.</p>
           ) : (
             safeRows.map((row) => (
               <AdminMobileCard key={row.allocation_id} title={row.name} subtitle={row.email ?? undefined}>
                 <AdminMobileField label="Attendance" value={<StatusBadge status={row.status} landStatus={row.allocation_status} />} />
                 <AdminMobileField label="Size reserved" value={`${formatNumber(row.size_reserved)} ${unit}`} />
                 <AdminMobileField label="Pickup" value={row.pickup_location ?? "—"} />
-                <AdminMobileField label="Allocated on" value={formatDate(row.created_at)} />
-                {row.attendance_id && row.status === 'invited' && onRegister && <Button variant="outline" size="sm" onClick={() => onRegister(row)}>Register on behalf</Button>}
-                {row.attendance_id && row.status !== 'invited' && row.status !== 'cancelled' && onChangePickup && <Button variant="outline" size="sm" onClick={() => onChangePickup(row)}>Change pickup</Button>}
-                {row.allocation_status !== 'cancelled' && row.status !== "cancelled" && (
-                  <div className="border-t border-border pt-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full gap-2"
-                      onClick={() => onRemove(row)}
-                      disabled={removingId === row.allocation_id}
-                    >
-                      {removingId === row.allocation_id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <X className="h-4 w-4" />
-                      )}
-                      Remove
-                    </Button>
-                  </div>
-                )}
+                <AdminMobileField label="Invited on" value={formatDate(row.created_at)} />
+                <div className="flex justify-end border-t border-border pt-2">
+                  <RowActions
+                    row={row}
+                    onRemove={onRemove}
+                    onRegister={onRegister}
+                    onChangePickup={onChangePickup}
+                    onResendInvite={onResendInvite}
+                    busy={removingId === row.allocation_id || busyId === row.allocation_id}
+                  />
+                </div>
               </AdminMobileCard>
             ))
           )}
@@ -145,13 +192,13 @@ export function EventAllocatedTable({
                   Contact
                 </TableHead>
                 <TableHead className="min-w-28 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Status
+                  Attendance
                 </TableHead>
                 <TableHead className="min-w-24 whitespace-nowrap px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Size
                 </TableHead>
                 <TableHead className="min-w-34 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Allocated On
+                  Invited On
                 </TableHead>
                 <TableHead className="min-w-28 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Action
@@ -162,7 +209,7 @@ export function EventAllocatedTable({
               {safeRows.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="whitespace-normal px-4 py-12 text-center text-sm text-muted-foreground">
-                    No one has been allocated yet.
+                    No one has been invited yet.
                   </TableCell>
                 </TableRow>
               ) : (
@@ -185,28 +232,14 @@ export function EventAllocatedTable({
                       {formatDate(row.created_at)}
                     </TableCell>
                     <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4">
-                      <div className="flex flex-wrap gap-2">
-                      {row.attendance_id && row.status === 'invited' && onRegister && <Button variant="outline" size="sm" onClick={() => onRegister(row)}>Register on behalf</Button>}
-                      {row.attendance_id && row.status !== 'invited' && row.status !== 'cancelled' && onChangePickup && <Button variant="outline" size="sm" onClick={() => onChangePickup(row)}>Change pickup</Button>}
-                      {row.allocation_status !== 'cancelled' && row.status !== "cancelled" ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="gap-2"
-                          onClick={() => onRemove(row)}
-                          disabled={removingId === row.allocation_id}
-                        >
-                          {removingId === row.allocation_id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <X className="h-4 w-4" />
-                          )}
-                          Remove
-                        </Button>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
-                      )}
-                      </div>
+                      <RowActions
+                        row={row}
+                        onRemove={onRemove}
+                        onRegister={onRegister}
+                        onChangePickup={onChangePickup}
+                        onResendInvite={onResendInvite}
+                        busy={removingId === row.allocation_id || busyId === row.allocation_id}
+                      />
                     </TableCell>
                   </TableRow>
                 ))

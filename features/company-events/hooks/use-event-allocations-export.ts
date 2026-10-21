@@ -26,7 +26,7 @@ export const fetchEventAllocationsExportRows = async (eventId: string): Promise<
 
   while (rows.length < total && rows.length < ALLOCATIONS_EXPORT_ROW_CAP) {
     const { items, meta } = await apiGetPaged(`/admin/company-events/${eventId}/allocations`, EventAllocationSchema, {
-      params: { page, limit: EXPORT_PAGE_SIZE },
+      params: { page, limit: EXPORT_PAGE_SIZE, include_removed: true },
     });
     total = meta.total ?? items.length;
     rows.push(...items);

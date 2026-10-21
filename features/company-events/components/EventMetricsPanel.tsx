@@ -1,404 +1,190 @@
 "use client";
 
-import { CheckCircle2, Landmark, Layers, UserPlus, Users } from "lucide-react";
-import { Bar, BarChart, CartesianGrid, Cell, LabelList, Pie, PieChart, XAxis, YAxis } from "recharts";
+import { useState } from "react";
+import { Loader2, Send } from "lucide-react";
+import { toast } from "sonner";
 
-import { Badge } from "@/components/ui/badge";
-import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
+import { useRemindUnregistered } from "../hooks/use-attendee-actions";
 import { useEventAnalytics } from "../hooks/use-event-analytics";
-import type { EventAllocation, EventAnalytics } from "../schemas/company-event.schema";
 
 const formatNumber = (value?: number | null) => new Intl.NumberFormat("en-NG").format(value ?? 0);
 
-/*
- * Validated categorical/sequential slots (dataviz skill's reference
- * palette, references/palette.md) — the app's own --chart-1..5 tokens fail
- * the CVD/contrast gates, so this panel uses the pre-validated hexes
- * directly rather than those tokens. Slots 2 (orange) and 3 (aqua) are the
- * eligibility-mix pair; slots 6/7/8 (green/violet/red) are the category-mix
- * set — a separate consecutive triplet (re-validated: all-PASS, no contrast
- * warnings) so it doesn't overlap or visually pair with eligibility's colors.
- */
-const PALETTE = {
-  sequentialFill: "#2a78d6", // step 450 — reused for the funnel and pickup-load bars
-  sequentialTrack: "#b7d3f6", // lighter step of the same ramp
-  land: "#eb6834", // slot 2
-  landDevLevy: "#1baf7a", // slot 3
-  associatePro: "#008300", // slot 6
-  associate: "#4a3aa7", // slot 7
-  client: "#e34948", // slot 8
-};
-
-/**
- * Same card spec as `CohortStatCards` / the meeting-detail stat card
- * (rounded-2xl, soft slate border, icon chip) — reused here rather than the
- * plain shadcn `Card` so this reads as a metric, consistent with every other
- * stat card in the dashboard.
- */
-function StatCard({
-  label,
-  value,
-  icon: Icon,
-  iconBg,
-  iconColor,
-}: {
-  label: string;
-  value: string;
-  icon: typeof Users;
-  iconBg: string;
-  iconColor: string;
-}) {
+/** One labelled figure, large, with an optional line of explanation. */
+function Figure({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="min-w-0 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="truncate text-xs font-medium uppercase tracking-wide text-slate-400">{label}</p>
-          <p className="mt-2 truncate text-lg font-bold text-slate-900">{value}</p>
-        </div>
-        <div className={`shrink-0 rounded-xl p-2.5 ${iconBg}`}>
-          <Icon size={18} className={iconColor} />
-        </div>
-      </div>
+    <div className="rounded-xl border border-slate-200/80 bg-white p-4">
+      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="mt-1 text-2xl font-semibold text-slate-900">{value}</p>
+      {hint && <p className="mt-1 text-xs text-slate-500">{hint}</p>}
     </div>
   );
 }
 
-/** Meter: single ratio against a limit — never a 2-slice pie (dataviz skill). */
-function CapacityMeter({
-  allocated,
-  capacity,
-  unit,
-}: {
-  allocated: number;
-  capacity: number | null;
-  unit: string;
-}) {
-  if (capacity == null) {
-    return (
-      <p className="text-sm text-slate-500">
-        {formatNumber(allocated)} {unit} allocated (no capacity set for this event)
-      </p>
-    );
-  }
-
-  const percent = Math.min(100, Math.round((allocated / capacity) * 100));
-
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between text-sm">
-        <span className="text-slate-500">Capacity utilization</span>
-        <span className="font-semibold tabular-nums text-slate-900">{percent}%</span>
-      </div>
-      <div
-        className="h-3 w-full overflow-hidden rounded-full"
-        style={{ backgroundColor: PALETTE.sequentialTrack }}
-        role="progressbar"
-        aria-valuenow={percent}
-        aria-valuemin={0}
-        aria-valuemax={100}
-      >
-        <div
-          className="h-full rounded-full transition-all"
-          style={{ width: `${percent}%`, backgroundColor: PALETTE.sequentialFill }}
-        />
-      </div>
-      <p className="text-sm text-slate-500">
-        {formatNumber(allocated)} / {formatNumber(capacity)} {unit} allocated
-      </p>
-    </div>
-  );
-}
-
-const eligibilityChartConfig: ChartConfig = {
-  land: { label: "Land", color: PALETTE.land },
-  land_and_dev_levy: { label: "Land + Dev Levy", color: PALETTE.landDevLevy },
-};
-
-/**
- * Donut, no in-slice figures — the counts live in the legend below instead.
- * Derived client-side from the allocations already loaded for the Allocated
- * tab (`eligibility_tier` is a real field per row); the analytics endpoint
- * itself has no dedicated aggregate for this split.
- */
-function EligibilityMixDonut({ land, landAndDevLevy }: { land: number; landAndDevLevy: number }) {
-  const total = land + landAndDevLevy;
-  if (total === 0) {
-    return <p className="text-sm text-slate-500">No one has been allocated yet.</p>;
-  }
-
-  const data = [
-    { key: "land", value: land },
-    { key: "land_and_dev_levy", value: landAndDevLevy },
-  ];
-
-  return (
-    <ChartContainer config={eligibilityChartConfig} className="mx-auto aspect-square h-40">
-      <PieChart>
-        <ChartTooltip content={<ChartTooltipContent hideLabel />} />
-        <Pie data={data} dataKey="value" nameKey="key" innerRadius="58%" outerRadius="100%" strokeWidth={2} stroke="#ffffff">
-          {data.map((entry) => (
-            <Cell key={entry.key} fill={`var(--color-${entry.key})`} />
-          ))}
-        </Pie>
-      </PieChart>
-    </ChartContainer>
-  );
-}
-
-const funnelChartConfig: ChartConfig = {
-  count: { label: "Count", color: PALETTE.sequentialFill },
-};
-
-/** Ordered stages, one hue, magnitude comparison — value at each bar's tip. */
-function RegistrationFunnelChart({ funnel }: { funnel: EventAnalytics["funnel"] }) {
-  const data = [
-    { stage: "Attending", count: funnel.attending ?? funnel.allocated },
-    { stage: "Registered", count: funnel.registered },
-    { stage: "Checked-in", count: funnel.checked_in },
-    { stage: "Confirmed", count: funnel.confirmed },
-  ];
-
-  return (
-    <ChartContainer config={funnelChartConfig} className="aspect-auto h-40 w-full">
-      <BarChart data={data} layout="vertical" margin={{ top: 4, right: 32, bottom: 4, left: 8 }}>
-        <CartesianGrid horizontal={false} stroke="#e1e0d9" />
-        <XAxis type="number" hide />
-        <YAxis
-          type="category"
-          dataKey="stage"
-          axisLine={false}
-          tickLine={false}
-          width={80}
-          tick={{ fill: "#52514e", fontSize: 12 }}
-        />
-        <Bar dataKey="count" fill="var(--color-count)" radius={[0, 4, 4, 0]} barSize={22}>
-          <LabelList dataKey="count" position="right" fill="#0b0b0b" fontSize={12} fontWeight={600} />
-        </Bar>
-      </BarChart>
-    </ChartContainer>
-  );
-}
-
-const categoryMixChartConfig: ChartConfig = {
-  associate_pro: { label: "Associate Pro", color: PALETTE.associatePro },
-  associate: { label: "Associate", color: PALETTE.associate },
-  client: { label: "Client", color: PALETTE.client },
-};
-
-/** Part-to-whole, three categories → a single horizontal stacked bar, not a donut (dataviz skill). */
-function CategoryMixChart({ mix }: { mix: EventAnalytics["category_mix"] }) {
-  const byCategory = Object.fromEntries(mix.map((m) => [m.category, m.count]));
-  const associatePro = byCategory.associate_pro ?? 0;
-  const associate = byCategory.associate ?? 0;
-  const client = byCategory.client ?? 0;
-  const total = associatePro + associate + client;
-
-  if (total === 0) {
-    return <p className="text-sm text-slate-500">No one has registered yet.</p>;
-  }
-
-  const data = [{ name: "Registered", associate_pro: associatePro, associate, client }];
-
-  return (
-    <ChartContainer config={categoryMixChartConfig} className="aspect-auto h-20 w-full">
-      <BarChart data={data} layout="vertical" barCategoryGap={0} margin={{ top: 4, right: 24, bottom: 4, left: 0 }}>
-        <CartesianGrid horizontal={false} stroke="transparent" />
-        <XAxis type="number" hide />
-        <YAxis type="category" dataKey="name" hide />
-        <Bar dataKey="associate_pro" stackId="mix" fill="var(--color-associate_pro)" radius={[4, 0, 0, 4]} stroke="#ffffff" strokeWidth={2}>
-          <LabelList dataKey="associate_pro" position="insideLeft" fill="#ffffff" fontSize={11} fontWeight={600} />
-        </Bar>
-        <Bar dataKey="associate" stackId="mix" fill="var(--color-associate)" stroke="#ffffff" strokeWidth={2}>
-          <LabelList dataKey="associate" position="insideLeft" fill="#ffffff" fontSize={11} fontWeight={600} />
-        </Bar>
-        <Bar dataKey="client" stackId="mix" fill="var(--color-client)" radius={[0, 4, 4, 0]} stroke="#ffffff" strokeWidth={2}>
-          <LabelList dataKey="client" position="insideRight" fill="#ffffff" fontSize={11} fontWeight={600} />
-        </Bar>
-      </BarChart>
-    </ChartContainer>
-  );
-}
-
-const pickupLoadChartConfig: ChartConfig = {
-  registered: { label: "Registrations", color: PALETTE.sequentialFill },
-};
-
-/** Compare magnitude across categories (locations) — one hue, sorted descending, value at the tip. */
-function PickupLocationLoadChart({ locations }: { locations: EventAnalytics["pickup_load"] }) {
-  if (locations.length === 0 || locations.every((loc) => loc.registered === 0)) {
-    return <p className="text-sm text-slate-500">No registrations yet.</p>;
-  }
-
-  const data = [...locations]
-    .sort((a, b) => b.registered - a.registered)
-    .map((loc) => ({
-      ...loc,
-      label: loc.seat_limit != null ? `${loc.registered} / ${loc.seat_limit}` : `${loc.registered}`,
-    }));
-
-  return (
-    <ChartContainer config={pickupLoadChartConfig} className="aspect-auto w-full" style={{ height: Math.max(120, data.length * 36) }}>
-      <BarChart data={data} layout="vertical" margin={{ top: 4, right: 48, bottom: 4, left: 8 }}>
-        <CartesianGrid horizontal={false} stroke="#e1e0d9" />
-        <XAxis type="number" hide />
-        <YAxis
-          type="category"
-          dataKey="name"
-          axisLine={false}
-          tickLine={false}
-          width={110}
-          tick={{ fill: "#52514e", fontSize: 12 }}
-        />
-        <Bar dataKey="registered" fill="var(--color-registered)" radius={[0, 4, 4, 0]} barSize={20}>
-          <LabelList dataKey="label" position="right" fill="#0b0b0b" fontSize={12} fontWeight={600} />
-        </Bar>
-      </BarChart>
-    </ChartContainer>
+    <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+      <h3 className="mb-4 text-sm font-semibold text-slate-900">{title}</h3>
+      {children}
+    </section>
   );
 }
 
 interface EventMetricsPanelProps {
   eventId: string;
-  /** Real, from the event itself (`toEventDto()`). */
+  /** Reminders go out only while the event is published. */
+  eventStatus: string;
   availableSize: number | null;
   reservedSize: number;
   sizeUnit: string | null;
-  /** Real — `meta.total` from the eligible-clients query. */
+  /** `meta.total` from the eligible-clients query: paid-up buyers not yet invited. */
   eligibleRemainingCount: number;
-  /** Already-loaded page of `GET /:id/allocations` (shared with the Allocated tab) — used to tally eligibility mix. */
-  allocatedRows: EventAllocation[];
-  /** `meta.total` for `allocatedRows` — flags the tally below as partial when the page didn't cover everyone. */
-  allocatedTotal: number;
 }
 
+/**
+ * The questions an admin has before an allocation day, answered in numbers: who was invited and
+ * who has replied, who else is coming, how much land is left, where people are picked up, and,
+ * from the day itself, who turned up. Every figure counts the whole event.
+ */
 export function EventMetricsPanel({
   eventId,
+  eventStatus,
   availableSize,
   reservedSize,
   sizeUnit,
   eligibleRemainingCount,
-  allocatedRows,
-  allocatedTotal,
 }: EventMetricsPanelProps) {
   const { data: analytics, isLoading } = useEventAnalytics(eventId);
+  const remind = useRemindUnregistered();
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const unit = sizeUnit || "sqm";
 
-  const liveAllocations = allocatedRows.filter((row) => row.status !== "cancelled");
-  const land = liveAllocations.filter((row) => row.eligibility_tier === "land").length;
-  const landAndDevLevy = liveAllocations.filter((row) => row.eligibility_tier === "land_and_dev_levy").length;
-  const eligibilityTallyIsPartial = allocatedTotal > allocatedRows.length;
+  if (isLoading) return <Skeleton className="h-64 w-full rounded-2xl" />;
+  if (!analytics) return null;
+
+  const s = analytics.summary;
+  const waiting = s?.invited_not_registered ?? 0;
+  const usedPct = availableSize ? Math.min(100, Math.round((reservedSize / availableSize) * 100)) : null;
+
+  const sendReminders = () =>
+    remind.mutate(
+      { eventId },
+      {
+        onSuccess: (r) => {
+          setConfirmOpen(false);
+          const parts = [`${formatNumber(r.sent)} reminded`];
+          if (r.skipped_recent) parts.push(`${formatNumber(r.skipped_recent)} skipped (reminded in the last 24 hours)`);
+          if (r.failed) parts.push(`${formatNumber(r.failed)} could not be sent`);
+          toast.success(parts.join(" · "));
+        },
+        onError: (error) => toast.error(error.message || "Failed to send reminders"),
+      }
+    );
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
-        <StatCard
-          label="Capacity"
-          value={availableSize != null ? `${formatNumber(availableSize)} ${unit}` : "—"}
-          icon={Landmark}
-          iconBg="bg-blue-50"
-          iconColor="text-blue-600"
-        />
-        <StatCard
-          label="Allocated"
-          value={`${formatNumber(reservedSize)} ${unit}`}
-          icon={CheckCircle2}
-          iconBg="bg-emerald-50"
-          iconColor="text-emerald-600"
-        />
-        <StatCard
-          label="Remaining"
-          value={availableSize != null ? `${formatNumber(Math.max(0, availableSize - reservedSize))} ${unit}` : "—"}
-          icon={Layers}
-          iconBg="bg-violet-50"
-          iconColor="text-violet-600"
-        />
-        <StatCard
-          label="Eligible remaining"
-          value={formatNumber(eligibleRemainingCount)}
-          icon={UserPlus}
-          iconBg="bg-amber-50"
-          iconColor="text-amber-600"
-        />
-      </div>
-
-      <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
-        <h3 className="mb-3 text-sm font-semibold text-slate-900">Land utilization</h3>
-        <CapacityMeter allocated={reservedSize} capacity={availableSize} unit={unit} />
-      </div>
-
-      <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
-        <h3 className="mb-3 text-sm font-semibold text-slate-900">Eligibility mix (allocated)</h3>
-        <EligibilityMixDonut land={land} landAndDevLevy={landAndDevLevy} />
-        <div className="mt-2 flex flex-wrap items-center justify-center gap-4 text-sm text-slate-500">
-          <span className="flex items-center gap-1.5">
-            <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: PALETTE.land }} />
-            Land ({formatNumber(land)})
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: PALETTE.landDevLevy }} />
-            Land + Dev Levy ({formatNumber(landAndDevLevy)})
-          </span>
+      <Section title="Who did we invite?">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <Figure label="Invited" value={formatNumber(s?.invited)} hint="Buyers in this event's batch" />
+          <Figure label="Registered" value={formatNumber(s?.invited_registered)} hint="Filled the form and have their pass" />
+          <Figure label="Haven't registered" value={formatNumber(waiting)} hint="Invited but not replied yet" />
         </div>
-        {eligibilityTallyIsPartial && (
-          <p className="mt-2 text-center text-xs text-slate-400">
-            Based on the {formatNumber(allocatedRows.length)} of {formatNumber(allocatedTotal)} allocations loaded.
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
+          <p className="text-sm text-slate-600">
+            {waiting > 0
+              ? `${formatNumber(waiting)} invited ${waiting === 1 ? "buyer has" : "buyers have"} not registered yet.`
+              : "Everyone invited has registered."}
+          </p>
+          <Button
+            size="sm"
+            onClick={() => setConfirmOpen(true)}
+            disabled={waiting === 0 || eventStatus !== "published" || remind.isPending}
+          >
+            {remind.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            Remind all who haven&apos;t registered ({formatNumber(waiting)})
+          </Button>
+        </div>
+      </Section>
+
+      <Section title="Who else is coming?">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Figure label="Visitors" value={formatNumber(s?.visitors)} hint="Signed up through the public link" />
+          <Figure
+            label="Expected on the day"
+            value={formatNumber(s?.expected)}
+            hint={`${formatNumber(s?.invited_registered)} registered buyers + ${formatNumber(s?.visitors)} visitors`}
+          />
+        </div>
+      </Section>
+
+      <Section title="How much land is left?">
+        {availableSize != null ? (
+          <>
+            <div className="h-3 w-full overflow-hidden rounded-full bg-slate-100">
+              <div className="h-full rounded-full bg-[#2a78d6]" style={{ width: `${usedPct ?? 0}%` }} />
+            </div>
+            <p className="mt-2 text-sm text-slate-700">
+              {formatNumber(reservedSize)} of {formatNumber(availableSize)} {unit} reserved ({usedPct}%) ·{" "}
+              {formatNumber(Math.max(0, availableSize - reservedSize))} {unit} free
+            </p>
+          </>
+        ) : (
+          <p className="text-sm text-slate-700">
+            {formatNumber(reservedSize)} {unit} reserved · no capacity set for this event
           </p>
         )}
-      </div>
+        <p className="mt-1 text-sm text-slate-500">
+          {formatNumber(eligibleRemainingCount)} more paid-up {eligibleRemainingCount === 1 ? "buyer" : "buyers"} could still be invited.
+        </p>
+      </Section>
 
-      {isLoading ? (
-        <Skeleton className="h-48 w-full rounded-2xl" />
-      ) : analytics ? (
-        <>
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
-            <h3 className="mb-3 text-sm font-semibold text-slate-900">Attendance funnel</h3>
-            <RegistrationFunnelChart funnel={analytics.funnel} />
-            <div className="mt-4 flex flex-wrap items-center gap-5 border-t border-slate-100 pt-3 text-sm">
-              <span>Getting land <Badge variant="secondary">{formatNumber(analytics.funnel.allocated)}</Badge></span>
-              <span>Visitors <Badge variant="secondary">{formatNumber(analytics.funnel.registrants ?? 0)}</Badge></span>
-            </div>
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-slate-500">No-show</span>
-                <Badge variant="secondary">{formatNumber(analytics.no_show)}</Badge>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-slate-500">Cancelled</span>
-                <Badge variant="secondary">{formatNumber(analytics.cancelled)}</Badge>
-              </div>
-            </div>
-            <p className="mt-1 text-xs text-slate-400">No-show: registered but never checked in for boarding.</p>
-          </div>
+      <Section title="Where are they being picked up?">
+        {analytics.pickup_load.length === 0 ? (
+          <p className="text-sm text-slate-500">This event has no pickup points.</p>
+        ) : (
+          <ul className="divide-y divide-slate-100">
+            {[...analytics.pickup_load]
+              .sort((a, b) => b.registered - a.registered)
+              .map((p) => (
+                <li key={p.id} className="flex items-center justify-between py-2 text-sm">
+                  <span className="text-slate-700">{p.name}</span>
+                  <span className="font-semibold text-slate-900">
+                    {formatNumber(p.registered)}
+                    {p.seat_limit != null && <span className="font-normal text-slate-500"> / {formatNumber(p.seat_limit)} seats</span>}
+                  </span>
+                </li>
+              ))}
+          </ul>
+        )}
+      </Section>
 
-          <div className="grid gap-6 lg:grid-cols-2">
-            <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
-              <h3 className="mb-3 text-sm font-semibold text-slate-900">Category mix (registered)</h3>
-              <CategoryMixChart mix={analytics.category_mix} />
-              <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-slate-500">
-                <span className="flex items-center gap-1.5">
-                  <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: PALETTE.associatePro }} />
-                  Associate Pro
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: PALETTE.associate }} />
-                  Associate
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: PALETTE.client }} />
-                  Client
-                </span>
-              </div>
-            </div>
+      <Section title="On the day">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <Figure
+            label="Checked in at pickup"
+            value={`${formatNumber(s?.checked_in)} of ${formatNumber(s?.expected)}`}
+          />
+          <Figure label="Confirmed at the estate" value={formatNumber(s?.confirmed)} />
+          <Figure
+            label="Didn't turn up"
+            value={s?.no_show == null ? "—" : formatNumber(s.no_show)}
+            hint={s?.no_show == null ? "Shown after the event" : "Registered but never checked in"}
+          />
+        </div>
+      </Section>
 
-            <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
-              <h3 className="mb-3 text-sm font-semibold text-slate-900">Pickup-location load</h3>
-              <PickupLocationLoadChart locations={analytics.pickup_load} />
-            </div>
-          </div>
-        </>
-      ) : null}
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title={`Remind ${formatNumber(waiting)} ${waiting === 1 ? "buyer" : "buyers"}?`}
+        description="Each invited buyer who hasn't registered gets the invitation email again, with a fresh form link. Anyone reminded in the last 24 hours is skipped."
+        confirmLabel="Send reminders"
+        onConfirm={sendReminders}
+        destructive={false}
+      />
     </div>
   );
 }
