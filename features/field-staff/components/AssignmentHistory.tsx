@@ -97,7 +97,7 @@ export function AssignmentHistory({ staff }: { staff: FieldStaff }) {
                     <TableCell>
                       <StatusPill a={a} />
                     </TableCell>
-                    <TableCell className="max-w-[22rem] text-sm">{detailOf(a)}</TableCell>
+                    <TableCell className="max-w-[22rem] whitespace-normal wrap-break-word text-sm">{detailOf(a)}</TableCell>
                     <TableCell className="text-right">{endAction(a)}</TableCell>
                   </TableRow>
                 ))}

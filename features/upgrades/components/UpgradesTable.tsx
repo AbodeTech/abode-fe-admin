@@ -268,10 +268,10 @@ export function UpgradesTable({
           <TableBody>
             {rows.map((upgrade) => (
               <TableRow key={upgrade._id}>
-                <TableCell className="max-w-[14rem]">
+                <TableCell className="max-w-[14rem] whitespace-normal wrap-break-word">
                   <Applicant upgrade={upgrade} />
                 </TableCell>
-                <TableCell className="max-w-[12rem] text-sm">
+                <TableCell className="max-w-[12rem] whitespace-normal wrap-break-word text-sm">
                   <Referrer upgrade={upgrade} />
                 </TableCell>
                 <TableCell className="text-sm whitespace-nowrap tabular-nums">
@@ -301,7 +301,7 @@ export function UpgradesTable({
                   {formatDate(upgrade.createdAt)}
                 </TableCell>
                 {canReview ? <TableCell>{actions(upgrade)}</TableCell> : null}
-                <TableCell className="max-w-[12rem]">
+                <TableCell className="max-w-[12rem] whitespace-normal wrap-break-word">
                   <PaymentEvidence upgrade={upgrade} />
                 </TableCell>
               </TableRow>

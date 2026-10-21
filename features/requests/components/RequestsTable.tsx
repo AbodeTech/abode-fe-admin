@@ -216,7 +216,7 @@ export function RequestsTable({ requests, isLoading, requestTypeFilter }: Reques
                     <TableCell className="py-4 font-mono text-xs font-semibold text-gray-700">
                       {req.request_id}
                     </TableCell>
-                    <TableCell className="max-w-[150px] py-4">
+                    <TableCell className="max-w-[150px] whitespace-normal wrap-break-word py-4">
                       <UserCell request={req} />
                     </TableCell>
                   </>

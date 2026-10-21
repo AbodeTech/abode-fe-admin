@@ -152,12 +152,12 @@ export function MarketplaceListingsTable({
               key={listing._id}
               className="border-b border-[#E5EAEF] bg-white transition-colors hover:bg-gray-50"
             >
-              <TableCell className="max-w-[10rem] px-3 py-4 text-sm font-medium text-[#333333] sm:px-4 sm:py-5">
+              <TableCell className="max-w-[10rem] whitespace-normal wrap-break-word px-3 py-4 text-sm font-medium text-[#333333] sm:px-4 sm:py-5">
                 <span className="line-clamp-2 wrap-break-word" title={personRefName(listing.seller)}>
                   {personRefName(listing.seller)}
                 </span>
               </TableCell>
-              <TableCell className="max-w-[12rem] px-3 py-4 text-sm text-[#667085] sm:px-4 sm:py-5">
+              <TableCell className="max-w-[12rem] whitespace-normal wrap-break-word px-3 py-4 text-sm text-[#667085] sm:px-4 sm:py-5">
                 <span className="line-clamp-2 wrap-break-word" title={assetRefLabel(listing.asset)}>
                   {assetRefLabel(listing.asset)}
                 </span>

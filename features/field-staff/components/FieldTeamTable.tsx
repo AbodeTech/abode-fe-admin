@@ -200,7 +200,7 @@ export function FieldTeamTable({ rows, previous, previousLabel, offeredMetrics, 
                 <TableCell className="text-center text-sm font-semibold tabular-nums text-muted-foreground">
                   {position ?? "—"}
                 </TableCell>
-                <TableCell className="max-w-[18rem]">
+                <TableCell className="max-w-[18rem] whitespace-normal wrap-break-word">
                   <div className="flex items-center gap-2">
                     <Person row={row} />
                     <AccountBadge status={row.staff.status} />

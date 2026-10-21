@@ -133,7 +133,7 @@ export function ReviewQueueTable({ rows, emptyState, mode = "queue" }: ReviewQue
           <TableBody>
             {rows.map((sub) => (
               <TableRow key={sub.id}>
-                <TableCell className="max-w-[20rem]">
+                <TableCell className="max-w-[20rem] whitespace-normal wrap-break-word">
                   <Work sub={sub} />
                 </TableCell>
                 <TableCell>

@@ -267,19 +267,19 @@ export function WithdrawalsTable({
           <TableBody>
             {rows.map((row) => (
               <TableRow key={row._id}>
-                <TableCell className="max-w-[14rem]">
+                <TableCell className="max-w-[14rem] whitespace-normal wrap-break-word">
                   <Requester row={row} />
                 </TableCell>
                 <TableCell className="whitespace-nowrap">
                   <Tin row={row} />
                 </TableCell>
-                <TableCell className="max-w-[10rem]">
+                <TableCell className="min-w-[8rem] max-w-[10rem] whitespace-normal wrap-break-word">
                   <BankField row={row} value={bankName(row.bank_details_id)} />
                 </TableCell>
                 <TableCell className="whitespace-nowrap">
                   <BankField row={row} value={bankAccountNumber(row.bank_details_id)} mono />
                 </TableCell>
-                <TableCell className="max-w-[12rem]">
+                <TableCell className="min-w-[9rem] max-w-[12rem] whitespace-normal wrap-break-word">
                   <BankField row={row} value={bankAccountName(row.bank_details_id)} />
                 </TableCell>
                 <TableCell>

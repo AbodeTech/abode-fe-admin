@@ -63,7 +63,7 @@ export function RewardsTable({ rewards, isLoading }: { rewards: CampaignReward[]
         <TableBody>
           {rewards.map((reward) => (
             <TableRow key={reward.id} className={cn(!reward.is_active && "opacity-50")}>
-              <TableCell className={cn("max-w-56", !reward.is_active && "line-through")}>
+              <TableCell className={cn("max-w-56 whitespace-normal wrap-break-word", !reward.is_active && "line-through")}>
                 {reward.recipient ? (
                   <>
                     <Link
@@ -81,7 +81,7 @@ export function RewardsTable({ rewards, isLoading }: { rewards: CampaignReward[]
                 )}
               </TableCell>
               <TableCell className="capitalize">{reward.role}</TableCell>
-              <TableCell className="max-w-48">
+              <TableCell className="max-w-48 whitespace-normal wrap-break-word">
                 {/* A referrer's reward was earned on someone else's purchase — name them. */}
                 {reward.role === "referrer" && reward.source_buyer ? (
                   <Link

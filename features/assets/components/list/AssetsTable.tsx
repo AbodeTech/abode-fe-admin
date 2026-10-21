@@ -118,10 +118,10 @@ export function AssetsTable({ rows, isLoading, emptyState, onDelete }: AssetsTab
           <TableBody>
             {rows.map((asset) => (
               <TableRow key={asset._id}>
-                <TableCell className="max-w-[18rem]">
+                <TableCell className="max-w-[18rem] whitespace-normal wrap-break-word">
                   <AssetName asset={asset} />
                 </TableCell>
-                <TableCell className="max-w-[18rem]">
+                <TableCell className="max-w-[18rem] whitespace-normal wrap-break-word">
                   <AssetOffersCell offers={asset.offers} />
                 </TableCell>
                 <TableCell>
