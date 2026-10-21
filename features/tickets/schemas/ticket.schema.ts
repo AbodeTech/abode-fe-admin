@@ -212,8 +212,14 @@ export const TicketDetailSchema = z.looseObject({
   messages: z.array(TicketMessageSchema).default([]),
   /** Recent tickets from the same address — merge candidates, not the thread. */
   duplicates: z.array(DuplicateCandidateSchema).default([]),
-  /** The customer's CS Manager. Context only — never the assignee. */
-  cs_manager: AdminRefSchema.nullish(),
+  /**
+   * The customer's CS Manager. Context only — never the assignee. The BE sends
+   * the bare admin id today; normalised to an AdminRef so the panel reads one
+   * shape and picks up the name once the BE populates it.
+   */
+  cs_manager: z
+    .union([AdminRefSchema, z.string().transform((id): AdminRef => ({ _id: id }))])
+    .nullish(),
 });
 export type TicketDetail = z.infer<typeof TicketDetailSchema>;
 

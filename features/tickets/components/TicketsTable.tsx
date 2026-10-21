@@ -217,7 +217,7 @@ export function TicketsTable({
                 </span>
               </TableCell>
 
-              <TableCell className="max-w-[22rem] align-top">
+              <TableCell className="max-w-[22rem] whitespace-normal wrap-break-word align-top">
                 <p className="truncate text-sm font-medium text-gray-900">
                   {r.subject}
                   {isMerged && (
@@ -237,7 +237,7 @@ export function TicketsTable({
                 )}
               </TableCell>
 
-              <TableCell className="max-w-[12rem] align-top">
+              <TableCell className="max-w-[12rem] whitespace-normal wrap-break-word align-top">
                 {affected ? (
                   <span className="block truncate text-sm text-gray-700">
                     {affected}
@@ -259,7 +259,7 @@ export function TicketsTable({
                 )}
               </TableCell>
 
-              <TableCell className="max-w-[10rem] align-top">
+              <TableCell className="max-w-[10rem] whitespace-normal wrap-break-word align-top">
                 <span className="block truncate text-xs text-gray-600">
                   {categoryLabel(r.category) ?? "—"}
                 </span>
@@ -271,7 +271,7 @@ export function TicketsTable({
                 </Pill>
               </TableCell>
 
-              <TableCell className="max-w-[10rem] align-top">
+              <TableCell className="max-w-[10rem] whitespace-normal wrap-break-word align-top">
                 {r.assigned_admin ? (
                   <span
                     className="block truncate text-xs text-gray-600"

@@ -125,7 +125,7 @@ export function AgencyListTable({ rows, isLoading }: AgencyListTableProps) {
               ) : (
                 items.map((agency) => (
                   <TableRow key={agency.id} className="hover:bg-muted/30">
-                    <TableCell className="max-w-56 font-medium">
+                    <TableCell className="max-w-56 whitespace-normal wrap-break-word font-medium">
                       <span className="wrap-break-word">{agency.name}</span>
                     </TableCell>
                     <TableCell className="font-mono text-xs">{agency.code}</TableCell>
@@ -136,7 +136,7 @@ export function AgencyListTable({ rows, isLoading }: AgencyListTableProps) {
                       {agency.commission_percentage}%
                     </TableCell>
                     <TableCell className="text-right tabular-nums">{agency.member_count}</TableCell>
-                    <TableCell className="max-w-56 text-sm">
+                    <TableCell className="max-w-56 whitespace-normal wrap-break-word text-sm">
                       <span className="wrap-break-word">{agency.contact_email || "—"}</span>
                       {agency.contact_phone && (
                         <span className="block text-xs text-muted-foreground">

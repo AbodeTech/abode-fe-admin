@@ -269,10 +269,10 @@ export function CampaignPurchasesTab({ campaign }: { campaign: Pick<Campaign, "i
                       <TableCell className="whitespace-nowrap text-muted-foreground">
                         {formatDate(purchase.purchased_at)}
                       </TableCell>
-                      <TableCell className="max-w-56">
+                      <TableCell className="max-w-56 whitespace-normal wrap-break-word">
                         <PartyLink party={purchase.buyer} />
                       </TableCell>
-                      <TableCell className="max-w-52">
+                      <TableCell className="max-w-52 whitespace-normal wrap-break-word">
                         <Link
                           href={`/assets/${purchase.asset_id}`}
                           className="block truncate text-foreground hover:underline"
@@ -311,7 +311,7 @@ export function CampaignPurchasesTab({ campaign }: { campaign: Pick<Campaign, "i
                       <TableCell>
                         <RewardsCell purchase={purchase} rewardType={campaign.reward_type} />
                       </TableCell>
-                      <TableCell className="max-w-48">
+                      <TableCell className="max-w-48 whitespace-normal wrap-break-word">
                         <PartyLink party={purchase.referrer} />
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-muted-foreground">

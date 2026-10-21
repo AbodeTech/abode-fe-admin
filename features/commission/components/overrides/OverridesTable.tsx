@@ -204,14 +204,14 @@ export function OverridesTable({
                 <TableCell>
                   <Badge variant="secondary">{OVERRIDE_TYPE_LABELS[row.type]}</Badge>
                 </TableCell>
-                <TableCell className="max-w-[16rem]">
+                <TableCell className="max-w-[16rem] whitespace-normal wrap-break-word">
                   <Subject override={row} />
                 </TableCell>
                 <TableCell className="text-sm">{OFFER_TYPE_LABELS[row.offerType]}</TableCell>
-                <TableCell className="max-w-[18rem]">
+                <TableCell className="max-w-[18rem] whitespace-normal wrap-break-word">
                   <OverrideRates rates={row.rates} />
                 </TableCell>
-                <TableCell className="max-w-[14rem]">
+                <TableCell className="max-w-[14rem] whitespace-normal wrap-break-word">
                   <span className="line-clamp-2 text-sm text-muted-foreground">
                     {row.reason || "—"}
                   </span>

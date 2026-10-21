@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { UnresolvedRef } from "@/components/shared/UnresolvedRef";
 import { useTicketPermissions } from "../hooks/use-ticket-permissions";
 import {
   useRemoveTicketCollaborator,
@@ -267,9 +268,12 @@ export function TicketContextPanel({ detail }: Props) {
         <div className="rounded-lg bg-gray-50/60 border border-gray-200 px-3 py-2 flex items-center gap-2 text-xs">
           <Headphones className="h-3.5 w-3.5 text-gray-500 shrink-0" />
           <span className="text-gray-500">CS Manager</span>
-          <span className="text-gray-900 font-medium truncate">
-            {detail.cs_manager.userName}
-          </span>
+          <UnresolvedRef
+            name={detail.cs_manager.userName || detail.cs_manager.email}
+            id={detail.cs_manager._id}
+            kind="CS Manager"
+            className="text-gray-900 font-medium truncate"
+          />
         </div>
       )}
 

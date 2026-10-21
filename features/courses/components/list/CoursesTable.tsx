@@ -84,7 +84,7 @@ export function CoursesTable({ rows, isLoading, emptyState, firstSalePathCourseI
                 className="cursor-pointer hover:bg-muted/30"
                 onClick={() => router.push(`/academy/courses/${course.id}`)}
               >
-                <TableCell className="max-w-[22rem]">
+                <TableCell className="max-w-[22rem] whitespace-normal wrap-break-word">
                   <CourseName course={course} />
                 </TableCell>
                 <TableCell>

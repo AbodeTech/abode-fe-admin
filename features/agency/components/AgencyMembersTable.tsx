@@ -153,7 +153,7 @@ export function AgencyMembersTable({
                   ) : (
                     items.map((member) => (
                       <TableRow key={member.id} className="hover:bg-muted/30">
-                        <TableCell className="max-w-48 font-medium">
+                        <TableCell className="max-w-48 whitespace-normal wrap-break-word font-medium">
                           <span className="wrap-break-word">{agencyMemberName(member)}</span>
                           {member.is_owner && (
                             <Badge className="ml-2 align-middle">Owner</Badge>

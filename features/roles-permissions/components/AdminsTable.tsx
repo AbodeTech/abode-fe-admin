@@ -117,7 +117,7 @@ export function AdminsTable({ admins, isLoading }: AdminsTableProps) {
               rows.map((admin, idx) => {
                 return (
                   <TableRow key={admin.id || idx}>
-                    <TableCell className="max-w-[220px] align-top">
+                    <TableCell className="max-w-[220px] whitespace-normal wrap-break-word align-top">
                       <div className="font-medium">{admin.name}</div>
                       <div className="break-all text-xs text-muted-foreground">{admin.email}</div>
                     </TableCell>
