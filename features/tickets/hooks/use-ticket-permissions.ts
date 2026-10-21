@@ -21,17 +21,16 @@ import { ticketKeys } from './query-keys';
  *
  * The first two are permissions, read from the session the store already holds.
  * The third is not a permission: on the BE it is an active CS Manager
- * assignment, so it is answered by asking whether this admin appears in the
- * CS Manager roster.
+ * assignment, so it is answered by GET /admin/cs-managers/me. That route is
+ * open to every admin; the roster list needs `view_cs_manager_tracker`, which
+ * a CS Manager may not hold, and reading it hid Resolve from them.
  *
  * None of this is a security boundary. Every gate is re-decided server-side
  * against the row, and the list itself is scoped — a hidden control and a
  * hand-made request fail the same way. This only decides what to render.
  */
 
-const CSManagerIdSchema = z.looseObject({
-  manager: z.looseObject({ _id: z.string() }),
-});
+const CSManagerMeSchema = z.looseObject({ is_cs_manager: z.boolean() });
 
 export const useTicketPermissions = () => {
   const user = useAuthStore((s) => s.user);
@@ -43,13 +42,13 @@ export const useTicketPermissions = () => {
 
   // Only asked when it could change the answer — a super admin already may.
   const roster = useQuery({
-    queryKey: ticketKeys.managerPicker(),
-    queryFn: () => apiGet('/admin/cs-managers', z.array(CSManagerIdSchema)),
+    queryKey: ticketKeys.csManagerMe(),
+    queryFn: () => apiGet('/admin/cs-managers/me', CSManagerMeSchema),
     staleTime: 5 * 60 * 1000,
     enabled: !canManageAllTickets && !!user?.id,
   });
 
-  const isCSManager = (roster.data ?? []).some((r) => r.manager._id === user?.id);
+  const isCSManager = roster.data?.is_cs_manager ?? false;
 
   return {
     canManageAllTickets,
