@@ -12,6 +12,8 @@ export interface EventAllocationsListFilters {
   limit?: number;
   status?: EventAllocationStatus;
   search?: string;
+  /** Removed people are left out unless asked for (the "Show removed" toggle). */
+  include_removed?: boolean;
   [key: string]: unknown;
 }
 
@@ -22,17 +24,16 @@ export const DEFAULT_EVENT_ALLOCATIONS_LIMIT = 50;
  * (abode-be-v2 staging, "company-events-offline"). Paginated roster of
  * everyone committed to the event, newest first; contact is resolved from
  * the person's registration form where they've submitted one, else their
- * user record. Cancelled rows are included — a removed allocation is part
- * of the event's history the admin reviews.
+ * user record. Removed people are left out unless `include_removed` is set.
  */
 export const useEventAllocations = (eventId: string | undefined, filters: EventAllocationsListFilters = {}) => {
-  const { page = 1, limit = DEFAULT_EVENT_ALLOCATIONS_LIMIT, status, search } = filters;
+  const { page = 1, limit = DEFAULT_EVENT_ALLOCATIONS_LIMIT, status, search, include_removed } = filters;
 
   return useQuery({
     queryKey: companyEventKeys.allocations(eventId ?? '', filters),
     queryFn: () =>
       apiGetPaged(`/admin/company-events/${eventId}/allocations`, EventAllocationSchema, {
-        params: { page, limit, status, search: search || undefined },
+        params: { page, limit, status, search: search || undefined, include_removed: include_removed || undefined },
       }),
     enabled: !!eventId,
   });

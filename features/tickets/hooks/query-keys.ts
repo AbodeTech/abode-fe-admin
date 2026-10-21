@@ -12,6 +12,7 @@ export const ticketKeys = {
   similar: (search: string) => [...ticketKeys.root(), 'similar', search] as const,
   adminPicker: () => [...ticketKeys.root(), 'admin-picker'] as const,
   managerPicker: () => [...ticketKeys.root(), 'cs-manager-picker'] as const,
+  csManagerMe: () => [...ticketKeys.root(), 'cs-manager-me'] as const,
   userSearch: (q: string, limit: number) => [...ticketKeys.root(), 'user-search', q, limit] as const,
 };
 

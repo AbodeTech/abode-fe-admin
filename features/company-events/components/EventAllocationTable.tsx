@@ -160,11 +160,11 @@ export function EventAllocationTable({
                   Saving...
                 </>
               ) : (
-                `Save allocation${selected.size ? ` (${selected.size})` : ""}`
+                `Invite selected${selected.size ? ` (${selected.size})` : ""}`
               )}
             </Button>
           </div>
-          {selected.size > 0 && <p className="mt-2 text-xs text-muted-foreground">Saving allocates these plans and queues invitation emails to the customers and their realtors.</p>}
+          {selected.size > 0 && <p className="mt-2 text-xs text-muted-foreground">Inviting reserves the size of these plans for this event and emails an invitation to each customer and their realtor.</p>}
         </div>
 
         <AdminMobileStack>
@@ -187,7 +187,7 @@ export function EventAllocationTable({
                   <AdminMobileField label="Eligibility" value={<EligibilityBadge tier={row.eligibility_tier} />} />
                   <AdminMobileField label="Land completed" value={formatDate(row.land_completed_at)} />
                   <div className="flex items-center justify-between border-t border-border pt-2">
-                    <span className="text-sm text-muted-foreground">Select for allocation</span>
+                    <span className="text-sm text-muted-foreground">Select to invite</span>
                     <Checkbox
                       checked={isSelected}
                       disabled={disabled}

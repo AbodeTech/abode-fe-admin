@@ -5,7 +5,6 @@ import { z } from 'zod';
 
 import { apiGet } from '@/lib/api-client';
 
-import { AdminRefSchema } from '../schemas/ticket.schema';
 import { ticketKeys } from './query-keys';
 
 /**
@@ -20,11 +19,18 @@ import { ticketKeys } from './query-keys';
  * fields where that one pulls scores and portfolio counts it would discard.
  */
 
+// The BE's AdminMinDto: `id` and snake_case names, not an AdminRef. A manager
+// whose admin record is gone comes back null.
 const CSManagerRowSchema = z.looseObject({
-  manager: AdminRefSchema.extend({
-    firstName: z.string().nullish(),
-    lastName: z.string().nullish(),
-  }),
+  manager: z
+    .looseObject({
+      id: z.string(),
+      user_name: z.string().nullish(),
+      first_name: z.string().nullish(),
+      last_name: z.string().nullish(),
+      email: z.string().nullish(),
+    })
+    .nullable(),
 });
 
 export interface TicketManagerOption {
@@ -43,14 +49,20 @@ export const useTicketManagerPicker = (enabled = true) => {
   });
 
   const options: TicketManagerOption[] = (query.data ?? [])
-    .map((row) => ({
-      id: row.manager._id,
-      label:
-        row.manager.userName ||
-        `${row.manager.firstName ?? ''} ${row.manager.lastName ?? ''}`.trim() ||
-        row.manager.email ||
-        row.manager._id,
-    }))
+    .flatMap(({ manager }) =>
+      manager
+        ? [
+            {
+              id: manager.id,
+              label:
+                manager.user_name ||
+                `${manager.first_name ?? ''} ${manager.last_name ?? ''}`.trim() ||
+                manager.email ||
+                manager.id,
+            },
+          ]
+        : []
+    )
     .sort((a, b) => a.label.localeCompare(b.label));
 
   return { options, isLoading: query.isLoading };

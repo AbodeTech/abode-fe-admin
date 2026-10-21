@@ -277,6 +277,19 @@ export const EventAnalyticsSchema = z.object({
   }),
   /** Registered but never checked in — the boarding no-show/logistics risk. */
   no_show: z.number(),
+  /** The plain answers the Analytics tab shows. `no_show` is null until the event date has passed. */
+  summary: z
+    .object({
+      invited: z.number(),
+      invited_registered: z.number(),
+      invited_not_registered: z.number(),
+      visitors: z.number(),
+      expected: z.number(),
+      checked_in: z.number(),
+      confirmed: z.number(),
+      no_show: z.number().nullable(),
+    })
+    .optional(),
   cancelled: z.number(),
   category_mix: z.array(
     z.object({
