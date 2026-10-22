@@ -156,12 +156,14 @@ export const AssetUpdateQuoteSchema = z.looseObject({
   /** Signed — negative on a decrease. */
   price_change: PriceSplitSchema,
   new_total: PriceSplitSchema,
-  current_monthly: z.object({ land: z.number(), document: z.number() }).optional(),
-  new_monthly: z.object({ land: z.number(), document: z.number() }).optional(),
+  current_monthly: z.object({ land: z.number(), document: z.number() }).nullable().optional(),
+  new_monthly: z.object({ land: z.number(), document: z.number() }).nullable().optional(),
+  /** 0 on an outright plan, or once it's paid off. */
+  months_remaining: z.object({ land: z.number(), document: z.number() }).nullable().optional(),
   /** How the size the customer holds was valued — `pro_rata` when it's no longer sold. */
   valuation_basis: z.enum(['catalogue', 'pro_rata']),
   fee: z.object({ original_fee: z.number(), requires_payment: z.boolean() }),
-  overpaid_amount: z.number().optional(),
+  overpaid_amount: z.number().nullable().optional(),
   priced_at: z.string(),
 });
 export type AssetUpdateQuote = z.infer<typeof AssetUpdateQuoteSchema>;
@@ -172,7 +174,12 @@ export const AssetUpdateRequoteSchema = z.object({
   at_submit: AssetUpdateQuoteSchema.nullable(),
   /** Null when the change can't be priced today — `at_today_error` says why. */
   at_today: AssetUpdateQuoteSchema.nullable(),
-  at_today_error: z.looseObject({ code: z.string(), message: z.string().optional() }).nullable(),
+  // The API guide doesn't pin this shape down, so accept it loosely — a
+  // stricter schema would fail the whole quote and hide the comparison.
+  at_today_error: z
+    .looseObject({ code: z.string().optional(), message: z.string().optional() })
+    .nullable()
+    .optional(),
   price_moved: z.boolean(),
   plan_changed_since_submit: z.boolean(),
 });
@@ -340,6 +347,7 @@ export function requestActions(request: ClientRequest): {
   canReview: boolean;
   canApprove: boolean;
   canSystemApprove: boolean;
+  canManualApprove: boolean;
   canComplete: boolean;
   canDecline: boolean;
   canCancel: boolean;
@@ -350,6 +358,10 @@ export function requestActions(request: ClientRequest): {
     canReview: next.includes('under_review'),
     canApprove,
     canSystemApprove: canApprove && request.request_type !== 'custom_request',
+    // An asset update changes the plan and moves inventory at approval in
+    // either mode; `manual` would then leave it parked at `approved`. The API
+    // guide says to use `system` for asset updates, so manual isn't offered.
+    canManualApprove: canApprove && request.request_type !== 'asset_update',
     canComplete: next.includes('completed'),
     canDecline: next.includes('declined'),
     canCancel: next.includes('cancelled'),

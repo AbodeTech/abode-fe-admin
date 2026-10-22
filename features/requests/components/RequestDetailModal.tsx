@@ -57,6 +57,7 @@ import {
 } from "../schemas/request.schema";
 import { useAssetUpdateQuote } from "../hooks/use-client-requests";
 import {
+  INVENTORY_UNAVAILABLE,
   QUOTE_CHANGED,
   useApproveRequest,
   useCancelRequest,
@@ -335,7 +336,9 @@ function QuoteCheck({
 
       {todayError ? (
         <p className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-800">
-          {TODAY_ERRORS[todayError.code] ?? todayError.message ?? "This change can't be priced today, so approval would fail."}
+          {(todayError.code ? TODAY_ERRORS[todayError.code] : undefined) ??
+            todayError.message ??
+            "This change can't be priced today, so approval would fail."}
         </p>
       ) : null}
 
@@ -526,10 +529,20 @@ export function RequestDetailModal({ request }: { request: ClientRequest }) {
     setOpen(false);
   };
   const fail = (error: Error) => toast.error(error.message || "The action failed");
-  const failApprove = (error: Error) =>
-    error instanceof ApiClientError && error.code === QUOTE_CHANGED
-      ? toast.error("Today's price changed while this was open. Check the new figures and confirm again.")
-      : fail(error);
+  const failApprove = (error: Error) => {
+    const code = error instanceof ApiClientError ? error.code : null;
+    if (code === QUOTE_CHANGED) {
+      return toast.error(
+        "The price or the plan changed while this was open. Check the new figures and confirm again."
+      );
+    }
+    if (code === INVENTORY_UNAVAILABLE) {
+      return toast.error(
+        "The land for this change isn't available, so the plan wasn't changed. Decline the request or check the estate's inventory."
+      );
+    }
+    return fail(error);
+  };
   const notesArg = notes.trim() ? { admin_notes: notes.trim() } : {};
 
   const validReason = (): string | null => {
@@ -601,7 +614,10 @@ export function RequestDetailModal({ request }: { request: ClientRequest }) {
     },
     system: {
       title: "System approve?",
-      body: "Runs the change automatically — the document is renamed or the plan is resized — and marks the request completed. The user is notified.",
+      body:
+        request.request_type === "asset_update"
+          ? "Applies the change at today's price: the plan is resized and the land inventory moved, then the request is marked completed. The user is notified."
+          : "Runs the change automatically — the document is renamed — and marks the request completed. The user is notified.",
       cta: "Approve & process",
       tone: "bg-green-600 hover:bg-green-700",
     },
@@ -736,7 +752,7 @@ export function RequestDetailModal({ request }: { request: ClientRequest }) {
                   Open for review
                 </Button>
               ) : null}
-              {actions.canApprove ? (
+              {actions.canManualApprove ? (
                 <Button
                   variant="outline"
                   className="border-blue-600 text-blue-600 hover:bg-blue-50"

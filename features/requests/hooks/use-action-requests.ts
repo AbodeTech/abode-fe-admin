@@ -82,7 +82,12 @@ export const useApproveRequest = () => {
       queryClient.invalidateQueries({ queryKey: [...requestKeys.all, 'stats'] });
     },
     onError: (error, args) => {
-      if (error instanceof ApiClientError && error.code === QUOTE_CHANGED) {
+      // The price, the plan or the land moved under the dialog — reload the
+      // quote so it shows what approval would now apply.
+      if (
+        error instanceof ApiClientError &&
+        (error.code === QUOTE_CHANGED || error.code === INVENTORY_UNAVAILABLE)
+      ) {
         queryClient.invalidateQueries({ queryKey: requestKeys.quote(args.requestId) });
       }
     },
@@ -90,6 +95,8 @@ export const useApproveRequest = () => {
 };
 
 export const QUOTE_CHANGED = 'QUOTE_CHANGED';
+/** Approval couldn't move the land: the target is taken, or the current holding doesn't reconcile. */
+export const INVENTORY_UNAVAILABLE = 'INVENTORY_UNAVAILABLE';
 
 export const useCompleteRequest = () =>
   useRequestMutation((args: { requestId: string; admin_notes?: string }) =>
