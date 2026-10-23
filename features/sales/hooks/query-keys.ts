@@ -5,4 +5,5 @@ export const salesKeys = {
   planStatusCounts: (filters?: Record<string, unknown>) =>
     [...salesKeys.all, 'plan-status-counts', filters] as const,
   export: () => [...salesKeys.all, 'export'] as const,
+  csvExport: () => [...salesKeys.all, 'csv-export'] as const,
 };
