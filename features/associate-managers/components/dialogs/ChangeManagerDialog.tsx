@@ -27,7 +27,7 @@ import {
 import { useAssociateManagers } from "../../hooks/use-associate-managers";
 import { useAssociateManager } from "../../hooks/use-associate-managers";
 import { useBulkAssignPros } from "../../hooks/use-bulk-assign-pros";
-import { useUnassignedPros } from "../../hooks/use-unassigned-pros";
+import { MAX_UNASSIGNED_LIMIT, useUnassignedPros } from "../../hooks/use-unassigned-pros";
 import { managerDisplayName } from "../../schemas/associate-manager.schema";
 
 const UNASSIGNED_POOL_ID = "__unassigned__";
@@ -69,7 +69,7 @@ export function ChangeManagerDialog({
   );
   const { data: unassignedData } = useUnassignedPros({
     page: 1,
-    limit: 200,
+    limit: MAX_UNASSIGNED_LIMIT,
     q: isUnassignedSource ? search || null : null,
   });
 

@@ -8,6 +8,8 @@ import { ProSummarySchema } from '../schemas/associate-manager.schema';
 import { managerKeys } from './query-keys';
 
 export const DEFAULT_UNASSIGNED_LIMIT = 20;
+/** The BE's PaginationQueryDto caps `limit` at 100; anything above is a 400, not a bigger page. */
+export const MAX_UNASSIGNED_LIMIT = 100;
 
 interface UseUnassignedProsParams {
   page?: number;

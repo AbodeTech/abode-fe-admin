@@ -26,7 +26,7 @@ import {
 import { useAddManager } from "../../hooks/use-add-manager";
 import { useAssociateManagers } from "../../hooks/use-associate-managers";
 import { useBulkAssignPros } from "../../hooks/use-bulk-assign-pros";
-import { useUnassignedPros } from "../../hooks/use-unassigned-pros";
+import { MAX_UNASSIGNED_LIMIT, useUnassignedPros } from "../../hooks/use-unassigned-pros";
 import { useAdminPicker } from "../../hooks/use-admin-picker";
 import { adminPickerName } from "../../schemas/associate-manager.schema";
 
@@ -53,7 +53,7 @@ export function AddManagerDialog({ open, onOpenChange }: Props) {
 
   const { data: unassignedData } = useUnassignedPros({
     page: 1,
-    limit: 200,
+    limit: MAX_UNASSIGNED_LIMIT,
     q: search || null,
   });
   const unassignedPros = unassignedData?.items ?? [];
