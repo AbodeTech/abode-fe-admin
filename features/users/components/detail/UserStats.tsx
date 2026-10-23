@@ -39,7 +39,19 @@ const formatDateWord = (dateString: string) => {
   }
 };
 
-const DataPoint = ({ title, value, icon, isEven }: { title: string; value: string; icon: React.ReactNode; isEven: boolean }) => (
+const DataPoint = ({
+  title,
+  value,
+  icon,
+  isEven,
+  note,
+}: {
+  title: string;
+  value: string;
+  icon: React.ReactNode;
+  isEven: boolean;
+  note?: string;
+}) => (
   <Card className={`${isEven ? "bg-[#F9FAFB]" : "bg-[#101828] text-white"} min-w-0 overflow-hidden border-none shadow-sm`}>
     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
       <CardTitle className={`text-sm font-medium ${isEven ? "text-[#667085]" : "text-gray-300"}`}>{title}</CardTitle>
@@ -47,6 +59,9 @@ const DataPoint = ({ title, value, icon, isEven }: { title: string; value: strin
     </CardHeader>
     <CardContent>
       <div className={`text-2xl font-bold wrap-break-word ${isEven ? "text-[#101828]" : "text-white"}`}>{value}</div>
+      {note ? (
+        <p className={`mt-1 text-xs leading-snug ${isEven ? "text-[#667085]" : "text-gray-300"}`}>{note}</p>
+      ) : null}
     </CardContent>
   </Card>
 );
@@ -76,54 +91,68 @@ export function UserStats({ user }: UserStatsProps) {
   const suspendWallet = useSuspendWallet();
   const unsuspendWallet = useUnsuspendWallet();
 
-  const stats = [
+  // The wallet total includes money set aside for withdrawals still waiting for approval, so it
+  // overstates what the user can take out. Lead with what is available; show the total and the
+  // amount on hold underneath.
+  const walletTotal = user.wallet?.balance || 0;
+  const walletAvailable = user.wallet_available ?? walletTotal;
+  const walletHeld = Math.max(0, walletTotal - walletAvailable);
+
+  const stats: {
+    title: string;
+    value: string;
+    icon: React.ReactNode;
+    note?: string;
+  }[] = [
     {
       title: "Wallet Balance",
-      value: formatNaira(user.wallet?.balance || 0),
+      value: formatNaira(walletTotal),
       icon: <Wallet className="h-4 w-4 text-muted-foreground" />,
-      isEven: false,
+      note:
+        walletHeld > 0
+          ? `Includes ${formatNaira(walletHeld)} on hold for pending withdrawals`
+          : "Nothing on hold",
+    },
+    {
+      title: "Available to withdraw",
+      value: formatNaira(walletAvailable),
+      icon: <Wallet className="h-4 w-4 text-muted-foreground" />,
+      note: "Wallet balance minus pending withdrawals",
     },
     {
       title: "Net Worth",
       value: formatNaira(user.virtual_networth || 0),
       icon: <TrendingUp className="h-4 w-4 text-muted-foreground" />,
-      isEven: true,
     },
     {
       title: "Subscriptions",
       value: (user.virtual_subscriptions || 0).toString(),
       icon: <Bookmark className="h-4 w-4 text-muted-foreground" />,
-      isEven: false,
     },
     {
       title: "Unit Purchased",
       value: (user.units_purchased || 0).toString(),
       icon: <Package className="h-4 w-4 text-muted-foreground" />,
-      isEven: true,
     },
     {
       title: "Amount Paid",
       value: formatNaira(user.amount_paid || 0),
       icon: <DollarSign className="h-4 w-4 text-muted-foreground" />,
-      isEven: false,
     },
     {
       title: "Balance",
       value: formatNaira(user.balance_payable || 0),
       icon: <PiggyBank className="h-4 w-4 text-muted-foreground" />,
-      isEven: true,
     },
     {
       title: "Next Payment Date",
       value: user.next_date_of_payment ? formatDateWord(user.next_date_of_payment) : "N/A",
       icon: <Calendar className="h-4 w-4 text-muted-foreground" />,
-      isEven: false,
     },
     {
       title: "Unsigned contracts",
       value: (user.unsigned_contracts ?? 0).toString(),
       icon: <Clock className="h-4 w-4 text-muted-foreground" />,
-      isEven: true,
     },
   ];
 
@@ -196,7 +225,8 @@ export function UserStats({ user }: UserStatsProps) {
             title={stat.title}
             value={stat.value}
             icon={stat.icon}
-            isEven={stat.isEven}
+            isEven={i % 2 === 1}
+            note={stat.note}
           />
         ))}
       </div>

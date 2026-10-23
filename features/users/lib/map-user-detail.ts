@@ -237,6 +237,7 @@ export function toUserTransaction(raw: Record<string, unknown>): TransactionList
     gross_commission: asNullableNumber(raw.gross_commission),
     wht_deducted: asNullableNumber(raw.wht_deducted),
     wallet_balance_after: asNullableNumber(raw.wallet_balance_after),
+    available_after: asNullableNumber(raw.available_balance_after),
   };
 }
 
