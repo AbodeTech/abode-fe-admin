@@ -35,8 +35,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
-import { MultiSelect } from "@/components/ui/multi-select"
+import { Textarea } from "@/components/ui/textarea"
 import {
   formatAmount,
   formatDate,
@@ -46,15 +47,14 @@ import {
   getPaymentMethodLabel,
   getTypeColor,
 } from "@/lib/utils/transaction-utils"
-import {
-  TransactionListResponse,
-  ProcessCommissionInput,
-} from "@/lib/api/admin/transactions.types"
-import {
-  processComissionTransaction,
-  sendReceiptEmail,
-} from "@/lib/api/admin/transactions.client"
+import { TransactionListResponse } from "@/lib/api/admin/transactions.types"
 import revalidate from "@/lib/serverActions/admin/revalidate"
+import {
+  FORCED_REPROCESS_REASON_MIN,
+  REPROCESS_REASON_MIN,
+  reprocessTransaction,
+  sendTransactionReceipt,
+} from "../../../lib/transaction-actions"
 import { ViewTransactionEvidenceModal } from "../../modals/ViewTransactionEvidenceModal"
 import { getErrorMessage } from "../../../utils/error-message"
 import {
@@ -69,12 +69,6 @@ interface OtherTransactionsTableProps {
 }
 
 type SortValue = string | number | null | undefined
-
-const COMMISSION_TYPE_OPTIONS = [
-  { label: "Direct Commission", value: "direct" },
-  { label: "Topline Commission", value: "topline" },
-  { label: "Upline Commission", value: "upline" },
-] as const
 
 /** Type badge, plus an "Admin" badge when an admin recorded the transaction. */
 function TransactionTypeBadges({ transaction }: { transaction: TransactionListResponse }) {
@@ -101,7 +95,8 @@ export function OtherTransactionsTable({ transactions }: OtherTransactionsTableP
   const [receiptProcessingId, setReceiptProcessingId] = useState<string | null>(null)
   const [isConfirmOpen, setIsConfirmOpen] = useState(false)
   const [pendingTransactionId, setPendingTransactionId] = useState<string | null>(null)
-  const [selectedCommissionTypes, setSelectedCommissionTypes] = useState<string[]>(["direct", "topline", "upline"])
+  const [reprocessReason, setReprocessReason] = useState("")
+  const [forceReprocess, setForceReprocess] = useState(false)
 
   const params = useParams()
   const userId = typeof params.id === 'string' ? params.id : Array.isArray(params.id) ? params.id[0] : ''
@@ -144,9 +139,15 @@ export function OtherTransactionsTable({ transactions }: OtherTransactionsTableP
   // Actions Logic
   const handleOpenConfirm = (transactionId: string) => {
     setPendingTransactionId(transactionId)
-    setSelectedCommissionTypes(["direct", "topline", "upline"])
+    setReprocessReason("")
+    setForceReprocess(false)
     setIsConfirmOpen(true)
   }
+
+  // The BE asks for a reason, and a longer one to fire commission a second time.
+  const reasonMin = forceReprocess ? FORCED_REPROCESS_REASON_MIN : REPROCESS_REASON_MIN
+  const reasonLength = reprocessReason.trim().length
+  const canConfirmReprocess = reasonLength >= reasonMin
 
   const handleCloseConfirm = () => {
     setIsConfirmOpen(false)
@@ -154,18 +155,16 @@ export function OtherTransactionsTable({ transactions }: OtherTransactionsTableP
   }
 
   const handleReprocess = async () => {
-    if (!pendingTransactionId || !userId) return
+    if (!pendingTransactionId || !userId || !canConfirmReprocess) return
 
-    setProcessingId(pendingTransactionId)
+    const transactionId = pendingTransactionId
+    const input = { reason: reprocessReason.trim(), force: forceReprocess }
+    setProcessingId(transactionId)
     handleCloseConfirm() // Close modal immediately
 
     try {
-      await processComissionTransaction({
-        userId,
-        transactionId: pendingTransactionId,
-        commissionTypes: selectedCommissionTypes as ProcessCommissionInput['commissionTypes'],
-      })
-      toast.success("Transaction reprocessed successfully")
+      const result = await reprocessTransaction(userId, transactionId, input)
+      toast.success(result.message ?? "Transaction reprocessed successfully")
       await revalidate(userId)
     } catch (error: unknown) {
       toast.error(getErrorMessage(error, "Failed to reprocess transaction"))
@@ -175,10 +174,11 @@ export function OtherTransactionsTable({ transactions }: OtherTransactionsTableP
   }
 
   const handleSendReceipt = async (transactionId: string) => {
+    if (!userId) return
     setReceiptProcessingId(transactionId)
     try {
-      await sendReceiptEmail(transactionId)
-      toast.success("Receipt email sent successfully")
+      const result = await sendTransactionReceipt(userId, transactionId)
+      toast.success(result.message ?? "Receipt email sent successfully")
     } catch (error: unknown) {
       toast.error(getErrorMessage(error, "Failed to send receipt email"))
     } finally {
@@ -415,28 +415,41 @@ export function OtherTransactionsTable({ transactions }: OtherTransactionsTableP
           <AlertDialogHeader>
             <AlertDialogTitle>Process this transaction?</AlertDialogTitle>
             <AlertDialogDescription>
-              Continuing will process this transaction and pay out commission to every realtor involved. Please confirm you want to proceed.
+              Continuing pays commission on this payment to the realtors saved on its plan. Please confirm you want to proceed.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="py-4 space-y-4">
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Select Commission Types to Process:</Label>
-              <MultiSelect
-                options={[...COMMISSION_TYPE_OPTIONS]}
-                selected={selectedCommissionTypes}
-                onChange={setSelectedCommissionTypes}
-                placeholder="Select commission types..."
+              <Label htmlFor="reprocess-reason" className="text-sm font-medium">
+                Reason
+              </Label>
+              <Textarea
+                id="reprocess-reason"
+                value={reprocessReason}
+                onChange={(e) => setReprocessReason(e.target.value)}
+                placeholder="Why does this payment need its commission processed?"
+                maxLength={2000}
+                rows={3}
               />
-            </div>
-            {selectedCommissionTypes.length === 0 && (
-              <p className="text-sm text-destructive">
-                Please select at least one commission type to proceed.
+              <p className={`text-xs ${canConfirmReprocess ? "text-muted-foreground" : "text-destructive"}`}>
+                {reasonLength}/{reasonMin} characters minimum
               </p>
-            )}
+            </div>
+            <div className="flex items-start gap-2">
+              <Checkbox
+                id="reprocess-force"
+                checked={forceReprocess}
+                onCheckedChange={(checked) => setForceReprocess(checked === true)}
+              />
+              <Label htmlFor="reprocess-force" className="text-sm font-normal leading-snug">
+                Commission already paid on this payment — pay it again where the plan&apos;s
+                realtors have changed (needs a {FORCED_REPROCESS_REASON_MIN}-character reason)
+              </Label>
+            </div>
           </div>
           <AlertDialogFooter>
             <Button variant="outline" onClick={handleCloseConfirm}>Cancel</Button>
-            <Button onClick={handleReprocess} disabled={selectedCommissionTypes.length === 0}>
+            <Button onClick={handleReprocess} disabled={!canConfirmReprocess}>
               Continue
             </Button>
           </AlertDialogFooter>
