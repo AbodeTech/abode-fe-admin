@@ -680,7 +680,7 @@ export function SalesExport({ filters }: { filters: SalesListFilters }) {
   if (!isSuperAdmin) return null
 
   return (
-    <div className="mb-0 mt-0 flex w-full min-w-0 flex-col gap-2 sm:mb-3 sm:mt-5 sm:flex-row sm:flex-wrap sm:justify-end sm:gap-2">
+    <div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end sm:gap-2">
       <Button
         variant="outline"
         onClick={handleDownload}
