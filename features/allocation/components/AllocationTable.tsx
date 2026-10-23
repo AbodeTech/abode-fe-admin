@@ -13,7 +13,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { MapPin, RotateCcw, Send } from "lucide-react";
+import { MapPin, Send, Settings2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   AdminDesktopTableWrap,
@@ -159,8 +159,8 @@ export function AllocationTable({ rows, isLoading, onSend, onResend }: Allocatio
                   <div className="border-t border-border pt-2">
                     {hasAllocation ? (
                       <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => onResend(row)}>
-                        <RotateCcw className="h-4 w-4" />
-                        Resend
+                        <Settings2 className="h-4 w-4" />
+                        Manage
                       </Button>
                     ) : (
                       <Button size="sm" className="w-full gap-2" onClick={() => onSend(row)}>
@@ -286,8 +286,8 @@ export function AllocationTable({ rows, isLoading, onSend, onResend }: Allocatio
                           className="flex h-auto min-h-10 w-full flex-col gap-1.5 whitespace-normal px-3 py-2.5 text-center text-sm leading-snug sm:h-9 sm:min-h-0 sm:w-auto sm:flex-row sm:items-center sm:justify-center sm:gap-2"
                           onClick={() => onResend(row)}
                         >
-                          <RotateCcw className="h-4 w-4 shrink-0" />
-                          Resend
+                          <Settings2 className="h-4 w-4 shrink-0" />
+                          Manage
                         </Button>
                       ) : (
                         <Button
