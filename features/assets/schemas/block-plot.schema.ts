@@ -58,6 +58,15 @@ export const PlotSchema = z.looseObject({
   size: z.number(),
   status: PlotStatusSchema,
   payment_plan: z.string().nullable().optional(),
+  /** Who holds an allocated plot (the BE adds it when listing a block's plots). */
+  holder: z
+    .object({
+      payment_plan_id: z.string(),
+      name: z.string(),
+      email: z.string().nullable(),
+    })
+    .nullable()
+    .optional(),
   allocated_date: z.string().nullable().optional(),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
@@ -70,6 +79,17 @@ export function plotName(plot: Plot): string {
 
 export function isAllocated(plot: Plot): boolean {
   return plot.status === 'allocated';
+}
+
+/**
+ * The Allocation page, filtered to the plot's holder with their Manage window open — where an
+ * allocated plot is deallocated or reassigned (the plot itself stays locked until then).
+ */
+export function manageAllocationHref(plot: Plot, assetId: string): string | null {
+  if (!plot.holder) return null;
+  const params = new URLSearchParams({ assetid: assetId, manage: plot.holder.payment_plan_id });
+  if (plot.holder.email) params.set('search', plot.holder.email);
+  return `/allocation?${params.toString()}`;
 }
 
 /* -------------------- plot ranges -------------------- */

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { AlertTriangle, Layers, Loader2, Lock, Pencil, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
@@ -41,6 +42,7 @@ import {
   blockStats,
   expandPlotRanges,
   isAllocated,
+  manageAllocationHref,
   plotName,
   PLOT_STATUS_LABELS,
   type Block,
@@ -564,13 +566,24 @@ function ManageBlockPlotsDialog({
                       </TableCell>
                       <TableCell>
                         {frozen ? (
-                          <span
-                            className="inline-flex items-center gap-1 text-xs text-muted-foreground"
-                            title="Allocated plots cannot be edited or deleted"
-                          >
-                            <Lock className="h-3 w-3" />
-                            Locked
-                          </span>
+                          <div className="flex flex-col items-start gap-0.5">
+                            <span
+                              className="inline-flex items-center gap-1 text-xs text-muted-foreground"
+                              title="Allocated plots cannot be edited or deleted — deallocate or reassign the holder first"
+                            >
+                              <Lock className="h-3 w-3" />
+                              Locked
+                            </span>
+                            {manageAllocationHref(plot, assetId) && plot.holder ? (
+                              <Link
+                                href={manageAllocationHref(plot, assetId) as string}
+                                className="text-xs font-medium text-primary underline-offset-2 hover:underline"
+                                title="Open this customer's allocation to deallocate or reassign"
+                              >
+                                Held by {plot.holder.name}
+                              </Link>
+                            ) : null}
+                          </div>
                         ) : (
                           <div className="flex items-center gap-1">
                             <Button

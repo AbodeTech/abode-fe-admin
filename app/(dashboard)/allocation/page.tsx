@@ -42,6 +42,9 @@ function AllocationContent() {
   // the two ranges combine.
   const completedFromParam = searchParams.get("completedFrom");
   const completedToParam = searchParams.get("completedTo");
+  // `?manage=<payment plan id>`: open that plan's Manage window once its row has loaded
+  // (the Block window's "Held by …" link lands here).
+  const manageParam = searchParams.get("manage");
 
   const [searchTerm, setSearchTerm] = useState(searchParam);
   const [modalOpen, setModalOpen] = useState(false);
@@ -70,7 +73,11 @@ function AllocationContent() {
 
   const handleModalOpenChange = (open: boolean) => {
     setModalOpen(open);
-    if (!open) setModalClient(null);
+    if (!open) {
+      setModalClient(null);
+      // Closing a window opened from a link drops the link, so it doesn't reopen.
+      if (manageParam) updateParams({ manage: null }, { replace: true });
+    }
   };
 
   const updateParams = useCallback(
@@ -93,6 +100,19 @@ function AllocationContent() {
     },
     [router, searchParams]
   );
+
+  // A plan named by `?manage=` opens its window as soon as its row is on the page; a window
+  // the admin opened from the table takes precedence.
+  const linkedRow = manageParam
+    ? (data?.items?.find((item) => item.payment_plan_id === manageParam) ?? null)
+    : null;
+  const activeClient = modalClient ?? linkedRow;
+  const activeOpen = modalOpen || (!modalClient && Boolean(linkedRow));
+  const activeMode: AllocationModalMode = modalClient
+    ? modalMode
+    : linkedRow?.allocation_status === "pending"
+      ? "send"
+      : "resend";
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -206,9 +226,9 @@ function AllocationContent() {
       />
 
       <AllocationModal
-        open={modalOpen}
-        mode={modalMode}
-        client={modalClient}
+        open={activeOpen}
+        mode={activeMode}
+        client={activeClient}
         onOpenChange={handleModalOpenChange}
       />
     </div>
