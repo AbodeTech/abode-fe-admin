@@ -49,13 +49,14 @@ function toCommissionRow(transaction: TransactionListResponse) {
     wht: transaction.wht_deducted ?? null,
     balance:
       transaction.wallet_balance_after ?? (parsed.isCommission ? toNumber(parsed.balance) : null),
+    available: transaction.available_after ?? null,
   }
 }
 
 type CommissionRow = ReturnType<typeof toCommissionRow>
 type SortField = keyof CommissionRow
 
-const NUMERIC_FIELDS = new Set<SortField>(["amount", "rate", "gross", "wht", "balance"])
+const NUMERIC_FIELDS = new Set<SortField>(["amount", "rate", "gross", "wht", "balance", "available"])
 
 const formatMoney = (value: number | null) => (value == null ? EMPTY : formatAmount(value))
 const formatRate = (rate: number | null) =>
@@ -85,6 +86,9 @@ export function CommissionTransactionsTable({ transactions }: CommissionTransact
   }
 
   // Rows without a value sort last in either direction.
+  // Rows from v1 have no available figure (v1 had no holds); show the column once any row has one.
+  const showAvailable = transactions.some((t) => t.available_after != null)
+
   const sortedTransactions = transactions.map(toCommissionRow).sort((a, b) => {
     const aValue = sortValue(a, sortField)
     const bValue = sortValue(b, sortField)
@@ -109,7 +113,11 @@ export function CommissionTransactionsTable({ transactions }: CommissionTransact
     <Card className="w-full">
       <CardHeader>
         <CardTitle>Commission Transactions</CardTitle>
-        <CardDescription>View and manage commission transactions</CardDescription>
+        <CardDescription>
+          View and manage commission transactions. &ldquo;Wallet total after&rdquo; is the whole wallet
+          after each credit, including money on hold for withdrawals still waiting for approval;
+          &ldquo;Available after&rdquo; is what the user could withdraw at that moment.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <AdminMobileStack className="mb-4 space-y-3">
@@ -125,7 +133,10 @@ export function CommissionTransactionsTable({ transactions }: CommissionTransact
                 <AdminMobileField label="Gross" value={formatMoney(transaction.gross)} />
                 <AdminMobileField label="WHT" value={formatMoney(transaction.wht)} />
                 <AdminMobileField label="Amount" value={formatAmount(transaction.amount)} />
-                <AdminMobileField label="Wallet balance" value={formatMoney(transaction.balance)} />
+                <AdminMobileField label="Wallet total after" value={formatMoney(transaction.balance)} />
+                {showAvailable ? (
+                  <AdminMobileField label="Available after" value={formatMoney(transaction.available)} />
+                ) : null}
                 <AdminMobileField
                   label="Payment method"
                   value={
@@ -161,7 +172,8 @@ export function CommissionTransactionsTable({ transactions }: CommissionTransact
                 {sortableHead("gross", "Gross")}
                 {sortableHead("wht", "WHT")}
                 {sortableHead("amount", "Amount")}
-                {sortableHead("balance", "Wallet Balance")}
+                {sortableHead("balance", "Wallet total after")}
+                {showAvailable ? sortableHead("available", "Available after") : null}
                 {sortableHead("payment_method", "Payment Method")}
                 {sortableHead("status", "Status")}
               </TableRow>
@@ -180,6 +192,9 @@ export function CommissionTransactionsTable({ transactions }: CommissionTransact
                     <TableCell>{formatMoney(transaction.wht)}</TableCell>
                     <TableCell className="font-medium">{formatAmount(transaction.amount)}</TableCell>
                     <TableCell>{formatMoney(transaction.balance)}</TableCell>
+                    {showAvailable ? (
+                      <TableCell className="font-medium">{formatMoney(transaction.available)}</TableCell>
+                    ) : null}
                     <TableCell>
                       <Badge variant="outline" className={getPaymentMethodColor(transaction.payment_method)}>
                         {getPaymentMethodLabel(transaction.payment_method)}
@@ -194,7 +209,7 @@ export function CommissionTransactionsTable({ transactions }: CommissionTransact
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={12} className="text-center py-4">
+                  <TableCell colSpan={showAvailable ? 13 : 12} className="text-center py-4">
                     No commission transactions found
                   </TableCell>
                 </TableRow>

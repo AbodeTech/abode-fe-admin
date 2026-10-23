@@ -157,6 +157,8 @@ export interface TransactionListResponse {
   gross_commission?: number | null;
   wht_deducted?: number | null;
   wallet_balance_after?: number | null;
+  /** The BE's available_balance_after: what could be withdrawn right after this movement. */
+  available_after?: number | null;
   // Optional fields for flexibility or deprecated usage
   user?: {
     firstName: string;

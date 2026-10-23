@@ -50,7 +50,7 @@ export function UserStatsCards({ user }: UserStatsCardsProps) {
           <div className="text-2xl font-bold text-[#101828]">
             {formatCurrency(user.wallet?.balance || 0)}
           </div>
-          <p className="text-xs text-[#667085] mt-1">Available funds</p>
+          <p className="text-xs text-[#667085] mt-1">Wallet total, including money on hold for withdrawals</p>
         </CardContent>
       </Card>
 
