@@ -4,7 +4,11 @@ import { useQuery } from '@tanstack/react-query';
 
 import { apiGet } from '@/lib/api-client';
 
-import { ClientRequestSchema, RequestListSchema } from '../schemas/request.schema';
+import {
+  AssetUpdateRequoteSchema,
+  ClientRequestSchema,
+  RequestListSchema,
+} from '../schemas/request.schema';
 import { requestKeys, type RequestListFilters } from './query-keys';
 
 /** The BE defaults to 25 and caps at 100. */
@@ -47,4 +51,21 @@ export const useClientRequest = (requestId: string) =>
     queryKey: requestKeys.detail(requestId),
     queryFn: () => apiGet(`/admin/requests/${requestId}`, ClientRequestSchema),
     enabled: Boolean(requestId),
+  });
+
+/**
+ * GET /admin/requests/:request_id/asset-update-quote — the quote stored at
+ * submit next to the same change priced at today's rates. Read when the
+ * approval dialog opens, so it's never served from cache: the point is to
+ * catch a catalogue price that moved since submit.
+ */
+export const useAssetUpdateQuote = (requestId: string, enabled: boolean) =>
+  useQuery({
+    queryKey: requestKeys.quote(requestId),
+    queryFn: () =>
+      apiGet(`/admin/requests/${requestId}/asset-update-quote`, AssetUpdateRequoteSchema),
+    enabled: enabled && Boolean(requestId),
+    staleTime: 0,
+    gcTime: 0,
+    retry: false,
   });

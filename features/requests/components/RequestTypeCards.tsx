@@ -13,10 +13,12 @@ import { REQUEST_FEES, type RequestStatistics } from "../schemas/request.schema"
  * count that needs an admin (`pending_*`, i.e. status=submitted); v1 showed
  * the type's total under a "Pending" label, which was a lie by column.
  */
+const feeLabel = (fee: number) => (fee > 0 ? `${formatNaira(fee)} processing fee` : "No fee");
+
 const typeConfig: {
   pendingKey: keyof RequestStatistics;
   totalKey: keyof RequestStatistics;
-  fee: number;
+  fee: string;
   title: string;
   description: string;
   icon: React.ElementType;
@@ -25,7 +27,7 @@ const typeConfig: {
   {
     pendingKey: "pending_document_change",
     totalKey: "document_change_requests",
-    fee: REQUEST_FEES.document_change,
+    fee: feeLabel(REQUEST_FEES.document_change),
     title: "Document Change",
     description: "Manage name and address document updates",
     icon: FileText,
@@ -34,7 +36,8 @@ const typeConfig: {
   {
     pendingKey: "pending_asset_update",
     totalKey: "asset_update_requests",
-    fee: REQUEST_FEES.asset_update,
+    // Growing a plan is free; only shrinking one carries the fee.
+    fee: `Free to grow · ${formatNaira(REQUEST_FEES.asset_update)} to reduce`,
     title: "Asset Update",
     description: "Manage size and unit modification requests",
     icon: Settings,
@@ -43,7 +46,7 @@ const typeConfig: {
   {
     pendingKey: "pending_custom",
     totalKey: "custom_requests",
-    fee: REQUEST_FEES.custom_request,
+    fee: feeLabel(REQUEST_FEES.custom_request),
     title: "Custom Request",
     description: "Manage custom client requests",
     icon: MessageSquare,
@@ -85,9 +88,7 @@ export function RequestTypeCards({ stats }: RequestTypeCardsProps) {
             <div className="min-w-0 p-4 sm:p-6">
               <h4 className="text-lg font-semibold text-gray-900 mb-2">{item.title}</h4>
               <p className="text-gray-600 text-sm mb-1">{item.description}</p>
-              <p className="text-xs text-gray-500 mb-4">
-                {item.fee > 0 ? `${formatNaira(item.fee)} processing fee` : "No fee"}
-              </p>
+              <p className="text-xs text-gray-500 mb-4">{item.fee}</p>
               <div className="flex items-center text-gray-900 font-medium text-sm group-hover:text-gray-700">
                 View All Requests
                 <svg

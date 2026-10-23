@@ -24,7 +24,10 @@ export const REQUEST_TYPE_LABELS: Record<RequestType, string> = {
   custom_request: 'Custom request',
 };
 
-/** Fixed fees the backend charges — shown on the type cards. */
+/**
+ * Fees the backend charges — shown on the type cards. An asset update is free
+ * when it grows the plan; this is the fee for one that shrinks it.
+ */
 export const REQUEST_FEES: Record<RequestType, number> = {
   document_change: 20_000,
   asset_update: 100_000,
@@ -125,6 +128,63 @@ export type DocumentChangeDetails = z.infer<typeof DocumentChangeDetailsSchema>;
 
 export const UPDATE_TYPES = ['size', 'units'] as const;
 
+export const ASSET_UPDATE_DIRECTIONS = ['increase', 'decrease'] as const;
+export type AssetUpdateDirection = (typeof ASSET_UPDATE_DIRECTIONS)[number];
+
+/** Land and document fee split. `document` is 0 on flex plans. */
+const PriceSplitSchema = z.object({
+  land: z.number(),
+  document: z.number(),
+  total: z.number(),
+});
+
+/**
+ * One pricing of an asset update — the same shape whether it was stored at
+ * submit, stored at approval, or computed just now for the approval dialog.
+ *
+ * An increase prices only the added portion at today's rate and adds it to
+ * what the plan already costs. A decrease re-prices the whole plan, as before.
+ */
+export const AssetUpdateQuoteSchema = z.looseObject({
+  direction: z.enum(ASSET_UPDATE_DIRECTIONS),
+  update_type: z.enum(UPDATE_TYPES),
+  current_size: z.number(),
+  current_units: z.number(),
+  new_size: z.number(),
+  new_units: z.number(),
+  current_total: PriceSplitSchema,
+  /** Signed — negative on a decrease. */
+  price_change: PriceSplitSchema,
+  new_total: PriceSplitSchema,
+  current_monthly: z.object({ land: z.number(), document: z.number() }).nullable().optional(),
+  new_monthly: z.object({ land: z.number(), document: z.number() }).nullable().optional(),
+  /** 0 on an outright plan, or once it's paid off. */
+  months_remaining: z.object({ land: z.number(), document: z.number() }).nullable().optional(),
+  /** How the size the customer holds was valued — `pro_rata` when it's no longer sold. */
+  valuation_basis: z.enum(['catalogue', 'pro_rata']),
+  fee: z.object({ original_fee: z.number(), requires_payment: z.boolean() }),
+  overpaid_amount: z.number().nullable().optional(),
+  priced_at: z.string(),
+});
+export type AssetUpdateQuote = z.infer<typeof AssetUpdateQuoteSchema>;
+
+/** GET /admin/requests/:request_id/asset-update-quote — the quote at submit next to today's. */
+export const AssetUpdateRequoteSchema = z.object({
+  /** Null for requests made before quotes were stored. */
+  at_submit: AssetUpdateQuoteSchema.nullable(),
+  /** Null when the change can't be priced today — `at_today_error` says why. */
+  at_today: AssetUpdateQuoteSchema.nullable(),
+  // The API guide doesn't pin this shape down, so accept it loosely — a
+  // stricter schema would fail the whole quote and hide the comparison.
+  at_today_error: z
+    .looseObject({ code: z.string().optional(), message: z.string().optional() })
+    .nullable()
+    .optional(),
+  price_moved: z.boolean(),
+  plan_changed_since_submit: z.boolean(),
+});
+export type AssetUpdateRequote = z.infer<typeof AssetUpdateRequoteSchema>;
+
 export const AssetUpdateDetailsSchema = z.looseObject({
   asset: RefSchema.nullable(),
   unique_asset_id: z.string(),
@@ -135,10 +195,34 @@ export const AssetUpdateDetailsSchema = z.looseObject({
   new_size: z.number(),
   new_units: z.number(),
   reason_for_update: z.string(),
+  /** Land only, and a whole-plan re-price on requests made before quotes were stored. */
   computed_new_total_price: z.number(),
   computed_price_delta: z.number(),
+  direction: z.enum(ASSET_UPDATE_DIRECTIONS).nullable().optional(),
+  quote_at_submit: AssetUpdateQuoteSchema.nullable().optional(),
+  quote_at_approval: AssetUpdateQuoteSchema.nullable().optional(),
 });
 export type AssetUpdateDetails = z.infer<typeof AssetUpdateDetailsSchema>;
+
+/**
+ * The price change and new total stored at submit. Prefers the stored quote
+ * (land + document fee); requests made before it fall back to the land-only
+ * `computed_*` pair.
+ */
+export function submittedPriceChange(details: AssetUpdateDetails): { change: number; newTotal: number } {
+  const quote = details.quote_at_submit;
+  return quote
+    ? { change: quote.price_change.total, newTotal: quote.new_total.total }
+    : { change: details.computed_price_delta, newTotal: details.computed_new_total_price };
+}
+
+/**
+ * Free because it grows the plan — not because a coupon covered the fee.
+ * `original_fee` is the fee before any discount, so 0 means nothing was due.
+ */
+export function isFeeFree(request: Pick<ClientRequest, 'original_fee'>): boolean {
+  return request.original_fee === 0;
+}
 
 export const CUSTOM_REQUEST_CATEGORIES = [
   'payment',
@@ -263,6 +347,7 @@ export function requestActions(request: ClientRequest): {
   canReview: boolean;
   canApprove: boolean;
   canSystemApprove: boolean;
+  canManualApprove: boolean;
   canComplete: boolean;
   canDecline: boolean;
   canCancel: boolean;
@@ -273,6 +358,10 @@ export function requestActions(request: ClientRequest): {
     canReview: next.includes('under_review'),
     canApprove,
     canSystemApprove: canApprove && request.request_type !== 'custom_request',
+    // An asset update changes the plan and moves inventory at approval in
+    // either mode; `manual` would then leave it parked at `approved`. The API
+    // guide says to use `system` for asset updates, so manual isn't offered.
+    canManualApprove: canApprove && request.request_type !== 'asset_update',
     canComplete: next.includes('completed'),
     canDecline: next.includes('declined'),
     canCancel: next.includes('cancelled'),

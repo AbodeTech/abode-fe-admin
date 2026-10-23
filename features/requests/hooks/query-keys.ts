@@ -23,5 +23,6 @@ export const requestKeys = {
   list: (filters?: RequestListFilters) => [...requestKeys.lists(), filters ?? {}] as const,
   details: () => [...requestKeys.all, 'detail'] as const,
   detail: (id: string) => [...requestKeys.details(), id] as const,
+  quote: (id: string) => [...requestKeys.all, 'quote', id] as const,
   stats: (filters?: RequestStatsFilters) => [...requestKeys.all, 'stats', filters ?? {}] as const,
 };
