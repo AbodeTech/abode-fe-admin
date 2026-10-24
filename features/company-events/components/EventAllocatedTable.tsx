@@ -192,6 +192,9 @@ export function EventAllocatedTable({
                 <TableHead className="min-w-44 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Client Name
                 </TableHead>
+                <TableHead className="min-w-44 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Name on document
+                </TableHead>
                 <TableHead className="min-w-52 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Contact
                 </TableHead>
@@ -212,7 +215,7 @@ export function EventAllocatedTable({
             <TableBody>
               {safeRows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="whitespace-normal px-4 py-12 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={7} className="whitespace-normal px-4 py-12 text-center text-sm text-muted-foreground">
                     {emptyMessage}
                   </TableCell>
                 </TableRow>
@@ -221,9 +224,9 @@ export function EventAllocatedTable({
                   <TableRow key={row.allocation_id}>
                     <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed">
                       <span className="block wrap-break-word font-medium">{row.name}</span>
-                      <span className="block wrap-break-word text-xs text-muted-foreground">
-                        Name on document: {row.name_on_document || "—"}
-                      </span>
+                    </TableCell>
+                    <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed wrap-break-word">
+                      {row.name_on_document || "—"}
                     </TableCell>
                     <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed wrap-break-word">
                       <span className="block">{row.email ?? "—"}</span>
