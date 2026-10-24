@@ -234,6 +234,7 @@ export function DeletePlanModal(props: BaseProps) {
   const [reason, setReason] = useState('');
   const [keepInventoryReason, setKeepInventoryReason] = useState('');
   const [refund, setRefund] = useState(true);
+  const [clawBackCommission, setClawBackCommission] = useState(false);
   const [freeInventory, setFreeInventory] = useState(true);
   const [notify, setNotify] = useState(true);
 
@@ -245,6 +246,7 @@ export function DeletePlanModal(props: BaseProps) {
         payload: {
           reason,
           refund_to_wallet: refund,
+          claw_back_commission: clawBackCommission,
           free_inventory: freeInventory,
           keep_inventory_reason: freeInventory ? undefined : keepInventoryReason.trim(),
           notify_user: notify,
@@ -263,7 +265,10 @@ export function DeletePlanModal(props: BaseProps) {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Delete payment plan</DialogTitle>
-          <DialogDescription>The plan is soft-deleted. Choose whether to refund and release its inventory.</DialogDescription>
+          <DialogDescription>
+            The plan is soft-deleted and its purchase transactions are voided. Choose whether to
+            refund the customer, claw back commission, and release inventory.
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
@@ -274,6 +279,18 @@ export function DeletePlanModal(props: BaseProps) {
           <label className="flex items-center gap-2 text-sm">
             <Checkbox checked={refund} onCheckedChange={(v) => setRefund(v === true)} /> Refund paid amount to wallet
           </label>
+          <div className="space-y-1">
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox
+                checked={clawBackCommission}
+                onCheckedChange={(v) => setClawBackCommission(v === true)}
+              />
+              Claw back commission
+            </label>
+            <p className="pl-6 text-xs text-muted-foreground">
+              Take back commission paid from this plan. Deletion will fail if a recipient wallet cannot cover the amount.
+            </p>
+          </div>
           {canKeepInventory ? (
             <label className="flex items-center gap-2 text-sm">
               <Checkbox checked={freeInventory} onCheckedChange={(v) => setFreeInventory(v === true)} /> Release asset inventory

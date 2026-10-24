@@ -10,6 +10,7 @@ import {
 import {
   PlanMutationResultSchema,
   PlanCreationAssetSchema,
+  PlanCreationCampaignSchema,
   type AdminAdjustPlanBalancePayload,
   type AdminCloseAndRelocatePayload,
   type AdminClosePlanPayload,
@@ -30,12 +31,26 @@ import { userKeys } from './query-keys';
 type PlanTarget<T> = { userId: string; planId: string; payload: T };
 type CreateTarget<T> = { userId: string; payload: T };
 
-export function useUserPlanCreationAssets(enabled = true) {
+export function useUserPlanCreationAssets(
+  enabled = true,
+  offerType?: 'flex' | 'full-ownership' | 'commercial',
+) {
   return useQuery({
-    queryKey: [...userKeys.all, 'plan-creation-assets'],
+    queryKey: [...userKeys.all, 'plan-creation-assets', offerType ?? 'all'],
     queryFn: () =>
       apiGetPaged('/admin/assets', PlanCreationAssetSchema, {
-        params: { page: 1, limit: 100 },
+        params: { page: 1, limit: 500, ...(offerType ? { offer_type: offerType } : {}) },
+      }),
+    enabled,
+  });
+}
+
+export function useUserPlanCreationCampaigns(enabled = true) {
+  return useQuery({
+    queryKey: [...userKeys.all, 'plan-creation-campaigns'],
+    queryFn: () =>
+      apiGetPaged('/admin/campaigns', PlanCreationCampaignSchema, {
+        params: { page: 1, limit: 100, status: 'active' },
       }),
     enabled,
   });

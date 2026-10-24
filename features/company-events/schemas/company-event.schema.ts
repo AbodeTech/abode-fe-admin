@@ -156,6 +156,7 @@ export const EventAllocationSchema = z.object({
   user_id: z.string().nullable(),
   payment_plan_id: z.string().nullable(),
   name: z.string(),
+  name_on_document: z.string().nullable().optional(),
   email: z.string().nullable(),
   phone: z.string().nullable(),
   category: RegistrationCategorySchema.nullable(),
@@ -282,6 +283,7 @@ export const EventAnalyticsSchema = z.object({
     .object({
       invited: z.number(),
       invited_registered: z.number(),
+      invited_checked_in: z.number(),
       invited_not_registered: z.number(),
       visitors: z.number(),
       expected: z.number(),
