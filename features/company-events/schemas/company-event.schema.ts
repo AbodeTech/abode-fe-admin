@@ -156,6 +156,7 @@ export const EventAllocationSchema = z.object({
   user_id: z.string().nullable(),
   payment_plan_id: z.string().nullable(),
   name: z.string(),
+  name_on_document: z.string().nullable().optional(),
   email: z.string().nullable(),
   phone: z.string().nullable(),
   category: RegistrationCategorySchema.nullable(),

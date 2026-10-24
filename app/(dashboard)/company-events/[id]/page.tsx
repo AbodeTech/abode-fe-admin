@@ -328,6 +328,7 @@ function EventDetailContent() {
         downloadCsv(
           rows.map((row) => ({
             name: row.name,
+            name_on_document: row.name_on_document ?? "",
             email: row.email ?? "",
             phone: row.phone ?? "",
             status: row.status,

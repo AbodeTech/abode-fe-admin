@@ -165,6 +165,7 @@ export function EventAllocatedTable({
           ) : (
             safeRows.map((row) => (
               <AdminMobileCard key={row.allocation_id} title={row.name} subtitle={row.email ?? undefined}>
+                <AdminMobileField label="Name on document" value={row.name_on_document || "—"} />
                 <AdminMobileField label="Attendance" value={<StatusBadge status={row.status} landStatus={row.allocation_status} />} />
                 <AdminMobileField label="Size reserved" value={`${formatNumber(row.size_reserved)} ${unit}`} />
                 <AdminMobileField label="Pickup" value={row.pickup_location ?? "—"} />
@@ -220,6 +221,9 @@ export function EventAllocatedTable({
                   <TableRow key={row.allocation_id}>
                     <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed">
                       <span className="block wrap-break-word font-medium">{row.name}</span>
+                      <span className="block wrap-break-word text-xs text-muted-foreground">
+                        Name on document: {row.name_on_document || "—"}
+                      </span>
                     </TableCell>
                     <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed wrap-break-word">
                       <span className="block">{row.email ?? "—"}</span>
