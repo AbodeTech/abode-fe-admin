@@ -32,6 +32,7 @@ import {
   useCreateUserFlexPlan,
   useCreateUserFullOwnershipPlan,
   useUserPlanCreationAssets,
+  useUserPlanCreationCampaigns,
 } from '../../hooks/use-user-plan-mutations';
 import {
   ADMIN_CREATE_SUBTYPES,
@@ -77,7 +78,7 @@ type FormState = {
   plan_completed_at: string;
   document_start_date: string;
   document_completed_at: string;
-  campaign_ids: string;
+  campaign_ids: string[];
   campaign_purchase_date: string;
   allocation_qualification_pct: string;
   fire_commission: boolean;
@@ -116,7 +117,7 @@ const emptyForm = (type: AdminPlanType): FormState => ({
   plan_completed_at: '',
   document_start_date: '',
   document_completed_at: '',
-  campaign_ids: '',
+  campaign_ids: [],
   campaign_purchase_date: '',
   allocation_qualification_pct: '',
   fire_commission: false,
@@ -135,10 +136,13 @@ const labels: Record<AdminPlanType, string> = {
 
 const number = (value: string) => Number(value.replace(/,/g, ''));
 const date = (value: string) => (value ? new Date(`${value}T12:00:00`).toISOString() : undefined);
+const money = new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' });
 
 export function CreateUserPlanModal({ userId, type, open, onOpenChange }: Props) {
   const [form, setForm] = useState<FormState>(() => emptyForm(type));
-  const assets = useUserPlanCreationAssets(open);
+  const requestedOfferType = type === 'developer-plot' ? undefined : type;
+  const assets = useUserPlanCreationAssets(open, requestedOfferType);
+  const campaigns = useUserPlanCreationCampaigns(open && type !== 'developer-plot');
   const flex = useCreateUserFlexPlan();
   const ownership = useCreateUserFullOwnershipPlan();
   const commercial = useCreateUserCommercialPlan();
@@ -154,6 +158,42 @@ export function CreateUserPlanModal({ userId, type, open, onOpenChange }: Props)
       ),
     [assets.data?.items, type],
   );
+  const campaignOptions = useMemo(
+    () =>
+      (campaigns.data?.items ?? []).filter(
+        (campaign) =>
+          campaign.status === 'active' &&
+          (campaign.eligible_asset_types.length === 0 ||
+            campaign.eligible_asset_types.includes(type)),
+      ),
+    [campaigns.data?.items, type],
+  );
+  const landSchedule = useMemo(() => {
+    const price = number(type === 'flex' ? form.asset_price : form.land_price);
+    const initial = number(type === 'flex' ? form.initial_payment : form.land_initial_payment);
+    const monthly = number(type === 'flex' ? form.monthly_payment : form.land_monthly_payment);
+    const tenor = number(type === 'flex' ? form.tenor_months : form.land_tenor_months);
+    const paid = number(type === 'flex' ? form.amount_paid : form.land_amount_paid);
+    const balance = Math.max(0, price - paid);
+    const scheduledTotal = initial + monthly * Math.max(0, tenor - 1);
+    const uncovered = balance > 0 ? Math.max(0, price - scheduledTotal) : 0;
+    return { price, paid, balance, scheduledTotal, uncovered };
+  }, [form, type]);
+  const documentSchedule = useMemo(() => {
+    const price = number(form.document_price);
+    const paid = number(form.document_amount_paid);
+    const monthly = number(form.document_monthly_payment);
+    const tenor = number(form.document_tenor_months);
+    const balance = Math.max(0, price - paid);
+    const scheduledTotal = monthly * tenor;
+    const uncovered = balance > 0 ? Math.max(0, price - scheduledTotal) : 0;
+    return { price, paid, balance, scheduledTotal, uncovered };
+  }, [
+    form.document_amount_paid,
+    form.document_monthly_payment,
+    form.document_price,
+    form.document_tenor_months,
+  ]);
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((current) => ({ ...current, [key]: value }));
@@ -172,9 +212,7 @@ export function CreateUserPlanModal({ userId, type, open, onOpenChange }: Props)
     notify_user: form.notify_user,
     start_date: date(form.start_date),
     plan_completed_at: date(form.plan_completed_at),
-    campaign_ids: form.campaign_ids
-      ? form.campaign_ids.split(',').map((id) => id.trim()).filter(Boolean)
-      : undefined,
+    campaign_ids: form.campaign_ids.length ? form.campaign_ids : undefined,
     campaign_purchase_date: date(form.campaign_purchase_date),
     allocation_qualification_pct: form.allocation_qualification_pct
       ? number(form.allocation_qualification_pct)
@@ -182,6 +220,16 @@ export function CreateUserPlanModal({ userId, type, open, onOpenChange }: Props)
   };
 
   const submit = async () => {
+    if (landSchedule.uncovered > 0) {
+      toast.error(`Land payment schedule is short by ${money.format(landSchedule.uncovered)}.`);
+      return;
+    }
+    if (isLand && documentSchedule.uncovered > 0) {
+      toast.error(
+        `Document payment schedule is short by ${money.format(documentSchedule.uncovered)}.`,
+      );
+      return;
+    }
     try {
       if (type === 'flex') {
         const payload = AdminCreateFlexPlanPayloadSchema.parse({
@@ -227,9 +275,16 @@ export function CreateUserPlanModal({ userId, type, open, onOpenChange }: Props)
   };
 
   const pending = flex.isPending || ownership.isPending || commercial.isPending || developer.isPending;
-  const input = (key: keyof FormState, label: string, inputType = 'number') => (
+  const input = (
+    key: keyof FormState,
+    label: string,
+    inputType = 'number',
+    required = true,
+  ) => (
     <div className="space-y-2" key={key}>
-      <Label htmlFor={`create-plan-${key}`}>{label}</Label>
+      <Label htmlFor={`create-plan-${key}`}>
+        {label}{required ? ' *' : ' (optional)'}
+      </Label>
       <Input
         id={`create-plan-${key}`}
         type={inputType}
@@ -251,7 +306,7 @@ export function CreateUserPlanModal({ userId, type, open, onOpenChange }: Props)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl">
+      <DialogContent className="sm:max-w-6xl">
         <DialogHeader>
           <DialogTitle>Create {labels[type]} plan</DialogTitle>
           <DialogDescription>
@@ -261,16 +316,41 @@ export function CreateUserPlanModal({ userId, type, open, onOpenChange }: Props)
         <ScrollArea className="max-h-[70vh] pr-4">
           <div className="grid grid-cols-1 gap-4 p-1 md:grid-cols-2 lg:grid-cols-3">
             <div className="space-y-2 md:col-span-2">
-              <Label>Asset</Label>
-              <Select value={form.asset_id} onValueChange={(value) => set('asset_id', value)}>
-                <SelectTrigger><SelectValue placeholder={assets.isLoading ? 'Loading assets…' : 'Select asset'} /></SelectTrigger>
-                <SelectContent>
+              <Label>Asset *</Label>
+              <Select
+                value={form.asset_id}
+                onValueChange={(value) => set('asset_id', value)}
+                disabled={assets.isLoading || assets.isError || options.length === 0}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue
+                    placeholder={
+                      assets.isLoading
+                        ? 'Loading assets…'
+                        : assets.isError
+                          ? 'Unable to load assets'
+                          : options.length === 0
+                            ? `No ${labels[type]} assets available`
+                            : 'Select asset'
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent position="popper" sideOffset={4} className="z-[100] max-h-72">
                   {options.map((asset) => <SelectItem key={asset._id} value={asset._id}>{asset.name}</SelectItem>)}
                 </SelectContent>
               </Select>
+              {assets.isError ? (
+                <p className="text-xs text-destructive">
+                  Assets could not be loaded. Confirm this admin can view assets, then try again.
+                </p>
+              ) : !assets.isLoading && options.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  No active {labels[type]} offer is available for plan creation.
+                </p>
+              ) : null}
             </div>
             <div className="space-y-2">
-              <Label>Creation subtype</Label>
+              <Label>Creation subtype *</Label>
               <Select value={form.admin_creation_subtype} onValueChange={(value) => set('admin_creation_subtype', value as FormState['admin_creation_subtype'])}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>{ADMIN_CREATE_SUBTYPES.map((value) => <SelectItem key={value} value={value}>{value.replaceAll('_', ' ')}</SelectItem>)}</SelectContent>
@@ -298,7 +378,7 @@ export function CreateUserPlanModal({ userId, type, open, onOpenChange }: Props)
                 {input('document_monthly_payment', 'Document monthly payment')}
                 {input('document_tenor_months', 'Document tenor (months)')}
                 <div className="space-y-2">
-                  <Label>Payment type</Label>
+                  <Label>Payment type *</Label>
                   <Select value={form.payment_type} onValueChange={(value) => set('payment_type', value as FormState['payment_type'])}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -309,19 +389,128 @@ export function CreateUserPlanModal({ userId, type, open, onOpenChange }: Props)
                 </div>
               </>
             )}
-            {input('start_date', 'Plan start date', 'date')}
-            {input('plan_completed_at', 'Plan completed date', 'date')}
-            {isLand && input('document_start_date', 'Document start date', 'date')}
-            {isLand && input('document_completed_at', 'Document completed date', 'date')}
-            {input('allocation_qualification_pct', 'Allocation threshold (%)')}
-            {input('campaign_purchase_date', 'Campaign purchase date', 'date')}
-            {input('campaign_ids', 'Campaign IDs (comma separated)', 'text')}
+            {input('start_date', 'Plan start date', 'date', false)}
+            {input('plan_completed_at', 'Land fully paid date', 'date', false)}
+            {isLand && input('document_start_date', 'Document start date', 'date', false)}
+            {isLand &&
+              input('document_completed_at', 'Document fees fully paid date', 'date', false)}
+            {input('allocation_qualification_pct', 'Allocation threshold (%)', 'number', false)}
             {input('name_on_document', 'Name on document', 'text')}
             {input('address', 'Buyer address', 'text')}
           </div>
+          <div className="grid gap-3 px-1 pt-4 md:grid-cols-2">
+            <div className="space-y-2 rounded-md border p-3 text-sm">
+              <p className="font-medium">Land payment summary</p>
+              <div className="grid grid-cols-2 gap-1 text-muted-foreground">
+                <span>Total price</span>
+                <span className="text-right text-foreground">{money.format(landSchedule.price)}</span>
+                <span>Already paid</span>
+                <span className="text-right text-foreground">{money.format(landSchedule.paid)}</span>
+                <span>Current balance</span>
+                <span className="text-right text-foreground">{money.format(landSchedule.balance)}</span>
+                <span>Contract schedule total</span>
+                <span className="text-right text-foreground">
+                  {money.format(landSchedule.scheduledTotal)}
+                </span>
+                <span>Uncovered amount</span>
+                <span
+                  className={`text-right font-medium ${landSchedule.uncovered > 0 ? 'text-destructive' : 'text-foreground'}`}
+                >
+                  {money.format(landSchedule.uncovered)}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Schedule total = initial payment + monthly payment × remaining tenor months.
+              </p>
+            </div>
+            {isLand ? (
+              <div className="space-y-2 rounded-md border p-3 text-sm">
+                <p className="font-medium">Document payment summary</p>
+                <div className="grid grid-cols-2 gap-1 text-muted-foreground">
+                  <span>Document price</span>
+                  <span className="text-right text-foreground">
+                    {money.format(documentSchedule.price)}
+                  </span>
+                  <span>Already paid</span>
+                  <span className="text-right text-foreground">
+                    {money.format(documentSchedule.paid)}
+                  </span>
+                  <span>Current balance</span>
+                  <span className="text-right text-foreground">
+                    {money.format(documentSchedule.balance)}
+                  </span>
+                  <span>Instalment schedule total</span>
+                  <span className="text-right text-foreground">
+                    {money.format(documentSchedule.scheduledTotal)}
+                  </span>
+                  <span>Uncovered amount</span>
+                  <span
+                    className={`text-right font-medium ${documentSchedule.uncovered > 0 ? 'text-destructive' : 'text-foreground'}`}
+                  >
+                    {money.format(documentSchedule.uncovered)}
+                  </span>
+                </div>
+              </div>
+            ) : null}
+          </div>
+          {type !== 'developer-plot' ? (
+            <div className="space-y-3 px-1 pt-4">
+              <div>
+                <Label>Campaigns (optional)</Label>
+                <p className="text-xs text-muted-foreground">
+                  Select campaigns only when this purchase should count toward campaign rewards.
+                </p>
+              </div>
+              {campaigns.isLoading ? (
+                <p className="text-sm text-muted-foreground">Loading active campaigns…</p>
+              ) : campaigns.isError ? (
+                <p className="text-sm text-destructive">
+                  Campaigns could not be loaded. You can still create the plan without one.
+                </p>
+              ) : campaignOptions.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No active campaign accepts {labels[type]} purchases.
+                </p>
+              ) : (
+                <div className="grid max-h-40 gap-2 overflow-y-auto rounded-md border p-3 md:grid-cols-2">
+                  {campaignOptions.map((campaign) => {
+                    const checked = form.campaign_ids.includes(campaign.id);
+                    return (
+                      <label className="flex items-start gap-2 text-sm" key={campaign.id}>
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={(value) =>
+                            set(
+                              'campaign_ids',
+                              value === true
+                                ? [...form.campaign_ids, campaign.id]
+                                : form.campaign_ids.filter((id) => id !== campaign.id),
+                            )
+                          }
+                        />
+                        <span>
+                          <span className="block font-medium">{campaign.name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(campaign.start_date).toLocaleDateString()} –{' '}
+                            {new Date(campaign.end_date).toLocaleDateString()}
+                          </span>
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+              {input(
+                'campaign_purchase_date',
+                'Payment approval date for campaign',
+                'date',
+                form.campaign_ids.length > 0,
+              )}
+            </div>
+          ) : null}
           <div className="space-y-4 px-1 pt-4">
             <div className="space-y-2">
-              <Label htmlFor="create-plan-reason">Reason</Label>
+              <Label htmlFor="create-plan-reason">Reason *</Label>
               <Textarea id="create-plan-reason" value={form.reason} onChange={(event) => set('reason', event.target.value)} />
               <p className="text-xs text-muted-foreground">Minimum 30 characters; saved to the admin audit log.</p>
             </div>
@@ -341,7 +530,17 @@ export function CreateUserPlanModal({ userId, type, open, onOpenChange }: Props)
         </ScrollArea>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button disabled={pending || !form.asset_id || form.reason.trim().length < 30} onClick={submit}>
+          <Button
+            disabled={
+              pending ||
+              !form.asset_id ||
+              form.reason.trim().length < 30 ||
+              landSchedule.uncovered > 0 ||
+              (isLand && documentSchedule.uncovered > 0) ||
+              (form.campaign_ids.length > 0 && !form.campaign_purchase_date)
+            }
+            onClick={submit}
+          >
             {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Create plan
           </Button>

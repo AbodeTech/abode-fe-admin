@@ -84,6 +84,7 @@ export const AdminCreateDeveloperPlanPayloadSchema = AdminCreateLandPlanPayloadS
 export const AdminDeletePlanPayloadSchema = z.object({
   reason: z.string().trim().min(30).max(2000),
   refund_to_wallet: z.boolean().optional(),
+  claw_back_commission: z.boolean().optional(),
   free_inventory: z.boolean().optional(),
   keep_inventory_reason: z.string().trim().min(20).optional(),
   expected_updated_at: z.string().optional(),
@@ -213,6 +214,15 @@ export const PlanCreationAssetSchema = z.object({
       }),
     )
     .default([]),
+});
+
+export const PlanCreationCampaignSchema = z.looseObject({
+  id: z.string(),
+  name: z.string(),
+  status: z.enum(['draft', 'active', 'paused', 'completed']),
+  start_date: z.string(),
+  end_date: z.string(),
+  eligible_asset_types: z.array(z.string()).optional().default([]),
 });
 
 export type AdminCreateFlexPlanPayload = z.infer<typeof AdminCreateFlexPlanPayloadSchema>;
