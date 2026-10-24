@@ -283,6 +283,7 @@ export const EventAnalyticsSchema = z.object({
     .object({
       invited: z.number(),
       invited_registered: z.number(),
+      invited_checked_in: z.number(),
       invited_not_registered: z.number(),
       visitors: z.number(),
       expected: z.number(),

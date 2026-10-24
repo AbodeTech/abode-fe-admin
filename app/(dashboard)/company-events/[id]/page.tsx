@@ -37,6 +37,7 @@ import {
   useEventAllocationsExport,
   useEventEligibleClients,
   useEventEligibleClientsExport,
+  useEventAnalytics,
   useEventRegistrations,
   useEventRegistrationsExport,
   useSaveEventAllocations,
@@ -124,6 +125,10 @@ function EventDetailContent() {
   // still committed, with a toggle to review them when wanted.
   // The server leaves removed people out unless the toggle asks for them, so paging stays right.
   const visibleAllocatedRows = allocatedData?.items;
+  const { data: eventAnalytics, isLoading: eventAnalyticsLoading } = useEventAnalytics(
+    isAllocationEvent ? eventId : undefined
+  );
+  const invitedStats = eventAnalytics?.summary;
 
   const registrationFilters = {
     page: regPage,
@@ -644,6 +649,22 @@ function EventDetailContent() {
               <div>
                 <h2 className="text-lg font-semibold">Invited clients</h2>
                 <p className="text-sm text-muted-foreground">Clients saved into this event&apos;s batch and invited. Attendance shows how far each has got: invited, registered, checked in, confirmed. Remove frees their reserved size.</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {[
+                    { label: "Invited", value: invitedStats?.invited },
+                    { label: "Registered", value: invitedStats?.invited_registered },
+                    { label: "Checked in", value: invitedStats?.invited_checked_in },
+                  ].map((stat) => (
+                    <div key={stat.label} className="min-w-24 rounded-lg border bg-muted/30 px-3 py-2">
+                      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                        {stat.label}
+                      </p>
+                      <p className="text-lg font-semibold tabular-nums">
+                        {eventAnalyticsLoading ? "—" : stat.value ?? 0}
+                      </p>
+                    </div>
+                  ))}
+                </div>
               </div>
               <Button variant="outline" size="sm" onClick={handleExportAllocated} disabled={exportAllocations.isPending}>
                 {exportAllocations.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
