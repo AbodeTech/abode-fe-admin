@@ -61,18 +61,29 @@ function TargetForm({
 }) {
   const months = upcomingMonths();
   const [period, setPeriod] = useState(`${editing.year}-${editing.month}`);
-  const [amount, setAmount] = useState(editing.existing ? String(editing.existing.recovery_target) : "");
+  const [landAmount, setLandAmount] = useState(
+    editing.existing ? String(editing.existing.land_recovery_target) : ""
+  );
+  const [devLevyAmount, setDevLevyAmount] = useState(
+    editing.existing ? String(editing.existing.dev_levy_recovery_target) : ""
+  );
   const upsert = useUpsertFinancialOfficerTarget();
 
   const handleSave = () => {
     const [year, month] = period.split("-").map(Number);
-    const value = Number(amount);
-    if (!Number.isFinite(value) || value < 0) {
-      toast.error("Enter a recovery target in naira");
+    const land = Number(landAmount);
+    const devLevy = Number(devLevyAmount);
+    if (!Number.isFinite(land) || land < 0 || !Number.isFinite(devLevy) || devLevy < 0) {
+      toast.error("Enter valid land and development-levy recovery targets");
       return;
     }
     upsert.mutate(
-      { officerId, year, month, values: { recovery_target: value } },
+      {
+        officerId,
+        year,
+        month,
+        values: { land_recovery_target: land, dev_levy_recovery_target: devLevy },
+      },
       {
         onSuccess: () => {
           toast.success(editing.existing ? "Target updated" : "Target saved");
@@ -85,7 +96,7 @@ function TargetForm({
 
   return (
     <div className="rounded-lg border border-gray-200 bg-gray-50/60 p-4 space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="space-y-1.5">
           <Label>Month</Label>
           {editing.existing ? (
@@ -108,17 +119,30 @@ function TargetForm({
           )}
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="recovery-target">Debt recovery target (₦)</Label>
+          <Label htmlFor="land-recovery-target">Land recovery target (₦)</Label>
           <Input
-            id="recovery-target"
+            id="land-recovery-target"
             type="number"
             min={0}
             step={50000}
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
+            value={landAmount}
+            onChange={(e) => setLandAmount(e.target.value)}
             placeholder="25000000"
             className="bg-white"
             autoFocus
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="dev-levy-recovery-target">Development levy target (₦)</Label>
+          <Input
+            id="dev-levy-recovery-target"
+            type="number"
+            min={0}
+            step={50000}
+            value={devLevyAmount}
+            onChange={(e) => setDevLevyAmount(e.target.value)}
+            placeholder="5000000"
+            className="bg-white"
           />
         </div>
       </div>
@@ -129,7 +153,11 @@ function TargetForm({
         <Button variant="ghost" size="sm" onClick={onDone} disabled={upsert.isPending}>
           Cancel
         </Button>
-        <Button size="sm" onClick={handleSave} disabled={!amount || upsert.isPending}>
+        <Button
+          size="sm"
+          onClick={handleSave}
+          disabled={!landAmount || !devLevyAmount || upsert.isPending}
+        >
           {upsert.isPending && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
           {editing.existing ? "Save changes" : "Save target"}
         </Button>
@@ -193,7 +221,10 @@ export function ManageFOTargetsDialog({ open, onOpenChange, officerId, officerNa
                           </span>
                         )}
                       </p>
-                      <p className="text-xs text-gray-500 tabular-nums">{formatNaira(t.recovery_target)}</p>
+                      <p className="text-xs text-gray-500 tabular-nums">
+                        Land {formatNaira(t.land_recovery_target)} · Levy{" "}
+                        {formatNaira(t.dev_levy_recovery_target)}
+                      </p>
                     </div>
                     <Button
                       variant="ghost"

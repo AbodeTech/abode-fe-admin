@@ -116,13 +116,18 @@ export const FinancialOfficerTargetSchema = z.object({
   year: z.number(),
   /** Naira. */
   recovery_target: z.number(),
+  land_recovery_target: z.number(),
+  dev_levy_recovery_target: z.number(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
 
 export type FinancialOfficerTarget = z.infer<typeof FinancialOfficerTargetSchema>;
 
-export type AssignFinancialOfficerTargetPayload = { recovery_target: number };
+export type AssignFinancialOfficerTargetPayload = {
+  land_recovery_target: number;
+  dev_levy_recovery_target: number;
+};
 
 /* -------------------- shared dashboard blocks -------------------- */
 
@@ -257,6 +262,10 @@ export const FinancialOfficerDashboardSchema = z.object({
     /** Naira. 0 when no target is set for the period. */
     target: z.number(),
     recovered: z.number(),
+    land_target: z.number(),
+    land_recovered: z.number(),
+    dev_levy_target: z.number(),
+    dev_levy_recovered: z.number(),
     payments_count: z.number(),
     plans_paid_count: z.number(),
     in_book: z.number(),
@@ -279,6 +288,8 @@ export const FinancialOfficerDashboardSchema = z.object({
     asset_speed_component: z.number(),
     pro_speed_component: z.number(),
     recovery_component: z.number(),
+    land_recovery_component: z.number(),
+    dev_levy_recovery_component: z.number(),
   }),
   plans: z.array(RecoveryPlanRowSchema),
   /** Post-filter, pre-pagination. */
@@ -307,6 +318,10 @@ export const OfficerLeagueRowSchema = z.object({
   suspending_within_14_days: z.number(),
   recovered: z.number(),
   recovery_target: z.number(),
+  land_recovered: z.number(),
+  land_recovery_target: z.number(),
+  dev_levy_recovered: z.number(),
+  dev_levy_recovery_target: z.number(),
   asset_avg_hours: z.number().nullable(),
   pro_avg_hours: z.number().nullable(),
   withdrawal_avg_hours: z.number().nullable(),
@@ -333,6 +348,10 @@ export const FinancialOfficersTeamDashboardSchema = z.object({
   recovery: z.object({
     recovered: z.number(),
     target: z.number(),
+    land_recovered: z.number(),
+    land_target: z.number(),
+    dev_levy_recovered: z.number(),
+    dev_levy_target: z.number(),
     in_book: z.number(),
     outstanding: z.number(),
     suspended: z.number(),

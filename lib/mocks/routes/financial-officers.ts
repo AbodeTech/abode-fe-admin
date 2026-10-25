@@ -137,7 +137,17 @@ const QUEUE = {
   withdrawal: { waiting: 5, over_24h: 2 },
 };
 
-type MockTarget = { _id: string; officer: string; month: number; year: number; recovery_target: number; createdAt: string; updatedAt: string };
+type MockTarget = {
+  _id: string;
+  officer: string;
+  month: number;
+  year: number;
+  recovery_target: number;
+  land_recovery_target: number;
+  dev_levy_recovery_target: number;
+  createdAt: string;
+  updatedAt: string;
+};
 
 const thisMonth = () => ({ month: new Date().getMonth() + 1, year: new Date().getFullYear() });
 const lastMonth = () => {
@@ -148,10 +158,10 @@ const lastMonth = () => {
 };
 
 const targets: MockTarget[] = [
-  { _id: 'fot1', officer: O1, ...thisMonth(), recovery_target: 5_000_000, createdAt: daysAgo(25), updatedAt: daysAgo(25) },
-  { _id: 'fot2', officer: O1, ...lastMonth(), recovery_target: 4_500_000, createdAt: daysAgo(55), updatedAt: daysAgo(55) },
-  { _id: 'fot3', officer: O2, ...thisMonth(), recovery_target: 6_000_000, createdAt: daysAgo(25), updatedAt: daysAgo(25) },
-  { _id: 'fot4', officer: O3, ...thisMonth(), recovery_target: 4_000_000, createdAt: daysAgo(25), updatedAt: daysAgo(25) },
+  { _id: 'fot1', officer: O1, ...thisMonth(), recovery_target: 5_000_000, land_recovery_target: 4_000_000, dev_levy_recovery_target: 1_000_000, createdAt: daysAgo(25), updatedAt: daysAgo(25) },
+  { _id: 'fot2', officer: O1, ...lastMonth(), recovery_target: 4_500_000, land_recovery_target: 3_500_000, dev_levy_recovery_target: 1_000_000, createdAt: daysAgo(55), updatedAt: daysAgo(55) },
+  { _id: 'fot3', officer: O2, ...thisMonth(), recovery_target: 6_000_000, land_recovery_target: 5_000_000, dev_levy_recovery_target: 1_000_000, createdAt: daysAgo(25), updatedAt: daysAgo(25) },
+  { _id: 'fot4', officer: O3, ...thisMonth(), recovery_target: 4_000_000, land_recovery_target: 3_000_000, dev_levy_recovery_target: 1_000_000, createdAt: daysAgo(25), updatedAt: daysAgo(25) },
 ];
 
 type Payment = {
@@ -314,10 +324,22 @@ function officerRecovery(adminId: string, period: { month: number; year: number 
   const open = mine.filter(isOpen);
   const counted = mine.map((p) => ({ plan: p, payments: recoveredPayments(p) }));
   const recovered = counted.reduce((s, c) => s + c.payments.reduce((a, pay) => a + pay.amount, 0), 0);
+  const devLevyRecovered = counted.reduce(
+    (s, c) => s + (c.plan.product === 'full_ownership' || c.plan.product === 'commercial'
+      ? c.payments.reduce((a, pay) => a + pay.amount, 0) * 0.2
+      : 0),
+    0
+  );
+  const landRecovered = recovered - devLevyRecovered;
+  const target = targetFor(adminId, period.month, period.year);
   const suspended = mine.filter((p) => p.state === 'suspended' && p.left_book_at && inWindow(p.left_book_at));
   return {
-    target: targetFor(adminId, period.month, period.year)?.recovery_target ?? 0,
+    target: target?.recovery_target ?? 0,
     recovered,
+    land_target: target?.land_recovery_target ?? 0,
+    land_recovered: landRecovered,
+    dev_levy_target: target?.dev_levy_recovery_target ?? 0,
+    dev_levy_recovered: devLevyRecovered,
     payments_count: counted.reduce((s, c) => s + c.payments.length, 0),
     plans_paid_count: counted.filter((c) => c.payments.length > 0).length,
     in_book: open.length,
@@ -334,12 +356,16 @@ function officerRecovery(adminId: string, period: { month: number; year: number 
 function officerScore(o: MockOfficer, recovery: ReturnType<typeof officerRecovery>) {
   const asset = speedComponent(o.asset.avg_hours);
   const pro = speedComponent(o.pro.avg_hours);
-  const rec = recovery.target > 0 ? 50 * Math.min(1, recovery.recovered / recovery.target) : 0;
+  const land = recovery.land_target > 0 ? 25 * Math.min(1, recovery.land_recovered / recovery.land_target) : 0;
+  const levy = recovery.dev_levy_target > 0 ? 25 * Math.min(1, recovery.dev_levy_recovered / recovery.dev_levy_target) : 0;
+  const rec = land + levy;
   return {
     score: round1(asset + pro + rec),
     asset_speed_component: round1(asset),
     pro_speed_component: round1(pro),
     recovery_component: round1(rec),
+    land_recovery_component: round1(land),
+    dev_levy_recovery_component: round1(levy),
   };
 }
 
@@ -431,7 +457,7 @@ export const financialOfficerRoutes: MockRoutes = {
         officer: toAdminMin(findAdmin(o.adminId)),
         active_since: o.assigned_from,
         open_plans_count: recovery.in_book,
-        current_period_score: recovery.target > 0 ? officerScore(o, recovery).score : null,
+        current_period_score: recovery.land_target + recovery.dev_levy_target > 0 ? officerScore(o, recovery).score : null,
       };
     });
   },
@@ -446,6 +472,7 @@ export const financialOfficerRoutes: MockRoutes = {
       assigned_from: new Date().toISOString(),
       asset: noStats(),
       pro: noStats(),
+      withdrawal: noStats(),
       decisions: [],
     };
     officers.push(created);
@@ -471,19 +498,25 @@ export const financialOfficerRoutes: MockRoutes = {
 
   'PUT /admin/financial-officers/:officer_id/targets/:year/:month': ({ params, body: raw }) => {
     requireOfficer(params.officer_id);
-    const { recovery_target } = body<{ recovery_target?: number }>(raw);
-    if (typeof recovery_target !== 'number' || recovery_target < 0) {
-      throw new MockHttpError(400, 'recovery_target must be a non-negative number', 'Bad Request');
+    const { land_recovery_target, dev_levy_recovery_target } = body<{
+      land_recovery_target?: number;
+      dev_levy_recovery_target?: number;
+    }>(raw);
+    if (typeof land_recovery_target !== 'number' || land_recovery_target < 0 || typeof dev_levy_recovery_target !== 'number' || dev_levy_recovery_target < 0) {
+      throw new MockHttpError(400, 'Recovery targets must be non-negative numbers', 'Bad Request');
     }
+    const recovery_target = land_recovery_target + dev_levy_recovery_target;
     const month = Number(params.month);
     const year = Number(params.year);
     const now = new Date().toISOString();
     let t = targetFor(params.officer_id, month, year);
     if (t) {
       t.recovery_target = recovery_target;
+      t.land_recovery_target = land_recovery_target;
+      t.dev_levy_recovery_target = dev_levy_recovery_target;
       t.updatedAt = now;
     } else {
-      t = { _id: `fot${targets.length + 1}`, officer: params.officer_id, month, year, recovery_target, createdAt: now, updatedAt: now };
+      t = { _id: `fot${targets.length + 1}`, officer: params.officer_id, month, year, recovery_target, land_recovery_target, dev_levy_recovery_target, createdAt: now, updatedAt: now };
       targets.push(t);
     }
     const { _id, ...rest } = t;
@@ -503,11 +536,15 @@ export const financialOfficerRoutes: MockRoutes = {
         suspending_within_14_days: recovery.suspending_within_14_days,
         recovered: recovery.recovered,
         recovery_target: recovery.target,
+        land_recovered: recovery.land_recovered,
+        land_recovery_target: recovery.land_target,
+        dev_levy_recovered: recovery.dev_levy_recovered,
+        dev_levy_recovery_target: recovery.dev_levy_target,
         asset_avg_hours: o.asset.avg_hours,
         pro_avg_hours: o.pro.avg_hours,
         withdrawal_avg_hours: o.withdrawal.avg_hours,
         decisions: o.asset.decided + o.pro.decided + o.withdrawal.decided,
-        score: recovery.target > 0 ? officerScore(o, recovery).score : null,
+        score: recovery.land_target + recovery.dev_levy_target > 0 ? officerScore(o, recovery).score : null,
         _recovery: recovery,
       };
     });
@@ -536,6 +573,10 @@ export const financialOfficerRoutes: MockRoutes = {
       recovery: {
         recovered: sum((r) => r._recovery.recovered),
         target: sum((r) => r._recovery.target),
+        land_recovered: sum((r) => r._recovery.land_recovered),
+        land_target: sum((r) => r._recovery.land_target),
+        dev_levy_recovered: sum((r) => r._recovery.dev_levy_recovered),
+        dev_levy_target: sum((r) => r._recovery.dev_levy_target),
         in_book: sum((r) => r._recovery.in_book),
         outstanding: sum((r) => r._recovery.outstanding),
         suspended: sum((r) => r._recovery.suspended),
@@ -590,7 +631,7 @@ export const financialOfficerRoutes: MockRoutes = {
       recovery,
       performance_score: o
         ? officerScore(o, recovery)
-        : { score: 0, asset_speed_component: 0, pro_speed_component: 0, recovery_component: 0 },
+        : { score: 0, asset_speed_component: 0, pro_speed_component: 0, recovery_component: 0, land_recovery_component: 0, dev_levy_recovery_component: 0 },
       plans: matching.slice((page - 1) * limit, page * limit).map(toRow),
       plans_total: matching.length,
       filter_counts: {
