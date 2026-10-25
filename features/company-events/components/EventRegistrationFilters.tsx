@@ -16,11 +16,13 @@ interface EventRegistrationFiltersProps {
   search: string;
   category: RegistrationCategory | "all";
   status: EventAllocationStatus | "all";
+  attendanceType: "all" | "visitor" | "getting_land";
   pickupLocationId: string;
   pickupLocations: PickupLocation[];
   onSearchChange: (value: string) => void;
   onCategoryChange: (value: RegistrationCategory | "all") => void;
   onStatusChange: (value: EventAllocationStatus | "all") => void;
+  onAttendanceTypeChange: (value: "all" | "visitor" | "getting_land") => void;
   onPickupChange: (value: string) => void;
 }
 
@@ -35,15 +37,17 @@ export function EventRegistrationFilters({
   search,
   category,
   status,
+  attendanceType,
   pickupLocationId,
   pickupLocations,
   onSearchChange,
   onCategoryChange,
   onStatusChange,
+  onAttendanceTypeChange,
   onPickupChange,
 }: EventRegistrationFiltersProps) {
   return (
-    <section className="grid min-w-0 grid-cols-1 gap-3 sm:gap-4 md:grid-cols-5">
+    <section className="grid min-w-0 grid-cols-1 gap-3 sm:gap-4 md:grid-cols-6">
       <div className="min-w-0 space-y-2 md:col-span-2">
         <Label className="text-sm text-muted-foreground">Search</Label>
         <Input
@@ -62,6 +66,18 @@ export function EventRegistrationFilters({
             {([['all', 'All'], ['invited', 'Invited'], ['registered', 'Registered'], ['checked_in', 'Checked in'], ['confirmed', 'Confirmed'], ['cancelled', 'Cancelled']] as const).map(([value, label]) => (
               <SelectItem key={value} value={value}>{label}</SelectItem>
             ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="min-w-0 space-y-2">
+        <Label className="text-sm text-muted-foreground">Attending as</Label>
+        <Select value={attendanceType} onValueChange={(value) => onAttendanceTypeChange(value as "all" | "visitor" | "getting_land")}>
+          <SelectTrigger className="h-10 w-full min-w-0 sm:h-9"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Everyone</SelectItem>
+            <SelectItem value="visitor">Visitors</SelectItem>
+            <SelectItem value="getting_land">Getting land</SelectItem>
           </SelectContent>
         </Select>
       </div>

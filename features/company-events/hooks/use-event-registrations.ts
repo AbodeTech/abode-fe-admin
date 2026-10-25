@@ -12,6 +12,7 @@ export interface EventRegistrationsListFilters {
   limit?: number;
   category?: RegistrationCategory;
   status?: EventAllocationStatus;
+  attendanceType?: "visitor" | "getting_land";
   pickupLocationId?: string;
   search?: string;
   [key: string]: unknown;
@@ -29,13 +30,13 @@ export const useEventRegistrations = (
   eventId: string | undefined,
   filters: EventRegistrationsListFilters = {}
 ) => {
-  const { page = 1, limit = DEFAULT_EVENT_REGISTRATIONS_LIMIT, category, status, pickupLocationId, search } = filters;
+  const { page = 1, limit = DEFAULT_EVENT_REGISTRATIONS_LIMIT, category, status, attendanceType, pickupLocationId, search } = filters;
 
   return useQuery({
     queryKey: companyEventKeys.registrations(eventId ?? '', filters),
     queryFn: () =>
       apiGetPaged(`/admin/company-events/${eventId}/registrations`, EventRegistrationRowSchema, {
-        params: { page, limit, category, status, pickup_location_id: pickupLocationId, search: search || undefined },
+        params: { page, limit, category, status, attendance_type: attendanceType, pickup_location_id: pickupLocationId, search: search || undefined },
       }),
     enabled: !!eventId,
   });
