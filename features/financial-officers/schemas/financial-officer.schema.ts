@@ -133,7 +133,7 @@ const PeriodSchema = z.object({
   end: z.string(),
 });
 
-export const APPROVAL_KINDS = ['asset', 'associate_pro'] as const;
+export const APPROVAL_KINDS = ['asset', 'associate_pro', 'withdrawal'] as const;
 export type ApprovalKind = (typeof APPROVAL_KINDS)[number];
 
 const ApprovalStatsSchema = z.object({
@@ -162,6 +162,7 @@ const ApprovalQueueSchema = z.object({
   over_24h: z.number(),
   asset: z.object({ waiting: z.number(), over_24h: z.number() }),
   associate_pro: z.object({ waiting: z.number(), over_24h: z.number() }),
+  withdrawal: z.object({ waiting: z.number(), over_24h: z.number() }),
 });
 
 export type ApprovalQueue = z.infer<typeof ApprovalQueueSchema>;
@@ -248,6 +249,7 @@ export const FinancialOfficerDashboardSchema = z.object({
   approvals: z.object({
     asset: ApprovalStatsSchema,
     associate_pro: ApprovalStatsSchema,
+    withdrawal: ApprovalStatsSchema,
   }),
   queue: ApprovalQueueSchema,
   recent_decisions: z.array(RecentDecisionSchema),
@@ -307,6 +309,7 @@ export const OfficerLeagueRowSchema = z.object({
   recovery_target: z.number(),
   asset_avg_hours: z.number().nullable(),
   pro_avg_hours: z.number().nullable(),
+  withdrawal_avg_hours: z.number().nullable(),
   decisions: z.number(),
   score: z.number().nullable(),
 });
@@ -320,6 +323,7 @@ export const FinancialOfficersTeamDashboardSchema = z.object({
   approvals: z.object({
     asset: z.object({ decided: z.number(), avg_hours: z.number().nullable() }),
     associate_pro: z.object({ decided: z.number(), avg_hours: z.number().nullable() }),
+    withdrawal: z.object({ decided: z.number(), avg_hours: z.number().nullable() }),
   }),
   queue: ApprovalQueueSchema,
   /** Upgrades cancelled after sitting 24h+ with nobody deciding them. */
@@ -339,6 +343,7 @@ export const FinancialOfficersTeamDashboardSchema = z.object({
   other_admins: z.object({
     asset_avg_hours: z.number().nullable(),
     pro_avg_hours: z.number().nullable(),
+    withdrawal_avg_hours: z.number().nullable(),
     decisions: z.number(),
   }),
 });
@@ -355,6 +360,7 @@ export const RecoveryPaymentSchema = z.object({
   /** Null for automatic payments (Paystack, wallet). */
   approved_by: AdminMinSchema,
   approval_hours: z.number().nullable(),
+  kind: z.enum(['land', 'development_levy']).default('land'),
 });
 
 export type RecoveryPayment = z.infer<typeof RecoveryPaymentSchema>;

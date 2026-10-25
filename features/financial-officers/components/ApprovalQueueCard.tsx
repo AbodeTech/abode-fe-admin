@@ -52,6 +52,12 @@ export function ApprovalQueueCard({ queue }: { queue: ApprovalQueue }) {
           </span>
         </div>
         <div className="flex justify-between gap-2">
+          <span className="text-gray-700">Withdrawals</span>
+          <span className="text-xs text-gray-500 tabular-nums">
+            {queue.withdrawal.waiting} waiting · {queue.withdrawal.over_24h} over 24 h
+          </span>
+        </div>
+        <div className="flex justify-between gap-2">
           <span className="text-gray-700">Associate Pro upgrades</span>
           <span className="text-xs text-gray-500 tabular-nums">
             {queue.associate_pro.waiting} waiting · {queue.associate_pro.over_24h} over 24 h
@@ -65,6 +71,9 @@ export function ApprovalQueueCard({ queue }: { queue: ApprovalQueue }) {
         </Link>
         <Link href="/associate-upgrade" className="inline-flex items-center gap-1 text-[#00695C] hover:underline">
           Upgrade queue <ArrowRight className="h-3 w-3" />
+        </Link>
+        <Link href="/transactions/withdrawal" className="inline-flex items-center gap-1 text-[#00695C] hover:underline">
+          Withdrawal queue <ArrowRight className="h-3 w-3" />
         </Link>
       </div>
     </div>

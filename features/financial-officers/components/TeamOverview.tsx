@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { BadgeCheck, Banknote, Building2, FolderOpen, TriangleAlert } from "lucide-react";
+import { BadgeCheck, Banknote, Building2, FolderOpen, HandCoins, TriangleAlert } from "lucide-react";
 import { KpiTile } from "@/components/shared/KpiTile";
 import { cn } from "@/lib/utils";
 import { formatHours, formatNairaCompact, formatShortDate } from "../lib/format";
@@ -53,7 +53,7 @@ export function TeamOverview({ team }: { team: FinancialOfficersTeamDashboard })
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
         <ApprovalTimeTile
           icon={Building2}
           iconColor="text-blue-600"
@@ -73,6 +73,16 @@ export function TeamOverview({ team }: { team: FinancialOfficersTeamDashboard })
           footer={`${team.approvals.associate_pro.decided} decided · weekdays only`}
           targetHours={target}
           tooltip="Every Associate Pro upgrade paid by transfer and decided this period. Weekends don't count."
+        />
+        <ApprovalTimeTile
+          icon={HandCoins}
+          iconColor="text-purple-600"
+          iconBg="bg-purple-50"
+          label="Avg approval time · Withdrawal"
+          avgHours={team.approvals.withdrawal.avg_hours}
+          footer={`${team.approvals.withdrawal.decided} decided · weekdays only`}
+          targetHours={target}
+          tooltip="Every manually reviewed withdrawal decided this period. Weekends don't count."
         />
         <KpiTile
           icon={Banknote}
@@ -110,6 +120,7 @@ export function TeamOverview({ team }: { team: FinancialOfficersTeamDashboard })
                 <th className="px-4 py-2.5 font-medium">Recovered / target</th>
                 <th className="px-4 py-2.5 font-medium text-right">Avg · Asset</th>
                 <th className="px-4 py-2.5 font-medium text-right">Avg · Pro</th>
+                <th className="px-4 py-2.5 font-medium text-right">Avg · Withdrawal</th>
                 <th className="px-4 py-2.5 font-medium text-right">Decisions</th>
                 <th className="px-4 py-2.5 font-medium text-right">Score</th>
               </tr>
@@ -117,7 +128,7 @@ export function TeamOverview({ team }: { team: FinancialOfficersTeamDashboard })
             <tbody>
               {officers.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-sm text-gray-500">
+                  <td colSpan={9} className="px-4 py-8 text-center text-sm text-gray-500">
                     No officers yet.
                   </td>
                 </tr>
@@ -175,6 +186,7 @@ export function TeamOverview({ team }: { team: FinancialOfficersTeamDashboard })
                       </td>
                       <td className="px-4 py-3 text-right">{hoursCell(o.asset_avg_hours)}</td>
                       <td className="px-4 py-3 text-right">{hoursCell(o.pro_avg_hours)}</td>
+                      <td className="px-4 py-3 text-right">{hoursCell(o.withdrawal_avg_hours)}</td>
                       <td className="px-4 py-3 text-right tabular-nums">{o.decisions}</td>
                       <td className="px-4 py-3 text-right">
                         {o.score == null ? (
@@ -200,6 +212,7 @@ export function TeamOverview({ team }: { team: FinancialOfficersTeamDashboard })
                   <td className="px-4 py-3">—</td>
                   <td className="px-4 py-3 text-right">{hoursCell(team.other_admins.asset_avg_hours)}</td>
                   <td className="px-4 py-3 text-right">{hoursCell(team.other_admins.pro_avg_hours)}</td>
+                  <td className="px-4 py-3 text-right">{hoursCell(team.other_admins.withdrawal_avg_hours)}</td>
                   <td className="px-4 py-3 text-right tabular-nums">{team.other_admins.decisions}</td>
                   <td className="px-4 py-3 text-right">—</td>
                 </tr>

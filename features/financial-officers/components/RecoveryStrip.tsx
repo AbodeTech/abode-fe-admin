@@ -13,7 +13,7 @@ export function RecoveryStrip({ recovery }: { recovery: FinancialOfficerDashboar
     {
       label: "Recovered this month",
       value: formatNairaCompact(recovery.recovered),
-      hint: "paid before any suspension",
+      hint: "land and development levy paid before suspension",
       tone: "text-[#00695C]",
     },
     { label: "Cleared this month", value: recovery.cleared.toLocaleString(), hint: "paid off, left the book" },

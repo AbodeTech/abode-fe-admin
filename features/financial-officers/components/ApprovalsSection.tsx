@@ -54,11 +54,16 @@ export function ApprovalsSection({ approvals, queue, decisions, targetHours, dec
         </span>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         <StatsCard
           title="Asset payments"
           stats={approvals.asset}
           note="Flex, full ownership and commercial, every installment type."
+        />
+        <StatsCard
+          title="Withdrawals"
+          stats={approvals.withdrawal}
+          note="Manually approved or declined wallet withdrawal requests."
         />
         <StatsCard
           title="Associate Pro upgrades"
@@ -106,7 +111,11 @@ export function ApprovalsSection({ approvals, queue, decisions, targetHours, dec
                   return (
                     <tr key={d.id} className="border-t border-gray-100">
                       <td className="px-4 py-3 text-gray-700">
-                        {d.kind === "asset" ? "Asset" : "Associate Pro"} · {d.label}
+                        {d.kind === "asset"
+                          ? "Asset"
+                          : d.kind === "associate_pro"
+                            ? "Associate Pro"
+                            : "Withdrawal"} · {d.label}
                       </td>
                       <td className="px-4 py-3 text-gray-900">{d.customer_name}</td>
                       <td className="px-4 py-3 tabular-nums">{formatNaira(d.amount)}</td>
