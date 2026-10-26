@@ -222,7 +222,7 @@ export function UserAssetActions({ userId, asset, email }: UserAssetActionsProps
           onClose={() => setModalParam(null)}
           planId={asset._id}
           expectedUpdatedAt={asset.updated_at}
-          currentName={question?.name_of_property || ''}
+          currentName={question?.name_on_document || question?.name_of_property || ''}
           currentAddress={question?.address || ''}
           userId={userId}
         />

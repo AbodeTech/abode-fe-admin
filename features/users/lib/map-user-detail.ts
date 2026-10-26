@@ -194,6 +194,7 @@ export function toUserAsset(raw: Record<string, unknown>): UserAsset {
       ? [
           {
             name_of_property: asString(acquisition.name_of_property),
+            name_on_document: asString(acquisition.name_on_document),
             address: asString(acquisition.address),
             unique_asset_id: uniqueId || asString(acquisition.unique_asset_id),
           },
@@ -214,6 +215,7 @@ export function toUserTransaction(raw: Record<string, unknown>): TransactionList
     type: asString(raw.type),
     status: asString(raw.status),
     description: asString(raw.description),
+    direction: asString(raw.direction) || null,
     // `type` says what it is, `payment_method` how it was paid. The retired
     // transaction_type is not read: it was empty on most v2 rows and marked
     // commissions as "system-charge".
@@ -238,6 +240,10 @@ export function toUserTransaction(raw: Record<string, unknown>): TransactionList
     wht_deducted: asNullableNumber(raw.wht_deducted),
     wallet_balance_after: asNullableNumber(raw.wallet_balance_after),
     available_after: asNullableNumber(raw.available_balance_after),
+    reversed_at: asDateString(raw.reversed_at) || null,
+    reversed_by_transaction_id: asString(raw.reversed_by_transaction) || null,
+    source_transaction_id: asString(raw.source_transaction) || null,
+    related_transaction_id: asString(raw.related_transaction_id) || null,
   };
 }
 

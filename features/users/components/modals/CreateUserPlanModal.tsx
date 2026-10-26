@@ -135,6 +135,36 @@ const labels: Record<AdminPlanType, string> = {
 };
 
 const number = (value: string) => Number(value.replace(/,/g, ''));
+const moneyUp = (value: number) => Math.ceil(value * 100) / 100;
+const withCalculatedPayments = (form: FormState, type: AdminPlanType): FormState => {
+  if (type === 'flex') {
+    const price = number(form.asset_price);
+    const initial = number(form.initial_payment);
+    const remainingMonths = Math.max(0, number(form.tenor_months) - 1);
+    const monthly =
+      price <= initial ? 0 : remainingMonths > 0 ? moneyUp((price - initial) / remainingMonths) : 0;
+    return { ...form, monthly_payment: String(monthly) };
+  }
+
+  const landPrice = number(form.land_price);
+  const landInitial = number(form.land_initial_payment);
+  const landRemainingMonths = Math.max(0, number(form.land_tenor_months) - 1);
+  const landMonthly =
+    landPrice <= landInitial
+      ? 0
+      : landRemainingMonths > 0
+        ? moneyUp((landPrice - landInitial) / landRemainingMonths)
+        : 0;
+  const documentPrice = number(form.document_price);
+  const documentTenor = number(form.document_tenor_months);
+  const documentMonthly =
+    documentPrice > 0 && documentTenor > 0 ? moneyUp(documentPrice / documentTenor) : 0;
+  return {
+    ...form,
+    land_monthly_payment: String(landMonthly),
+    document_monthly_payment: String(documentMonthly),
+  };
+};
 const date = (value: string) => (value ? new Date(`${value}T12:00:00`).toISOString() : undefined);
 const money = new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' });
 
@@ -194,9 +224,24 @@ export function CreateUserPlanModal({ userId, type, open, onOpenChange }: Props)
     form.document_price,
     form.document_tenor_months,
   ]);
+  const creationBlockers = [
+    !form.asset_id ? 'Select an asset.' : null,
+    landSchedule.uncovered > 0
+      ? `Land schedule is short by ${money.format(landSchedule.uncovered)}.`
+      : null,
+    isLand && documentSchedule.uncovered > 0
+      ? `Document schedule is short by ${money.format(documentSchedule.uncovered)}.`
+      : null,
+    form.campaign_ids.length > 0 && !form.campaign_purchase_date
+      ? 'Enter the campaign payment approval date.'
+      : null,
+    form.reason.trim().length < 30
+      ? `Enter an admin reason of at least 30 characters (${form.reason.trim().length}/30).`
+      : null,
+  ].filter((message): message is string => Boolean(message));
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
-    setForm((current) => ({ ...current, [key]: value }));
+    setForm((current) => withCalculatedPayments({ ...current, [key]: value }, type));
 
   const common = {
     asset_id: form.asset_id,
@@ -220,14 +265,8 @@ export function CreateUserPlanModal({ userId, type, open, onOpenChange }: Props)
   };
 
   const submit = async () => {
-    if (landSchedule.uncovered > 0) {
-      toast.error(`Land payment schedule is short by ${money.format(landSchedule.uncovered)}.`);
-      return;
-    }
-    if (isLand && documentSchedule.uncovered > 0) {
-      toast.error(
-        `Document payment schedule is short by ${money.format(documentSchedule.uncovered)}.`,
-      );
+    if (creationBlockers.length > 0) {
+      toast.error(creationBlockers[0]);
       return;
     }
     try {
@@ -363,7 +402,6 @@ export function CreateUserPlanModal({ userId, type, open, onOpenChange }: Props)
                 {input('asset_price', 'Total asset price')}
                 {input('initial_payment', 'Contractual initial payment')}
                 {input('amount_paid', 'Actual cumulative amount paid')}
-                {input('monthly_payment', 'Monthly payment')}
                 {input('tenor_months', 'Tenor (months)')}
               </>
             ) : (
@@ -371,11 +409,9 @@ export function CreateUserPlanModal({ userId, type, open, onOpenChange }: Props)
                 {input('land_price', 'Land price')}
                 {input('land_initial_payment', 'Land initial payment')}
                 {input('land_amount_paid', 'Land amount paid')}
-                {input('land_monthly_payment', 'Land monthly payment')}
-                {input('land_tenor_months', 'Land tenor (months)')}
+                {input('land_tenor_months', 'Land tenor (includes initial-payment month)')}
                 {input('document_price', 'Document price')}
                 {input('document_amount_paid', 'Document amount paid')}
-                {input('document_monthly_payment', 'Document monthly payment')}
                 {input('document_tenor_months', 'Document tenor (months)')}
                 <div className="space-y-2">
                   <Label>Payment type *</Label>
@@ -529,16 +565,17 @@ export function CreateUserPlanModal({ userId, type, open, onOpenChange }: Props)
           </div>
         </ScrollArea>
         <DialogFooter>
+          {creationBlockers.length > 0 && (
+            <div className="mr-auto max-w-2xl text-left text-xs text-destructive">
+              <p className="font-medium">Complete these before creating the plan:</p>
+              <ul className="list-disc pl-4">
+                {creationBlockers.map((message) => <li key={message}>{message}</li>)}
+              </ul>
+            </div>
+          )}
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button
-            disabled={
-              pending ||
-              !form.asset_id ||
-              form.reason.trim().length < 30 ||
-              landSchedule.uncovered > 0 ||
-              (isLand && documentSchedule.uncovered > 0) ||
-              (form.campaign_ids.length > 0 && !form.campaign_purchase_date)
-            }
+            disabled={pending}
             onClick={submit}
           >
             {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

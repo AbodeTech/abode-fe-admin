@@ -220,7 +220,9 @@ export function UserAssetsList({ userId, userEmail, readOnly = false }: UserAsse
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                         <div className="flex items-center gap-2 text-muted-foreground">
                           <User className="h-4 w-4" /> Legally Owned By:{" "}
-                          <span className="font-medium text-foreground">{question?.name_of_property || "N/A"}</span>
+                          <span className="font-medium text-foreground">
+                            {question?.name_on_document || question?.name_of_property || "N/A"}
+                          </span>
                         </div>
                         <div className="flex items-center gap-2 text-muted-foreground">
                           <MapPin className="h-4 w-4" /> Owner&apos;s Address:{" "}
@@ -382,7 +384,9 @@ export function UserAssetsList({ userId, userEmail, readOnly = false }: UserAsse
                       <h3 className="text-xl font-semibold">{asset.asset_name}</h3>
                       <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
                         <User className="h-4 w-4" /> Legally Owned By:{" "}
-                        <span className="font-medium">{question?.name_of_property || "N/A"}</span>
+                        <span className="font-medium">
+                          {question?.name_on_document || question?.name_of_property || "N/A"}
+                        </span>
                       </p>
                     </div>
                     <div>

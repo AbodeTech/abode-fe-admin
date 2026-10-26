@@ -63,6 +63,8 @@ const formatRate = (rate: number | null) =>
   rate == null ? EMPTY : `${Number((rate * 100).toFixed(2))}%`
 const formatType = (type: string | null) =>
   type ? type.charAt(0).toUpperCase() + type.slice(1) : EMPTY
+const displayStatus = (transaction: TransactionListResponse) =>
+  transaction.reversed_at ? "Reversed" : transaction.status
 
 function sortValue(row: CommissionRow, field: SortField): string | number | null {
   if (field === "time_of_transaction") return new Date(row.time_of_transaction).getTime()
@@ -148,9 +150,14 @@ export function CommissionTransactionsTable({ transactions }: CommissionTransact
                 <AdminMobileField
                   label="Status"
                   value={
-                    <Badge variant="outline" className={getStatusColor(transaction.status)}>
-                      {transaction.status}
-                    </Badge>
+                    <div className="space-y-1">
+                      <Badge variant="outline" className={getStatusColor(transaction.reversed_at ? "cancelled" : transaction.status)}>
+                        {displayStatus(transaction)}
+                      </Badge>
+                      {transaction.reversed_by_transaction_id ? (
+                        <p className="text-xs text-muted-foreground">Reversed by {transaction.reversed_by_transaction_id}</p>
+                      ) : null}
+                    </div>
                   }
                 />
               </AdminMobileCard>
@@ -201,9 +208,14 @@ export function CommissionTransactionsTable({ transactions }: CommissionTransact
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline" className={getStatusColor(transaction.status)}>
-                        {transaction.status}
-                      </Badge>
+                      <div className="space-y-1">
+                        <Badge variant="outline" className={getStatusColor(transaction.reversed_at ? "cancelled" : transaction.status)}>
+                          {displayStatus(transaction)}
+                        </Badge>
+                        {transaction.reversed_by_transaction_id ? (
+                          <p className="text-xs text-muted-foreground">Reversed by {transaction.reversed_by_transaction_id}</p>
+                        ) : null}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
