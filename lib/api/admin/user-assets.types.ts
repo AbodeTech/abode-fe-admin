@@ -93,6 +93,7 @@ export interface UserAsset {
   };
   asset_questions?: {
     name_of_property: string;
+    name_on_document?: string;
     address: string;
     unique_asset_id: string;
   }[];

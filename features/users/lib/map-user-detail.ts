@@ -194,6 +194,7 @@ export function toUserAsset(raw: Record<string, unknown>): UserAsset {
       ? [
           {
             name_of_property: asString(acquisition.name_of_property),
+            name_on_document: asString(acquisition.name_on_document),
             address: asString(acquisition.address),
             unique_asset_id: uniqueId || asString(acquisition.unique_asset_id),
           },
