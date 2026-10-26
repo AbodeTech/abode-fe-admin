@@ -53,7 +53,7 @@ type Stats = {
 
 type Decision = {
   id: string;
-  kind: 'asset' | 'associate_pro';
+  kind: 'asset' | 'associate_pro' | 'withdrawal';
   label: string;
   customer_name: string;
   amount: number;
@@ -69,6 +69,7 @@ type MockOfficer = {
   assigned_from: string;
   asset: Stats;
   pro: Stats;
+  withdrawal: Stats;
   decisions: Decision[];
 };
 
@@ -85,6 +86,7 @@ const officers: MockOfficer[] = [
     assigned_from: daysAgo(260),
     asset: { decided: 142, approved: 128, declined: 14, avg_hours: 8.6, median_hours: 5.1, slowest: { hours: 30.3, customer_name: 'Zainab Aliyu', submitted_at: lastWeek(1, 8, 30) } },
     pro: { decided: 38, approved: 35, declined: 3, avg_hours: 14.2, median_hours: 11.0, slowest: { hours: 29.5, customer_name: 'Obinna Uche', submitted_at: lastWeek(3, 10, 0) } },
+    withdrawal: { decided: 24, approved: 22, declined: 2, avg_hours: 9.8, median_hours: 7.4, slowest: { hours: 27.1, customer_name: 'David James', submitted_at: lastWeek(2, 9, 0) } },
     decisions: [
       { id: 'fod1', kind: 'asset', label: 'Flex installment', customer_name: 'Kemi Salako', amount: 450_000, submitted_at: lastWeek(7, 9, 12), decided_at: lastWeek(7, 11, 40), hours_counted: 2.5, outcome: 'approved' },
       { id: 'fod2', kind: 'associate_pro', label: 'Upgrade', customer_name: 'Yusuf Danjuma', amount: 50_000, submitted_at: lastWeek(4, 17, 10), decided_at: lastWeek(7, 10, 5), hours_counted: 16.9, outcome: 'approved' },
@@ -100,6 +102,7 @@ const officers: MockOfficer[] = [
     assigned_from: daysAgo(200),
     asset: { decided: 118, approved: 109, declined: 9, avg_hours: 11.4, median_hours: 7.9, slowest: { hours: 41.2, customer_name: 'Segun Afolabi', submitted_at: lastWeek(0, 9, 0) } },
     pro: { decided: 32, approved: 30, declined: 2, avg_hours: 17.0, median_hours: 13.5, slowest: { hours: 36.0, customer_name: 'Ada Nwosu', submitted_at: lastWeek(2, 12, 0) } },
+    withdrawal: { decided: 19, approved: 18, declined: 1, avg_hours: 12.6, median_hours: 10.2, slowest: { hours: 31.4, customer_name: 'Tola Ade', submitted_at: lastWeek(1, 8, 0) } },
     decisions: [
       { id: 'fod7', kind: 'asset', label: 'Commercial installment', customer_name: 'Segun Afolabi', amount: 1_400_000, submitted_at: lastWeek(0, 9, 0), decided_at: lastWeek(1, 15, 12), hours_counted: 30.2, outcome: 'approved' },
       { id: 'fod8', kind: 'associate_pro', label: 'Upgrade', customer_name: 'Ada Nwosu', amount: 50_000, submitted_at: lastWeek(2, 12, 0), decided_at: lastWeek(4, 0, 0), hours_counted: 36.0, outcome: 'approved' },
@@ -112,6 +115,7 @@ const officers: MockOfficer[] = [
     assigned_from: daysAgo(90),
     asset: { decided: 104, approved: 97, declined: 7, avg_hours: 6.8, median_hours: 4.4, slowest: { hours: 22.9, customer_name: 'Hauwa Garba', submitted_at: lastWeek(1, 9, 0) } },
     pro: { decided: 32, approved: 29, declined: 3, avg_hours: 9.4, median_hours: 7.2, slowest: { hours: 20.1, customer_name: 'Ifeanyi Obi', submitted_at: lastWeek(3, 11, 0) } },
+    withdrawal: { decided: 21, approved: 20, declined: 1, avg_hours: 7.1, median_hours: 5.8, slowest: { hours: 18.6, customer_name: 'Musa Bello', submitted_at: lastWeek(2, 10, 0) } },
     decisions: [
       { id: 'fod10', kind: 'asset', label: 'Flex installment', customer_name: 'Hauwa Garba', amount: 400_000, submitted_at: lastWeek(1, 9, 0), decided_at: lastWeek(1, 12, 6), hours_counted: 3.1, outcome: 'approved' },
       { id: 'fod11', kind: 'associate_pro', label: 'Upgrade', customer_name: 'Ifeanyi Obi', amount: 50_000, submitted_at: lastWeek(3, 11, 0), decided_at: lastWeek(4, 7, 6), hours_counted: 20.1, outcome: 'declined' },
@@ -121,18 +125,29 @@ const officers: MockOfficer[] = [
 ];
 
 /** Admins with approve permission who aren't officers. */
-const OTHER_ADMINS = { asset: { decided: 15, avg_hours: 20.1 }, pro: { decided: 6, avg_hours: 28.2 } };
+const OTHER_ADMINS = { asset: { decided: 15, avg_hours: 20.1 }, pro: { decided: 6, avg_hours: 28.2 }, withdrawal: { decided: 4, avg_hours: 18.5 } };
 
 const QUEUE = {
-  total: 30,
-  under_12h: 18,
+  total: 35,
+  under_12h: 21,
   between_12_24h: 8,
-  over_24h: 4,
+  over_24h: 6,
   asset: { waiting: 23, over_24h: 3 },
   associate_pro: { waiting: 7, over_24h: 1 },
+  withdrawal: { waiting: 5, over_24h: 2 },
 };
 
-type MockTarget = { _id: string; officer: string; month: number; year: number; recovery_target: number; createdAt: string; updatedAt: string };
+type MockTarget = {
+  _id: string;
+  officer: string;
+  month: number;
+  year: number;
+  recovery_target: number;
+  land_recovery_target: number;
+  dev_levy_recovery_target: number;
+  createdAt: string;
+  updatedAt: string;
+};
 
 const thisMonth = () => ({ month: new Date().getMonth() + 1, year: new Date().getFullYear() });
 const lastMonth = () => {
@@ -143,10 +158,10 @@ const lastMonth = () => {
 };
 
 const targets: MockTarget[] = [
-  { _id: 'fot1', officer: O1, ...thisMonth(), recovery_target: 5_000_000, createdAt: daysAgo(25), updatedAt: daysAgo(25) },
-  { _id: 'fot2', officer: O1, ...lastMonth(), recovery_target: 4_500_000, createdAt: daysAgo(55), updatedAt: daysAgo(55) },
-  { _id: 'fot3', officer: O2, ...thisMonth(), recovery_target: 6_000_000, createdAt: daysAgo(25), updatedAt: daysAgo(25) },
-  { _id: 'fot4', officer: O3, ...thisMonth(), recovery_target: 4_000_000, createdAt: daysAgo(25), updatedAt: daysAgo(25) },
+  { _id: 'fot1', officer: O1, ...thisMonth(), recovery_target: 5_000_000, land_recovery_target: 4_000_000, dev_levy_recovery_target: 1_000_000, createdAt: daysAgo(25), updatedAt: daysAgo(25) },
+  { _id: 'fot2', officer: O1, ...lastMonth(), recovery_target: 4_500_000, land_recovery_target: 3_500_000, dev_levy_recovery_target: 1_000_000, createdAt: daysAgo(55), updatedAt: daysAgo(55) },
+  { _id: 'fot3', officer: O2, ...thisMonth(), recovery_target: 6_000_000, land_recovery_target: 5_000_000, dev_levy_recovery_target: 1_000_000, createdAt: daysAgo(25), updatedAt: daysAgo(25) },
+  { _id: 'fot4', officer: O3, ...thisMonth(), recovery_target: 4_000_000, land_recovery_target: 3_000_000, dev_levy_recovery_target: 1_000_000, createdAt: daysAgo(25), updatedAt: daysAgo(25) },
 ];
 
 type Payment = {
@@ -309,10 +324,22 @@ function officerRecovery(adminId: string, period: { month: number; year: number 
   const open = mine.filter(isOpen);
   const counted = mine.map((p) => ({ plan: p, payments: recoveredPayments(p) }));
   const recovered = counted.reduce((s, c) => s + c.payments.reduce((a, pay) => a + pay.amount, 0), 0);
+  const devLevyRecovered = counted.reduce(
+    (s, c) => s + (c.plan.product === 'full_ownership' || c.plan.product === 'commercial'
+      ? c.payments.reduce((a, pay) => a + pay.amount, 0) * 0.2
+      : 0),
+    0
+  );
+  const landRecovered = recovered - devLevyRecovered;
+  const target = targetFor(adminId, period.month, period.year);
   const suspended = mine.filter((p) => p.state === 'suspended' && p.left_book_at && inWindow(p.left_book_at));
   return {
-    target: targetFor(adminId, period.month, period.year)?.recovery_target ?? 0,
+    target: target?.recovery_target ?? 0,
     recovered,
+    land_target: target?.land_recovery_target ?? 0,
+    land_recovered: landRecovered,
+    dev_levy_target: target?.dev_levy_recovery_target ?? 0,
+    dev_levy_recovered: devLevyRecovered,
     payments_count: counted.reduce((s, c) => s + c.payments.length, 0),
     plans_paid_count: counted.filter((c) => c.payments.length > 0).length,
     in_book: open.length,
@@ -329,12 +356,16 @@ function officerRecovery(adminId: string, period: { month: number; year: number 
 function officerScore(o: MockOfficer, recovery: ReturnType<typeof officerRecovery>) {
   const asset = speedComponent(o.asset.avg_hours);
   const pro = speedComponent(o.pro.avg_hours);
-  const rec = recovery.target > 0 ? 50 * Math.min(1, recovery.recovered / recovery.target) : 0;
+  const land = recovery.land_target > 0 ? 25 * Math.min(1, recovery.land_recovered / recovery.land_target) : 0;
+  const levy = recovery.dev_levy_target > 0 ? 25 * Math.min(1, recovery.dev_levy_recovered / recovery.dev_levy_target) : 0;
+  const rec = land + levy;
   return {
     score: round1(asset + pro + rec),
     asset_speed_component: round1(asset),
     pro_speed_component: round1(pro),
     recovery_component: round1(rec),
+    land_recovery_component: round1(land),
+    dev_levy_recovery_component: round1(levy),
   };
 }
 
@@ -426,7 +457,7 @@ export const financialOfficerRoutes: MockRoutes = {
         officer: toAdminMin(findAdmin(o.adminId)),
         active_since: o.assigned_from,
         open_plans_count: recovery.in_book,
-        current_period_score: recovery.target > 0 ? officerScore(o, recovery).score : null,
+        current_period_score: recovery.land_target + recovery.dev_levy_target > 0 ? officerScore(o, recovery).score : null,
       };
     });
   },
@@ -441,6 +472,7 @@ export const financialOfficerRoutes: MockRoutes = {
       assigned_from: new Date().toISOString(),
       asset: noStats(),
       pro: noStats(),
+      withdrawal: noStats(),
       decisions: [],
     };
     officers.push(created);
@@ -466,19 +498,25 @@ export const financialOfficerRoutes: MockRoutes = {
 
   'PUT /admin/financial-officers/:officer_id/targets/:year/:month': ({ params, body: raw }) => {
     requireOfficer(params.officer_id);
-    const { recovery_target } = body<{ recovery_target?: number }>(raw);
-    if (typeof recovery_target !== 'number' || recovery_target < 0) {
-      throw new MockHttpError(400, 'recovery_target must be a non-negative number', 'Bad Request');
+    const { land_recovery_target, dev_levy_recovery_target } = body<{
+      land_recovery_target?: number;
+      dev_levy_recovery_target?: number;
+    }>(raw);
+    if (typeof land_recovery_target !== 'number' || land_recovery_target < 0 || typeof dev_levy_recovery_target !== 'number' || dev_levy_recovery_target < 0) {
+      throw new MockHttpError(400, 'Recovery targets must be non-negative numbers', 'Bad Request');
     }
+    const recovery_target = land_recovery_target + dev_levy_recovery_target;
     const month = Number(params.month);
     const year = Number(params.year);
     const now = new Date().toISOString();
     let t = targetFor(params.officer_id, month, year);
     if (t) {
       t.recovery_target = recovery_target;
+      t.land_recovery_target = land_recovery_target;
+      t.dev_levy_recovery_target = dev_levy_recovery_target;
       t.updatedAt = now;
     } else {
-      t = { _id: `fot${targets.length + 1}`, officer: params.officer_id, month, year, recovery_target, createdAt: now, updatedAt: now };
+      t = { _id: `fot${targets.length + 1}`, officer: params.officer_id, month, year, recovery_target, land_recovery_target, dev_levy_recovery_target, createdAt: now, updatedAt: now };
       targets.push(t);
     }
     const { _id, ...rest } = t;
@@ -498,10 +536,15 @@ export const financialOfficerRoutes: MockRoutes = {
         suspending_within_14_days: recovery.suspending_within_14_days,
         recovered: recovery.recovered,
         recovery_target: recovery.target,
+        land_recovered: recovery.land_recovered,
+        land_recovery_target: recovery.land_target,
+        dev_levy_recovered: recovery.dev_levy_recovered,
+        dev_levy_recovery_target: recovery.dev_levy_target,
         asset_avg_hours: o.asset.avg_hours,
         pro_avg_hours: o.pro.avg_hours,
-        decisions: o.asset.decided + o.pro.decided,
-        score: recovery.target > 0 ? officerScore(o, recovery).score : null,
+        withdrawal_avg_hours: o.withdrawal.avg_hours,
+        decisions: o.asset.decided + o.pro.decided + o.withdrawal.decided,
+        score: recovery.land_target + recovery.dev_levy_target > 0 ? officerScore(o, recovery).score : null,
         _recovery: recovery,
       };
     });
@@ -513,6 +556,7 @@ export const financialOfficerRoutes: MockRoutes = {
     };
     const assetParts = [...officers.map((o) => ({ decided: o.asset.decided, avg: o.asset.avg_hours })), { decided: OTHER_ADMINS.asset.decided, avg: OTHER_ADMINS.asset.avg_hours }];
     const proParts = [...officers.map((o) => ({ decided: o.pro.decided, avg: o.pro.avg_hours })), { decided: OTHER_ADMINS.pro.decided, avg: OTHER_ADMINS.pro.avg_hours }];
+    const withdrawalParts = [...officers.map((o) => ({ decided: o.withdrawal.decided, avg: o.withdrawal.avg_hours })), { decided: OTHER_ADMINS.withdrawal.decided, avg: OTHER_ADMINS.withdrawal.avg_hours }];
     const sum = (f: (r: (typeof rows)[number]) => number) => rows.reduce((s, r) => s + f(r), 0);
 
     return {
@@ -521,6 +565,7 @@ export const financialOfficerRoutes: MockRoutes = {
       approvals: {
         asset: { decided: assetParts.reduce((s, p) => s + p.decided, 0), avg_hours: weightedAvg(assetParts) },
         associate_pro: { decided: proParts.reduce((s, p) => s + p.decided, 0), avg_hours: weightedAvg(proParts) },
+        withdrawal: { decided: withdrawalParts.reduce((s, p) => s + p.decided, 0), avg_hours: weightedAvg(withdrawalParts) },
       },
       queue: QUEUE,
       expired_unreviewed_upgrades: 2,
@@ -528,6 +573,10 @@ export const financialOfficerRoutes: MockRoutes = {
       recovery: {
         recovered: sum((r) => r._recovery.recovered),
         target: sum((r) => r._recovery.target),
+        land_recovered: sum((r) => r._recovery.land_recovered),
+        land_target: sum((r) => r._recovery.land_target),
+        dev_levy_recovered: sum((r) => r._recovery.dev_levy_recovered),
+        dev_levy_target: sum((r) => r._recovery.dev_levy_target),
         in_book: sum((r) => r._recovery.in_book),
         outstanding: sum((r) => r._recovery.outstanding),
         suspended: sum((r) => r._recovery.suspended),
@@ -538,7 +587,8 @@ export const financialOfficerRoutes: MockRoutes = {
       other_admins: {
         asset_avg_hours: OTHER_ADMINS.asset.avg_hours,
         pro_avg_hours: OTHER_ADMINS.pro.avg_hours,
-        decisions: OTHER_ADMINS.asset.decided + OTHER_ADMINS.pro.decided,
+        withdrawal_avg_hours: OTHER_ADMINS.withdrawal.avg_hours,
+        decisions: OTHER_ADMINS.asset.decided + OTHER_ADMINS.pro.decided + OTHER_ADMINS.withdrawal.decided,
       },
     };
   },
@@ -551,7 +601,7 @@ export const financialOfficerRoutes: MockRoutes = {
     // Not an officer: the BE returns officer: null with an empty dashboard,
     // so the page can keep its picker up.
     const recovery = officerRecovery(params.officer_id, period);
-    const stats = o ?? { asset: noStats(), pro: noStats(), decisions: [] };
+    const stats = o ?? { asset: noStats(), pro: noStats(), withdrawal: noStats(), decisions: [] };
 
     const mine = o ? plans.filter((p) => p.officer === params.officer_id) : [];
     const filterKey = typeof query.filter === 'string' && FILTERS[query.filter] ? query.filter : 'in_book';
@@ -575,13 +625,13 @@ export const financialOfficerRoutes: MockRoutes = {
       period,
       officer: o ? toAdminMin(admin) : null,
       approval_target_hours: APPROVAL_TARGET_HOURS,
-      approvals: { asset: stats.asset, associate_pro: stats.pro },
+      approvals: { asset: stats.asset, associate_pro: stats.pro, withdrawal: stats.withdrawal },
       queue: QUEUE,
       recent_decisions: stats.decisions,
       recovery,
       performance_score: o
         ? officerScore(o, recovery)
-        : { score: 0, asset_speed_component: 0, pro_speed_component: 0, recovery_component: 0 },
+        : { score: 0, asset_speed_component: 0, pro_speed_component: 0, recovery_component: 0, land_recovery_component: 0, dev_levy_recovery_component: 0 },
       plans: matching.slice((page - 1) * limit, page * limit).map(toRow),
       plans_total: matching.length,
       filter_counts: {

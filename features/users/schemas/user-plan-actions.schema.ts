@@ -110,11 +110,13 @@ export const AdminEditAssetQuestionPayloadSchema = PlanMutationReasonSchema.exte
 });
 
 export const AdminAdjustPlanBalancePayloadSchema = PlanMutationReasonSchema.extend({
+  payment_target: z.enum(['land', 'document']).default('land'),
   direction: z.enum(['credit', 'debit']),
   amount: z.number().int().positive(),
 });
 
 export const AdminOverridePaymentDatePayloadSchema = PlanMutationReasonSchema.extend({
+  payment_target: z.enum(['land', 'document']).default('land'),
   new_date: z.string(),
 });
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { BadgeCheck, Banknote, Building2, FolderOpen, TriangleAlert } from "lucide-react";
+import { BadgeCheck, Banknote, Building2, FolderOpen, HandCoins, TriangleAlert } from "lucide-react";
 import { KpiTile } from "@/components/shared/KpiTile";
 import { cn } from "@/lib/utils";
 import { formatHours, formatNairaCompact, formatShortDate } from "../lib/format";
@@ -23,7 +23,6 @@ export function TeamOverview({ team }: { team: FinancialOfficersTeamDashboard })
   const searchParams = useSearchParams();
   const target = team.approval_target_hours;
   const periodLabel = `${MONTHS[team.period.month - 1]} ${team.period.year}`;
-  const recoveryPct = team.recovery.target > 0 ? (team.recovery.recovered / team.recovery.target) * 100 : undefined;
 
   // Sorted best-first so the league table reads as one.
   const officers = [...team.officers].sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
@@ -53,7 +52,7 @@ export function TeamOverview({ team }: { team: FinancialOfficersTeamDashboard })
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-4">
         <ApprovalTimeTile
           icon={Building2}
           iconColor="text-blue-600"
@@ -74,15 +73,35 @@ export function TeamOverview({ team }: { team: FinancialOfficersTeamDashboard })
           targetHours={target}
           tooltip="Every Associate Pro upgrade paid by transfer and decided this period. Weekends don't count."
         />
+        <ApprovalTimeTile
+          icon={HandCoins}
+          iconColor="text-purple-600"
+          iconBg="bg-purple-50"
+          label="Avg approval time · Withdrawal"
+          avgHours={team.approvals.withdrawal.avg_hours}
+          footer={`${team.approvals.withdrawal.decided} decided · weekdays only`}
+          targetHours={target}
+          tooltip="Every manually reviewed withdrawal decided this period. Weekends don't count."
+        />
         <KpiTile
           icon={Banknote}
           iconColor="text-amber-700"
           iconBg="bg-amber-50"
-          label="Debt recovered"
-          actualDisplay={formatNairaCompact(team.recovery.recovered)}
-          targetDisplay={team.recovery.target > 0 ? formatNairaCompact(team.recovery.target) : undefined}
-          percent={recoveryPct}
-          tooltip="Sum across officers. The target is the sum of their individual targets."
+          label="Land debt recovered"
+          actualDisplay={formatNairaCompact(team.recovery.land_recovered)}
+          targetDisplay={team.recovery.land_target > 0 ? formatNairaCompact(team.recovery.land_target) : undefined}
+          percent={team.recovery.land_target > 0 ? (team.recovery.land_recovered / team.recovery.land_target) * 100 : undefined}
+          tooltip="Land recovery across officers. The target is the sum of their individual land targets."
+        />
+        <KpiTile
+          icon={Banknote}
+          iconColor="text-emerald-700"
+          iconBg="bg-emerald-50"
+          label="Development levy recovered"
+          actualDisplay={formatNairaCompact(team.recovery.dev_levy_recovered)}
+          targetDisplay={team.recovery.dev_levy_target > 0 ? formatNairaCompact(team.recovery.dev_levy_target) : undefined}
+          percent={team.recovery.dev_levy_target > 0 ? (team.recovery.dev_levy_recovered / team.recovery.dev_levy_target) * 100 : undefined}
+          tooltip="Development-levy recovery across officers. The target is the sum of their individual levy targets."
         />
         {/* A count with no target — KpiTile would read it as "No benchmark set". */}
         <div className="rounded-xl border border-gray-200 bg-white p-5">
@@ -107,9 +126,11 @@ export function TeamOverview({ team }: { team: FinancialOfficersTeamDashboard })
                 <th className="px-4 py-2.5 font-medium">Officer</th>
                 <th className="px-4 py-2.5 font-medium text-right">In book</th>
                 <th className="px-4 py-2.5 font-medium text-right">Suspend ≤14 days</th>
-                <th className="px-4 py-2.5 font-medium">Recovered / target</th>
+                <th className="px-4 py-2.5 font-medium">Land / target</th>
+                <th className="px-4 py-2.5 font-medium">Dev levy / target</th>
                 <th className="px-4 py-2.5 font-medium text-right">Avg · Asset</th>
                 <th className="px-4 py-2.5 font-medium text-right">Avg · Pro</th>
+                <th className="px-4 py-2.5 font-medium text-right">Avg · Withdrawal</th>
                 <th className="px-4 py-2.5 font-medium text-right">Decisions</th>
                 <th className="px-4 py-2.5 font-medium text-right">Score</th>
               </tr>
@@ -117,13 +138,14 @@ export function TeamOverview({ team }: { team: FinancialOfficersTeamDashboard })
             <tbody>
               {officers.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-sm text-gray-500">
+                  <td colSpan={10} className="px-4 py-8 text-center text-sm text-gray-500">
                     No officers yet.
                   </td>
                 </tr>
               ) : (
                 officers.map((o) => {
-                  const pct = o.recovery_target > 0 ? Math.min(100, (o.recovered / o.recovery_target) * 100) : 0;
+                  const landPct = o.land_recovery_target > 0 ? Math.min(100, (o.land_recovered / o.land_recovery_target) * 100) : 0;
+                  const levyPct = o.dev_levy_recovery_target > 0 ? Math.min(100, (o.dev_levy_recovered / o.dev_levy_recovery_target) * 100) : 0;
                   return (
                     <tr key={o.officer?.id ?? adminMinName(o.officer)} className="border-t border-gray-100 hover:bg-gray-50/60">
                       <td className="px-4 py-3">
@@ -154,20 +176,42 @@ export function TeamOverview({ team }: { team: FinancialOfficersTeamDashboard })
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2.5">
                           <span className="tabular-nums whitespace-nowrap">
-                            {formatNairaCompact(o.recovered)}
+                            {formatNairaCompact(o.land_recovered)}
                             <span className="text-gray-400">
                               {" "}
-                              / {o.recovery_target > 0 ? formatNairaCompact(o.recovery_target) : "no target"}
+                              / {o.land_recovery_target > 0 ? formatNairaCompact(o.land_recovery_target) : "no target"}
                             </span>
                           </span>
-                          {o.recovery_target > 0 && (
+                          {o.land_recovery_target > 0 && (
                             <span className="h-1.5 w-20 overflow-hidden rounded-full bg-gray-100">
                               <span
                                 className={cn(
                                   "block h-full",
-                                  pct >= 85 ? "bg-[#00695C]" : pct >= 50 ? "bg-amber-500" : "bg-[#AD1F2A]"
+                                  landPct >= 85 ? "bg-[#00695C]" : landPct >= 50 ? "bg-amber-500" : "bg-[#AD1F2A]"
                                 )}
-                                style={{ width: `${pct}%` }}
+                                style={{ width: `${landPct}%` }}
+                              />
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2.5">
+                          <span className="tabular-nums whitespace-nowrap">
+                            {formatNairaCompact(o.dev_levy_recovered)}
+                            <span className="text-gray-400">
+                              {" "}
+                              / {o.dev_levy_recovery_target > 0 ? formatNairaCompact(o.dev_levy_recovery_target) : "no target"}
+                            </span>
+                          </span>
+                          {o.dev_levy_recovery_target > 0 && (
+                            <span className="h-1.5 w-20 overflow-hidden rounded-full bg-gray-100">
+                              <span
+                                className={cn(
+                                  "block h-full",
+                                  levyPct >= 85 ? "bg-[#00695C]" : levyPct >= 50 ? "bg-amber-500" : "bg-[#AD1F2A]"
+                                )}
+                                style={{ width: `${levyPct}%` }}
                               />
                             </span>
                           )}
@@ -175,6 +219,7 @@ export function TeamOverview({ team }: { team: FinancialOfficersTeamDashboard })
                       </td>
                       <td className="px-4 py-3 text-right">{hoursCell(o.asset_avg_hours)}</td>
                       <td className="px-4 py-3 text-right">{hoursCell(o.pro_avg_hours)}</td>
+                      <td className="px-4 py-3 text-right">{hoursCell(o.withdrawal_avg_hours)}</td>
                       <td className="px-4 py-3 text-right tabular-nums">{o.decisions}</td>
                       <td className="px-4 py-3 text-right">
                         {o.score == null ? (
@@ -198,8 +243,10 @@ export function TeamOverview({ team }: { team: FinancialOfficersTeamDashboard })
                   <td className="px-4 py-3 text-right">—</td>
                   <td className="px-4 py-3 text-right">—</td>
                   <td className="px-4 py-3">—</td>
+                  <td className="px-4 py-3">—</td>
                   <td className="px-4 py-3 text-right">{hoursCell(team.other_admins.asset_avg_hours)}</td>
                   <td className="px-4 py-3 text-right">{hoursCell(team.other_admins.pro_avg_hours)}</td>
+                  <td className="px-4 py-3 text-right">{hoursCell(team.other_admins.withdrawal_avg_hours)}</td>
                   <td className="px-4 py-3 text-right tabular-nums">{team.other_admins.decisions}</td>
                   <td className="px-4 py-3 text-right">—</td>
                 </tr>

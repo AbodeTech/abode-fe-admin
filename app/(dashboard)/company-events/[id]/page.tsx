@@ -136,6 +136,7 @@ function EventDetailContent() {
     search: regSearchParam || undefined,
     category: regCategoryParam ?? undefined,
     status: regStatusParam ?? undefined,
+    attendanceType: regAttendanceTypeParam ?? undefined,
     pickupLocationId: regPickupParam || undefined,
   };
   // Real for both event types — `listEventRegistrations` doesn't gate on
@@ -358,7 +359,7 @@ function EventDetailContent() {
   const handleExportRegistrations = () => {
     if (!eventId) return;
     exportRegistrations.mutate(
-      { eventId, filters: { search: regSearchParam || undefined, category: regCategoryParam ?? undefined, status: regStatusParam ?? undefined, pickupLocationId: regPickupParam || undefined } },
+      { eventId, filters: { search: regSearchParam || undefined, category: regCategoryParam ?? undefined, status: regStatusParam ?? undefined, attendanceType: regAttendanceTypeParam ?? undefined, pickupLocationId: regPickupParam || undefined } },
       {
         onSuccess: ({ rows, truncated }) => {
           if (!rows.length) {
@@ -726,7 +727,13 @@ function EventDetailContent() {
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h2 className="text-lg font-semibold">Registered attendees</h2>
-                <p className="text-sm text-muted-foreground">{registrationsData?.meta.total ?? 0} people match these filters, including visitors and people getting land. Invited people appear in Invited clients until they register.</p>
+                <p className="text-sm text-muted-foreground">{registrationsData?.meta.total ?? 0} people match these filters. Invited people appear in Invited clients until they register.</p>
+                <div className="mt-3 w-fit min-w-24 rounded-lg border bg-muted/30 px-3 py-2">
+                  <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Visitors</p>
+                  <p className="text-lg font-semibold tabular-nums">
+                    {eventAnalyticsLoading ? "—" : invitedStats?.visitors ?? 0}
+                  </p>
+                </div>
               </div>
               <Button variant="outline" size="sm" onClick={handleExportRegistrations} disabled={exportRegistrations.isPending}>
                 {exportRegistrations.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}

@@ -267,6 +267,7 @@ export function RecoveryPlanDrawer({ planId, assignmentId, onAssignmentChange, o
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-semibold tabular-nums">{formatNaira(pay.amount)}</p>
                           <p className="text-xs text-gray-500">
+                            {pay.kind === "development_levy" ? "Development levy" : "Land payment"} ·{" "}
                             {formatShortDate(pay.paid_at)} · {METHOD_LABELS[pay.method]}
                             {pay.approved_by ? ` · approved by ${adminMinName(pay.approved_by)}` : " · automatic"}
                           </p>

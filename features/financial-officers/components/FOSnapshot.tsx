@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, BadgeCheck, Banknote, Building2, Gauge, Target } from "lucide-react";
+import { AlertCircle, BadgeCheck, Banknote, Building2, Gauge, HandCoins, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { KpiTile } from "@/components/shared/KpiTile";
 import { formatNairaCompact } from "../lib/format";
@@ -26,15 +26,18 @@ const WEEKDAY_NOTE = "Saturday and Sunday (WAT) don't count; a weekend submissio
 export function FOSnapshot({ dashboard, onManageTargets }: Props) {
   const { officer, period, approvals, recovery, performance_score: score, approval_target_hours } = dashboard;
   const periodLabel = `${MONTHS[period.month - 1]} ${period.year}`;
-  const hasTarget = recovery.target > 0;
-  const recoveryPct = hasTarget ? (recovery.recovered / recovery.target) * 100 : undefined;
+  const hasLandTarget = recovery.land_target > 0;
+  const hasDevLevyTarget = recovery.dev_levy_target > 0;
 
   const scoreTooltip = [
-    "Out of 100: asset speed 25 + Associate Pro speed 25 + recovery 50.",
+    "Out of 100: asset speed 25 + Associate Pro speed 25 + land recovery 25 + development levy recovery 25.",
     `Speed earns full marks at or under ${approval_target_hours} h.`,
     `Asset ${score.asset_speed_component.toFixed(1)}/25`,
     `Pro ${score.pro_speed_component.toFixed(1)}/25`,
-    hasTarget ? `Recovery ${score.recovery_component.toFixed(1)}/50` : "Recovery: no target set",
+    hasLandTarget ? `Land recovery ${score.land_recovery_component.toFixed(1)}/25` : "Land recovery: no target set",
+    hasDevLevyTarget
+      ? `Development levy recovery ${score.dev_levy_recovery_component.toFixed(1)}/25`
+      : "Development levy recovery: no target set",
   ].join(" · ");
 
   return (
@@ -53,10 +56,10 @@ export function FOSnapshot({ dashboard, onManageTargets }: Props) {
         </div>
 
         <div className="flex items-center gap-3 flex-wrap">
-          {hasTarget ? (
+          {hasLandTarget || hasDevLevyTarget ? (
             <div className="inline-flex items-center gap-2 rounded-full bg-[#E0F2F1] text-[#00695C] px-3 py-1.5 text-xs font-medium">
               <Target className="h-3.5 w-3.5" />
-              Recovery target for {periodLabel}: {formatNairaCompact(recovery.target)}
+              {periodLabel}: Land {formatNairaCompact(recovery.land_target)} · Levy {formatNairaCompact(recovery.dev_levy_target)}
             </div>
           ) : (
             <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-800">
@@ -73,7 +76,7 @@ export function FOSnapshot({ dashboard, onManageTargets }: Props) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-4">
         <ApprovalTimeTile
           icon={Building2}
           iconColor="text-blue-600"
@@ -94,21 +97,41 @@ export function FOSnapshot({ dashboard, onManageTargets }: Props) {
           targetHours={approval_target_hours}
           tooltip={`Submission to approve or decline, on Associate Pro upgrade payments made by bank transfer. ${WEEKDAY_NOTE}`}
         />
+        <ApprovalTimeTile
+          icon={HandCoins}
+          iconColor="text-purple-600"
+          iconBg="bg-purple-50"
+          label="Avg approval time · Withdrawal"
+          avgHours={approvals.withdrawal.avg_hours}
+          footer={countsLine(approvals.withdrawal)}
+          targetHours={approval_target_hours}
+          tooltip={`Submission to approve or decline, on manually reviewed withdrawal requests. ${WEEKDAY_NOTE}`}
+        />
         <KpiTile
           icon={Banknote}
           iconColor="text-amber-700"
           iconBg="bg-amber-50"
-          label="Debt recovered"
-          actualDisplay={formatNairaCompact(recovery.recovered)}
-          targetDisplay={hasTarget ? formatNairaCompact(recovery.target) : undefined}
-          percent={recoveryPct}
-          tooltip="Money paid this period on plans in this officer's recovery book, up to the day each plan is suspended."
+          label="Land debt recovered"
+          actualDisplay={formatNairaCompact(recovery.land_recovered)}
+          targetDisplay={hasLandTarget ? formatNairaCompact(recovery.land_target) : undefined}
+          percent={hasLandTarget ? (recovery.land_recovered / recovery.land_target) * 100 : undefined}
+          tooltip="Land payments made this period on plans in this officer's recovery book, up to the day each plan is suspended."
           footer={
             <p className="mt-3 pt-3 border-t border-dashed border-gray-200 text-xs text-gray-500">
               {recovery.payments_count} payment{recovery.payments_count === 1 ? "" : "s"} on{" "}
               {recovery.plans_paid_count} plan{recovery.plans_paid_count === 1 ? "" : "s"}
             </p>
           }
+        />
+        <KpiTile
+          icon={Banknote}
+          iconColor="text-emerald-700"
+          iconBg="bg-emerald-50"
+          label="Development levy recovered"
+          actualDisplay={formatNairaCompact(recovery.dev_levy_recovered)}
+          targetDisplay={hasDevLevyTarget ? formatNairaCompact(recovery.dev_levy_target) : undefined}
+          percent={hasDevLevyTarget ? (recovery.dev_levy_recovered / recovery.dev_levy_target) * 100 : undefined}
+          tooltip="Development-levy payments made this period on Full Ownership and Commercial plans in this officer's recovery book, up to the day each plan is suspended."
         />
         <KpiTile
           icon={Gauge}

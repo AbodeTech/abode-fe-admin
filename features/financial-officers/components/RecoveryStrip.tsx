@@ -11,9 +11,15 @@ export function RecoveryStrip({ recovery }: { recovery: FinancialOfficerDashboar
     },
     { label: "Outstanding in book", value: formatNairaCompact(recovery.outstanding), hint: "balances still owed" },
     {
-      label: "Recovered this month",
-      value: formatNairaCompact(recovery.recovered),
-      hint: "paid before any suspension",
+      label: "Land recovered this month",
+      value: formatNairaCompact(recovery.land_recovered),
+      hint: "land payments before suspension",
+      tone: "text-[#00695C]",
+    },
+    {
+      label: "Development levy recovered",
+      value: formatNairaCompact(recovery.dev_levy_recovered),
+      hint: "levy payments before suspension",
       tone: "text-[#00695C]",
     },
     { label: "Cleared this month", value: recovery.cleared.toLocaleString(), hint: "paid off, left the book" },
@@ -26,7 +32,7 @@ export function RecoveryStrip({ recovery }: { recovery: FinancialOfficerDashboar
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-5 rounded-xl border border-gray-200 bg-white divide-x divide-gray-100">
+    <div className="grid grid-cols-2 lg:grid-cols-6 rounded-xl border border-gray-200 bg-white divide-x divide-gray-100">
       {cells.map((c) => (
         <div key={c.label} className="px-5 py-4">
           <p className="text-xs text-gray-500">{c.label}</p>
