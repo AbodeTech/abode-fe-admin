@@ -333,14 +333,6 @@ export function CreateUserPlanModal({ userId, type, open, onOpenChange }: Props)
     </div>
   );
 
-  const calculatedInput = (key: keyof FormState, label: string) => (
-    <div className="space-y-2" key={key}>
-      <Label htmlFor={`create-plan-${key}`}>{label} *</Label>
-      <Input id={`create-plan-${key}`} type="number" value={String(form[key])} readOnly />
-      <p className="text-xs text-muted-foreground">Calculated automatically from the price and tenor.</p>
-    </div>
-  );
-
   const toggle = (key: keyof FormState, label: string) => (
     <label className="flex items-center gap-2 text-sm" key={key}>
       <Checkbox
@@ -411,7 +403,6 @@ export function CreateUserPlanModal({ userId, type, open, onOpenChange }: Props)
                 {input('initial_payment', 'Contractual initial payment')}
                 {input('amount_paid', 'Actual cumulative amount paid')}
                 {input('tenor_months', 'Tenor (months)')}
-                {calculatedInput('monthly_payment', 'Monthly payment')}
               </>
             ) : (
               <>
@@ -419,11 +410,9 @@ export function CreateUserPlanModal({ userId, type, open, onOpenChange }: Props)
                 {input('land_initial_payment', 'Land initial payment')}
                 {input('land_amount_paid', 'Land amount paid')}
                 {input('land_tenor_months', 'Land tenor (includes initial-payment month)')}
-                {calculatedInput('land_monthly_payment', 'Land monthly payment')}
                 {input('document_price', 'Document price')}
                 {input('document_amount_paid', 'Document amount paid')}
                 {input('document_tenor_months', 'Document tenor (months)')}
-                {calculatedInput('document_monthly_payment', 'Document monthly payment')}
                 <div className="space-y-2">
                   <Label>Payment type *</Label>
                   <Select value={form.payment_type} onValueChange={(value) => set('payment_type', value as FormState['payment_type'])}>
