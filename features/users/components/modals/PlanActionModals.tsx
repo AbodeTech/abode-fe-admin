@@ -139,8 +139,9 @@ export function PlanBalanceAdjustmentModal(props: BaseProps & { hasDocumentPlan?
   );
 }
 
-export function PlanPaymentDateModal(props: BaseProps) {
+export function PlanPaymentDateModal(props: BaseProps & { hasDocumentPlan?: boolean }) {
   const mutation = useOverrideUserPlanPaymentDate();
+  const [paymentTarget, setPaymentTarget] = useState<'land' | 'document'>('land');
   const [date, setDate] = useState('');
   const [reason, setReason] = useState('');
   const [notify, setNotify] = useState(true);
@@ -151,6 +152,7 @@ export function PlanPaymentDateModal(props: BaseProps) {
         userId: props.userId,
         planId: props.planId,
         payload: {
+          payment_target: paymentTarget,
           new_date: new Date(`${date}T12:00:00`).toISOString(),
           reason,
           notify_user: notify,
@@ -172,6 +174,21 @@ export function PlanPaymentDateModal(props: BaseProps) {
           <DialogDescription>The backend only accepts a future date.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
+          {props.hasDocumentPlan && (
+            <div className="space-y-2">
+              <Label>Payment category</Label>
+              <Select
+                value={paymentTarget}
+                onValueChange={(value) => setPaymentTarget(value as 'land' | 'document')}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="land">Land payment</SelectItem>
+                  <SelectItem value="document">Document payment / development levy</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div className="space-y-2">
             <Label htmlFor="next-plan-payment">New date</Label>
             <Input id="next-plan-payment" type="date" value={date} onChange={(e) => setDate(e.target.value)} />

@@ -116,6 +116,7 @@ export const AdminAdjustPlanBalancePayloadSchema = PlanMutationReasonSchema.exte
 });
 
 export const AdminOverridePaymentDatePayloadSchema = PlanMutationReasonSchema.extend({
+  payment_target: z.enum(['land', 'document']).default('land'),
   new_date: z.string(),
 });
 
