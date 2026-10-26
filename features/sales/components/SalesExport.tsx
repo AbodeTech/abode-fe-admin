@@ -4,7 +4,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react'
 import { format as formatDateFn } from 'date-fns'
-import { useAuthStore } from '@/store/auth-store'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
@@ -384,9 +383,6 @@ const SortableItem = ({ id, label, category, color, onRemove, index }: any) => {
 // --- Main Component ---
 
 export function SalesExport({ filters }: { filters: SalesListFilters }) {
-  const { user } = useAuthStore()
-  const isSuperAdmin = Boolean(user?.role?.is_super_admin)
-
   const [open, setOpen] = useState(false)
   const [format, setFormat] = useState<ExportFormat>('csv')
   const [columnOrder, setColumnOrder] = useState<string[]>(getDefaultFieldOrder())
@@ -676,8 +672,6 @@ export function SalesExport({ filters }: { filters: SalesListFilters }) {
       onError: () => toast.error('Download failed. Please try again.'),
     })
   }
-
-  if (!isSuperAdmin) return null
 
   return (
     <div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end sm:gap-2">
