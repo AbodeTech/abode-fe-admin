@@ -255,7 +255,12 @@ export function UserAssetActions({ userId, asset, email }: UserAssetActionsProps
         </>
       )}
 
-      <PlanBalanceAdjustmentModal open={showBalance} onOpenChange={setShowBalance} {...target} />
+      <PlanBalanceAdjustmentModal
+        open={showBalance}
+        onOpenChange={setShowBalance}
+        hasDocumentPlan={Boolean(asset.document_plan)}
+        {...target}
+      />
       <PlanPaymentDateModal open={showDate} onOpenChange={setShowDate} {...target} />
       <ClosePlanModal open={showClose} onOpenChange={setShowClose} {...target} />
       <CloseAndRelocatePlanModal

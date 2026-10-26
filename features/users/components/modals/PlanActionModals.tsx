@@ -52,8 +52,9 @@ function NotifyToggle({ checked, onChange }: { checked: boolean; onChange: (valu
   );
 }
 
-export function PlanBalanceAdjustmentModal(props: BaseProps) {
+export function PlanBalanceAdjustmentModal(props: BaseProps & { hasDocumentPlan?: boolean }) {
   const mutation = useAdjustUserPlanBalance();
+  const [paymentTarget, setPaymentTarget] = useState<'land' | 'document'>('land');
   const [direction, setDirection] = useState<'credit' | 'debit'>('credit');
   const [amount, setAmount] = useState('');
   const [reason, setReason] = useState('');
@@ -65,6 +66,7 @@ export function PlanBalanceAdjustmentModal(props: BaseProps) {
         userId: props.userId,
         planId: props.planId,
         payload: {
+          payment_target: paymentTarget,
           direction,
           amount: Number(amount.replace(/,/g, '')),
           reason,
@@ -83,12 +85,27 @@ export function PlanBalanceAdjustmentModal(props: BaseProps) {
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Adjust plan balance</DialogTitle>
+          <DialogTitle>Adjust recorded payment</DialogTitle>
           <DialogDescription>
             Credit records more money paid; debit reverses money previously recorded as paid. A ledger transaction is always created.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
+          {props.hasDocumentPlan && (
+            <div className="space-y-2">
+              <Label>Payment category</Label>
+              <Select
+                value={paymentTarget}
+                onValueChange={(value) => setPaymentTarget(value as 'land' | 'document')}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="land">Land payment</SelectItem>
+                  <SelectItem value="document">Document payment / development levy</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div className="space-y-2">
             <Label>Direction</Label>
             <Select value={direction} onValueChange={(value) => setDirection(value as 'credit' | 'debit')}>
