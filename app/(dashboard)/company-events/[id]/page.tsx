@@ -65,6 +65,11 @@ function EventDetailContent() {
   const regSearchParam = searchParams.get("reg_search") || "";
   const regCategoryParam = (searchParams.get("reg_category") as RegistrationCategory | null) ?? null;
   const regStatusParam = (searchParams.get("reg_status") as EventAllocation['status'] | null) ?? null;
+  const regAttendanceTypeValue = searchParams.get("reg_attendance_type");
+  const regAttendanceTypeParam: "visitor" | "getting_land" | null =
+    regAttendanceTypeValue === "visitor" || regAttendanceTypeValue === "getting_land"
+      ? regAttendanceTypeValue
+      : null;
   const regPickupParam = searchParams.get("reg_pickup") ?? "";
 
   const [searchTerm, setSearchTerm] = useState(searchParam);
@@ -580,11 +585,13 @@ function EventDetailContent() {
             search={regSearchTerm}
             category={regCategoryParam ?? "all"}
             status={regStatusParam ?? 'all'}
+            attendanceType={regAttendanceTypeParam ?? "all"}
             pickupLocationId={regPickupParam}
             pickupLocations={event.pickup_locations}
             onSearchChange={setRegSearchTerm}
             onCategoryChange={(value) => updateParams({ reg_category: value === "all" ? null : value, reg_page: 1 })}
             onStatusChange={(value) => updateParams({ reg_status: value === 'all' ? null : value, reg_page: 1 })}
+            onAttendanceTypeChange={(value) => updateParams({ reg_attendance_type: value === "all" ? null : value, reg_page: 1 })}
             onPickupChange={(value) => updateParams({ reg_pickup: value || null, reg_page: 1 })}
           />
 
@@ -745,6 +752,7 @@ function EventDetailContent() {
               search={regSearchTerm}
               category={regCategoryParam ?? "all"}
               status={regStatusParam ?? 'all'}
+              attendanceType={regAttendanceTypeParam ?? "all"}
               pickupLocationId={regPickupParam}
               pickupLocations={event.pickup_locations}
               onSearchChange={setRegSearchTerm}
@@ -752,6 +760,7 @@ function EventDetailContent() {
                 updateParams({ reg_category: value === "all" ? null : value, reg_page: 1 })
               }
               onStatusChange={(value) => updateParams({ reg_status: value === 'all' ? null : value, reg_page: 1 })}
+              onAttendanceTypeChange={(value) => updateParams({ reg_attendance_type: value === "all" ? null : value, reg_page: 1 })}
               onPickupChange={(value) => updateParams({ reg_pickup: value || null, reg_page: 1 })}
             />
 
