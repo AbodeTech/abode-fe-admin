@@ -51,6 +51,8 @@ function position(overrides: Partial<SqmPosition>): SqmPosition {
     capacity_sqm: 0,
     selling_sqm: 0,
     sold_sqm: 0,
+    active_sqm: 0,
+    paid_in_full_sqm: 0,
     released_sqm: 0,
     available_sqm: 0,
     defaulted_sqm: 0,
@@ -180,6 +182,21 @@ async function main() {
       assert(value.assigned === 120 * 9_600_000, 'assigned value should be 120 units at 9.6m');
       const unpriced = lensFigures(realShaped, 'flex', () => null);
       assert(unpriced.assigned === null && unpriced.sold === null, 'a size with no price must give null, not a partial total');
+    })
+  );
+
+  results.push(
+    await run('PP-sold-splits-into-active-and-paid-in-full', () => {
+      const rows = [
+        position({ capacity_sqm: 3_000, sold_sqm: 1_500, active_sqm: 900, paid_in_full_sqm: 600 }),
+        position({ size_id: 's', size_sqm: 300, capacity_sqm: 3_000, sold_sqm: 1_500, active_sqm: 900, paid_in_full_sqm: 600 }),
+      ];
+      const [flex] = productPositions(rows);
+      // Pool row only, as with sold — the size row carries the same sqm again.
+      assert(flex.active_sqm === 900 && flex.paid_in_full_sqm === 600, 'expected the pool row split, not doubled');
+      const units = lensFigures(rows, 'flex', () => 1);
+      assert(units.active === 3 && units.paid_in_full === 2, `active/paid units should be 3/2, got ${units.active}/${units.paid_in_full}`);
+      assert(units.active + units.paid_in_full === units.sold, 'active + paid in full should equal sold');
     })
   );
 

@@ -38,6 +38,8 @@ type Position = {
   capacity_sqm: number;
   selling_sqm: number;
   sold_sqm: number;
+  active_sqm: number;
+  paid_in_full_sqm: number;
   released_sqm: number;
   available_sqm: number;
   defaulted_sqm: number;
@@ -86,6 +88,8 @@ function buildPositions(row: MockAsset): Position[] {
         capacity_sqm: poolCapacity,
         selling_sqm: 0,
         sold_sqm: 0,
+        active_sqm: 0,
+        paid_in_full_sqm: 0,
         released_sqm: 0,
         available_sqm: poolCapacity,
         defaulted_sqm: 0,
@@ -102,6 +106,9 @@ function buildPositions(row: MockAsset): Position[] {
       const shareOfEstate = totalUnitsAcrossEstate > 0 ? size.configured_units / totalUnitsAcrossEstate : 0;
       const soldUnits = active ? Math.round(row.sold_units * shareOfEstate) : 0;
       const reservedUnits = active ? Math.max(0, Math.round(row.reserved_units * shareOfEstate)) : 0;
+      // No plan statuses to read here, so roughly a third of sold units are
+      // treated as paid in full — enough to show both columns populated.
+      const paidInFullUnits = Math.floor(soldUnits / 3);
       const soldSqm = soldUnits * size.size_sqm;
       const sellingSqm = reservedUnits * size.size_sqm;
       const capacitySqm = size.size_sqm * size.configured_units;
@@ -113,6 +120,8 @@ function buildPositions(row: MockAsset): Position[] {
         capacity_sqm: capacitySqm,
         selling_sqm: sellingSqm,
         sold_sqm: soldSqm,
+        active_sqm: soldSqm - paidInFullUnits * size.size_sqm,
+        paid_in_full_sqm: paidInFullUnits * size.size_sqm,
         released_sqm: 0,
         available_sqm: Math.max(0, capacitySqm - sellingSqm - soldSqm),
         defaulted_sqm: 0,
@@ -181,6 +190,8 @@ export const sqmInventoryRoutes: MockRoutes = {
         capacity_sqm: positions.reduce((s, p) => s + p.capacity_sqm, 0),
         selling_sqm: positions.reduce((s, p) => s + p.selling_sqm, 0),
         sold_sqm: positions.reduce((s, p) => s + p.sold_sqm, 0),
+        active_sqm: positions.reduce((s, p) => s + p.active_sqm, 0),
+        paid_in_full_sqm: positions.reduce((s, p) => s + p.paid_in_full_sqm, 0),
         available_sqm: positions.reduce((s, p) => s + p.available_sqm, 0),
         released_sqm: positions.reduce((s, p) => s + p.released_sqm, 0),
         units: positions.reduce((s, p) => s + p.units, 0),

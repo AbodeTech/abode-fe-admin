@@ -31,6 +31,10 @@ export const SqmPositionSchema = z.object({
   capacity_sqm: z.number(),
   selling_sqm: z.number(),
   sold_sqm: z.number(),
+  /** Sold sqm on plans the client is still paying for. `active_sqm + paid_in_full_sqm === sold_sqm`. */
+  active_sqm: z.number(),
+  /** Sold sqm on plans with status `completed`. */
+  paid_in_full_sqm: z.number(),
   released_sqm: z.number(),
   available_sqm: z.number(),
   defaulted_sqm: z.number(),
@@ -50,6 +54,8 @@ export const SqmInventorySchema = z.object({
     capacity_sqm: z.number(),
     selling_sqm: z.number(),
     sold_sqm: z.number(),
+    active_sqm: z.number(),
+    paid_in_full_sqm: z.number(),
     available_sqm: z.number(),
     released_sqm: z.number(),
     units: z.number(),
@@ -60,6 +66,8 @@ export const SqmInventorySchema = z.object({
   contract_values: z.array(z.object({
     offer_type: OfferTypeSchema,
     sold_contract_value: z.number().nullable(),
+    active_contract_value: z.number().nullable(),
+    paid_in_full_contract_value: z.number().nullable(),
     defaulted_contract_value: z.number().nullable(),
   })).default([]),
   contract_values_note: z.string().optional(),
@@ -91,6 +99,8 @@ export type ProductPosition = {
   available_sqm: number;
   selling_sqm: number;
   sold_sqm: number;
+  active_sqm: number;
+  paid_in_full_sqm: number;
   defaulted_sqm: number;
   suspended_sqm: number;
   allocated_sqm: number;
@@ -120,6 +130,8 @@ export function productPositions(positions: SqmPosition[]): ProductPosition[] {
       available_sqm: sum(commercial, (row) => row.available_sqm),
       selling_sqm: sum(commercial, (row) => row.selling_sqm),
       sold_sqm: sum(commercial, (row) => row.sold_sqm),
+      active_sqm: sum(commercial, (row) => row.active_sqm),
+      paid_in_full_sqm: sum(commercial, (row) => row.paid_in_full_sqm),
       defaulted_sqm: sum(rows, (row) => row.defaulted_sqm),
       suspended_sqm: sum(rows, (row) => row.suspended_sqm),
       allocated_sqm: sum(rows, (row) => row.operational_overlay.system_allocated_sqm),
@@ -132,12 +144,17 @@ export function productPositions(positions: SqmPosition[]): ProductPosition[] {
 
 /* -------------------- units and value lenses -------------------- */
 
-/** One product's six table figures under one lens. `null` = not knowable, shown as an em-dash. */
+/**
+ * One product's table figures under one lens. `null` = not knowable, shown as
+ * an em-dash. `sold` is `active + paid_in_full`; the table shows the split.
+ */
 export type LensFigures = {
   assigned: number | null;
   available: number | null;
   selling: number | null;
   sold: number | null;
+  active: number | null;
+  paid_in_full: number | null;
   defaulted: number | null;
   allocated: number | null;
 };
@@ -147,6 +164,8 @@ const NO_FIGURES: LensFigures = {
   available: null,
   selling: null,
   sold: null,
+  active: null,
+  paid_in_full: null,
   defaulted: null,
   allocated: null,
 };
@@ -178,7 +197,16 @@ export function lensFigures(
   );
   if (sizeRows.length === 0) return NO_FIGURES;
 
-  const totals = { assigned: 0, available: 0, selling: 0, sold: 0, defaulted: 0, allocated: 0 };
+  const totals = {
+    assigned: 0,
+    available: 0,
+    selling: 0,
+    sold: 0,
+    active: 0,
+    paid_in_full: 0,
+    defaulted: 0,
+    allocated: 0,
+  };
   for (const row of sizeRows) {
     const worth = unitWorth(row.size_id as string);
     if (worth == null) return NO_FIGURES;
@@ -187,6 +215,8 @@ export function lensFigures(
     totals.available += units(row.available_sqm);
     totals.selling += units(row.selling_sqm);
     totals.sold += units(row.sold_sqm);
+    totals.active += units(row.active_sqm);
+    totals.paid_in_full += units(row.paid_in_full_sqm);
     totals.defaulted += units(row.defaulted_sqm);
     totals.allocated += units(row.operational_overlay.system_allocated_sqm);
   }
