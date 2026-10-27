@@ -1,14 +1,24 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 
 import { apiGet } from '@/lib/api-client';
 
 import { AmarisCountsSchema, AmarisQueryListSchema } from '../schemas/amaris.schema';
-import { amarisKeys, type AmarisListFilters } from './query-keys';
+import { amarisKeys, type AmarisCountFilters, type AmarisListFilters } from './query-keys';
 
 /** The BE defaults to 25 and caps at 100. */
 export const DEFAULT_AMARIS_LIMIT = 25;
+
+/** The filter params the list and the counts share. */
+const filterParams = (filters: AmarisCountFilters) => ({
+  audience: filters.audience,
+  channel: filters.channel,
+  answered: filters.answered === undefined ? undefined : String(filters.answered),
+  q: filters.q || undefined,
+  start_date: filters.start_date,
+  end_date: filters.end_date,
+});
 
 /**
  * GET /admin/amaris/queries — the log, newest first.
@@ -24,22 +34,22 @@ export const useAmarisQueries = (filters?: AmarisListFilters) => {
     queryKey: amarisKeys.list({ page, limit, ...rest }),
     queryFn: () =>
       apiGet('/admin/amaris/queries', AmarisQueryListSchema, {
-        params: {
-          page,
-          limit,
-          audience: rest.audience,
-          channel: rest.channel,
-          answered: rest.answered === undefined ? undefined : String(rest.answered),
-          q: rest.q || undefined,
-        },
+        params: { page, limit, ...filterParams(rest) },
       }),
   });
 };
 
-/** GET /admin/amaris/queries/counts — the stats strip. 30s-fresh is plenty for a log. */
-export const useAmarisCounts = () =>
+/**
+ * GET /admin/amaris/queries/counts — the stats strip. Takes the same filters
+ * as the list, and every card applies all of them, so with "Associate" on the
+ * Customer card reads 0. No filters gives the all-time totals. 30s-fresh is
+ * plenty for a log.
+ */
+export const useAmarisCounts = (filters: AmarisCountFilters = {}) =>
   useQuery({
-    queryKey: amarisKeys.counts(),
-    queryFn: () => apiGet('/admin/amaris/queries/counts', AmarisCountsSchema),
+    queryKey: amarisKeys.counts(filters),
+    queryFn: () =>
+      apiGet('/admin/amaris/queries/counts', AmarisCountsSchema, { params: filterParams(filters) }),
+    placeholderData: keepPreviousData,
     staleTime: 30_000,
   });
