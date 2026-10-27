@@ -237,6 +237,11 @@ export const PlanRowSchema = z.object({
   allocation_status: z.string().nullable().default(null),
   product: z.enum(['flex', 'full_ownership', 'commercial']),
   purchase_date: z.string().nullable(),
+  /**
+   * When the land was paid off. Null until it is, and on older plans that
+   * never recorded the date. Document payments don't count.
+   */
+  payment_completed_at: z.string().nullable().default(null),
   payment_status: z.enum(['in_plan', 'completed', 'close_to_default']),
   payment_label: z.string(),
   onboarding: z.enum(['call_pending', 'confirmed', 'disputed', 'not_applicable']),

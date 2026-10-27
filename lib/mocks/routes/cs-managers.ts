@@ -190,6 +190,7 @@ type MockPlan = {
   allocation_status: string;
   product: 'flex' | 'full_ownership' | 'commercial';
   purchase_date: string;
+  payment_completed_at?: string;
   payment_status: MockPaymentStatus;
   payment_label: string;
   onboarding: MockOnboardingStatus;
@@ -236,6 +237,7 @@ const plans: MockPlan[] = [
     allocation_status: 'pending',
     product: 'flex',
     purchase_date: daysAgo(3),
+    payment_completed_at: daysAgo(2),
     payment_status: 'completed',
     payment_label: 'Fully paid',
     onboarding: 'call_pending',
@@ -280,6 +282,7 @@ const plans: MockPlan[] = [
     allocation_status: 'allocated',
     product: 'full_ownership',
     purchase_date: daysAgo(90),
+    payment_completed_at: daysAgo(50),
     payment_status: 'completed',
     payment_label: 'Fully paid',
     onboarding: 'confirmed',
@@ -324,6 +327,7 @@ const plans: MockPlan[] = [
     allocation_status: 'allocated',
     product: 'full_ownership',
     purchase_date: daysAgo(45),
+    payment_completed_at: daysAgo(12),
     payment_status: 'completed',
     payment_label: 'Fully paid',
     onboarding: 'confirmed',
@@ -617,6 +621,7 @@ function toPlanRow(p: MockPlan) {
     allocation_status: p.allocation_status,
     product: p.product,
     purchase_date: p.purchase_date,
+    payment_completed_at: p.payment_status === 'completed' ? (p.payment_completed_at ?? null) : null,
     payment_status: p.payment_status,
     payment_label: p.payment_label,
     onboarding: p.onboarding,
