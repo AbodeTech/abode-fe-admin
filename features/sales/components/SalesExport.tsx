@@ -692,10 +692,10 @@ export function SalesExport({ filters }: { filters: SalesListFilters }) {
             Custom Export
           </Button>
         </DialogTrigger>
-        <DialogContent className="flex h-[min(85vh,900px)] w-[min(100vw-1rem,56rem)] max-w-[calc(100vw-1rem)] flex-col gap-0 overflow-hidden p-0 sm:max-h-[85vh]">
+        <DialogContent className="flex h-[min(90dvh,900px)] w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] flex-col gap-0 overflow-hidden p-0 sm:h-[min(85dvh,900px)] sm:w-full sm:max-w-4xl">
 
           {/* Header */}
-          <div className="shrink-0 border-b bg-muted/20 px-4 py-3 sm:px-6 sm:py-4">
+          <div className="shrink-0 border-b bg-muted/20 py-3 pl-4 pr-12 sm:py-4 sm:pl-6 sm:pr-14">
             <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
                 <DialogTitle className="flex flex-wrap items-center gap-2 text-lg font-semibold sm:text-xl">
@@ -820,7 +820,7 @@ export function SalesExport({ filters }: { filters: SalesListFilters }) {
                       onChange={(e) => setFieldSearch(e.target.value)}
                     />
                   </div>
-                  <div className="flex gap-2 items-center overflow-x-auto pb-1 sm:pb-0 no-scrollbar">
+                  <div className="flex gap-2 items-center overflow-x-auto pb-1 sm:pb-0">
                     <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">Quick Sets:</span>
                     {Object.entries(PRESETS).map(([key, preset]) => (
                       <Button
@@ -868,7 +868,7 @@ export function SalesExport({ filters }: { filters: SalesListFilters }) {
                             </Badge>
                           </Label>
                         </div>
-                        <div className="grid grid-cols-1 gap-3 pl-0 sm:grid-cols-2 sm:pl-6 md:grid-cols-4">
+                        <div className="grid grid-cols-1 gap-3 pl-0 sm:grid-cols-2 sm:pl-6 md:grid-cols-3 lg:grid-cols-4">
                           {matchingFields.map(fieldKey => (
                             <div
                               key={fieldKey}
@@ -900,7 +900,7 @@ export function SalesExport({ filters }: { filters: SalesListFilters }) {
             <TabsContent value="arrange" className="flex-1 overflow-hidden flex-col m-0 p-0 data-[state=active]:flex">
               <div className="flex-1 flex flex-col md:flex-row h-full">
                 {/* List Area */}
-                <div className="flex-1 flex flex-col border-r bg-muted/10 min-h-0">
+                <div className="flex-1 flex flex-col md:border-r bg-muted/10 min-h-0">
                   <div className="p-3 border-b flex justify-between items-center bg-background/50 backdrop-blur">
                     <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Drag to Reorder</span>
                     <Button variant="ghost" size="sm" onClick={() => setColumnOrder(getDefaultFieldOrder())} className="h-7 text-xs">
@@ -939,36 +939,33 @@ export function SalesExport({ filters }: { filters: SalesListFilters }) {
                     </h4>
                     <p className="text-xs text-muted-foreground mt-1">This is how your columns will appear in the final file.</p>
                   </div>
-                  <div className="flex-1 p-6 overflow-auto">
+                  <div className="flex-1 min-h-0 overflow-auto p-3 lg:p-6">
                     {columnOrder.length === 0 ? (
                       <div className="h-full flex flex-col items-center justify-center text-muted-foreground border-2 border-dashed rounded-lg">
                         <LayoutTemplate className="h-10 w-10 mb-2 opacity-20" />
                         <p>No columns selected</p>
                       </div>
                     ) : (
-                      <div className="bg-white border rounded-md shadow-sm overflow-hidden">
+                      // One scroll container (the parent) so the header and rows scroll together
+                      <div className="w-max min-w-full overflow-hidden rounded-md border bg-white shadow-sm">
                         {/* Mock Header */}
-                        <div className="flex border-b bg-slate-100 divide-x">
-                          <div className="w-10 p-2 text-xs font-bold text-center text-slate-400">#</div>
-                          <div className="flex-1 flex overflow-x-auto divide-x no-scrollbar">
-                            {columnOrder.map((col) => (
-                              <div key={col} className="px-4 py-2 text-xs font-bold text-slate-700 whitespace-nowrap min-w-[100px] bg-slate-50">
-                                {ALL_FIELDS[col]?.label}
-                              </div>
-                            ))}
-                          </div>
+                        <div className="flex divide-x border-b bg-slate-100">
+                          <div className="sticky left-0 z-10 w-10 shrink-0 bg-slate-100 p-2 text-center text-xs font-bold text-slate-400">#</div>
+                          {columnOrder.map((col) => (
+                            <div key={col} className="min-w-25 shrink-0 whitespace-nowrap bg-slate-50 px-4 py-2 text-xs font-bold text-slate-700">
+                              {ALL_FIELDS[col]?.label}
+                            </div>
+                          ))}
                         </div>
                         {/* Mock Rows */}
                         {[1, 2, 3].map(row => (
-                          <div key={row} className="flex border-b last:border-0 divide-x hover:bg-slate-50">
-                            <div className="w-10 p-2 text-xs text-center text-slate-400">{row}</div>
-                            <div className="flex-1 flex overflow-x-auto divide-x no-scrollbar">
-                              {columnOrder.map((col) => (
-                                <div key={col} className="px-4 py-2 text-xs text-slate-400 whitespace-nowrap min-w-[100px]">
-                                  ---
-                                </div>
-                              ))}
-                            </div>
+                          <div key={row} className="flex divide-x border-b last:border-0 hover:bg-slate-50">
+                            <div className="sticky left-0 z-10 w-10 shrink-0 bg-white p-2 text-center text-xs text-slate-400">{row}</div>
+                            {columnOrder.map((col) => (
+                              <div key={col} className="min-w-25 shrink-0 whitespace-nowrap px-4 py-2 text-xs text-slate-400">
+                                ---
+                              </div>
+                            ))}
                           </div>
                         ))}
                       </div>
@@ -979,7 +976,7 @@ export function SalesExport({ filters }: { filters: SalesListFilters }) {
             </TabsContent>
           </Tabs>
 
-          <DialogFooter className="z-10 flex shrink-0 flex-col gap-2 border-t bg-background px-4 py-3 sm:flex-row sm:justify-end sm:px-6 sm:py-4">
+          <DialogFooter className="z-10 flex shrink-0 flex-col-reverse gap-2 border-t bg-background px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 sm:flex-row sm:justify-end sm:px-6 sm:py-4">
             <Button variant="ghost" className="w-full sm:w-auto" onClick={() => setOpen(false)}>Cancel</Button>
             <Button
               onClick={handleDownload}
@@ -996,7 +993,7 @@ export function SalesExport({ filters }: { filters: SalesListFilters }) {
 
           {/* Save Template Nested Dialog */}
           <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
-            <DialogContent className="max-w-md">
+            <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-md">
               <DialogHeader>
                 <DialogTitle>{editingTemplate ? 'Update Template' : 'Save New Template'}</DialogTitle>
                 <DialogDescription>Save your current column configuration for future use.</DialogDescription>
