@@ -67,11 +67,17 @@ export function ChangeManagerDialog({
   const { data: managerDoc } = useAssociateManager(
     isUnassignedSource || !sourceId ? null : sourceId
   );
-  const { data: unassignedData } = useUnassignedPros({
-    page: 1,
-    limit: MAX_UNASSIGNED_LIMIT,
-    q: isUnassignedSource ? search || null : null,
-  });
+  const unassignedQuery = useUnassignedPros(
+    { page: 1, limit: MAX_UNASSIGNED_LIMIT, q: search || null },
+    { enabled: open && isUnassignedSource }
+  );
+  // The badge already requests one row. Reuse that smaller request if the
+  // full page fails, so the admin can still find and assign a Pro by search.
+  const fallbackQuery = useUnassignedPros(
+    { page: 1, limit: 1, q: search || null },
+    { enabled: open && isUnassignedSource && unassignedQuery.isError && !unassignedQuery.data }
+  );
+  const unassignedData = unassignedQuery.data ?? fallbackQuery.data;
 
   const { mutateAsync, isPending } = useBulkAssignPros();
 
@@ -106,13 +112,16 @@ export function ChangeManagerDialog({
     return [];
   }, [isUnassignedSource, unassignedData?.items, managerDoc?.associate_pros]);
 
-  const filteredPros = sourcePros.filter((p) => {
-    const term = search.toLowerCase();
-    return (
-      `${p.firstName} ${p.lastName}`.toLowerCase().includes(term) ||
-      p.email.toLowerCase().includes(term)
-    );
-  });
+  // The unassigned pool is already filtered by the API, including phone searches.
+  const filteredPros = isUnassignedSource
+    ? sourcePros
+    : sourcePros.filter((p) => {
+        const term = search.toLowerCase();
+        return (
+          `${p.firstName} ${p.lastName}`.toLowerCase().includes(term) ||
+          p.email.toLowerCase().includes(term)
+        );
+      });
 
   const togglePro = (id: string) => {
     setSelectedPros((prev) => {
@@ -258,9 +267,29 @@ export function ChangeManagerDialog({
                 <p className="text-center text-sm text-gray-500 py-10">
                   Select a source to see Pros.
                 </p>
+              ) : isUnassignedSource &&
+                (unassignedQuery.isPending ||
+                  (unassignedQuery.isError && !unassignedQuery.data && fallbackQuery.isPending)) ? (
+                <p className="text-center text-sm text-gray-500 py-10">
+                  Loading unassigned Pros…
+                </p>
+              ) : isUnassignedSource &&
+                unassignedQuery.isError &&
+                !unassignedQuery.data &&
+                fallbackQuery.isError ? (
+                <div className="text-center text-sm text-red-600 py-8 px-3">
+                  <p>Could not load unassigned Pros: {fallbackQuery.error.message}</p>
+                  <button
+                    type="button"
+                    onClick={() => void unassignedQuery.refetch()}
+                    className="mt-2 text-[#00695C] underline"
+                  >
+                    Retry
+                  </button>
+                </div>
               ) : filteredPros.length === 0 ? (
                 <p className="text-center text-sm text-gray-500 py-10">
-                  {isUnassignedSource
+                  {isUnassignedSource && !search
                     ? "Unassigned pool is empty."
                     : "No Pros match your search."}
                 </p>
@@ -290,6 +319,20 @@ export function ChangeManagerDialog({
             {selectedPros.size} of {sourcePros.length} Pros selected · Changes
             take effect immediately.
           </p>
+          {isUnassignedSource && unassignedQuery.isError && fallbackQuery.data && (
+            <p className="text-xs text-amber-700">
+              The full list could not load. Showing one Pro at a time; search by name,
+              email, or phone to find someone else.
+            </p>
+          )}
+          {isUnassignedSource &&
+            !unassignedQuery.isError &&
+            (unassignedData?.meta.total ?? 0) > sourcePros.length && (
+              <p className="text-xs text-gray-500">
+                Showing the first {sourcePros.length} of {unassignedData?.meta.total} unassigned Pros.
+                Search to find others.
+              </p>
+            )}
         </div>
 
         <DialogFooter>
