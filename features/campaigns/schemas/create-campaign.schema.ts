@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { ELIGIBLE_ASSET_TYPES, RAFFLE_PRIZE_KINDS, REWARD_TYPES } from './campaign.schema';
+import { ELIGIBLE_ASSET_TYPES, RAFFLE_PRIZE_KINDS, REWARD_TYPES, TICKET_PREFIX_SOURCES } from './campaign.schema';
 
 export const ELIGIBLE_STATUSES = [
   'guest',
@@ -50,6 +50,7 @@ export const CreateCampaignSchema = z
     recipient_buyer: z.boolean(),
     recipient_referrer: z.boolean(),
     ticket_id_prefix: z.string().max(4).optional().or(z.literal('')),
+    ticket_id_prefix_source: z.enum(TICKET_PREFIX_SOURCES),
     buyer_eligible_statuses: z.array(z.string()),
     referrer_eligible_statuses: z.array(z.string()),
     eligible_asset_types: z.array(z.enum(ELIGIBLE_ASSET_TYPES)),
@@ -67,7 +68,10 @@ export const CreateCampaignSchema = z
     path: ['end_date'],
   })
   .refine(
-    (data) => data.reward_type !== 'ticket' || Boolean(data.ticket_id_prefix && data.ticket_id_prefix.trim()),
+    (data) =>
+      data.reward_type !== 'ticket' ||
+      data.ticket_id_prefix_source === 'asset' ||
+      Boolean(data.ticket_id_prefix && data.ticket_id_prefix.trim()),
     {
       message: 'Ticket ID prefix is required for ticket rewards',
       path: ['ticket_id_prefix'],
@@ -120,6 +124,7 @@ export const STEP_FIELDS: Record<
     'recipient_buyer',
     'recipient_referrer',
     'ticket_id_prefix',
+    'ticket_id_prefix_source',
     'checkpoints',
     'raffle_prizes',
     'leaderboard_masking_enabled',
@@ -143,6 +148,7 @@ export const CREATE_CAMPAIGN_DEFAULTS: CreateCampaignDto = {
   recipient_buyer: true,
   recipient_referrer: true,
   ticket_id_prefix: '',
+  ticket_id_prefix_source: 'fixed',
   buyer_eligible_statuses: [],
   referrer_eligible_statuses: [],
   eligible_asset_types: [],
