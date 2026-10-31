@@ -4,7 +4,11 @@ import { CheckCircle2, Eye, XCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   Table,
   TableBody,
@@ -38,7 +42,11 @@ function formatDate(value: string | null | undefined): string {
   if (!value) return "—";
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleDateString("en-NG", { year: "numeric", month: "short", day: "numeric" });
+  return parsed.toLocaleDateString("en-NG", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
 }
 
 /** `/users/:id`, or null when the ref is missing entirely. */
@@ -65,7 +73,9 @@ function Applicant({ upgrade }: { upgrade: Upgrade }) {
           kind="applicant"
         />
       </div>
-      {email ? <p className="truncate text-xs text-muted-foreground">{email}</p> : null}
+      {/*{email ? (
+        <p className="truncate text-xs text-muted-foreground">{email}</p>
+      ) : null}*/}
     </div>
   );
 }
@@ -115,9 +125,13 @@ function PaymentEvidence({ upgrade }: { upgrade: Upgrade }) {
 
   return (
     <div className="min-w-0 space-y-1">
-      {upgrade.bank_name ? <p className="text-sm">{upgrade.bank_name}</p> : null}
+      {upgrade.bank_name ? (
+        <p className="text-sm">{upgrade.bank_name}</p>
+      ) : null}
       {upgrade.reference_no ? (
-        <p className="truncate font-mono text-xs text-muted-foreground">{upgrade.reference_no}</p>
+        <p className="truncate font-mono text-xs text-muted-foreground">
+          {upgrade.reference_no}
+        </p>
       ) : null}
       {upgrade.file_url ? (
         <ViewTransactionEvidence
@@ -147,14 +161,19 @@ function PaymentEvidence({ upgrade }: { upgrade: Upgrade }) {
 }
 
 function Fee({ upgrade }: { upgrade: Upgrade }) {
-  const discounted = upgrade.discount_amount != null && upgrade.discount_amount > 0;
+  const discounted =
+    upgrade.discount_amount != null && upgrade.discount_amount > 0;
 
   return (
     <div className="space-y-0.5">
-      <p className="text-sm font-medium tabular-nums">{formatNaira(upgrade.fee_amount)}</p>
+      <p className="text-sm font-medium tabular-nums">
+        {formatNaira(upgrade.fee_amount)}
+      </p>
       {discounted ? (
         <p className="text-xs text-muted-foreground">
-          {upgrade.coupon_code_snapshot ? `${upgrade.coupon_code_snapshot} · ` : ""}
+          {upgrade.coupon_code_snapshot
+            ? `${upgrade.coupon_code_snapshot} · `
+            : ""}
           −{formatNaira(upgrade.discount_amount)}
         </p>
       ) : null}
@@ -261,14 +280,16 @@ export function UpgradesTable({
               <TableHead>Fee</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Requested</TableHead>
-              {canReview ? <TableHead className="w-px">Action</TableHead> : null}
+              {canReview ? (
+                <TableHead className="w-px">Action</TableHead>
+              ) : null}
               <TableHead>Payment evidence</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {rows.map((upgrade) => (
               <TableRow key={upgrade._id}>
-                <TableCell className="max-w-[14rem] whitespace-normal wrap-break-word">
+                <TableCell className="min-w-[14rem] max-w-[14rem] whitespace-normal wrap-break-word">
                   <Applicant upgrade={upgrade} />
                 </TableCell>
                 <TableCell className="max-w-[12rem] whitespace-normal wrap-break-word text-sm">
@@ -283,7 +304,9 @@ export function UpgradesTable({
                 <TableCell className="text-sm whitespace-nowrap">
                   {USER_TIER_LABELS[upgrade.from_tier]}
                   <span className="mx-1 text-muted-foreground">→</span>
-                  <span className="font-medium">{USER_TIER_LABELS[upgrade.to_tier]}</span>
+                  <span className="font-medium">
+                    {USER_TIER_LABELS[upgrade.to_tier]}
+                  </span>
                 </TableCell>
                 <TableCell className="text-sm">
                   {UPGRADE_PAYMENT_METHOD_LABELS[upgrade.payment_method]}
@@ -323,8 +346,14 @@ export function UpgradesTable({
               </span>
             }
           >
-            <AdminMobileField label="Referrer" value={<Referrer upgrade={upgrade} />} />
-            <AdminMobileField label="Phone" value={personPhone(upgrade.user) ?? "—"} />
+            <AdminMobileField
+              label="Referrer"
+              value={<Referrer upgrade={upgrade} />}
+            />
+            <AdminMobileField
+              label="Phone"
+              value={personPhone(upgrade.user) ?? "—"}
+            />
             <AdminMobileField
               label="Referrer phone"
               value={personPhone(upgrade.referrer) ?? "—"}
@@ -338,10 +367,19 @@ export function UpgradesTable({
               value={UPGRADE_PAYMENT_METHOD_LABELS[upgrade.payment_method]}
             />
             <AdminMobileField label="Fee" value={<Fee upgrade={upgrade} />} />
-            <AdminMobileField label="Requested" value={formatDate(upgrade.createdAt)} />
-            <AdminMobileField label="Evidence" value={<PaymentEvidence upgrade={upgrade} />} />
+            <AdminMobileField
+              label="Requested"
+              value={formatDate(upgrade.createdAt)}
+            />
+            <AdminMobileField
+              label="Evidence"
+              value={<PaymentEvidence upgrade={upgrade} />}
+            />
             {upgrade.decline_reason ? (
-              <AdminMobileField label="Decline reason" value={upgrade.decline_reason} />
+              <AdminMobileField
+                label="Decline reason"
+                value={upgrade.decline_reason}
+              />
             ) : null}
             {canReview && upgrade.status === "pending" ? (
               <AdminMobileField label="Actions" value={actions(upgrade)} />
