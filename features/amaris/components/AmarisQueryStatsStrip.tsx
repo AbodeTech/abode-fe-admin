@@ -12,17 +12,19 @@ import {
 
 import { cn } from "@/lib/utils";
 
+import type { AmarisCountFilters } from "../hooks/query-keys";
 import { useAmarisCounts } from "../hooks/use-amaris-queries";
 
 /**
- * Counts for every question put to Amaris. The "No answer" tile is the one
+ * Counts for the questions matching the page's filters (all time when none
+ * are set). The "No answer" tile is the one
  * that earns the strip its place: it is the handbook-gap backlog.
  *
  * Web/WhatsApp split is new with the REST module — v1's GraphQL log had no
  * channel concept.
  */
-export function AmarisQueryStatsStrip() {
-  const { data, isLoading } = useAmarisCounts();
+export function AmarisQueryStatsStrip({ filters }: { filters?: AmarisCountFilters }) {
+  const { data, isLoading, isPlaceholderData } = useAmarisCounts(filters);
 
   const stats = [
     {
@@ -71,7 +73,12 @@ export function AmarisQueryStatsStrip() {
   ] as const;
 
   return (
-    <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+    <div
+      className={cn(
+        "grid min-w-0 grid-cols-2 gap-3 transition-opacity sm:grid-cols-4 lg:grid-cols-7",
+        isPlaceholderData && "opacity-60"
+      )}
+    >
       {stats.map((stat) => (
         <div
           key={stat.label}

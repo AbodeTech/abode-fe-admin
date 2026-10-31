@@ -26,7 +26,8 @@ const COLUMNS = [
   { key: "assigned", label: "Assigned" },
   { key: "available", label: "Available" },
   { key: "selling", label: "Selling" },
-  { key: "sold", label: "Sold" },
+  { key: "active", label: "Active" },
+  { key: "paid_in_full", label: "Sold — Client paid 100%" },
   { key: "defaulted", label: "Defaulted retained" },
   { key: "allocated", label: "Allocated" },
 ] as const satisfies readonly { key: keyof LensFigures; label: string }[];
@@ -35,7 +36,7 @@ const LENS_NOTES: Record<Lens, string | null> = {
   sqm: null,
   units: "Units are counted from land already divided into sizes. A product with no sizes has no unit count.",
   value:
-    "Assigned, Available, Selling and Allocated are estimates at today's catalogue price. Sold and Defaulted retained use the plan's contract price when its held land matches the sqm ledger; a dash means that value cannot be reconciled. Contract value is not cash received.",
+    "Assigned, Available, Selling and Allocated are estimates at today's catalogue price. Active, Sold — Client paid 100% and Defaulted retained use the plan's contract price when its held land matches the sqm ledger; a dash means that value cannot be reconciled. Contract value is not cash received.",
 };
 
 /** `null` is "not knowable from the backend", shown as an em-dash — never a zero. */
@@ -88,20 +89,23 @@ function currentPriceBySize(asset: AssetDetail | undefined): Map<string, number>
  * SQM lens (read straight from the backend):
  *  - Assigned            the product's land pool. From the ledger's pool row
  *                        once it exists, otherwise from the land account.
- *  - Available / Selling / Sold
+ *  - Available / Selling / Active / Sold — Client paid 100%
  *                        GET .../sqm-inventory, the product's pool row only
  *                        (see `ProductPosition` for why not the size rows).
- *                        "Selling" is what the ledger holds as reserved,
- *                        "Sold" what it holds as committed, and Available is
- *                        the pool minus both.
+ *                        "Selling" is what the ledger holds as reserved, and
+ *                        committed land is split by plan status: "Active"
+ *                        while the client is still paying, "paid 100%" once
+ *                        the plan is completed. Available is the pool minus
+ *                        reserved and committed.
  *  - Defaulted retained  sqm on live plans flagged as defaulted. A subset of
  *                        Selling/Sold, not a fifth bucket — the land is still
  *                        held for the customer.
  *  - Allocated           sqm of exact plots bound to a customer's plan.
  *
  * Units are derived from the per-size ledger rows. In the Value lens, stock
- * without a buyer is valued at today's catalogue price, while Sold and
- * Defaulted retained use held plans' contract prices returned by the backend.
+ * without a buyer is valued at today's catalogue price, while Active, paid
+ * 100% and Defaulted retained use held plans' contract prices returned by the
+ * backend.
  *
  * There is no per-product "Event reserved" column: event places are first
  * come, first served for eligible customers, and Developer Plot is excluded.
@@ -133,6 +137,8 @@ export function ProductPositionTable({ assetId }: { assetId: string }) {
         available: position?.available_sqm ?? null,
         selling: position?.selling_sqm ?? null,
         sold: position?.sold_sqm ?? null,
+        active: position?.active_sqm ?? null,
+        paid_in_full: position?.paid_in_full_sqm ?? null,
         defaulted: position?.defaulted_sqm ?? null,
         allocated: position?.allocated_sqm ?? null,
       };
@@ -142,7 +148,13 @@ export function ProductPositionTable({ assetId }: { assetId: string }) {
     const figures = lensFigures(positions, offerType, worth);
     const contract = contractValues.get(offerType);
     const valued = lens === "value"
-      ? { ...figures, sold: contract?.sold_contract_value ?? null, defaulted: contract?.defaulted_contract_value ?? null }
+      ? {
+          ...figures,
+          sold: contract?.sold_contract_value ?? null,
+          active: contract?.active_contract_value ?? null,
+          paid_in_full: contract?.paid_in_full_contract_value ?? null,
+          defaulted: contract?.defaulted_contract_value ?? null,
+        }
       : figures;
     if (valued.assigned != null) return valued;
 

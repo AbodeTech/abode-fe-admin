@@ -104,7 +104,7 @@ export function TopAssociatesHeader({
         <span className="shrink-0 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
           Filters
         </span>
-        <DateFilter />
+        <DateFilter showYearOption />
         <FilterSelect
           data={[
             { label: "All Asset Types", value: "all" },
