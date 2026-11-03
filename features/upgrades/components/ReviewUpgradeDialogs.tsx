@@ -34,12 +34,21 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { UnresolvedRef } from "@/components/shared/UnresolvedRef";
 import { formatNaira } from "@/lib/utils/format";
 
 import {
   DECLINE_REASON_MIN,
+  UPGRADE_DECLINE_PRESETS,
   USER_TIER_LABELS,
   declineUpgradeSchema,
   personId,
@@ -145,6 +154,8 @@ export function ApproveUpgradeDialog({
 
 /* -------------------- decline -------------------- */
 
+const CUSTOM_REASON = "__custom__";
+
 export function DeclineUpgradeDialog({
   upgrade,
   onOpenChange,
@@ -167,6 +178,14 @@ export function DeclineUpgradeDialog({
   // `useWatch` rather than `form.watch()` — the latter returns a fresh function
   // each render, which makes React Compiler skip memoising this component.
   const reason = useWatch({ control: form.control, name: "reason" }) ?? "";
+
+  // The dropdown mirrors the textarea: it shows a preset only while the text
+  // still matches it exactly; once edited (or empty) it reads as custom.
+  const presetValue = (UPGRADE_DECLINE_PRESETS as readonly string[]).includes(reason)
+    ? reason
+    : reason
+      ? CUSTOM_REASON
+      : "";
 
   if (!upgrade) return null;
 
@@ -200,6 +219,32 @@ export function DeclineUpgradeDialog({
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="decline-preset">Choose a reason</Label>
+              <Select
+                value={presetValue}
+                onValueChange={(value) =>
+                  form.setValue("reason", value === CUSTOM_REASON ? "" : value, {
+                    shouldDirty: true,
+                    shouldValidate: form.formState.isSubmitted,
+                  })
+                }
+                disabled={decline.isPending}
+              >
+                <SelectTrigger id="decline-preset" className="w-full">
+                  <SelectValue placeholder="Select a reason, or write your own" />
+                </SelectTrigger>
+                <SelectContent className="max-w-[min(32rem,calc(100vw-2rem))]">
+                  {UPGRADE_DECLINE_PRESETS.map((preset) => (
+                    <SelectItem key={preset} value={preset} className="whitespace-normal">
+                      {preset}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value={CUSTOM_REASON}>Write my own</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <FormField
               control={form.control}
               name="reason"
