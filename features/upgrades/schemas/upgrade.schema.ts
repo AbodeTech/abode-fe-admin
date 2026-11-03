@@ -168,20 +168,6 @@ export type Upgrade = z.infer<typeof UpgradeSchema>;
 export const DECLINE_REASON_MIN = 20;
 export const DECLINE_REASON_MAX = 500;
 
-/**
- * Preset decline reasons offered in the decline dialog. Picking one fills the
- * reason box, which stays editable. Each is written for the applicant and is
- * already over DECLINE_REASON_MIN characters.
- */
-export const UPGRADE_DECLINE_PRESETS = [
-  "We could not find a payment matching this upgrade request. Please check the transfer details and try again.",
-  "The amount paid does not match the upgrade fee. Please contact support so we can resolve the difference.",
-  "The payment reference provided does not match any transaction we received.",
-  "This is a duplicate of an upgrade request that has already been submitted.",
-  "Some required information is missing or incomplete. Please update your details and submit again.",
-  "Your account is not currently eligible for this upgrade. Please contact support for more details.",
-] as const;
-
 export const declineUpgradeSchema = z.object({
   reason: z
     .string()

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
@@ -44,11 +44,11 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { UnresolvedRef } from "@/components/shared/UnresolvedRef";
+import { DECLINE_REASON_PRESETS } from "@/lib/decline-reasons";
 import { formatNaira } from "@/lib/utils/format";
 
 import {
   DECLINE_REASON_MIN,
-  UPGRADE_DECLINE_PRESETS,
   USER_TIER_LABELS,
   declineUpgradeSchema,
   personId,
@@ -154,7 +154,7 @@ export function ApproveUpgradeDialog({
 
 /* -------------------- decline -------------------- */
 
-const CUSTOM_REASON = "__custom__";
+const OTHER_REASON = "__other__";
 
 export function DeclineUpgradeDialog({
   upgrade,
@@ -170,6 +170,17 @@ export function DeclineUpgradeDialog({
     defaultValues: { reason: "" },
   });
 
+  // Which dropdown option is picked: a preset, OTHER_REASON, or "" (nothing yet).
+  const [choice, setChoice] = useState("");
+
+  // Start each newly opened upgrade with nothing picked (reset during render,
+  // not in an effect, per React's "adjusting state when a prop changes").
+  const [choiceFor, setChoiceFor] = useState(upgrade);
+  if (choiceFor !== upgrade) {
+    setChoiceFor(upgrade);
+    setChoice("");
+  }
+
   const { reset } = form;
   useEffect(() => {
     if (upgrade) reset({ reason: "" });
@@ -179,13 +190,16 @@ export function DeclineUpgradeDialog({
   // each render, which makes React Compiler skip memoising this component.
   const reason = useWatch({ control: form.control, name: "reason" }) ?? "";
 
-  // The dropdown mirrors the textarea: it shows a preset only while the text
-  // still matches it exactly; once edited (or empty) it reads as custom.
-  const presetValue = (UPGRADE_DECLINE_PRESETS as readonly string[]).includes(reason)
-    ? reason
-    : reason
-      ? CUSTOM_REASON
-      : "";
+  const isOther = choice === OTHER_REASON;
+
+  const handleChoiceChange = (value: string) => {
+    setChoice(value);
+    // A preset is the reason as-is; "Other" starts from an empty box to type in.
+    form.setValue("reason", value === OTHER_REASON ? "" : value, {
+      shouldDirty: true,
+      shouldValidate: form.formState.isSubmitted,
+    });
+  };
 
   if (!upgrade) return null;
 
@@ -218,55 +232,68 @@ export function DeclineUpgradeDialog({
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          {/* min-w-0: the dialog is a grid, and without it a long selected
+              reason stretches the form past the dialog's edge. */}
+          <form onSubmit={form.handleSubmit(onSubmit)} className="min-w-0 space-y-4">
             <div className="space-y-2">
               <Label htmlFor="decline-preset">Choose a reason</Label>
-              <Select
-                value={presetValue}
-                onValueChange={(value) =>
-                  form.setValue("reason", value === CUSTOM_REASON ? "" : value, {
-                    shouldDirty: true,
-                    shouldValidate: form.formState.isSubmitted,
-                  })
-                }
-                disabled={decline.isPending}
-              >
-                <SelectTrigger id="decline-preset" className="w-full">
-                  <SelectValue placeholder="Select a reason, or write your own" />
+              <Select value={choice} onValueChange={handleChoiceChange} disabled={decline.isPending}>
+                <SelectTrigger
+                  id="decline-preset"
+                  className="w-full min-w-0 *:data-[slot=select-value]:block *:data-[slot=select-value]:truncate"
+                >
+                  <SelectValue placeholder="Select a reason" />
                 </SelectTrigger>
-                <SelectContent className="max-w-[min(32rem,calc(100vw-2rem))]">
-                  {UPGRADE_DECLINE_PRESETS.map((preset) => (
-                    <SelectItem key={preset} value={preset} className="whitespace-normal">
-                      {preset}
+                {/* popper: open directly under the trigger at its width, rather
+                    than shifting to overlay the selected item. */}
+                <SelectContent
+                  position="popper"
+                  sideOffset={4}
+                  className="w-(--radix-select-trigger-width) max-h-80"
+                >
+                  {[...DECLINE_REASON_PRESETS, OTHER_REASON].map((value) => (
+                    <SelectItem
+                      key={value}
+                      value={value}
+                      // Striped like the tables, with a divider, so each
+                      // multi-line option reads as its own row.
+                      className="rounded-none border-b py-2.5 leading-snug whitespace-normal last:border-b-0 even:bg-muted/50 focus:bg-accent data-[state=checked]:font-medium"
+                    >
+                      {value === OTHER_REASON ? "Custom" : value}
                     </SelectItem>
                   ))}
-                  <SelectItem value={CUSTOM_REASON}>Write my own</SelectItem>
                 </SelectContent>
               </Select>
+              {!isOther && form.formState.errors.reason ? (
+                <p className="text-sm text-destructive">Choose a reason for declining</p>
+              ) : null}
             </div>
 
-            <FormField
-              control={form.control}
-              name="reason"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Reason</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      rows={4}
-                      placeholder="Explain what was wrong — for example, the transfer reference doesn't match any payment we received."
-                      disabled={decline.isPending}
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    The applicant sees this, so write it for them. At least {DECLINE_REASON_MIN}{" "}
-                    characters — {reason.trim().length} so far.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {isOther ? (
+              <FormField
+                control={form.control}
+                name="reason"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Your reason</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        rows={4}
+                        autoFocus
+                        placeholder="Explain what was wrong — for example, the transfer reference doesn't match any payment we received."
+                        disabled={decline.isPending}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      The applicant sees this, so write it for them. At least {DECLINE_REASON_MIN}{" "}
+                      characters — {reason.trim().length} so far.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            ) : null}
 
             <DialogFooter>
               <Button
