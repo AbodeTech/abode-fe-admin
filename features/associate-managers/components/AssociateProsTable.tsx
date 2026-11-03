@@ -35,11 +35,16 @@ import {
   proGroupOptionsForScope,
 } from "../lib/roster-filter-options";
 
-const PAGE_SIZE = 25;
+/**
+ * Rows per roster page. The BE pages the roster (`page`/`limit` on the
+ * dashboard routes), so the page must ask for this same size.
+ */
+export const ASSOCIATE_PROS_PAGE_SIZE = 25;
 
 import type { AssociatePro, ProStatus } from "../mock-data";
 
 interface Props {
+  /** One server page of the roster, already grouped, sorted and paged. */
   pros: RosterRow[];
   /** The Admin id of the manager whose roster is being viewed. */
   sourceManagerId: string | null;
@@ -175,13 +180,16 @@ export function AssociateProsTable({
   const searchParam = searchParams.get("search") || "";
 
   const [search, setSearch] = useState(searchParam);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  // Keyed by id, holding the row itself: `pros` is only the current page, so
+  // pros ticked on an earlier page must still reach the bulk dialog.
+  const [selected, setSelected] = useState<Map<string, RosterRow>>(new Map());
   const [singleReassign, setSingleReassign] =
     useState<RosterRow | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [onboardingFor, setOnboardingFor] =
     useState<RosterRow | null>(null);
 
+  // The BE has no roster search, so this narrows the current page only.
   const filtered = useMemo(() => {
     let rows = pros;
 
@@ -200,37 +208,37 @@ export function AssociateProsTable({
     return rows;
   }, [pros, search]);
 
-  const start = (page - 1) * PAGE_SIZE;
-  const paginated = filtered.slice(start, start + PAGE_SIZE);
+  // `pros` is already this page; slicing it again emptied every page after the first.
+  const paginated = filtered;
+  const total = groupTotal ?? pros.length;
 
-  const pageIds = paginated.map((p) => p.id);
   const allOnPageSelected =
-    pageIds.length > 0 && pageIds.every((id) => selected.has(id));
-  const someOnPageSelected = pageIds.some((id) => selected.has(id));
+    paginated.length > 0 && paginated.every((p) => selected.has(p.id));
+  const someOnPageSelected = paginated.some((p) => selected.has(p.id));
 
-  const togglePro = (id: string) => {
+  const togglePro = (pro: RosterRow) => {
     setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      const next = new Map(prev);
+      if (next.has(pro.id)) next.delete(pro.id);
+      else next.set(pro.id, pro);
       return next;
     });
   };
 
   const togglePage = () => {
     setSelected((prev) => {
-      const next = new Set(prev);
-      if (allOnPageSelected) pageIds.forEach((id) => next.delete(id));
-      else pageIds.forEach((id) => next.add(id));
+      const next = new Map(prev);
+      if (allOnPageSelected) paginated.forEach((p) => next.delete(p.id));
+      else paginated.forEach((p) => next.set(p.id, p));
       return next;
     });
   };
 
-  const clearSelection = () => setSelected(new Set());
+  const clearSelection = () => setSelected(new Map());
 
   const selectedProsLegacy = useMemo(
-    () => pros.filter((p) => selected.has(p.id)).map(toLegacyPro),
-    [pros, selected]
+    () => Array.from(selected.values()).map(toLegacyPro),
+    [selected]
   );
 
   return (
@@ -248,7 +256,7 @@ export function AssociateProsTable({
               proGroup;
             return (
               <p className="text-xs text-gray-500 mt-0.5">
-                Showing {(groupTotal ?? filtered.length).toLocaleString()} ·{" "}
+                Showing {total.toLocaleString()} ·{" "}
                 <span className="font-medium">{label}</span>
               </p>
             );
@@ -353,7 +361,7 @@ export function AssociateProsTable({
                         <TableCell>
                           <Checkbox
                             checked={isSelected}
-                            onCheckedChange={() => togglePro(pro.id)}
+                            onCheckedChange={() => togglePro(pro)}
                             aria-label={`Select ${fullName(pro)}`}
                           />
                         </TableCell>
@@ -438,12 +446,14 @@ export function AssociateProsTable({
           </Table>
         </div>
 
-        {filtered.length > 0 && (
+        {/* Keyed on the server total: a search that empties this page must
+            still leave the other pages reachable. */}
+        {total > 0 && (
           <div className="px-4 py-3 border-t border-[#E5EAEF]">
             <Pagination
-              count={groupTotal ?? filtered.length}
+              count={total}
               currentIdx={page}
-              limit={PAGE_SIZE}
+              limit={ASSOCIATE_PROS_PAGE_SIZE}
             />
           </div>
         )}

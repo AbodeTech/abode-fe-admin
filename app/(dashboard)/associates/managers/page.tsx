@@ -15,6 +15,7 @@ import {
   ActivitySection,
   MilestonesSection,
   AssociateProsTable,
+  ASSOCIATE_PROS_PAGE_SIZE,
   NoManagersEmptyState,
   TeamSalesSection,
   RatingTrendPanel,
@@ -106,6 +107,12 @@ function AssociateManagersContent() {
     month,
     year,
   });
+  // The roster is paged server-side; without `page` every request got page 1.
+  const tableFilter = {
+    ...filter,
+    page: Number(searchParams.get("page")) || 1,
+    limit: ASSOCIATE_PROS_PAGE_SIZE,
+  };
 
   const { mutateAsync: exportPros, isPending: isExportingPros } =
     useExportManagerDashboardPros();
@@ -153,7 +160,7 @@ function AssociateManagersContent() {
   );
   const adminTableQuery = useAdminManagerDashboard(
     activeManagerId,
-    filter,
+    tableFilter,
     {
       enabled:
         isAuthorized && viewAs === "admin" && !isAllManagers,
@@ -161,11 +168,11 @@ function AssociateManagersContent() {
     }
   );
   const allManagersKpiQuery = useAllManagersDashboard(periodFilter, { enabled: isAuthorized && viewAs === "admin" && isAllManagers });
-  const allManagersTableQuery = useAllManagersDashboard(filter, { enabled: isAuthorized && viewAs === "admin" && isAllManagers, keepPreviousData: true });
+  const allManagersTableQuery = useAllManagersDashboard(tableFilter, { enabled: isAuthorized && viewAs === "admin" && isAllManagers, keepPreviousData: true });
   const selfKpiQuery = useManagerDashboard(periodFilter, {
     enabled: isAuthorized && viewAs === "manager",
   });
-  const selfTableQuery = useManagerDashboard(filter, {
+  const selfTableQuery = useManagerDashboard(tableFilter, {
     enabled: isAuthorized && viewAs === "manager",
     keepPreviousData: true,
   });
