@@ -453,7 +453,7 @@ export function SalesExport({ filters }: { filters: SalesListFilters }) {
     const amountPaid = record.amount_paid || 0
     const documentPrice = record.doc_price || 0
     const documentAmountPaid = record.doc_amount_paid || 0
-    const documentBalance = documentPrice - documentAmountPaid
+    const documentBalance = record.doc_balance ?? (documentPrice - documentAmountPaid)
 
     const fullRecord: Record<string, any> = {
       id: index + 1,

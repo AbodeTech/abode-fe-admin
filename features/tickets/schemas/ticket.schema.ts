@@ -49,6 +49,7 @@ export const TICKET_FILTERS = [
   'unassigned',
   'unlinked',
   'open',
+  'in_progress',
   'waiting_customer',
   'blocked_on_issue',
   'resolved',
@@ -230,13 +231,14 @@ export const TicketFilterCountsSchema = z.looseObject({
   unassigned: z.number(),
   unlinked: z.number(),
   open: z.number(),
+  in_progress: z.number().optional(),
   waiting_customer: z.number(),
   blocked_on_issue: z.number(),
   resolved: z.number(),
 });
 export type TicketFilterCounts = z.infer<typeof TicketFilterCountsSchema>;
 
-/** GET /admin/tickets — rows and the eight chip counts in one response. */
+/** GET /admin/tickets — rows and the chip counts in one response. */
 export const TicketListSchema = z.looseObject({
   count: z.number(),
   results: z.array(TicketSchema),
