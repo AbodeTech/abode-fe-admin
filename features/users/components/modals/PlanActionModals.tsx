@@ -216,19 +216,29 @@ export function ClosePlanModal(props: BaseProps) {
   const mutation = useCloseUserPlan();
   const [reason, setReason] = useState('');
   const [notify, setNotify] = useState(true);
+  const [sendTermination, setSendTermination] = useState(false);
 
   const submit = async () => {
     try {
-      await mutation.mutateAsync({
+      const result = await mutation.mutateAsync({
         userId: props.userId,
         planId: props.planId,
         payload: {
           reason,
           notify_user: notify,
+          send_termination_notice: sendTermination,
           expected_updated_at: props.expectedUpdatedAt,
         },
       });
-      toast.success('Payment plan closed');
+      if (sendTermination && !result.termination_notice_sent) {
+        toast.warning('Payment plan closed, but the user has no email for the notice of termination');
+      } else {
+        toast.success(
+          sendTermination
+            ? 'Payment plan closed and notice of termination sent'
+            : 'Payment plan closed',
+        );
+      }
       props.onOpenChange(false);
     } catch (error) {
       toast.error(getErrorMessage(error, 'Unable to close payment plan'));
@@ -249,6 +259,19 @@ export function ClosePlanModal(props: BaseProps) {
             <p className="text-xs text-muted-foreground">Minimum 30 characters.</p>
           </div>
           <NotifyToggle checked={notify} onChange={setNotify} />
+          <div className="space-y-1">
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox
+                checked={sendTermination}
+                onCheckedChange={(value) => setSendTermination(value === true)}
+              />
+              Send notice of termination
+            </label>
+            <p className="pl-6 text-xs text-muted-foreground">
+              Emails the buyer the Acquest termination letter (PDF): the contract ends for missed
+              payments and everything paid, land and document fees, is forfeited.
+            </p>
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => props.onOpenChange(false)}>Cancel</Button>
