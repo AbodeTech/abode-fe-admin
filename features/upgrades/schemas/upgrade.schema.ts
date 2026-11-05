@@ -165,7 +165,7 @@ export type Upgrade = z.infer<typeof UpgradeSchema>;
 /* -------------------- decline -------------------- */
 
 /** The BE enforces this minimum and rejects with DECLINE_REASON_TOO_SHORT. */
-export const DECLINE_REASON_MIN = 20;
+export const DECLINE_REASON_MIN = 15;
 export const DECLINE_REASON_MAX = 500;
 
 export const declineUpgradeSchema = z.object({
@@ -199,7 +199,7 @@ export type DeclineUpgradeValues = z.infer<typeof declineUpgradeSchema>;
  *   `reason: 'User has no wallet'` — surfaced verbatim, since the code alone
  *   reads as a Paystack outage.
  */
-export const MANUAL_UPGRADE_REASON_MIN = 20;
+export const MANUAL_UPGRADE_REASON_MIN = 15;
 export const MANUAL_UPGRADE_REASON_MAX = 500;
 
 export const manualUpgradeSchema = z

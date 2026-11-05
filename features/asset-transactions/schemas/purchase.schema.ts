@@ -479,8 +479,8 @@ export function isInitialPurchase(row: Purchase): boolean {
   );
 }
 
-/** Mirrors `DeclineFlexTransferDto` — min 20 chars, no upper bound. */
-export const PURCHASE_DECLINE_REASON_MIN = 20;
+/** Mirrors `DeclineFlexTransferDto` — min 15 chars, no upper bound. */
+export const PURCHASE_DECLINE_REASON_MIN = 15;
 
 export const purchaseDeclineReasonSchema = z
   .string()

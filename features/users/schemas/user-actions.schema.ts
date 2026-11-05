@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { USER_TIERS, UserTierSchema } from './user.schema';
 
-export const ADMIN_REASON_MIN = 20;
+export const ADMIN_REASON_MIN = 15;
 export const ADMIN_REASON_MAX = 2000;
 
 export const AdminReasonSchema = z.object({

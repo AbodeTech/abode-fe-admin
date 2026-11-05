@@ -16,7 +16,7 @@ import { purchaseKeys } from './query-keys';
  * the transfer: it CREATES the payment plan and PAYS the commission in the
  * same motion. Flex returns `{ payment_plan_id }`; FO returns `{ plan_id }`.
  * Decline marks the transaction failed and, on an initial purchase, releases
- * the units it was holding. Decline body is `{ reason }` (min 20 chars).
+ * the units it was holding. Decline body is `{ reason }` (min 15 chars).
  *
  * Both return 409 `TRANSACTION_ALREADY_DECIDED` when another admin approved or
  * declined the same transaction a moment earlier (FINANCIAL-OFFICER PRE-1).

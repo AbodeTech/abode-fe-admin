@@ -31,7 +31,7 @@ const AdminCreatePlanBaseSchema = z.object({
   fire_commission: z.boolean().optional(),
   queue_signature_reminder: z.boolean().optional(),
   create_purchase_transaction: z.boolean().optional(),
-  reason: z.string().trim().min(30).max(2000),
+  reason: z.string().trim().min(15).max(2000),
   name_on_document: z.string().trim().min(2).max(200),
   address: z.string().trim().min(5).max(500),
   ...optionalPlanContext,
@@ -82,11 +82,11 @@ export const AdminCreateDeveloperPlanPayloadSchema = AdminCreateLandPlanPayloadS
 });
 
 export const AdminDeletePlanPayloadSchema = z.object({
-  reason: z.string().trim().min(30).max(2000),
+  reason: z.string().trim().min(15).max(2000),
   refund_to_wallet: z.boolean().optional(),
   claw_back_commission: z.boolean().optional(),
   free_inventory: z.boolean().optional(),
-  keep_inventory_reason: z.string().trim().min(20).optional(),
+  keep_inventory_reason: z.string().trim().min(15).optional(),
   expected_updated_at: z.string().optional(),
   notify_user: z.boolean().optional(),
 }).superRefine((payload, context) => {
@@ -94,7 +94,7 @@ export const AdminDeletePlanPayloadSchema = z.object({
     context.addIssue({
       code: z.ZodIssueCode.custom,
       path: ['keep_inventory_reason'],
-      message: 'Explain why the land must stay committed (at least 20 characters)',
+      message: 'Explain why the land must stay committed (at least 15 characters)',
     });
   }
 });
@@ -121,7 +121,7 @@ export const AdminOverridePaymentDatePayloadSchema = PlanMutationReasonSchema.ex
 });
 
 export const AdminUpdatePlanSpecPayloadSchema = PlanMutationReasonSchema.extend({
-  reason: z.string().trim().min(30).max(2000),
+  reason: z.string().trim().min(15).max(2000),
   new_size_sqm: z.number().int().positive().optional(),
   new_number_of_units: z.number().int().positive().optional(),
   new_asset_price: z.number().nonnegative().optional(),
@@ -159,12 +159,13 @@ export const RelocationPlanPayloadSchema = z.object({
 });
 
 export const AdminCloseAndRelocatePayloadSchema = PlanMutationReasonSchema.extend({
-  reason: z.string().trim().min(30).max(2000),
+  reason: z.string().trim().min(15).max(2000),
   new_plan: RelocationPlanPayloadSchema,
 });
 
 export const AdminClosePlanPayloadSchema = PlanMutationReasonSchema.extend({
-  reason: z.string().trim().min(30).max(2000),
+
+  reason: z.string().trim().min(15).max(2000),
   /** Emails the buyer the Acquest notice of termination (PDF). Separate from notify_user. */
   send_termination_notice: z.boolean().optional(),
 });
@@ -179,7 +180,7 @@ export const PlanCommissionRecipientSchema = z.object({
 });
 
 export const AdminEditPlanCommissionConfigPayloadSchema = PlanMutationReasonSchema.extend({
-  reason: z.string().trim().min(30).max(2000),
+  reason: z.string().trim().min(15).max(2000),
   new_config_version: z.number().int().positive().optional(),
   recipient_rate_updates: z
     .array(z.object({ index: z.number().int().nonnegative(), new_rate: z.number().min(0).max(1) }))
@@ -187,7 +188,7 @@ export const AdminEditPlanCommissionConfigPayloadSchema = PlanMutationReasonSche
 });
 
 export const AdminEditPlanCommissionRecipientsPayloadSchema = PlanMutationReasonSchema.extend({
-  reason: z.string().trim().min(30).max(2000),
+  reason: z.string().trim().min(15).max(2000),
   operation: z.enum(['replace', 'append', 'remove_by_index']),
   new_recipients: z.array(PlanCommissionRecipientSchema).optional(),
   new_recipient: PlanCommissionRecipientSchema.optional(),

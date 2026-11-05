@@ -123,13 +123,13 @@ export function PlanBalanceAdjustmentModal(props: BaseProps & { hasDocumentPlan?
           <div className="space-y-2">
             <Label htmlFor="plan-adjust-reason">Reason</Label>
             <Textarea id="plan-adjust-reason" value={reason} onChange={(e) => setReason(e.target.value)} />
-            <p className="text-xs text-muted-foreground">Minimum 20 characters.</p>
+            <p className="text-xs text-muted-foreground">Minimum 15 characters.</p>
           </div>
           <NotifyToggle checked={notify} onChange={setNotify} />
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => props.onOpenChange(false)}>Cancel</Button>
-          <Button disabled={mutation.isPending || !Number(amount.replace(/,/g, '')) || reason.trim().length < 20} onClick={submit}>
+          <Button disabled={mutation.isPending || !Number(amount.replace(/,/g, '')) || reason.trim().length < 15} onClick={submit}>
             {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Apply adjustment
           </Button>
@@ -196,13 +196,13 @@ export function PlanPaymentDateModal(props: BaseProps & { hasDocumentPlan?: bool
           <div className="space-y-2">
             <Label htmlFor="next-plan-payment-reason">Reason</Label>
             <Textarea id="next-plan-payment-reason" value={reason} onChange={(e) => setReason(e.target.value)} />
-            <p className="text-xs text-muted-foreground">Minimum 20 characters.</p>
+            <p className="text-xs text-muted-foreground">Minimum 15 characters.</p>
           </div>
           <NotifyToggle checked={notify} onChange={setNotify} />
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => props.onOpenChange(false)}>Cancel</Button>
-          <Button disabled={mutation.isPending || !date || reason.trim().length < 20} onClick={submit}>
+          <Button disabled={mutation.isPending || !date || reason.trim().length < 15} onClick={submit}>
             {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Update date
           </Button>
@@ -256,7 +256,7 @@ export function ClosePlanModal(props: BaseProps) {
           <div className="space-y-2">
             <Label htmlFor="close-plan-reason">Reason</Label>
             <Textarea id="close-plan-reason" value={reason} onChange={(e) => setReason(e.target.value)} />
-            <p className="text-xs text-muted-foreground">Minimum 30 characters.</p>
+            <p className="text-xs text-muted-foreground">Minimum 15 characters.</p>
           </div>
           <NotifyToggle checked={notify} onChange={setNotify} />
           <div className="space-y-1">
@@ -275,7 +275,7 @@ export function ClosePlanModal(props: BaseProps) {
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => props.onOpenChange(false)}>Cancel</Button>
-          <Button variant="destructive" disabled={mutation.isPending || reason.trim().length < 30} onClick={submit}>
+          <Button variant="destructive" disabled={mutation.isPending || reason.trim().length < 15} onClick={submit}>
             {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Close plan
           </Button>
@@ -331,7 +331,7 @@ export function DeletePlanModal(props: BaseProps) {
           <div className="space-y-2">
             <Label htmlFor="delete-plan-reason">Reason</Label>
             <Textarea id="delete-plan-reason" value={reason} onChange={(e) => setReason(e.target.value)} />
-            <p className="text-xs text-muted-foreground">Minimum 30 characters.</p>
+            <p className="text-xs text-muted-foreground">Minimum 15 characters.</p>
           </div>
           <label className="flex items-center gap-2 text-sm">
             <Checkbox checked={refund} onCheckedChange={(v) => setRefund(v === true)} /> Refund paid amount to wallet
@@ -365,7 +365,7 @@ export function DeletePlanModal(props: BaseProps) {
                 aria-describedby="delete-plan-keep-inventory-help"
               />
               <p id="delete-plan-keep-inventory-help" className="text-xs text-muted-foreground">
-                Minimum 20 characters. The deleted plan will no longer appear, but its land will remain unavailable for another sale.
+                Minimum 15 characters. The deleted plan will no longer appear, but its land will remain unavailable for another sale.
               </p>
             </div>
           ) : null}
@@ -375,7 +375,7 @@ export function DeletePlanModal(props: BaseProps) {
           <Button variant="outline" onClick={() => props.onOpenChange(false)}>Cancel</Button>
           <Button
             variant="destructive"
-            disabled={mutation.isPending || reason.trim().length < 30 || (!freeInventory && (!canKeepInventory || keepInventoryReason.trim().length < 20))}
+            disabled={mutation.isPending || reason.trim().length < 15 || (!freeInventory && (!canKeepInventory || keepInventoryReason.trim().length < 15))}
             onClick={submit}
           >
             {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
