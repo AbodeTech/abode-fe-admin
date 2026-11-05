@@ -82,6 +82,8 @@ export function DashboardPeriodFilter() {
     const params = new URLSearchParams(searchParams.toString());
     for (const key of ["period", "start_date", "end_date", "month", "year"]) params.delete(key);
     set(params);
+    // A new period is a new roster; a later page of the old one may not exist.
+    params.set("page", "1");
     router.push(`?${params.toString()}`, { scroll: false });
   };
 

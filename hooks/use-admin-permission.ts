@@ -160,6 +160,10 @@ export const ADMIN_PERMISSIONS = [
   // Sales (BE `src/modules/sales`). The campaign revenue card and Purchases tab
   // also require it on top of view_campaigns — money is sales data.
   'view_sales',
+  // The BE's CSV downloads (`GET /admin/sales/export` and `/export/full`).
+  // `export_sales_pii` is separately permissioned: it adds the buyer detail columns.
+  'export_sales',
+  'export_sales_pii',
 
   // Portfolio standing (features/standing/). Live on the BE in
   // `src/modules/standing/standing-admin.controller.ts`; these were missing

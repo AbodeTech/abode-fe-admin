@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { MoneyInput } from '@/components/shared/MoneyInput';
 
 import {
   useCreateUserCommercialPlan,
@@ -103,8 +104,8 @@ const emptyForm = (type: AdminPlanType): FormState => ({
   land_monthly_payment: '',
   land_tenor_months: '',
   land_amount_paid: '',
-  document_price: '0',
-  document_amount_paid: '0',
+  document_price: '0.00',
+  document_amount_paid: '0.00',
   document_monthly_payment: '0',
   document_tenor_months: '0',
   payment_type: 'all-inclusive',
@@ -324,12 +325,21 @@ export function CreateUserPlanModal({ userId, type, open, onOpenChange }: Props)
       <Label htmlFor={`create-plan-${key}`}>
         {label}{required ? ' *' : ' (optional)'}
       </Label>
-      <Input
-        id={`create-plan-${key}`}
-        type={inputType}
-        value={String(form[key])}
-        onChange={(event) => set(key, event.target.value as never)}
-      />
+      {inputType === 'money' ? (
+        // Fixed-point with thousands separators (1,234,567.00); `number()` strips the commas.
+        <MoneyInput
+          id={`create-plan-${key}`}
+          value={String(form[key])}
+          onChange={(value) => set(key, value as never)}
+        />
+      ) : (
+        <Input
+          id={`create-plan-${key}`}
+          type={inputType}
+          value={String(form[key])}
+          onChange={(event) => set(key, event.target.value as never)}
+        />
+      )}
     </div>
   );
 
@@ -399,19 +409,19 @@ export function CreateUserPlanModal({ userId, type, open, onOpenChange }: Props)
             {input('number_of_units', 'Number of units')}
             {type === 'flex' ? (
               <>
-                {input('asset_price', 'Total asset price')}
-                {input('initial_payment', 'Contractual initial payment')}
-                {input('amount_paid', 'Actual cumulative amount paid')}
+                {input('asset_price', 'Total asset price', 'money')}
+                {input('initial_payment', 'Contractual initial payment', 'money')}
+                {input('amount_paid', 'Actual cumulative amount paid', 'money')}
                 {input('tenor_months', 'Tenor (months)')}
               </>
             ) : (
               <>
-                {input('land_price', 'Land price')}
-                {input('land_initial_payment', 'Land initial payment')}
-                {input('land_amount_paid', 'Land amount paid')}
+                {input('land_price', 'Land price', 'money')}
+                {input('land_initial_payment', 'Land initial payment', 'money')}
+                {input('land_amount_paid', 'Land amount paid', 'money')}
                 {input('land_tenor_months', 'Land tenor (includes initial-payment month)')}
-                {input('document_price', 'Document price')}
-                {input('document_amount_paid', 'Document amount paid')}
+                {input('document_price', 'Document price', 'money')}
+                {input('document_amount_paid', 'Document amount paid', 'money')}
                 {input('document_tenor_months', 'Document tenor (months)')}
                 <div className="space-y-2">
                   <Label>Payment type *</Label>

@@ -33,6 +33,7 @@ type StoreCampaign = {
   recipient_buyer: boolean;
   recipient_referrer: boolean;
   ticket_id_prefix: string | null;
+  ticket_id_prefix_source?: 'fixed' | 'asset';
   buyer_eligible_statuses: string[];
   referrer_eligible_statuses: string[];
   total_sqm_target: number | null;

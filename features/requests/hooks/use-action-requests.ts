@@ -2,7 +2,7 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { apiPatch, apiPost } from '@/lib/api-client';
+import { ApiClientError, apiPatch, apiPost } from '@/lib/api-client';
 
 import { ClientRequestSchema, type ApprovalMode } from '../schemas/request.schema';
 import { requestKeys } from './query-keys';
@@ -46,13 +46,21 @@ export const useReviewRequest = () =>
     )
   );
 
-export const useApproveRequest = () =>
-  useRequestMutation(
-    (args: {
+/**
+ * `expected_price_change` is the asset-update price change the admin saw in
+ * the dialog. If today's price no longer matches it, the backend refuses with
+ * 409 `QUOTE_CHANGED` rather than writing a figure nobody looked at — the
+ * quote is refetched so the dialog shows the new one.
+ */
+export const useApproveRequest = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (args: {
       requestId: string;
       mode: ApprovalMode;
       admin_notes?: string;
       estimated_completion_hours?: number;
+      expected_price_change?: number;
     }) =>
       apiPost(
         `/admin/requests/${args.requestId}/approve`,
@@ -62,10 +70,33 @@ export const useApproveRequest = () =>
           ...(args.mode === 'manual' && args.estimated_completion_hours
             ? { estimated_completion_hours: args.estimated_completion_hours }
             : {}),
+          ...(args.expected_price_change !== undefined
+            ? { expected_price_change: args.expected_price_change }
+            : {}),
         },
         ClientRequestSchema
-      )
-  );
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: requestKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: requestKeys.details() });
+      queryClient.invalidateQueries({ queryKey: [...requestKeys.all, 'stats'] });
+    },
+    onError: (error, args) => {
+      // The price, the plan or the land moved under the dialog — reload the
+      // quote so it shows what approval would now apply.
+      if (
+        error instanceof ApiClientError &&
+        (error.code === QUOTE_CHANGED || error.code === INVENTORY_UNAVAILABLE)
+      ) {
+        queryClient.invalidateQueries({ queryKey: requestKeys.quote(args.requestId) });
+      }
+    },
+  });
+};
+
+export const QUOTE_CHANGED = 'QUOTE_CHANGED';
+/** Approval couldn't move the land: the target is taken, or the current holding doesn't reconcile. */
+export const INVENTORY_UNAVAILABLE = 'INVENTORY_UNAVAILABLE';
 
 export const useCompleteRequest = () =>
   useRequestMutation((args: { requestId: string; admin_notes?: string }) =>

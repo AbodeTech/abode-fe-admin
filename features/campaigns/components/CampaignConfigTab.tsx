@@ -39,7 +39,14 @@ export function CampaignConfigTab({ campaign }: { campaign: Campaign }) {
             .join(", ")}
         />
         {campaign.reward_type === "ticket" ? (
-          <Row label="Ticket prefix" value={campaign.ticket_id_prefix} />
+          <Row
+            label="Ticket prefix"
+            value={
+              campaign.ticket_id_prefix_source === "asset"
+                ? "From the estate bought (e.g. Aviation City → AVCI)"
+                : campaign.ticket_id_prefix
+            }
+          />
         ) : null}
         <Row label="Period" value={formatPeriod(campaign.start_date, campaign.end_date)} />
         <Row

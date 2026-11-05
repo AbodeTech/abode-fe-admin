@@ -72,6 +72,7 @@ export default function CampaignCreateWizard() {
       recipient_buyer: draft.recipient_buyer,
       recipient_referrer: draft.recipient_referrer,
       ticket_id_prefix: draft.ticket_id_prefix ?? "",
+      ticket_id_prefix_source: draft.ticket_id_prefix_source ?? "fixed",
       buyer_eligible_statuses: draft.buyer_eligible_statuses,
       referrer_eligible_statuses: draft.referrer_eligible_statuses,
       eligible_asset_types: (draft.eligible_asset_types ?? []).filter(

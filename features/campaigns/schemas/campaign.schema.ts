@@ -5,6 +5,8 @@ export const CampaignStatusSchema = z.enum(CAMPAIGN_STATUSES);
 export type CampaignStatus = z.infer<typeof CampaignStatusSchema>;
 
 export const REWARD_TYPES = ['ticket', 'hamper'] as const;
+/** Where ticket numbers get their letters: one fixed prefix, or the estate bought (Aviation City -> AVCI). */
+export const TICKET_PREFIX_SOURCES = ['fixed', 'asset'] as const;
 export const RewardTypeSchema = z.enum(REWARD_TYPES);
 export type RewardType = z.infer<typeof RewardTypeSchema>;
 
@@ -88,6 +90,7 @@ export const CampaignSchema = z.object({
   recipient_buyer: z.boolean(),
   recipient_referrer: z.boolean(),
   ticket_id_prefix: z.string().nullable(),
+  ticket_id_prefix_source: z.enum(TICKET_PREFIX_SOURCES).optional().default('fixed'),
   buyer_eligible_statuses: z.array(z.string()),
   referrer_eligible_statuses: z.array(z.string()),
   eligible_asset_types: z.array(z.string()).optional().default([]),

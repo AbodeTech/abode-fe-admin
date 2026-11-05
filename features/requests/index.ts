@@ -7,7 +7,12 @@
  */
 
 export { useRequestStats } from './hooks/use-request-stats';
-export { useClientRequests, useClientRequest, DEFAULT_REQUESTS_LIMIT } from './hooks/use-client-requests';
+export {
+  useClientRequests,
+  useClientRequest,
+  useAssetUpdateQuote,
+  DEFAULT_REQUESTS_LIMIT,
+} from './hooks/use-client-requests';
 export {
   useApproveRequest,
   useCancelRequest,
@@ -41,5 +46,7 @@ export type {
   PaymentStatus,
   RequestStatistics,
   ListAnalytics,
+  AssetUpdateQuote,
+  AssetUpdateRequote,
 } from './schemas/request.schema';
 export { RequestListPage } from './components/RequestListPage';

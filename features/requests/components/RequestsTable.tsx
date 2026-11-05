@@ -26,7 +26,9 @@ import {
   PAYMENT_STATUS_LABELS,
   REQUEST_STATUS_LABELS,
   REQUEST_TYPE_LABELS,
+  isFeeFree,
   refName,
+  submittedPriceChange,
   type ClientRequest,
   type RequestStatus,
   type RequestType,
@@ -281,7 +283,7 @@ export function RequestsTable({ requests, isLoading, requestTypeFilter }: Reques
 
                 if (type === "asset_update") {
                   const d = req.asset_update_details;
-                  const delta = d?.computed_price_delta ?? 0;
+                  const delta = d ? submittedPriceChange(d).change : 0;
                   return (
                     <TableRow key={req.id} className={rowClass(idx)}>
                       {common}
@@ -309,6 +311,9 @@ export function RequestsTable({ requests, isLoading, requestTypeFilter }: Reques
                           >
                             {delta >= 0 ? "+" : "−"}
                             {formatNaira(Math.abs(delta))}
+                            <span className="block text-xs font-normal text-gray-500">
+                              {isFeeFree(req) ? "No fee" : `${formatNaira(req.processing_fee)} fee`}
+                            </span>
                           </span>
                         ) : (
                           <span className="text-sm text-gray-500">—</span>
@@ -325,7 +330,9 @@ export function RequestsTable({ requests, isLoading, requestTypeFilter }: Reques
                     {common}
                     <TableCell className="py-4">{REQUEST_TYPE_LABELS[req.request_type]}</TableCell>
                     <TableCell className="py-4">{PAYMENT_STATUS_LABELS[req.payment_status]}</TableCell>
-                    <TableCell className="py-4 tabular-nums">{formatNaira(req.processing_fee)}</TableCell>
+                    <TableCell className="py-4 tabular-nums">
+                      {isFeeFree(req) ? "No fee" : formatNaira(req.processing_fee)}
+                    </TableCell>
                     {tail}
                   </TableRow>
                 );

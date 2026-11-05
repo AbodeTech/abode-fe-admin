@@ -164,7 +164,10 @@ export const AdminCloseAndRelocatePayloadSchema = PlanMutationReasonSchema.exten
 });
 
 export const AdminClosePlanPayloadSchema = PlanMutationReasonSchema.extend({
+
   reason: z.string().trim().min(15).max(2000),
+  /** Emails the buyer the Acquest notice of termination (PDF). Separate from notify_user. */
+  send_termination_notice: z.boolean().optional(),
 });
 
 export const PlanCommissionRecipientSchema = z.object({
@@ -203,6 +206,7 @@ export const PlanMutationResultSchema = MessageAckSchema.extend({
   new_balance: z.number().optional(),
   new_amount_paid: z.number().optional(),
   new_status: z.string().optional(),
+  termination_notice_sent: z.boolean().optional(),
 });
 
 export const PlanCreationAssetSchema = z.object({

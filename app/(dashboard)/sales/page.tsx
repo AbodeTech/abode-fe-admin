@@ -14,6 +14,7 @@ import {
 } from "@/features/sales";
 import type { SalesPlanStatus } from "@/features/sales/schemas/sales.schema";
 import { SalesExport } from "@/features/sales/components/SalesExport";
+import { SalesCsvExport } from "@/features/sales/components/SalesCsvExport";
 import { Pagination } from "@/components/shared/Pagination";
 import { SuspensePageFallback } from "@/components/shared/page-content-loader";
 import { ArrowRight, Loader2 } from "lucide-react";
@@ -78,7 +79,8 @@ function SalesContent() {
             <ArrowRight className="size-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
           </Link>
         </div>
-        <div className="w-full min-w-0 sm:w-auto sm:shrink-0">
+        <div className="flex w-full min-w-0 flex-col gap-2 sm:mb-3 sm:mt-5 sm:w-auto sm:shrink-0 sm:flex-row sm:flex-wrap sm:justify-end">
+          <SalesCsvExport filters={filters} />
           <SalesExport filters={filters} />
         </div>
       </div>

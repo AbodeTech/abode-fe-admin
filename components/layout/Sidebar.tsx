@@ -60,17 +60,19 @@ const navGroups = [
     items: [
       { name: "Dashboard", link: "/", icon: <LayoutDashboard /> },
       { name: "Assets", link: "/assets", icon: <CircleDollarSign /> },
-      { name: "Sales", link: "/sales", icon: <ShoppingCart /> },
       { name: "Payment Plans", link: "/admin/payment-plans", icon: <ScrollText />, requiresPermission: "view_payment_plans" },
       { name: "Agency", link: "/agency", icon: <Building2 /> },
       { name: "Allocation", link: "/allocation", icon: <Building2 /> },
-      { name: "Purchase Confirmations", link: "/purchase-confirmations", icon: <CheckCircle /> },
       { name: "Marketplace", link: "/marketplace", icon: <Store /> },
-      { name: "Requests", link: "/requests", icon: <ClipboardList /> },
-      { name: "Amaris", link: "/amaris", icon: <Bot />, requiresPermission: "view_amaris_queries" },
-      { name: "WhatsApp", link: "/whatsapp", icon: <MessageCircle />, requiresPermission: "view_whatsapp_inbox" },
+    ]
+  },
+  {
+    title: "Sales",
+    isCollapsible: true,
+    icon: <ShoppingCart />,
+    items: [
+      { name: "Sales", link: "/sales", icon: <ShoppingCart /> },
       { name: "Flex Leads", link: "/flex-leads", icon: <UserPlus /> },
-      { name: "Upgrade Coupons", link: "/associate-upgrade/coupons", icon: <Gift /> },
     ]
   },
   {
@@ -133,6 +135,17 @@ const navGroups = [
       { name: "CS Manager Performance", link: "/customer-managers", icon: <ShieldCheck />, requiresTrackerAccess: "cs" },
       { name: "Tickets", link: "/tickets", icon: <Inbox /> },
       { name: "Issues", link: "/issues", icon: <AlertOctagon /> },
+      { name: "Purchase Confirmations", link: "/purchase-confirmations", icon: <CheckCircle /> },
+      { name: "Requests", link: "/requests", icon: <ClipboardList /> },
+    ]
+  },
+  {
+    title: "Amaris",
+    isCollapsible: true,
+    icon: <Bot />,
+    items: [
+      { name: "Amaris", link: "/amaris", icon: <Bot />, requiresPermission: "view_amaris_queries" },
+      { name: "WhatsApp", link: "/whatsapp", icon: <MessageCircle />, requiresPermission: "view_whatsapp_inbox" },
     ]
   },
   {
@@ -144,6 +157,7 @@ const navGroups = [
     items: [
       { name: "Financial Officer Performance", link: "/financial-officers", icon: <Gauge /> },
       { name: "Finance Automation", link: "/finance-automation", icon: <ClipboardCheck />, requiresPermission: "view_finance_runs" },
+      { name: "Upgrade Coupons", link: "/associate-upgrade/coupons", icon: <Gift /> },
     ]
   },
   {
@@ -212,7 +226,7 @@ function getRouteOpenGroups(pathname: string): Record<string, boolean> {
     const activeHere = group.items.some((item) => {
       if (pathname === item.link) return true;
       // Prefix match only when no other nav item owns this path exactly
-      // (e.g. /associate-upgrade/coupons is a standalone General link).
+      // (e.g. /associate-upgrade/coupons belongs to Finance, not Associates).
       if (exactOwner) return false;
       return item.link.length > 1 && pathname.startsWith(`${item.link}/`);
     });

@@ -5,7 +5,10 @@ export { RecruitmentSection } from "./components/RecruitmentSection";
 export { SalesRevenueSection } from "./components/SalesRevenueSection";
 export { ActivitySection } from "./components/ActivitySection";
 export { MilestonesSection } from "./components/MilestonesSection";
-export { AssociateProsTable } from "./components/AssociateProsTable";
+export {
+  AssociateProsTable,
+  ASSOCIATE_PROS_PAGE_SIZE,
+} from "./components/AssociateProsTable";
 export { ManagerAssignmentCard } from "./components/ManagerAssignmentCard";
 export { NoManagersEmptyState } from "./components/NoManagersEmptyState";
 export { TeamSalesSection } from "./components/TeamSalesSection";
