@@ -29,10 +29,10 @@ export const useApproveUpgrade = () => {
     mutationFn: (upgradeId: string) =>
       apiPatch(`/admin/referrals/upgrades/${upgradeId}/approve`, {}, UpgradeSchema),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: upgradeKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: upgradeKeys.all });
     },
     onError: (error) => {
-      if (isUpgradeNoLongerPending(error)) queryClient.invalidateQueries({ queryKey: upgradeKeys.lists() });
+      if (isUpgradeNoLongerPending(error)) queryClient.invalidateQueries({ queryKey: upgradeKeys.all });
     },
   });
 };
@@ -55,10 +55,10 @@ export const useDeclineUpgrade = () => {
         UpgradeSchema
       ),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: upgradeKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: upgradeKeys.all });
     },
     onError: (error) => {
-      if (isUpgradeNoLongerPending(error)) queryClient.invalidateQueries({ queryKey: upgradeKeys.lists() });
+      if (isUpgradeNoLongerPending(error)) queryClient.invalidateQueries({ queryKey: upgradeKeys.all });
     },
   });
 };

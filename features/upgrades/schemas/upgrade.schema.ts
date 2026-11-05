@@ -162,6 +162,36 @@ export const UpgradeSchema = z.object({
 
 export type Upgrade = z.infer<typeof UpgradeSchema>;
 
+/* -------------------- stats -------------------- */
+
+const CountAmountSchema = z.object({ count: z.number(), amount: z.number() });
+export type CountAmount = z.infer<typeof CountAmountSchema>;
+
+const ByStatusSchema = z.object({
+  pending: CountAmountSchema,
+  approved: CountAmountSchema,
+  declined: CountAmountSchema,
+  cancelled: CountAmountSchema,
+});
+
+/**
+ * GET /admin/referrals/upgrades/stats. Amounts are what the applicant paid —
+ * `final_amount` after a coupon, else `fee_amount` — so "Recorded by admin"
+ * upgrades with no fee add to counts but not to money.
+ */
+export const UpgradeStatsSchema = z.object({
+  range: z.object({ start_date: z.string().nullable(), end_date: z.string().nullable() }),
+  total: z.number(),
+  by_status: ByStatusSchema,
+  by_payment_method: z.object({
+    transfer: ByStatusSchema.extend({ total: z.number() }),
+    paystack: ByStatusSchema.extend({ total: z.number() }),
+    'admin-manual': ByStatusSchema.extend({ total: z.number() }),
+  }),
+  approved_discounts: CountAmountSchema,
+});
+export type UpgradeStats = z.infer<typeof UpgradeStatsSchema>;
+
 /* -------------------- decline -------------------- */
 
 /** The BE enforces this minimum and rejects with DECLINE_REASON_TOO_SHORT. */
