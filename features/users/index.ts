@@ -10,6 +10,7 @@ export { useUserReferrals } from './hooks/use-user-referrals';
 export type { UserReferralData } from './hooks/use-user-referrals';
 export {
   useEditUserProfile,
+  useChangeUserEmail,
   useEditUserWallet,
   useModifyReferralStatus,
   useReassignReferrer,

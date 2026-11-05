@@ -27,6 +27,7 @@ export const ADMIN_PERMISSIONS = [
   'view_user_analytics',
   'edit_user',
   'edit_user_profile',
+  'edit_user_email',
   'delete_user',
   'suspend_user',
   'unsuspend_user',
