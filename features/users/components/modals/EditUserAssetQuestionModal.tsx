@@ -102,7 +102,7 @@ export function EditUserAssetQuestionModal({
             <div className="space-y-2">
               <Label htmlFor="reason">Reason</Label>
               <Textarea id="reason" {...register("reason")} placeholder="Explain why this legal detail is changing" />
-              <p className="text-xs text-muted-foreground">At least 20 characters; saved to the audit log.</p>
+              <p className="text-xs text-muted-foreground">At least 15 characters; saved to the audit log.</p>
               {errors.reason && <p className="text-sm text-red-500">{errors.reason.message}</p>}
             </div>
             <label className="flex items-center gap-2 text-sm">

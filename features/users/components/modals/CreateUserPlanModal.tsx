@@ -235,8 +235,8 @@ export function CreateUserPlanModal({ userId, type, open, onOpenChange }: Props)
     form.campaign_ids.length > 0 && !form.campaign_purchase_date
       ? 'Enter the campaign payment approval date.'
       : null,
-    form.reason.trim().length < 30
-      ? `Enter an admin reason of at least 30 characters (${form.reason.trim().length}/30).`
+    form.reason.trim().length < 15
+      ? `Enter an admin reason of at least 15 characters (${form.reason.trim().length}/15).`
       : null,
   ].filter((message): message is string => Boolean(message));
 
@@ -548,7 +548,7 @@ export function CreateUserPlanModal({ userId, type, open, onOpenChange }: Props)
             <div className="space-y-2">
               <Label htmlFor="create-plan-reason">Reason *</Label>
               <Textarea id="create-plan-reason" value={form.reason} onChange={(event) => set('reason', event.target.value)} />
-              <p className="text-xs text-muted-foreground">Minimum 30 characters; saved to the admin audit log.</p>
+              <p className="text-xs text-muted-foreground">Minimum 15 characters; saved to the admin audit log.</p>
             </div>
             <div className="grid gap-3 md:grid-cols-2">
               {toggle('fire_commission', 'Fire commission')}

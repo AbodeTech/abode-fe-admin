@@ -280,7 +280,7 @@ export function requestActions(request: ClientRequest): {
 }
 
 /** `ADMIN_REASON_MIN_LENGTH` — decline and cancel both enforce it. */
-export const ADMIN_REASON_MIN = 20;
+export const ADMIN_REASON_MIN = 15;
 export const ADMIN_TEXT_MAX = 2000;
 
 export const adminReasonSchema = z

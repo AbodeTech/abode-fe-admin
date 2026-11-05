@@ -6,9 +6,9 @@ import { MessageAckSchema } from '../schemas/user-actions.schema';
 const base = (userId: string, transactionId: string) =>
   `/admin/users/${userId}/transactions/${transactionId}`;
 
-/** The BE's reason minimums: 20 characters to reprocess, 30 to force a second firing. */
-export const REPROCESS_REASON_MIN = 20;
-export const FORCED_REPROCESS_REASON_MIN = 30;
+/** The BE's reason minimums: 15 characters to reprocess and to force a second firing. */
+export const REPROCESS_REASON_MIN = 15;
+export const FORCED_REPROCESS_REASON_MIN = 15;
 
 /** Queue the Flex or Full Ownership receipt for one completed payment. Needs send_user_email. */
 export const sendTransactionReceipt = (userId: string, transactionId: string) =>

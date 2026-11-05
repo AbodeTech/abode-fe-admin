@@ -40,7 +40,7 @@ export const useApproveUpgrade = () => {
 /**
  * PATCH /admin/referrals/upgrades/:id/decline.
  *
- * The reason is required and must be at least 20 characters — the BE rejects
+ * The reason is required and must be at least 15 characters — the BE rejects
  * anything shorter with `DECLINE_REASON_TOO_SHORT`. It is stored on the
  * upgrade and shown to the applicant, so it is written for them, not for us.
  */
