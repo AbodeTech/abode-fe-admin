@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,7 @@ import { usePlotInventory } from "../../hooks/use-plot-inventory";
 import { formatEventDate } from "../../schemas/allocation-event.schema";
 import { DetailPanel } from "./DetailPanel";
 import { GroundConfirmationBadge } from "./GroundConfirmationBadge";
+import { DeallocatePlotDialog } from "./DeallocatePlotDialog";
 
 const ALL_BLOCKS = "all-blocks";
 const ALL_STATUSES = "all-statuses";
@@ -71,7 +73,10 @@ export function PlotInventoryPanel({
   const [block, setBlock] = useState<string | null>(null);
   const [status, setStatus] = useState<PlotStatus | null>(null);
   const [page, setPage] = useState(1);
-  const canViewCustomer = useAdminPermissions().has("view_asset_subscribers");
+  const permissions = useAdminPermissions();
+  const canViewCustomer = permissions.has("view_asset_subscribers") || permissions.has("view_allocations");
+  const canDeallocate = permissions.has("deallocate_land");
+  const [selectedPlot, setSelectedPlot] = useState<{ label: string; customerName: string | null; planId: string } | null>(null);
 
   const { data: blocks = [] } = useAssetBlocks(assetId);
 
@@ -188,9 +193,10 @@ export function PlotInventoryPanel({
                 <th className={HEAD}>Product</th>
                 <th className={HEAD}>Plot status</th>
                 <th className={HEAD}>On-site status</th>
-                <th className={HEAD}>Customer plan</th>
+                <th className={HEAD}>Held by</th>
                 <th className={HEAD}>Allocation event</th>
                 <th className={HEAD}>Allocated date</th>
+                <th className={HEAD}>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -235,6 +241,22 @@ export function PlotInventoryPanel({
                     {plot.payment_plan_id ? (plot.allocation_event_name ?? "Not recorded per plot") : "—"}
                   </td>
                   <td className={CELL}>{plot.allocated_date ? formatEventDate(plot.allocated_date) : "—"}</td>
+                  <td className={CELL}>
+                    {plot.payment_plan_id && canDeallocate ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedPlot({ label: plot.label, customerName: canViewCustomer ? (plot.customer_name ?? null) : null, planId: plot.payment_plan_id! })}
+                      >
+                        Deallocate
+                      </Button>
+                    ) : plot.payment_plan_id && permissions.has("view_allocations") ? (
+                      <Link className="text-primary underline-offset-2 hover:underline" href={`/allocation?${new URLSearchParams({ assetid: assetId, manage: plot.payment_plan_id }).toString()}`}>
+                        View allocation
+                      </Link>
+                    ) : "—"}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -263,6 +285,13 @@ export function PlotInventoryPanel({
           </Button>
         </div>
       ) : null}
+      <DeallocatePlotDialog
+        assetId={assetId}
+        plotLabel={selectedPlot?.label ?? ""}
+        customerName={selectedPlot?.customerName ?? null}
+        paymentPlanId={selectedPlot?.planId ?? null}
+        onClose={() => setSelectedPlot(null)}
+      />
     </DetailPanel>
   );
 }

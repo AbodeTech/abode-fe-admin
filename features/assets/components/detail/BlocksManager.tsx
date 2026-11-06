@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { useAdminPermissions } from "@/hooks/use-admin-permission";
 
 import {
   blockStats,
@@ -62,6 +63,7 @@ import {
   useUpdatePlot,
 } from "../../hooks/use-plots";
 import { DetailPanel } from "./DetailPanel";
+import { DeallocatePlotDialog } from "./DeallocatePlotDialog";
 import { NumberInput } from "./NumberInput";
 import { usePlotSummary } from "../../hooks/use-plot-summary";
 import { formatSqmExact } from "@/lib/utils/format";
@@ -373,6 +375,8 @@ function ManageBlockPlotsDialog({
   const [isEditingDetails, setIsEditingDetails] = useState(false);
   const [editingPlot, setEditingPlot] = useState<Plot | null>(null);
   const [deletingPlot, setDeletingPlot] = useState<Plot | null>(null);
+  const [deallocatingPlot, setDeallocatingPlot] = useState<Plot | null>(null);
+  const canDeallocate = useAdminPermissions().has("deallocate_land");
 
   if (!block) return null;
 
@@ -583,6 +587,11 @@ function ManageBlockPlotsDialog({
                                 Held by {plot.holder.name}
                               </Link>
                             ) : null}
+                            {canDeallocate && plot.holder ? (
+                              <Button type="button" variant="outline" size="sm" className="h-7" onClick={() => setDeallocatingPlot(plot)}>
+                                Deallocate
+                              </Button>
+                            ) : null}
                           </div>
                         ) : (
                           <div className="flex items-center gap-1">
@@ -645,6 +654,14 @@ function ManageBlockPlotsDialog({
           onClose={() => setEditingPlot(null)}
           onSubmit={handleUpdatePlot}
           isSubmitting={updatePlot.isPending}
+        />
+
+        <DeallocatePlotDialog
+          assetId={assetId}
+          plotLabel={deallocatingPlot ? plotName(deallocatingPlot) : ""}
+          customerName={deallocatingPlot?.holder?.name ?? null}
+          paymentPlanId={deallocatingPlot?.holder?.payment_plan_id ?? null}
+          onClose={() => setDeallocatingPlot(null)}
         />
 
         <AlertDialog
