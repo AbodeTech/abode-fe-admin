@@ -56,6 +56,8 @@ export const CohortSummarySchema = z.object({
   registration_open: z.boolean().optional().default(true),
   registration_opens: z.string().nullable().optional(),
   registration_closes: z.string().nullable().optional(),
+  /** Group invite registrants are sent to; swapped when a group fills. */
+  whatsapp_group_url: z.string().nullable().optional(),
   registrant_count: z.number().optional().default(0),
   session_count: z.number().optional().default(0),
   register_url: z.string().optional(),
@@ -63,6 +65,10 @@ export const CohortSummarySchema = z.object({
   updatedAt: z.string().optional(),
 });
 export type CohortSummary = z.infer<typeof CohortSummarySchema>;
+
+/** Mirrors the BE's WHATSAPP_GROUP_URL_RE: a chat.whatsapp.com group or a channel invite. */
+export const WHATSAPP_GROUP_URL_RE =
+  /^https:\/\/(chat\.whatsapp\.com\/[A-Za-z0-9]+|(www\.)?whatsapp\.com\/channel\/[A-Za-z0-9]+)\/?(\?\S*)?$/;
 
 export const ProgrammeSchema = z.object({
   id: z.string(),
@@ -110,6 +116,8 @@ export const UpdateCohortInputSchema = z.object({
   registration_goal: z.coerce.number().int().positive().optional(),
   registration_opens: z.string().nullable().optional(),
   registration_closes: z.string().nullable().optional(),
+  /** null removes it. */
+  whatsapp_group_url: z.string().nullable().optional(),
 });
 export type UpdateCohortInput = z.infer<typeof UpdateCohortInputSchema>;
 
