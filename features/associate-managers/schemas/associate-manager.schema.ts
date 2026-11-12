@@ -60,6 +60,8 @@ export const ManagerListItemSchema = z.object({
   display_name: z.string().nullable(),
   phone_number: z.string().nullable(),
   whatsapp_group_link: z.string().nullable(),
+  /** Excluded from auto-assign: roster assigned by hand only. Defaults for an older BE. */
+  is_private: z.boolean().default(false),
   roster_size: z.number(),
   associate_pros: z.array(ProSummarySchema),
   createdAt: z.string().nullable(),
