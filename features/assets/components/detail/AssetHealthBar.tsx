@@ -7,6 +7,17 @@ import type { AssetAnalyticsResponse, LifecycleBucket } from "../../schemas/asse
 
 const percent = (part: number, whole: number) => (whole > 0 ? (part / whole) * 100 : 0);
 
+/**
+ * What sits under "Sqm remaining": an oversold estate says by how much rather
+ * than letting a 0 pass as "sold out", and road & utility is named when it has
+ * been taken off.
+ */
+function remainingNote(oversold: number | null, nonSaleable: number): string {
+  if (oversold != null && oversold > 0) return `Oversold by ${oversold.toLocaleString()} sqm`;
+  if (nonSaleable > 0) return `After ${nonSaleable.toLocaleString()} sqm road & utility`;
+  return "Available inventory";
+}
+
 function Metric({
   label,
   value,
@@ -88,6 +99,8 @@ type AssetHealth = Pick<
   | "total_capacity_sqm"
   | "sqm_sold"
   | "sqm_remaining"
+  | "non_saleable_sqm"
+  | "sqm_oversold"
   | "land_retained_sqm"
   | "land_released_sqm"
   | "filter"
@@ -143,7 +156,12 @@ export function AssetHealthBar({ data }: { data: AssetHealth }) {
           value={data.sqm_sold.toLocaleString()}
           note={`${percent(data.sqm_sold, data.total_capacity_sqm).toFixed(1)}% of capacity`}
         />
-        <Metric label="Sqm remaining" value={data.sqm_remaining.toLocaleString()} note="Available inventory" />
+        <Metric
+          label="Sqm remaining"
+          value={data.sqm_remaining.toLocaleString()}
+          note={remainingNote(data.sqm_oversold, data.non_saleable_sqm)}
+          noteClass={(data.sqm_oversold ?? 0) > 0 ? "font-semibold text-rose-600" : undefined}
+        />
       </div>
 
       <div className="grid grid-cols-1 border-t md:grid-cols-2 md:divide-x">
