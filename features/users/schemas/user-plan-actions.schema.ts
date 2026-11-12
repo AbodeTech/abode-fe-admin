@@ -113,6 +113,10 @@ export const AdminAdjustPlanBalancePayloadSchema = PlanMutationReasonSchema.exte
   payment_target: z.enum(['land', 'document']).default('land'),
   direction: z.enum(['credit', 'debit']),
   amount: z.number().int().positive(),
+  /** Credit, land only: pay commission on the amount added. */
+  fire_commission: z.boolean().optional(),
+  /** Debit, land only: take commission back on the amount removed. */
+  claw_back_commission: z.boolean().optional(),
 });
 
 export const AdminOverridePaymentDatePayloadSchema = PlanMutationReasonSchema.extend({
@@ -207,6 +211,9 @@ export const PlanMutationResultSchema = MessageAckSchema.extend({
   new_amount_paid: z.number().optional(),
   new_status: z.string().optional(),
   termination_notice_sent: z.boolean().optional(),
+  /** Balance adjustment: net commission paid / taken back (WHT excluded). */
+  commission_paid: z.number().optional(),
+  commission_taken_back: z.number().optional(),
 });
 
 export const PlanCreationAssetSchema = z.object({
