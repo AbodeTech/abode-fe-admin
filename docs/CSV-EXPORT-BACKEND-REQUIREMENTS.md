@@ -76,8 +76,9 @@ separate money movement state (`pending`, `processing`, `completed`, `failed`,
 `GET /admin/withdrawals` supports optional `start_date` and `end_date` query
 parameters with inclusive date-only boundaries over `createdAt`. They are
 applied before pagination, and `meta.total` describes the filtered result. This
-is implemented in the backend checkout on branch `staging`; the frontend month
-selector passes these parameters to both the withdrawal table and CSV export.
+is implemented in the backend checkout on branch `staging`; the frontend's
+shared time-range filter passes these parameters to both the withdrawal table
+and CSV export.
 
 The withdrawal list query parameters are `admin_status`, `payment_provider`,
 `search`, `start_date`, `end_date`, `page`, and `limit`.

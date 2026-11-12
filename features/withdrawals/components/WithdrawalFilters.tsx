@@ -7,6 +7,7 @@ import { Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FilterSelect } from "@/components/shared/FilterSelect";
+import { DateFilter } from "@/components/shared/DateFilter";
 import { useDebounce } from "@/hooks/use-debounce";
 
 import {
@@ -36,7 +37,6 @@ export function WithdrawalFilters() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const urlSearch = searchParams.get("search") ?? "";
-  const month = searchParams.get("month") ?? "";
 
   const [value, setValue] = useState(urlSearch);
   const debounced = useDebounce(value.trim(), 400);
@@ -55,14 +55,6 @@ export function WithdrawalFilters() {
     router.replace(`?${params.toString()}`, { scroll: false });
   }, [debounced, urlSearch, router, searchParams]);
 
-  const setMonth = (nextMonth: string) => {
-    const params = new URLSearchParams(searchParams.toString());
-    if (nextMonth) params.set("month", nextMonth);
-    else params.delete("month");
-    params.set("page", "1");
-    router.push(`?${params.toString()}`, { scroll: false });
-  };
-
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
       <FilterSelect data={STATUS_OPTIONS} queryKey="admin_status" placeholder="All statuses" />
@@ -72,18 +64,7 @@ export function WithdrawalFilters() {
         placeholder="All providers"
       />
 
-      <div className="flex w-full items-center gap-2 sm:w-auto">
-        <Input
-          type="month"
-          value={month}
-          onChange={(event) => setMonth(event.target.value)}
-          className="w-full bg-white sm:w-44"
-          aria-label="Filter withdrawals by month"
-        />
-        {month ? (
-          <Button type="button" variant="ghost" onClick={() => setMonth("")}>All months</Button>
-        ) : null}
-      </div>
+      <DateFilter />
 
       <div className="relative w-full sm:w-80">
         <Search

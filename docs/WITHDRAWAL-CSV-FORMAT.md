@@ -40,8 +40,8 @@ separate `transaction_status` column rather than overloading `status`.
 
 The frontend exports values returned by `GET /admin/withdrawals`. The backend
 contract needed for the extra populated columns and date filtering is present
-in the backend checkout's `staging` branch. The frontend month selector sends
-the selected month's date boundaries to both the list and export. The backend
+in the backend checkout's `staging` branch. The frontend's shared time-range
+filter sends the selected date boundaries to both the list and export. The backend
 should continue to:
 
 1. Populate the requester's `phoneNumber` and `referred_by` (or an equivalent
@@ -49,14 +49,14 @@ should continue to:
    a documented shape the frontend can read.
 2. Preserve optional `start_date` and `end_date` query parameters on
    `GET /admin/withdrawals`, filtering by the withdrawal transaction's
-   `createdAt`. This enables a month filter to affect the table and CSV export.
+   `createdAt`. This enables the time-range filter to affect the table and CSV export.
    The supported query parameters are `admin_status`, `payment_provider`,
    `search`, `start_date`, `end_date`, `page`, and `limit`.
 3. Keep `admin_status` and transaction `status` as distinct response fields;
    the CSV `status` column uses `admin_status` to match the agreed sample.
 
 If phone or referrer is missing on a particular user/transaction, its CSV cell
-remains blank. The month filter uses the backend's inclusive date boundaries.
+remains blank. The time-range filter uses the backend's inclusive date boundaries.
 
 See [CSV-EXPORT-BACKEND-REQUIREMENTS.md](./CSV-EXPORT-BACKEND-REQUIREMENTS.md)
 for the full response contract covering both commission and withdrawal CSVs.
