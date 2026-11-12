@@ -220,6 +220,14 @@ export const PlanCreationAssetSchema = z.object({
       }),
     )
     .default([]),
+  /** False for estates sold against their recorded total land, not catalogue stock. */
+  sqm_inventory_active: z.boolean().optional(),
+  land_summary: z
+    .looseObject({
+      /** Total less road & utility less land held; negative when oversold. Null when on stock tracking. */
+      land_left_sqm: z.number().nullable().optional(),
+    })
+    .optional(),
 });
 
 export const PlanCreationCampaignSchema = z.looseObject({

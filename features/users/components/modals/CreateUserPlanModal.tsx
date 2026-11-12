@@ -169,6 +169,17 @@ const withCalculatedPayments = (form: FormState, type: AdminPlanType): FormState
 const date = (value: string) => (value ? new Date(`${value}T12:00:00`).toISOString() : undefined);
 const money = new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' });
 
+/**
+ * Land left on an estate that is not on stock tracking, or null for one that
+ * sells from its catalogue (or has no total land size recorded).
+ */
+function landLeftOf(
+  asset: { sqm_inventory_active?: boolean; land_summary?: { land_left_sqm?: number | null } } | undefined,
+): number | null {
+  if (!asset || asset.sqm_inventory_active !== false) return null;
+  return asset.land_summary?.land_left_sqm ?? null;
+}
+
 export function CreateUserPlanModal({ userId, type, open, onOpenChange }: Props) {
   const [form, setForm] = useState<FormState>(() => emptyForm(type));
   const requestedOfferType = type === 'developer-plot' ? undefined : type;
@@ -185,10 +196,14 @@ export function CreateUserPlanModal({ userId, type, open, onOpenChange }: Props)
       (assets.data?.items ?? []).filter(
         (asset) =>
           type === 'developer-plot' ||
-          asset.offers.some((offer) => offer.offer_type === type && offer.is_active),
+          asset.offers.some((offer) => offer.offer_type === type && offer.is_active) ||
+          // Not on stock tracking (the internal estates): sold against the
+          // estate's recorded total land, its product switched on or not.
+          (landLeftOf(asset) != null && asset.offers.some((offer) => offer.offer_type === type)),
       ),
     [assets.data?.items, type],
   );
+  const selectedLandLeft = landLeftOf(options.find((asset) => asset._id === form.asset_id));
   const campaignOptions = useMemo(
     () =>
       (campaigns.data?.items ?? []).filter(
@@ -385,9 +400,31 @@ export function CreateUserPlanModal({ userId, type, open, onOpenChange }: Props)
                   />
                 </SelectTrigger>
                 <SelectContent position="popper" sideOffset={4} className="z-[100] max-h-72">
-                  {options.map((asset) => <SelectItem key={asset._id} value={asset._id}>{asset.name}</SelectItem>)}
+                  {options.map((asset) => {
+                    const left = landLeftOf(asset);
+                    return (
+                      <SelectItem key={asset._id} value={asset._id} disabled={left != null && left <= 0}>
+                        {asset.name}
+                        {left != null && (
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            {left > 0
+                              ? `· ${left.toLocaleString()} sqm left`
+                              : left < 0
+                                ? `· oversold by ${(-left).toLocaleString()} sqm`
+                                : '· no land left'}
+                          </span>
+                        )}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
+              {selectedLandLeft != null && selectedLandLeft > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  This estate is not on stock tracking. The purchase must fit in the{' '}
+                  {selectedLandLeft.toLocaleString()} sqm left (total less road &amp; utility and land customers hold).
+                </p>
+              )}
               {assets.isError ? (
                 <p className="text-xs text-destructive">
                   Assets could not be loaded. Confirm this admin can view assets, then try again.
