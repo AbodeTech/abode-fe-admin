@@ -232,6 +232,9 @@ export function toUserTransaction(raw: Record<string, unknown>): TransactionList
     created_via: ['user', 'admin', 'cron'].includes(createdVia)
       ? (createdVia as TransactionCreatedVia)
       : null,
+    // The BE decides which actions apply; absent on a BE that predates them.
+    can_reprocess: typeof raw.can_reprocess === 'boolean' ? raw.can_reprocess : undefined,
+    can_send_receipt: typeof raw.can_send_receipt === 'boolean' ? raw.can_send_receipt : undefined,
     commission_type: asString(raw.commissionType) || null,
     source_user_name: asString(raw.source_user_name_denormalized) || null,
     source_asset_name: asString(raw.source_asset_name_denormalized) || null,
