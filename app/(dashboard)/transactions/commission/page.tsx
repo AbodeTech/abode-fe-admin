@@ -9,6 +9,7 @@ import { Pagination } from "@/components/shared/Pagination";
 import { SuspensePageFallback } from "@/components/shared/page-content-loader";
 import {
   CommissionExport,
+  CommissionSearch,
   CommissionTransactionsTable,
   DEFAULT_COMMISSION_TRANSACTIONS_LIMIT,
   useCommissionTransactions,
@@ -21,6 +22,7 @@ function CommissionTransactionsContent() {
   const from = searchParams.get("start_date") || null;
   const to = searchParams.get("end_date") || null;
   const sourceType = searchParams.get("commissionsource") || null;
+  const q = searchParams.get("q") || null;
 
   const { data, isLoading, error } = useCommissionTransactions({
     page,
@@ -28,6 +30,7 @@ function CommissionTransactionsContent() {
     from,
     to,
     source_type: sourceType === "all" ? null : sourceType,
+    q,
   });
 
   const transactions = data?.items;
@@ -41,6 +44,7 @@ function CommissionTransactionsContent() {
           <p className="mt-0.5 text-sm text-[#667085]">View and manage all user commissions</p>
         </div>
         <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+          <CommissionSearch />
           <FilterSelect
             queryKey="commissionsource"
             placeholder="All Commission Sources"
