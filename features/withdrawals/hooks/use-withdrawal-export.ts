@@ -7,18 +7,11 @@ import { exportToCsv, type CsvColumn } from '@/lib/utils/export-csv';
 
 import {
   ADMIN_STATUS_LABELS,
-  KYC_STATE_LABELS,
-  PAYMENT_PROVIDER_LABELS,
-  TRANSACTION_STATUS_LABELS,
   WithdrawalSchema,
-  bankAccountName,
   bankAccountNumber,
-  bankDetailsId,
   bankName,
   personEmail,
-  personId,
   personName,
-  personTin,
   type Withdrawal,
 } from '../schemas/withdrawal.schema';
 import type { WithdrawalListFilters } from './query-keys';
@@ -42,48 +35,15 @@ const EXPORT_PAGE_SIZE = 100;
 const MAX_PAGES = 50;
 
 const COLUMNS: CsvColumn<Withdrawal>[] = [
-  { header: 'Requested', accessor: (row) => row.createdAt ?? '' },
-  { header: 'Requested by', accessor: (row) => personName(row.user) ?? '' },
-  { header: 'Email', accessor: (row) => personEmail(row.user) ?? '' },
-  { header: 'User ID', accessor: (row) => personId(row.user) ?? '' },
-  { header: 'TIN', accessor: (row) => personTin(row.user)?.value ?? '' },
-  {
-    // The verification state travels with the number — a reconciliation file
-    // that showed the TIN alone would present an unchecked one as fact.
-    header: 'TIN status',
-    accessor: (row) => {
-      const state = personTin(row.user)?.state;
-      return state ? KYC_STATE_LABELS[state] : '';
-    },
-  },
-  { header: 'Bank', accessor: (row) => bankName(row.bank_details_id) ?? '' },
-  { header: 'Account number', accessor: (row) => bankAccountNumber(row.bank_details_id) ?? '' },
-  { header: 'Account name', accessor: (row) => bankAccountName(row.bank_details_id) ?? '' },
-  { header: 'Bank details ID', accessor: (row) => bankDetailsId(row.bank_details_id) ?? '' },
-  { header: 'Amount (NGN)', accessor: (row) => row.amount },
-  { header: 'Fee (NGN)', accessor: (row) => row.fee_amount ?? '' },
-  { header: 'Total debited (NGN)', accessor: (row) => row.total_debited ?? '' },
-  {
-    header: 'Review status',
-    accessor: (row) => ADMIN_STATUS_LABELS[row.admin_status ?? 'pending'],
-  },
-  { header: 'Money status', accessor: (row) => TRANSACTION_STATUS_LABELS[row.status] },
-  { header: 'Method', accessor: (row) => row.processing_type ?? '' },
-  {
-    header: 'Provider',
-    accessor: (row) => (row.payment_provider ? PAYMENT_PROVIDER_LABELS[row.payment_provider] : ''),
-  },
-  { header: 'Transfer reference', accessor: (row) => row.provider_transfer_reference ?? '' },
-  { header: 'Failed attempts', accessor: (row) => row.rail_attempts.length },
-  {
-    header: 'Last rail error',
-    accessor: (row) => row.rail_attempts[row.rail_attempts.length - 1]?.error.message ?? '',
-  },
-  { header: 'Withdrawal reason', accessor: (row) => row.withdrawal_reason ?? '' },
-  { header: 'Decline reason', accessor: (row) => row.decline_reason ?? '' },
-  { header: 'Reviewed at', accessor: (row) => row.reviewed_at ?? '' },
-  { header: 'Reviewed by', accessor: (row) => personName(row.reviewed_by) ?? '' },
-  { header: 'Transaction ID', accessor: (row) => row._id },
+  { header: 'date', accessor: (row) => row.createdAt ?? '' },
+  { header: 'name', accessor: (row) => personName(row.user) ?? '' },
+  { header: 'email', accessor: (row) => personEmail(row.user) ?? '' },
+  { header: 'phone_number', accessor: (row) => (typeof row.user === 'object' ? row.user.phoneNumber ?? '' : '') },
+  { header: 'status', accessor: (row) => ADMIN_STATUS_LABELS[row.admin_status ?? 'pending'] },
+  { header: 'referrer', accessor: (row) => personName(row.referrer) ?? '' },
+  { header: 'amount', accessor: (row) => row.amount },
+  { header: 'bank_name', accessor: (row) => bankName(row.bank_details_id) ?? '' },
+  { header: 'account_number', accessor: (row) => bankAccountNumber(row.bank_details_id) ?? '' },
 ];
 
 export type WithdrawalExportResult = {

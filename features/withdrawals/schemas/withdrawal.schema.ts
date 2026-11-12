@@ -259,6 +259,8 @@ export function bankDetailsSubtitle(ref: BankDetailsRef | null | undefined): str
 export const WithdrawalSchema = z.looseObject({
   _id: z.string(),
   user: PersonRefSchema,
+  /** Optional populated requester referrer, supplied for the withdrawal CSV. */
+  referrer: PersonRefSchema.nullable().optional(),
   type: z.literal('withdrawal'),
   direction: z.string().optional(),
 

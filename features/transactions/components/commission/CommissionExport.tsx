@@ -23,7 +23,11 @@ export function CommissionExport() {
         to,
         source_type: sourceType === "all" ? null : sourceType,
       });
-      toast.success(`Downloaded ${result.filename}`);
+      toast.success(
+        result.truncated
+          ? `Downloaded ${result.filename} with the first 50,000 rows. Narrow the filters for a complete export.`
+          : `Downloaded ${result.filename}`
+      );
     } catch (error: unknown) {
       const message =
         error instanceof Error ? error.message : "Failed to export commission data";
