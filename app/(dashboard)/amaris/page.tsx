@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
+import { DateFilter } from "@/components/shared/DateFilter";
 import { Button } from "@/components/ui/button";
 import { useDebounce } from "@/hooks/use-debounce";
 import {
@@ -17,18 +18,23 @@ import {
   useAmarisQueries,
   type AmarisAudience,
   type AmarisChannel,
+  type AmarisCountFilters,
 } from "@/features/amaris";
 
 /**
  * Amaris — read-only admin log of every question put to the assistant.
  *
  * Filter state lives in the URL so pagination + share-a-view work without
- * extra plumbing (page, audience, channel, answered, q).
+ * extra plumbing (page, audience, channel, answered, q, start_date, end_date).
+ * The stat cards follow the same filters as the table.
  */
 
 function parseEnum<T extends string>(value: string | null, allowed: readonly T[]): T | null {
   return value && (allowed as readonly string[]).includes(value) ? (value as T) : null;
 }
+
+const parseDate = (value: string | null): string | undefined =>
+  value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : undefined;
 
 const parseAnswered = (value: string | null): boolean | null => {
   if (value === "true") return true;
@@ -44,6 +50,8 @@ function AmarisContent() {
   const audience = parseEnum<AmarisAudience>(search.get("audience"), AMARIS_AUDIENCES);
   const channel = parseEnum<AmarisChannel>(search.get("channel"), AMARIS_CHANNELS);
   const answered = parseAnswered(search.get("answered"));
+  const startDate = parseDate(search.get("start_date"));
+  const endDate = parseDate(search.get("end_date"));
   const [q, setQ] = useState(search.get("q") ?? "");
   const debouncedQ = useDebounce(q);
 
@@ -58,13 +66,19 @@ function AmarisContent() {
     router.replace(`?${next.toString()}`, { scroll: false });
   };
 
-  const { data, isLoading, isError, error } = useAmarisQueries({
-    page,
-    limit: DEFAULT_AMARIS_LIMIT,
+  const filters: AmarisCountFilters = {
     audience: audience ?? undefined,
     channel: channel ?? undefined,
     answered: answered ?? undefined,
     q: debouncedQ || undefined,
+    // The BE rejects a start after the end, so a hand-edited URL like that is ignored.
+    ...(startDate && endDate && startDate <= endDate ? { start_date: startDate, end_date: endDate } : {}),
+  };
+
+  const { data, isLoading, isError, error } = useAmarisQueries({
+    page,
+    limit: DEFAULT_AMARIS_LIMIT,
+    ...filters,
   });
 
   const rows = data ?? [];
@@ -75,16 +89,19 @@ function AmarisContent() {
 
   return (
     <div className="space-y-6 py-2">
-      <div>
-        <h1 className="text-xl font-semibold text-gray-900">Amaris Questions</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Read-only log of every question put to Amaris. Handbook gaps surface as
-          &ldquo;No answer&rdquo; — worth adding to the source material so those questions are
-          covered next time.
-        </p>
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <h1 className="text-xl font-semibold text-gray-900">Amaris Questions</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Read-only log of every question put to Amaris. Handbook gaps surface as
+            &ldquo;No answer&rdquo; — worth adding to the source material so those questions are
+            covered next time.
+          </p>
+        </div>
+        <DateFilter />
       </div>
 
-      <AmarisQueryStatsStrip />
+      <AmarisQueryStatsStrip filters={filters} />
 
       <AmarisQueryFilters
         audience={audience}
