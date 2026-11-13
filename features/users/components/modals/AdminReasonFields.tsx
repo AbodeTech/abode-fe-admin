@@ -33,7 +33,15 @@ export function AdminReasonFields({
           <FormItem>
             <FormLabel>Reason</FormLabel>
             <FormControl>
-              <Textarea placeholder={reasonPlaceholder} {...field} />
+              <Textarea
+                placeholder={reasonPlaceholder}
+                {...field}
+                onKeyDown={(event) => {
+                  // This form can open from a Radix menu item. Keep Space from
+                  // reaching the parent menu while preserving its textarea behavior.
+                  if (event.key === ' ') event.stopPropagation();
+                }}
+              />
             </FormControl>
             <FormDescription>At least {ADMIN_REASON_MIN} characters. This is stored on the audit log.</FormDescription>
             <FormMessage />
