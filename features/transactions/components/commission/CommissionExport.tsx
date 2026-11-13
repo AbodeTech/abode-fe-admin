@@ -13,6 +13,7 @@ export function CommissionExport() {
   const from = searchParams.get("start_date") || null;
   const to = searchParams.get("end_date") || null;
   const sourceType = searchParams.get("commissionsource") || null;
+  const q = searchParams.get("q") || null;
 
   const { mutateAsync: exportCommission, isPending } = useCommissionExport();
 
@@ -22,6 +23,7 @@ export function CommissionExport() {
         from,
         to,
         source_type: sourceType === "all" ? null : sourceType,
+        q,
       });
       toast.success(
         result.truncated

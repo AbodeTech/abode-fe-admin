@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, UserPlus, UserMinus, ArrowRightLeft } from "lucide-react";
+import { ChevronDown, UserPlus, UserMinus, ArrowRightLeft, Lock, LockOpen } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -17,6 +18,7 @@ import {
   type ManagerDisplay,
 } from "./dialogs/RemoveManagerDialog";
 import { ChangeManagerDialog } from "./dialogs/ChangeManagerDialog";
+import { useSetManagerPrivate } from "../hooks/use-set-manager-private";
 import {
   managerDisplayName,
   managerInitials,
@@ -47,6 +49,23 @@ export function ManageManagersMenu({ activeManager }: Props) {
 
   const display = toManagerDisplay(activeManager);
   const activeManagerId = activeManager?.manager_id ?? null;
+  const isPrivate = activeManager?.is_private === true;
+  const setPrivate = useSetManagerPrivate();
+
+  const togglePrivate = async () => {
+    if (!activeManagerId || !activeManager) return;
+    const name = managerDisplayName(activeManager);
+    try {
+      await setPrivate.mutateAsync({ managerId: activeManagerId, isPrivate: !isPrivate });
+      toast.success(
+        isPrivate
+          ? `${name} will now receive auto-assigned Associate Pros`
+          : `${name} is private: auto-assign will no longer give them Associate Pros`,
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update manager");
+    }
+  };
 
   return (
     <>
@@ -70,6 +89,13 @@ export function ManageManagersMenu({ activeManager }: Props) {
           >
             <ArrowRightLeft className="h-4 w-4 mr-2" />
             Change Associate Manager
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={togglePrivate}
+            disabled={!activeManagerId || setPrivate.isPending}
+          >
+            {isPrivate ? <LockOpen className="h-4 w-4 mr-2" /> : <Lock className="h-4 w-4 mr-2" />}
+            {isPrivate ? "Include in auto-assign" : "Make private (no auto-assign)"}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem

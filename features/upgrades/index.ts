@@ -3,6 +3,7 @@ export { UpgradesTable } from './components/UpgradesTable';
 export { UpgradeFilters } from './components/UpgradeFilters';
 export { UpgradeStatusBadge } from './components/UpgradeStatusBadge';
 export { UpgradeExportButton } from './components/UpgradeExportButton';
+export { UpgradeStatCards } from './components/UpgradeStatCards';
 export { ManualUpgradeDialog } from './components/ManualUpgradeDialog';
 export {
   ApproveUpgradeDialog,
@@ -14,6 +15,7 @@ export { useUpgrades, DEFAULT_UPGRADE_LIMIT } from './hooks/use-upgrades';
 export { useApproveUpgrade, useDeclineUpgrade } from './hooks/use-upgrade-review';
 export { useManualUpgrade } from './hooks/use-manual-upgrade';
 export { useUpgradeExport } from './hooks/use-upgrade-export';
+export { useUpgradeStats } from './hooks/use-upgrade-stats';
 export { upgradeKeys } from './hooks/query-keys';
 export type { UpgradeListFilters } from './hooks/query-keys';
 

@@ -58,8 +58,8 @@ export const useUpdateAgency = () => {
  *
  * New commission stops routing to the agency and falls back to the normal
  * tier chain; commission already earned is untouched. The reason must be at
- * least 20 characters after trimming — the BE checks the trimmed length a
- * second time inside the service, so a reason of 20 spaces is a 400.
+ * least 15 characters after trimming — the BE checks the trimmed length a
+ * second time inside the service, so a reason of 15 spaces is a 400.
  */
 export const useSuspendAgency = () => {
   const invalidate = useAgencyInvalidator();

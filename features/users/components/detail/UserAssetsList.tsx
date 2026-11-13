@@ -21,11 +21,13 @@ import {
   Sigma,
   CalendarIcon,
   Wallet,
+  Search,
 } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -64,14 +66,28 @@ export function UserAssetsList({ userId, userEmail, readOnly = false }: UserAsse
   const canCreatePlan = useHasPermission("create_user_plan");
   const canCreateDeveloperPlot = useHasPermission("create_developer_plot");
 
+  const [search, setSearch] = useState("");
+
   const { data: assets, isLoading } = useUserDetailAssets(userId);
 
-  const flexAssets = assets?.filter((asset) => asset.payment_details?.asset_type === "flex") || [];
-  const fullOwnershipAssets = assets?.filter((asset) => asset.payment_details?.asset_type === "full-ownership") || [];
-  const otherAssets = assets?.filter((asset) => {
+  // Search by the name on the asset question — the "Legally Owned By" on each card. Every
+  // plan is already loaded, so this filters in place across all the sections.
+  const term = search.trim().toLowerCase();
+  const visibleAssets = term
+    ? (assets ?? []).filter((asset) =>
+        (asset.asset_questions ?? []).some((q) =>
+          [q.name_on_document, q.name_of_property].some((name) => name?.toLowerCase().includes(term))
+        )
+      )
+    : (assets ?? []);
+
+  const flexAssets = visibleAssets.filter((asset) => asset.payment_details?.asset_type === "flex");
+  const fullOwnershipAssets = visibleAssets.filter((asset) => asset.payment_details?.asset_type === "full-ownership");
+  const commercialAssets = visibleAssets.filter((asset) => asset.payment_details?.asset_type === "commercial");
+  const otherAssets = visibleAssets.filter((asset) => {
     const type = asset.payment_details?.asset_type;
-    return type !== "flex" && type !== "full-ownership";
-  }) || [];
+    return type !== "flex" && type !== "full-ownership" && type !== "commercial";
+  });
 
   const getDaysUntilNextPayment = (nextPaymentDate: Date | string): number => {
     const today = new Date();
@@ -99,6 +115,182 @@ export function UserAssetsList({ userId, userEmail, readOnly = false }: UserAsse
   const isPaymentOverdue = (nextPaymentDate: Date | string, balance: number): boolean => {
     if (balance <= 0) return false;
     return getDaysUntilNextPayment(nextPaymentDate) < 0;
+  };
+
+  // Full ownership and commercial plans share this card: land plus a document plan.
+  const renderLandAndDocumentAsset = (asset: NonNullable<typeof assets>[number]) => {
+    const pd = asset.payment_details!;
+    const doc = asset.document_plan;
+    const question = asset.asset_questions?.find((q) => q.unique_asset_id === pd.unique_asset_id);
+
+    const landPrice = pd.fullownerhsip_landprice || 0;
+    const documentPrice = doc?.asset_price || 0;
+    const amountPaid = pd.amount_paid || 0;
+    const balance = pd.balance || 0;
+    const documentAmountPaid = doc?.amount_paid || 0;
+    const documentBalance = doc?.balance || 0;
+    const totalPrice = landPrice + documentPrice;
+
+    const landProgress = landPrice > 0 ? (amountPaid / landPrice) * 100 : 0;
+    const documentProgress = documentPrice > 0 ? (documentAmountPaid / documentPrice) * 100 : 0;
+    const isLandPaymentOverdue = isPaymentOverdue(pd.next_date_of_payment, balance);
+    const monthsCovered = pd.month_subscription - pd.month_remaining;
+    const monthlyPayment = pd.month_subscription > 0 ? landPrice / pd.month_subscription : null;
+
+    return (
+      <Card key={asset._id} className={`overflow-hidden py-0 ${pd.is_suspended ? "border-red-400" : ""}`}>
+        <div className="flex flex-row! items-start justify-between gap-4 bg-gray-50 border-b p-4">
+          <div>
+            <h3 className="text-xl font-semibold">{asset.asset_name}</h3>
+            <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
+              <User className="h-4 w-4" /> Legally Owned By:{" "}
+              <span className="font-medium">
+                {question?.name_on_document || question?.name_of_property || "N/A"}
+              </span>
+            </p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground flex items-center gap-2 mt-3">
+              <MapPin className="h-4 w-4" /> Owner&apos;s Address :{" "}
+              <span className="font-medium">{question?.address || "No Address"}</span>
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {pd.is_suspended && <Badge variant="destructive">Suspended</Badge>}
+            {!readOnly && <UserAssetActions userId={userId} asset={asset} email={userEmail} />}
+          </div>
+        </div>
+
+        <CardContent className="p-0">
+          <div className="bg-white p-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div className="flex items-center gap-2">
+              <CalendarIcon className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <p className="text-muted-foreground">Start Date</p>
+                <p className="font-semibold">{formatDateWord(pd.start_date)}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <MapPin className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <p className="text-muted-foreground">Size</p>
+                <p className="font-semibold">{pd.size || asset.asset_size || "N/A"}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Hash className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <p className="text-muted-foreground">Units</p>
+                <p className="font-semibold">{pd.no_of_units}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <CalendarIcon className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <p className="text-muted-foreground">Subscription</p>
+                <p className="font-semibold">{pd.month_subscription} months</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <div className="flex items-center gap-2">
+              <Sigma className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <p className="text-muted-foreground">Total Price</p>
+                <p className="font-semibold">{formatCurrency(totalPrice)}</p>
+              </div>
+            </div>
+          </div>
+
+          <Separator />
+
+          <div className="grid md:grid-cols-2">
+            <div className="p-4 space-y-4 bg-green-50/40">
+              <h3 className="font-semibold text-lg flex items-center gap-2">
+                <Landmark className="h-5 w-5 text-green-600" /> Land Payment
+              </h3>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="bg-white/70 p-2 rounded-md">
+                  <p className="text-xs text-muted-foreground">Land Price</p>
+                  <p className="font-bold text-green-700">{formatCurrency(landPrice)}</p>
+                </div>
+                <div className="bg-white/70 p-2 rounded-md">
+                  <p className="text-xs text-muted-foreground">Amount Paid</p>
+                  <p className="font-bold text-green-700">{formatCurrency(amountPaid)}</p>
+                </div>
+                <div className="bg-white/70 p-2 rounded-md">
+                  <p className="text-xs text-muted-foreground">Balance</p>
+                  <p className="font-bold text-green-700">{formatCurrency(balance)}</p>
+                </div>
+              </div>
+              <div>
+                <Progress value={landProgress} className="h-2" />
+                <p className="text-xs text-right mt-1">{landProgress.toFixed(1)}% Complete</p>
+              </div>
+              <div className="text-sm space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground flex items-center gap-1.5">
+                    <CalendarIcon className="h-4 w-4" /> Next Payment
+                  </span>
+                  <span className={`font-medium ${isLandPaymentOverdue ? "text-red-600" : ""}`}>
+                    {formatDateWord(pd.next_date_of_payment)}
+                  </span>
+                </div>
+                {isLandPaymentOverdue && (
+                  <Badge variant="destructive" className="w-full justify-center">
+                    <AlertTriangle className="h-4 w-4 mr-2" /> Payment Overdue
+                  </Badge>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground flex items-center gap-1.5">
+                    <Clock className="h-4 w-4" /> Months Covered
+                  </span>
+                  <span className="font-medium">
+                    {monthsCovered} / {pd.month_subscription}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground flex items-center gap-1.5">
+                    <Wallet className="h-4 w-4" /> Monthly Payment
+                  </span>
+                  <span className="font-medium">{monthlyPayment ? formatCurrency(monthlyPayment) : "N/A"}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 space-y-4 bg-blue-50/40">
+              <h3 className="font-semibold text-lg flex items-center gap-2">
+                <FileText className="h-5 w-5 text-blue-600" /> Document Payment
+              </h3>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="bg-white/70 p-2 rounded-md">
+                  <p className="text-xs text-muted-foreground">Doc Price</p>
+                  <p className="font-bold text-blue-700">{formatCurrency(documentPrice)}</p>
+                </div>
+                <div className="bg-white/70 p-2 rounded-md">
+                  <p className="text-xs text-muted-foreground">Amount Paid</p>
+                  <p className="font-bold text-blue-700">{formatCurrency(documentAmountPaid)}</p>
+                </div>
+                <div className="bg-white/70 p-2 rounded-md">
+                  <p className="text-xs text-muted-foreground">Balance</p>
+                  <p className="font-bold text-blue-700">{formatCurrency(documentBalance)}</p>
+                </div>
+              </div>
+              <div>
+                <Progress value={documentProgress} className="h-2 bg-blue-200" />
+                <p className="text-xs text-right mt-1">{documentProgress.toFixed(1)}% Complete</p>
+              </div>
+              {documentBalance === 0 && (
+                <Badge className="w-full justify-center bg-blue-100 text-blue-800 hover:bg-blue-200">
+                  Documentation Fully Paid
+                </Badge>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
   };
 
   if (isLoading) {
@@ -154,6 +346,28 @@ export function UserAssetsList({ userId, userEmail, readOnly = false }: UserAsse
               )}
             </DropdownMenuContent>
           </DropdownMenu>
+        </div>
+      )}
+
+      {(assets?.length ?? 0) > 0 && (
+        <div className="space-y-1">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search assets by owner name (asset question)"
+              className="pl-9"
+              aria-label="Search assets by owner name"
+            />
+          </div>
+          {term && (
+            <p className="text-sm text-muted-foreground">
+              {visibleAssets.length === 0
+                ? "No assets match that name."
+                : `${visibleAssets.length} of ${assets?.length ?? 0} assets match.`}
+            </p>
+          )}
         </div>
       )}
 
@@ -345,11 +559,9 @@ export function UserAssetsList({ userId, userEmail, readOnly = false }: UserAsse
       </Card>
 
       <Card className="w-full">
-  
-          <div className="flex items-center justify-between gap-2 w-full px-4 ">
-            <CardTitle className="text-2xl font-bold">User Full Ownership Assets</CardTitle>
-          </div>    
-          
+        <CardHeader className="pb-2">
+          <CardTitle className="text-2xl font-bold">User Full Ownership Assets</CardTitle>
+        </CardHeader>
         <CardContent>
           <div className="space-y-6">
             {fullOwnershipAssets.length === 0 && (
@@ -357,184 +569,21 @@ export function UserAssetsList({ userId, userEmail, readOnly = false }: UserAsse
                 <CardContent className="py-8 text-center text-muted-foreground">No full ownership assets found.</CardContent>
               </Card>
             )}
-
-            {fullOwnershipAssets.map((asset) => {
-              const pd = asset.payment_details!;
-              const doc = asset.document_plan;
-              const question = asset.asset_questions?.find((q) => q.unique_asset_id === pd.unique_asset_id);
-
-              const landPrice = pd.fullownerhsip_landprice || 0;
-              const documentPrice = doc?.asset_price || 0;
-              const amountPaid = pd.amount_paid || 0;
-              const balance = pd.balance || 0;
-              const documentAmountPaid = doc?.amount_paid || 0;
-              const documentBalance = doc?.balance || 0;
-              const totalPrice = landPrice + documentPrice;
-
-              const landProgress = landPrice > 0 ? (amountPaid / landPrice) * 100 : 0;
-              const documentProgress = documentPrice > 0 ? (documentAmountPaid / documentPrice) * 100 : 0;
-              const isLandPaymentOverdue = isPaymentOverdue(pd.next_date_of_payment, balance);
-              const monthsCovered = pd.month_subscription - pd.month_remaining;
-              const monthlyPayment = pd.month_subscription > 0 ? landPrice / pd.month_subscription : null;
-
-              return (
-                <Card key={asset._id} className={`overflow-hidden py-0 ${pd.is_suspended ? "border-red-400" : ""}`}>
-                  <div className="flex flex-row! items-start justify-between gap-4 bg-gray-50 border-b p-4">
-                    <div>
-                      <h3 className="text-xl font-semibold">{asset.asset_name}</h3>
-                      <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
-                        <User className="h-4 w-4" /> Legally Owned By:{" "}
-                        <span className="font-medium">
-                          {question?.name_on_document || question?.name_of_property || "N/A"}
-                        </span>
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground flex items-center gap-2 mt-3">
-                        <MapPin className="h-4 w-4" /> Owner&apos;s Address :{" "}
-                        <span className="font-medium">{question?.address || "No Address"}</span>
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {pd.is_suspended && <Badge variant="destructive">Suspended</Badge>}
-                      {!readOnly && <UserAssetActions userId={userId} asset={asset} email={userEmail} />}
-                    </div>
-                  </div>
-
-                  <CardContent className="p-0">
-                    <div className="bg-white p-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      <div className="flex items-center gap-2">
-                        <CalendarIcon className="h-5 w-5 text-muted-foreground" />
-                        <div>
-                          <p className="text-muted-foreground">Start Date</p>
-                          <p className="font-semibold">{formatDateWord(pd.start_date)}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <MapPin className="h-5 w-5 text-muted-foreground" />
-                        <div>
-                          <p className="text-muted-foreground">Size</p>
-                          <p className="font-semibold">{pd.size || asset.asset_size || "N/A"}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Hash className="h-5 w-5 text-muted-foreground" />
-                        <div>
-                          <p className="text-muted-foreground">Units</p>
-                          <p className="font-semibold">{pd.no_of_units}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <CalendarIcon className="h-5 w-5 text-muted-foreground" />
-                        <div>
-                          <p className="text-muted-foreground">Subscription</p>
-                          <p className="font-semibold">{pd.month_subscription} months</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="bg-white p-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                      <div className="flex items-center gap-2">
-                        <Sigma className="h-5 w-5 text-muted-foreground" />
-                        <div>
-                          <p className="text-muted-foreground">Total Price</p>
-                          <p className="font-semibold">{formatCurrency(totalPrice)}</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <Separator />
-
-                    <div className="grid md:grid-cols-2">
-                      <div className="p-4 space-y-4 bg-green-50/40">
-                        <h3 className="font-semibold text-lg flex items-center gap-2">
-                          <Landmark className="h-5 w-5 text-green-600" /> Land Payment
-                        </h3>
-                        <div className="grid grid-cols-3 gap-2 text-center">
-                          <div className="bg-white/70 p-2 rounded-md">
-                            <p className="text-xs text-muted-foreground">Land Price</p>
-                            <p className="font-bold text-green-700">{formatCurrency(landPrice)}</p>
-                          </div>
-                          <div className="bg-white/70 p-2 rounded-md">
-                            <p className="text-xs text-muted-foreground">Amount Paid</p>
-                            <p className="font-bold text-green-700">{formatCurrency(amountPaid)}</p>
-                          </div>
-                          <div className="bg-white/70 p-2 rounded-md">
-                            <p className="text-xs text-muted-foreground">Balance</p>
-                            <p className="font-bold text-green-700">{formatCurrency(balance)}</p>
-                          </div>
-                        </div>
-                        <div>
-                          <Progress value={landProgress} className="h-2" />
-                          <p className="text-xs text-right mt-1">{landProgress.toFixed(1)}% Complete</p>
-                        </div>
-                        <div className="text-sm space-y-2">
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground flex items-center gap-1.5">
-                              <CalendarIcon className="h-4 w-4" /> Next Payment
-                            </span>
-                            <span className={`font-medium ${isLandPaymentOverdue ? "text-red-600" : ""}`}>
-                              {formatDateWord(pd.next_date_of_payment)}
-                            </span>
-                          </div>
-                          {isLandPaymentOverdue && (
-                            <Badge variant="destructive" className="w-full justify-center">
-                              <AlertTriangle className="h-4 w-4 mr-2" /> Payment Overdue
-                            </Badge>
-                          )}
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground flex items-center gap-1.5">
-                              <Clock className="h-4 w-4" /> Months Covered
-                            </span>
-                            <span className="font-medium">
-                              {monthsCovered} / {pd.month_subscription}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground flex items-center gap-1.5">
-                              <Wallet className="h-4 w-4" /> Monthly Payment
-                            </span>
-                            <span className="font-medium">{monthlyPayment ? formatCurrency(monthlyPayment) : "N/A"}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="p-4 space-y-4 bg-blue-50/40">
-                        <h3 className="font-semibold text-lg flex items-center gap-2">
-                          <FileText className="h-5 w-5 text-blue-600" /> Document Payment
-                        </h3>
-                        <div className="grid grid-cols-3 gap-2 text-center">
-                          <div className="bg-white/70 p-2 rounded-md">
-                            <p className="text-xs text-muted-foreground">Doc Price</p>
-                            <p className="font-bold text-blue-700">{formatCurrency(documentPrice)}</p>
-                          </div>
-                          <div className="bg-white/70 p-2 rounded-md">
-                            <p className="text-xs text-muted-foreground">Amount Paid</p>
-                            <p className="font-bold text-blue-700">{formatCurrency(documentAmountPaid)}</p>
-                          </div>
-                          <div className="bg-white/70 p-2 rounded-md">
-                            <p className="text-xs text-muted-foreground">Balance</p>
-                            <p className="font-bold text-blue-700">{formatCurrency(documentBalance)}</p>
-                          </div>
-                        </div>
-                        <div>
-                          <Progress value={documentProgress} className="h-2 bg-blue-200" />
-                          <p className="text-xs text-right mt-1">{documentProgress.toFixed(1)}% Complete</p>
-                        </div>
-                        {documentBalance === 0 && (
-                          <Badge className="w-full justify-center bg-blue-100 text-blue-800 hover:bg-blue-200">
-                            Documentation Fully Paid
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+            {fullOwnershipAssets.map(renderLandAndDocumentAsset)}
           </div>
         </CardContent>
       </Card>
+
+      {commercialAssets.length > 0 && (
+        <Card className="w-full">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-2xl font-bold">User Commercial Assets</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">{commercialAssets.map(renderLandAndDocumentAsset)}</div>
+          </CardContent>
+        </Card>
+      )}
 
       {otherAssets.length > 0 && (
         <Card>

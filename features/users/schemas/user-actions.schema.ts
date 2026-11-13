@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { USER_TIERS, UserTierSchema } from './user.schema';
 
-export const ADMIN_REASON_MIN = 20;
+export const ADMIN_REASON_MIN = 15;
 export const ADMIN_REASON_MAX = 2000;
 
 export const AdminReasonSchema = z.object({
@@ -43,6 +43,17 @@ export const SuspendUserPayloadSchema = AdminReasonSchema.extend({
 });
 
 export type SuspendUserPayload = z.infer<typeof SuspendUserPayloadSchema>;
+
+/**
+ * PATCH /admin/users/:id/email. Exactly `email` + `reason`: the endpoint always
+ * emails both addresses, so it takes no notify_user (an unknown field is a 400).
+ */
+export const ChangeUserEmailPayloadSchema = z.object({
+  email: z.string().trim().toLowerCase().max(254).pipe(z.email('Enter a valid email address')),
+  reason: AdminReasonSchema.shape.reason,
+});
+
+export type ChangeUserEmailPayload = z.infer<typeof ChangeUserEmailPayloadSchema>;
 
 export const SetUserTinPayloadSchema = AdminReasonSchema.extend({
   tin: z

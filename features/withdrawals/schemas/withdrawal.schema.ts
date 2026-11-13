@@ -314,8 +314,8 @@ export function withdrawalActions(row: Withdrawal): {
   };
 }
 
-/** Mirrors `DeclineWithdrawalDto` / `RetryWithdrawalDto` — 20–500 chars. */
-export const WITHDRAWAL_REASON_MIN = 20;
+/** Mirrors `DeclineWithdrawalDto` / `RetryWithdrawalDto` — 15–500 chars. */
+export const WITHDRAWAL_REASON_MIN = 15;
 export const WITHDRAWAL_REASON_MAX = 500;
 
 export const withdrawalReasonSchema = z

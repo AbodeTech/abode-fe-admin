@@ -66,6 +66,7 @@ export const SalesRowSchema = z.object({
   default_amount: z.number(),
   doc_price: z.number().nullable(),
   doc_amount_paid: z.number(),
+  doc_balance: z.number().nullable().optional(),
   month_subscription: z.number(),
   month_remaining: z.number(),
   payment_completion_percentage: z.number(),

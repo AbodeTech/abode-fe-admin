@@ -82,6 +82,23 @@ const displayDescription = (transaction: TransactionListResponse) => {
 const displayAmount = (transaction: TransactionListResponse) =>
   isCommissionReversal(transaction) ? -Math.abs(transaction.amount) : transaction.amount
 
+/**
+ * Which actions apply, as the BE decides them (`can_reprocess`, `can_send_receipt`).
+ * The description guess is only the fallback for a BE that predates those flags: it
+ * missed every admin top-up typed in free text, such as "Account top-up, Nov 11".
+ */
+const transactionActions = (transaction: TransactionListResponse) => {
+  const description = transaction.description ?? ""
+  return {
+    canReprocess:
+      transaction.can_reprocess ??
+      (transaction.type === "asset" || description.startsWith("AP") || description.startsWith("RAP")),
+    canSendReceipt:
+      transaction.can_send_receipt ??
+      (description.startsWith("AP") || description.startsWith("RAP") || description.startsWith("DP")),
+  }
+}
+
 /** Type badge, plus an "Admin" badge when an admin recorded the transaction. */
 function TransactionTypeBadges({ transaction }: { transaction: TransactionListResponse }) {
   return (
@@ -212,14 +229,7 @@ export function OtherTransactionsTable({ transactions }: OtherTransactionsTableP
             ) : (
               sortedTransactions.map((transaction) => {
                 const evidenceFile = transaction?.transfer_file?.file
-                const canReprocess =
-                  transaction.type === "asset" ||
-                  transaction.description?.startsWith("AP") ||
-                  transaction.description?.startsWith("RAP")
-                const canSendReceipt =
-                  transaction.description?.startsWith("AP") ||
-                  transaction.description?.startsWith("RAP") ||
-                  transaction.description?.startsWith("DP")
+                const { canReprocess, canSendReceipt } = transactionActions(transaction)
                 const isProcessing = processingId === transaction._id
                 const isSendingReceipt = receiptProcessingId === transaction._id
                 return (
@@ -329,14 +339,7 @@ export function OtherTransactionsTable({ transactions }: OtherTransactionsTableP
                 {sortedTransactions.length > 0 ? (
                   sortedTransactions.map((transaction) => {
                     const evidenceFile = transaction?.transfer_file?.file
-                    const canReprocess =
-                      transaction.type === "asset" ||
-                      transaction.description?.startsWith("AP") ||
-                      transaction.description?.startsWith("RAP")
-                    const canSendReceipt =
-                      transaction.description?.startsWith("AP") ||
-                      transaction.description?.startsWith("RAP") ||
-                      transaction.description?.startsWith("DP")
+                    const { canReprocess, canSendReceipt } = transactionActions(transaction)
 
                     const isProcessing = processingId === transaction._id
                     const isSendingReceipt = receiptProcessingId === transaction._id

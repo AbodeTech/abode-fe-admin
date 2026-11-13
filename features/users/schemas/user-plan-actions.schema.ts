@@ -31,7 +31,7 @@ const AdminCreatePlanBaseSchema = z.object({
   fire_commission: z.boolean().optional(),
   queue_signature_reminder: z.boolean().optional(),
   create_purchase_transaction: z.boolean().optional(),
-  reason: z.string().trim().min(30).max(2000),
+  reason: z.string().trim().min(15).max(2000),
   name_on_document: z.string().trim().min(2).max(200),
   address: z.string().trim().min(5).max(500),
   ...optionalPlanContext,
@@ -82,11 +82,11 @@ export const AdminCreateDeveloperPlanPayloadSchema = AdminCreateLandPlanPayloadS
 });
 
 export const AdminDeletePlanPayloadSchema = z.object({
-  reason: z.string().trim().min(30).max(2000),
+  reason: z.string().trim().min(15).max(2000),
   refund_to_wallet: z.boolean().optional(),
   claw_back_commission: z.boolean().optional(),
   free_inventory: z.boolean().optional(),
-  keep_inventory_reason: z.string().trim().min(20).optional(),
+  keep_inventory_reason: z.string().trim().min(15).optional(),
   expected_updated_at: z.string().optional(),
   notify_user: z.boolean().optional(),
 }).superRefine((payload, context) => {
@@ -94,7 +94,7 @@ export const AdminDeletePlanPayloadSchema = z.object({
     context.addIssue({
       code: z.ZodIssueCode.custom,
       path: ['keep_inventory_reason'],
-      message: 'Explain why the land must stay committed (at least 20 characters)',
+      message: 'Explain why the land must stay committed (at least 15 characters)',
     });
   }
 });
@@ -113,6 +113,10 @@ export const AdminAdjustPlanBalancePayloadSchema = PlanMutationReasonSchema.exte
   payment_target: z.enum(['land', 'document']).default('land'),
   direction: z.enum(['credit', 'debit']),
   amount: z.number().int().positive(),
+  /** Credit, land only: pay commission on the amount added. */
+  fire_commission: z.boolean().optional(),
+  /** Debit, land only: take commission back on the amount removed. */
+  claw_back_commission: z.boolean().optional(),
 });
 
 export const AdminOverridePaymentDatePayloadSchema = PlanMutationReasonSchema.extend({
@@ -121,7 +125,7 @@ export const AdminOverridePaymentDatePayloadSchema = PlanMutationReasonSchema.ex
 });
 
 export const AdminUpdatePlanSpecPayloadSchema = PlanMutationReasonSchema.extend({
-  reason: z.string().trim().min(30).max(2000),
+  reason: z.string().trim().min(15).max(2000),
   new_size_sqm: z.number().int().positive().optional(),
   new_number_of_units: z.number().int().positive().optional(),
   new_asset_price: z.number().nonnegative().optional(),
@@ -159,12 +163,15 @@ export const RelocationPlanPayloadSchema = z.object({
 });
 
 export const AdminCloseAndRelocatePayloadSchema = PlanMutationReasonSchema.extend({
-  reason: z.string().trim().min(30).max(2000),
+  reason: z.string().trim().min(15).max(2000),
   new_plan: RelocationPlanPayloadSchema,
 });
 
 export const AdminClosePlanPayloadSchema = PlanMutationReasonSchema.extend({
-  reason: z.string().trim().min(30).max(2000),
+
+  reason: z.string().trim().min(15).max(2000),
+  /** Emails the buyer the Acquest notice of termination (PDF). Separate from notify_user. */
+  send_termination_notice: z.boolean().optional(),
 });
 
 export const PlanCommissionRecipientSchema = z.object({
@@ -177,7 +184,7 @@ export const PlanCommissionRecipientSchema = z.object({
 });
 
 export const AdminEditPlanCommissionConfigPayloadSchema = PlanMutationReasonSchema.extend({
-  reason: z.string().trim().min(30).max(2000),
+  reason: z.string().trim().min(15).max(2000),
   new_config_version: z.number().int().positive().optional(),
   recipient_rate_updates: z
     .array(z.object({ index: z.number().int().nonnegative(), new_rate: z.number().min(0).max(1) }))
@@ -185,7 +192,7 @@ export const AdminEditPlanCommissionConfigPayloadSchema = PlanMutationReasonSche
 });
 
 export const AdminEditPlanCommissionRecipientsPayloadSchema = PlanMutationReasonSchema.extend({
-  reason: z.string().trim().min(30).max(2000),
+  reason: z.string().trim().min(15).max(2000),
   operation: z.enum(['replace', 'append', 'remove_by_index']),
   new_recipients: z.array(PlanCommissionRecipientSchema).optional(),
   new_recipient: PlanCommissionRecipientSchema.optional(),
@@ -203,6 +210,10 @@ export const PlanMutationResultSchema = MessageAckSchema.extend({
   new_balance: z.number().optional(),
   new_amount_paid: z.number().optional(),
   new_status: z.string().optional(),
+  termination_notice_sent: z.boolean().optional(),
+  /** Balance adjustment: net commission paid / taken back (WHT excluded). */
+  commission_paid: z.number().optional(),
+  commission_taken_back: z.number().optional(),
 });
 
 export const PlanCreationAssetSchema = z.object({
@@ -216,6 +227,14 @@ export const PlanCreationAssetSchema = z.object({
       }),
     )
     .default([]),
+  /** False for estates sold against their recorded total land, not catalogue stock. */
+  sqm_inventory_active: z.boolean().optional(),
+  land_summary: z
+    .looseObject({
+      /** Total less road & utility less land held; negative when oversold. Null when on stock tracking. */
+      land_left_sqm: z.number().nullable().optional(),
+    })
+    .optional(),
 });
 
 export const PlanCreationCampaignSchema = z.looseObject({

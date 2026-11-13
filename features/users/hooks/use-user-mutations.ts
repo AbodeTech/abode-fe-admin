@@ -9,6 +9,7 @@ import type {
   AdminUserProfilePayload,
   AdminWalletAdjustPayload,
   ChangeTierPayload,
+  ChangeUserEmailPayload,
   ReassignReferrerPayload,
   SetUserTinPayload,
   SuspendUserPayload,
@@ -95,6 +96,16 @@ export const useDeleteUserReferral = () => {
       apiDelete(`/admin/users/${userId}/referrals/${referralId}`, MessageAckSchema, {
         body: payload,
       }),
+    onSuccess: (_data, { userId }) => invalidateUser(queryClient, userId),
+  });
+};
+
+export const useChangeUserEmail = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ userId, payload }: { userId: string; payload: ChangeUserEmailPayload }) =>
+      apiPatch(`/admin/users/${userId}/email`, payload, MessageAckSchema),
     onSuccess: (_data, { userId }) => invalidateUser(queryClient, userId),
   });
 };

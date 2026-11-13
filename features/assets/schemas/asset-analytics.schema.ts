@@ -87,6 +87,10 @@ export const AssetAnalyticsResponseSchema = z.object({
   total_capacity_units: z.number(),
   sqm_sold: z.number(),
   sqm_remaining: z.number(),
+  /** Land kept out of sale (road & utility and the like). Defaults for an older BE. */
+  non_saleable_sqm: z.number().default(0),
+  /** Land customers hold beyond what the estate has for sale. Null when the estate has no total land size. */
+  sqm_oversold: z.number().nullable().default(null),
   /** Null before the estate activates sqm inventory. */
   land_retained_sqm: z.number().nullable(),
   land_released_sqm: z.number().nullable(),

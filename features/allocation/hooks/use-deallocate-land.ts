@@ -9,7 +9,7 @@ import { allocationKeys } from './query-keys';
 
 export interface DeallocateLandInput {
   paymentPlanId: string;
-  /** Required, ≥20 chars — `DeallocatePlotsDto.reason`, `REASON_MIN_LENGTH`. */
+  /** Required, ≥15 chars — `DeallocatePlotsDto.reason`, `REASON_MIN_LENGTH`. */
   reason: string;
 }
 
@@ -17,7 +17,7 @@ export interface DeallocateLandInput {
  * POST /admin/allocation/payment-plans/:plan_id/deallocate — confirmed
  * against abode-be-v2's allocation module on `origin/staging` (2026-08-28,
  * not yet deployed to this app's target environment). Body: `{ reason }`,
- * required and server-enforced at ≥20 chars — an admin can't skip it.
+ * required and server-enforced at ≥15 chars — an admin can't skip it.
  */
 export const useDeallocateLand = () => {
   const queryClient = useQueryClient();

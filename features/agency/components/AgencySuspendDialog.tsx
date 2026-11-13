@@ -27,7 +27,7 @@ import { getErrorMessage } from "../utils/error-message";
 /**
  * POST /admin/agencies/:id/suspend.
  *
- * The reason is audited, so the 20-character floor is a real requirement
+ * The reason is audited, so the 15-character floor is a real requirement
  * rather than UI garnish. It is checked against the *trimmed* length in two
  * places on the BE, so the counter here trims too.
  */

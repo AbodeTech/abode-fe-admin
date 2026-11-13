@@ -27,7 +27,7 @@ export const useManualUpgrade = () => {
     mutationFn: ({ userId, payload }: { userId: string; payload: ManualUpgradePayload }) =>
       apiPost(`/admin/users/${userId}/manual-upgrade`, payload, UpgradeSchema),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: upgradeKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: upgradeKeys.all });
     },
   });
 };

@@ -79,6 +79,7 @@ export type {
 
 // Hooks — mutations
 export { useAddManager } from "./hooks/use-add-manager";
+export { useSetManagerPrivate } from "./hooks/use-set-manager-private";
 export { useRemoveManager } from "./hooks/use-remove-manager";
 export { useReassignPro } from "./hooks/use-reassign-pro";
 export { useBulkAssignPros } from "./hooks/use-bulk-assign-pros";

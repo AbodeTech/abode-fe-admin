@@ -56,7 +56,7 @@ export function InvalidateRewardDialog({
               name="reason"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Reason (min 20 chars)</FormLabel>
+                  <FormLabel>Reason (min 15 chars)</FormLabel>
                   <FormControl>
                     <Textarea rows={4} {...field} />
                   </FormControl>

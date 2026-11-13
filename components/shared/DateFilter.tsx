@@ -15,11 +15,12 @@ import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState, useSyncExternalStore } from "react";
-import { format, isSameDay, startOfDay, subDays, subWeeks } from "date-fns";
+import { format, isSameDay, startOfDay, startOfYear, subDays, subWeeks } from "date-fns";
 import { type DateRange } from "react-day-picker";
 import { cn } from "@/lib/utils";
 
-type DateOption = "all" | "7days" | "2weeks" | "4weeks" | "custom";
+type DateOption = "all" | "7days" | "2weeks" | "4weeks" | "year" | "custom";
+type PresetOption = Exclude<DateOption, "all" | "custom">;
 
 function parseLocalDate(value: string): Date {
   const [year, month, day] = value.split("-").map(Number);
@@ -30,22 +31,24 @@ function formatLocalDate(date: Date): string {
   return format(date, "yyyy-MM-dd");
 }
 
-function presetBounds(option: Exclude<DateOption, "all" | "custom">): DateRange {
+function presetBounds(option: PresetOption): DateRange {
   const to = startOfDay(new Date());
   const from =
     option === "7days"
       ? subDays(to, 7)
       : option === "2weeks"
         ? subWeeks(to, 2)
-        : subWeeks(to, 4);
+        : option === "4weeks"
+          ? subWeeks(to, 4)
+          : startOfYear(to);
   return { from: startOfDay(from), to };
 }
 
-function matchPreset(from: Date, to: Date): DateOption {
+function matchPreset(from: Date, to: Date, presets: readonly PresetOption[]): DateOption {
   const today = startOfDay(new Date());
   if (!isSameDay(to, today)) return "custom";
 
-  for (const option of ["7days", "2weeks", "4weeks"] as const) {
+  for (const option of presets) {
     const preset = presetBounds(option);
     if (preset.from && isSameDay(from, preset.from)) return option;
   }
@@ -66,8 +69,16 @@ function getNarrowScreenServerSnapshot() {
   return false;
 }
 
-export function DateFilter() {
+interface DateFilterProps {
+  /** Adds "All year": 1 January of the current year up to today. */
+  showYearOption?: boolean;
+}
+
+export function DateFilter({ showYearOption = false }: DateFilterProps = {}) {
   const router = useRouter();
+  const presets: readonly PresetOption[] = showYearOption
+    ? ["7days", "2weeks", "4weeks", "year"]
+    : ["7days", "2weeks", "4weeks"];
   const searchParams = useSearchParams();
 
   const startDateParam = searchParams.get("start_date");
@@ -94,7 +105,7 @@ export function DateFilter() {
 
   const urlOption: DateOption =
     appliedRange?.from && appliedRange?.to
-      ? matchPreset(appliedRange.from, appliedRange.to)
+      ? matchPreset(appliedRange.from, appliedRange.to, presets)
       : "all";
 
   const selectedOption: DateOption = showCustomPicker || isCalendarOpen ? "custom" : urlOption;
@@ -131,7 +142,8 @@ export function DateFilter() {
     switch (value) {
       case "7days":
       case "2weeks":
-      case "4weeks": {
+      case "4weeks":
+      case "year": {
         const range = presetBounds(value);
         setDraftRange(undefined);
         setIsCalendarOpen(false);
@@ -198,6 +210,7 @@ export function DateFilter() {
             <SelectItem value="7days">Last 7 days</SelectItem>
             <SelectItem value="2weeks">Last 2 weeks</SelectItem>
             <SelectItem value="4weeks">Last 4 weeks</SelectItem>
+            {showYearOption && <SelectItem value="year">All year</SelectItem>}
             <SelectItem value="custom">Custom range</SelectItem>
           </SelectGroup>
         </SelectContent>

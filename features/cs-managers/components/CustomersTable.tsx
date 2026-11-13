@@ -196,6 +196,10 @@ export function CustomersTable({
   const toggleBoughtSort = () =>
     setSort(activeSort === "purchase_date_asc" ? "purchase_date_desc" : "purchase_date_asc");
 
+  // The allocation queue is worked oldest-wait first, and the wait starts when
+  // the land was paid off, not when the plan was bought.
+  const showPaymentCompleted = activeFilter === "due_allocation";
+
   // A chip whose count the BE doesn't send yet would 400 on click — hide it.
   const visibleFilters = FILTERS.filter((f) => filterCounts[f.key] !== undefined);
 
@@ -359,6 +363,9 @@ export function CustomersTable({
                       ))}
                   </button>
                 </th>
+                {showPaymentCompleted && (
+                  <th className="px-4 py-2.5 font-medium">Payment completed</th>
+                )}
                 <th className="px-4 py-2.5 font-medium">Payment</th>
                 <th className="px-4 py-2.5 font-medium">Onboarding</th>
                 <th className="px-4 py-2.5 font-medium">Allocation</th>
@@ -370,7 +377,7 @@ export function CustomersTable({
             <tbody>
               {plans.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-4 py-8 text-center text-gray-500 text-sm">
+                  <td colSpan={showPaymentCompleted ? 11 : 10} className="px-4 py-8 text-center text-gray-500 text-sm">
                     {searchParam || estateParam || activeFilter !== "all"
                       ? "No plans match this filter."
                       : "No plans in this book yet."}
@@ -430,6 +437,16 @@ export function CustomersTable({
                         </p>
                       )}
                     </td>
+                    {showPaymentCompleted && (
+                      <td className="px-4 py-3 text-gray-700 whitespace-nowrap">
+                        <p className="leading-tight">{formatShortDate(r.payment_completed_at)}</p>
+                        {r.payment_completed_at && (
+                          <p className="text-xs text-gray-500 leading-tight tabular-nums">
+                            {monthsSince(r.payment_completed_at)}
+                          </p>
+                        )}
+                      </td>
+                    )}
                     <td className="px-4 py-3">
                       <PaymentPill status={r.payment_status} label={r.payment_label} />
                     </td>

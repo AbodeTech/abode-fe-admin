@@ -29,10 +29,10 @@ export const useApproveUpgrade = () => {
     mutationFn: (upgradeId: string) =>
       apiPatch(`/admin/referrals/upgrades/${upgradeId}/approve`, {}, UpgradeSchema),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: upgradeKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: upgradeKeys.all });
     },
     onError: (error) => {
-      if (isUpgradeNoLongerPending(error)) queryClient.invalidateQueries({ queryKey: upgradeKeys.lists() });
+      if (isUpgradeNoLongerPending(error)) queryClient.invalidateQueries({ queryKey: upgradeKeys.all });
     },
   });
 };
@@ -40,7 +40,7 @@ export const useApproveUpgrade = () => {
 /**
  * PATCH /admin/referrals/upgrades/:id/decline.
  *
- * The reason is required and must be at least 20 characters — the BE rejects
+ * The reason is required and must be at least 15 characters — the BE rejects
  * anything shorter with `DECLINE_REASON_TOO_SHORT`. It is stored on the
  * upgrade and shown to the applicant, so it is written for them, not for us.
  */
@@ -55,10 +55,10 @@ export const useDeclineUpgrade = () => {
         UpgradeSchema
       ),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: upgradeKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: upgradeKeys.all });
     },
     onError: (error) => {
-      if (isUpgradeNoLongerPending(error)) queryClient.invalidateQueries({ queryKey: upgradeKeys.lists() });
+      if (isUpgradeNoLongerPending(error)) queryClient.invalidateQueries({ queryKey: upgradeKeys.all });
     },
   });
 };

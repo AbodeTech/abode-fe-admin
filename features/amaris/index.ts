@@ -11,7 +11,7 @@ export { AmarisQueryFilters } from './components/AmarisQueryFilters';
 export { AmarisQueryTable } from './components/AmarisQueryTable';
 
 export { useAmarisQueries, useAmarisCounts, DEFAULT_AMARIS_LIMIT } from './hooks/use-amaris-queries';
-export type { AmarisListFilters } from './hooks/query-keys';
+export type { AmarisCountFilters, AmarisListFilters } from './hooks/query-keys';
 
 export {
   AMARIS_AUDIENCES,

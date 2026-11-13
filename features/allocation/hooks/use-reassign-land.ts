@@ -10,7 +10,7 @@ import { allocationKeys } from './query-keys';
 export interface ReassignLandInput {
   paymentPlanId: string;
   newPlotIds: string[];
-  /** Required, ≥20 chars — `ReassignPlotsDto.reason`, `REASON_MIN_LENGTH`. */
+  /** Required, ≥15 chars — `ReassignPlotsDto.reason`, `REASON_MIN_LENGTH`. */
   reason: string;
 }
 
@@ -18,7 +18,7 @@ export interface ReassignLandInput {
  * POST /admin/allocation/payment-plans/:plan_id/reassign — confirmed against
  * abode-be-v2's allocation module on `origin/staging` (2026-08-28, not yet
  * deployed to this app's target environment). Body: `{ new_plot_ids, reason }`
- * — `reason` is required and server-enforced at ≥20 chars, same as deallocate.
+ * — `reason` is required and server-enforced at ≥15 chars, same as deallocate.
  *
  * Atomic release-then-claim server-side: a failed new claim rolls the old
  * release back, so the old plots stay allocated exactly as before on failure.

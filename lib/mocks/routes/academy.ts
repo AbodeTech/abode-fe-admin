@@ -25,6 +25,7 @@ type Cohort = {
   registration_open: boolean;
   registration_opens: string | null;
   registration_closes: string | null;
+  whatsapp_group_url?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -793,12 +794,14 @@ export const academyRoutes: MockRoutes = {
       registration_goal?: number;
       registration_opens?: string | null;
       registration_closes?: string | null;
+      whatsapp_group_url?: string | null;
     }>(raw);
     if (b.name !== undefined) found.cohort.name = b.name;
     if (b.label !== undefined) found.cohort.label = b.label;
     if (b.registration_goal !== undefined) found.cohort.registration_goal = b.registration_goal;
     if (b.registration_opens !== undefined) found.cohort.registration_opens = b.registration_opens;
     if (b.registration_closes !== undefined) found.cohort.registration_closes = b.registration_closes;
+    if (b.whatsapp_group_url !== undefined) found.cohort.whatsapp_group_url = b.whatsapp_group_url || null;
     found.cohort.updatedAt = now();
     return toCohortResponse(found.cohort);
   },

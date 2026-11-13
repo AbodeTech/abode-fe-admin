@@ -13,6 +13,7 @@ import { Plus } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 
 import { EditUserProfileModal } from "../modals/EditUserProfileModal"
+import { ChangeUserEmailModal } from "../modals/ChangeUserEmailModal"
 import { ChangeReferralStatusModal } from "../modals/ChangeReferralStatusModal"
 import { EditUserWalletModal } from "../modals/EditUserWalletModal"
 import { EditUserTinModal } from "../modals/EditUserTinModal"
@@ -22,7 +23,7 @@ import { ReassignReferrerModal } from "../modals/ReassignReferrerModal"
 import { UserDetail } from "../../types/user.types"
 import { useHasPermission } from "@/hooks/use-admin-permission"
 
-type ModalKey = "profile" | "refStatus" | "wallet" | "tin" | "clearTin" | "reassignReferrer" | null
+type ModalKey = "profile" | "email" | "refStatus" | "wallet" | "tin" | "clearTin" | "reassignReferrer" | null
 
 interface UserEditActionsProps {
   user: UserDetail
@@ -31,6 +32,8 @@ interface UserEditActionsProps {
 export function UserEditActions({ user }: UserEditActionsProps) {
   const canEditUser = useHasPermission("edit_user")
   const canEditProfile = useHasPermission("edit_user_profile")
+  // Deliberately not implied by edit_user: changing the login email hands over the account.
+  const canEditEmail = useHasPermission("edit_user_email")
   const canModifyTier = useHasPermission("modify_tier")
   const canAdjustWallet = useHasPermission("adjust_wallet")
   const canEditTin = useHasPermission("edit_user_tin")
@@ -46,6 +49,8 @@ export function UserEditActions({ user }: UserEditActionsProps) {
     switch (modalParam) {
       case "edituserprofile":
         return "profile"
+      case "changeuseremail":
+        return "email"
       case "changeRef":
         return "refStatus"
       case "edituserbalance":
@@ -73,7 +78,7 @@ export function UserEditActions({ user }: UserEditActionsProps) {
   }
 
   const hasAny =
-    canEditUser || canEditProfile || canModifyTier || canAdjustWallet || canEditTin || canReassignReferrer
+    canEditUser || canEditProfile || canEditEmail || canModifyTier || canAdjustWallet || canEditTin || canReassignReferrer
 
   if (!hasAny) return null
 
@@ -90,6 +95,11 @@ export function UserEditActions({ user }: UserEditActionsProps) {
           {(canEditUser || canEditProfile) && (
             <DropdownMenuItem onSelect={() => setModalParam("edituserprofile")}>
               Edit User Profile
+            </DropdownMenuItem>
+          )}
+          {canEditEmail && (
+            <DropdownMenuItem onSelect={() => setModalParam("changeuseremail")}>
+              Change Login Email
             </DropdownMenuItem>
           )}
           {(canEditUser || canModifyTier) && (
@@ -130,6 +140,14 @@ export function UserEditActions({ user }: UserEditActionsProps) {
       <EditUserProfileModal
         user={user}
         open={activeModal === "profile"}
+        onOpenChange={(open) => {
+          if (!open) setModalParam(null)
+        }}
+      />
+
+      <ChangeUserEmailModal
+        currentEmail={user.email}
+        open={activeModal === "email"}
         onOpenChange={(open) => {
           if (!open) setModalParam(null)
         }}
