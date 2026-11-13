@@ -39,6 +39,9 @@ function WithdrawalsPageContent() {
   const searchParams = useSearchParams();
   const page = Number(searchParams.get("page")) || 1;
   const search = searchParams.get("search") ?? undefined;
+  const startDate = searchParams.get("start_date") || undefined;
+  const endDate = searchParams.get("end_date") || undefined;
+  const dateRange = { start_date: startDate, end_date: endDate };
   const adminStatus = parseEnum<AdminStatus>(searchParams.get("admin_status"), ADMIN_STATUSES);
   const provider = parseEnum<PaymentProvider>(
     searchParams.get("payment_provider"),
@@ -51,13 +54,14 @@ function WithdrawalsPageContent() {
     search,
     admin_status: adminStatus,
     payment_provider: provider,
+    ...dateRange,
   };
 
   const { data, isLoading, error } = useWithdrawals({ ...filters, page });
 
   const rows = data?.items ?? [];
   const total = data?.meta.total ?? 0;
-  const filtered = Boolean(search || adminStatus || provider);
+  const filtered = Boolean(search || adminStatus || provider || startDate || endDate);
 
   const open = (kind: ReviewAction["kind"]) => (row: Withdrawal) => setAction({ kind, row });
 
@@ -82,7 +86,7 @@ function WithdrawalsPageContent() {
             <WithdrawalExportButton filters={filters} />
           </div>
 
-          <WithdrawalStatCards />
+          <WithdrawalStatCards filters={dateRange} />
 
           <WithdrawalFilters />
 

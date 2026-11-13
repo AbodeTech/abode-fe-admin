@@ -7,6 +7,7 @@ import { Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FilterSelect } from "@/components/shared/FilterSelect";
+import { DateFilter } from "@/components/shared/DateFilter";
 import { useDebounce } from "@/hooks/use-debounce";
 
 import {
@@ -62,6 +63,8 @@ export function WithdrawalFilters() {
         queryKey="payment_provider"
         placeholder="All providers"
       />
+
+      <DateFilter />
 
       <div className="relative w-full sm:w-80">
         <Search
