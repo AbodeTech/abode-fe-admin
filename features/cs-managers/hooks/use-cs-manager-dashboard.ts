@@ -26,6 +26,13 @@ export interface DashboardParams {
    */
   estate?: string;
   sort?: PlanSortKey;
+  /**
+   * Payment completed range, inclusive `YYYY-MM-DD` days. Proposed BE params
+   * (Admin v2 — Backend Requirements, item 9): only sent once a range is
+   * picked, so the page keeps working on a BE that doesn't accept them yet.
+   */
+  completedFrom?: string;
+  completedTo?: string;
   enabled?: boolean;
 }
 
@@ -40,10 +47,23 @@ export const useCSManagerDashboard = ({
   search,
   estate,
   sort,
+  completedFrom,
+  completedTo,
   enabled = true,
 }: DashboardParams) =>
   useQuery({
-    queryKey: csManagerKeys.dashboard(managerId, { month, year, page, limit, filter, search, estate, sort }),
+    queryKey: csManagerKeys.dashboard(managerId, {
+      month,
+      year,
+      page,
+      limit,
+      filter,
+      search,
+      estate,
+      sort,
+      completedFrom,
+      completedTo,
+    }),
     queryFn: () =>
       apiGet(managerId === "all" ? "/admin/cs-managers/dashboard/all" : `/admin/cs-managers/${managerId}/dashboard`, CSManagerDashboardSchema, {
         params: {
@@ -55,6 +75,8 @@ export const useCSManagerDashboard = ({
           search: search?.trim() || undefined,
           estate: estate?.trim() || undefined,
           sort,
+          completed_from: completedFrom || undefined,
+          completed_to: completedTo || undefined,
         },
       }),
     enabled: enabled && !!managerId,

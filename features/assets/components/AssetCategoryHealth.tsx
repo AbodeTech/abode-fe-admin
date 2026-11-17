@@ -127,7 +127,7 @@ function CategoryCard({
         {/* Portfolio stats */}
         <div className="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2 mb-2">
           <StatRow label="Total SQM" value={sqm} />
-          <StatRow label="Gross Revenue" value={revenue} />
+          <StatRow label="Unsold Value" value={revenue} />
           <StatRow label="Value Sold" value={valueSold} />
           <StatRow label="SQM Sold" value={sqmSold} />
           <StatRow label="Money Received" value={moneyReceived} valueClassName="text-emerald-600" />
@@ -181,7 +181,7 @@ export function AssetCategoryHealth({ data }: Props) {
             count={category.active_assets}
             excludedFromRollup={category.excluded_from_rollup}
             sqm={formatSqm(category.total_capacity_sqm)}
-            revenue={formatNaira(category.gross_revenue)}
+            revenue={formatNaira(category.unsold_value ?? category.gross_revenue)}
             efficiency={category.collection_efficiency}
             occupancy={category.occupancy_rate}
             accentColor={ACCENTS[index % ACCENTS.length]}

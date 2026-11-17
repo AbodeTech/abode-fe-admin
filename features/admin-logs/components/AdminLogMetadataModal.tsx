@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AdminLog } from "./AdminLogsTable"
+import { adminLogActor, formatAdminLogAction, type AdminLog } from "../schemas/admin-log.schema"
 import {
   User,
   DollarSign,
@@ -27,7 +27,10 @@ import {
 interface AdminLogMetadataModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  log: AdminLog | null
+  log: Pick<
+    AdminLog,
+    "timestamp" | "action" | "description" | "isSystem" | "adminId" | "adminEmail" | "reason" | "metadata" | "oldState"
+  > | null
 }
 
 // Humanize field names for better readability
@@ -611,7 +614,7 @@ export function AdminLogMetadataModal({ open, onOpenChange, log }: AdminLogMetad
                 </DialogDescription>
               </div>
               <Badge className={`${getActionBadgeStyle(log.action || "")} text-xs px-3 py-1 font-semibold uppercase tracking-wider`}>
-                {log.action}
+                {formatAdminLogAction(log.action)}
               </Badge>
             </div>
           </DialogHeader>
@@ -625,9 +628,14 @@ export function AdminLogMetadataModal({ open, onOpenChange, log }: AdminLogMetad
                   Operator Information
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
-                  <MetadataField icon={Mail} label="Admin Account" value={log.adminEmail} />
-                  <MetadataField icon={Hash} label="Admin ID" value={log.adminId} />
+                  <MetadataField icon={Mail} label="Admin Account" value={adminLogActor(log)} />
+                  {!log.isSystem && <MetadataField icon={Hash} label="Admin ID" value={log.adminId ?? "—"} />}
                 </div>
+                {log.reason && (
+                  <div className="mt-2 border-t border-border/50 pt-2">
+                    <MetadataField icon={FileText} label="Reason given" value={log.reason} />
+                  </div>
+                )}
                 <div className="mt-2 border-t border-border/50 pt-2">
                   <MetadataField icon={Calendar} label="Timestamp" value={`${formatDate(log.timestamp)} (${getRelativeTime(log.timestamp)})`} />
                 </div>

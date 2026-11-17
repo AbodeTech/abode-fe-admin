@@ -68,6 +68,13 @@ function isRevenueEligible(row: MockSalesRow): boolean {
 
 const OUTSTANDING_EXCLUDED: PlanStatus[] = ['suspended', 'completed', 'closed'];
 
+/** The agencies seeded in agency.ts, so an agency's Sales tab finds its rows. */
+const MOCK_SALES_AGENCIES = [
+  { id: '665faaaa00000000000000a1', name: 'Horizon Realty Partners' },
+  { id: '665faaaa00000000000000a2', name: 'Lagos Land Collective' },
+  { id: '665faaaa00000000000000a3', name: 'Pearl Estate Agency' },
+];
+
 const rows: MockSalesRow[] = MOCK_USERS.map((user, i) => {
   const assetIndex = i % MOCK_ASSET_NAMES.length;
   const assetType = ASSET_TYPES[i % ASSET_TYPES.length];
@@ -96,7 +103,7 @@ const rows: MockSalesRow[] = MOCK_USERS.map((user, i) => {
           email: MOCK_USERS[(i + 3) % MOCK_USERS.length].email,
         }
       : null,
-    agency: hasAgency ? { id: `agency-${i % 4}`, name: `Agency Partners ${(i % 4) + 1}` } : null,
+    agency: hasAgency ? MOCK_SALES_AGENCIES[i % MOCK_SALES_AGENCIES.length] : null,
     asset: {
       id: MOCK_ASSET_IDS[assetIndex],
       name: MOCK_ASSET_NAMES[assetIndex],
@@ -173,6 +180,26 @@ function applyListFilters(query: Record<string, unknown>): MockSalesRow[] {
   return filtered;
 }
 
+/**
+ * Proposed `GET /admin/agencies/:agency_id/stats` figures from the sales rows
+ * (item 8): the agency's revenue-eligible plans.
+ */
+export function agencySalesStats(agencyId: string, query: Record<string, unknown>) {
+  // The mock has no cancelled plans; the BE applies the shared sale definition (item 6).
+  const plans = analyticsScope({ ...query, agency_id: agencyId });
+  const sum = (pick: (r: MockSalesRow) => number) => plans.reduce((n, r) => n + pick(r), 0);
+  return {
+    plans: plans.length,
+    sales_value: sum((r) => r.price),
+    amount_received: sum((r) => r.amount_paid),
+    outstanding: plans.filter((r) => r.plan_status !== 'completed').reduce((n, r) => n + r.balance, 0),
+    sqm_sold: sum((r) => r.size * r.no_of_units),
+    units_sold: sum((r) => r.no_of_units),
+    buyers: new Set(plans.map((r) => r.buyer.id)).size,
+    balance_on_active: plans.filter((r) => r.plan_status === 'active').reduce((n, r) => n + r.balance, 0),
+  };
+}
+
 function analyticsScope(query: Record<string, unknown>): MockSalesRow[] {
   let scoped = (rows as MockSalesRow[]).filter(isRevenueEligible);
 
@@ -187,6 +214,8 @@ function analyticsScope(query: Record<string, unknown>): MockSalesRow[] {
     });
   }
 
+  // Proposed `agency_id` on the analytics endpoints (item 7).
+  if (query.agency_id) scoped = scoped.filter((r) => r.agency?.id === query.agency_id);
   if (query.asset_type) scoped = scoped.filter((r) => r.asset.type === query.asset_type);
   if (query.asset_location) scoped = scoped.filter((r) => r.asset.location === query.asset_location);
   if (query.source_type) scoped = scoped.filter((r) => r.source_type === query.source_type);

@@ -38,7 +38,15 @@ export type YearsList = z.infer<typeof YearsListSchema>;
 export const YearlyGoalSchema = z.object({
   year: z.number(),
   associate_pro_target: z.number(),
+  /** Approved associate-pro upgrade fees — not sales revenue. */
   revenue_target: z.number(),
+  /**
+   * Proposed company goals (Admin v2 — Backend Requirements, item 16). Absent
+   * on today's BE; null = not set for the year.
+   */
+  unique_seller_target: z.number().nullable().optional(),
+  avg_revenue_per_associate_target: z.number().nullable().optional(),
+  financial_revenue_target: z.number().nullable().optional(),
   notes: z.string().nullable(),
   created_by: z.string(),
   last_edited_by: z.string().nullable(),
@@ -62,6 +70,15 @@ export const upsertYearlyGoalSchema = z.object({
     .int('Use a whole number of associate pros')
     .min(0, 'Cannot be negative'),
   revenue_target: z.number({ message: 'Enter a number' }).min(0, 'Cannot be negative'),
+  // Proposed (item 16), all optional: only sent once `yearly_goals_v2` is
+  // ready — today's DTO 400s on unknown keys. Blank = no target.
+  unique_seller_target: z
+    .number({ message: 'Enter a number' })
+    .int('Use a whole number of sellers')
+    .min(0, 'Cannot be negative')
+    .optional(),
+  avg_revenue_per_associate_target: z.number({ message: 'Enter a number' }).min(0, 'Cannot be negative').optional(),
+  financial_revenue_target: z.number({ message: 'Enter a number' }).min(0, 'Cannot be negative').optional(),
   notes: z.string().max(2000, 'Keep notes under 2000 characters').optional(),
 });
 
@@ -150,8 +167,30 @@ export const GraphsSchema = z.object({
   }),
 });
 
+/**
+ * One proposed company goal's progress (item 16). `actual` is computed for the
+ * year whether or not a target is set; the rest is null without a target.
+ */
+export const CompanyGoalMetricSchema = z.object({
+  target: z.number().nullable(),
+  actual: z.number().nullable(),
+  progress_pct: z.number().nullable(),
+  previous_year_actual: z.number().nullable(),
+});
+export type CompanyGoalMetric = z.infer<typeof CompanyGoalMetricSchema>;
+
+export const CompanyGoalsSchema = z.object({
+  /** Distinct associates with at least one sale in the year. */
+  unique_sellers: CompanyGoalMetricSchema,
+  /** Sales revenue divided by unique sellers. */
+  avg_revenue_per_associate: CompanyGoalMetricSchema,
+  /** Sales revenue in the year (contract value, pending product sign-off). */
+  financial_revenue: CompanyGoalMetricSchema,
+});
+
 export const TrackerDashboardSchema = z.object({
   goals_set: z.boolean(),
+  company_goals: CompanyGoalsSchema.optional(),
   year_period: YearPeriodSchema,
   associate_pro_progress: AssociateProProgressSchema,
   revenue_metrics: RevenueMetricsSchema,

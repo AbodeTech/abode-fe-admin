@@ -16,6 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { isBackendReady } from "@/lib/backend-ready";
 
 /**
  * Period control for the manager dashboards: a month and a year, which is what
@@ -23,7 +24,9 @@ import { cn } from "@/lib/utils";
  * for anyone who needs exact dates.
  *
  * URL: `?month=&year=` for a month (no params = the current month), or
- * `?start_date=&end_date=` (yyyy-MM-dd) for a custom range.
+ * `?start_date=&end_date=` (yyyy-MM-dd) for a custom range. Once the BE scores
+ * longer periods (`manager_long_periods`), also `?period=year&year=` for a
+ * whole year and `?period=all_time`.
  */
 
 const MONTH_NAMES = [
@@ -36,6 +39,8 @@ const YEARS_BACK = 4;
 
 type Active =
   | { kind: "month"; month: number; year: number }
+  | { kind: "year"; year: number }
+  | { kind: "all_time" }
   | { kind: "custom"; from: Date; to: Date };
 
 /** yyyy-MM-dd as a local calendar date (new Date("yyyy-MM-dd") would be UTC midnight). */
@@ -46,13 +51,18 @@ const parseDay = (raw: string | null): Date | null => {
   return Number.isNaN(d.getTime()) ? null : d;
 };
 
-const deriveActive = (searchParams: URLSearchParams, now: Date): Active => {
+const deriveActive = (searchParams: URLSearchParams, now: Date, longPeriods: boolean): Active => {
   const from = parseDay(searchParams.get("start_date"));
   const to = parseDay(searchParams.get("end_date"));
   if (from && to) return { kind: "custom", from, to };
 
   const month = Number(searchParams.get("month"));
   const year = Number(searchParams.get("year"));
+  const period = searchParams.get("period");
+  if (longPeriods && period === "all_time") return { kind: "all_time" };
+  if (longPeriods && period === "year") {
+    return { kind: "year", year: year > 1970 ? year : now.getFullYear() };
+  }
   if (month >= 1 && month <= 12 && year > 1970) return { kind: "month", month, year };
 
   return { kind: "month", month: now.getMonth() + 1, year: now.getFullYear() };
@@ -65,7 +75,11 @@ export function DashboardPeriodFilter() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const now = useMemo(() => new Date(), []);
-  const active = useMemo(() => deriveActive(searchParams, now), [searchParams, now]);
+  const longPeriods = isBackendReady("manager_long_periods");
+  const active = useMemo(
+    () => deriveActive(searchParams, now, longPeriods),
+    [searchParams, now, longPeriods]
+  );
 
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth() + 1;
@@ -94,9 +108,21 @@ export function DashboardPeriodFilter() {
     });
   };
 
+  const selectYear = (year: number) =>
+    writePeriod((params) => {
+      params.set("period", "year");
+      params.set("year", String(year));
+    });
+
+  const selectView = (view: string) => {
+    if (view === "all_time") writePeriod((params) => params.set("period", "all_time"));
+    else if (view === "year") selectYear(active.kind === "month" || active.kind === "year" ? active.year : currentYear);
+    else selectMonth(currentMonth, active.kind === "year" ? active.year : currentYear);
+  };
+
   // Picking either half while a custom range is showing starts from the current month.
   const shownMonth = active.kind === "month" ? active.month : currentMonth;
-  const shownYear = active.kind === "month" ? active.year : currentYear;
+  const shownYear = active.kind === "month" || active.kind === "year" ? active.year : currentYear;
 
   const handleCalendarOpenChange = (open: boolean) => {
     setIsCalendarOpen(open);
@@ -123,41 +149,60 @@ export function DashboardPeriodFilter() {
 
   return (
     <div className="inline-flex flex-wrap items-center gap-2">
-      <Select
-        value={active.kind === "month" ? String(active.month) : ""}
-        onValueChange={(value) => selectMonth(Number(value), shownYear)}
-      >
-        <SelectTrigger className="h-10 w-36 bg-white" aria-label="Month">
-          <SelectValue placeholder="Month" />
-        </SelectTrigger>
-        <SelectContent>
-          {MONTH_NAMES.map((name, i) => (
-            <SelectItem
-              key={name}
-              value={String(i + 1)}
-              disabled={shownYear === currentYear && i + 1 > currentMonth}
-            >
-              {name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      {longPeriods && (
+        <Select value={active.kind === "custom" ? "" : active.kind} onValueChange={selectView}>
+          <SelectTrigger className="h-10 w-32 bg-white" aria-label="Period">
+            <SelectValue placeholder="Period" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="month">Month</SelectItem>
+            <SelectItem value="year">Whole year</SelectItem>
+            <SelectItem value="all_time">All time</SelectItem>
+          </SelectContent>
+        </Select>
+      )}
 
-      <Select
-        value={active.kind === "month" ? String(active.year) : ""}
-        onValueChange={(value) => selectMonth(shownMonth, Number(value))}
-      >
-        <SelectTrigger className="h-10 w-24 bg-white" aria-label="Year">
-          <SelectValue placeholder="Year" />
-        </SelectTrigger>
-        <SelectContent>
-          {years.map((y) => (
-            <SelectItem key={y} value={String(y)}>
-              {y}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      {(active.kind === "month" || active.kind === "custom") && (
+        <Select
+          value={active.kind === "month" ? String(active.month) : ""}
+          onValueChange={(value) => selectMonth(Number(value), shownYear)}
+        >
+          <SelectTrigger className="h-10 w-36 bg-white" aria-label="Month">
+            <SelectValue placeholder="Month" />
+          </SelectTrigger>
+          <SelectContent>
+            {MONTH_NAMES.map((name, i) => (
+              <SelectItem
+                key={name}
+                value={String(i + 1)}
+                disabled={shownYear === currentYear && i + 1 > currentMonth}
+              >
+                {name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
+
+      {active.kind !== "all_time" && (
+        <Select
+          value={active.kind === "month" || active.kind === "year" ? String(active.year) : ""}
+          onValueChange={(value) =>
+            active.kind === "year" ? selectYear(Number(value)) : selectMonth(shownMonth, Number(value))
+          }
+        >
+          <SelectTrigger className="h-10 w-24 bg-white" aria-label="Year">
+            <SelectValue placeholder="Year" />
+          </SelectTrigger>
+          <SelectContent>
+            {years.map((y) => (
+              <SelectItem key={y} value={String(y)}>
+                {y}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
 
       <Popover open={isCalendarOpen} onOpenChange={handleCalendarOpenChange}>
         <PopoverTrigger asChild>
@@ -193,7 +238,9 @@ export function DashboardPeriodFilter() {
           <p className="border-t px-3 py-2 text-xs text-gray-500">
             {rangeStart
               ? `From ${format(rangeStart, "MMM d")} — now pick the end date`
-              : "Pick the start date. Targets and the score are monthly, so pick a month to compare against them."}
+              : longPeriods
+                ? "Pick the start date. Targets are set per month, so a month or a whole year compares against them."
+                : "Pick the start date. Targets and the score are monthly, so pick a month to compare against them."}
           </p>
         </PopoverContent>
       </Popover>

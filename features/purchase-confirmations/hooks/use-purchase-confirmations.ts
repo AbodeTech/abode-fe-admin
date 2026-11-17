@@ -55,6 +55,17 @@ export type PurchaseConfirmationRow = {
   disputedAt: string | null;
   disputeNote: string | null;
   resolvedAt: string | null;
+  /** Every dispute on the purchase, oldest first, including resolved ones. */
+  disputes: PurchaseDisputeEntry[];
+};
+
+export type PurchaseDisputeEntry = {
+  note: string;
+  disputedAt: string;
+  resolvedAt: string | null;
+  resolutionNote: string | null;
+  /** Null when the BE doesn't report who resolved it. */
+  resolvedByName: string | null;
 };
 
 const toStatus = (value: string): AdminConfirmationStatus =>
@@ -99,6 +110,13 @@ function mapRow(row: AdminConfirmationRow): PurchaseConfirmationRow {
     disputedAt: activeDispute?.disputed_at ?? null,
     disputeNote: row.open_dispute_note ?? activeDispute?.note ?? null,
     resolvedAt,
+    disputes: disputes.map((entry) => ({
+      note: entry.note,
+      disputedAt: entry.disputed_at,
+      resolvedAt: entry.resolved_at,
+      resolutionNote: entry.resolution_note,
+      resolvedByName: entry.resolved_by?.name ?? null,
+    })),
   };
 }
 

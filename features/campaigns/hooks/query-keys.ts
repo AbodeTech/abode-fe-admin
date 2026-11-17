@@ -1,5 +1,6 @@
 import type { CampaignStatus } from '../schemas/campaign.schema';
 import type { RewardRole } from '../schemas/reward.schema';
+import type { CampaignSortValue } from '../lib/campaign-sort';
 
 export const DEFAULT_CAMPAIGNS_LIMIT = 20;
 export const DEFAULT_REWARDS_LIMIT = 20;
@@ -10,6 +11,8 @@ export type CampaignListFilters = {
   search?: string | null;
   page?: number;
   limit?: number;
+  /** `<sort_by>:<sort_dir>` — see lib/campaign-sort.ts. */
+  sort?: CampaignSortValue;
 };
 
 export type CampaignRewardFilters = {

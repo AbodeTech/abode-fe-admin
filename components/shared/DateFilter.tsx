@@ -15,12 +15,10 @@ import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState, useSyncExternalStore } from "react";
-import { format, isSameDay, startOfDay, startOfYear, subDays, subWeeks } from "date-fns";
+import { format, startOfDay } from "date-fns";
 import { type DateRange } from "react-day-picker";
 import { cn } from "@/lib/utils";
-
-type DateOption = "all" | "7days" | "2weeks" | "4weeks" | "year" | "custom";
-type PresetOption = Exclude<DateOption, "all" | "custom">;
+import { matchPreset, presetBounds, presetsFor, type DateOption } from "./date-presets";
 
 function parseLocalDate(value: string): Date {
   const [year, month, day] = value.split("-").map(Number);
@@ -29,30 +27,6 @@ function parseLocalDate(value: string): Date {
 
 function formatLocalDate(date: Date): string {
   return format(date, "yyyy-MM-dd");
-}
-
-function presetBounds(option: PresetOption): DateRange {
-  const to = startOfDay(new Date());
-  const from =
-    option === "7days"
-      ? subDays(to, 7)
-      : option === "2weeks"
-        ? subWeeks(to, 2)
-        : option === "4weeks"
-          ? subWeeks(to, 4)
-          : startOfYear(to);
-  return { from: startOfDay(from), to };
-}
-
-function matchPreset(from: Date, to: Date, presets: readonly PresetOption[]): DateOption {
-  const today = startOfDay(new Date());
-  if (!isSameDay(to, today)) return "custom";
-
-  for (const option of presets) {
-    const preset = presetBounds(option);
-    if (preset.from && isSameDay(from, preset.from)) return option;
-  }
-  return "custom";
 }
 
 function subscribeNarrowScreen(onChange: () => void) {
@@ -70,15 +44,15 @@ function getNarrowScreenServerSnapshot() {
 }
 
 interface DateFilterProps {
+  /** Adds "Today" and "Yesterday" (Sales). */
+  showDayOptions?: boolean;
   /** Adds "All year": 1 January of the current year up to today. */
   showYearOption?: boolean;
 }
 
-export function DateFilter({ showYearOption = false }: DateFilterProps = {}) {
+export function DateFilter({ showDayOptions = false, showYearOption = false }: DateFilterProps = {}) {
   const router = useRouter();
-  const presets: readonly PresetOption[] = showYearOption
-    ? ["7days", "2weeks", "4weeks", "year"]
-    : ["7days", "2weeks", "4weeks"];
+  const presets = presetsFor({ showDayOptions, showYearOption });
   const searchParams = useSearchParams();
 
   const startDateParam = searchParams.get("start_date");
@@ -139,24 +113,19 @@ export function DateFilter({ showYearOption = false }: DateFilterProps = {}) {
   };
 
   const handleOptionChange = (value: DateOption) => {
-    switch (value) {
-      case "7days":
-      case "2weeks":
-      case "4weeks":
-      case "year": {
-        const range = presetBounds(value);
-        setDraftRange(undefined);
-        setIsCalendarOpen(false);
-        setShowCustomPicker(false);
-        if (range.from && range.to) updateURL(range.from, range.to);
-        break;
-      }
-      case "custom":
-        openCalendar();
-        break;
-      default:
-        handleReset();
+    if (value === "custom") {
+      openCalendar();
+      return;
     }
+    if (value === "all") {
+      handleReset();
+      return;
+    }
+    const range = presetBounds(value);
+    setDraftRange(undefined);
+    setIsCalendarOpen(false);
+    setShowCustomPicker(false);
+    updateURL(range.from, range.to);
   };
 
   const handleRangeSelect = (range: DateRange | undefined) => {
@@ -207,6 +176,8 @@ export function DateFilter({ showYearOption = false }: DateFilterProps = {}) {
           <SelectGroup>
             <SelectLabel>Time Range</SelectLabel>
             <SelectItem value="all">All time</SelectItem>
+            {showDayOptions && <SelectItem value="today">Today</SelectItem>}
+            {showDayOptions && <SelectItem value="yesterday">Yesterday</SelectItem>}
             <SelectItem value="7days">Last 7 days</SelectItem>
             <SelectItem value="2weeks">Last 2 weeks</SelectItem>
             <SelectItem value="4weeks">Last 4 weeks</SelectItem>

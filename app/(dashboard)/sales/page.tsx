@@ -8,11 +8,13 @@ import {
   SalesTable,
   SalesStatusChips,
   SalesFilters,
+  YesterdaySalesCard,
   useSalesList,
   useSalesDashboard,
   DEFAULT_SALES_LIMIT,
 } from "@/features/sales";
 import type { SalesPlanStatus } from "@/features/sales/schemas/sales.schema";
+import { useAuthStore } from "@/store/auth-store";
 import { SalesExport } from "@/features/sales/components/SalesExport";
 import { SalesCsvExport } from "@/features/sales/components/SalesCsvExport";
 import { Pagination } from "@/components/shared/Pagination";
@@ -29,6 +31,7 @@ function SalesContent() {
   const assetType = searchParams.get("assettype") || null;
   const planStatus = (searchParams.get("status") as SalesPlanStatus | null) || null;
   const sourceType = searchParams.get("source") || null;
+  const isSuperAdmin = Boolean(useAuthStore((state) => state.user?.role?.is_super_admin));
 
   const filters = {
     page,
@@ -91,6 +94,8 @@ function SalesContent() {
           <p>{(dashboardError as Error).message || "Sales cards could not be loaded."}</p>
         </div>
       )}
+      {isSuperAdmin && <YesterdaySalesCard />}
+
       {dashboard && <SummaryCards data={dashboard} />}
 
       <SalesFilters />

@@ -23,17 +23,22 @@ export const useExportDashboardPlans = () =>
       /** The same estate as the table, so the file holds the rows on screen. */
       estate?: string;
       sort?: PlanSortKey;
+      /** The table's payment completed range (proposed BE params, item 9). */
+      completedFrom?: string;
+      completedTo?: string;
     }) => {
       if (isMockApiEnabled()) {
         throw new Error('Export is unavailable in mock mode — point the app at a real backend.');
       }
 
-      const { managerId, ...query } = params;
+      const { managerId, completedFrom, completedTo, ...query } = params;
       const response = await apiClient.get(`/admin/cs-managers/${managerId}/exports/plans`, {
         params: {
           ...query,
           search: query.search?.trim() || undefined,
           estate: query.estate?.trim() || undefined,
+          completed_from: completedFrom || undefined,
+          completed_to: completedTo || undefined,
         },
         responseType: 'blob',
       });

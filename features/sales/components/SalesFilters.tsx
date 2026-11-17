@@ -59,7 +59,7 @@ export function SalesFilters() {
         <FilterSelect data={PLAN_STATUS_OPTIONS} queryKey="status" placeholder="Plan status" />
         <FilterSelect data={SOURCE_TYPE_OPTIONS} queryKey="source" placeholder="Source" />
         <div className="w-full min-w-0 sm:w-auto">
-          <DateFilter />
+          <DateFilter showDayOptions />
         </div>
       </div>
     </div>

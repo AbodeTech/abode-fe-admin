@@ -50,6 +50,8 @@ const productLabel = (product: PurchaseConfirmationRow["product"]) =>
 interface PurchaseConfirmationsTableProps {
   rows?: PurchaseConfirmationRow[] | null;
   isLoading?: boolean;
+  /** `manage_purchase_confirmations`: without it the BE refuses resolve and resend. */
+  canManage: boolean;
   onView: (row: PurchaseConfirmationRow) => void;
   onResolve: (row: PurchaseConfirmationRow) => void;
   onResendEmail: (row: PurchaseConfirmationRow) => void;
@@ -58,6 +60,7 @@ interface PurchaseConfirmationsTableProps {
 export function PurchaseConfirmationsTable({
   rows,
   isLoading,
+  canManage,
   onView,
   onResolve,
   onResendEmail,
@@ -88,7 +91,7 @@ export function PurchaseConfirmationsTable({
         <Eye className="h-4 w-4" />
         View
       </Button>
-      {row.status === "disputed" && (
+      {canManage && row.status === "disputed" && (
         <Button
           size="sm"
           className={mobile ? "w-full gap-2" : "gap-2"}
@@ -98,7 +101,7 @@ export function PurchaseConfirmationsTable({
           Resolve
         </Button>
       )}
-      {row.status === "waiting" && (
+      {canManage && row.status === "waiting" && (
         <Button
           variant="outline"
           size="sm"

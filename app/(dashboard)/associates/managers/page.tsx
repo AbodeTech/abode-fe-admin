@@ -89,6 +89,7 @@ function AssociateManagersContent() {
   const endDate = searchParams.get("end_date");
   const month = searchParams.get("month");
   const year = searchParams.get("year");
+  const period = searchParams.get("period");
   const proGroup = searchParams.get("pro_group");
   const proSort = searchParams.get("pro_sort");
 
@@ -97,6 +98,7 @@ function AssociateManagersContent() {
     endDate,
     month,
     year,
+    period,
     proGroup,
     proSort,
   });
@@ -105,6 +107,7 @@ function AssociateManagersContent() {
     endDate,
     month,
     year,
+    period,
   });
 
   const { mutateAsync: exportPros, isPending: isExportingPros } =

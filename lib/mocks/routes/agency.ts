@@ -1,6 +1,7 @@
 import { MockHttpError, type MockRoutes } from '../router';
 import { PEOPLE, findPerson } from './people';
 import { paged } from './util';
+import { agencySalesStats } from './sales';
 
 /* ============================================================
  * Agencies — /admin/agencies/* and PATCH /admin/users/:user_id/org.
@@ -207,6 +208,27 @@ export const agencyRoutes: MockRoutes = {
         ...agency,
         member_count: memberCount(agency.id),
       })),
+    };
+  },
+
+  // Proposed (Admin v2 — Backend Requirements, item 8).
+  'GET /admin/agencies/:agency_id/stats': ({ params, query }) => {
+    const agency = requireAgency(params.agency_id);
+    const s = agencySalesStats(agency.id, query);
+    const members = memberCount(agency.id);
+    return {
+      start_date: query.start_date ? String(query.start_date) : null,
+      end_date: query.end_date ? String(query.end_date) : null,
+      sales_value: s.sales_value,
+      amount_received: s.amount_received,
+      outstanding: s.outstanding,
+      sqm_sold: s.sqm_sold,
+      units_sold: s.units_sold,
+      buyers: s.buyers,
+      commission_paid: commissionTotal(agency.id),
+      commission_projected: Math.round((s.balance_on_active * agency.commission_percentage) / 100),
+      members,
+      active_members: Math.min(members, s.buyers),
     };
   },
 

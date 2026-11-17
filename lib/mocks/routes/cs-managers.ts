@@ -20,6 +20,13 @@ import { requireSession } from './auth';
 
 const daysAgo = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString();
 
+/** YYYY-MM-DD of an ISO timestamp, in local time. */
+const localDay = (iso: string) => {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
+
 /** `CS_MANAGER_AUTO_ASSIGN` — off by default on the BE. Flip to see the preview's "on" state. */
 const AUTO_ASSIGN_ENABLED = false;
 
@@ -33,11 +40,11 @@ export type MockAdmin = {
 };
 
 export const ADMINS: MockAdmin[] = [
-  { _id: '665fadmn00000000000000d1', userName: 'ngozi.eze', firstName: 'Ngozi', lastName: 'Eze', email: 'ngozi.eze@abodeflex.com', role: 'admin' },
-  { _id: '665fadmn00000000000000d2', userName: 'chuka.obi', firstName: 'Chuka', lastName: 'Obi', email: 'chuka.obi@abodeflex.com', role: 'subadmin' },
-  { _id: '665fadmn00000000000000d3', userName: 'amina.bello', firstName: 'Amina', lastName: 'Bello', email: 'amina.bello@abodeflex.com', role: 'subadmin' },
-  { _id: '665fadmn00000000000000d4', userName: 'tolu.adeyemi', firstName: 'Tolu', lastName: 'Adeyemi', email: 'tolu.adeyemi@abodeflex.com', role: 'moderator' },
-  { _id: '665fadmn00000000000000d5', userName: 'femi.oke', firstName: 'Femi', lastName: 'Oke', email: 'femi.oke@abodeflex.com', role: 'subadmin' },
+  { _id: '665fad0e00000000000000d1', userName: 'ngozi.eze', firstName: 'Ngozi', lastName: 'Eze', email: 'ngozi.eze@abodeflex.com', role: 'admin' },
+  { _id: '665fad0e00000000000000d2', userName: 'chuka.obi', firstName: 'Chuka', lastName: 'Obi', email: 'chuka.obi@abodeflex.com', role: 'subadmin' },
+  { _id: '665fad0e00000000000000d3', userName: 'amina.bello', firstName: 'Amina', lastName: 'Bello', email: 'amina.bello@abodeflex.com', role: 'subadmin' },
+  { _id: '665fad0e00000000000000d4', userName: 'tolu.adeyemi', firstName: 'Tolu', lastName: 'Adeyemi', email: 'tolu.adeyemi@abodeflex.com', role: 'moderator' },
+  { _id: '665fad0e00000000000000d5', userName: 'femi.oke', firstName: 'Femi', lastName: 'Oke', email: 'femi.oke@abodeflex.com', role: 'subadmin' },
 ];
 
 export const findAdmin = (id: string) => ADMINS.find((a) => a._id === id);
@@ -57,10 +64,10 @@ type MockCSManager = {
 const csManagers: MockCSManager[] = [
   {
     _id: '665fcsma00000000000000e1',
-    managerId: '665fadmn00000000000000d2',
+    managerId: '665fad0e00000000000000d2',
     assigned_from: daysAgo(120),
     assigned_to: null,
-    created_by: '665fadmn00000000000000d1',
+    created_by: '665fad0e00000000000000d1',
     createdAt: daysAgo(120),
     assigned_customers_count: 34,
     assigned_plans_count: 41,
@@ -68,10 +75,10 @@ const csManagers: MockCSManager[] = [
   },
   {
     _id: '665fcsma00000000000000e2',
-    managerId: '665fadmn00000000000000d3',
+    managerId: '665fad0e00000000000000d3',
     assigned_from: daysAgo(45),
     assigned_to: null,
-    created_by: '665fadmn00000000000000d1',
+    created_by: '665fad0e00000000000000d1',
     createdAt: daysAgo(45),
     assigned_customers_count: 19,
     assigned_plans_count: 22,
@@ -95,7 +102,7 @@ type MockTarget = {
 const targets: MockTarget[] = [
   {
     _id: '665fcstg00000000000000f1',
-    manager: '665fadmn00000000000000d2',
+    manager: '665fad0e00000000000000d2',
     month: new Date().getMonth() + 1,
     year: new Date().getFullYear(),
     customers_allocated_target: 40,
@@ -204,7 +211,7 @@ type MockPlan = {
 const plans: MockPlan[] = [
   {
     plan_id: '665fplan000000000000cm01',
-    manager: '665fadmn00000000000000d2',
+    manager: '665fad0e00000000000000d2',
     customer_id: '665fcccc00000000000000c1',
     prior_plans_count: 0,
     asset: 'Aviation City',
@@ -226,7 +233,7 @@ const plans: MockPlan[] = [
   },
   {
     plan_id: '665fplan000000000000cm02',
-    manager: '665fadmn00000000000000d2',
+    manager: '665fad0e00000000000000d2',
     customer_id: '665fcccc00000000000000c1',
     prior_plans_count: 1,
     asset: 'Aviation City',
@@ -249,7 +256,7 @@ const plans: MockPlan[] = [
   },
   {
     plan_id: '665fplan000000000000cm03',
-    manager: '665fadmn00000000000000d2',
+    manager: '665fad0e00000000000000d2',
     customer_id: '665fcccc00000000000000c2',
     prior_plans_count: 0,
     asset: 'Harmony Gardens',
@@ -271,7 +278,7 @@ const plans: MockPlan[] = [
   },
   {
     plan_id: '665fplan000000000000cm04',
-    manager: '665fadmn00000000000000d2',
+    manager: '665fad0e00000000000000d2',
     customer_id: '665fcccc00000000000000c3',
     prior_plans_count: 0,
     asset: 'Harmony Gardens',
@@ -294,7 +301,7 @@ const plans: MockPlan[] = [
   },
   {
     plan_id: '665fplan000000000000cm05',
-    manager: '665fadmn00000000000000d3',
+    manager: '665fad0e00000000000000d3',
     customer_id: '665fcccc00000000000000c4',
     prior_plans_count: 0,
     asset: 'Aviation City',
@@ -316,7 +323,7 @@ const plans: MockPlan[] = [
   },
   {
     plan_id: '665fplan000000000000cm06',
-    manager: '665fadmn00000000000000d3',
+    manager: '665fad0e00000000000000d3',
     customer_id: '665fcccc00000000000000c5',
     prior_plans_count: 0,
     asset: 'Harmony Gardens',
@@ -342,7 +349,7 @@ const plans: MockPlan[] = [
   // since before this month (the carried-over half of the backlog split).
   {
     plan_id: '665fplan000000000000cm07',
-    manager: '665fadmn00000000000000d2',
+    manager: '665fad0e00000000000000d2',
     customer_id: '665fcccc00000000000000c6',
     prior_plans_count: 0,
     asset: 'Aviation City',
@@ -364,7 +371,7 @@ const plans: MockPlan[] = [
   },
   {
     plan_id: '665fplan000000000000cm08',
-    manager: '665fadmn00000000000000d2',
+    manager: '665fad0e00000000000000d2',
     customer_id: '665fcccc00000000000000c9',
     prior_plans_count: 0,
     asset: 'Harmony Gardens',
@@ -386,7 +393,7 @@ const plans: MockPlan[] = [
   },
   {
     plan_id: '665fplan000000000000cm09',
-    manager: '665fadmn00000000000000d2',
+    manager: '665fad0e00000000000000d2',
     customer_id: '665fcccc00000000000000c7',
     prior_plans_count: 0,
     asset: 'Harmony Gardens',
@@ -699,7 +706,21 @@ function dashboardFor(managerId: string | null, query: Record<string, unknown>) 
 
   // Estate, then chip, then search — `planTable` on the BE.
   const estate = estateKey(String(query.estate ?? ''));
-  const estateRows = estate ? book.filter((p) => estateKey(p.asset) === estate) : book;
+  const estateBook = estate ? book.filter((p) => estateKey(p.asset) === estate) : book;
+  // Proposed `completed_from` / `completed_to` (Admin v2 — Backend Requirements,
+  // item 9): inclusive YYYY-MM-DD days on the payment completed date; a plan
+  // with no completed date never matches a range. Chip counts follow it.
+  const completedFrom = query.completed_from ? String(query.completed_from) : null;
+  const completedTo = query.completed_to ? String(query.completed_to) : null;
+  const estateRows =
+    completedFrom || completedTo
+      ? estateBook.filter((p) => {
+          const completed = toPlanRow(p).payment_completed_at;
+          if (!completed) return false;
+          const day = localDay(completed);
+          return (!completedFrom || day >= completedFrom) && (!completedTo || day <= completedTo);
+        })
+      : estateBook;
   let filtered = estateRows;
   const filterKey = String(query.filter ?? 'all');
   if (filterKey !== 'all' && PLAN_FILTERS[filterKey]) {
@@ -782,7 +803,7 @@ export const csManagerRoutes: MockRoutes = {
       managerId: dto.admin_id,
       assigned_from: new Date().toISOString(),
       assigned_to: null,
-      created_by: '665fadmn00000000000000d1',
+      created_by: '665fad0e00000000000000d1',
       createdAt: new Date().toISOString(),
       assigned_customers_count: 0,
       assigned_plans_count: 0,
@@ -921,7 +942,7 @@ export const csManagerRoutes: MockRoutes = {
         id: a._id,
         payment_plan: a.plan_id,
         customer: a.customer_id,
-        csm: '665fadmn00000000000000d2',
+        csm: '665fad0e00000000000000d2',
         outcome: a.outcome,
         land_choice_reason: a.land_choice_reason,
         notes: a.notes,

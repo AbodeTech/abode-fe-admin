@@ -68,14 +68,31 @@ const EMPTY: ManualUpgradeValues = {
  * No receipt upload, deliberately (ticket 15): when an admin records the
  * payment, the admin is the evidence and `reason` is the audit trail.
  */
-export function ManualUpgradeDialog() {
-  const [open, setOpen] = useState(false);
-  const [pickedLabel, setPickedLabel] = useState<string | null>(null);
+interface ManualUpgradeDialogProps {
+  /**
+   * Opens the dialog for one member, already filled in — the Eligible tab's
+   * Upgrade action. Mount with a `key` per member so the form starts fresh.
+   */
+  prefill?: { userId: string; label: string; toTier: ManualUpgradeValues["to_tier"]; reason?: string };
+  /** Controlled open state; when given, the dialog renders no trigger button. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}
+
+export function ManualUpgradeDialog({ prefill, open: openProp, onOpenChange: onOpenChangeProp }: ManualUpgradeDialogProps = {}) {
+  const [openState, setOpenState] = useState(false);
+  const isControlled = openProp !== undefined;
+  const open = isControlled ? openProp : openState;
+  const setOpen = (next: boolean) => (isControlled ? onOpenChangeProp?.(next) : setOpenState(next));
+  const initial: ManualUpgradeValues = prefill
+    ? { ...EMPTY, user_id: prefill.userId, to_tier: prefill.toTier, reason: prefill.reason ?? "" }
+    : EMPTY;
+  const [pickedLabel, setPickedLabel] = useState<string | null>(prefill?.label ?? null);
   const manualUpgrade = useManualUpgrade();
 
   const form = useForm<ManualUpgradeValues>({
     resolver: zodResolver(manualUpgradeSchema),
-    defaultValues: EMPTY,
+    defaultValues: initial,
   });
 
   const fee = useWatch({ control: form.control, name: "fee_amount" }) ?? "";
@@ -86,8 +103,8 @@ export function ManualUpgradeDialog() {
   const onOpenChange = (next: boolean) => {
     setOpen(next);
     if (!next) {
-      form.reset(EMPTY);
-      setPickedLabel(null);
+      form.reset(initial);
+      setPickedLabel(prefill?.label ?? null);
     }
   };
 
@@ -110,12 +127,14 @@ export function ManualUpgradeDialog() {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogTrigger asChild>
-        <Button variant="outline" className="w-full shrink-0 sm:w-auto">
-          <Plus className="mr-1 h-4 w-4" />
-          Record upgrade
-        </Button>
-      </DialogTrigger>
+      {!isControlled && (
+        <DialogTrigger asChild>
+          <Button variant="outline" className="w-full shrink-0 sm:w-auto">
+            <Plus className="mr-1 h-4 w-4" />
+            Record upgrade
+          </Button>
+        </DialogTrigger>
+      )}
 
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>

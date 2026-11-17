@@ -38,6 +38,9 @@ export interface AllocationClientFilters {
    */
   completedFrom?: string | null;
   completedTo?: string | null;
+  /** Proposed `active_from` / `active_to` on `last_active_at` (item 10). */
+  activeFrom?: string | null;
+  activeTo?: string | null;
   /** `payment_completed_date` is a valid key — it maps straight to a pipeline field. */
   sortBy?: string | null;
   order?: 'asc' | 'desc' | null;
@@ -63,6 +66,8 @@ export function buildEligibleClientsParams(filters: AllocationClientFilters) {
     date_to: filters.dateTo || undefined,
     completed_from: filters.completedFrom || undefined,
     completed_to: filters.completedTo || undefined,
+    active_from: filters.activeFrom || undefined,
+    active_to: filters.activeTo || undefined,
     sort_by: filters.sortBy || undefined,
     order: filters.order || undefined,
   };

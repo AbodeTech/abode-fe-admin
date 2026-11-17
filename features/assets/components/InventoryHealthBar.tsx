@@ -70,7 +70,22 @@ export function InventoryHealthBar({ data }: Props) {
           Portfolio Overview
         </p>
         <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-4">
-          <Metric label="Total Portfolio Value" value={formatNaira(p?.total_portfolio_value)} />
+          {p.sold_value !== undefined && p.unsold_value !== undefined ? (
+            <Metric
+              label="Total Portfolio Value"
+              value={formatNaira(p.total_portfolio_value)}
+              subValue={`${formatNaira(p.unsold_value)} unsold`}
+              subValueVariant="neutral"
+            />
+          ) : (
+            // Today's BE figure leaves sold land out, so it is named for what it is.
+            <Metric
+              label="Unsold Inventory Value"
+              value={formatNaira(p?.total_portfolio_value)}
+              subValue="Sold land not included"
+              subValueVariant="neutral"
+            />
+          )}
           <Metric label="Total Capacity" value={formatSqm(p?.total_capacity_sqm)} />
           <Metric label="Active Customers" value={p?.active_customers ?? 0} subValue="Healthy" subValueVariant="positive" />
           <Metric label="Overall Efficiency" value={p?.overall_efficiency != null ? `${p.overall_efficiency.toFixed(1)}%` : "—"} />

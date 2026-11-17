@@ -104,14 +104,25 @@ export default function DashboardQuickOverview({ data }: DashboardQuickOverviewP
       description: "Total pro associates",
       icon: <UsersIcon className="h-4 w-4 shrink-0 text-muted-foreground" />,
     },
-    {
-      id: "revenue",
-      title: "Revenue",
-      value: formatCurrency(data.period_revenue.value),
-      description: "Money taken in the selected window",
-      icon: <DollarSignIcon className="h-4 w-4 shrink-0 text-muted-foreground" />,
-      delta: data.period_revenue.delta_pct,
-    },
+    // "Realized Revenue" only once the BE sends the allocated-land figure;
+    // naming today's all-payments total "realized" would mislabel it.
+    data.realized_revenue
+      ? {
+          id: "revenue",
+          title: "Realized Revenue",
+          value: formatCurrency(data.realized_revenue.value),
+          description: "Paid on land that has been allocated",
+          icon: <DollarSignIcon className="h-4 w-4 shrink-0 text-muted-foreground" />,
+          delta: data.realized_revenue.delta_pct,
+        }
+      : {
+          id: "revenue",
+          title: "Revenue",
+          value: formatCurrency(data.period_revenue.value),
+          description: "Money taken in the selected window",
+          icon: <DollarSignIcon className="h-4 w-4 shrink-0 text-muted-foreground" />,
+          delta: data.period_revenue.delta_pct,
+        },
     {
       id: "inflow",
       title: "Inflow",

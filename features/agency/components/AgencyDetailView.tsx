@@ -8,6 +8,9 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { isBackendReady } from "@/lib/backend-ready";
+import { AgencyInventoryTable } from "./AgencyInventoryTable";
+import { AgencyPerformanceCards } from "./AgencyPerformanceCards";
 import { CopyableText } from "@/components/shared/CopyableText";
 import { useAuthStore } from "@/store/auth-store";
 import { useHasPermission } from "@/hooks/use-admin-permission";
@@ -32,6 +35,11 @@ interface AgencyDetailViewProps {
   agency: AgencyDetail;
   membersSlot: React.ReactNode;
   commissionsSlot: React.ReactNode;
+  /**
+   * The agency's own sales list, built by the page from the sales feature.
+   * Omitted until the BE can scope sales to an agency (`agency_sales`).
+   */
+  salesSlot?: React.ReactNode;
 }
 
 const formatCurrency = (value?: number | null) =>
@@ -60,7 +68,10 @@ export function AgencyDetailView({
   agency,
   membersSlot,
   commissionsSlot,
+  salesSlot,
 }: AgencyDetailViewProps) {
+  const showInventory = isBackendReady("agency_sales");
+  const showPerformance = isBackendReady("agency_stats");
   const [editOpen, setEditOpen] = useState(false);
   const [suspendOpen, setSuspendOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -191,6 +202,8 @@ export function AgencyDetailView({
         </Card>
       </div>
 
+      {showPerformance && <AgencyPerformanceCards agencyId={agency.id} />}
+
       <Card className="min-w-0 border border-gray-200">
         <CardHeader>
           <CardTitle className="text-base">Owner &amp; contact</CardTitle>
@@ -210,11 +223,23 @@ export function AgencyDetailView({
       <Tabs defaultValue="members" className="w-full min-w-0">
         <TabsList>
           <TabsTrigger value="members">Members ({agency.member_count})</TabsTrigger>
+          {salesSlot && <TabsTrigger value="sales">Sales</TabsTrigger>}
+          {showInventory && <TabsTrigger value="inventory">Inventory</TabsTrigger>}
           <TabsTrigger value="commissions">Commission ledger</TabsTrigger>
         </TabsList>
         <TabsContent value="members" className="mt-4 min-w-0">
           {membersSlot}
         </TabsContent>
+        {salesSlot && (
+          <TabsContent value="sales" className="mt-4 min-w-0">
+            {salesSlot}
+          </TabsContent>
+        )}
+        {showInventory && (
+          <TabsContent value="inventory" className="mt-4 min-w-0">
+            <AgencyInventoryTable agencyId={agency.id} />
+          </TabsContent>
+        )}
         <TabsContent value="commissions" className="mt-4 min-w-0">
           {commissionsSlot}
         </TabsContent>

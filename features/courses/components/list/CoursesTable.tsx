@@ -42,6 +42,48 @@ function RoleTag({ course, isFirstSalePath }: { course: Course; isFirstSalePath:
   return null;
 }
 
+const pct = (value: number | null | undefined) =>
+  value === null || value === undefined ? "—" : `${value.toLocaleString(undefined, { maximumFractionDigits: 1 })}%`;
+
+/** Enrolled count + how many are still going. */
+function LearnersCell({ course }: { course: Course }) {
+  if (course.enrolled_count === undefined) return <span className="text-muted-foreground">—</span>;
+  return (
+    <div>
+      <p className="font-medium tabular-nums">{course.enrolled_count.toLocaleString()}</p>
+      {course.in_progress_count !== undefined && course.enrolled_count > 0 && (
+        <p className="text-xs text-muted-foreground tabular-nums">
+          {course.in_progress_count.toLocaleString()} in progress
+        </p>
+      )}
+    </div>
+  );
+}
+
+function CompletionCell({ course }: { course: Course }) {
+  return (
+    <div>
+      <p className="font-medium tabular-nums">{pct(course.completion_rate_pct)}</p>
+      {course.completed_count !== undefined && course.enrolled_count ? (
+        <p className="text-xs text-muted-foreground tabular-nums">
+          {course.completed_count.toLocaleString()} completed
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function QuizCell({ course }: { course: Course }) {
+  return (
+    <div>
+      <p className="font-medium tabular-nums">{pct(course.pass_rate_pct)}</p>
+      {course.avg_score_pct !== null && course.avg_score_pct !== undefined && (
+        <p className="text-xs text-muted-foreground tabular-nums">avg score {pct(course.avg_score_pct)}</p>
+      )}
+    </div>
+  );
+}
+
 interface CoursesTableProps {
   rows: Course[];
   isLoading?: boolean;
@@ -65,6 +107,10 @@ export function CoursesTable({ rows, isLoading, emptyState, firstSalePathCourseI
 
   if (rows.length === 0) return <>{emptyState}</>;
 
+  // The aggregates are a proposed BE addition; until a row carries them the
+  // columns stay out rather than filling the table with dashes.
+  const hasStats = rows.some((course) => course.enrolled_count !== undefined);
+
   return (
     <>
       <AdminDesktopTableWrap>
@@ -74,6 +120,9 @@ export function CoursesTable({ rows, isLoading, emptyState, firstSalePathCourseI
               <TableHead>Course</TableHead>
               <TableHead>Audience</TableHead>
               <TableHead>Role</TableHead>
+              {hasStats && <TableHead>Learners</TableHead>}
+              {hasStats && <TableHead>Completion</TableHead>}
+              {hasStats && <TableHead>Quiz pass rate</TableHead>}
               <TableHead>Status</TableHead>
             </TableRow>
           </TableHeader>
@@ -93,6 +142,21 @@ export function CoursesTable({ rows, isLoading, emptyState, firstSalePathCourseI
                 <TableCell>
                   <RoleTag course={course} isFirstSalePath={course.id === firstSalePathCourseId} />
                 </TableCell>
+                {hasStats && (
+                  <TableCell>
+                    <LearnersCell course={course} />
+                  </TableCell>
+                )}
+                {hasStats && (
+                  <TableCell>
+                    <CompletionCell course={course} />
+                  </TableCell>
+                )}
+                {hasStats && (
+                  <TableCell>
+                    <QuizCell course={course} />
+                  </TableCell>
+                )}
                 <TableCell>
                   <Badge variant={course.status === "published" ? "default" : "secondary"}>
                     {COURSE_STATUS_LABELS[course.status]}
@@ -113,6 +177,9 @@ export function CoursesTable({ rows, isLoading, emptyState, firstSalePathCourseI
             onClick={() => router.push(`/academy/courses/${course.id}`)}
           >
             <AdminMobileField label="Audience" value={COURSE_AUDIENCE_LABELS[course.audience]} />
+            {hasStats && <AdminMobileField label="Learners" value={<LearnersCell course={course} />} />}
+            {hasStats && <AdminMobileField label="Completion" value={<CompletionCell course={course} />} />}
+            {hasStats && <AdminMobileField label="Quiz pass rate" value={<QuizCell course={course} />} />}
             <AdminMobileField
               label="Status"
               value={

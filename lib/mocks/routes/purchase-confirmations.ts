@@ -21,7 +21,16 @@ type MockDispute = {
   disputed_at: string;
   resolved_at: string | null;
   resolution_note: string | null;
+  /** Proposed in the response (item 11): who resolved it. */
+  resolved_by?: { id: string; name: string } | null;
 };
+
+/** The admin the mock records as resolving disputes. */
+const MOCK_RESOLVER = { id: '665fad0e00000000000000d1', name: 'Ngozi Eze' };
+
+/** Proposed `status=resolved` (item 11): a past dispute, none open now. */
+const isResolved = (c: MockConfirmation) =>
+  c.disputes.some((d) => d.resolved_at) && !c.disputes.some((d) => !d.resolved_at);
 
 type MockConfirmation = {
   _id: string;
@@ -136,6 +145,7 @@ const confirmations: MockConfirmation[] = [
         disputed_at: daysAgo(14),
         resolved_at: daysAgo(13),
         resolution_note: 'Corrected the size on the asset record.',
+        resolved_by: MOCK_RESOLVER,
       },
     ],
     createdAt: daysAgo(15),
@@ -193,7 +203,7 @@ function toRow(c: MockConfirmation) {
     reminders_sent: c.reminders_sent,
     escalated_at: c.escalated_at,
     open_dispute_note: openDispute?.note ?? null,
-    disputes: c.disputes.map((d) => ({ ...d, snapshot_at_dispute: null })),
+    disputes: c.disputes.map((d) => ({ ...d, resolved_by: d.resolved_by ?? null, snapshot_at_dispute: null })),
     createdAt: c.createdAt,
   };
 }
@@ -211,7 +221,8 @@ export const purchaseConfirmationRoutes: MockRoutes = {
     const product = String(query.product ?? '');
     const q = String(query.q ?? '').trim().toLowerCase();
 
-    if (status) rows = rows.filter((c) => c.status === status);
+    if (status === 'resolved') rows = rows.filter(isResolved);
+    else if (status) rows = rows.filter((c) => c.status === status);
     if (product) rows = rows.filter((c) => c.snapshot.product === product);
     if (q) {
       rows = rows.filter((c) => {
@@ -233,6 +244,7 @@ export const purchaseConfirmationRoutes: MockRoutes = {
     waiting: confirmations.filter((c) => c.status === 'waiting').length,
     disputed: confirmations.filter((c) => c.status === 'disputed').length,
     confirmed: confirmations.filter((c) => c.status === 'confirmed').length,
+    resolved: confirmations.filter(isResolved).length,
   }),
 
   'POST /admin/purchase-confirmations/:plan_id/resolve-dispute': ({ params, body: raw }) => {
@@ -248,6 +260,7 @@ export const purchaseConfirmationRoutes: MockRoutes = {
       if (!dispute.resolved_at) {
         dispute.resolved_at = now;
         dispute.resolution_note = dto.note.trim();
+        dispute.resolved_by = MOCK_RESOLVER;
         resolvedAny = true;
       }
     }

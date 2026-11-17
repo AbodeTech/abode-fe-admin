@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Download, FileSpreadsheet, FileText, File } from "lucide-react";
 import { useAdminLogsExport } from "../hooks/use-admin-logs-export";
-import { AdminLogFilters } from "../hooks/use-admin-logs";
+import type { AdminLogFilters } from "../hooks/use-admin-logs";
 import { toast } from "sonner";
 
 export function AdminLogsExport({ filters }: { filters: AdminLogFilters }) {
@@ -18,8 +18,14 @@ export function AdminLogsExport({ filters }: { filters: AdminLogFilters }) {
 
   const handleExport = async (format: "csv" | "xlsx" | "pdf") => {
     try {
-      await mutateAsync({ filters, format });
-      toast.success(`Admin logs ${format.toUpperCase()} download started`);
+      const result = await mutateAsync({ filters, format });
+      if (result.truncated) {
+        toast.warning(
+          `Exported the newest ${result.exported.toLocaleString()} of ${result.total.toLocaleString()} logs. Narrow by admin or action to get the rest.`
+        );
+      } else {
+        toast.success(`Exported ${result.exported.toLocaleString()} logs as ${format.toUpperCase()}`);
+      }
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Failed to export logs");
     }
@@ -29,7 +35,7 @@ export function AdminLogsExport({ filters }: { filters: AdminLogFilters }) {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="sm" className="w-full shrink-0 sm:w-auto" disabled={isPending}>
-          <Download className="h-4 w-4 mr-2" /> Export
+          <Download className="h-4 w-4 mr-2" /> {isPending ? "Exporting…" : "Export"}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">

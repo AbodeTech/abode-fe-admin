@@ -10,6 +10,7 @@ import { formatNaira } from "@/lib/utils/format";
 import { useTrackerDashboard } from "../hooks/use-tracker-dashboard";
 import type { TrackerDashboard } from "../schemas/tracker.schema";
 import { GoalsNotSetPrompt } from "./GoalsNotSetPrompt";
+import { CompanyGoalsSection } from "./CompanyGoalsSection";
 
 /**
  * The two goal-dependent cards. This is the only section that swaps for the
@@ -40,9 +41,13 @@ export function KeyMetricsSection({ year }: { year: number }) {
   if (!data.goals_set) return <GoalsNotSetPrompt year={year} />;
 
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-      <AssociateProProgressCard progress={data.associate_pro_progress} />
-      <RevenueMetricsCard revenue={data.revenue_metrics} />
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <AssociateProProgressCard progress={data.associate_pro_progress} />
+        <RevenueMetricsCard revenue={data.revenue_metrics} />
+      </div>
+      {/* Proposed company goals (item 16): only once the BE sends them. */}
+      {data.company_goals && <CompanyGoalsSection goals={data.company_goals} />}
     </div>
   );
 }
@@ -94,7 +99,8 @@ function RevenueMetricsCard({
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">Revenue</CardTitle>
+        {/* Approved associate-pro upgrade fees, not sales revenue (see item 16). */}
+        <CardTitle className="text-sm font-medium text-muted-foreground">Upgrade fee revenue</CardTitle>
         <TrendingUp className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
       </CardHeader>
       <CardContent className="space-y-3">

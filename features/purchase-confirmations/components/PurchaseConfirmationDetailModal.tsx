@@ -43,6 +43,8 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
 interface PurchaseConfirmationDetailModalProps {
   open: boolean;
   row?: PurchaseConfirmationRow | null;
+  /** `manage_purchase_confirmations`: without it the BE refuses resolve and resend. */
+  canManage: boolean;
   onOpenChange: (open: boolean) => void;
   onResolve: (row: PurchaseConfirmationRow) => void;
   onResendEmail: (row: PurchaseConfirmationRow) => void;
@@ -51,11 +53,14 @@ interface PurchaseConfirmationDetailModalProps {
 export function PurchaseConfirmationDetailModal({
   open,
   row,
+  canManage,
   onOpenChange,
   onResolve,
   onResendEmail,
 }: PurchaseConfirmationDetailModalProps) {
   if (!row) return null;
+
+  const resolvedDisputes = row.disputes.filter((entry) => entry.resolvedAt !== null);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -106,22 +111,47 @@ export function PurchaseConfirmationDetailModal({
           {row.confirmedAt && (
             <DetailRow label="Confirmed" value={formatDateTime(row.confirmedAt)} />
           )}
-          {row.resolvedAt && (
-            <DetailRow label="Dispute resolved" value={formatDateTime(row.resolvedAt)} />
-          )}
         </div>
+
+        {resolvedDisputes.length > 0 && (
+          <div className="space-y-2">
+            <Separator />
+            <p className="text-sm font-semibold">
+              Resolved disputes ({resolvedDisputes.length})
+            </p>
+            <ul className="space-y-2">
+              {resolvedDisputes.map((entry) => (
+                <li key={entry.disputedAt} className="rounded-md border p-3 text-sm">
+                  <p className="text-xs text-muted-foreground">
+                    Reported {formatDateTime(entry.disputedAt)} · Resolved{" "}
+                    {formatDateTime(entry.resolvedAt)}
+                    {entry.resolvedByName ? ` by ${entry.resolvedByName}` : ""}
+                  </p>
+                  <p className="mt-1.5">
+                    <span className="text-muted-foreground">Buyer: </span>
+                    {entry.note.trim() || "No note was added."}
+                  </p>
+                  <p className="mt-1">
+                    <span className="text-muted-foreground">Resolution: </span>
+                    {entry.resolutionNote?.trim() || "No note was recorded."}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         <DialogFooter className="gap-2 sm:gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Close
           </Button>
-          {row.status === "waiting" && (
+          {canManage && row.status === "waiting" && (
             <Button variant="outline" className="gap-2" onClick={() => onResendEmail(row)}>
               <Mail className="h-4 w-4" />
               Resend email
             </Button>
           )}
-          {row.status === "disputed" && (
+          {canManage && row.status === "disputed" && (
             <Button className="gap-2" onClick={() => onResolve(row)}>
               <Wrench className="h-4 w-4" />
               Resolve dispute

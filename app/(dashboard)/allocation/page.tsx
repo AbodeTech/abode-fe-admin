@@ -20,6 +20,7 @@ import {
 } from "@/features/allocation";
 import { useAdminPermissions } from "@/hooks/use-admin-permission";
 import { toast } from "sonner";
+import { isBackendReady } from "@/lib/backend-ready";
 
 const toNumberOrNull = (value?: string | null) => {
   if (!value) return null;
@@ -42,6 +43,11 @@ function AllocationContent() {
   // the two ranges combine.
   const completedFromParam = searchParams.get("completedFrom");
   const completedToParam = searchParams.get("completedTo");
+  // Proposed BE params (item 10) — read only once the BE accepts them, so a
+  // shared link can't 400 the page.
+  const canFilterActivity = isBackendReady("last_active");
+  const activeFromParam = canFilterActivity ? searchParams.get("activeFrom") : null;
+  const activeToParam = canFilterActivity ? searchParams.get("activeTo") : null;
   // `?manage=<payment plan id>`: open that plan's Manage window once its row has loaded
   // (the Block window's "Held by …" link lands here).
   const manageParam = searchParams.get("manage");
@@ -62,6 +68,8 @@ function AllocationContent() {
     dateTo: endDateParam,
     completedFrom: completedFromParam,
     completedTo: completedToParam,
+    activeFrom: activeFromParam,
+    activeTo: activeToParam,
   };
 
   const { data, isLoading, error } = useAllocationClients(filters);

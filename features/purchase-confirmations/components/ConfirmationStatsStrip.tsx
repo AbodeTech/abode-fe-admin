@@ -9,14 +9,19 @@ const CARDS = [
   { key: "disputed" as const, label: "Disputed", tone: "text-red-600" },
   { key: "waiting" as const, label: "Waiting", tone: "text-orange-600" },
   { key: "confirmed" as const, label: "Confirmed", tone: "text-green-600" },
+  // Proposed BE count (item 11); the card only shows once the BE sends it.
+  { key: "resolved" as const, label: "Disputes resolved", tone: "text-gray-900" },
 ];
 
 export function ConfirmationStatsStrip() {
   const { data, isLoading } = useConfirmationCounts();
+  const cards = CARDS.filter((card) => card.key !== "resolved" || data?.resolved !== undefined);
 
   return (
-    <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
-      {CARDS.map((card) => (
+    <div
+      className={`grid min-w-0 grid-cols-1 gap-3 sm:gap-4 ${cards.length === 4 ? "sm:grid-cols-4" : "sm:grid-cols-3"}`}
+    >
+      {cards.map((card) => (
         <Card key={card.key} className="min-w-0 border-none shadow-sm">
           <CardContent className="p-4">
             {isLoading ? (

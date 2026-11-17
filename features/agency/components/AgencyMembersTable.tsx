@@ -46,6 +46,29 @@ interface AgencyMembersTableProps {
   removingId?: string | null;
 }
 
+/** `referral_status` (the BE UserTier) as the agency reads it: clients vs the sales side. */
+const MEMBER_TYPE_LABELS: Record<string, string> = {
+  guest: "Guest",
+  user: "Client",
+  premium: "Premium client",
+  associate: "Associate",
+  "associate-pro": "Associate Pro",
+  founder: "Founder",
+  management: "Management",
+  agency: "Agency",
+};
+
+const SALES_SIDE_TYPES = new Set(["associate", "associate-pro", "founder", "management", "agency"]);
+
+function MemberTypeBadge({ tier }: { tier?: string | null }) {
+  if (!tier) return <span className="text-sm text-muted-foreground">—</span>;
+  return (
+    <Badge variant={SALES_SIDE_TYPES.has(tier) ? "default" : "secondary"}>
+      {MEMBER_TYPE_LABELS[tier] ?? tier}
+    </Badge>
+  );
+}
+
 const formatDate = (value?: string | null) => {
   if (!value) return "—";
   const parsed = new Date(value);
@@ -108,6 +131,7 @@ export function AgencyMembersTable({
                   {member.is_owner && (
                     <AdminMobileField label="Role" value={<Badge>Owner</Badge>} />
                   )}
+                  <AdminMobileField label="Type" value={<MemberTypeBadge tier={member.referral_status} />} />
                   <AdminMobileField label="Username" value={member.user_name || "—"} />
                   <AdminMobileField label="Phone" value={member.phone_number || "—"} />
                   <AdminMobileField label="Joined" value={formatDate(member.joined_at)} />
@@ -133,6 +157,7 @@ export function AgencyMembersTable({
                 <TableHeader>
                   <TableRow>
                     <TableHead>Name</TableHead>
+                    <TableHead>Type</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Username</TableHead>
                     <TableHead>Phone</TableHead>
@@ -144,7 +169,7 @@ export function AgencyMembersTable({
                   {items.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={showActions ? 6 : 5}
+                        colSpan={showActions ? 7 : 6}
                         className="py-6 text-center text-sm text-muted-foreground"
                       >
                         No members in this agency.
@@ -158,6 +183,9 @@ export function AgencyMembersTable({
                           {member.is_owner && (
                             <Badge className="ml-2 align-middle">Owner</Badge>
                           )}
+                        </TableCell>
+                        <TableCell>
+                          <MemberTypeBadge tier={member.referral_status} />
                         </TableCell>
                         <TableCell className="max-w-48 wrap-break-word text-sm">
                           {member.email || "—"}

@@ -4,3 +4,4 @@ export { SummaryCards } from './components/SummaryCards';
 export { SalesTable } from './components/SalesTable';
 export { SalesStatusChips } from './components/SalesStatusChips';
 export { SalesFilters } from './components/SalesFilters';
+export { YesterdaySalesCard } from './components/YesterdaySalesCard';

@@ -2,9 +2,17 @@
 
 import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { isBackendReady } from "@/lib/backend-ready";
 import { Pagination } from "@/components/shared/Pagination";
 import { PageContentLoader } from "@/components/shared/page-content-loader";
 import { useHasPermission } from "@/hooks/use-admin-permission";
@@ -12,6 +20,8 @@ import {
   ApproveUpgradeDialog,
   DeclineUpgradeDialog,
   DEFAULT_UPGRADE_LIMIT,
+  EligibleUpgradesTable,
+  useEligibleUpgrades,
   ManualUpgradeDialog,
   UpgradeExportButton,
   UpgradeFilters,
@@ -33,6 +43,85 @@ function EmptyState({ title, body }: { title: string; body: string }) {
   );
 }
 
+const ELIGIBLE_LIMIT = 20;
+
+/**
+ * Members who finished the course their next tier requires (item 12). Only
+ * shown once the BE serves `upgrades/eligible` (`upgrade_eligibility`).
+ */
+function EligibleView({ canReview }: { canReview: boolean }) {
+  const [toTier, setToTier] = useState<"all" | "associate" | "associate-pro">("all");
+  const [page, setPage] = useState(1);
+  const { data, isLoading, error } = useEligibleUpgrades({
+    to_tier: toTier === "all" ? undefined : toTier,
+    page,
+    limit: ELIGIBLE_LIMIT,
+  });
+  const total = data?.meta.total ?? 0;
+  const totalPages = Math.ceil(total / ELIGIBLE_LIMIT);
+
+  if (error) {
+    return (
+      <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-500">
+        <h3 className="font-bold">Error loading eligible members</h3>
+        <p>{error.message}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-muted-foreground">
+          Members who completed the course their next tier requires and passed its quiz.
+        </p>
+        <Select
+          value={toTier}
+          onValueChange={(value) => {
+            setToTier(value as typeof toTier);
+            setPage(1);
+          }}
+        >
+          <SelectTrigger className="w-full bg-white sm:w-48" aria-label="Eligible for">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Any tier</SelectItem>
+            <SelectItem value="associate">Associate</SelectItem>
+            <SelectItem value="associate-pro">Associate Pro</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <EligibleUpgradesTable
+        rows={data?.items ?? []}
+        isLoading={isLoading}
+        canUpgrade={canReview}
+        emptyState={
+          <EmptyState
+            title="Nobody is waiting on an upgrade"
+            body="Members appear here once they finish the course their next tier requires."
+          />
+        }
+      />
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between text-sm">
+          <p className="text-muted-foreground">
+            Page {page} of {totalPages} · {total} members
+          </p>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
+              Previous
+            </Button>
+            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function UpgradesPageContent() {
   const searchParams = useSearchParams();
 
@@ -45,6 +134,15 @@ function UpgradesPageContent() {
   // Both review actions are guarded by `modify_referral_status` on the BE, so
   // without it the buttons could only ever produce a 403.
   const canReview = useHasPermission("modify_referral_status");
+  const router = useRouter();
+  const pathname = usePathname();
+  const showEligible = isBackendReady("upgrade_eligibility");
+  const view = showEligible && searchParams.get("view") === "eligible" ? "eligible" : "requests";
+  const setView = (next: "requests" | "eligible") => {
+    const params = new URLSearchParams();
+    if (next === "eligible") params.set("view", "eligible");
+    router.push(params.size ? `${pathname}?${params.toString()}` : pathname, { scroll: false });
+  };
 
   const [approving, setApproving] = useState<Upgrade | null>(null);
   const [declining, setDeclining] = useState<Upgrade | null>(null);
@@ -75,8 +173,36 @@ function UpgradesPageContent() {
     );
   }
 
+  const viewSwitch = showEligible ? (
+    <div className="inline-flex rounded-md border bg-white p-0.5" role="tablist" aria-label="Upgrade view">
+      {(["requests", "eligible"] as const).map((v) => (
+        <Button
+          key={v}
+          type="button"
+          size="sm"
+          role="tab"
+          aria-selected={view === v}
+          variant={view === v ? "default" : "ghost"}
+          onClick={() => setView(v)}
+        >
+          {v === "requests" ? "Requests" : "Eligible after course"}
+        </Button>
+      ))}
+    </div>
+  ) : null;
+
+  if (view === "eligible") {
+    return (
+      <div className="space-y-4">
+        {viewSwitch}
+        <EligibleView canReview={canReview} />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
+      {viewSwitch}
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
         <UpgradeExportButton filters={filters} />
         {canReview ? <ManualUpgradeDialog /> : null}

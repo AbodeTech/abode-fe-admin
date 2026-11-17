@@ -59,11 +59,21 @@ const navGroups = [
     title: "General",
     items: [
       { name: "Dashboard", link: "/", icon: <LayoutDashboard /> },
-      { name: "Assets", link: "/assets", icon: <CircleDollarSign /> },
       { name: "Payment Plans", link: "/admin/payment-plans", icon: <ScrollText />, requiresPermission: "view_payment_plans" },
       { name: "Agency", link: "/agency", icon: <Building2 /> },
-      { name: "Allocation", link: "/allocation", icon: <Building2 /> },
       { name: "Marketplace", link: "/marketplace", icon: <Store /> },
+    ]
+  },
+  {
+    // Allocation and document purchases are read asset-first, so they sit
+    // with the catalogue rather than under General and Transactions.
+    title: "Assets",
+    isCollapsible: true,
+    icon: <CircleDollarSign />,
+    items: [
+      { name: "All Assets", link: "/assets", icon: <CircleDollarSign /> },
+      { name: "Allocation", link: "/allocation", icon: <LandPlot /> },
+      { name: "Document Transactions", link: "/transactions/document", icon: <FileText /> },
     ]
   },
   {
@@ -180,7 +190,6 @@ const navGroups = [
       { name: "Withdrawal", link: "/transactions/withdrawal", icon: <ArrowDownToLine /> },
       { name: "Topup", link: "/transactions/topup", icon: <Upload /> },
       { name: "Asset", link: "/transactions/assets", icon: <BarChart3 /> },
-      { name: "Document", link: "/transactions/document", icon: <FileText /> },
       // "Payouts" rather than "Commission": this lists commission payout
       // transactions, and the Commission section below owns rates and overrides.
       { name: "Commission Payouts", link: "/transactions/commission", icon: <Percent /> },

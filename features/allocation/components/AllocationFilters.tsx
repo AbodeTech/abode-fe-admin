@@ -12,6 +12,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { AllocationDateRangeFilter } from "./AllocationDateRangeFilter";
 import type { AllocationAssetOption, AllocationStatus } from "../schemas/allocation.schema";
+import { isBackendReady } from "@/lib/backend-ready";
 
 interface AllocationFiltersProps {
   assets?: AllocationAssetOption[];
@@ -139,6 +140,17 @@ export function AllocationFilters({
           hint="Only clients who have finished paying"
         />
       </div>
+
+      {isBackendReady("last_active") && (
+        <div className="min-w-0">
+          <AllocationDateRangeFilter
+            label="Last active"
+            fromParam="activeFrom"
+            toParam="activeTo"
+            hint="Clients seen in the app in this window"
+          />
+        </div>
+      )}
     </section>
   );
 }

@@ -13,6 +13,8 @@ export const dashboardRoutes: MockRoutes = {
       // Period-scoped tiles — honour ?from/?to, carry a prior-period delta.
       period_revenue: { value: 86_400_000, delta_pct: 12.5 },
       inflow: { value: 86_400_000, delta_pct: 12.5 },
+      // Proposed (item 1): allocated land only, so below the cash inflow.
+      realized_revenue: { value: 52_750_000, delta_pct: 8.1 },
       outflow: { value: 28_700_000, delta_pct: -4.2 },
       period_new_users: { value: 42, delta_pct: 8 },
       period_new_payment_plans: { value: 18, delta_pct: -2.1 },

@@ -30,8 +30,15 @@ export const PortfolioDefaultingSchema = z.object({
 });
 
 export const PortfolioMetricsSchema = z.object({
+  /**
+   * Today: the worth of UNSOLD units only, at the dearest tenor. Once the BE
+   * sends `sold_value` + `unsold_value` (Admin v2 — Backend Requirements,
+   * item 3) it is their sum — all land, sold or not.
+   */
   total_portfolio_value: z.number(),
   gross_revenue: z.number(),
+  sold_value: z.number().optional(),
+  unsold_value: z.number().optional(),
   total_capacity_sqm: z.number(),
   total_capacity_units: z.number(),
   total_assets: z.number(),
@@ -54,7 +61,9 @@ export const AssetCategoryMetricsSchema = z.object({
   excluded_from_rollup: z.boolean(),
   total_assets: z.number(),
   active_assets: z.number(),
+  /** Unsold worth, not revenue; renamed `unsold_value` by item 3. */
   gross_revenue: z.number(),
+  unsold_value: z.number().optional(),
   total_capacity_sqm: z.number(),
   total_capacity_units: z.number(),
   sqm_sold: z.number(),

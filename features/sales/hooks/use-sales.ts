@@ -7,6 +7,7 @@ import { apiGet, apiGetPaged } from '@/lib/api-client';
 import {
   SALES_PLAN_STATUSES,
   SalesDashboardResponseSchema,
+  SalesKpisSchema,
   SalesRowSchema,
   type SalesPlanStatus,
 } from '../schemas/sales.schema';
@@ -118,6 +119,25 @@ export const useSalesDashboard = (filters?: { startDate?: string | null; endDate
       apiGet('/admin/sales/dashboard', SalesDashboardResponseSchema, {
         params: { start_date: startDate, end_date: endDate },
       }),
+  });
+};
+
+/**
+ * GET /admin/sales/analytics/kpis — same revenue-eligible plan set and
+ * created-date window as the dashboard, plus counts (buyers, sqm). 15-min
+ * server cache. `view_sales_analytics`.
+ */
+export const useSalesKpis = (filters?: { startDate?: string | null; endDate?: string | null }) => {
+  const startDate = filters?.startDate || undefined;
+  const endDate = filters?.endDate || undefined;
+
+  return useQuery({
+    queryKey: salesKeys.kpis({ startDate, endDate }),
+    queryFn: () =>
+      apiGet('/admin/sales/analytics/kpis', SalesKpisSchema, {
+        params: { start_date: startDate, end_date: endDate },
+      }),
+    retry: false,
   });
 };
 

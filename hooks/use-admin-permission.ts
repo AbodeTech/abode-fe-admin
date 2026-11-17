@@ -165,6 +165,12 @@ export const ADMIN_PERMISSIONS = [
   'export_sales',
   'export_sales_pii',
 
+  // Purchase confirmations (BE `src/modules/purchase-confirmation`). Resolving a
+  // dispute and resending the email both need `manage_purchase_confirmations`.
+  'view_purchase_confirmations',
+  'manage_purchase_confirmations',
+  'export_purchase_confirmations',
+
   // Portfolio standing (features/standing/). Live on the BE in
   // `src/modules/standing/standing-admin.controller.ts`; these were missing
   // here, so the Sidebar's `requiresPermission` filter resolved false for

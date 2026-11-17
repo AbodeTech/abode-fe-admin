@@ -20,6 +20,8 @@ import {
   type AgencyMember,
 } from "@/features/agency";
 import { getErrorMessage } from "@/features/agency/utils/error-message";
+import { DEFAULT_SALES_LIMIT, SalesTable, useSalesList } from "@/features/sales";
+import { isBackendReady } from "@/lib/backend-ready";
 
 /**
  * Agency detail. Each tab owns its own query state, so paging the roster
@@ -125,6 +127,37 @@ function TabPager({
   );
 }
 
+/**
+ * The agency's sales — the sales list filtered by the plan's stored
+ * `agency_id` (item 7). Only mounted once `agency_sales` is ready: on today's
+ * BE that filter matches nothing and would read as "no sales".
+ */
+function SalesTab({ agencyId }: { agencyId: string }) {
+  const [page, setPage] = useState(1);
+  const { data, isLoading, error } = useSalesList({ agencyId, page, limit: DEFAULT_SALES_LIMIT });
+
+  if (error) {
+    return (
+      <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-500">
+        {getErrorMessage(error, "Failed to load this agency's sales.")}
+      </div>
+    );
+  }
+  if (isLoading) return <PageContentLoader />;
+
+  return (
+    <div className="space-y-4">
+      <SalesTable records={data?.items} />
+      <TabPager
+        total={data?.meta.total ?? 0}
+        limit={DEFAULT_SALES_LIMIT}
+        page={page}
+        onPageChange={setPage}
+      />
+    </div>
+  );
+}
+
 function CommissionsTab({ agencyId }: { agencyId: string }) {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -225,6 +258,7 @@ export default function AgencyDetailPage() {
         agency={data}
         membersSlot={<MembersTab agencyId={agencyId} />}
         commissionsSlot={<CommissionsTab agencyId={agencyId} />}
+        salesSlot={isBackendReady("agency_sales") ? <SalesTab agencyId={agencyId} /> : undefined}
       />
     </div>
   );

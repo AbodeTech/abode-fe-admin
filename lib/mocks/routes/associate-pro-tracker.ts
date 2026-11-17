@@ -15,6 +15,9 @@ type MockGoal = {
   year: number;
   associate_pro_target: number;
   revenue_target: number;
+  unique_seller_target?: number | null;
+  avg_revenue_per_associate_target?: number | null;
+  financial_revenue_target?: number | null;
   notes: string | null;
   created_by: string;
   last_edited_by: string | null;
@@ -110,8 +113,27 @@ function dashboard(year: number) {
   const newSignups = Math.round(signups.total);
   const newAssociates = Math.round(newSignups * 0.42);
 
+  // Proposed company goals (item 16): actuals always, progress only with a target.
+  const salesRevenue = Math.round(revenue * 38);
+  const sellers = Math.max(1, Math.round(currentPros * 0.6));
+  const metric = (actual: number, target: number | null | undefined, previous: number) => ({
+    target: target ?? null,
+    actual,
+    progress_pct: target ? rate(actual, target) : null,
+    previous_year_actual: year > CURRENT_YEAR - 3 ? previous : null,
+  });
+
   return {
     goals_set: !!goal,
+    company_goals: {
+      unique_sellers: metric(sellers, goal?.unique_seller_target, Math.round(sellers * 0.8)),
+      avg_revenue_per_associate: metric(
+        Math.round(salesRevenue / sellers),
+        goal?.avg_revenue_per_associate_target,
+        Math.round((salesRevenue / sellers) * 0.9)
+      ),
+      financial_revenue: metric(salesRevenue, goal?.financial_revenue_target, Math.round(salesRevenue * 0.75)),
+    },
     year_period: period,
     associate_pro_progress: {
       current_associate_pro: currentPros,
@@ -182,6 +204,10 @@ export const associateProTrackerRoutes: MockRoutes = {
       year,
       associate_pro_target: Number(dto.associate_pro_target ?? existing?.associate_pro_target ?? 0),
       revenue_target: Number(dto.revenue_target ?? existing?.revenue_target ?? 0),
+      unique_seller_target: dto.unique_seller_target ?? existing?.unique_seller_target ?? null,
+      avg_revenue_per_associate_target:
+        dto.avg_revenue_per_associate_target ?? existing?.avg_revenue_per_associate_target ?? null,
+      financial_revenue_target: dto.financial_revenue_target ?? existing?.financial_revenue_target ?? null,
       notes: dto.notes ?? existing?.notes ?? null,
       created_by: existing?.created_by ?? '665faaaa000000000000ad01',
       last_edited_by: existing ? '665faaaa000000000000ad01' : null,

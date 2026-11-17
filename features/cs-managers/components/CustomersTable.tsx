@@ -16,6 +16,7 @@ import {
 import { Pagination } from "@/components/shared/Pagination";
 import { useDebounce } from "@/hooks/use-debounce";
 import { cn } from "@/lib/utils";
+import { isBackendReady } from "@/lib/backend-ready";
 import type {
   CSManagerDashboard,
   EstateOption,
@@ -24,6 +25,11 @@ import type {
   PlanSortKey,
 } from "../schemas/cs-manager.schema";
 import { PLAN_SORTS, effectivePlanSort } from "../lib/plan-sort";
+import {
+  COMPLETED_FROM_PARAM,
+  COMPLETED_TO_PARAM,
+  CompletedDateFilter,
+} from "./CompletedDateFilter";
 import {
   AllocationPill,
   DoaPill,
@@ -228,6 +234,10 @@ export function CustomersTable({
         filter: activeFilter,
         search: searchParam || undefined,
         estate: estateParam || undefined,
+        ...(isBackendReady("cs_completed_filter") && {
+          completedFrom: searchParams.get(COMPLETED_FROM_PARAM) ?? undefined,
+          completedTo: searchParams.get(COMPLETED_TO_PARAM) ?? undefined,
+        }),
       },
       {
         onSuccess: ({ filename }) => toast.success(`Exported ${filename}`),
@@ -301,6 +311,7 @@ export function CustomersTable({
                 </SelectContent>
               </Select>
             )}
+            {isBackendReady("cs_completed_filter") && <CompletedDateFilter />}
             <Input
               value={q}
               onChange={(e) => setQ(e.target.value)}

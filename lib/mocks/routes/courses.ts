@@ -180,6 +180,32 @@ function requireCourse(id: string): MockCourse {
 /** The one thing that can never be true of two courses at once. */
 let firstSalePathCourseId: string | null = courses.find((c) => c.is_first_sale_path)?.id ?? null;
 
+/**
+ * Proposed per-row aggregates (Admin v2 — Backend Requirements, item 14).
+ * Rates are null where there is nothing to divide by, never 0.
+ */
+const COURSE_STATS: Record<string, { enrolled: number; completed: number; attempted: number; passed: number; avg: number | null; credentials: number }> = {
+  '66cc0a0000000000000001': { enrolled: 148, completed: 97, attempted: 120, passed: 101, avg: 81.4, credentials: 0 },
+  '66cc0a0000000000000002': { enrolled: 62, completed: 41, attempted: 55, passed: 44, avg: 76.2, credentials: 38 },
+  '66cc0a0000000000000003': { enrolled: 23, completed: 6, attempted: 14, passed: 7, avg: 64.9, credentials: 0 },
+  '66cc0a0000000000000004': { enrolled: 9, completed: 0, attempted: 0, passed: 0, avg: null, credentials: 0 },
+};
+
+function withStats<T extends { id: string; grants_credential: boolean }>(row: T) {
+  const s = COURSE_STATS[row.id] ?? { enrolled: 0, completed: 0, attempted: 0, passed: 0, avg: null, credentials: 0 };
+  const pct = (n: number, d: number) => (d > 0 ? Math.round((n / d) * 1000) / 10 : null);
+  return {
+    ...row,
+    enrolled_count: s.enrolled,
+    completed_count: s.completed,
+    in_progress_count: s.enrolled - s.completed,
+    completion_rate_pct: pct(s.completed, s.enrolled),
+    avg_score_pct: s.attempted > 0 ? s.avg : null,
+    pass_rate_pct: pct(s.passed, s.attempted),
+    active_credentials_count: row.grants_credential ? s.credentials : 0,
+  };
+}
+
 export const courseRoutes: MockRoutes = {
   'GET /admin/courses': ({ query }) => {
     const search = String(query.search ?? '').trim().toLowerCase();
@@ -192,7 +218,7 @@ export const courseRoutes: MockRoutes = {
       .filter((row) => (search ? row.title.toLowerCase().includes(search) : true))
       .sort((a, b) => b.created_at.localeCompare(a.created_at));
 
-    return paged(rows, query);
+    return paged(rows.map(withStats), query);
   },
 
   'GET /admin/courses/summary': () => ({

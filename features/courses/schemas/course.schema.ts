@@ -58,6 +58,18 @@ export const CourseSchema = z.object({
   published_at: z.string().nullable(),
   created_at: z.string().nullable().optional(),
   updated_at: z.string().nullable().optional(),
+  /**
+   * Proposed list aggregates (Admin v2 — Backend Requirements, item 14). Only
+   * `GET /admin/courses` will send them, so they are optional: absent means
+   * "not reported", and is shown as "—", never as 0.
+   */
+  enrolled_count: z.number().optional(),
+  completed_count: z.number().optional(),
+  in_progress_count: z.number().optional(),
+  completion_rate_pct: z.number().nullable().optional(),
+  avg_score_pct: z.number().nullable().optional(),
+  pass_rate_pct: z.number().nullable().optional(),
+  active_credentials_count: z.number().optional(),
 });
 export type Course = z.infer<typeof CourseSchema>;
 

@@ -42,6 +42,7 @@ export type AllocationTableRow = Pick<
   | "allocation_date"
   | "payment_completed_date"
   | "date_joined"
+  | "last_active_at"
 >;
 
 interface AllocationTableProps {
@@ -69,6 +70,9 @@ const formatNumber = (value?: number | null) =>
  */
 const formatCompletedDate = (value?: string | null) =>
   value ? formatDate(value) : "Still paying";
+
+/** Null = nothing recorded since activity tracking began, which isn't "unknown". */
+const formatLastActive = (value?: string | null) => (value ? formatDate(value) : "No activity recorded");
 
 const formatDate = (value?: string | null) => {
   if (!value) return "—";
@@ -122,6 +126,8 @@ export function AllocationTable({ rows, isLoading, onSend, onResend }: Allocatio
   }
 
   const safeRows = rows ?? [];
+  // Proposed BE field (item 10): the column appears once rows carry it.
+  const hasActivity = safeRows.some((row) => row.last_active_at !== undefined);
 
   return (
     <Card className="min-w-0 border-none shadow-sm">
@@ -152,6 +158,9 @@ export function AllocationTable({ rows, isLoading, onSend, onResend }: Allocatio
                     value={formatCompletedDate(client.payment_completed_date)}
                   />
                   <AdminMobileField label="Date joined" value={formatDate(client.date_joined)} />
+                  {hasActivity && (
+                    <AdminMobileField label="Last active" value={formatLastActive(client.last_active_at)} />
+                  )}
                   <AdminMobileField
                     label="Allocation"
                     value={<AllocationStatusBadge status={client.allocation_status} />}
@@ -212,6 +221,11 @@ export function AllocationTable({ rows, isLoading, onSend, onResend }: Allocatio
               <TableHead className="min-w-34 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Date Joined
               </TableHead>
+              {hasActivity && (
+                <TableHead className="min-w-34 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Last Active
+                </TableHead>
+              )}
               <TableHead className="min-w-40 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Allocation
               </TableHead>
@@ -275,6 +289,11 @@ export function AllocationTable({ rows, isLoading, onSend, onResend }: Allocatio
                     <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed wrap-break-word">
                       {formatDate(client.date_joined)}
                     </TableCell>
+                    {hasActivity && (
+                      <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed wrap-break-word">
+                        {formatLastActive(client.last_active_at)}
+                      </TableCell>
+                    )}
                     <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed">
                       <AllocationStatusBadge status={client.allocation_status} />
                     </TableCell>

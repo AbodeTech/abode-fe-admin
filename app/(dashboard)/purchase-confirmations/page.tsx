@@ -5,9 +5,13 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
 import { SuspensePageFallback } from "@/components/shared/page-content-loader";
+import { useHasPermission } from "@/hooks/use-admin-permission";
+import { isBackendReady } from "@/lib/backend-ready";
 import { Pagination } from "@/components/shared/Pagination";
 import {
+  applyConfirmationFilter,
   ConfirmationStatsStrip,
+  DEFAULT_CONFIRMATION_STATUS,
   DEFAULT_CONFIRMATIONS_LIMIT,
   PurchaseConfirmationDetailModal,
   PurchaseConfirmationsFilters,
@@ -25,18 +29,17 @@ function PurchaseConfirmationsContent() {
   const searchParams = useSearchParams();
 
   const page = Number(searchParams.get("page")) || 1;
-  const status = searchParams.get("status") || "disputed";
+  const showResolved = isBackendReady("disputes_resolved");
+  const statusParam = searchParams.get("status") || DEFAULT_CONFIRMATION_STATUS;
+  // `resolved` 400s on a BE without it, so a stale link falls back to the default.
+  const status = statusParam === "resolved" && !showResolved ? DEFAULT_CONFIRMATION_STATUS : statusParam;
   const product = searchParams.get("product") || "all";
   const search = searchParams.get("q") || "";
 
+  const canManage = useHasPermission("manage_purchase_confirmations");
+
   const setParam = (key: string, value: string) => {
-    const params = new URLSearchParams(searchParams);
-    if (value && value !== "all" && !(key === "status" && value === "disputed")) {
-      params.set(key, value);
-    } else {
-      params.delete(key);
-    }
-    params.delete("page"); // filters reset pagination
+    const params = applyConfirmationFilter(new URLSearchParams(searchParams), key, value);
     router.push(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
@@ -114,12 +117,14 @@ function PurchaseConfirmationsContent() {
         onSearchChange={(value) => setParam("q", value)}
         onExport={handleExport}
         isExporting={exportConfirmations.isPending}
+        showResolved={showResolved}
       />
 
       <div className="min-w-0 space-y-4">
         <PurchaseConfirmationsTable
           rows={rows}
           isLoading={isLoading}
+          canManage={canManage}
           onView={setDetailRow}
           onResolve={setResolveRow}
           onResendEmail={handleResendEmail}
@@ -130,6 +135,7 @@ function PurchaseConfirmationsContent() {
       <PurchaseConfirmationDetailModal
         open={detailRow !== null}
         row={detailRow}
+        canManage={canManage}
         onOpenChange={(open) => !open && setDetailRow(null)}
         onResolve={handleResolveFromDetail}
         onResendEmail={handleResendEmail}

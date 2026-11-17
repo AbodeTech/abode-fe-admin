@@ -248,3 +248,26 @@ export function toManualUpgradePayload(values: ManualUpgradeValues): ManualUpgra
     ...(fee !== null && fee > 0 && values.pay_commission && { pay_commission: true }),
   };
 }
+
+/**
+ * Proposed `GET /admin/referrals/upgrades/eligible` row (Admin v2 — Backend
+ * Requirements, item 12): someone who completed the course their next tier
+ * requires (every quiz passed) and hasn't been upgraded to it yet.
+ */
+export const EligibleUpgradeSchema = z.object({
+  user: z.object({
+    id: z.string(),
+    first_name: z.string().nullable(),
+    last_name: z.string().nullable(),
+    email: z.string().nullable(),
+    referral_status: z.string(),
+  }),
+  to_tier: UserTierSchema,
+  course: z.object({ id: z.string(), title: z.string() }),
+  completed_at: z.string(),
+  /** Best quiz score across attempts; null when the course has no quiz. */
+  best_score_pct: z.number().nullable(),
+  /** A pending upgrade request to this tier already exists. */
+  upgrade_requested: z.boolean(),
+});
+export type EligibleUpgrade = z.infer<typeof EligibleUpgradeSchema>;

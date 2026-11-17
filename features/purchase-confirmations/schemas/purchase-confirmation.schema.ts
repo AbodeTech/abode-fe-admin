@@ -51,6 +51,8 @@ const PurchaseDisputeSchema = z.object({
   disputed_at: z.string(),
   resolved_at: z.string().nullable(),
   resolution_note: z.string().nullable(),
+  /** Proposed (Admin v2 — Backend Requirements, item 11); absent on today's BE. */
+  resolved_by: z.object({ id: z.string(), name: z.string() }).nullable().optional(),
   snapshot_at_dispute: PurchaseSnapshotSchema.nullable(),
 });
 
@@ -80,6 +82,8 @@ export const ConfirmationCountsSchema = z.object({
   waiting: z.number(),
   disputed: z.number(),
   confirmed: z.number(),
+  /** Proposed (item 11); absent on today's BE. */
+  resolved: z.number().optional(),
 });
 
 /** POST /admin/purchase-confirmations/:plan_id/resolve-dispute — never confirms. */

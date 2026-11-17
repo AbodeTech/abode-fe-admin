@@ -54,6 +54,7 @@ function AssociatePerformanceContent() {
   const endDate = searchParams.get("end_date");
   const month = searchParams.get("month");
   const year = searchParams.get("year");
+  const period = searchParams.get("period");
   const proGroup = searchParams.get("pro_group");
   const proSort = searchParams.get("pro_sort");
 
@@ -62,6 +63,7 @@ function AssociatePerformanceContent() {
     endDate,
     month,
     year,
+    period,
     proGroup,
     proSort,
   });
@@ -70,6 +72,7 @@ function AssociatePerformanceContent() {
     endDate,
     month,
     year,
+    period,
   });
 
   const [page, setPage] = useState(1);

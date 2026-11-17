@@ -282,7 +282,24 @@ export const allocationRoutes: MockRoutes = {
       });
     }
 
-    return paged(rows, query, 25);
+    // Proposed `last_active_at` + `active_from` / `active_to` (item 10). Every
+    // fourth client has no activity recorded, so the empty case shows too.
+    const withActivity = rows.map((r) => {
+      const n = clients.indexOf(r as (typeof clients)[number]);
+      return { ...r, last_active_at: n % 4 === 3 ? null : new Date(Date.now() - (n * 3 + 1) * 86_400_000).toISOString() };
+    });
+    const activeFrom = query.active_from ? new Date(String(query.active_from)) : null;
+    const activeTo = query.active_to ? new Date(String(query.active_to)) : null;
+    const activeRows =
+      activeFrom || activeTo
+        ? withActivity.filter((r) => {
+            if (!r.last_active_at) return false;
+            const seen = new Date(r.last_active_at);
+            return (!activeFrom || seen >= activeFrom) && (!activeTo || seen <= activeTo);
+          })
+        : withActivity;
+
+    return paged(activeRows, query, 25);
   },
 
   /** Unpaginated — the real endpoint's `getAvailablePlotsForAsset` returns a flat array. */

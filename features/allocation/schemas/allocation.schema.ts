@@ -67,6 +67,12 @@ export const AllocationClientSchema = z.object({
    */
   payment_completed_date: z.string().nullable().optional(),
   date_joined: z.string().nullable().optional(),
+  /**
+   * Proposed (Admin v2 — Backend Requirements, item 10): the client's last
+   * authenticated activity, not `last_login` (stale for anyone who stays signed
+   * in). Absent on today's BE; null = no activity recorded since tracking began.
+   */
+  last_active_at: z.string().nullable().optional(),
 });
 
 export type AllocationClient = z.infer<typeof AllocationClientSchema>;

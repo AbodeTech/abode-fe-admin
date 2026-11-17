@@ -784,7 +784,27 @@ export const campaignEngineRoutes: MockRoutes = {
       if (search && !campaign.name.toLowerCase().includes(search)) return false;
       return true;
     });
-    rows = [...rows].sort((a, b) => STATUS_RANK[a.status] - STATUS_RANK[b.status] || a.name.localeCompare(b.name));
+    // Proposed `sort_by` / `sort_dir` (Admin v2 — Backend Requirements, item
+    // 15), applied to the whole list before paging. Without them the mock keeps
+    // its old order.
+    const sortBy = typeof query.sort_by === 'string' ? query.sort_by : '';
+    const dir = query.sort_dir === 'asc' ? 1 : -1;
+    const sortValue: Record<string, (c: StoreCampaign) => string | number> = {
+      created_at: (c) => c.createdAt,
+      name: (c) => c.name.toLowerCase(),
+      start_date: (c) => c.start_date,
+      end_date: (c) => c.end_date,
+      status: (c) => c.status,
+      total_sqm_target: (c) => c.total_sqm_target ?? -1,
+    };
+    const pick = sortValue[sortBy];
+    rows = pick
+      ? [...rows].sort((a, b) => {
+          const x = pick(a);
+          const y = pick(b);
+          return (x < y ? -1 : x > y ? 1 : a.id.localeCompare(b.id)) * dir;
+        })
+      : [...rows].sort((a, b) => STATUS_RANK[a.status] - STATUS_RANK[b.status] || a.name.localeCompare(b.name));
     return paged(rows.map(toApiCampaign), query, 20);
   },
 

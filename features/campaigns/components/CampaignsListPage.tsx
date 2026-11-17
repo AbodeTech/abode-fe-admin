@@ -14,6 +14,8 @@ import type { CampaignStatus } from "../schemas/campaign.schema";
 import { Header, ListSkeleton, PageShell } from "./CampaignLayout";
 import { CampaignsListCard } from "./CampaignsListCard";
 import { CampaignsListFilters } from "./CampaignsListFilters";
+import { isBackendReady } from "@/lib/backend-ready";
+import { DEFAULT_CAMPAIGN_SORT, parseCampaignSort } from "../lib/campaign-sort";
 
 export default function CampaignsListPage() {
   const searchParams = useSearchParams();
@@ -21,8 +23,12 @@ export default function CampaignsListPage() {
   const search = searchParams.get("search");
   const page = Number(searchParams.get("page")) || 1;
   const canManage = useAdminPermissions().has("manage_campaigns");
+  // Sorting is on the BE, across every page. Until the BE takes the params,
+  // a sort in the URL is ignored rather than sent (it would 400).
+  const canSort = isBackendReady("campaign_sort");
+  const sort = canSort ? parseCampaignSort(searchParams.get("sort")) : DEFAULT_CAMPAIGN_SORT;
 
-  const { data, isLoading, error } = useCampaignsList({ status, search, page });
+  const { data, isLoading, error } = useCampaignsList({ status, search, page, sort });
   const rows = data?.data ?? [];
   const total = data?.meta?.total ?? 0;
   const empty = !isLoading && rows.length === 0;
@@ -40,7 +46,11 @@ export default function CampaignsListPage() {
         ) : null}
       </Header>
 
-      <CampaignsListFilters currentStatus={status} currentSearch={search ?? ""} />
+      <CampaignsListFilters
+        currentStatus={status}
+        currentSearch={search ?? ""}
+        currentSort={canSort ? sort : null}
+      />
 
       {error ? (
         <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-500">

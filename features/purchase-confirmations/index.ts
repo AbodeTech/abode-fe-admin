@@ -11,6 +11,10 @@ export {
   useResendConfirmationEmail,
 } from "./hooks/use-confirmation-actions";
 export { useExportConfirmations } from "./hooks/use-export-confirmations";
+export {
+  applyConfirmationFilter,
+  DEFAULT_CONFIRMATION_STATUS,
+} from "./lib/filter-params";
 export { PurchaseConfirmationsTable } from "./components/PurchaseConfirmationsTable";
 export { PurchaseConfirmationsFilters } from "./components/PurchaseConfirmationsFilters";
 export { ConfirmationStatsStrip } from "./components/ConfirmationStatsStrip";

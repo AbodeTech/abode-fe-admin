@@ -44,6 +44,7 @@ import { courseRoutes } from './courses';
 import { divisionRoutes } from './division';
 import { standingRoutes } from './standing';
 import { ticketRoutes } from './tickets';
+import { adminLogRoutes } from './admin-logs';
 
 /* ============================================================
  * Route registration. Importing this module (via lib/mocks/index.ts)
@@ -264,6 +265,9 @@ import { ticketRoutes } from './tickets';
  *               merge, collaborators, participants, note edit/delete and
  *               /admin/issues/* are unclaimed and 404 in mock mode. Reads
  *               cs-managers.ts's ADMINS in-process for admin refs.
+ * admin-logs  — GET /admin/audit-logs only (admin.controller.ts). Rows are
+ *               the BE's raw stored documents, not its unused response DTO.
+ *               Reads cs-managers.ts's ADMINS for admin refs.
  * ============================================================ */
 
 let registered = false;
@@ -319,6 +323,7 @@ export function ensureRoutesRegistered(): void {
   registerRoutes(siteSetupRoutes);
   registerRoutes(fieldOperationsRoutes);
   registerRoutes(ticketRoutes);
+  registerRoutes(adminLogRoutes);
 
   // Only mark done after every domain registered — a throw mid-way must allow retry.
   registered = true;

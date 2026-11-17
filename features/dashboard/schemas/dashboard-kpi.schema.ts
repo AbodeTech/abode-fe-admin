@@ -33,6 +33,12 @@ export const RevenueByAssetTypeSchema = z.object({
 export const DashboardKpisSchema = z.looseObject({
   // Period-scoped
   period_revenue: PeriodScopedKpiSchema,
+  /**
+   * Proposed (Admin v2 — Backend Requirements, item 1): money on plans whose
+   * land has been allocated, dated by allocation. Absent on today's BE, where
+   * `period_revenue` is every completed payment (the same number as `inflow`).
+   */
+  realized_revenue: PeriodScopedKpiSchema.optional(),
   inflow: PeriodScopedKpiSchema,
   outflow: PeriodScopedKpiSchema,
   period_new_users: PeriodScopedKpiSchema,

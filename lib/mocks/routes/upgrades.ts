@@ -1,5 +1,5 @@
 import { MockHttpError, type MockRoutes } from '../router';
-import { adminRef, applicantRef, findPerson, matchesPersonSearch, referrerRef } from './people';
+import { PEOPLE, adminRef, applicantRef, findPerson, matchesPersonSearch, referrerRef } from './people';
 import { body, paged } from './util';
 
 /* ============================================================
@@ -186,7 +186,58 @@ const REASON_MIN = 20;
 
 const UPGRADE_TARGET_TIERS = ['associate', 'associate-pro', 'founder', 'premium', 'management'];
 
+/**
+ * Proposed eligibility (Admin v2 — Backend Requirements, item 12): the course
+ * each tier requires, and who has completed it. Completion here is seeded per
+ * person; the BE reads `Enrolment.completed_at`.
+ */
+const UPGRADE_REQUIREMENTS = [
+  { to_tier: 'associate', from: ['guest', 'user'], course: { id: '66cc0a0000000000000002', title: 'Abode Associate Certification' } },
+  { to_tier: 'associate-pro', from: ['guest', 'user', 'associate'], course: { id: '66cc0a0000000000000001', title: 'Selling Woodgate Prime' } },
+] as const;
+
+const completionFor = (personIndex: number, toTier: string) => {
+  // Two of every three eligible people have finished; scores vary by person.
+  if (personIndex % 3 === 2) return null;
+  return {
+    completed_at: new Date(Date.now() - (personIndex * 4 + (toTier === 'associate' ? 2 : 9)) * 86_400_000).toISOString(),
+    best_score_pct: 70 + ((personIndex * 7) % 30),
+  };
+};
+
 export const upgradeRoutes: MockRoutes = {
+  'GET /admin/referrals/upgrades/eligible': ({ query }) => {
+    const search = typeof query.search === 'string' ? query.search : '';
+    const rows = UPGRADE_REQUIREMENTS.filter((r) => !query.to_tier || r.to_tier === query.to_tier).flatMap((req) =>
+      PEOPLE.flatMap((person, index) => {
+        if (!(req.from as readonly string[]).includes(person.referral_status)) return [];
+        if (search && !matchesPersonSearch(person, search)) return [];
+        const done = completionFor(index, req.to_tier);
+        if (!done) return [];
+        const requests = upgrades.filter((u) => u.user === person._id && u.to_tier === req.to_tier);
+        if (requests.some((u) => u.status === 'approved')) return [];
+        return [
+          {
+            user: {
+              id: person._id,
+              first_name: person.firstName,
+              last_name: person.lastName,
+              email: person.email,
+              referral_status: person.referral_status,
+            },
+            to_tier: req.to_tier,
+            course: req.course,
+            completed_at: done.completed_at,
+            best_score_pct: done.best_score_pct,
+            upgrade_requested: requests.some((u) => u.status === 'pending'),
+          },
+        ];
+      })
+    );
+    rows.sort((a, b) => b.completed_at.localeCompare(a.completed_at));
+    return paged(rows, query);
+  },
+
   'GET /admin/referrals/upgrades': ({ query }) => {
     const search = typeof query.search === 'string' ? query.search : '';
 
