@@ -89,6 +89,8 @@ async function fetchAllUpgrades(
         status: filters.status,
         payment_method: filters.payment_method,
         to_tier: filters.to_tier,
+        start_date: filters.start_date || undefined,
+        end_date: filters.end_date || undefined,
       },
     });
 

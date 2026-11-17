@@ -53,7 +53,7 @@ export function EditUserAssetQuestionModal({
   } = useForm<EditAssetQuestionFormValues>({
     resolver: zodResolver(AdminEditAssetQuestionPayloadSchema),
     defaultValues: {
-      name_of_property: currentName,
+      name_on_document: currentName,
       address: currentAddress,
       reason: "",
       notify_user: false,
@@ -64,7 +64,7 @@ export function EditUserAssetQuestionModal({
 
   useEffect(() => {
     if (isOpen) {
-      setValue("name_of_property", currentName);
+      setValue("name_on_document", currentName);
       setValue("address", currentAddress);
     }
   }, [isOpen, currentName, currentAddress, setValue]);
@@ -95,14 +95,14 @@ export function EditUserAssetQuestionModal({
         <form onSubmit={handleSubmit(onSubmit)}>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="name_of_property">Name</Label>
-              <Input id="name_of_property" {...register("name_of_property")} placeholder="Enter owner name" />
-              {errors.name_of_property && <p className="text-sm text-red-500">{errors.name_of_property.message}</p>}
+              <Label htmlFor="name_on_document">Name on document</Label>
+              <Input id="name_on_document" {...register("name_on_document")} placeholder="Enter owner name" />
+              {errors.name_on_document && <p className="text-sm text-red-500">{errors.name_on_document.message}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="reason">Reason</Label>
               <Textarea id="reason" {...register("reason")} placeholder="Explain why this legal detail is changing" />
-              <p className="text-xs text-muted-foreground">At least 20 characters; saved to the audit log.</p>
+              <p className="text-xs text-muted-foreground">At least 15 characters; saved to the audit log.</p>
               {errors.reason && <p className="text-sm text-red-500">{errors.reason.message}</p>}
             </div>
             <label className="flex items-center gap-2 text-sm">

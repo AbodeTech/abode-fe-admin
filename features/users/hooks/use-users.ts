@@ -37,12 +37,13 @@ export type UsersListFilters = {
  * suspension — they are independent, so an account can be live with a frozen
  * wallet and vice versa.
  */
-export const useUsers = (filters?: UsersListFilters) => {
+export const useUsers = (filters?: UsersListFilters, enabled = true) => {
   const page = filters?.page ?? 1;
   const limit = filters?.limit ?? DEFAULT_USERS_LIMIT;
   const dateRange = bothOrNeitherDates(filters?.dateFrom, filters?.dateTo);
 
   return useQuery({
+    enabled,
     queryKey: userKeys.list({
       page,
       limit,

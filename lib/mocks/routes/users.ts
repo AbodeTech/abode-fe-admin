@@ -405,6 +405,7 @@ export const userRoutes: MockRoutes = {
   ],
 
   'PATCH /admin/users/:id/profile': () => ({ message: 'User profile updated' }),
+  'PATCH /admin/users/:id/email': () => ({ message: 'User email updated successfully' }),
   'POST /admin/users/:id/suspend': () => ({ message: 'User suspended' }),
   'POST /admin/users/:id/unsuspend': () => ({ message: 'User unsuspended' }),
   'POST /admin/users/:id/force-password-reset': () => ({ message: 'Password reset queued' }),

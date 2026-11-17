@@ -5,7 +5,10 @@ export { RecruitmentSection } from "./components/RecruitmentSection";
 export { SalesRevenueSection } from "./components/SalesRevenueSection";
 export { ActivitySection } from "./components/ActivitySection";
 export { MilestonesSection } from "./components/MilestonesSection";
-export { AssociateProsTable } from "./components/AssociateProsTable";
+export {
+  AssociateProsTable,
+  ASSOCIATE_PROS_PAGE_SIZE,
+} from "./components/AssociateProsTable";
 export { ManagerAssignmentCard } from "./components/ManagerAssignmentCard";
 export { NoManagersEmptyState } from "./components/NoManagersEmptyState";
 export { TeamSalesSection } from "./components/TeamSalesSection";
@@ -76,6 +79,7 @@ export type {
 
 // Hooks — mutations
 export { useAddManager } from "./hooks/use-add-manager";
+export { useSetManagerPrivate } from "./hooks/use-set-manager-private";
 export { useRemoveManager } from "./hooks/use-remove-manager";
 export { useReassignPro } from "./hooks/use-reassign-pro";
 export { useBulkAssignPros } from "./hooks/use-bulk-assign-pros";

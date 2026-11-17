@@ -16,13 +16,15 @@ import {
   useSetDefaultCohort,
   useToggleCohortRegistration,
 } from '../hooks/use-recruitment';
+import { WHATSAPP_GROUP_URL_RE } from '../schemas/programme.schema';
 import { CohortShell } from './CohortShell';
 
 /**
  * DC-04 — the cohort's own facts only: name/label, registration goal and
  * window, whether registration is open, and default-intake. Event date,
  * venue, city and details_confirmed live on the physical session (Sessions
- * tab) since DC-02 — not here.
+ * tab) since DC-02 — not here. The WhatsApp group link saves on its own so it
+ * can be swapped mid-registration when a group fills, without resaving the rest.
  */
 export function CohortSettingsPage({
   programmeId,
@@ -43,6 +45,8 @@ export function CohortSettingsPage({
   const [opensAt, setOpensAt] = useState('');
   const [closesAt, setClosesAt] = useState('');
   const [registrationOpen, setRegistrationOpen] = useState(true);
+  const [whatsapp, setWhatsapp] = useState('');
+  const whatsappPatch = usePatchCohort(cohortId);
 
   // Populate the form once the cohort loads (React's "adjusting state during
   // render" pattern — not an effect, so it doesn't cost an extra commit and
@@ -56,6 +60,26 @@ export function CohortSettingsPage({
     setOpensAt(cohort.registration_opens ? cohort.registration_opens.slice(0, 10) : '');
     setClosesAt(cohort.registration_closes ? cohort.registration_closes.slice(0, 10) : '');
     setRegistrationOpen(cohort.registration_open);
+    setWhatsapp(cohort.whatsapp_group_url ?? '');
+  }
+
+  const whatsappTrimmed = whatsapp.trim();
+  const whatsappValid = whatsappTrimmed === '' || WHATSAPP_GROUP_URL_RE.test(whatsappTrimmed);
+  const whatsappChanged = whatsappTrimmed !== (cohort?.whatsapp_group_url ?? '');
+
+  async function onSaveWhatsapp(e: React.FormEvent) {
+    e.preventDefault();
+    if (!whatsappValid) return;
+    try {
+      await whatsappPatch.mutateAsync({ whatsapp_group_url: whatsappTrimmed || null });
+      toast.success(
+        whatsappTrimmed
+          ? 'WhatsApp link updated — new registrants get this link from now on'
+          : 'WhatsApp link removed',
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Save failed');
+    }
   }
 
   // Three real endpoints, not one PATCH: core fields, the open/close switch,
@@ -179,6 +203,60 @@ export function CohortSettingsPage({
             {canManage ? (
               <Button type="submit" disabled={saving}>
                 {saving ? 'Saving…' : 'Save changes'}
+              </Button>
+            ) : null}
+          </form>
+
+          <form
+            onSubmit={onSaveWhatsapp}
+            className="space-y-3 rounded-xl border bg-white p-4 md:p-6"
+          >
+            <h2 className="text-sm font-semibold text-slate-900">WhatsApp group</h2>
+            <p className="text-sm text-slate-500">
+              The group registrants are sent to, in the confirmation email and on the
+              registration page. A group holds 1,024 people — when it fills, create a new
+              group and paste its invite link here. Everyone who registers after you save
+              gets the new link; earlier registrants keep the one they were sent.
+            </p>
+            <div className="space-y-1.5">
+              <Label htmlFor="cs-whatsapp">Invite link</Label>
+              <Input
+                id="cs-whatsapp"
+                type="url"
+                inputMode="url"
+                placeholder="https://chat.whatsapp.com/…"
+                value={whatsapp}
+                onChange={(e) => setWhatsapp(e.target.value)}
+                disabled={!canManage}
+                aria-invalid={!whatsappValid}
+              />
+              {!whatsappValid ? (
+                <p className="text-xs text-red-600">
+                  Use a WhatsApp group invite link, starting https://chat.whatsapp.com/
+                </p>
+              ) : null}
+            </div>
+            {cohort.whatsapp_group_url ? (
+              <p className="text-xs text-slate-500">
+                Current link:{' '}
+                <a
+                  href={cohort.whatsapp_group_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="break-all text-teal-700 underline"
+                >
+                  {cohort.whatsapp_group_url}
+                </a>
+              </p>
+            ) : (
+              <p className="text-xs text-slate-500">No link set — registrants are not sent one.</p>
+            )}
+            {canManage ? (
+              <Button
+                type="submit"
+                disabled={!whatsappChanged || !whatsappValid || whatsappPatch.isPending}
+              >
+                {whatsappPatch.isPending ? 'Saving…' : 'Save WhatsApp link'}
               </Button>
             ) : null}
           </form>

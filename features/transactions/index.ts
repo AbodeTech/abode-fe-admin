@@ -26,6 +26,7 @@ export { TopupTransactionsTable } from './components/topup/TopupTransactionsTabl
 // Components - Commission
 export { CommissionTransactionsTable } from './components/commission/CommissionTransactionsTable';
 export { CommissionExport } from './components/commission/CommissionExport';
+export { CommissionSearch } from './components/commission/CommissionSearch';
 
 // Components - Assets
 export { useCompleteAssetTransactions, DEFAULT_COMPLETE_ASSET_LIMIT } from './hooks/use-complete-asset-transactions';

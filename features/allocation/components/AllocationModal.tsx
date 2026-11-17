@@ -48,7 +48,7 @@ import { useSendAllocationEmail } from "../hooks/use-send-allocation-email";
 export type AllocationModalMode = "send" | "resend";
 
 /** `REASON_MIN_LENGTH` in abode-be-v2's allocation.constants.ts — enforced server-side too. */
-const REASON_MIN_LENGTH = 20;
+const REASON_MIN_LENGTH = 15;
 
 /**
  * The fields the modal reads — narrower than an eligible-clients row, so a
@@ -395,7 +395,7 @@ export function AllocationModal({
                 </div>
               )}
 
-              {/* Required server-side (≥20 chars) once new plots are picked in resend mode. */}
+              {/* Required server-side (≥15 chars) once new plots are picked in resend mode. */}
               {mode === "resend" && hasSelection && (
                 <div className="space-y-1.5">
                   <Label htmlFor="reassign-reason" className="text-sm text-muted-foreground">

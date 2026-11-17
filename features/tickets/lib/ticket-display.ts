@@ -46,6 +46,7 @@ export const FILTER_LABELS: Record<TicketFilter, string> = {
   unassigned: "Unassigned",
   unlinked: "Unlinked",
   open: "Open",
+  in_progress: "In progress",
   waiting_customer: "Waiting customer",
   blocked_on_issue: "Blocked on issue",
   resolved: "Resolved",

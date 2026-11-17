@@ -388,6 +388,8 @@ const PurchaseFieldsSchema = z.looseObject({
   description: z.string().nullable().optional(),
   asset_type: z.string().nullable().optional(),
   property_owner: z.string().nullable().optional(),
+  /** Length of the payment's plan in months, 0 for outright; null when there is no plan. */
+  plan_tenor_months: z.number().nullable().optional(),
   transfer_receipt_url: z.string().nullable().optional(),
   source_asset: AssetRefSchema.nullable().optional(),
   number_of_units: z.number().nullable().optional(),
@@ -479,8 +481,8 @@ export function isInitialPurchase(row: Purchase): boolean {
   );
 }
 
-/** Mirrors `DeclineFlexTransferDto` — min 20 chars, no upper bound. */
-export const PURCHASE_DECLINE_REASON_MIN = 20;
+/** Mirrors `DeclineFlexTransferDto` — min 15 chars, no upper bound. */
+export const PURCHASE_DECLINE_REASON_MIN = 15;
 
 export const purchaseDeclineReasonSchema = z
   .string()
@@ -562,6 +564,18 @@ const SALES_TYPE_BY_KIND: Record<string, SalesType> = {
 
 export function salesTypeOf(row: Purchase): SalesType | null {
   return SALES_TYPE_BY_KIND[purchaseKind(row)] ?? null;
+}
+
+/**
+ * The plan-length tag beside the property name: "Outright", "1 month", "9 months". The BE
+ * reads it from the payment's plan (a document payment takes its land plan's); a purchase
+ * still awaiting approval falls back to its checkout snapshot.
+ */
+export function planDurationLabel(row: Purchase): string | null {
+  const months = row.plan_tenor_months ?? row.purchase_details?.tenor_months;
+  if (typeof months !== 'number' || !Number.isFinite(months) || months < 0) return null;
+  if (months === 0) return 'Outright';
+  return months === 1 ? '1 month' : `${months} months`;
 }
 
 export function propertyOwnerLabel(row: Purchase): string | null {

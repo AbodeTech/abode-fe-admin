@@ -36,13 +36,19 @@ export const CommissionTransactionRowSchema = z.object({
   source_type: z.string().nullable(),
   referrer_id: z.string().nullable(),
   referrer_name: z.string().nullable(),
+  /** Current associate account status for the commission CSV. */
+  associate_status: z.string().nullable().optional(),
   referrer_email: z.string().nullable(),
   referrer_tin: z.string().nullable(),
   source_user_id: z.string().nullable(),
   source_user_name: z.string().nullable(),
   source_user_email: z.string().nullable(),
+  /** Present when the backend joins the source purchase into the commission row. */
+  transaction_amount: z.number().nullable().optional(),
   asset_id: z.string().nullable(),
   asset_name: z.string().nullable(),
+  /** Category such as land or flex; distinct from the asset's display name. */
+  asset_type: z.string().nullable().optional(),
   rate_applied: z.number().nullable(),
   gross_commission: z.number().nullable(),
   wht_deducted: z.number().nullable(),

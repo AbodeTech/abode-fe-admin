@@ -475,6 +475,7 @@ const FILTERS: Record<string, (t: MockTicket) => boolean> = {
   unassigned: (t) => !t.assigned_admin && t.status !== 'resolved',
   unlinked: (t) => !t.user_affected && t.status !== 'resolved',
   open: (t) => t.status === 'open',
+  in_progress: (t) => t.status === 'in_progress',
   waiting_customer: (t) => t.status === 'waiting_customer',
   blocked_on_issue: () => false,
   resolved: (t) => t.status === 'resolved',

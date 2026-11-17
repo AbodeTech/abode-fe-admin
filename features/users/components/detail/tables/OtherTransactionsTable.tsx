@@ -70,12 +70,41 @@ interface OtherTransactionsTableProps {
 
 type SortValue = string | number | null | undefined
 
+const isCommissionReversal = (transaction: TransactionListResponse) =>
+  transaction.type === "adjustment" && transaction.description?.startsWith("Commission clawback:")
+
+const displayDescription = (transaction: TransactionListResponse) => {
+  if (!isCommissionReversal(transaction)) return transaction.description
+  const original = transaction.source_transaction_id || transaction.related_transaction_id
+  return original ? `Reverses commission transaction ${original}` : "Commission reversal"
+}
+
+const displayAmount = (transaction: TransactionListResponse) =>
+  isCommissionReversal(transaction) ? -Math.abs(transaction.amount) : transaction.amount
+
+/**
+ * Which actions apply, as the BE decides them (`can_reprocess`, `can_send_receipt`).
+ * The description guess is only the fallback for a BE that predates those flags: it
+ * missed every admin top-up typed in free text, such as "Account top-up, Nov 11".
+ */
+const transactionActions = (transaction: TransactionListResponse) => {
+  const description = transaction.description ?? ""
+  return {
+    canReprocess:
+      transaction.can_reprocess ??
+      (transaction.type === "asset" || description.startsWith("AP") || description.startsWith("RAP")),
+    canSendReceipt:
+      transaction.can_send_receipt ??
+      (description.startsWith("AP") || description.startsWith("RAP") || description.startsWith("DP")),
+  }
+}
+
 /** Type badge, plus an "Admin" badge when an admin recorded the transaction. */
 function TransactionTypeBadges({ transaction }: { transaction: TransactionListResponse }) {
   return (
     <div className="flex flex-wrap items-center gap-1">
       <Badge variant="outline" className={getTypeColor(transaction.type)}>
-        {formatTransactionType(transaction.type)}
+        {isCommissionReversal(transaction) ? "Commission reversal" : formatTransactionType(transaction.type)}
       </Badge>
       {transaction.created_via === "admin" && (
         <Badge variant="outline" className="border-violet-200 bg-violet-50 text-violet-700">
@@ -200,14 +229,7 @@ export function OtherTransactionsTable({ transactions }: OtherTransactionsTableP
             ) : (
               sortedTransactions.map((transaction) => {
                 const evidenceFile = transaction?.transfer_file?.file
-                const canReprocess =
-                  transaction.type === "asset" ||
-                  transaction.description?.startsWith("AP") ||
-                  transaction.description?.startsWith("RAP")
-                const canSendReceipt =
-                  transaction.description?.startsWith("AP") ||
-                  transaction.description?.startsWith("RAP") ||
-                  transaction.description?.startsWith("DP")
+                const { canReprocess, canSendReceipt } = transactionActions(transaction)
                 const isProcessing = processingId === transaction._id
                 const isSendingReceipt = receiptProcessingId === transaction._id
                 return (
@@ -232,8 +254,8 @@ export function OtherTransactionsTable({ transactions }: OtherTransactionsTableP
                         </Badge>
                       }
                     />
-                    <AdminMobileField label="Amount" value={formatAmount(transaction.amount)} />
-                    <AdminMobileField label="Description" value={transaction.description} />
+                    <AdminMobileField label="Amount" value={formatAmount(displayAmount(transaction))} />
+                    <AdminMobileField label="Description" value={displayDescription(transaction)} />
                     <div className="border-t border-border pt-2">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -317,14 +339,7 @@ export function OtherTransactionsTable({ transactions }: OtherTransactionsTableP
                 {sortedTransactions.length > 0 ? (
                   sortedTransactions.map((transaction) => {
                     const evidenceFile = transaction?.transfer_file?.file
-                    const canReprocess =
-                      transaction.type === "asset" ||
-                      transaction.description?.startsWith("AP") ||
-                      transaction.description?.startsWith("RAP")
-                    const canSendReceipt =
-                      transaction.description?.startsWith("AP") ||
-                      transaction.description?.startsWith("RAP") ||
-                      transaction.description?.startsWith("DP")
+                    const { canReprocess, canSendReceipt } = transactionActions(transaction)
 
                     const isProcessing = processingId === transaction._id
                     const isSendingReceipt = receiptProcessingId === transaction._id
@@ -346,8 +361,8 @@ export function OtherTransactionsTable({ transactions }: OtherTransactionsTableP
                             {transaction.status}
                           </Badge>
                         </TableCell>
-                        <TableCell className="font-medium">{formatAmount(transaction.amount)}</TableCell>
-                        <TableCell>{transaction.description}</TableCell>
+                        <TableCell className="font-medium">{formatAmount(displayAmount(transaction))}</TableCell>
+                        <TableCell>{displayDescription(transaction)}</TableCell>
                         <TableCell>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>

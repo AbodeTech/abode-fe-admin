@@ -282,7 +282,7 @@ export function CloseAndRelocatePlanModal(props: RelocationProps) {
           <div className="space-y-3 px-1 pt-4">
             <Label>Reason</Label>
             <Textarea value={reason} onChange={(event) => setReason(event.target.value)} />
-            <p className="text-xs text-muted-foreground">Minimum 30 characters.</p>
+            <p className="text-xs text-muted-foreground">Minimum 15 characters.</p>
             <label className="flex items-center gap-2 text-sm"><Checkbox checked={notify} onCheckedChange={(v) => setNotify(v === true)} />Notify user by email</label>
           </div>
         </ScrollArea>
@@ -293,7 +293,7 @@ export function CloseAndRelocatePlanModal(props: RelocationProps) {
             disabled={
               mutation.isPending ||
               !assetId ||
-              reason.trim().length < 30 ||
+              reason.trim().length < 15 ||
               (type === 'flex' ? !requiredFlexTermsPresent : !requiredLandTermsPresent) ||
               (type !== 'flex' && !carryOverMatches) ||
               !termsAreValid
@@ -660,7 +660,7 @@ export function EditPlanCommissionModal(props: CommissionModalProps) {
                 onChange={(event) => setReason(event.target.value)}
                 placeholder="Explain why this commission change is necessary"
               />
-              <p className="text-xs text-muted-foreground">Minimum 30 characters.</p>
+              <p className="text-xs text-muted-foreground">Minimum 15 characters.</p>
             </div>
           </div>
         </ScrollArea>
@@ -672,7 +672,7 @@ export function EditPlanCommissionModal(props: CommissionModalProps) {
           <Button
             disabled={
               pending ||
-              reason.trim().length < 30 ||
+              reason.trim().length < 15 ||
               !ratesAreValid ||
               totalRate > 100 ||
               (props.mode === 'config' && rows.length === 0) ||

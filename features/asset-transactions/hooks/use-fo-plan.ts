@@ -36,7 +36,7 @@ function useFoPlanMutation<TVariables, TData>(
   });
 }
 
-/** POST /admin/acquisitions/plans/:planId/suspend — `{ reason }` min 20. */
+/** POST /admin/acquisitions/plans/:planId/suspend — `{ reason }` min 15. */
 export const useSuspendFoPlan = () =>
   useFoPlanMutation((args: { id: string; reason: string }) =>
     apiPost(

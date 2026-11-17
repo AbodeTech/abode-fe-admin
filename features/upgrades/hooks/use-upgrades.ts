@@ -31,6 +31,8 @@ export const useUpgrades = (filters?: UpgradeListFilters) => {
           status: rest.status,
           payment_method: rest.payment_method,
           to_tier: rest.to_tier,
+          start_date: rest.start_date || undefined,
+          end_date: rest.end_date || undefined,
         },
       }),
   });

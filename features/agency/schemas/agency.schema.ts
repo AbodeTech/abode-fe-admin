@@ -7,7 +7,7 @@ import { z } from 'zod';
  *   POST   /admin/agencies                          create, owner existing|new
  *   GET    /admin/agencies/:id                      detail + owner + totals
  *   PATCH  /admin/agencies/:id                      name / rate / contacts
- *   POST   /admin/agencies/:id/suspend              reason, 20–500 chars
+ *   POST   /admin/agencies/:id/suspend              reason, 15–500 chars
  *   POST   /admin/agencies/:id/reactivate           lift a suspension
  *   DELETE /admin/agencies/:id                      only at member_count 0
  *   POST   /admin/agencies/:id/change-owner         super admin only
@@ -315,7 +315,7 @@ export const updateAgencySchema = z.object({
 export type UpdateAgencyPayload = z.infer<typeof updateAgencySchema>;
 
 /** `POST /admin/agencies/:id/suspend`. The BE re-checks the trimmed length. */
-export const SUSPENSION_REASON_MIN = 20;
+export const SUSPENSION_REASON_MIN = 15;
 export const SUSPENSION_REASON_MAX = 500;
 
 export const suspendAgencySchema = z.object({

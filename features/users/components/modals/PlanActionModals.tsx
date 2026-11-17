@@ -59,10 +59,15 @@ export function PlanBalanceAdjustmentModal(props: BaseProps & { hasDocumentPlan?
   const [amount, setAmount] = useState('');
   const [reason, setReason] = useState('');
   const [notify, setNotify] = useState(true);
+  // Off by default: some plans were deliberately migrated without commission.
+  const [fireCommission, setFireCommission] = useState(false);
+  const [clawBackCommission, setClawBackCommission] = useState(false);
+  // Commission follows land payments only.
+  const commissionApplies = paymentTarget === 'land';
 
   const submit = async () => {
     try {
-      await mutation.mutateAsync({
+      const result = await mutation.mutateAsync({
         userId: props.userId,
         planId: props.planId,
         payload: {
@@ -72,9 +77,18 @@ export function PlanBalanceAdjustmentModal(props: BaseProps & { hasDocumentPlan?
           reason,
           notify_user: notify,
           expected_updated_at: props.expectedUpdatedAt,
+          ...(commissionApplies && direction === 'credit' && fireCommission && { fire_commission: true }),
+          ...(commissionApplies && direction === 'debit' && clawBackCommission && { claw_back_commission: true }),
         },
       });
-      toast.success('Plan balance adjusted');
+      const naira = (n: number) => `₦${n.toLocaleString()}`;
+      toast.success(
+        result.commission_paid
+          ? `Plan balance adjusted · ${naira(result.commission_paid)} commission paid`
+          : result.commission_taken_back
+            ? `Plan balance adjusted · ${naira(result.commission_taken_back)} commission taken back`
+            : 'Plan balance adjusted',
+      );
       props.onOpenChange(false);
     } catch (error) {
       toast.error(getErrorMessage(error, 'Unable to adjust plan balance'));
@@ -123,13 +137,43 @@ export function PlanBalanceAdjustmentModal(props: BaseProps & { hasDocumentPlan?
           <div className="space-y-2">
             <Label htmlFor="plan-adjust-reason">Reason</Label>
             <Textarea id="plan-adjust-reason" value={reason} onChange={(e) => setReason(e.target.value)} />
-            <p className="text-xs text-muted-foreground">Minimum 20 characters.</p>
+            <p className="text-xs text-muted-foreground">Minimum 15 characters.</p>
           </div>
+          {commissionApplies && direction === 'credit' && (
+            <label className="flex items-start gap-2 text-sm">
+              <Checkbox
+                className="mt-0.5"
+                checked={fireCommission}
+                onCheckedChange={(value) => setFireCommission(value === true)}
+              />
+              <span>
+                Pay commission on this amount
+                <span className="block text-xs text-muted-foreground">
+                  Paid to the people recorded on this plan, at their plan rates.
+                </span>
+              </span>
+            </label>
+          )}
+          {commissionApplies && direction === 'debit' && (
+            <label className="flex items-start gap-2 text-sm">
+              <Checkbox
+                className="mt-0.5"
+                checked={clawBackCommission}
+                onCheckedChange={(value) => setClawBackCommission(value === true)}
+              />
+              <span>
+                Take back commission on this amount
+                <span className="block text-xs text-muted-foreground">
+                  Each earner gives back their plan rate × this amount. A wallet can go negative; later earnings pay it off.
+                </span>
+              </span>
+            </label>
+          )}
           <NotifyToggle checked={notify} onChange={setNotify} />
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => props.onOpenChange(false)}>Cancel</Button>
-          <Button disabled={mutation.isPending || !Number(amount.replace(/,/g, '')) || reason.trim().length < 20} onClick={submit}>
+          <Button disabled={mutation.isPending || !Number(amount.replace(/,/g, '')) || reason.trim().length < 15} onClick={submit}>
             {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Apply adjustment
           </Button>
@@ -196,13 +240,13 @@ export function PlanPaymentDateModal(props: BaseProps & { hasDocumentPlan?: bool
           <div className="space-y-2">
             <Label htmlFor="next-plan-payment-reason">Reason</Label>
             <Textarea id="next-plan-payment-reason" value={reason} onChange={(e) => setReason(e.target.value)} />
-            <p className="text-xs text-muted-foreground">Minimum 20 characters.</p>
+            <p className="text-xs text-muted-foreground">Minimum 15 characters.</p>
           </div>
           <NotifyToggle checked={notify} onChange={setNotify} />
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => props.onOpenChange(false)}>Cancel</Button>
-          <Button disabled={mutation.isPending || !date || reason.trim().length < 20} onClick={submit}>
+          <Button disabled={mutation.isPending || !date || reason.trim().length < 15} onClick={submit}>
             {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Update date
           </Button>
@@ -216,19 +260,29 @@ export function ClosePlanModal(props: BaseProps) {
   const mutation = useCloseUserPlan();
   const [reason, setReason] = useState('');
   const [notify, setNotify] = useState(true);
+  const [sendTermination, setSendTermination] = useState(false);
 
   const submit = async () => {
     try {
-      await mutation.mutateAsync({
+      const result = await mutation.mutateAsync({
         userId: props.userId,
         planId: props.planId,
         payload: {
           reason,
           notify_user: notify,
+          send_termination_notice: sendTermination,
           expected_updated_at: props.expectedUpdatedAt,
         },
       });
-      toast.success('Payment plan closed');
+      if (sendTermination && !result.termination_notice_sent) {
+        toast.warning('Payment plan closed, but the user has no email for the notice of termination');
+      } else {
+        toast.success(
+          sendTermination
+            ? 'Payment plan closed and notice of termination sent'
+            : 'Payment plan closed',
+        );
+      }
       props.onOpenChange(false);
     } catch (error) {
       toast.error(getErrorMessage(error, 'Unable to close payment plan'));
@@ -246,13 +300,26 @@ export function ClosePlanModal(props: BaseProps) {
           <div className="space-y-2">
             <Label htmlFor="close-plan-reason">Reason</Label>
             <Textarea id="close-plan-reason" value={reason} onChange={(e) => setReason(e.target.value)} />
-            <p className="text-xs text-muted-foreground">Minimum 30 characters.</p>
+            <p className="text-xs text-muted-foreground">Minimum 15 characters.</p>
           </div>
           <NotifyToggle checked={notify} onChange={setNotify} />
+          <div className="space-y-1">
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox
+                checked={sendTermination}
+                onCheckedChange={(value) => setSendTermination(value === true)}
+              />
+              Send notice of termination
+            </label>
+            <p className="pl-6 text-xs text-muted-foreground">
+              Emails the buyer the Acquest termination letter (PDF): the contract ends for missed
+              payments and everything paid, land and document fees, is forfeited.
+            </p>
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => props.onOpenChange(false)}>Cancel</Button>
-          <Button variant="destructive" disabled={mutation.isPending || reason.trim().length < 30} onClick={submit}>
+          <Button variant="destructive" disabled={mutation.isPending || reason.trim().length < 15} onClick={submit}>
             {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Close plan
           </Button>
@@ -308,7 +375,7 @@ export function DeletePlanModal(props: BaseProps) {
           <div className="space-y-2">
             <Label htmlFor="delete-plan-reason">Reason</Label>
             <Textarea id="delete-plan-reason" value={reason} onChange={(e) => setReason(e.target.value)} />
-            <p className="text-xs text-muted-foreground">Minimum 30 characters.</p>
+            <p className="text-xs text-muted-foreground">Minimum 15 characters.</p>
           </div>
           <label className="flex items-center gap-2 text-sm">
             <Checkbox checked={refund} onCheckedChange={(v) => setRefund(v === true)} /> Refund paid amount to wallet
@@ -342,7 +409,7 @@ export function DeletePlanModal(props: BaseProps) {
                 aria-describedby="delete-plan-keep-inventory-help"
               />
               <p id="delete-plan-keep-inventory-help" className="text-xs text-muted-foreground">
-                Minimum 20 characters. The deleted plan will no longer appear, but its land will remain unavailable for another sale.
+                Minimum 15 characters. The deleted plan will no longer appear, but its land will remain unavailable for another sale.
               </p>
             </div>
           ) : null}
@@ -352,7 +419,7 @@ export function DeletePlanModal(props: BaseProps) {
           <Button variant="outline" onClick={() => props.onOpenChange(false)}>Cancel</Button>
           <Button
             variant="destructive"
-            disabled={mutation.isPending || reason.trim().length < 30 || (!freeInventory && (!canKeepInventory || keepInventoryReason.trim().length < 20))}
+            disabled={mutation.isPending || reason.trim().length < 15 || (!freeInventory && (!canKeepInventory || keepInventoryReason.trim().length < 15))}
             onClick={submit}
           >
             {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

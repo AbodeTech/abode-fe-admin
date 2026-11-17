@@ -25,6 +25,7 @@ import {
   ManualUpgradeDialog,
   UpgradeExportButton,
   UpgradeFilters,
+  UpgradeStatCards,
   UpgradesTable,
   useUpgrades,
   type Upgrade,
@@ -130,6 +131,8 @@ function UpgradesPageContent() {
   const status = (searchParams.get("status") as UpgradeStatus) ?? undefined;
   const paymentMethod = (searchParams.get("payment_method") as UpgradePaymentMethod) ?? undefined;
   const toTier = (searchParams.get("to_tier") as UserTier) ?? undefined;
+  const startDate = searchParams.get("start_date") ?? undefined;
+  const endDate = searchParams.get("end_date") ?? undefined;
 
   // Both review actions are guarded by `modify_referral_status` on the BE, so
   // without it the buttons could only ever produce a 403.
@@ -152,6 +155,8 @@ function UpgradesPageContent() {
     status,
     payment_method: paymentMethod,
     to_tier: toTier,
+    start_date: startDate,
+    end_date: endDate,
   };
 
   const { data, isLoading, error } = useUpgrades({
@@ -162,7 +167,7 @@ function UpgradesPageContent() {
 
   const rows = data?.items ?? [];
   const total = data?.meta.total ?? 0;
-  const hasFilters = Boolean(search || status || paymentMethod || toTier);
+  const hasFilters = Boolean(search || status || paymentMethod || toTier || startDate || endDate);
 
   if (error) {
     return (
@@ -212,6 +217,8 @@ function UpgradesPageContent() {
       </div>
 
       <UpgradeFilters />
+
+      <UpgradeStatCards filters={filters} />
 
       <UpgradesTable
         rows={rows}

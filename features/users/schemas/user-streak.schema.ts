@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { ADMIN_REASON_MIN } from './user-actions.schema';
 
-/** The backend accepts 10–500 characters; the admin app keeps its usual 20-character floor. */
+/** The backend and admin app both require 15–500 characters. */
 export const STREAK_REASON_MAX = 500;
 /** A single correction is capped at ±100,000 points by the backend. */
 export const POINTS_CHANGE_LIMIT = 100_000;

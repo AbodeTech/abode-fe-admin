@@ -18,7 +18,10 @@ interface UseUnassignedProsParams {
 }
 
 /** GET /admin/managers/unassigned-pros — associate pros on no manager's roster. */
-export const useUnassignedPros = (params?: UseUnassignedProsParams) => {
+export const useUnassignedPros = (
+  params?: UseUnassignedProsParams,
+  { enabled = true }: { enabled?: boolean } = {}
+) => {
   const page = params?.page ?? 1;
   const limit = params?.limit ?? DEFAULT_UNASSIGNED_LIMIT;
   const q = params?.q ?? null;
@@ -29,6 +32,7 @@ export const useUnassignedPros = (params?: UseUnassignedProsParams) => {
       apiGetPaged('/admin/managers/unassigned-pros', ProSummarySchema, {
         params: { page, limit, ...(q ? { q } : {}) },
       }),
+    enabled,
   });
 };
 

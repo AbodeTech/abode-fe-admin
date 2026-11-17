@@ -1,9 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import { toast } from "sonner"
-import { useAuthStore } from "@/store/auth-store"
+import { useHasPermission } from "@/hooks/use-admin-permission"
 import {
   Table,
   TableBody,
@@ -42,6 +42,8 @@ import { formatAmount, formatDate, getStatusColor, } from "@/lib/utils/transacti
 import { UserReferralResponse } from "@/lib/api/admin/referrals.types"
 import { UserReferralActions } from "../UserReferralActions"
 import { useAddUserReferral } from "../../../hooks/use-user-mutations"
+import { useUsers } from "../../../hooks/use-users"
+import type { AdminUserRow } from "../../../schemas/user.schema"
 import { getErrorMessage } from "../../../utils/error-message"
 import { ADMIN_REASON_MIN } from "../../../schemas/user-actions.schema"
 import {
@@ -73,12 +75,12 @@ interface UserReferralsTableProps {
 export function UserReferralsTable({ referrals }: UserReferralsTableProps) {
   const params = useParams<{ id: string }>()
   const userId = params.id
-  const user = useAuthStore((state) => state.user)
-  const canAddReferral =
-    Boolean(user?.role?.is_super_admin) || (user?.permissions ?? []).includes("add-referral")
+  const canAddReferral = useHasPermission("add_referral")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [isAddOpen, setIsAddOpen] = useState(false)
-  const [referralEmail, setReferralEmail] = useState("")
+  const [search, setSearch] = useState("")
+  const [debouncedSearch, setDebouncedSearch] = useState("")
+  const [selectedUser, setSelectedUser] = useState<AdminUserRow | null>(null)
   const [addReason, setAddReason] = useState("")
 
   const filteredData =
@@ -86,19 +88,34 @@ export function UserReferralsTable({ referrals }: UserReferralsTableProps) {
       ? referrals
       : referrals.filter((referral) => referral.userReferralStatus === statusFilter)
 
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 300)
+    return () => clearTimeout(timer)
+  }, [search])
+
+  const candidates = useUsers(
+    { search: debouncedSearch, limit: 10 },
+    isAddOpen && debouncedSearch.length >= 2,
+  )
   const addReferral = useAddUserReferral()
 
+  const resetAddForm = () => {
+    setSearch("")
+    setDebouncedSearch("")
+    setSelectedUser(null)
+    setAddReason("")
+  }
+
   const handleAddReferral = async () => {
-    if (!userId || !referralEmail.trim() || addReason.length < ADMIN_REASON_MIN) return
+    if (!userId || !selectedUser || selectedUser.id === userId || addReason.trim().length < ADMIN_REASON_MIN) return
     try {
       await addReferral.mutateAsync({
         userId,
-        payload: { referee_email: referralEmail.trim(), reason: addReason, notify_user: false },
+        payload: { referee_email: selectedUser.email, reason: addReason, notify_user: false },
       })
       toast.success("Referral added successfully")
       setIsAddOpen(false)
-      setReferralEmail("")
-      setAddReason("")
+      resetAddForm()
     } catch (error: unknown) {
       toast.error(getErrorMessage(error, "Unable to add referral"))
     }
@@ -225,19 +242,61 @@ export function UserReferralsTable({ referrals }: UserReferralsTableProps) {
         </AdminDesktopTableWrap>
       </CardContent>
 
-      <Dialog open={isAddOpen && canAddReferral} onOpenChange={setIsAddOpen}>
+      <Dialog open={isAddOpen && canAddReferral} onOpenChange={(open) => {
+        setIsAddOpen(open)
+        if (!open) resetAddForm()
+      }}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Add Referral</DialogTitle>
-            <DialogDescription>Enter the referral email to add to this user.</DialogDescription>
+            <DialogDescription>Search for the person to add under this user.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <Input
-              type="email"
-              value={referralEmail}
-              onChange={(event) => setReferralEmail(event.target.value)}
-              placeholder="name@example.com"
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value)
+                setSelectedUser(null)
+              }}
+              placeholder="Search by name, email, or phone"
+              aria-label="Search for a person"
             />
+            {debouncedSearch.length >= 2 && search.trim() === debouncedSearch && !selectedUser && (
+              <div className="max-h-48 space-y-1 overflow-y-auto rounded-md border p-1" role="listbox" aria-label="Search results">
+                {candidates.isLoading || candidates.isFetching ? (
+                  <p className="p-2 text-sm text-muted-foreground">Searching…</p>
+                ) : candidates.isError ? (
+                  <p className="p-2 text-sm text-destructive">Could not search users. Try again.</p>
+                ) : candidates.data?.items.length ? (
+                  candidates.data.items.map((candidate) => (
+                    <button
+                      key={candidate.id}
+                      type="button"
+                      role="option"
+                      aria-selected={false}
+                      className="w-full rounded px-2 py-2 text-left text-sm hover:bg-muted"
+                      onClick={() => setSelectedUser(candidate)}
+                    >
+                      <span className="block font-medium">{candidate.first_name} {candidate.last_name}</span>
+                      <span className="block text-muted-foreground">{candidate.email}</span>
+                    </button>
+                  ))
+                ) : (
+                  <p className="p-2 text-sm text-muted-foreground">No users found.</p>
+                )}
+              </div>
+            )}
+            {selectedUser && (
+              <p className="text-sm">Selected: <strong>{selectedUser.first_name} {selectedUser.last_name}</strong> ({selectedUser.email})</p>
+            )}
+            {selectedUser?.id === userId && (
+              <p role="alert" className="text-sm text-destructive">A person cannot refer themselves.</p>
+            )}
+            {selectedUser?.has_asset && (
+              <p role="note" className="text-sm text-amber-800">
+                This person has an asset. Also update the frozen commission referrer on each of their payment plans. Adding a referral here does not change existing plan snapshots.
+              </p>
+            )}
             <Textarea
               placeholder={`Reason (min ${ADMIN_REASON_MIN} chars)…`}
               value={addReason}
@@ -250,7 +309,7 @@ export function UserReferralsTable({ referrals }: UserReferralsTableProps) {
             </Button>
             <Button
               onClick={handleAddReferral}
-              disabled={addReferral.isPending || !referralEmail.trim() || addReason.length < ADMIN_REASON_MIN}
+              disabled={addReferral.isPending || !selectedUser || selectedUser.id === userId || addReason.trim().length < ADMIN_REASON_MIN}
             >
               Add Referral
             </Button>

@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { DECLINE_REASON_PRESETS } from "@/lib/decline-reasons";
 
 import { PURCHASE_DECLINE_REASON_MIN } from "../schemas/purchase.schema";
 
@@ -45,15 +46,6 @@ export function AssetTransactionAction({
   const [declineLoading, setDeclineLoading] = useState(false);
   const [declineReason, setDeclineReason] = useState("");
   const [customReason, setCustomReason] = useState("");
-
-  const reasons = [
-    "Price fluctuation on this asset",
-    "Account restrictions apply here",
-    "System error during verification",
-    "Invalid asset details submitted",
-    "Wrong payment receipt uploaded",
-    "Payment receipt uploaded twice",
-  ];
 
   const isCustom = declineReason === CUSTOM_REASON_VALUE;
   const normalizedStatus = status?.toLowerCase() ?? "";
@@ -168,12 +160,12 @@ export function AssetTransactionAction({
                   <SelectValue placeholder="Select a reason" />
                 </SelectTrigger>
                 <SelectContent>
-                  {reasons.map((reason) => (
+                  {DECLINE_REASON_PRESETS.map((reason) => (
                     <SelectItem key={reason} value={reason}>
                       {reason}
                     </SelectItem>
                   ))}
-                  <SelectItem value={CUSTOM_REASON_VALUE}>Other (custom reason)</SelectItem>
+                  <SelectItem value={CUSTOM_REASON_VALUE}>Custom</SelectItem>
                 </SelectContent>
               </Select>
               {isCustom ? (

@@ -41,6 +41,7 @@ export function TicketFilterChips({
     { key: 'unassigned', count: counts?.unassigned, tone: "warn" },
     { key: 'unlinked', count: counts?.unlinked, tone: "warn" },
     { key: 'open', count: counts?.open, tone: "neutral" },
+    { key: 'in_progress', count: counts?.in_progress, tone: "neutral" },
     {
       key: 'waiting_customer',
       count: counts?.waiting_customer,

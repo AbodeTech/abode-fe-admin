@@ -14,6 +14,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -29,6 +30,7 @@ import {
   adminStatusForBadge,
   isReviewablePurchase,
   payerDisplayName,
+  planDurationLabel,
   propertyNameDisplay,
   propertyOwnerLabel,
   referrerName,
@@ -41,6 +43,17 @@ import { ViewTransactionEvidence } from "./ViewTransactionEvidence";
 
 function formatNumber(amount: number) {
   return Number.isFinite(amount) ? amount.toLocaleString() : "0";
+}
+
+/** The plan's length beside the property name, so admins see the payment's duration. */
+function PlanDurationTag({ row }: { row: Purchase }) {
+  const label = planDurationLabel(row);
+  if (!label) return null;
+  return (
+    <Badge variant="outline" className="ml-1.5 align-middle font-normal text-gray-600">
+      {label}
+    </Badge>
+  );
 }
 
 function formatDateNumerical(value: string | null | undefined): string {
@@ -200,6 +213,7 @@ export function PurchasesTable({
                       </TableCell>
                       <TableCell className="w-50 max-w-50 overflow-hidden py-4 whitespace-normal wrap-break-word text-gray-700">
                         {propertyNameDisplay(row)}
+                        <PlanDurationTag row={row} />
                       </TableCell>
                       <TableCell className="z-15 min-w-30 py-4 text-center whitespace-nowrap text-gray-700">
                         {transactionMethodLabel(row)}
@@ -323,6 +337,7 @@ function MobileTransactionCard({
               <span className="text-sm text-gray-600">Property</span>
               <p className="text-sm font-medium wrap-break-word text-gray-900">
                 {propertyNameDisplay(row)}
+                <PlanDurationTag row={row} />
               </p>
             </div>
           </div>

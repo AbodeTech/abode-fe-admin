@@ -6,6 +6,7 @@ import { Search, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DateFilter } from "@/components/shared/DateFilter";
 import { FilterSelect } from "@/components/shared/FilterSelect";
 import { useDebounce } from "@/hooks/use-debounce";
 
@@ -66,6 +67,7 @@ export function UpgradeFilters() {
       <FilterSelect data={STATUS_OPTIONS} queryKey="status" placeholder="All statuses" />
       <FilterSelect data={METHOD_OPTIONS} queryKey="payment_method" placeholder="All methods" />
       <FilterSelect data={TIER_OPTIONS} queryKey="to_tier" placeholder="All tiers" />
+      <DateFilter />
 
       <div className="relative w-full sm:w-80">
         <Search

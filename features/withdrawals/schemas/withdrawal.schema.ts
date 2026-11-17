@@ -259,6 +259,8 @@ export function bankDetailsSubtitle(ref: BankDetailsRef | null | undefined): str
 export const WithdrawalSchema = z.looseObject({
   _id: z.string(),
   user: PersonRefSchema,
+  /** Optional populated requester referrer, supplied for the withdrawal CSV. */
+  referrer: PersonRefSchema.nullable().optional(),
   type: z.literal('withdrawal'),
   direction: z.string().optional(),
 
@@ -312,8 +314,8 @@ export function withdrawalActions(row: Withdrawal): {
   };
 }
 
-/** Mirrors `DeclineWithdrawalDto` / `RetryWithdrawalDto` — 20–500 chars. */
-export const WITHDRAWAL_REASON_MIN = 20;
+/** Mirrors `DeclineWithdrawalDto` / `RetryWithdrawalDto` — 15–500 chars. */
+export const WITHDRAWAL_REASON_MIN = 15;
 export const WITHDRAWAL_REASON_MAX = 500;
 
 export const withdrawalReasonSchema = z

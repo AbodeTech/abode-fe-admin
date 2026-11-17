@@ -157,7 +157,7 @@ export function EditUserPaymentPlanModal({
                   {...form.register('reason')}
                   placeholder="Explain why the plan contract is changing"
                 />
-                <p className="text-xs text-muted-foreground">Minimum 30 characters.</p>
+                <p className="text-xs text-muted-foreground">Minimum 15 characters.</p>
                 {form.formState.errors.reason && (
                   <p className="text-sm text-red-500">{form.formState.errors.reason.message}</p>
                 )}

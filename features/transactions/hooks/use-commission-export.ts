@@ -1,16 +1,16 @@
 import { useMutation } from '@tanstack/react-query';
 
-import { apiClient } from '@/lib/api-client';
-import { isMockApiEnabled } from '@/lib/mocks';
+import { apiGetPaged } from '@/lib/api-client';
+import { exportToCsv, type CsvColumn } from '@/lib/utils/export-csv';
+
+import { CommissionTransactionRowSchema, type CommissionTransactionRow } from '../schemas/commission-transaction.schema';
 
 import { transactionKeys } from './query-keys';
 
 /* ============================================================
  * GET /admin/commission/transactions/export
  *
- * Streaming CSV (`@SkipTransform` / direct `@Res()`), so this bypasses
- * `apiGet` and uses the raw axios client with `responseType: 'blob'`.
- * The BE refuses sets above 50k rows before streaming.
+ * Exports the filtered ledger with the admin's requested column order.
  *
  * Query mirrors CommissionTransactionQueryDto: from, to, source_type, q, …
  * ============================================================ */
@@ -41,37 +41,38 @@ export type CommissionExportParams = {
   sort_dir?: 'asc' | 'desc' | null;
 };
 
-async function readBlobError(blob: Blob): Promise<string | null> {
-  if (!blob.type.includes('json') && blob.type.includes('csv')) return null;
-  try {
-    const text = await blob.text();
-    const parsed = JSON.parse(text) as { message?: unknown; error?: string };
-    if (typeof parsed.message === 'string') return parsed.message;
-    if (Array.isArray(parsed.message)) return parsed.message.filter(Boolean).join('; ');
-    if (typeof parsed.error === 'string') return parsed.error;
-  } catch {
-    /* not JSON — treat as a successful file */
-  }
-  return null;
-}
+const EXPORT_LIMIT = 100;
+const MAX_EXPORT_ROWS = 50_000;
+const COLUMNS: CsvColumn<CommissionTransactionRow>[] = [
+  { header: 'Date', accessor: (row) => row.created_at },
+  { header: 'Client_name', accessor: (row) => row.source_user_name ?? '' },
+  { header: 'Transaction_amount', accessor: (row) => row.transaction_amount ?? '' },
+  { header: 'Asset_type', accessor: (row) => row.asset_type ?? '' },
+  { header: 'Associate_name', accessor: (row) => row.referrer_name ?? '' },
+  { header: 'Associate_status', accessor: (row) => row.associate_status ?? row.tier_at_creation ?? '' },
+  { header: 'Percentage_earned', accessor: (row) => row.rate_applied == null ? '' : row.rate_applied * 100 },
+  { header: 'Commission', accessor: (row) => row.gross_commission ?? '' },
+  { header: 'Tax_Payer_ID', accessor: (row) => row.referrer_tin ?? '' },
+  { header: 'WHT_tax', accessor: (row) => row.wht_deducted ?? '' },
+  { header: 'Comission_earned', accessor: (row) => row.net_commission ?? '' },
+  { header: 'Commission_status', accessor: (row) => row.status },
+];
 
 export const useCommissionExport = () =>
   useMutation({
     mutationKey: [...transactionKeys.all, 'commission-export'],
     mutationFn: async (params: CommissionExportParams) => {
-      if (isMockApiEnabled()) {
-        throw new Error(
-          'Export is unavailable in mock mode — point the app at a real backend.'
-        );
-      }
-
       const sourceType =
         params.source_type && COMMISSION_SOURCE_TYPES.has(params.source_type)
           ? params.source_type
           : undefined;
 
-      const response = await apiClient.get('/admin/commission/transactions/export', {
-        params: {
+      const rows: CommissionTransactionRow[] = [];
+      for (let page = 1; rows.length < MAX_EXPORT_ROWS; page += 1) {
+        const { items, meta } = await apiGetPaged('/admin/commission/transactions', CommissionTransactionRowSchema, {
+          params: {
+            page,
+            limit: EXPORT_LIMIT,
           from: params.from || undefined,
           to: params.to || undefined,
           source_type: sourceType,
@@ -85,26 +86,15 @@ export const useCommissionExport = () =>
           max_amount: params.max_amount ?? undefined,
           sort_by: params.sort_by || undefined,
           sort_dir: params.sort_dir || undefined,
-        },
-        responseType: 'blob',
-      });
+          },
+        });
+        rows.push(...items);
+        if (items.length < EXPORT_LIMIT || (meta.total != null && rows.length >= meta.total)) break;
+      }
 
-      const blob = response.data as Blob;
-      const errorMessage = await readBlobError(blob);
-      if (errorMessage) throw new Error(errorMessage);
+      const filename = `commission-transactions-${new Date().toISOString().split('T')[0]}.csv`;
+      exportToCsv(rows.slice(0, MAX_EXPORT_ROWS), COLUMNS, filename);
 
-      const disposition = String(response.headers['content-disposition'] ?? '');
-      const filename =
-        /filename="([^"]+)"/.exec(disposition)?.[1] ??
-        `commission-transactions-${new Date().toISOString().split('T')[0]}.csv`;
-
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = filename;
-      anchor.click();
-      URL.revokeObjectURL(url);
-
-      return { filename };
+      return { filename, truncated: rows.length >= MAX_EXPORT_ROWS };
     },
   });

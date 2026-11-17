@@ -55,8 +55,9 @@ export function toCreateCampaignBody(values: CreateCampaignDto) {
   };
 
   if (values.reward_type === 'ticket') {
+    body.ticket_id_prefix_source = values.ticket_id_prefix_source;
     const prefix = values.ticket_id_prefix?.trim();
-    if (prefix) body.ticket_id_prefix = prefix;
+    if (prefix && values.ticket_id_prefix_source !== 'asset') body.ticket_id_prefix = prefix;
     // Only a ticket campaign has a draw. Sent here rather than unconditionally
     // because the backend rejects prizes on a hamper campaign, and an admin who
     // filled some in and then switched to hampers should not hit that error.
@@ -105,7 +106,13 @@ export function toUpdateCampaignBody(values: Partial<CreateCampaignDto> | Limite
     body.leaderboard_masking_enabled = draft.leaderboard_masking_enabled;
   }
 
-  if (draft.reward_type === 'ticket' || draft.ticket_id_prefix !== undefined) {
+  if (draft.ticket_id_prefix_source !== undefined) {
+    body.ticket_id_prefix_source = draft.ticket_id_prefix_source;
+  }
+  if (
+    (draft.reward_type === 'ticket' || draft.ticket_id_prefix !== undefined) &&
+    draft.ticket_id_prefix_source !== 'asset'
+  ) {
     const prefix = draft.ticket_id_prefix?.trim();
     if (prefix) body.ticket_id_prefix = prefix;
   }

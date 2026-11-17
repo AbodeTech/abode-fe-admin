@@ -15,6 +15,7 @@ import { RafflePrizeEditorSubsection } from "./RafflePrizeEditorSubsection";
 export function RewardStep() {
   const form = useFormContext<CreateCampaignDto>();
   const rewardType = form.watch("reward_type");
+  const prefixSource = form.watch("ticket_id_prefix_source");
 
   return (
     <div className="space-y-4 rounded-lg border p-4">
@@ -72,6 +73,35 @@ export function RewardStep() {
       />
 
       {rewardType === "ticket" ? (
+        <FormField
+          control={form.control}
+          name="ticket_id_prefix_source"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Ticket number letters</FormLabel>
+              <FormControl>
+                <RadioGroup
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  className="flex flex-col gap-2"
+                >
+                  <label className="flex items-center gap-2 text-sm">
+                    <RadioGroupItem value="fixed" />
+                    Same prefix on every ticket
+                  </label>
+                  <label className="flex items-center gap-2 text-sm">
+                    <RadioGroupItem value="asset" />
+                    From the estate bought (Aviation City → AVCI, Woodgate Prime → WOPR)
+                  </label>
+                </RadioGroup>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      ) : null}
+
+      {rewardType === "ticket" && prefixSource !== "asset" ? (
         <FormField
           control={form.control}
           name="ticket_id_prefix"

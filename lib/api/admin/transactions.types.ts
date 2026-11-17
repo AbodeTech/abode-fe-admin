@@ -139,6 +139,7 @@ export interface TransactionListResponse {
   type: string;
   status: string;
   description: string;
+  direction?: string | null;
   /** How the money moved: paystack, transfer, wallet, system, autopay. */
   payment_method: string;
   paystack_reference?: string;
@@ -147,6 +148,9 @@ export interface TransactionListResponse {
     file: string;
   } | null;
   created_via?: TransactionCreatedVia | null;
+  /** From the BE's own rules: whether "Reprocess" (fire commission) and "Send Receipt Email" apply. */
+  can_reprocess?: boolean;
+  can_send_receipt?: boolean;
   // Commission fields written by v2. Null on commissions migrated from v1,
   // whose details live only in the description.
   commission_type?: string | null;
@@ -159,6 +163,10 @@ export interface TransactionListResponse {
   wallet_balance_after?: number | null;
   /** The BE's available_balance_after: what could be withdrawn right after this movement. */
   available_after?: number | null;
+  reversed_at?: string | null;
+  reversed_by_transaction_id?: string | null;
+  source_transaction_id?: string | null;
+  related_transaction_id?: string | null;
   // Optional fields for flexibility or deprecated usage
   user?: {
     firstName: string;
