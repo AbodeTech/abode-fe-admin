@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import {
   LineChart,
   Line,
@@ -14,7 +15,6 @@ import {
   Legend,
   BarChart,
   Bar,
-  LabelList,
 } from 'recharts';
 import { format } from 'date-fns';
 
@@ -28,6 +28,8 @@ import { format } from 'date-fns';
  */
 
 const PALETTE = ['#E8713A', '#02B8CF', '#0F4C59', '#0593A5', '#f59e0b', '#64748b', '#a855f7'];
+const MAX_DONUT_CATEGORIES = 6;
+const MAX_REGION_ROWS = 8;
 
 interface ChartDatum {
   name: string;
@@ -126,12 +128,29 @@ export function RegistrationsLineChart({
 }
 
 export function ReferralDonutChart({ data, title = 'How they heard about us' }: { data: ChartDatum[]; title?: string }) {
+  // Historical cohorts can have a referral entry for every individual
+  // username. Sending all of those to Recharts' Legend creates an unbounded
+  // list that spills over the dashboard. Keep the largest categories visible
+  // and group the remainder without changing the total represented by the pie.
+  const sortedData = [...data].sort((a, b) => b.value - a.value);
+  const chartData = sortedData.length > MAX_DONUT_CATEGORIES
+    ? [
+        ...sortedData.slice(0, MAX_DONUT_CATEGORIES - 1),
+        {
+          name: 'Other',
+          value: sortedData
+            .slice(MAX_DONUT_CATEGORIES - 1)
+            .reduce((total, item) => total + item.value, 0),
+        },
+      ]
+    : data;
+
   return (
     <ChartCard title={title}>
       <ResponsiveContainer width="100%" height={240}>
         <PieChart>
-          <Pie data={data} cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={3} dataKey="value">
-            {data.map((_, i) => (
+          <Pie data={chartData} cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={3} dataKey="value">
+            {chartData.map((_, i) => (
               <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
             ))}
           </Pie>
@@ -194,26 +213,77 @@ export function StatusDonutChart({ data, title = 'Registrant status' }: { data: 
 }
 
 export function RegionBarChart({ data, title = 'Registrations by region' }: { data: ChartDatum[]; title?: string }) {
+  const [showAllRegions, setShowAllRegions] = useState(false);
+  const sortedData = [...data].sort((a, b) => b.value - a.value);
+  const chartData = sortedData.length > MAX_REGION_ROWS
+    ? [
+        ...sortedData.slice(0, MAX_REGION_ROWS - 1),
+        {
+          name: 'Other',
+          value: sortedData
+            .slice(MAX_REGION_ROWS - 1)
+            .reduce((total, item) => total + item.value, 0),
+        },
+      ]
+    : sortedData;
+  const totalRegistrations = sortedData.reduce((sum, item) => sum + item.value, 0);
+
   return (
     <ChartCard title={title}>
-      <ResponsiveContainer width="100%" height={260}>
-        <BarChart data={data} layout="vertical" margin={{ top: 0, right: 50, left: 0, bottom: 0 }}>
+      <ResponsiveContainer width="100%" height={280}>
+        <BarChart data={chartData} layout="vertical" margin={{ top: 0, right: 16, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
           <XAxis type="number" tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
-          <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} width={110} />
+          <YAxis
+            type="category"
+            dataKey="name"
+            tickFormatter={(name: string) => name.length > 18 ? `${name.slice(0, 17)}…` : name}
+            tick={{ fontSize: 10, fill: '#64748b' }}
+            tickLine={false}
+            axisLine={false}
+            width={126}
+          />
           <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} />
-          <Bar dataKey="value" radius={[0, 6, 6, 0]}>
-            {data.map((_, i) => {
-              const t = i / Math.max(data.length - 1, 1);
+          <Bar dataKey="value" radius={[0, 6, 6, 0]} maxBarSize={18}>
+            {chartData.map((_, i) => {
+              const t = i / Math.max(chartData.length - 1, 1);
               const r = Math.round(232 + (2 - 232) * t);
               const g = Math.round(113 + (184 - 113) * t);
               const b = Math.round(58 + (207 - 58) * t);
               return <Cell key={i} fill={`rgb(${r},${g},${b})`} />;
             })}
-            <LabelList dataKey="value" position="right" style={{ fontSize: 11, fill: '#64748b' }} />
           </Bar>
         </BarChart>
       </ResponsiveContainer>
+      {data.length > MAX_REGION_ROWS ? (
+        <div className="mt-3 border-t border-slate-100 pt-3">
+          <button
+            type="button"
+            onClick={() => setShowAllRegions((visible) => !visible)}
+            aria-expanded={showAllRegions}
+            className="text-xs font-semibold text-[#E8713A] transition hover:text-[#cf5f2e]"
+          >
+            {showAllRegions ? 'Show less' : `View all ${data.length} regions`}
+          </button>
+          {showAllRegions ? (
+            <div className="mt-3 max-h-80 overflow-y-auto rounded-lg border border-slate-100">
+              <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] gap-3 border-b border-slate-100 bg-slate-50 px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                <span>Region</span><span className="text-right">Registrations</span><span className="w-12 text-right">Share</span>
+              </div>
+              {sortedData.map((item) => {
+                const share = totalRegistrations > 0 ? (item.value / totalRegistrations) * 100 : 0;
+                return (
+                  <div key={item.name} className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 border-b border-slate-50 px-3 py-2 text-xs last:border-0">
+                    <span className="truncate text-slate-600" title={item.name}>{item.name}</span>
+                    <span className="text-right font-medium tabular-nums text-slate-700">{item.value.toLocaleString()}</span>
+                    <span className="w-12 text-right tabular-nums text-slate-400">{share.toFixed(1)}%</span>
+                  </div>
+                );
+              })}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </ChartCard>
   );
 }
