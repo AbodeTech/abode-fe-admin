@@ -16,13 +16,13 @@ import { Card } from "@/components/ui/card";
 function Content() {
   const searchParams = useSearchParams();
   const page = Number(searchParams.get("page")) || 1;
-  const adminEmail = searchParams.get("query") || null;
+  const adminId = searchParams.get("adminId") || null;
   const action = searchParams.get("action") || null;
 
   const { data, isLoading, error } = useAdminLogs({
     page,
     limit: DEFAULT_ADMIN_LOGS_LIMIT,
-    adminEmail,
+    adminId,
     action,
   });
 
@@ -45,8 +45,8 @@ function Content() {
     );
   }
 
-  const logs = data?.data || [];
-  const count = data?.count || 0;
+  const logs = data?.items || [];
+  const count = data?.meta.total || 0;
 
   return (
     <div className="mx-auto mt-4 w-full min-w-0 max-w-[1600px] space-y-6 px-3 pb-16 sm:px-4 sm:pb-20">
@@ -56,7 +56,7 @@ function Content() {
           filters={{
             page,
             limit: DEFAULT_ADMIN_LOGS_LIMIT,
-            adminEmail,
+            adminId,
             action,
           }}
         />

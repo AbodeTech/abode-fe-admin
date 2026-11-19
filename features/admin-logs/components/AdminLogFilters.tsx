@@ -7,22 +7,22 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 function AdminLogFiltersForm({
-  initialEmail,
+  initialAdminId,
   initialAction,
 }: {
-  initialEmail: string;
+  initialAdminId: string;
   initialAction: string;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [email, setEmail] = useState(initialEmail);
+  const [adminId, setAdminId] = useState(initialAdminId);
   const [action, setAction] = useState(initialAction);
 
   const applyFilters = () => {
     const params = new URLSearchParams(searchParams.toString());
-    if (email.trim()) params.set("query", email.trim());
-    else params.delete("query");
+    if (adminId.trim()) params.set("adminId", adminId.trim());
+    else params.delete("adminId");
     if (action !== "all") params.set("action", action);
     else params.delete("action");
     params.set("page", "1");
@@ -32,9 +32,9 @@ function AdminLogFiltersForm({
   return (
     <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
       <Input
-        placeholder="Search by admin email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
+        placeholder="Filter by admin ID"
+        value={adminId}
+        onChange={(e) => setAdminId(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && applyFilters()}
         className="min-w-0 w-full sm:w-64"
       />
@@ -46,7 +46,7 @@ function AdminLogFiltersForm({
           <SelectItem value="all">All Actions</SelectItem>
           <SelectItem value="log-in">Log in</SelectItem>
           <SelectItem value="create-role">Create Admin</SelectItem>
-          <SelectItem value="add-refferal">Add Referral</SelectItem>
+          <SelectItem value="add-referral">Add Referral</SelectItem>
           <SelectItem value="update-payment-plan">Update Payment Plan</SelectItem>
           <SelectItem value="delete-asset">Delete User Asset</SelectItem>
           <SelectItem value="modify-referral-status">Modify Referral Status</SelectItem>
@@ -67,9 +67,9 @@ function AdminLogFiltersForm({
 /** Remounts when URL query changes so draft fields stay in sync without syncing in an effect. */
 export function AdminLogFilters() {
   const searchParams = useSearchParams();
-  const initialEmail = searchParams.get("query") || "";
+  const initialAdminId = searchParams.get("adminId") || "";
   const initialAction = searchParams.get("action") || "all";
-  const syncKey = `${initialEmail}\0${initialAction}`;
+  const syncKey = `${initialAdminId}\0${initialAction}`;
 
-  return <AdminLogFiltersForm key={syncKey} initialEmail={initialEmail} initialAction={initialAction} />;
+  return <AdminLogFiltersForm key={syncKey} initialAdminId={initialAdminId} initialAction={initialAction} />;
 }
