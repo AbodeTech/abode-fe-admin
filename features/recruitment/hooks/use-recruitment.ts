@@ -30,6 +30,12 @@ import {
   type UpdateCohortTestInput,
 } from '../schemas/test.schema';
 import {
+  RecruitmentAnalysisPersonSchema,
+  RecruitmentAnalysisSchema,
+  type RecruitmentFollowUp,
+  type RecruitmentStage,
+} from '../schemas/recruitment-analysis.schema';
+import {
   DEFAULT_PROGRAMMES_LIMIT,
   DEFAULT_REGISTRANTS_LIMIT,
   recruitmentKeys,
@@ -207,6 +213,62 @@ export function useCohortDashboard(cohortId: string, from: string, to: string) {
         params: { from, to },
       }),
     enabled: Boolean(cohortId && from && to),
+  });
+}
+
+export type RecruitmentAnalysisFilters = {
+  cohort_started_from?: string;
+  cohort_started_to?: string;
+  programme_id?: string;
+  cohort_id?: string;
+  source?: string;
+};
+
+/** Combined Academy recruitment outcomes across all matching cohorts. */
+export function useRecruitmentAnalysis(filters: RecruitmentAnalysisFilters = {}) {
+  return useQuery({
+    queryKey: recruitmentKeys.analysisDashboard(filters),
+    queryFn: () =>
+      apiGet('/admin/academy/recruitment-analysis', RecruitmentAnalysisSchema, {
+        params: filters,
+      }),
+    staleTime: 30_000,
+  });
+}
+
+/** People counted in one recruitment stage or currently needing follow-up. */
+export function useRecruitmentAnalysisPeople({
+  filters,
+  stage,
+  followUp,
+  page,
+  limit,
+  search,
+}: {
+  filters: RecruitmentAnalysisFilters;
+  stage?: RecruitmentStage;
+  followUp?: RecruitmentFollowUp;
+  page: number;
+  limit: number;
+  search?: string;
+}) {
+  const params = {
+    ...filters,
+    stage,
+    follow_up: followUp,
+    page,
+    limit,
+    search: search || undefined,
+  };
+
+  return useQuery({
+    queryKey: recruitmentKeys.analysisPeople(params),
+    queryFn: () =>
+      apiGetPaged('/admin/academy/recruitment-analysis/people', RecruitmentAnalysisPersonSchema, {
+        params,
+      }),
+    enabled: Boolean(stage || followUp),
+    staleTime: 30_000,
   });
 }
 
