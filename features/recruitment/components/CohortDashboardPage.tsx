@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { format, subDays } from 'date-fns';
-import { GitCompareArrows, Percent, RefreshCw, UserCheck, Users } from 'lucide-react';
+import { GitCompareArrows, HelpCircle, Percent, RefreshCw, UserCheck, Users } from 'lucide-react';
 
 import { useCohort, useCohortDashboard } from '../hooks/use-recruitment';
 import type { Outcomes } from '../schemas/programme.schema';
@@ -15,6 +15,7 @@ import {
   RegionBarChart,
   RegistrationsLineChart,
   StatusDonutChart,
+  TopReferrersChart,
 } from './dashboard/CohortDashboardCharts';
 import { CohortDateRangePicker, type DateRange } from './dashboard/CohortDateRangePicker';
 import { CohortGoalTracker } from './dashboard/CohortGoalTracker';
@@ -84,13 +85,33 @@ function OutcomesBlock({ outcomes, ageLabel }: { outcomes: Outcomes; ageLabel: s
   );
 }
 
-function NewVsReturning({ newCount, returningCount }: { newCount: number; returningCount: number }) {
-  const cards = [
+function NewVsReturning({
+  newCount,
+  returningCount,
+  unknownCount,
+}: {
+  newCount: number;
+  returningCount: number;
+  unknownCount?: number;
+}) {
+  const cards: { label: string; value: number; icon: typeof Users; color: string; bg: string; hint?: string }[] = [
     { label: 'New registrants', value: newCount, icon: Users, color: 'text-[#E8713A]', bg: 'bg-[#E8713A]/10' },
     { label: 'Returning registrants', value: returningCount, icon: Users, color: 'text-[#02B8CF]', bg: 'bg-[#02B8CF]/10' },
   ];
+  // Migrated registrations have no recorded account history (`was_existing: null`); without this
+  // card New + Returning would fall short of the period total.
+  if (unknownCount) {
+    cards.push({
+      label: 'Unknown history',
+      value: unknownCount,
+      icon: HelpCircle,
+      color: 'text-slate-600',
+      bg: 'bg-slate-100',
+      hint: 'Migrated — not recorded as new or returning',
+    });
+  }
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+    <div className={`grid grid-cols-1 gap-4 ${cards.length > 2 ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
       {cards.map((card) => {
         const Icon = card.icon;
         return (
@@ -100,6 +121,7 @@ function NewVsReturning({ newCount, returningCount }: { newCount: number; return
             </div>
             <p className="text-xs font-medium uppercase tracking-wide text-slate-400">{card.label}</p>
             <p className={`mt-1.5 text-2xl font-bold ${card.color}`}>{card.value.toLocaleString()}</p>
+            {card.hint ? <p className="mt-0.5 text-xs text-slate-400">{card.hint}</p> : null}
           </div>
         );
       })}
@@ -357,7 +379,11 @@ export function CohortDashboardPage({
           />
 
           {current ? (
-            <NewVsReturning newCount={current.new_count} returningCount={current.returning_count} />
+            <NewVsReturning
+              newCount={current.new_count}
+              returningCount={current.returning_count}
+              unknownCount={current.unknown_count}
+            />
           ) : null}
 
           <OutcomesBlock outcomes={data.outcomes} ageLabel={cohortAgeLabel(cohort?.createdAt)} />
@@ -390,7 +416,10 @@ export function CohortDashboardPage({
               prevData={previous?.dailyRegistrations}
               showComparison={showComparison}
             />
-            <ReferralDonutChart data={current?.referralBreakdown ?? []} />
+            <TopReferrersChart
+              data={current?.referralBreakdown ?? []}
+              referralsHref={`/recruitment/${programmeId}/cohorts/${cohortId}/referrals`}
+            />
           </div>
 
           <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
@@ -401,7 +430,11 @@ export function CohortDashboardPage({
 
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <PreviousAttendeesDonut data={current?.attendedPreviousBreakdown ?? []} />
-            <ReferralDonutChart data={current?.returning_by_tier ?? []} title="Returning registrants by tier" />
+            <ReferralDonutChart
+              data={current?.returning_by_tier ?? []}
+              title="Returning registrants by tier"
+              emptyMessage="No returning registrants in this period."
+            />
           </div>
 
           <RegionBarChart data={current?.regionBreakdown ?? []} />

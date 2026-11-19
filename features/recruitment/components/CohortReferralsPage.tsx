@@ -69,6 +69,9 @@ export function CohortReferralsPage({
                 <th className="px-3 py-2">Contact</th>
                 <th className="px-3 py-2">New</th>
                 <th className="px-3 py-2">Returning</th>
+                <th className="px-3 py-2" title="Registered before account history was recorded">
+                  Unknown
+                </th>
                 <th className="px-3 py-2">Total</th>
                 <th className="px-3 py-2">Checked in</th>
                 <th className="px-3 py-2">Attendance</th>
@@ -99,6 +102,7 @@ export function CohortReferralsPage({
                     <td className="px-3 py-2 text-slate-600">{r.email || r.phone || '—'}</td>
                     <td className="px-3 py-2">{r.new_count}</td>
                     <td className="px-3 py-2 text-slate-500">{r.returning_count}</td>
+                    <td className="px-3 py-2 text-slate-500">{r.unknown_count ?? '—'}</td>
                     <td className="px-3 py-2 font-medium">{r.total_referred}</td>
                     <td className="px-3 py-2">{r.checked_in_count}</td>
                     <td className="px-3 py-2 text-slate-500">

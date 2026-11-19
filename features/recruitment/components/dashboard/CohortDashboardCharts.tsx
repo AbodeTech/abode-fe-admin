@@ -1,5 +1,7 @@
 'use client';
 
+import { useMemo, useState } from 'react';
+import Link from 'next/link';
 import {
   LineChart,
   Line,
@@ -17,6 +19,8 @@ import {
   LabelList,
 } from 'recharts';
 import { format } from 'date-fns';
+
+import { groupRegionsByState, topWithRemainder, type StateBreakdown } from '../../lib/dashboard-breakdowns';
 
 /**
  * Ported from the Abode Academy site's own admin dashboard
@@ -125,7 +129,23 @@ export function RegistrationsLineChart({
   );
 }
 
-export function ReferralDonutChart({ data, title = 'How they heard about us' }: { data: ChartDatum[]; title?: string }) {
+export function ReferralDonutChart({
+  data,
+  title = 'How they heard about us',
+  emptyMessage,
+}: {
+  data: ChartDatum[];
+  title?: string;
+  /** When set, an empty `data` shows this instead of a blank chart. */
+  emptyMessage?: string;
+}) {
+  if (data.length === 0 && emptyMessage) {
+    return (
+      <ChartCard title={title}>
+        <p className="flex h-60 items-center justify-center text-sm text-slate-400">{emptyMessage}</p>
+      </ChartCard>
+    );
+  }
   return (
     <ChartCard title={title}>
       <ResponsiveContainer width="100%" height={240}>
@@ -193,27 +213,167 @@ export function StatusDonutChart({ data, title = 'Registrant status' }: { data: 
   );
 }
 
-export function RegionBarChart({ data, title = 'Registrations by region' }: { data: ChartDatum[]; title?: string }) {
+const REGION_DEFAULT_ROWS = 10;
+const BAR_ROW_HEIGHT = 28;
+const LGAS_IN_TOOLTIP = 5;
+
+function StateTooltip({
+  active,
+  payload,
+  total,
+}: {
+  active?: boolean;
+  payload?: { payload: StateBreakdown }[];
+  total: number;
+}) {
+  const state = payload?.[0]?.payload;
+  if (!active || !state) return null;
+  const share = total > 0 ? Math.round((state.value / total) * 1000) / 10 : 0;
   return (
-    <ChartCard title={title}>
-      <ResponsiveContainer width="100%" height={260}>
-        <BarChart data={data} layout="vertical" margin={{ top: 0, right: 50, left: 0, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-          <XAxis type="number" tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
-          <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} width={110} />
-          <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} />
-          <Bar dataKey="value" radius={[0, 6, 6, 0]}>
-            {data.map((_, i) => {
-              const t = i / Math.max(data.length - 1, 1);
-              const r = Math.round(232 + (2 - 232) * t);
-              const g = Math.round(113 + (184 - 113) * t);
-              const b = Math.round(58 + (207 - 58) * t);
-              return <Cell key={i} fill={`rgb(${r},${g},${b})`} />;
-            })}
-            <LabelList dataKey="value" position="right" style={{ fontSize: 11, fill: '#64748b' }} />
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
+    <div style={{ ...tooltipStyle, padding: '8px 12px', minWidth: 160 }}>
+      <div style={{ fontWeight: 600 }}>{state.name}</div>
+      <div style={tooltipLabelStyle}>
+        {state.value.toLocaleString()} registrations · {share}%
+      </div>
+      {state.lgas.length > 0 ? (
+        <ul style={{ marginTop: 6, paddingTop: 6, borderTop: '1px solid #334155', listStyle: 'none' }}>
+          {state.lgas.slice(0, LGAS_IN_TOOLTIP).map((lga) => (
+            <li key={lga.name} style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
+              <span>{lga.name}</span>
+              <span style={tooltipLabelStyle}>{lga.value.toLocaleString()}</span>
+            </li>
+          ))}
+          {state.lgas.length > LGAS_IN_TOOLTIP ? (
+            <li style={tooltipLabelStyle}>+{state.lgas.length - LGAS_IN_TOOLTIP} more areas</li>
+          ) : null}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * The backend groups region by its raw "LGA, State" string, which on real data
+ * is hundreds of bars. Collapse to states, largest first, top rows by default;
+ * hovering a state lists its biggest LGAs.
+ */
+export function RegionBarChart({ data, title = 'Registrations by state' }: { data: ChartDatum[]; title?: string }) {
+  const [showAll, setShowAll] = useState(false);
+  const states = useMemo(() => groupRegionsByState(data), [data]);
+  const total = useMemo(() => states.reduce((sum, s) => sum + s.value, 0), [states]);
+  const visible = showAll ? states : states.slice(0, REGION_DEFAULT_ROWS);
+  const canToggle = states.length > REGION_DEFAULT_ROWS;
+
+  return (
+    <ChartCard
+      title={title}
+      subtitle={states.length > 0 ? `${states.length} states · ${total.toLocaleString()} registrations` : undefined}
+    >
+      {states.length === 0 ? (
+        <p className="py-10 text-center text-sm text-slate-400">No region data in this period.</p>
+      ) : (
+        <>
+          <ResponsiveContainer width="100%" height={Math.max(visible.length * BAR_ROW_HEIGHT + 24, 120)}>
+            <BarChart data={visible} layout="vertical" margin={{ top: 0, right: 56, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+              <XAxis type="number" tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
+              <YAxis
+                type="category"
+                dataKey="name"
+                tick={{ fontSize: 11, fill: '#64748b' }}
+                tickLine={false}
+                axisLine={false}
+                width={110}
+                interval={0}
+              />
+              <Tooltip content={<StateTooltip total={total} />} cursor={{ fill: '#f8fafc' }} />
+              <Bar dataKey="value" fill="#E8713A" radius={[0, 6, 6, 0]} barSize={16}>
+                <LabelList dataKey="value" position="right" style={{ fontSize: 11, fill: '#64748b' }} />
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+          {canToggle ? (
+            <button
+              type="button"
+              onClick={() => setShowAll((v) => !v)}
+              className="mt-2 text-xs font-semibold text-[#E8713A] hover:text-[#E8713A]/80"
+            >
+              {showAll ? `Show top ${REGION_DEFAULT_ROWS}` : `Show all ${states.length} states`}
+            </button>
+          ) : null}
+        </>
+      )}
+    </ChartCard>
+  );
+}
+
+const REFERRERS_DEFAULT_ROWS = 10;
+const referrerLabel = (name: string) => (name.length > 22 ? `${name.slice(0, 21)}…` : name);
+
+/**
+ * The backend's `referralBreakdown` is one row per referrer username (not per
+ * channel), so on real data it is hundreds of rows. Show the top referrers and
+ * account for the rest in a footer; the full list lives on the Referrals page.
+ */
+export function TopReferrersChart({
+  data,
+  referralsHref,
+  limit = REFERRERS_DEFAULT_ROWS,
+}: {
+  data: ChartDatum[];
+  referralsHref: string;
+  limit?: number;
+}) {
+  const { top, otherCount, otherValue } = useMemo(() => topWithRemainder(data, limit), [data, limit]);
+  const total = useMemo(() => data.reduce((sum, d) => sum + d.value, 0), [data]);
+  const otherShare = total > 0 ? Math.round((otherValue / total) * 100) : 0;
+
+  return (
+    <ChartCard
+      title="Top referrers"
+      subtitle={data.length > 0 ? `${data.length.toLocaleString()} referrers · ${total.toLocaleString()} referred` : undefined}
+    >
+      {top.length === 0 ? (
+        <p className="py-10 text-center text-sm text-slate-400">No referred registrations in this period.</p>
+      ) : (
+        <>
+          <ResponsiveContainer width="100%" height={Math.max(top.length * BAR_ROW_HEIGHT + 24, 120)}>
+            <BarChart data={top} layout="vertical" margin={{ top: 0, right: 44, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+              <XAxis type="number" tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
+              <YAxis
+                type="category"
+                dataKey="name"
+                tick={{ fontSize: 11, fill: '#64748b' }}
+                tickLine={false}
+                axisLine={false}
+                width={150}
+                interval={0}
+                tickFormatter={referrerLabel}
+              />
+              <Tooltip
+                contentStyle={tooltipStyle}
+                labelStyle={tooltipLabelStyle}
+                itemStyle={tooltipItemStyle}
+                cursor={{ fill: '#f8fafc' }}
+              />
+              <Bar dataKey="value" name="Registrations" fill="#02B8CF" radius={[0, 6, 6, 0]} barSize={16}>
+                <LabelList dataKey="value" position="right" style={{ fontSize: 11, fill: '#64748b' }} />
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+            <span>
+              {otherCount > 0
+                ? `+ ${otherCount.toLocaleString()} other referrers · ${otherValue.toLocaleString()} registrations (${otherShare}%)`
+                : null}
+            </span>
+            <Link href={referralsHref} className="font-semibold text-[#E8713A] hover:text-[#E8713A]/80">
+              View all referrers →
+            </Link>
+          </div>
+        </>
+      )}
     </ChartCard>
   );
 }

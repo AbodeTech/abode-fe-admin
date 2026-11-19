@@ -366,7 +366,7 @@ export function CohortRegistrantsPage({
                     <td className="px-3 py-2 text-slate-600">{r.email}</td>
                     <td className="px-3 py-2 text-slate-600">{r.region || '—'}</td>
                     <td className="px-3 py-2 text-slate-600">
-                      {r.was_existing ? 'Returning' : 'New'}
+                      {r.was_existing == null ? 'Unknown' : r.was_existing ? 'Returning' : 'New'}
                     </td>
                     <td className="px-3 py-2 text-slate-600">
                       {r.referred_by_username

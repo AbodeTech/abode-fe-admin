@@ -174,7 +174,8 @@ export const RegistrantSchema = z.object({
   id: z.string(),
   cohort_id: z.string(),
   user_id: z.string().optional(),
-  was_existing: z.boolean().optional(),
+  /** `null` = unknown — migrated legacy registrations whose historical account state couldn't be established. */
+  was_existing: z.boolean().nullable().optional(),
   tier_at_registration: z.string().nullable().optional(),
   first_name: z.string(),
   last_name: z.string(),
@@ -227,6 +228,8 @@ export const CohortDashboardSchema = z.object({
     count: z.number(),
     new_count: z.number(),
     returning_count: z.number(),
+    /** Registrations whose `was_existing` is `null` — migrated rows. new + returning + unknown = count. Absent on a backend that predates nullable `was_existing`. */
+    unknown_count: z.number().optional(),
     returning_by_tier: z.array(BreakdownItemSchema),
     dailyRegistrations: z.array(z.object({ date: z.string(), count: z.number() })),
     avgPerDay: z.number(),
@@ -264,6 +267,8 @@ export const ReferralRowSchema = z.object({
   total_referred: z.number(),
   new_count: z.number().optional().default(0),
   returning_count: z.number().optional().default(0),
+  /** `was_existing` unknown (migrated rows). Left undefined, not 0, when the backend doesn't send it. */
+  unknown_count: z.number().optional(),
   /** 0 until the meetings extension's attendance flow is wired up on this row. */
   attendance_count: z.number().optional().default(0),
   session_total: z.number().optional().default(0),

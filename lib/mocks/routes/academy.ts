@@ -102,7 +102,8 @@ type Registrant = {
   id: string;
   cohort_id: string;
   user_id: string;
-  was_existing: boolean;
+  /** `null` = unknown (migrated rows), as on the real BE. */
+  was_existing: boolean | null;
   tier_at_registration: string | null;
   first_name: string;
   last_name: string;
@@ -196,6 +197,33 @@ const registrants: Registrant[] = [
     region: 'Ikeja, Lagos State',
     previous_attendee: 'no',
     referral_source: 'associate',
+    referred_by_username: 'tunde',
+    source_meeting_id: null,
+    checked_in: false,
+    checked_in_at: null,
+    deleted_at: null,
+    deletion_reason: null,
+    createdAt: now(),
+  },
+  {
+    // A migrated registration: account history was never recorded.
+    id: 'reg_4',
+    cohort_id: seedCohortId,
+    user_id: 'user_femi',
+    was_existing: null,
+    tier_at_registration: null,
+    first_name: 'Femi',
+    last_name: 'Balogun',
+    email: 'femi@example.com',
+    phone: '+2348044444444',
+    gender: 'male',
+    age_bracket: '35-44',
+    status: 'realtor',
+    employment_status: 'employed',
+    organisation: null,
+    region: 'Mushin, Lagos State',
+    previous_attendee: 'no',
+    referral_source: 'social',
     referred_by_username: 'tunde',
     source_meeting_id: null,
     checked_in: false,
@@ -428,8 +456,9 @@ function buildDashboard(cohort: Cohort, from: string, to: string) {
     daily[daily.length - 1].count = cohortRegs.length;
   }
   const regions = new Set(cohortRegs.map((r) => r.region).filter((v): v is string => Boolean(v)));
-  const newRegs = cohortRegs.filter((r) => !r.was_existing);
-  const returningRegs = cohortRegs.filter((r) => r.was_existing);
+  const newRegs = cohortRegs.filter((r) => r.was_existing === false);
+  const returningRegs = cohortRegs.filter((r) => r.was_existing === true);
+  const unknownRegs = cohortRegs.filter((r) => r.was_existing === null);
 
   const checkedInCount = cohortRegs.filter((r) => r.checked_in).length;
 
@@ -441,13 +470,19 @@ function buildDashboard(cohort: Cohort, from: string, to: string) {
       count: cohortRegs.length,
       new_count: newRegs.length,
       returning_count: returningRegs.length,
+      unknown_count: unknownRegs.length,
       returning_by_tier: tally(
         returningRegs.map((r) => r.tier_at_registration ?? 'unknown'),
       ),
       dailyRegistrations: daily,
       avgPerDay: Math.round(cohortRegs.length / days),
       statesCovered: regions.size,
-      referralBreakdown: tally(cohortRegs.map((r) => r.referral_source ?? 'unknown')),
+      // Real BE groups by referrer username (lower-cased, blanks excluded), not by `referral_source`.
+      referralBreakdown: tally(
+        cohortRegs
+          .map((r) => r.referred_by_username?.trim().toLowerCase())
+          .filter((u): u is string => Boolean(u)),
+      ),
       genderBreakdown: tally(cohortRegs.map((r) => r.gender ?? 'unknown')),
       ageBreakdown: tally(cohortRegs.map((r) => r.age_bracket ?? 'unknown')),
       statusBreakdown: tally(cohortRegs.map((r) => r.status ?? 'unknown')),
@@ -477,8 +512,8 @@ function buildDashboard(cohort: Cohort, from: string, to: string) {
  */
 function outcomesForCohort(cohort: Cohort) {
   const cohortRegs = activeRegistrants(cohort.id);
-  const acquired = cohortRegs.filter((r) => !r.was_existing);
-  const influenced = cohortRegs.filter((r) => r.was_existing);
+  const acquired = cohortRegs.filter((r) => r.was_existing === false);
+  const influenced = cohortRegs.filter((r) => r.was_existing === true);
 
   const acquiredTotal = acquired.length;
   const associatePro = Math.round(acquiredTotal * 0.055);
@@ -562,7 +597,7 @@ function toCsvRow(r: Registrant): string {
     r.phone,
     r.region ?? '',
     r.status ?? '',
-    String(r.was_existing),
+    String(r.was_existing ?? 'unknown'),
     r.referred_by_username ?? '',
     String(r.checked_in),
     r.createdAt,
@@ -602,8 +637,9 @@ function referralLeaderboard(cohortId: string): ReferralRow[] {
     email: null,
     phone: null,
     total_referred: refs.length,
-    new_count: refs.filter((r) => !r.was_existing).length,
-    returning_count: refs.filter((r) => r.was_existing).length,
+    new_count: refs.filter((r) => r.was_existing === false).length,
+    returning_count: refs.filter((r) => r.was_existing === true).length,
+    unknown_count: refs.filter((r) => r.was_existing === null).length,
     attendance_count: 0,
     session_total: 0,
     checked_in_count: refs.filter((r) => r.checked_in).length,
