@@ -18,7 +18,7 @@ export const AgencyPerformanceSchema = z.object({
   buyers: z.number().nullable(),
   commission_paid: z.number().nullable(),
   commission_projected: z.number().nullable(),
-  members: z.number().nullable(),
+  member_count: z.number().nullable(),
   active_members: z.number().nullable(),
 });
 export type AgencyPerformance = z.infer<typeof AgencyPerformanceSchema>;

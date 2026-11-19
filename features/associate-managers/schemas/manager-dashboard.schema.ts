@@ -132,14 +132,17 @@ export const ManagerDashboardSchema = z.object({
   }),
 
   target: z.object({
-    recruited_target: z.number(),
+    // null = no target was set for the period. The BE no longer sends 0 for it.
+    recruited_target: z.number().nullable(),
     recruited_so_far: z.number(),
-    selling_target: z.number(),
+    selling_target: z.number().nullable(),
     selling_so_far: z.number(),
-    revenue_target: z.number(),
+    revenue_target: z.number().nullable(),
     revenue_so_far: z.number(),
-    performance_score_target: z.number(),
+    performance_score_target: z.number().nullable(),
     performance_score_so_far: z.number(),
+    /** Months with a target inside the period; year / all-time targets are their sum. */
+    targets_months_set: z.number().optional(),
   }),
 
   recruitment: z.object({
@@ -165,7 +168,7 @@ export const ManagerDashboardSchema = z.object({
 
   sales_and_revenue: z.object({
     selling_pros: z.number(),
-    selling_pros_target: z.number(),
+    selling_pros_target: z.number().nullable(),
     total_revenue: z.number(),
     initial_sales_revenue: z.number(),
     recurring_revenue: z.number(),
@@ -201,8 +204,8 @@ export const ManagerDashboardSchema = z.object({
     selling_component: z.number(),
     revenue_component: z.number(),
     recruitment_component: z.number(),
-    /** The MANUAL peer-rating target — same 0-100 range, different meaning. */
-    target: z.number(),
+    /** The MANUAL peer-rating target — same 0-100 range, different meaning. Null when unset. */
+    target: z.number().nullable(),
     actual: z.number(),
     /**
      * 0 means NOBODY HAS RATED. Never render that as a real score of zero —

@@ -44,7 +44,7 @@ export function SalesRevenueSection({ data, roster = "associate-pro", onOpenGrou
     : sourceBreakdown(data.revenue_by_source, { formatValue: formatCurrencyShort });
 
   const sellingDisplay =
-    selling_pros_target > 0
+    selling_pros_target != null && selling_pros_target > 0
       ? `${selling_pros} / ${selling_pros_target}`
       : selling_pros.toLocaleString();
 

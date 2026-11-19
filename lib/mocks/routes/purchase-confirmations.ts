@@ -28,9 +28,15 @@ type MockDispute = {
 /** The admin the mock records as resolving disputes. */
 const MOCK_RESOLVER = { id: '665fad0e00000000000000d1', name: 'Ngozi Eze' };
 
-/** Proposed `status=resolved` (item 11): a past dispute, none open now. */
-const isResolved = (c: MockConfirmation) =>
-  c.disputes.some((d) => d.resolved_at) && !c.disputes.some((d) => !d.resolved_at);
+/**
+ * The BE's derived status (item 11): an open dispute beats everything, then a
+ * resolved dispute (even if the buyer has since confirmed), then confirmed.
+ */
+const statusOf = (c: MockConfirmation): 'waiting' | 'disputed' | 'resolved' | 'confirmed' => {
+  if (c.disputes.some((d) => !d.resolved_at)) return 'disputed';
+  if (c.disputes.some((d) => d.resolved_at)) return 'resolved';
+  return c.confirmed_at ? 'confirmed' : 'waiting';
+};
 
 type MockConfirmation = {
   _id: string;
@@ -185,7 +191,7 @@ function toRow(c: MockConfirmation) {
     id: c._id,
     plan_id: c.plan_id,
     unique_asset_id: c.unique_asset_id,
-    status: c.status,
+    status: statusOf(c),
     buyer: person
       ? {
           id: person._id,
@@ -221,8 +227,7 @@ export const purchaseConfirmationRoutes: MockRoutes = {
     const product = String(query.product ?? '');
     const q = String(query.q ?? '').trim().toLowerCase();
 
-    if (status === 'resolved') rows = rows.filter(isResolved);
-    else if (status) rows = rows.filter((c) => c.status === status);
+    if (status) rows = rows.filter((c) => statusOf(c) === status);
     if (product) rows = rows.filter((c) => c.snapshot.product === product);
     if (q) {
       rows = rows.filter((c) => {
@@ -241,10 +246,10 @@ export const purchaseConfirmationRoutes: MockRoutes = {
   },
 
   'GET /admin/purchase-confirmations/counts': () => ({
-    waiting: confirmations.filter((c) => c.status === 'waiting').length,
-    disputed: confirmations.filter((c) => c.status === 'disputed').length,
-    confirmed: confirmations.filter((c) => c.status === 'confirmed').length,
-    resolved: confirmations.filter(isResolved).length,
+    waiting: confirmations.filter((c) => statusOf(c) === 'waiting').length,
+    disputed: confirmations.filter((c) => statusOf(c) === 'disputed').length,
+    confirmed: confirmations.filter((c) => statusOf(c) === 'confirmed').length,
+    resolved: confirmations.filter((c) => statusOf(c) === 'resolved').length,
   }),
 
   'POST /admin/purchase-confirmations/:plan_id/resolve-dispute': ({ params, body: raw }) => {
@@ -267,7 +272,6 @@ export const purchaseConfirmationRoutes: MockRoutes = {
     if (!resolvedAny) {
       throw new MockHttpError(400, 'No open dispute on this plan', 'NO_OPEN_DISPUTE');
     }
-    confirmation.status = 'waiting';
     confirmation.escalated_at = null;
 
     const resent = !!dto.request_reconfirm;
@@ -276,7 +280,7 @@ export const purchaseConfirmationRoutes: MockRoutes = {
       confirmation.reminders_sent = [];
     }
 
-    return { plan_id: confirmation.plan_id, status: confirmation.status, resent };
+    return { plan_id: confirmation.plan_id, status: statusOf(confirmation), resent };
   },
 
   'POST /admin/purchase-confirmations/:plan_id/resend': ({ params }) => {

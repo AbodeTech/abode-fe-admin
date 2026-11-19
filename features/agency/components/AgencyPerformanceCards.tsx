@@ -43,7 +43,7 @@ export function AgencyPerformanceCards({ agencyId }: { agencyId: string }) {
     {
       label: "Active members",
       value: count(data?.active_members ?? null),
-      sub: `of ${count(data?.members ?? null)} members`,
+      sub: `of ${count(data?.member_count ?? null)} members`,
     },
   ];
 

@@ -183,7 +183,7 @@ export const CompanyGoalsSchema = z.object({
   /** Distinct associates with at least one sale in the year. */
   unique_sellers: CompanyGoalMetricSchema,
   /** Sales revenue divided by unique sellers. */
-  avg_revenue_per_associate: CompanyGoalMetricSchema,
+  average_revenue_per_associate: CompanyGoalMetricSchema,
   /** Sales revenue in the year (contract value, pending product sign-off). */
   financial_revenue: CompanyGoalMetricSchema,
 });

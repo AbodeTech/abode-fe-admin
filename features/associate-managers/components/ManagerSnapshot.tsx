@@ -92,6 +92,9 @@ const formatPeriod = (period: ManagerDashboard["period"]) => {
   if (period.period_type.toLowerCase() === "year" && period.year) {
     return `${period.year}`;
   }
+  if (period.period_type.toLowerCase() === "all_time") {
+    return "All time";
+  }
   if (period.period_type.toLowerCase() === "week") {
     return "Last 7 days";
   }
@@ -109,10 +112,17 @@ const daysRemaining = (periodEnd: Date | string) => {
   return Math.max(0, Math.ceil(ms / (1000 * 60 * 60 * 24)));
 };
 
+/**
+ * The BE sends null for a target nobody set (and 0 can only mean the same).
+ * Either way there is no target, so it is never drawn as a real zero.
+ */
+const targetOf = (value: number | null | undefined): number | null =>
+  value != null && value > 0 ? value : null;
+
 const hasActiveTarget = (target: ManagerDashboard["target"]) =>
-  target.recruited_target > 0 ||
-  target.selling_target > 0 ||
-  target.performance_score_target > 0;
+  targetOf(target.recruited_target) !== null ||
+  targetOf(target.selling_target) !== null ||
+  targetOf(target.performance_score_target) !== null;
 
 interface KpiTileProps {
   icon: React.ElementType;
@@ -279,26 +289,24 @@ export function ManagerSnapshot({ viewAs, canManageTargets, manager, dashboard }
   const periodLabel = formatPeriod(period);
   const remaining = daysRemaining(period.end);
 
+  const recruitedTarget = targetOf(target.recruited_target);
+  const sellingTarget = targetOf(target.selling_target);
+  const revenueTarget = targetOf(target.revenue_target);
   const recruitedPct =
-    target.recruited_target > 0
-      ? (target.recruited_so_far / target.recruited_target) * 100
-      : undefined;
+    recruitedTarget !== null ? (target.recruited_so_far / recruitedTarget) * 100 : undefined;
   const sellingPct =
-    target.selling_target > 0
-      ? (target.selling_so_far / target.selling_target) * 100
-      : undefined;
-  const revenuePct = target.revenue_target > 0
-    ? (target.revenue_so_far / target.revenue_target) * 100
-    : undefined;
+    sellingTarget !== null ? (target.selling_so_far / sellingTarget) * 100 : undefined;
+  const revenuePct =
+    revenueTarget !== null ? (target.revenue_so_far / revenueTarget) * 100 : undefined;
   const RATING_MAX = 5;
   const peerRatingPct = score.actual > 0 ? (score.actual / RATING_MAX) * 100 : undefined;
   const componentLine = (label: string, weight: number, value: number, hasTarget: boolean) =>
     hasTarget ? `${label}: ${value.toFixed(1)}/${weight}` : `${label}: no target set`;
   const scoreTooltip = [
     "Objective score out of 100. Selling 50 + Revenue 30 + Recruitment 20.",
-    componentLine("Selling", 50, score.selling_component, target.selling_target > 0),
-    componentLine("Revenue", 30, score.revenue_component, target.revenue_target > 0),
-    componentLine("Recruitment", 20, score.recruitment_component, target.recruited_target > 0),
+    componentLine("Selling", 50, score.selling_component, sellingTarget !== null),
+    componentLine("Revenue", 30, score.revenue_component, revenueTarget !== null),
+    componentLine("Recruitment", 20, score.recruitment_component, recruitedTarget !== null),
   ].join(" · ");
 
   const managerAdminId = manager?.manager_id ?? null;
@@ -360,11 +368,7 @@ export function ManagerSnapshot({ viewAs, canManageTargets, manager, dashboard }
             iconBg="bg-[#E0F2F1]"
             label="Associate Pros Recruited"
             actualDisplay={target.recruited_so_far.toLocaleString()}
-            targetDisplay={
-              target.recruited_target > 0
-                ? target.recruited_target.toLocaleString()
-                : undefined
-            }
+            targetDisplay={recruitedTarget !== null ? recruitedTarget.toLocaleString() : undefined}
             percent={recruitedPct}
             tooltip="Associate Pros recruited by your team this period vs. active target."
           />
@@ -375,11 +379,7 @@ export function ManagerSnapshot({ viewAs, canManageTargets, manager, dashboard }
             iconBg="bg-blue-50"
             label="Selling Associate Pros"
             actualDisplay={target.selling_so_far.toLocaleString()}
-            targetDisplay={
-              target.selling_target > 0
-                ? target.selling_target.toLocaleString()
-                : undefined
-            }
+            targetDisplay={sellingTarget !== null ? sellingTarget.toLocaleString() : undefined}
             percent={sellingPct}
             tooltip="Pros who made at least one sale this period vs. active target."
           />
@@ -390,10 +390,10 @@ export function ManagerSnapshot({ viewAs, canManageTargets, manager, dashboard }
             iconBg="bg-emerald-50"
             label="Revenue"
             actualDisplay={formatNairaShort(target.revenue_so_far)}
-            targetDisplay={target.revenue_target > 0 ? formatNairaShort(target.revenue_target) : undefined}
+            targetDisplay={revenueTarget !== null ? formatNairaShort(revenueTarget) : undefined}
             percent={revenuePct}
             tooltip={`Cash received this period on plans opened this period vs. active target. Currently ${formatNaira(target.revenue_so_far)}.`}
-            noData={target.revenue_target === 0}
+            noData={revenueTarget === null}
             noDataLabel="No revenue target set"
           />
 
@@ -408,6 +408,16 @@ export function ManagerSnapshot({ viewAs, canManageTargets, manager, dashboard }
             tooltip={scoreTooltip}
           />
         </div>
+        {/* Year / all-time targets are the sum of the months that have one. */}
+        {period.month === null && typeof target.targets_months_set === "number" && (
+          <p className="-mt-2 text-xs text-muted-foreground">
+            {target.targets_months_set === 0
+              ? "No monthly targets are set in this period."
+              : `Targets are set for ${target.targets_months_set} ${
+                  target.targets_months_set === 1 ? "month" : "months"
+                } in this period, so progress is measured against those months only.`}
+          </p>
+        )}
         <div className="flex items-center justify-between gap-4 border-t border-gray-100 pt-4">
           <div className="flex items-center gap-2 text-sm text-gray-700"><Star className="h-4 w-4 text-amber-500" /><span>Peer rating</span></div>
           <div className="text-right"><span className="font-semibold tabular-nums">{score.rating_count > 0 ? score.actual.toFixed(2) : "No ratings yet"}</span><span className="text-gray-500 text-sm"> / 5.00</span><p className="text-xs text-gray-500">{score.rating_count.toLocaleString()} ratings this period</p></div>

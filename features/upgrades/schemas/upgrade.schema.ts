@@ -301,3 +301,23 @@ export const EligibleUpgradeSchema = z.object({
   upgrade_requested: z.boolean(),
 });
 export type EligibleUpgrade = z.infer<typeof EligibleUpgradeSchema>;
+
+/**
+ * One row exactly as `GET /admin/referrals/upgrades/eligible` sends it: flat,
+ * and with no `to_tier` — that is the request's own (required) param. Mapped to
+ * `EligibleUpgrade` by `toEligibleUpgrade`. Fields the BE projects from the
+ * user are absent, not null, when the user has none.
+ */
+export const EligibleUpgradeApiRowSchema = z.object({
+  id: z.string(),
+  first_name: z.string().nullish(),
+  last_name: z.string().nullish(),
+  email: z.string().nullish(),
+  referral_status: z.string(),
+  course_id: z.string(),
+  course_title: z.string().nullish(),
+  completed_at: z.string(),
+  best_score_pct: z.number().nullish(),
+  upgrade_requested: z.boolean(),
+});
+export type EligibleUpgradeApiRow = z.infer<typeof EligibleUpgradeApiRowSchema>;

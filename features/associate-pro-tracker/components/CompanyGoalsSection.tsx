@@ -29,7 +29,7 @@ export function CompanyGoalsSection({ goals }: { goals: CompanyGoals }) {
       key: "per-associate",
       title: "Average revenue per associate",
       icon: <Store className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />,
-      metric: goals.avg_revenue_per_associate,
+      metric: goals.average_revenue_per_associate,
       format: formatNaira,
     },
     {

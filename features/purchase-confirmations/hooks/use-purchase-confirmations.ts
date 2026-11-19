@@ -30,7 +30,7 @@ import {
 
 export const DEFAULT_CONFIRMATIONS_LIMIT = 20;
 
-export type AdminConfirmationStatus = "waiting" | "confirmed" | "disputed";
+export type AdminConfirmationStatus = "waiting" | "confirmed" | "disputed" | "resolved";
 
 export type ConfirmationProduct = "full-ownership" | "flex";
 
@@ -69,7 +69,7 @@ export type PurchaseDisputeEntry = {
 };
 
 const toStatus = (value: string): AdminConfirmationStatus =>
-  value === "confirmed" || value === "disputed" ? value : "waiting";
+  value === "confirmed" || value === "disputed" || value === "resolved" ? value : "waiting";
 
 const toProduct = (value: string | null | undefined): ConfirmationProduct =>
   value === "flex" ? "flex" : "full-ownership";

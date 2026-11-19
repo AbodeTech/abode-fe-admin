@@ -22,6 +22,7 @@ import {
 } from "@/components/shared/admin-responsive-table";
 
 import type { PurchaseConfirmationRow } from "../hooks/use-purchase-confirmations";
+import { canResendConfirmation } from "../lib/can-resend";
 import { ConfirmationStatusBadge, daysWaitingLabel } from "./ConfirmationStatusBadge";
 
 // Kept on the typed-row approach (no fragment colocation): the BE row is
@@ -101,7 +102,7 @@ export function PurchaseConfirmationsTable({
           Resolve
         </Button>
       )}
-      {canManage && row.status === "waiting" && (
+      {canManage && canResendConfirmation(row) && (
         <Button
           variant="outline"
           size="sm"
@@ -128,6 +129,9 @@ export function PurchaseConfirmationsTable({
       )}
       {row.status === "disputed" && (
         <span className="text-xs text-muted-foreground">{formatDate(row.disputedAt)}</span>
+      )}
+      {row.status === "resolved" && (
+        <span className="text-xs text-muted-foreground">{formatDate(row.resolvedAt)}</span>
       )}
     </div>
   );

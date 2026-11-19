@@ -17,7 +17,9 @@ import { z } from 'zod';
  * once it's back.
  * ============================================================ */
 
-export const PURCHASE_CONFIRMATION_STATUSES = ['waiting', 'disputed', 'confirmed'] as const;
+// `resolved`: a dispute was raised and resolved, none open now. It wins over
+// `confirmed`, so a row the buyer re-confirmed after a resolution still reads resolved.
+export const PURCHASE_CONFIRMATION_STATUSES = ['waiting', 'disputed', 'resolved', 'confirmed'] as const;
 export const PurchaseConfirmationStatusSchema = z.enum(PURCHASE_CONFIRMATION_STATUSES);
 export type PurchaseConfirmationStatus = z.infer<typeof PurchaseConfirmationStatusSchema>;
 
@@ -51,8 +53,8 @@ const PurchaseDisputeSchema = z.object({
   disputed_at: z.string(),
   resolved_at: z.string().nullable(),
   resolution_note: z.string().nullable(),
-  /** Proposed (Admin v2 — Backend Requirements, item 11); absent on today's BE. */
-  resolved_by: z.object({ id: z.string(), name: z.string() }).nullable().optional(),
+  /** Who resolved it. `name` is null for an admin with no name on file; absent on older BEs. */
+  resolved_by: z.object({ id: z.string(), name: z.string().nullable() }).nullable().optional(),
   snapshot_at_dispute: PurchaseSnapshotSchema.nullable(),
 });
 

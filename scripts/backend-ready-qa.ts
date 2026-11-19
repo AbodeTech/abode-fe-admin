@@ -44,7 +44,8 @@ import { agencyRoutes } from '../lib/mocks/routes/agency';
 import { salesRoutes } from '../lib/mocks/routes/sales';
 import { AgencyInventoryRowSchema, AgencyPerformanceSchema } from '../features/agency/schemas/agency-performance.schema';
 import { upgradeRoutes } from '../lib/mocks/routes/upgrades';
-import { EligibleUpgradeSchema } from '../features/upgrades/schemas/upgrade.schema';
+import { EligibleUpgradeApiRowSchema } from '../features/upgrades/schemas/upgrade.schema';
+import { toEligibleUpgrade, type EligibleUpgradeTier } from '../features/upgrades/lib/eligible-upgrade';
 import { associateProTrackerRoutes } from '../lib/mocks/routes/associate-pro-tracker';
 import { TrackerDashboardSchema, YearlyGoalSchema } from '../features/associate-pro-tracker/schemas/tracker.schema';
 import { campaignEngineRoutes } from '../lib/mocks/routes/campaigns-engine';
@@ -258,21 +259,33 @@ async function main() {
       ok(checked > 0, 'at least one agency has eligible sales');
     }),
     await run('eligible-upgrades', async () => {
-      const list = async (q: Record<string, unknown>) =>
-        ((await dispatchMockRoute({ method: 'GET', path: '/admin/referrals/upgrades/eligible', query: { limit: 100, ...q }, body: undefined })) as {
+      // The BE requires `to_tier` and returns flat rows without it; the mapper
+      // puts the asked-for tier back on.
+      const list = async (toTier: EligibleUpgradeTier, q: Record<string, unknown> = {}) =>
+        ((await dispatchMockRoute({ method: 'GET', path: '/admin/referrals/upgrades/eligible', query: { limit: 100, to_tier: toTier, ...q }, body: undefined })) as {
           data: unknown[];
-        }).data.map((r) => EligibleUpgradeSchema.parse(r));
-      const all = await list({});
-      ok(all.length > 0, 'someone is eligible');
-      const pro = await list({ to_tier: 'associate-pro' });
+        }).data.map((r) => toEligibleUpgrade(EligibleUpgradeApiRowSchema.parse(r), toTier));
+      let rejected = false;
+      try {
+        await dispatchMockRoute({ method: 'GET', path: '/admin/referrals/upgrades/eligible', query: { limit: 10 }, body: undefined });
+      } catch {
+        rejected = true;
+      }
+      ok(rejected, 'a request without to_tier is rejected, as the BE does');
+      // Pending and approved requests are left out, as the BE does; the seed has
+      // no one left for `associate`, so the populated tier is `associate-pro`.
+      ok((await list('associate')).length === 0, 'nobody left for associate (their request is already approved)');
+      const pro = await list('associate-pro');
+      ok(pro.length > 0, 'someone is eligible for associate-pro');
       ok(pro.every((r) => r.to_tier === 'associate-pro'), 'tier filter');
+      ok(pro.every((r) => !r.upgrade_requested), 'no one with a pending request is listed');
       ok(pro.every((r) => ['guest', 'user', 'associate'].includes(r.user.referral_status)), 'allowed from-tiers only');
-      const target = all.find((r) => !r.upgrade_requested)!;
+      const target = pro[0];
       await dispatchMockRoute({
         method: 'POST', path: `/admin/users/${target.user.id}/manual-upgrade`,
         query: {}, body: { to_tier: target.to_tier, reason: 'Completed the required course and passed its quiz.' },
       });
-      const after = await list({ to_tier: target.to_tier });
+      const after = await list('associate-pro');
       ok(!after.some((r) => r.user.id === target.user.id), 'upgraded member drops off the list');
     }),
     await run('yearly-company-goals', async () => {

@@ -207,35 +207,43 @@ const completionFor = (personIndex: number, toTier: string) => {
 
 export const upgradeRoutes: MockRoutes = {
   'GET /admin/referrals/upgrades/eligible': ({ query }) => {
+    // Like the BE's DTO: the tier is required and only these two exist.
+    const toTier = String(query.to_tier ?? '');
+    if (toTier !== 'associate' && toTier !== 'associate-pro') {
+      throw new MockHttpError(
+        400,
+        'to_tier must be one of the following values: associate, associate-pro',
+        'VALIDATION_FAILED'
+      );
+    }
+    const req = UPGRADE_REQUIREMENTS.find((r) => r.to_tier === toTier)!;
     const search = typeof query.search === 'string' ? query.search : '';
-    const rows = UPGRADE_REQUIREMENTS.filter((r) => !query.to_tier || r.to_tier === query.to_tier).flatMap((req) =>
-      PEOPLE.flatMap((person, index) => {
-        if (!(req.from as readonly string[]).includes(person.referral_status)) return [];
-        if (search && !matchesPersonSearch(person, search)) return [];
-        const done = completionFor(index, req.to_tier);
-        if (!done) return [];
-        const requests = upgrades.filter((u) => u.user === person._id && u.to_tier === req.to_tier);
-        if (requests.some((u) => u.status === 'approved')) return [];
-        return [
-          {
-            user: {
-              id: person._id,
-              first_name: person.firstName,
-              last_name: person.lastName,
-              email: person.email,
-              referral_status: person.referral_status,
-            },
-            to_tier: req.to_tier,
-            course: req.course,
-            completed_at: done.completed_at,
-            best_score_pct: done.best_score_pct,
-            upgrade_requested: requests.some((u) => u.status === 'pending'),
-          },
-        ];
-      })
-    );
-    rows.sort((a, b) => b.completed_at.localeCompare(a.completed_at));
-    return paged(rows, query);
+    const rows = PEOPLE.flatMap((person, index) => {
+      if (!(req.from as readonly string[]).includes(person.referral_status)) return [];
+      if (search && !matchesPersonSearch(person, search)) return [];
+      const done = completionFor(index, req.to_tier);
+      if (!done) return [];
+      // The BE leaves out anyone with a pending or approved request for the tier.
+      const requests = upgrades.filter((u) => u.user === person._id && u.to_tier === req.to_tier);
+      if (requests.some((u) => u.status === 'pending' || u.status === 'approved')) return [];
+      return [
+        {
+          id: person._id,
+          first_name: person.firstName,
+          last_name: person.lastName,
+          email: person.email,
+          referral_status: person.referral_status,
+          course_id: req.course.id,
+          course_title: req.course.title,
+          completed_at: done.completed_at,
+          best_score_pct: done.best_score_pct,
+          upgrade_requested: false,
+        },
+      ];
+    });
+    rows.sort((a, b) => a.last_name.localeCompare(b.last_name) || a.first_name.localeCompare(b.first_name));
+    const page = paged(rows, query);
+    return { ...page, meta: { ...page.meta, course: req.course } };
   },
 
   'GET /admin/referrals/upgrades': ({ query }) => {

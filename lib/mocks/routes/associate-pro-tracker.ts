@@ -127,7 +127,7 @@ function dashboard(year: number) {
     goals_set: !!goal,
     company_goals: {
       unique_sellers: metric(sellers, goal?.unique_seller_target, Math.round(sellers * 0.8)),
-      avg_revenue_per_associate: metric(
+      average_revenue_per_associate: metric(
         Math.round(salesRevenue / sellers),
         goal?.avg_revenue_per_associate_target,
         Math.round((salesRevenue / sellers) * 0.9)

@@ -14,6 +14,7 @@ import { Separator } from "@/components/ui/separator";
 import { AlertTriangle, Mail, Wrench } from "lucide-react";
 
 import type { PurchaseConfirmationRow } from "../hooks/use-purchase-confirmations";
+import { canResendConfirmation } from "../lib/can-resend";
 import { ConfirmationStatusBadge } from "./ConfirmationStatusBadge";
 
 const formatAmount = (value: number) =>
@@ -145,7 +146,7 @@ export function PurchaseConfirmationDetailModal({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Close
           </Button>
-          {canManage && row.status === "waiting" && (
+          {canManage && canResendConfirmation(row) && (
             <Button variant="outline" className="gap-2" onClick={() => onResendEmail(row)}>
               <Mail className="h-4 w-4" />
               Resend email

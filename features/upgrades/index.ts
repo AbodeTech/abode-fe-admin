@@ -18,6 +18,8 @@ export { useManualUpgrade } from './hooks/use-manual-upgrade';
 export { useUpgradeExport } from './hooks/use-upgrade-export';
 export { useEligibleUpgrades } from './hooks/use-eligible-upgrades';
 export type { EligibleUpgradeFilters } from './hooks/use-eligible-upgrades';
+export { ELIGIBLE_UPGRADE_TIERS, toEligibleUpgrade } from './lib/eligible-upgrade';
+export type { EligibleUpgradeTier } from './lib/eligible-upgrade';
 export { useUpgradeStats } from './hooks/use-upgrade-stats';
 export { upgradeKeys } from './hooks/query-keys';
 export type { UpgradeListFilters } from './hooks/query-keys';
@@ -32,6 +34,7 @@ export {
 } from './schemas/upgrade.schema';
 export type {
   EligibleUpgrade,
+  EligibleUpgradeApiRow,
   ManualUpgradePayload,
   Upgrade,
   UpgradePaymentMethod,

@@ -227,7 +227,7 @@ export const agencyRoutes: MockRoutes = {
       buyers: s.buyers,
       commission_paid: commissionTotal(agency.id),
       commission_projected: Math.round((s.balance_on_active * agency.commission_percentage) / 100),
-      members,
+      member_count: members,
       active_members: Math.min(members, s.buyers),
     };
   },

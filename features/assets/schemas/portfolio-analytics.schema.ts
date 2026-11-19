@@ -36,7 +36,8 @@ export const PortfolioMetricsSchema = z.object({
    * item 3) it is their sum — all land, sold or not.
    */
   total_portfolio_value: z.number(),
-  gross_revenue: z.number(),
+  /** Dropped from the portfolio response (staging f01e0ed); older BEs still send it. */
+  gross_revenue: z.number().optional(),
   sold_value: z.number().optional(),
   unsold_value: z.number().optional(),
   total_capacity_sqm: z.number(),

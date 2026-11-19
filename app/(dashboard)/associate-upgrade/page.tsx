@@ -20,6 +20,7 @@ import {
   ApproveUpgradeDialog,
   DeclineUpgradeDialog,
   DEFAULT_UPGRADE_LIMIT,
+  ELIGIBLE_UPGRADE_TIERS,
   EligibleUpgradesTable,
   useEligibleUpgrades,
   ManualUpgradeDialog,
@@ -28,6 +29,7 @@ import {
   UpgradeStatCards,
   UpgradesTable,
   useUpgrades,
+  type EligibleUpgradeTier,
   type Upgrade,
   type UpgradeListFilters,
   type UpgradePaymentMethod,
@@ -51,10 +53,12 @@ const ELIGIBLE_LIMIT = 20;
  * shown once the BE serves `upgrades/eligible` (`upgrade_eligibility`).
  */
 function EligibleView({ canReview }: { canReview: boolean }) {
-  const [toTier, setToTier] = useState<"all" | "associate" | "associate-pro">("all");
+  // The BE requires a tier here (it rejects a request without one), so there
+  // is no "any tier" option.
+  const [toTier, setToTier] = useState<EligibleUpgradeTier>("associate");
   const [page, setPage] = useState(1);
   const { data, isLoading, error } = useEligibleUpgrades({
-    to_tier: toTier === "all" ? undefined : toTier,
+    to_tier: toTier,
     page,
     limit: ELIGIBLE_LIMIT,
   });
@@ -79,7 +83,7 @@ function EligibleView({ canReview }: { canReview: boolean }) {
         <Select
           value={toTier}
           onValueChange={(value) => {
-            setToTier(value as typeof toTier);
+            setToTier(value as EligibleUpgradeTier);
             setPage(1);
           }}
         >
@@ -87,9 +91,11 @@ function EligibleView({ canReview }: { canReview: boolean }) {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Any tier</SelectItem>
-            <SelectItem value="associate">Associate</SelectItem>
-            <SelectItem value="associate-pro">Associate Pro</SelectItem>
+            {ELIGIBLE_UPGRADE_TIERS.map((tier) => (
+              <SelectItem key={tier} value={tier}>
+                {tier === "associate" ? "Associate" : "Associate Pro"}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
@@ -100,7 +106,7 @@ function EligibleView({ canReview }: { canReview: boolean }) {
         emptyState={
           <EmptyState
             title="Nobody is waiting on an upgrade"
-            body="Members appear here once they finish the course their next tier requires."
+            body="Members appear here once they pass the course set for this tier. If it stays empty, check that a course is set for the tier in the Academy settings."
           />
         }
       />

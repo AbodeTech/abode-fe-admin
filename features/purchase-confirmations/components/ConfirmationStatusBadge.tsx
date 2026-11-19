@@ -17,6 +17,10 @@ const STYLES: Record<AdminConfirmationStatus, { label: string; className: string
     label: "Disputed",
     className: "bg-red-100 text-red-800 hover:bg-red-100",
   },
+  resolved: {
+    label: "Resolved",
+    className: "bg-blue-100 text-blue-800 hover:bg-blue-100",
+  },
 };
 
 export function ConfirmationStatusBadge({
