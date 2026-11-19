@@ -36,8 +36,6 @@ interface PurchaseConfirmationsFiltersProps {
   onSearchChange: (value: string) => void;
   onExport: () => void;
   isExporting: boolean;
-  /** The Resolved tab needs the proposed `status=resolved` (item 11). */
-  showResolved: boolean;
 }
 
 export function PurchaseConfirmationsFilters({
@@ -49,12 +47,11 @@ export function PurchaseConfirmationsFilters({
   onSearchChange,
   onExport,
   isExporting,
-  showResolved,
 }: PurchaseConfirmationsFiltersProps) {
   return (
     <section className="mt-2 flex min-w-0 flex-col gap-3 sm:gap-4">
       <div className="flex flex-wrap items-center gap-2">
-        {STATUS_TABS.filter((tab) => showResolved || tab.value !== "resolved").map((tab) => (
+        {STATUS_TABS.map((tab) => (
           <Button
             key={tab.value}
             variant={status === tab.value ? "default" : "outline"}

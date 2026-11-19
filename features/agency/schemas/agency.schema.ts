@@ -156,6 +156,8 @@ export interface AgencyMemberQuery {
   q?: string | null;
   /** Defaults to true on the BE — the owner is listed among the members. */
   include_owner?: boolean;
+  /** A user tier (`user`, `associate`, `associate-pro`, …). */
+  tier?: string | null;
 }
 
 export interface AgencyCommissionQuery {
@@ -196,6 +198,7 @@ export const buildAgencyMemberParams = (
     q: filters.q,
     // Explicit false is meaningful, so it must survive `clean`.
     include_owner: filters.include_owner === false ? 'false' : undefined,
+    tier: filters.tier,
   });
 
 export const buildAgencyCommissionParams = (

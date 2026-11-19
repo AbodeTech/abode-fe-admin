@@ -5,6 +5,13 @@ import { Search, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -41,6 +48,9 @@ interface AgencyMembersTableProps {
   isLoading?: boolean;
   search: string;
   onSearchChange: (value: string) => void;
+  /** Selected type (`all` for none). Pass `onTierChange` to show the filter. */
+  tier?: string;
+  onTierChange?: (value: string) => void;
   /** Rendered when a member needs moving out — omit to hide the column. */
   onRemove?: (member: MemberRow) => void;
   removingId?: string | null;
@@ -80,6 +90,8 @@ export function AgencyMembersTable({
   isLoading,
   search,
   onSearchChange,
+  tier = "all",
+  onTierChange,
   onRemove,
   removingId,
 }: AgencyMembersTableProps) {
@@ -88,7 +100,8 @@ export function AgencyMembersTable({
 
   return (
     <div className="w-full min-w-0 space-y-3">
-      <div className="relative max-w-sm">
+      <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
+      <div className="relative w-full max-w-sm">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           className="min-w-0 pl-9 pr-10"
@@ -106,6 +119,20 @@ export function AgencyMembersTable({
             <X className="h-4 w-4" />
           </Button>
         )}
+      </div>
+      {onTierChange && (
+        <Select value={tier} onValueChange={onTierChange}>
+          <SelectTrigger className="w-full bg-white sm:w-48" aria-label="Member type">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All types</SelectItem>
+            <SelectItem value="user">Client</SelectItem>
+            <SelectItem value="associate">Associate</SelectItem>
+            <SelectItem value="associate-pro">Associate Pro</SelectItem>
+          </SelectContent>
+        </Select>
+      )}
       </div>
 
       {isLoading ? (

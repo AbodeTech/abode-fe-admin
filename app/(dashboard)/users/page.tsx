@@ -52,6 +52,7 @@ function UsersPageContent() {
   const searchQuery = searchParams.get("query") || searchParams.get("search") || undefined;
   const hasReferral = boolFromParam(searchParams.get("hasReferral"));
   const hasAsset = boolFromParam(searchParams.get("hasAsset"));
+  const hasCompletedAsset = boolFromParam(searchParams.get("hasCompletedAsset"));
   const isSuspended = boolFromParam(searchParams.get("isSuspended"));
   const walletSuspended = boolFromParam(searchParams.get("walletSuspended"));
   const referralStatus = searchParams.get("referralStatus") || undefined;
@@ -65,6 +66,7 @@ function UsersPageContent() {
     search: searchQuery,
     hasReferral,
     hasAsset,
+    hasCompletedAsset,
     isSuspended,
     walletSuspended,
     tier: referralStatus,
@@ -130,6 +132,15 @@ function UsersPageContent() {
           ]}
           queryKey="hasReferral"
           placeholder="Has Referral"
+        />
+        <FilterSelect
+          data={[
+            { label: "Completed Payment - all", value: "all" },
+            { label: "Completed Payment - yes", value: "true" },
+            { label: "Completed Payment - no", value: "false" },
+          ]}
+          queryKey="hasCompletedAsset"
+          placeholder="Completed Payment"
         />
         <FilterSelect
           data={[

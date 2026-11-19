@@ -6,7 +6,6 @@ import { toast } from "sonner";
 
 import { SuspensePageFallback } from "@/components/shared/page-content-loader";
 import { useHasPermission } from "@/hooks/use-admin-permission";
-import { isBackendReady } from "@/lib/backend-ready";
 import { Pagination } from "@/components/shared/Pagination";
 import {
   applyConfirmationFilter,
@@ -29,10 +28,8 @@ function PurchaseConfirmationsContent() {
   const searchParams = useSearchParams();
 
   const page = Number(searchParams.get("page")) || 1;
-  const showResolved = isBackendReady("disputes_resolved");
   const statusParam = searchParams.get("status") || DEFAULT_CONFIRMATION_STATUS;
-  // `resolved` 400s on a BE without it, so a stale link falls back to the default.
-  const status = statusParam === "resolved" && !showResolved ? DEFAULT_CONFIRMATION_STATUS : statusParam;
+  const status = statusParam;
   const product = searchParams.get("product") || "all";
   const search = searchParams.get("q") || "";
 
@@ -117,7 +114,6 @@ function PurchaseConfirmationsContent() {
         onSearchChange={(value) => setParam("q", value)}
         onExport={handleExport}
         isExporting={exportConfirmations.isPending}
-        showResolved={showResolved}
       />
 
       <div className="min-w-0 space-y-4">

@@ -306,7 +306,8 @@ export type EligibleUpgrade = z.infer<typeof EligibleUpgradeSchema>;
  * One row exactly as `GET /admin/referrals/upgrades/eligible` sends it: flat,
  * and with no `to_tier` — that is the request's own (required) param. Mapped to
  * `EligibleUpgrade` by `toEligibleUpgrade`. Fields the BE projects from the
- * user are absent, not null, when the user has none.
+ * user are absent, not null, when the user has none. Someone with an approved
+ * request is left out; someone with a pending one is listed and flagged.
  */
 export const EligibleUpgradeApiRowSchema = z.object({
   id: z.string(),
@@ -318,6 +319,9 @@ export const EligibleUpgradeApiRowSchema = z.object({
   course_title: z.string().nullish(),
   completed_at: z.string(),
   best_score_pct: z.number().nullish(),
+  /** True while a request for this tier is pending (those rows are listed, flagged). */
   upgrade_requested: z.boolean(),
+  /** `pending` when a request is open, else null. */
+  upgrade_request_status: z.string().nullish(),
 });
 export type EligibleUpgradeApiRow = z.infer<typeof EligibleUpgradeApiRowSchema>;

@@ -8,7 +8,6 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { isBackendReady } from "@/lib/backend-ready";
 import { AgencyInventoryTable } from "./AgencyInventoryTable";
 import { AgencyPerformanceCards } from "./AgencyPerformanceCards";
 import { CopyableText } from "@/components/shared/CopyableText";
@@ -70,8 +69,6 @@ export function AgencyDetailView({
   commissionsSlot,
   salesSlot,
 }: AgencyDetailViewProps) {
-  const showInventory = isBackendReady("agency_sales");
-  const showPerformance = isBackendReady("agency_stats");
   const [editOpen, setEditOpen] = useState(false);
   const [suspendOpen, setSuspendOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -202,7 +199,7 @@ export function AgencyDetailView({
         </Card>
       </div>
 
-      {showPerformance && <AgencyPerformanceCards agencyId={agency.id} />}
+      <AgencyPerformanceCards agencyId={agency.id} />
 
       <Card className="min-w-0 border border-gray-200">
         <CardHeader>
@@ -224,7 +221,7 @@ export function AgencyDetailView({
         <TabsList>
           <TabsTrigger value="members">Members ({agency.member_count})</TabsTrigger>
           {salesSlot && <TabsTrigger value="sales">Sales</TabsTrigger>}
-          {showInventory && <TabsTrigger value="inventory">Inventory</TabsTrigger>}
+          <TabsTrigger value="inventory">Inventory</TabsTrigger>
           <TabsTrigger value="commissions">Commission ledger</TabsTrigger>
         </TabsList>
         <TabsContent value="members" className="mt-4 min-w-0">
@@ -235,11 +232,9 @@ export function AgencyDetailView({
             {salesSlot}
           </TabsContent>
         )}
-        {showInventory && (
-          <TabsContent value="inventory" className="mt-4 min-w-0">
-            <AgencyInventoryTable agencyId={agency.id} />
-          </TabsContent>
-        )}
+        <TabsContent value="inventory" className="mt-4 min-w-0">
+          <AgencyInventoryTable agencyId={agency.id} />
+        </TabsContent>
         <TabsContent value="commissions" className="mt-4 min-w-0">
           {commissionsSlot}
         </TabsContent>

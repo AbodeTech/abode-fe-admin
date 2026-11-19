@@ -25,7 +25,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { isBackendReady } from "@/lib/backend-ready";
 
 import { useUpsertYearlyGoal } from "../hooks/use-upsert-yearly-goal";
 import { useYearlyGoal } from "../hooks/use-yearly-goal";
@@ -53,7 +52,6 @@ interface Props {
 export function SetYearlyGoalDialog({ year, mode, open, onOpenChange }: Props) {
   const { data: existing } = useYearlyGoal(year, { enabled: open && mode === "edit" });
   const { mutateAsync: upsertGoal, isPending } = useUpsertYearlyGoal(year);
-  const companyGoals = isBackendReady("yearly_goals_v2");
 
   const form = useForm<UpsertYearlyGoalPayload>({
     resolver: zodResolver(upsertYearlyGoalSchema),
@@ -84,8 +82,9 @@ export function SetYearlyGoalDialog({ year, mode, open, onOpenChange }: Props) {
       } = values;
       await upsertGoal({
         ...base,
-        // The company targets are new BE keys; today's DTO would 400 on them.
-        ...(companyGoals && { unique_seller_target, avg_revenue_per_associate_target, financial_revenue_target }),
+        unique_seller_target,
+        avg_revenue_per_associate_target,
+        financial_revenue_target,
         // An empty textarea is "no note", not an empty note.
         notes: values.notes?.trim() ? values.notes.trim() : undefined,
       });
@@ -156,77 +155,73 @@ export function SetYearlyGoalDialog({ year, mode, open, onOpenChange }: Props) {
               )}
             />
 
-            {companyGoals && (
-              <>
-                <FormField
-                  control={form.control}
-                  name="unique_seller_target"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Unique sellers target</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          min={0}
-                          step={1}
-                          placeholder="e.g. 300"
-                          {...field}
-                          value={field.value ?? ""}
-                          onChange={(e) =>
-                            field.onChange(e.target.value === "" ? undefined : e.target.valueAsNumber)
-                          }
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="avg_revenue_per_associate_target"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Average revenue per associate (₦)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          min={0}
-                          placeholder="e.g. 5000000"
-                          {...field}
-                          value={field.value ?? ""}
-                          onChange={(e) =>
-                            field.onChange(e.target.value === "" ? undefined : e.target.valueAsNumber)
-                          }
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="financial_revenue_target"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Sales revenue target (₦)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          min={0}
-                          placeholder="e.g. 2000000000"
-                          {...field}
-                          value={field.value ?? ""}
-                          onChange={(e) =>
-                            field.onChange(e.target.value === "" ? undefined : e.target.valueAsNumber)
-                          }
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </>
-            )}
+            <FormField
+              control={form.control}
+              name="unique_seller_target"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Unique sellers target</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min={0}
+                      step={1}
+                      placeholder="e.g. 300"
+                      {...field}
+                      value={field.value ?? ""}
+                      onChange={(e) =>
+                        field.onChange(e.target.value === "" ? undefined : e.target.valueAsNumber)
+                      }
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="avg_revenue_per_associate_target"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Average revenue per associate (₦)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min={0}
+                      placeholder="e.g. 5000000"
+                      {...field}
+                      value={field.value ?? ""}
+                      onChange={(e) =>
+                        field.onChange(e.target.value === "" ? undefined : e.target.valueAsNumber)
+                      }
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="financial_revenue_target"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Sales revenue target (₦)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min={0}
+                      placeholder="e.g. 2000000000"
+                      {...field}
+                      value={field.value ?? ""}
+                      onChange={(e) =>
+                        field.onChange(e.target.value === "" ? undefined : e.target.valueAsNumber)
+                      }
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={form.control}

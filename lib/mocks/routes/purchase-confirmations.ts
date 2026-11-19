@@ -29,12 +29,19 @@ type MockDispute = {
 const MOCK_RESOLVER = { id: '665fad0e00000000000000d1', name: 'Ngozi Eze' };
 
 /**
- * The BE's derived status (item 11): an open dispute beats everything, then a
- * resolved dispute (even if the buyer has since confirmed), then confirmed.
+ * The BE's derived status (item 11, as of staging 6410b76): an open dispute
+ * beats everything; after a resolution the row stays `resolved` until the buyer
+ * confirms AFTER the latest resolution, then it is `confirmed` again.
  */
-const statusOf = (c: MockConfirmation): 'waiting' | 'disputed' | 'resolved' | 'confirmed' => {
+export const statusOf = (
+  c: Pick<MockConfirmation, 'disputes' | 'confirmed_at'>
+): 'waiting' | 'disputed' | 'resolved' | 'confirmed' => {
   if (c.disputes.some((d) => !d.resolved_at)) return 'disputed';
-  if (c.disputes.some((d) => d.resolved_at)) return 'resolved';
+  const resolvedTimes = c.disputes.flatMap((d) => (d.resolved_at ? [new Date(d.resolved_at).getTime()] : []));
+  if (resolvedTimes.length > 0) {
+    const latest = Math.max(...resolvedTimes);
+    return c.confirmed_at && new Date(c.confirmed_at).getTime() > latest ? 'confirmed' : 'resolved';
+  }
   return c.confirmed_at ? 'confirmed' : 'waiting';
 };
 
@@ -181,6 +188,40 @@ const confirmations: MockConfirmation[] = [
     escalated_at: null,
     disputes: [],
     createdAt: daysAgo(0.3),
+  },
+  {
+    // Disputed, then resolved two days ago; the buyer has not confirmed since.
+    _id: '665fpc0000000000000000h5',
+    plan_id: '665fplan000000000000pc05',
+    unique_asset_id: 'AVC-FL-022',
+    status: 'waiting',
+    buyer: '665fcccc00000000000000c3',
+    referrer: null,
+    asset: 'Aviation City',
+    snapshot: {
+      name_on_document: 'Amaka Obi',
+      size: 300,
+      units: 1,
+      plan_label: '6-month flex',
+      land_amount: 2_850_000,
+      development_levy: 150_000,
+      total: 3_000_000,
+      product: 'flex',
+    },
+    email_sent_at: daysAgo(9),
+    confirmed_at: null,
+    reminders_sent: [],
+    escalated_at: null,
+    disputes: [
+      {
+        note: 'Name is spelled wrong on the document.',
+        disputed_at: daysAgo(5),
+        resolved_at: daysAgo(2),
+        resolution_note: 'Corrected the name on the document.',
+        resolved_by: MOCK_RESOLVER,
+      },
+    ],
+    createdAt: daysAgo(10),
   },
 ];
 

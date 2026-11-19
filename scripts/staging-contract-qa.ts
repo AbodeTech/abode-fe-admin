@@ -17,7 +17,7 @@
  */
 import { z } from 'zod';
 import { registerRoutes, dispatchMockRoute } from '../lib/mocks/router';
-import { purchaseConfirmationRoutes } from '../lib/mocks/routes/purchase-confirmations';
+import { purchaseConfirmationRoutes, statusOf as confirmationStatusOf } from '../lib/mocks/routes/purchase-confirmations';
 import { CompanyGoalsSchema } from '../features/associate-pro-tracker/schemas/tracker.schema';
 import { PortfolioMetricsSchema } from '../features/assets/schemas/portfolio-analytics.schema';
 import { ManagerDashboardSchema } from '../features/associate-managers/schemas/manager-dashboard.schema';
@@ -145,11 +145,38 @@ async function main() {
       ok(ConfirmationCountsSchema.safeParse({ waiting: 1, disputed: 1, resolved: 2, confirmed: 3 }).success, 'counts include resolved');
     }),
     await run('disputes-resend-rule', () => {
-      eq(canResendConfirmation({ status: 'waiting', confirmedAt: null }), true, 'waiting');
-      eq(canResendConfirmation({ status: 'resolved', confirmedAt: null }), true, 'resolved, not yet confirmed');
-      eq(canResendConfirmation({ status: 'resolved', confirmedAt: '2026-11-01T00:00:00Z' }), false, 'resolved and re-confirmed');
-      eq(canResendConfirmation({ status: 'confirmed', confirmedAt: '2026-11-01T00:00:00Z' }), false, 'confirmed');
-      eq(canResendConfirmation({ status: 'disputed', confirmedAt: null }), false, 'disputed (resolve it first)');
+      eq(canResendConfirmation({ status: 'waiting' }), true, 'waiting');
+      eq(canResendConfirmation({ status: 'resolved' }), true, 'resolved: not confirmed since the resolution');
+      eq(canResendConfirmation({ status: 'confirmed' }), false, 'confirmed');
+      eq(canResendConfirmation({ status: 'disputed' }), false, 'disputed (resolve it first)');
+    }),
+    // referral purchase-confirmation.schema.ts: confirmed wins only when the buyer
+    // confirmed AFTER the latest resolution; otherwise the row stays `resolved`.
+    await run('disputes-status-after-reconfirmation', () => {
+      const dispute = (resolvedAt: string | null) => ({
+        note: 'Wrong size.', disputed_at: '2026-11-01T00:00:00Z', resolved_at: resolvedAt, resolution_note: null,
+      });
+      const status = (disputes: ReturnType<typeof dispute>[], confirmedAt: string | null) =>
+        confirmationStatusOf({ disputes, confirmed_at: confirmedAt });
+      eq(status([dispute(null)], '2026-11-02T00:00:00Z'), 'disputed', 'an open dispute beats a confirmation');
+      eq(status([dispute('2026-11-10T00:00:00Z')], null), 'resolved', 'resolved, never confirmed');
+      eq(status([dispute('2026-11-10T00:00:00Z')], '2026-11-05T00:00:00Z'), 'resolved', 'confirmed BEFORE the resolution is stale');
+      eq(status([dispute('2026-11-10T00:00:00Z')], '2026-11-12T00:00:00Z'), 'confirmed', 'confirmed after the resolution');
+      eq(
+        status([dispute('2026-11-10T00:00:00Z'), dispute('2026-11-14T00:00:00Z')], '2026-11-12T00:00:00Z'),
+        'resolved',
+        'a later resolution makes an earlier confirmation stale',
+      );
+      eq(status([], '2026-11-12T00:00:00Z'), 'confirmed', 'no dispute, confirmed');
+      eq(status([], null), 'waiting', 'no dispute, unconfirmed');
+    }),
+    await run('disputes-mock-fixtures-cover-both-sides', async () => {
+      const ids = async (status: string) =>
+        ((await dispatchMockRoute({ method: 'GET', path: '/admin/purchase-confirmations', query: { limit: 50, status }, body: undefined })) as {
+          data: Array<{ unique_asset_id: string }>;
+        }).data.map((r) => r.unique_asset_id);
+      ok((await ids('confirmed')).includes('AVC-FL-021'), 'resolved, then re-confirmed: listed as confirmed');
+      ok((await ids('resolved')).includes('AVC-FL-022'), 'resolved, not re-confirmed: listed as resolved');
     }),
     await run('disputes-mock-follows-backend-status', async () => {
       const list = async (status: string) =>
@@ -204,6 +231,14 @@ async function main() {
       eq(sparse.user.first_name, null, 'missing name becomes null');
       eq(sparse.course.title, 'Required course', 'missing title gets a label, not a blank');
       eq(sparse.best_score_pct, null, 'no score stays null');
+      // staging 6410b76: a pending request is listed and flagged, with its status
+      const pending = toEligibleUpgrade(
+        EligibleUpgradeApiRowSchema.parse({ ...flat, upgrade_requested: true, upgrade_request_status: 'pending' }),
+        'associate',
+      );
+      eq(pending.upgrade_requested, true, 'pending request flagged');
+      const open = EligibleUpgradeApiRowSchema.parse({ ...flat, upgrade_request_status: null });
+      eq(open.upgrade_request_status, null, 'no request: status null');
       // control: the nested shape the app used to parse is not what the BE sends
       ok(!EligibleUpgradeSchema.safeParse(flat).success, 'a flat BE row is not the nested row type');
     }),

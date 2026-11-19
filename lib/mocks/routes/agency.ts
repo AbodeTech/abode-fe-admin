@@ -454,6 +454,10 @@ export const agencyRoutes: MockRoutes = {
       );
     }
 
+    // The BE's `tier` filters on the user's referral_status.
+    const tier = String(query.tier ?? '');
+    if (tier) rows = rows.filter((person) => (person.referral_status ?? '') === tier);
+
     const page = paged(rows, query);
     return {
       ...page,

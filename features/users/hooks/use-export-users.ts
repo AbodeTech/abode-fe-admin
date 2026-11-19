@@ -11,6 +11,7 @@ export type ExportUsersParams = {
   tier?: string;
   howYouHeard?: string;
   hasAsset?: boolean;
+  hasCompletedAsset?: boolean;
   hasReferral?: boolean;
   isSuspended?: boolean;
   walletSuspended?: boolean;
@@ -36,6 +37,7 @@ export const useExportUsersByFilter = () =>
           tier: filters.tier || undefined,
           how_you_hear_about_us: filters.howYouHeard || undefined,
           has_asset: boolQuery(filters.hasAsset),
+          has_completed_asset: boolQuery(filters.hasCompletedAsset),
           has_referral: boolQuery(filters.hasReferral),
           is_suspended: boolQuery(filters.isSuspended),
           wallet_suspended: boolQuery(filters.walletSuspended),

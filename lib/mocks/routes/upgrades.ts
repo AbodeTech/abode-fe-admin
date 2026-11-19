@@ -223,9 +223,11 @@ export const upgradeRoutes: MockRoutes = {
       if (search && !matchesPersonSearch(person, search)) return [];
       const done = completionFor(index, req.to_tier);
       if (!done) return [];
-      // The BE leaves out anyone with a pending or approved request for the tier.
+      // The BE keeps someone with a pending request (flagged) and drops one whose
+      // request was approved with nothing pending.
       const requests = upgrades.filter((u) => u.user === person._id && u.to_tier === req.to_tier);
-      if (requests.some((u) => u.status === 'pending' || u.status === 'approved')) return [];
+      const pending = requests.some((u) => u.status === 'pending');
+      if (!pending && requests.some((u) => u.status === 'approved')) return [];
       return [
         {
           id: person._id,
@@ -237,7 +239,8 @@ export const upgradeRoutes: MockRoutes = {
           course_title: req.course.title,
           completed_at: done.completed_at,
           best_score_pct: done.best_score_pct,
-          upgrade_requested: false,
+          upgrade_requested: pending,
+          upgrade_request_status: pending ? 'pending' : null,
         },
       ];
     });

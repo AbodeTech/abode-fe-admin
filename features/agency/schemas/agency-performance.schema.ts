@@ -1,9 +1,8 @@
 import { z } from 'zod';
 
 /**
- * Proposed agency aggregates (Admin v2 — Backend Requirements, items 7–8).
- * Neither endpoint exists on today's BE; the screens that use them are gated
- * by `agency_sales` / `agency_stats` in lib/backend-ready.ts.
+ * Agency aggregates (Admin v2 — Backend Requirements, items 7–8), as the
+ * backend returns them.
  */
 
 /** `GET /admin/agencies/:agency_id/stats?start_date&end_date`. Null = not computable. */

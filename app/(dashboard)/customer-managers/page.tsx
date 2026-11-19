@@ -26,7 +26,6 @@ import {
   type PlanRow,
 } from "@/features/cs-managers";
 import { useAuthStore } from "@/store/auth-store";
-import { isBackendReady } from "@/lib/backend-ready";
 
 /**
  * Friendly empty state for admins who shouldn't be here. `message` is the BE's
@@ -108,10 +107,8 @@ function CustomerManagersContent() {
   // Unsorted URLs take the queue's own default rather than the BE's — see
   // defaultPlanSort. CustomersTable derives the same value for its controls.
   const sort = effectivePlanSort(filter ?? "all", searchParams.get("sort"));
-  // A shared link with a range must not 400 on a BE that doesn't take it yet.
-  const canFilterCompleted = isBackendReady("cs_completed_filter");
-  const completedFrom = canFilterCompleted ? searchParams.get("completed_from") ?? undefined : undefined;
-  const completedTo = canFilterCompleted ? searchParams.get("completed_to") ?? undefined : undefined;
+  const completedFrom = searchParams.get("completed_from") ?? undefined;
+  const completedTo = searchParams.get("completed_to") ?? undefined;
 
   // The list needs view_cs_manager_tracker; a CS Manager without it would 403.
   // Its cache entry is shared with other callers, so only the admin view

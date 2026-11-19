@@ -28,7 +28,9 @@ type ExportCategory =
   | "status-associates"
   | "status-associates-pro"
   | "without-assets"
-  | "with-assets";
+  | "with-assets"
+  | "suspended-users"
+  | "completed-payments";
 
 const CATEGORY_OPTIONS: Array<{ value: ExportCategory; label: string }> = [
   { value: "all", label: "All Users" },
@@ -39,6 +41,8 @@ const CATEGORY_OPTIONS: Array<{ value: ExportCategory; label: string }> = [
   { value: "status-associates-pro", label: "Status Associates Pro" },
   { value: "without-assets", label: "Users without Assets" },
   { value: "with-assets", label: "Users with Assets" },
+  { value: "suspended-users", label: "Suspended Users" },
+  { value: "completed-payments", label: "Users with Completed Payments" },
 ];
 
 const FILTER_MAP: Record<ExportCategory, ExportUsersParams> = {
@@ -50,6 +54,8 @@ const FILTER_MAP: Record<ExportCategory, ExportUsersParams> = {
   "status-associates-pro": { tier: "associate-pro" },
   "without-assets": { hasAsset: false },
   "with-assets": { hasAsset: true },
+  "suspended-users": { isSuspended: true },
+  "completed-payments": { hasCompletedAsset: true },
 };
 
 export function UsersExportModal() {

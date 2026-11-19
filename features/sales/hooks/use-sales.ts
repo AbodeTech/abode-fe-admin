@@ -1,6 +1,6 @@
 'use client';
 
-import { useQueries, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQueries, useQuery } from '@tanstack/react-query';
 
 import { apiGet, apiGetPaged } from '@/lib/api-client';
 
@@ -98,10 +98,13 @@ export function buildSalesListParams(filters: SalesListFilters) {
  * GET /admin/sales — every plan across flex/full-ownership/commercial/
  * developer-plot, plus marketplace resales unioned in. `view_sales`.
  */
-export const useSalesList = (filters: SalesListFilters) => {
+export const useSalesList = (filters: SalesListFilters, options?: { keepPreviousData?: boolean }) => {
   return useQuery({
     queryKey: salesKeys.list(filters),
     queryFn: () => apiGetPaged('/admin/sales', SalesRowSchema, { params: buildSalesListParams(filters) }),
+    // Opt-in: a page that wants the old rows to stay on screen while a new
+    // filter loads (`isPlaceholderData` says when that is what it is showing).
+    placeholderData: options?.keepPreviousData ? keepPreviousData : undefined,
   });
 };
 
@@ -109,7 +112,10 @@ export const useSalesList = (filters: SalesListFilters) => {
  * GET /admin/sales/dashboard — 4-card summary (Overall/Flex/Full-Ownership/
  * Commercial), 5-min server-cached per date range. `view_sales`.
  */
-export const useSalesDashboard = (filters?: { startDate?: string | null; endDate?: string | null }) => {
+export const useSalesDashboard = (
+  filters?: { startDate?: string | null; endDate?: string | null },
+  options?: { keepPreviousData?: boolean }
+) => {
   const startDate = filters?.startDate || undefined;
   const endDate = filters?.endDate || undefined;
 
@@ -119,6 +125,7 @@ export const useSalesDashboard = (filters?: { startDate?: string | null; endDate
       apiGet('/admin/sales/dashboard', SalesDashboardResponseSchema, {
         params: { start_date: startDate, end_date: endDate },
       }),
+    placeholderData: options?.keepPreviousData ? keepPreviousData : undefined,
   });
 };
 
@@ -168,6 +175,9 @@ export const useSalesPlanStatusCounts = (
         apiGetPaged('/admin/sales', SalesRowSchema, {
           params: buildSalesListParams({ ...base, planStatus: status }),
         }),
+      // Only the Sales page uses these counts: keep the old ones on screen
+      // while a new filter loads, rather than flashing skeletons.
+      placeholderData: keepPreviousData,
     })),
   });
 

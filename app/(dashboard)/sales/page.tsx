@@ -18,6 +18,8 @@ import { useAuthStore } from "@/store/auth-store";
 import { SalesExport } from "@/features/sales/components/SalesExport";
 import { SalesCsvExport } from "@/features/sales/components/SalesCsvExport";
 import { Pagination } from "@/components/shared/Pagination";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 import { SuspensePageFallback } from "@/components/shared/page-content-loader";
 import { ArrowRight, Loader2 } from "lucide-react";
 import Link from "next/link";
@@ -44,30 +46,20 @@ function SalesContent() {
     sourceType,
   };
 
-  const { data: dashboard, isLoading: dashboardLoading, error: dashboardError } = useSalesDashboard({
-    startDate,
-    endDate,
-  });
-  const { data: list, isLoading: listLoading, error: listError } = useSalesList(filters);
+  // The page stays mounted when a filter changes: the previous rows and cards
+  // stay on screen while the new ones load, so the filter bar is never torn down.
+  const { data: dashboard, error: dashboardError } = useSalesDashboard(
+    { startDate, endDate },
+    { keepPreviousData: true }
+  );
+  const {
+    data: list,
+    isLoading: listLoading,
+    isPlaceholderData: listIsStale,
+    error: listError,
+  } = useSalesList(filters, { keepPreviousData: true });
 
   const totalCount = list?.meta.total || 0;
-
-  if (dashboardLoading || listLoading) {
-    return (
-      <div className="flex min-h-[40vh] items-center justify-center py-16">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (listError) {
-    return (
-      <div className="p-4 rounded-md bg-red-50 text-red-500 border border-red-200">
-        <h3 className="font-bold">Error loading sales</h3>
-        <p>{(listError as Error).message || "An unexpected error occurred."}</p>
-      </div>
-    );
-  }
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-[1600px] space-y-4 sm:space-y-6 md:space-y-8">
@@ -96,13 +88,39 @@ function SalesContent() {
       )}
       {isSuperAdmin && <YesterdaySalesCard />}
 
-      {dashboard && <SummaryCards data={dashboard} />}
+      {dashboard ? (
+        <SummaryCards data={dashboard} />
+      ) : (
+        !dashboardError && (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4" aria-hidden>
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-28 w-full" />
+            ))}
+          </div>
+        )
+      )}
 
       <SalesFilters />
 
       <SalesStatusChips filters={{ q, createdStartDate: startDate, createdEndDate: endDate, assetType, sourceType }} />
 
-      <SalesTable records={list?.items} />
+      {listError ? (
+        <div className="p-4 rounded-md bg-red-50 text-red-500 border border-red-200">
+          <h3 className="font-bold">Error loading sales</h3>
+          <p>{(listError as Error).message || "An unexpected error occurred."}</p>
+        </div>
+      ) : listLoading ? (
+        <div className="flex min-h-[30vh] items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      ) : (
+        <div
+          aria-busy={listIsStale}
+          className={cn("transition-opacity", listIsStale && "pointer-events-none opacity-60")}
+        >
+          <SalesTable records={list?.items} />
+        </div>
+      )}
 
       <div className="min-w-0 px-0 sm:px-2">
         <Pagination count={totalCount} currentIdx={page} limit={DEFAULT_SALES_LIMIT} />

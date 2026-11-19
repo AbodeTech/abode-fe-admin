@@ -16,7 +16,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { isBackendReady } from "@/lib/backend-ready";
 
 /**
  * Period control for the manager dashboards: a month and a year, which is what
@@ -51,7 +50,7 @@ const parseDay = (raw: string | null): Date | null => {
   return Number.isNaN(d.getTime()) ? null : d;
 };
 
-const deriveActive = (searchParams: URLSearchParams, now: Date, longPeriods: boolean): Active => {
+const deriveActive = (searchParams: URLSearchParams, now: Date): Active => {
   const from = parseDay(searchParams.get("start_date"));
   const to = parseDay(searchParams.get("end_date"));
   if (from && to) return { kind: "custom", from, to };
@@ -59,8 +58,8 @@ const deriveActive = (searchParams: URLSearchParams, now: Date, longPeriods: boo
   const month = Number(searchParams.get("month"));
   const year = Number(searchParams.get("year"));
   const period = searchParams.get("period");
-  if (longPeriods && period === "all_time") return { kind: "all_time" };
-  if (longPeriods && period === "year") {
+  if (period === "all_time") return { kind: "all_time" };
+  if (period === "year") {
     return { kind: "year", year: year > 1970 ? year : now.getFullYear() };
   }
   if (month >= 1 && month <= 12 && year > 1970) return { kind: "month", month, year };
@@ -75,11 +74,7 @@ export function DashboardPeriodFilter() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const now = useMemo(() => new Date(), []);
-  const longPeriods = isBackendReady("manager_long_periods");
-  const active = useMemo(
-    () => deriveActive(searchParams, now, longPeriods),
-    [searchParams, now, longPeriods]
-  );
+  const active = useMemo(() => deriveActive(searchParams, now), [searchParams, now]);
 
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth() + 1;
@@ -151,18 +146,16 @@ export function DashboardPeriodFilter() {
 
   return (
     <div className="inline-flex flex-wrap items-center gap-2">
-      {longPeriods && (
-        <Select value={active.kind === "custom" ? "" : active.kind} onValueChange={selectView}>
-          <SelectTrigger className="h-10 w-32 bg-white" aria-label="Period">
-            <SelectValue placeholder="Period" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="month">Month</SelectItem>
-            <SelectItem value="year">Whole year</SelectItem>
-            <SelectItem value="all_time">All time</SelectItem>
-          </SelectContent>
-        </Select>
-      )}
+      <Select value={active.kind === "custom" ? "" : active.kind} onValueChange={selectView}>
+        <SelectTrigger className="h-10 w-32 bg-white" aria-label="Period">
+          <SelectValue placeholder="Period" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="month">Month</SelectItem>
+          <SelectItem value="year">Whole year</SelectItem>
+          <SelectItem value="all_time">All time</SelectItem>
+        </SelectContent>
+      </Select>
 
       {(active.kind === "month" || active.kind === "custom") && (
         <Select
@@ -240,9 +233,7 @@ export function DashboardPeriodFilter() {
           <p className="border-t px-3 py-2 text-xs text-gray-500">
             {rangeStart
               ? `From ${format(rangeStart, "MMM d")} — now pick the end date`
-              : longPeriods
-                ? "Pick the start date. Targets are set per month, so a month or a whole year compares against them."
-                : "Pick the start date. Targets and the score are monthly, so pick a month to compare against them."}
+              : "Pick the start date. Targets are set per month, so a month or a whole year compares against them."}
           </p>
         </PopoverContent>
       </Popover>

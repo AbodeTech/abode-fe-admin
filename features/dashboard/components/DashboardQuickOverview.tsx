@@ -155,7 +155,7 @@ export default function DashboardQuickOverview({ data }: DashboardQuickOverviewP
       value: data.suspended_users.value,
       description: "Click to view details",
       icon: <UsersIcon className="h-4 w-4 shrink-0 text-destructive" />,
-      href: "/users/suspended",
+      href: "/users?isSuspended=true",
     },
     {
       id: "terminated-plans",

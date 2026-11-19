@@ -12,7 +12,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { isBackendReady } from "@/lib/backend-ready";
 import { Pagination } from "@/components/shared/Pagination";
 import { PageContentLoader } from "@/components/shared/page-content-loader";
 import { useHasPermission } from "@/hooks/use-admin-permission";
@@ -145,8 +144,7 @@ function UpgradesPageContent() {
   const canReview = useHasPermission("modify_referral_status");
   const router = useRouter();
   const pathname = usePathname();
-  const showEligible = isBackendReady("upgrade_eligibility");
-  const view = showEligible && searchParams.get("view") === "eligible" ? "eligible" : "requests";
+  const view = searchParams.get("view") === "eligible" ? "eligible" : "requests";
   const setView = (next: "requests" | "eligible") => {
     const params = new URLSearchParams();
     if (next === "eligible") params.set("view", "eligible");
@@ -184,7 +182,7 @@ function UpgradesPageContent() {
     );
   }
 
-  const viewSwitch = showEligible ? (
+  const viewSwitch = (
     <div className="inline-flex rounded-md border bg-white p-0.5" role="tablist" aria-label="Upgrade view">
       {(["requests", "eligible"] as const).map((v) => (
         <Button
@@ -200,7 +198,7 @@ function UpgradesPageContent() {
         </Button>
       ))}
     </div>
-  ) : null;
+  );
 
   if (view === "eligible") {
     return (

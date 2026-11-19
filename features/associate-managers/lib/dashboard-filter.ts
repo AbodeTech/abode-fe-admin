@@ -1,4 +1,3 @@
-import { isBackendReady } from '@/lib/backend-ready';
 import {
   PRO_GROUPS,
   PRO_SORTS,
@@ -75,11 +74,9 @@ const buildPeriodParams = ({
   const m = parseIntOrNull(month);
   const y = parseIntOrNull(year);
 
-  if (isBackendReady('manager_long_periods')) {
-    if (period === 'all_time') return { period_type: 'all_time' };
-    if (period === 'year') {
-      return { period_type: 'YEAR', year: y && y > 1970 ? y : new Date().getFullYear() };
-    }
+  if (period === 'all_time') return { period_type: 'all_time' };
+  if (period === 'year') {
+    return { period_type: 'YEAR', year: y && y > 1970 ? y : new Date().getFullYear() };
   }
 
   if (m && y && m >= 1 && m <= 12 && y > 1970) {

@@ -21,7 +21,6 @@ import {
 } from "@/features/agency";
 import { getErrorMessage } from "@/features/agency/utils/error-message";
 import { DEFAULT_SALES_LIMIT, SalesTable, useSalesList } from "@/features/sales";
-import { isBackendReady } from "@/lib/backend-ready";
 
 /**
  * Agency detail. Each tab owns its own query state, so paging the roster
@@ -31,6 +30,7 @@ import { isBackendReady } from "@/lib/backend-ready";
 function MembersTab({ agencyId }: { agencyId: string }) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [tier, setTier] = useState("all");
   const debouncedSearch = useDebounce(search, 300);
 
   const canManage = useHasPermission("manage_agencies");
@@ -40,6 +40,7 @@ function MembersTab({ agencyId }: { agencyId: string }) {
     page,
     limit: DEFAULT_AGENCY_LIMIT,
     q: debouncedSearch || null,
+    tier: tier === "all" ? null : tier,
   });
 
   const handleRemove = async (member: Pick<AgencyMember, "id">) => {
@@ -67,6 +68,11 @@ function MembersTab({ agencyId }: { agencyId: string }) {
         search={search}
         onSearchChange={(value) => {
           setSearch(value);
+          setPage(1);
+        }}
+        tier={tier}
+        onTierChange={(value) => {
+          setTier(value);
           setPage(1);
         }}
         onRemove={canManage ? handleRemove : undefined}
@@ -129,8 +135,8 @@ function TabPager({
 
 /**
  * The agency's sales — the sales list filtered by the plan's stored
- * `agency_id` (item 7). Only mounted once `agency_sales` is ready: on today's
- * BE that filter matches nothing and would read as "no sales".
+ * `agency_id` (item 7). Plans from before the backend stored it have no
+ * agency, so older sales only appear once those plans are backfilled.
  */
 function SalesTab({ agencyId }: { agencyId: string }) {
   const [page, setPage] = useState(1);
@@ -258,7 +264,7 @@ export default function AgencyDetailPage() {
         agency={data}
         membersSlot={<MembersTab agencyId={agencyId} />}
         commissionsSlot={<CommissionsTab agencyId={agencyId} />}
-        salesSlot={isBackendReady("agency_sales") ? <SalesTab agencyId={agencyId} /> : undefined}
+        salesSlot={<SalesTab agencyId={agencyId} />}
       />
     </div>
   );

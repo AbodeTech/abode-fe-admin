@@ -1,8 +1,8 @@
 /**
- * UI built ahead of its backend — gate + mock contract verification.
- * Run: npx tsx scripts/backend-ready-qa.ts
+ * Admin v2 features — mock contract verification (the mocks follow what
+ * abode-be-v2 staging returns; see also scripts/staging-contract-qa.ts).
+ * Run: npx tsx scripts/admin-v2-features-qa.ts
  *
- * 1. The NEXT_PUBLIC_BACKEND_READY list parses as documented in lib/backend-ready.ts.
  * 3. Item 15 (campaign sort): the default sends no params (today's BE accepts
  *    the request unchanged), a chosen sort sends sort_by + sort_dir, and the mock
  *    orders the whole list, not one page.
@@ -31,7 +31,6 @@ import { format, subDays } from 'date-fns';
 import { registerRoutes, dispatchMockRoute } from '../lib/mocks/router';
 import { csManagerRoutes } from '../lib/mocks/routes/cs-managers';
 import { CSManagerDashboardSchema } from '../features/cs-managers/schemas/cs-manager.schema';
-import { readyKeys } from '../lib/backend-ready';
 import { courseRoutes } from '../lib/mocks/routes/courses';
 import { CourseSchema } from '../features/courses/schemas/course.schema';
 import { buildManagerDashboardPeriodFilter } from '../features/associate-managers/lib/dashboard-filter';
@@ -41,6 +40,7 @@ import { allocationRoutes } from '../lib/mocks/routes/allocation';
 import { AllocationClientSchema } from '../features/allocation/schemas/allocation.schema';
 import { buildEligibleClientsParams } from '../features/allocation/hooks/use-allocation-clients';
 import { agencyRoutes } from '../lib/mocks/routes/agency';
+import { buildAgencyMemberParams } from '../features/agency/schemas/agency.schema';
 import { salesRoutes } from '../lib/mocks/routes/sales';
 import { AgencyInventoryRowSchema, AgencyPerformanceSchema } from '../features/agency/schemas/agency-performance.schema';
 import { upgradeRoutes } from '../lib/mocks/routes/upgrades';
@@ -92,13 +92,6 @@ async function dashboard(query: Record<string, unknown>) {
 
 async function main() {
   const results: Result[] = [
-    await run('ready-keys-parse', () => {
-      const keys = readyKeys(' cs_completed_filter , Campaign_Sort,,');
-      ok(keys.has('cs_completed_filter'), 'cs key');
-      ok(keys.has('campaign_sort'), 'lowercased key');
-      eq(keys.size, 2, 'empty entries dropped');
-      eq(readyKeys(undefined).size, 0, 'unset env is empty');
-    }),
     await run('no-range-unchanged', async () => {
       const all = await dashboard({ limit: 100 });
       ok(all.plans.length > 0, 'book has plans');
@@ -176,14 +169,7 @@ async function main() {
       const parsed = CourseSchema.parse(legacy);
       eq(parsed.enrolled_count, undefined, 'absent stays absent (shown as —)');
     }),
-    await run('manager-periods-ignored-until-ready', () => {
-      process.env.NEXT_PUBLIC_BACKEND_READY = '';
-      const year = buildManagerDashboardPeriodFilter({ period: 'year', year: '2025' });
-      eq(year.period_type, 'MONTH', 'year falls back to the month');
-      eq(buildManagerDashboardPeriodFilter({ period: 'all_time' }).period_type, 'MONTH', 'all time falls back');
-    }),
-    await run('manager-periods-when-ready', () => {
-      process.env.NEXT_PUBLIC_BACKEND_READY = 'manager_long_periods';
+    await run('manager-year-and-all-time', () => {
       const year = buildManagerDashboardPeriodFilter({ period: 'year', year: '2025' });
       eq(year.period_type, 'YEAR', 'year type');
       eq(year.year, 2025, 'year value');
@@ -191,7 +177,6 @@ async function main() {
       eq(buildManagerDashboardPeriodFilter({ period: 'all_time' }).period_type, 'all_time', 'all time type');
       const custom = buildManagerDashboardPeriodFilter({ period: 'year', startDate: '2025-01-01', endDate: '2025-01-31' });
       eq(custom.period_type, 'CUSTOM', 'a custom range still wins');
-      process.env.NEXT_PUBLIC_BACKEND_READY = '';
     }),
     await run('disputes-resolved-filter', async () => {
       const res = (await dispatchMockRoute({
@@ -272,21 +257,45 @@ async function main() {
         rejected = true;
       }
       ok(rejected, 'a request without to_tier is rejected, as the BE does');
-      // Pending and approved requests are left out, as the BE does; the seed has
-      // no one left for `associate`, so the populated tier is `associate-pro`.
+      // As the BE does (staging 6410b76): approved requests are left out, pending
+      // ones are listed and flagged. The seed has no one left for `associate`.
       ok((await list('associate')).length === 0, 'nobody left for associate (their request is already approved)');
       const pro = await list('associate-pro');
       ok(pro.length > 0, 'someone is eligible for associate-pro');
       ok(pro.every((r) => r.to_tier === 'associate-pro'), 'tier filter');
-      ok(pro.every((r) => !r.upgrade_requested), 'no one with a pending request is listed');
+      ok(pro.some((r) => r.upgrade_requested), 'someone with a pending request is listed, flagged');
+      ok(pro.some((r) => !r.upgrade_requested), 'someone without a request is listed too');
       ok(pro.every((r) => ['guest', 'user', 'associate'].includes(r.user.referral_status)), 'allowed from-tiers only');
-      const target = pro[0];
+      const target = pro.find((r) => !r.upgrade_requested)!;
       await dispatchMockRoute({
         method: 'POST', path: `/admin/users/${target.user.id}/manual-upgrade`,
         query: {}, body: { to_tier: target.to_tier, reason: 'Completed the required course and passed its quiz.' },
       });
       const after = await list('associate-pro');
       ok(!after.some((r) => r.user.id === target.user.id), 'upgraded member drops off the list');
+    }),
+    await run('agency-member-tier', async () => {
+      eq(buildAgencyMemberParams({ tier: 'associate' }).tier, 'associate', 'the tier is sent');
+      eq(buildAgencyMemberParams({ tier: null }).tier, undefined, 'no tier: nothing sent');
+      // the mock narrows by tier the way the BE does
+      const agencies = (await dispatchMockRoute({ method: 'GET', path: '/admin/agencies', query: { limit: 50 }, body: undefined })) as {
+        data: Array<{ id: string }>;
+      };
+      let checked = 0;
+      for (const agency of agencies.data) {
+        const members = async (q: Record<string, unknown>) =>
+          ((await dispatchMockRoute({ method: 'GET', path: `/admin/agencies/${agency.id}/members`, query: { limit: 100, ...q }, body: undefined })) as {
+            data: Array<{ referral_status: string | null }>;
+          }).data;
+        const all = await members({});
+        const tier = all.find((m) => m.referral_status)?.referral_status;
+        if (!tier) continue;
+        const narrowed = await members({ tier });
+        ok(narrowed.length > 0 && narrowed.length <= all.length, 'the tier narrows the list');
+        ok(narrowed.every((m) => m.referral_status === tier), 'every member has the asked tier');
+        checked += 1;
+      }
+      ok(checked > 0, 'at least one agency had members to filter');
     }),
     await run('yearly-company-goals', async () => {
       const year = new Date().getFullYear();
