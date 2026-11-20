@@ -55,7 +55,8 @@ Sales Team Lead reassign right = #7 (referrer, `reassign_referrer`) + #12 (manag
 ### Sales
 | Page | Route | Actions | Current gate |
 |---|---|---|---|
-| Associate Pro Tracker (PRD first page; sidebar Campaigns › Associate Pro Tracker) | `/associate-pros/tracker` | Set/edit yearly goals | `manage_yearly_goals` on buttons only; view/export keys defined, unchecked. **No per-member view** |
+| Associate Manager Performance (**Sales first page: the PRD's "Associate Pro Performance Tracker" is this page, per the product owner**; sidebar Associates › Manager Performance) | `/associates/managers` | Member: own team (the page already scopes to the signed-in manager). Lead: manager picker incl. "All managers (combined)", unassigned Pros, Manage targets, Manage managers menu, reassign a Pro | Page: manager record / manager-tracker permissions (check `app/(dashboard)/associates/managers/page.tsx`). Open question: does a Sales Member have a manager record? If not they need the view permission and a manager to look at |
+| Associate Pro Tracker (now a normal page, sidebar Campaigns › Associate Pro Tracker) | `/associate-pros/tracker` | Set/edit yearly goals | `manage_yearly_goals` on buttons only; view/export keys defined, unchecked. **No per-member view** |
 | Events | `/company-events`, `/new`, `/[id]` (tabs Allocation, Registrations, Analytics) | Create, Publish/Close/Reopen, save allocations, deallocate, resend invite, register on behalf, change pickup, remind, confirmation sheet, exports | Sidebar `view_allocations` only |
 | Flex Leads | `/flex-leads` | Update status/notes, Delete, Export CSV | none |
 | Upgrade Coupons | `/associate-upgrade/coupons` | Create, Edit, Pause/Activate, Delete, View usage | none |
@@ -86,15 +87,16 @@ Sales Team Lead reassign right = #7 (referrer, `reassign_referrer`) + #12 (manag
 
 ## 5. Gaps to resolve with PM / Backend
 1. Multi-role per admin ("roles may be combined"): the FE schema and the v2 `Admin.role` (one ObjectId) are both single-role.
+1b. **Extra permissions per admin** (added 2026-11-20): besides several roles, one person can be granted single permissions on top (e.g. approve Purchase Confirmations without becoming Support Lead). v2 has no such field. Needs `Admin.extra_permissions: string[]` (or equivalent), `permissionsFor(admin)` = union of every role's keys + extras, and the Change Admin Access dialog (Roles tab + Extra permissions tab, locked rows for keys a role already gives). Additive only: no deny rules. Extras never set the start page. Log each grant/revoke (the `assign-admin-role` log action would need a sibling, e.g. `assign-admin-permission`) with actor and time.
 2. Role → landing page, and a Member/Lead flag: neither exists on the server or in the session.
 3. Permission keys (see section 6): most exist on the server; the app uses almost none of them. Real gaps: approve Purchase Confirmation (no endpoint); view vs manage for coupons; view vs act on asset transactions and withdrawals; dedicated Events keys; a narrower reassign-manager key; an explicit "all User Details actions" group.
-4. Individual vs team data: Associate Pro Tracker has no personal-goal view; Recruitment Lead team view absent.
+4. Individual vs team data: Associate Pro Tracker has no personal-goal view (no longer the Sales landing); Recruitment Lead team view absent.
 5. Asset cost/performance restriction must cover the exposure points above (PRD risk table), including the Dashboard (`view_dashboard`) and Sales pages.
 6. Direct-access rejection (FR14): the server already rejects an endpoint call without its permission (section 6). The remaining work is the app (blocked-page state, hiding buttons).
 7. Audit: admin actions are logged; whether denied attempts are logged was not checked. The FE admin-logs hook is still GraphQL.
 8. Topup approval is super-admin-only in the FE; PRD says Finance approves Transactions.
 9. Open item from PRD: Sales Team Lead Campaigns — design shows view-only, flagged.
-10. Mock mode cannot test roles; needs a dev role switcher.
+10. Mock mode cannot test roles; needs a dev role switcher. Mock routes also lack `/admin/managers/*`, so the new Sales landing page cannot be browser-checked in mock mode until those routes are mocked.
 
 ## 6. Backend v2 facts (checked against `abode-be-v2`, branch `staging`)
 - Enforcement: each admin endpoint declares `@AdminAuth({ permissions: [...] })`; `PermissionsGuard` returns 403 naming the missing permission; `is_super_admin` roles hold every key (`src/common/permissions.ts`, `src/common/guards/permissions.guard.ts`). Roles are ops-editable rows.
