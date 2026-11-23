@@ -44,6 +44,7 @@ import { courseRoutes } from './courses';
 import { divisionRoutes } from './division';
 import { standingRoutes } from './standing';
 import { ticketRoutes } from './tickets';
+import { recoveryWindowRoutes } from './recovery-windows';
 
 /* ============================================================
  * Route registration. Importing this module (via lib/mocks/index.ts)
@@ -140,6 +141,10 @@ import { ticketRoutes } from './tickets';
  *               the only screens calling it are the agency ones. No
  *               commissions/export route — the real one streams CSV with
  *               @SkipTransform (matches flex-leads).
+ * recovery-windows — /admin/recovery-windows/* (Finance › Recovery period:
+ *               list, stats, record, remind, terms, choice/decline, refund
+ *               adjust|hold|release|approve). Real BE module on
+ *               abode-be-v2 feat/plan-recovery.
  * purchase-confirmations — /admin/purchase-confirmations/* (list, counts,
  *               resolve-dispute, resend). No export route — the real
  *               endpoint streams CSV with @SkipTransform; the FE hook
@@ -319,6 +324,7 @@ export function ensureRoutesRegistered(): void {
   registerRoutes(siteSetupRoutes);
   registerRoutes(fieldOperationsRoutes);
   registerRoutes(ticketRoutes);
+  registerRoutes(recoveryWindowRoutes);
 
   // Only mark done after every domain registered — a throw mid-way must allow retry.
   registered = true;

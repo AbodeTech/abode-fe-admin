@@ -65,6 +65,7 @@ export type UpdateOfferPayload = {
   is_active?: boolean;
   allocation_qualification_pct?: number;
   payment_type?: 'all-inclusive' | 'partially-inclusive';
+  open_to_recovery_moves?: boolean;
 };
 
 /**

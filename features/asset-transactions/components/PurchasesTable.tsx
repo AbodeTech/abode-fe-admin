@@ -29,6 +29,7 @@ import { TransactionStatus } from "@/components/shared/TransactionStatus";
 import {
   adminStatusForBadge,
   isReviewablePurchase,
+  moveSplitLine,
   payerDisplayName,
   planDurationLabel,
   propertyNameDisplay,
@@ -220,6 +221,9 @@ export function PurchasesTable({
                       </TableCell>
                       <TableCell className="w-25 py-4 font-semibold whitespace-nowrap text-black">
                         ₦{formatNumber(row.amount)}
+                        {moveSplitLine(row) ? (
+                          <span className="block text-xs font-normal text-gray-500">{moveSplitLine(row)}</span>
+                        ) : null}
                       </TableCell>
                       <TableCell className="w-25 py-4 whitespace-nowrap text-gray-700">
                         {formatDateNumerical(row.createdAt)}
@@ -327,7 +331,12 @@ function MobileTransactionCard({
             <DollarSign className="h-5 w-5 text-gray-600" />
             <span className="font-medium text-gray-700">Amount</span>
           </div>
-          <span className="text-xl font-bold text-black">₦{formatNumber(row.amount)}</span>
+          <span className="text-right">
+            <span className="block text-xl font-bold text-black">₦{formatNumber(row.amount)}</span>
+            {moveSplitLine(row) ? (
+              <span className="block text-xs text-gray-500">{moveSplitLine(row)}</span>
+            ) : null}
+          </span>
         </div>
 
         <div className="space-y-3">

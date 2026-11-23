@@ -41,7 +41,14 @@ export const REVIEWABLE_FO_KINDS = [
   'fo_doc_payment',
 ] as const;
 
-export type PurchaseReviewFamily = 'flex' | 'full-ownership';
+/**
+ * A suspended plan's move payment (BE `purchase_kind: 'recovery_move'`): the default fee,
+ * change fee and any up-front land paid to take recovery terms. Approving it moves the
+ * customer to the new plan. Reviewed through the same unified approve/decline routes.
+ */
+export const RECOVERY_MOVE_KIND = 'recovery_move';
+
+export type PurchaseReviewFamily = 'flex' | 'full-ownership' | 'recovery-move';
 
 /** Open vocabulary on the wire — new kinds must not break the table. */
 export const KIND_LABELS: Record<string, string> = {
@@ -52,6 +59,7 @@ export const KIND_LABELS: Record<string, string> = {
   fo_recurring_land: 'Installment · Full ownership',
   fo_outright_doc: 'Document fee · Full ownership',
   fo_doc_payment: 'Document instalment · Full ownership',
+  recovery_move: 'Move payment · Recovery',
 };
 
 export function kindLabel(kind: string | null | undefined): string {
@@ -71,13 +79,14 @@ export function kindLabel(kind: string | null | undefined): string {
  * into their own kinds, and without a third bucket those rows would match
  * neither filter and vanish from every filtered view.
  */
-export const SALES_TYPES = ['ap', 'rap', 'dp'] as const;
+export const SALES_TYPES = ['ap', 'rap', 'dp', 'mp'] as const;
 export type SalesType = (typeof SALES_TYPES)[number];
 
 export const SALES_TYPE_LABELS: Record<SalesType, string> = {
   ap: 'New purchase',
   rap: 'Instalment',
   dp: 'Document fee',
+  mp: 'Move payment',
 };
 
 /**
@@ -138,6 +147,10 @@ export const PurchaseDetailsSchema = z.looseObject({
   monthly_installment: z.number().nullable().optional(),
   balance: z.number().nullable().optional(),
   is_full_payment: z.boolean().nullable().optional(),
+  /** recovery_move: how the payment splits (fee first, then land). */
+  default_fee_portion: z.number().nullable().optional(),
+  change_fee_portion: z.number().nullable().optional(),
+  land_portion: z.number().nullable().optional(),
   transfer_bank_name: z.string().nullable().optional(),
   transfer_reference_no: z.string().nullable().optional(),
   transfer_receipt_url: z.string().nullable().optional(),
@@ -278,6 +291,8 @@ function inferTransactionKind(record: Record<string, unknown>): string {
     .replace(/_/g, '-');
   const purchaseKind = String(record.purchase_kind ?? '').toLowerCase();
   const snap = asRecord(record.purchase_snapshot);
+  // Before the product branches: a move carries the OLD plan's product tag.
+  if (purchaseKind === RECOVERY_MOVE_KIND) return RECOVERY_MOVE_KIND;
   const isFlex = assetType === 'flex';
   // Commercial belongs here: the BE routes `commercial` through the same
   // full-ownership settle/approve service, so its rows carry the FO kinds.
@@ -332,6 +347,9 @@ function buildPurchaseDetails(
         monthly_installment: snap.monthly_installment_expected,
         balance: snap.balance,
         is_full_payment: snap.is_full_payment,
+        default_fee_portion: snap.default_fee_portion,
+        change_fee_portion: snap.change_fee_portion,
+        land_portion: snap.land_portion,
       }
     : {};
 
@@ -454,7 +472,22 @@ export function purchaseReviewFamily(row: Purchase): PurchaseReviewFamily | null
   const kind = purchaseKind(row);
   if ((FLEX_KINDS as readonly string[]).includes(kind)) return 'flex';
   if ((REVIEWABLE_FO_KINDS as readonly string[]).includes(kind)) return 'full-ownership';
+  if (kind === RECOVERY_MOVE_KIND) return 'recovery-move';
   return null;
+}
+
+/** "₦840k fee · ₦100k change fee · ₦50k land" under a move payment's amount; null otherwise. */
+export function moveSplitLine(row: Purchase): string | null {
+  if (purchaseKind(row) !== RECOVERY_MOVE_KIND) return null;
+  const d = row.purchase_details;
+  const short = (n: number) =>
+    n >= 1_000_000 ? `₦${+(n / 1_000_000).toFixed(1)}M` : n >= 1_000 ? `₦${Math.round(n / 1_000)}k` : `₦${n}`;
+  const parts = [
+    d?.default_fee_portion ? `${short(d.default_fee_portion)} default fee` : null,
+    d?.change_fee_portion ? `${short(d.change_fee_portion)} change fee` : null,
+    d?.land_portion ? `${short(d.land_portion)} land` : null,
+  ].filter(Boolean);
+  return parts.length ? parts.join(' · ') : null;
 }
 
 /**
@@ -560,6 +593,7 @@ const SALES_TYPE_BY_KIND: Record<string, SalesType> = {
   fo_recurring_land: 'rap',
   fo_outright_doc: 'dp',
   fo_doc_payment: 'dp',
+  recovery_move: 'mp',
 };
 
 export function salesTypeOf(row: Purchase): SalesType | null {

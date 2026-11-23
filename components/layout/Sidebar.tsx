@@ -40,6 +40,7 @@ import {
   Tags,
   TrendingUp,
   Trophy,
+  Undo2,
   Upload,
   UserCog,
   UserPlus,
@@ -157,6 +158,7 @@ const navGroups = [
     items: [
       { name: "Financial Officer Performance", link: "/financial-officers", icon: <Gauge /> },
       { name: "Finance Automation", link: "/finance-automation", icon: <ClipboardCheck />, requiresPermission: "view_finance_runs" },
+      { name: "Recovery period", link: "/recovery-period", icon: <CalendarDays />, requiresPermission: "view_recovery_windows" },
       { name: "Upgrade Coupons", link: "/associate-upgrade/coupons", icon: <Gift /> },
     ]
   },
@@ -178,6 +180,8 @@ const navGroups = [
     icon: <BarChart3 />,
     items: [
       { name: "Withdrawal", link: "/transactions/withdrawal", icon: <ArrowDownToLine /> },
+      // Recovery refunds paid to the bank, never the wallet. Same people as Withdrawals.
+      { name: "Refunds", link: "/transactions/refunds", icon: <Undo2 />, requiresPermission: "withdrawals" },
       { name: "Topup", link: "/transactions/topup", icon: <Upload /> },
       { name: "Asset", link: "/transactions/assets", icon: <BarChart3 /> },
       { name: "Document", link: "/transactions/document", icon: <FileText /> },

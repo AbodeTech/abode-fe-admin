@@ -1114,9 +1114,17 @@ export const assetRoutes: MockRoutes = {
       is_active?: boolean;
       allocation_qualification_pct?: number;
       payment_type?: string;
+      open_to_recovery_moves?: boolean;
     }>(raw);
 
     const changes: string[] = [];
+    if (dto.open_to_recovery_moves !== undefined) {
+      const current = (offer as { open_to_recovery_moves?: boolean }).open_to_recovery_moves ?? false;
+      if (dto.open_to_recovery_moves !== current) {
+        changes.push(dto.open_to_recovery_moves ? 'opened to recovery moves' : 'closed to recovery moves');
+      }
+      (offer as { open_to_recovery_moves?: boolean }).open_to_recovery_moves = dto.open_to_recovery_moves;
+    }
     if (dto.is_active !== undefined && dto.is_active !== offer.is_active) {
       changes.push(dto.is_active ? 'reactivated' : 'deactivated');
     }
