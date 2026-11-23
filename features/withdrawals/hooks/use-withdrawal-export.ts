@@ -64,6 +64,8 @@ async function fetchAllWithdrawals(filters: WithdrawalListFilters) {
         search: filters.search || undefined,
         admin_status: filters.admin_status,
         payment_provider: filters.payment_provider,
+        start_date: filters.start_date,
+        end_date: filters.end_date,
       },
     });
 

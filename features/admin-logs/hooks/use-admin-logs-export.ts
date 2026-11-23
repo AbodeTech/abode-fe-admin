@@ -1,6 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import { execute } from '@/lib/graphql-client';
-import { graphql } from '@/lib/gql';
+import { apiGetPaged } from '@/lib/api-client';
 // @ts-ignore
 import { Parser } from 'json2csv';
 import * as XLSX from 'xlsx';
@@ -10,53 +9,42 @@ import { saveAs } from 'file-saver';
 import { jsPDF } from 'jspdf';
 // @ts-ignore
 import autoTable from 'jspdf-autotable';
-import { AdminLogFilters } from './use-admin-logs';
-
-const EXPORT_ADMIN_LOGS_QUERY = graphql(`
-  query ExportAdminLogs($page: Int!, $limit: Int!, $adminEmail: String, $action: String) {
-    getAllAdminLogs(page: $page, limit: $limit, adminEmail: $adminEmail, action: $action) {
-      data {
-        timestamp
-        description
-        action
-        adminEmail
-        adminId
-        metadata
-        oldState
-        _id
-      }
-    }
-  }
-`);
+import { AdminLogSchema } from '../schemas/admin-log.schema';
+import type { AdminLogFilters } from './use-admin-logs';
 
 export type AdminLogExportFormat = 'csv' | 'xlsx' | 'pdf';
 
-const processLog = (log: any) => ({
+const processLog = (log: {
+  timestamp: string;
+  admin_email: string | null;
+  action: string;
+  description: string;
+  admin_id: string | null;
+}) => ({
   timestamp: log.timestamp,
-  adminEmail: log.adminEmail,
+  adminEmail: log.admin_email ?? 'System',
   action: log.action,
   description: log.description,
-  adminId: log.adminId,
+  adminId: log.admin_id ?? '',
 });
 
-const exportCsv = (rows: any[], filename: string) => {
+const exportCsv = (rows: ReturnType<typeof processLog>[], filename: string) => {
   const parser = new Parser({ fields: Object.keys(rows[0] || {}) });
   const csv = parser.parse(rows);
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  saveAs(blob, `${filename}.csv`);
+  saveAs(new Blob([csv], { type: 'text/csv;charset=utf-8;' }), `${filename}.csv`);
 };
 
-const exportXlsx = (rows: any[], filename: string) => {
+const exportXlsx = (rows: ReturnType<typeof processLog>[], filename: string) => {
   const worksheet = XLSX.utils.json_to_sheet(rows);
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Admin Logs');
   XLSX.writeFile(workbook, `${filename}.xlsx`);
 };
 
-const exportPdf = (rows: any[], filename: string) => {
+const exportPdf = (rows: ReturnType<typeof processLog>[], filename: string) => {
   const doc = new jsPDF();
   const columns = Object.keys(rows[0] || {});
-  const data = rows.map((row) => columns.map((c) => row[c] ?? ''));
+  const data = rows.map((row) => columns.map((column) => row[column as keyof typeof row] ?? ''));
   autoTable(doc, {
     head: [columns],
     body: data,
@@ -67,31 +55,33 @@ const exportPdf = (rows: any[], filename: string) => {
   doc.save(`${filename}.pdf`);
 };
 
-export const useAdminLogsExport = () => {
-  return useMutation({
-    mutationFn: async ({ filters, format }: { filters: AdminLogFilters; format: AdminLogExportFormat }) => {
-      const res = await execute(EXPORT_ADMIN_LOGS_QUERY, {
-        page: 1,
-        limit: 1_000_000,
-        adminEmail: filters.adminEmail || undefined,
-        action: filters.action || undefined,
-      });
-
-      const raw = res.getAllAdminLogs?.data || [];
-      if (!raw.length) throw new Error('No logs available to export');
-      const rows = raw.map(processLog);
-
-      switch (format) {
-        case 'csv':
-          exportCsv(rows, 'admin_logs');
-          break;
-        case 'xlsx':
-          exportXlsx(rows, 'admin_logs');
-          break;
-        case 'pdf':
-          exportPdf(rows, 'admin_logs');
-          break;
-      }
-    },
+async function getAllFilteredLogs(filters: AdminLogFilters) {
+  const limit = 500;
+  const firstPage = await apiGetPaged('/admin/audit-logs', AdminLogSchema, {
+    params: { page: 1, limit, adminId: filters.adminId || undefined, action: filters.action || undefined },
   });
-};
+  const logs = [...firstPage.items];
+  const totalPages = firstPage.meta.totalPages ?? 1;
+
+  for (let page = 2; page <= totalPages; page += 1) {
+    const result = await apiGetPaged('/admin/audit-logs', AdminLogSchema, {
+      params: { page, limit, adminId: filters.adminId || undefined, action: filters.action || undefined },
+    });
+    logs.push(...result.items);
+  }
+  return logs;
+}
+
+export const useAdminLogsExport = () => useMutation({
+  mutationFn: async ({ filters, format }: { filters: AdminLogFilters; format: AdminLogExportFormat }) => {
+    const raw = await getAllFilteredLogs(filters);
+    if (!raw.length) throw new Error('No logs available to export');
+    const rows = raw.map(processLog);
+
+    switch (format) {
+      case 'csv': exportCsv(rows, 'admin_logs'); break;
+      case 'xlsx': exportXlsx(rows, 'admin_logs'); break;
+      case 'pdf': exportPdf(rows, 'admin_logs'); break;
+    }
+  },
+});

@@ -32,6 +32,8 @@ export const useWithdrawals = (filters?: WithdrawalListFilters) => {
           search: rest.search || undefined,
           admin_status: rest.admin_status,
           payment_provider: rest.payment_provider,
+          start_date: rest.start_date,
+          end_date: rest.end_date,
         },
       }),
   });

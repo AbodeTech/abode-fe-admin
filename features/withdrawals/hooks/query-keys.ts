@@ -6,6 +6,9 @@ export type WithdrawalListFilters = {
   search?: string;
   admin_status?: AdminStatus;
   payment_provider?: PaymentProvider;
+  /** Inclusive calendar-month range, sent as YYYY-MM-DD boundaries. */
+  start_date?: string;
+  end_date?: string;
   page?: number;
   limit?: number;
 };
