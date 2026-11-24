@@ -10,7 +10,7 @@ import { z } from 'zod';
  * aliases there changes nothing here.
  *
  * Query: `page`, `limit`, `admin_id`, `action`. There is no search by email, no
- * date range and no export.
+ * date range and no export route (the export button pages through this endpoint).
  * ============================================================ */
 
 /**

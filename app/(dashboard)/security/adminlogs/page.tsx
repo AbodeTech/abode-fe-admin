@@ -8,6 +8,7 @@ import {
   useAdminLogs,
   DEFAULT_ADMIN_LOGS_LIMIT,
 } from "@/features/admin-logs";
+import { AdminLogsExport } from "@/features/admin-logs/components/AdminLogsExport";
 import { Pagination } from "@/components/shared/Pagination";
 import { PageContentLoader, SuspensePageFallback } from "@/components/shared/page-content-loader";
 import { Card } from "@/components/ui/card";
@@ -51,6 +52,14 @@ function Content() {
     <div className="mx-auto mt-4 w-full min-w-0 max-w-[1600px] space-y-6 px-3 pb-16 sm:px-4 sm:pb-20">
       <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="min-w-0 text-2xl font-bold tracking-tight">Admin Logs</h1>
+        <AdminLogsExport
+          filters={{
+            page,
+            limit: DEFAULT_ADMIN_LOGS_LIMIT,
+            adminId,
+            action,
+          }}
+        />
       </div>
 
       <Card className="min-w-0 overflow-hidden p-4">

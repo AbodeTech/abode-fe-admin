@@ -66,7 +66,7 @@ A recount after #179: 38 `/admin` handlers use a bare `@AdminAuth()` (43 before)
 - **Fixed:** `support_member` is retired (`RETIRED_ROLES` in `sync-role-permissions.ts`); `cs_manager` is the Support Member persona. The seed has 16 roles.
 - **Fixed:** `sales_member` no longer holds `view_payment_plans`, so the Lead no longer opens fewer pages than their own Member.
 - **Fixed:** `GET /admin/audit-logs` now returns the documented snake_case `AdminLogResponseDto` (`id`, `admin_id`, `admin_email`, `old_state`, `new_state`, `actor_type`, …), with the old camelCase fields kept as deprecated aliases, and takes `admin_id` (the old `adminId` still works). The frontend has moved to the new names, so the aliases can be removed whenever you like.
-- **Still open:** the audit log can be filtered only by admin and `action`. The old admin page also searched by admin email and exported a CSV. There is no email or text search, no date range and no export route (the `export-audit-logs` action exists in the schema but nothing writes it). Say if these are wanted.
+- **Still open:** the audit log can be filtered only by admin and `action`. The old admin page also searched by admin email. There is no email or text search and no date range. Export works without a backend route: the page pages through `GET /admin/audit-logs` (500 rows at a time, with the same filters) and builds the CSV, XLSX or PDF in the browser. A server-side export route (the `export-audit-logs` action exists in the schema but nothing writes it) would only matter for very large logs. Say if the search or date range are wanted.
 - **Still open:** commission has no view key. Rates, overrides and the audit all read behind `manage_commission` (`commission-admin.controller.ts`), so a role cannot be given view-only commission access.
 - **Still open:** two super-admin roles exist (`super_admin`, `founder_super_admin`), and `executive` is not in the PRD.
 
@@ -103,4 +103,4 @@ Please tell the frontend before changing any of these.
 1. N3: decide whether role writes should apply the same grant rules as extra permissions.
 2. N2: decide whether the ticket writes, analytics, export and ingestion trigger should be open to every admin.
 3. N1: decide whether the Support Lead should be able to adjust wallets (and so list them).
-4. B3: audit-log email search and export, a commission view key, the extra super-admin roles.
+4. B3: audit-log email search and date range, a commission view key, the extra super-admin roles.

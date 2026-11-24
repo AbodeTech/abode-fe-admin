@@ -625,7 +625,7 @@ export function AdminLogMetadataModal({ open, onOpenChange, log }: AdminLogMetad
                   Operator Information
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
-                  <MetadataField icon={Mail} label="Admin Account" value={log.admin_email} />
+                  <MetadataField icon={Mail} label="Admin Account" value={log.admin_email || (log.actor_type === "system" ? "System" : null)} />
                   <MetadataField icon={Hash} label="Admin ID" value={log.admin_id} />
                 </div>
                 <div className="mt-2 border-t border-border/50 pt-2">

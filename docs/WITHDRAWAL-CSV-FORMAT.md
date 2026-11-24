@@ -38,24 +38,25 @@ separate `transaction_status` column rather than overloading `status`.
 
 ## Backend requirements
 
-The frontend can export the values returned by `GET /admin/withdrawals`, but
-the current response does not populate every requested column and the list
-endpoint does not accept date filters. The backend should:
+The frontend exports values returned by `GET /admin/withdrawals`. The backend
+contract needed for the extra populated columns and date filtering is present
+in the backend checkout's `staging` branch. The frontend's shared time-range
+filter sends the selected date boundaries to both the list and export. The backend
+should continue to:
 
 1. Populate the requester's `phoneNumber` and `referred_by` (or an equivalent
    stable referrer field) in each withdrawal row. Return the referrer's name in
    a documented shape the frontend can read.
-2. Add optional `start_date` and `end_date` query parameters to
+2. Preserve optional `start_date` and `end_date` query parameters on
    `GET /admin/withdrawals`, filtering by the withdrawal transaction's
-   `createdAt`. This enables a month filter to affect the table and CSV export.
-   The current supported query parameters are `admin_status`,
-   `payment_provider`, `search`, `page`, and `limit`.
+   `createdAt`. This enables the time-range filter to affect the table and CSV export.
+   The supported query parameters are `admin_status`, `payment_provider`,
+   `search`, `start_date`, `end_date`, `page`, and `limit`.
 3. Keep `admin_status` and transaction `status` as distinct response fields;
    the CSV `status` column uses `admin_status` to match the agreed sample.
 
-Until those response/query changes land, missing phone/referrer values export
-as blank, and the monthly filter cannot be applied to the withdrawal list or
-its CSV reliably.
+If phone or referrer is missing on a particular user/transaction, its CSV cell
+remains blank. The time-range filter uses the backend's inclusive date boundaries.
 
 See [CSV-EXPORT-BACKEND-REQUIREMENTS.md](./CSV-EXPORT-BACKEND-REQUIREMENTS.md)
 for the full response contract covering both commission and withdrawal CSVs.
