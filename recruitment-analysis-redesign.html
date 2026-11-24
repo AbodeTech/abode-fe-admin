@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Recruitment Analysis · Abode Admin</title>
+  <style>
+    :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#202b3d;background:#f5f5f5;font-synthesis:none;text-rendering:optimizeLegibility;--muted:#718096;--line:#e2e8f0;--teal:#0f766e;--teal-dark:#075e59;--teal-soft:#e7f5f2;--amber:#b45309;--amber-soft:#fff7e9;--shadow:0 1px 3px rgba(16,24,40,.08),0 1px 2px rgba(16,24,40,.04)}*{box-sizing:border-box}body{margin:0;min-height:100vh}.app{min-height:100vh;display:flex;padding:0 12px 0 0;gap:0}.sidebar{width:260px;flex:0 0 260px;padding:19px 12px;background:#f5f5f5;color:#657084}.brand{height:45px;margin:0 12px 24px;display:flex;align-items:center;gap:10px;color:#172033;font-weight:800;font-size:19px;letter-spacing:-.04em}.brand-mark{width:28px;height:28px;border-radius:50%;background:#0f766e;color:white;display:grid;place-items:center;font-size:14px}.nav-group{margin:0 0 18px}.nav-heading{padding:0 12px 7px;font-size:10px;font-weight:750;letter-spacing:.12em;text-transform:uppercase;color:#9aa3b2}.nav-link{height:38px;padding:0 12px;margin:2px 0;border-radius:8px;display:flex;align-items:center;gap:11px;font-size:13px;font-weight:530;color:#6c7687}.nav-link .ico{width:16px;text-align:center;color:#8993a3}.nav-link.active{background:#e0f2f1;color:#00695c;font-weight:650}.nav-link.active .ico{color:#08786f}.nav-sub{border-left:1px solid #d9dee6;margin:4px 0 0 18px;padding-left:9px}.nav-link.sub{height:34px;font-size:12px;padding-left:10px}.main{min-width:0;flex:1;margin:8px 0;background:#fafafa;border-radius:12px 12px 0 0;box-shadow:0 4px 20px rgba(0,0,0,.07);display:flex;flex-direction:column;overflow:hidden}.topbar{height:72px;display:flex;align-items:center;gap:15px;padding:0 30px;background:#fdfdfd;border-bottom:1px solid #e6e6e6;flex-shrink:0}.menu{font-size:20px;color:#242a33}.hello{font-size:22px;font-weight:720;letter-spacing:-.035em;color:#212832}.content{overflow:auto;padding:27px 34px 52px}.page-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:22px}.eyebrow{color:#0f766e;font-size:10px;text-transform:uppercase;letter-spacing:.15em;font-weight:750}.page-head h1{margin:5px 0 0;font-size:25px;letter-spacing:-.04em;line-height:1.2;color:#182235}.subtitle{margin:7px 0 0;font-size:13px;color:#778398}.head-actions{display:flex;align-items:center;gap:12px}.updated{color:#8b96a8;font-size:11px;white-space:nowrap}.updated strong{color:#536174;font-weight:600}.btn{height:36px;padding:0 13px;border:1px solid #dfe4eb;border-radius:8px;background:white;color:#48556a;font:600 12px Inter,ui-sans-serif,system-ui,sans-serif;cursor:pointer;box-shadow:0 1px 2px rgba(16,24,40,.04)}.btn:hover{border-color:#aeb9c7;background:#fbfcfd}.filters{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px;background:white;border:1px solid var(--line);border-radius:11px;box-shadow:var(--shadow);margin-bottom:17px}.filter-label{font-size:10px;font-weight:750;letter-spacing:.1em;color:#8792a3;padding:0 5px}.select{height:36px;padding:0 33px 0 11px;min-width:170px;border:1px solid #e2e7ed;border-radius:7px;background:#fbfcfd;color:#37445a;font:500 12px Inter,ui-sans-serif,system-ui,sans-serif;outline:none}.select:focus{border-color:#62aca5;box-shadow:0 0 0 3px #e5f4f1}.filter-spacer{flex:1}.reset{border:0;background:transparent;color:#0f766e;font-weight:650;font-size:11px;cursor:pointer}.section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:22px 1px 11px}.section-head h2{margin:0;color:#202b3d;font-size:14px;letter-spacing:-.01em}.section-note{font-size:10px;color:#98a2b1}.overview{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.metric{background:white;border:1px solid #e3e8ee;border-radius:11px;box-shadow:var(--shadow);min-height:112px;padding:15px 16px;position:relative;overflow:hidden}.metric.emphasis{border-color:#b8e3d8;background:linear-gradient(135deg,#fff 20%,#f2fbf8)}.metric-label{font-size:11px;color:#7b879a;font-weight:600}.metric-value{margin-top:12px;font-size:25px;line-height:1;font-weight:740;letter-spacing:-.04em;color:#172033;font-variant-numeric:tabular-nums}.metric.emphasis .metric-value{color:#08735f}.metric-foot{margin-top:9px;color:#8994a6;font-size:10px}.metric-foot b{color:#0d755e;font-weight:700}.metric-tag{position:absolute;right:14px;top:14px;width:7px;height:7px;border-radius:50%;background:#10a37f}.metric-tag.warn{background:#e9a23b}.panel{background:white;border:1px solid #e3e8ee;border-radius:11px;box-shadow:var(--shadow)}.journey{padding:17px 18px 13px}.journey-top{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:16px}.journey-top h3,.panel-title{margin:0;font-size:12px;font-weight:700;color:#27344a}.legend{display:flex;gap:14px;color:#929dad;font-size:10px}.legend span{display:flex;align-items:center;gap:5px}.dot{width:7px;height:7px;background:#0f8b78;border-radius:50%}.dot.gray{background:#d4dbe3}.journey-grid{display:grid;grid-template-columns:repeat(7,minmax(105px,1fr));gap:8px;overflow:auto;padding:1px 0 7px}.step{min-width:105px;width:100%;padding:11px 10px 10px;border:1px solid #e7ebf0;border-radius:8px;background:#fff;font:inherit;text-align:left;cursor:pointer}.step:last-child,.step.key{border-color:#b8e4d9;background:#f8fcfb}.step-label{min-height:26px;color:#6e7b90;font-size:10px;font-weight:650;line-height:1.3}.step-value{font-size:18px;font-weight:730;color:#1c293c;letter-spacing:-.03em;margin:4px 0 8px}.step-value.missing{font-size:11px;color:#b45309;letter-spacing:0}.bar{height:5px;border-radius:5px;background:#edf1f4;overflow:hidden}.bar i{height:100%;display:block;background:#168575;border-radius:inherit}.step-caption{margin-top:7px;font-size:9px;color:#909bad;white-space:nowrap}.journey-note{margin:11px 0 0;padding-top:10px;border-top:1px solid #f0f2f5;color:#8a95a6;font-size:10px}.lower{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(290px,.8fr);gap:13px;margin-top:14px}.table-panel{overflow:hidden}.panel-head{display:flex;align-items:center;justify-content:space-between;padding:15px 16px 12px}.panel-head .muted{font-size:10px;color:#95a0af}.tabs{display:flex;gap:4px;background:#f3f5f7;padding:3px;border-radius:7px}.tab{padding:6px 9px;border:0;border-radius:5px;background:transparent;color:#788496;font:600 10px Inter,ui-sans-serif,system-ui,sans-serif;cursor:pointer}.tab.on{background:white;color:#27344a;box-shadow:0 1px 2px #00000012}.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;text-align:left}th{padding:9px 15px;background:#fafbfc;color:#939dad;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;border-top:1px solid #f0f2f5;border-bottom:1px solid #edf0f4}td{padding:11px 15px;border-bottom:1px solid #f0f2f5;color:#536075;font-size:10px;white-space:nowrap}tr:last-child td{border-bottom:0}.name{font-weight:650;color:#2e3a4e}.badge{display:inline-flex;align-items:center;padding:4px 7px;border-radius:20px;background:#f1f4f6;color:#677487;font-size:9px;font-weight:650}.badge.open{background:#fff5e3;color:#a76608}.mini-track{display:inline-block;vertical-align:middle;width:55px;height:5px;border-radius:4px;background:#edf1f4;margin-right:6px;overflow:hidden}.mini-track i{display:block;height:100%;background:#138676}.num-link{border:0;background:transparent;color:#087968;font:700 10px Inter,ui-sans-serif,system-ui,sans-serif;cursor:pointer;padding:0}.right-stack{display:flex;flex-direction:column;gap:13px}.followups,.activity{padding:15px}.follow-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}.follow-head span{font-size:9px;color:#97a1af}.follow-list{display:grid;gap:7px}.follow-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 10px;background:#fafbfc;border:1px solid #eef1f4;border-radius:7px}.follow-name{font-size:10px;color:#586579;font-weight:600}.follow-count{font-size:14px;color:#1d2b40;font-weight:720}.follow-count.no-data{font-size:10px;color:#b45309}.follow-link{border:0;background:none;cursor:pointer;color:#0f766e;font-size:9px;font-weight:650;white-space:nowrap}.activity-bar{display:flex;height:8px;overflow:hidden;border-radius:8px;background:#edf1f4;margin:12px 0}.activity-bar i:nth-child(1){background:#0d766b}.activity-bar i:nth-child(2){background:#51ad9a}.activity-bar i:nth-child(3){background:#b4ded2}.activity-legend{display:grid;grid-template-columns:1fr 1fr;gap:8px}.activity-item{display:flex;align-items:center;gap:6px;color:#778397;font-size:9px}.activity-item b{color:#344158;font-size:10px}.activity-item i{width:7px;height:7px;border-radius:50%;background:#0d766b}.activity-item:nth-child(2) i{background:#51ad9a}.activity-item:nth-child(3) i{background:#b4ded2}.activity-foot{margin:11px 0 0;color:#9aa3b0;font-size:9px;line-height:1.5}.detail-link{display:inline-flex;align-items:center;gap:5px;color:#0f766e;text-decoration:none;font-size:10px;font-weight:650}.modal-backdrop{position:fixed;inset:0;z-index:10;display:none;place-items:center;padding:20px;background:#11182766}.modal-backdrop.show{display:grid}.modal{width:min(760px,100%);max-height:80vh;overflow:auto;border-radius:12px;background:white;box-shadow:0 24px 70px #0f172a33}.modal-head{padding:18px 20px;border-bottom:1px solid #edf0f4;display:flex;align-items:center;justify-content:space-between}.modal-head h2{margin:0;font-size:15px}.close{border:0;background:none;font-size:22px;color:#8791a0;cursor:pointer}.modal-content{padding:16px 20px}.modal-search{width:100%;height:36px;padding:0 11px;border:1px solid #e2e7ed;border-radius:7px;font-size:12px}.modal table{margin-top:12px}.footer-note{font-size:9px;color:#9ba5b2;margin:12px 0 0}
+    @media(max-width:1100px){.sidebar{width:220px;flex-basis:220px}.content{padding:23px 22px 42px}.overview{grid-template-columns:repeat(2,minmax(0,1fr))}.lower{grid-template-columns:1fr}.right-stack{display:grid;grid-template-columns:1fr 1fr}.journey-grid{grid-template-columns:repeat(7,minmax(112px,1fr))}}
+    @media(max-width:700px){.app{padding-right:0}.sidebar{display:none}.main{margin:0;border-radius:0}.topbar{height:58px;padding:0 17px}.hello{font-size:18px}.content{padding:20px 14px 35px}.page-head{align-items:flex-start;flex-direction:column}.page-head h1{font-size:22px}.head-actions{width:100%;justify-content:space-between}.filters{gap:8px}.filter-label{width:100%}.select{min-width:0;flex:1;width:100%}.filter-spacer{display:none}.reset{margin-left:auto}.overview{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.metric{padding:13px;min-height:105px}.metric-value{font-size:22px}.section-head{margin-top:18px}.journey{padding:14px 12px}.journey-top{align-items:flex-start;flex-direction:column}.journey-grid{grid-template-columns:repeat(7,112px)}.right-stack{grid-template-columns:1fr}.table-panel{min-width:0}.panel-head{align-items:flex-start;flex-direction:column;gap:10px}.tabs{max-width:100%;overflow:auto}.tab{white-space:nowrap}.updated{font-size:10px}}
+    @media(max-width:380px){.overview{grid-template-columns:1fr}.metric{min-height:90px}.metric-value{margin-top:8px}.metric-foot{margin-top:6px}}
+  </style>
+  <style>
+    .metric.primary{background:linear-gradient(135deg,#fff 20%,#f2fbf8);border-color:#b8e3d8}
+    .metric.primary .metric-value{color:#08735f;font-size:30px}
+    .metric-foot .good{color:#08735f;font-weight:750}
+    .team-action{display:flex;align-items:center;gap:13px;margin:1px 0 20px;padding:13px 15px;border:1px solid #f0dfbc;border-radius:10px;background:#fffaf0}
+    .team-action{margin-top:18px;margin-bottom:36px}
+    .team-action-icon{width:30px;height:30px;flex:0 0 30px;border-radius:8px;background:#fff0cc;color:#a76608;display:grid;place-items:center;font-size:15px;font-weight:800}
+    .team-action-copy{min-width:0;flex:1}.team-action-copy strong{display:block;font-size:11px;color:#614313}.team-action-copy span{display:block;margin-top:3px;color:#89734d;font-size:10px;line-height:1.4}
+    .team-action button{border:1px solid #ead6aa;border-radius:7px;background:#fff;color:#8b5b0a;padding:8px 10px;font:650 10px Inter,ui-sans-serif,system-ui,sans-serif;white-space:nowrap;cursor:pointer}
+    @media(max-width:560px){.team-action{align-items:flex-start;flex-wrap:wrap}.team-action button{margin-left:43px}}
+  </style>
+  <style>
+    .journey{padding:20px 20px 17px}
+    .journey-top{margin-bottom:14px}
+    .journey-top h3{font-size:14px}
+    .journey-grid{grid-template-columns:repeat(7,minmax(118px,1fr));gap:9px;padding:0 0 3px}
+    .step{min-height:120px;padding:13px 12px 11px;border-radius:9px;transition:border-color .15s,box-shadow .15s,transform .15s}
+    .step:hover{border-color:#7cc5b6;box-shadow:0 3px 10px #0f766e12;transform:translateY(-1px)}
+    .step:focus-visible{outline:2px solid #168575;outline-offset:2px}
+    .step-label{min-height:30px;font-size:10px;line-height:1.35;color:#526176}
+    .step-value{font-size:22px;margin:6px 0 10px}
+    .step-value.missing{font-size:12px}
+    .bar{height:6px}
+    .step-caption{display:inline-block;margin-top:8px;padding:3px 6px;border-radius:5px;background:#f4f6f8;font-size:9px;font-weight:650;color:#738096}
+    .step.key .step-caption{background:#eaf6f2;color:#08735f}
+    .step .step-value.missing~.step-caption{background:#fff5e6;color:#a76608}
+    .lower{align-items:start;grid-template-columns:minmax(0,1.65fr) minmax(310px,.9fr);gap:14px}
+    .table-panel{align-self:start}
+    .panel-head{min-height:59px;padding:12px 14px}
+    .tabs{gap:2px}.tab{padding:7px 9px}
+    .table-wrap th{padding-top:11px;padding-bottom:11px}
+    .table-wrap td{padding-top:14px;padding-bottom:14px}
+    .follow-row{min-height:43px;padding:8px 10px}
+    .follow-name{font-size:10px;line-height:1.3}
+    .follow-count{min-width:28px;text-align:right;font-size:15px}
+    .follow-link{padding:4px 0 4px 5px}
+    .activity{min-height:144px}
+    .table-panel{width:100%;margin-top:14px}
+    .insights-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start;gap:14px;margin-top:14px}
+    .insights-grid>.panel{min-width:0}
+    .followups{margin-top:14px;padding:18px}
+    .followups .follow-head{margin-bottom:14px}
+    .followups .panel-title{font-size:14px}
+    .follow-list{grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+    .follow-row{min-height:158px;display:flex;align-items:flex-start;flex-direction:column;justify-content:flex-start;gap:0;padding:13px;border-radius:10px;background:#fff;transition:transform .15s,box-shadow .15s}
+    .follow-row:hover{transform:translateY(-2px);box-shadow:0 5px 14px #1d293910}
+    .follow-row.attention{border-color:#eed49d;background:linear-gradient(150deg,#fffaf0,#fff 76%)}
+    .follow-row.unavailable{background:#f9fafb}
+    .queue-tag{padding:4px 7px;border-radius:5px;background:#eef2f5;color:#6e7b90;font-size:9px;font-weight:700}
+    .attention .queue-tag{background:#fff0cc;color:#9a620b}
+    .unavailable .queue-tag{background:#f0f2f4;color:#929baa}
+    .follow-row .follow-count{margin-top:14px;text-align:left;font-size:27px;line-height:1;letter-spacing:-.04em;color:#1d293b}
+    .follow-row .follow-count.no-data{color:#b57820;font-size:19px;letter-spacing:0}
+    .follow-row .follow-name{margin-top:6px;color:#66748a;font-size:10px}
+    .follow-row .follow-link{margin-top:auto;padding:8px 0 0;color:#087968;font-size:10px;font-weight:700}
+    .follow-row .follow-link b{margin-left:4px;font-size:12px}
+    .unavailable .follow-link{color:#9aa3af;font-weight:550}
+    .active-summary{display:grid;grid-template-columns:minmax(190px,.75fr) minmax(0,2fr);gap:16px;align-items:stretch;margin-top:14px;padding:14px;border-color:#c7e5dc;background:#f5fbf8}
+    .active-total{display:flex;flex-direction:column;justify-content:center;padding:7px 18px;border-right:1px solid #dceee8}
+    .active-kicker{color:#6c8c82;font-size:9px;font-weight:800;letter-spacing:.1em}
+    .active-total strong{margin-top:6px;color:#08735f;font-size:40px;line-height:1;font-weight:750;letter-spacing:-.05em}
+    .active-empty{margin-top:6px;color:#859a92;font-size:10px}
+    .active-breakdown{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;align-items:center}
+    .active-breakdown .activity-item{min-height:74px;display:grid;grid-template-columns:10px 1fr;grid-template-rows:auto 1fr;align-content:center;column-gap:8px;row-gap:8px;padding:13px;border:1px solid #e1eee9;border-radius:9px;background:#fff;color:#69788a;font-size:10px}
+    .active-breakdown .activity-item i{grid-row:1 / span 2;align-self:start;width:8px;height:8px;margin-top:2px}
+    .active-breakdown .activity-item b{grid-column:2;color:#24364a;font-size:18px}
+    .active-breakdown .activity-item.recruit i{background:#51ad9a}
+    .active-breakdown .activity-item.both i{background:#b4ded2}
+    .journey-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+    .journey-card{min-height:158px;display:flex;flex-direction:column;align-items:stretch;padding:17px 18px 15px;border:1px solid #e3e9ee;border-radius:10px;background:#fff;text-align:left;color:#29364a;font:inherit;cursor:pointer;transition:border-color .15s,box-shadow .15s,transform .15s}
+    .journey-card:hover{border-color:#9ccfc2;box-shadow:0 4px 12px #0f766e12;transform:translateY(-1px)}
+    .journey-card:focus-visible{outline:2px solid #168575;outline-offset:2px}
+    .journey-card-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+    .journey-card-label{display:flex;align-items:center;gap:10px;color:#526176;font-size:11px;font-weight:680}
+    .journey-card-label i{width:25px;height:25px;flex:0 0 25px;display:grid;place-items:center;border-radius:50%;background:#f0f3f5;color:#778497;font-size:10px;font-style:normal;font-weight:700}
+    .journey-share{padding:4px 7px;border-radius:5px;background:#f3f6f7;color:#68778c;font-size:10px;font-weight:700;font-variant-numeric:tabular-nums}
+    .journey-card-value{margin-top:19px;color:#1d293b;font-size:28px;line-height:1;font-weight:740;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+    .journey-card-caption{margin-top:8px;color:#8490a1;font-size:10px}
+    .journey-card-track{height:6px;margin-top:auto;padding-top:12px;box-sizing:content-box;border-radius:8px;background:linear-gradient(to bottom,transparent 12px,#edf1f4 12px,#edf1f4 18px,transparent 18px);overflow:hidden}
+    .journey-card-track i{height:6px;display:block;border-radius:8px;background:#168575}
+    .key-stage{border-color:#b8e4d9;background:#f8fcfb}
+    .key-stage .journey-card-label i{background:#e3f3ee;color:#08735f}
+    .unavailable-stage{cursor:default;background:#fbfbfa}
+    .unavailable-stage:hover{transform:none;box-shadow:none;border-color:#e3e9ee}
+    .unavailable-stage .journey-card-value,.unavailable-stage .journey-card-caption{color:#a0783c}
+    .missing-count{font-size:18px;letter-spacing:0}
+    @media(max-width:1100px){.lower{grid-template-columns:1fr}.journey-grid{grid-template-columns:repeat(7,minmax(118px,1fr))}}
+    @media(max-width:900px){.journey-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:900px){.follow-list{grid-template-columns:repeat(2,minmax(0,1fr))}.active-summary{grid-template-columns:1fr}.active-total{border-right:0;border-bottom:1px solid #dceee8;padding:8px 10px 14px}.active-breakdown{padding-top:2px}}
+    @media(max-width:560px){.followups{padding:13px}.follow-list{grid-template-columns:1fr}.follow-row{min-height:135px}.active-breakdown{grid-template-columns:1fr}.active-breakdown .activity-item{min-height:60px}.journey-cards{grid-template-columns:1fr}.journey-card{min-height:145px}}
+    /* Recruitment Performance reference: restrained blue analytics accent and softer panel rhythm. */
+    .journey{padding:20px;border-radius:14px}
+    .journey-card{min-height:170px;padding:19px;border-radius:12px;border-color:#e6e5e0}
+    .journey-card:hover{border-color:#9ec5f4;box-shadow:0 5px 16px #2a78d614}
+    .journey-card:focus-visible{outline-color:#2a78d6}
+    .journey-card-label i{background:#e8f1fc;color:#2a78d6}
+    .journey-share{background:#e8f1fc;color:#2a78d6}
+    .journey-card-track{background:linear-gradient(to bottom,transparent 12px,#ecebe6 12px,#ecebe6 18px,transparent 18px)}
+    .journey-card-track i{background:#2a78d6}
+    .key-stage{border-color:#c7dcf6;background:#f7faff}
+    .key-stage .journey-card-label i{background:#e8f1fc;color:#2a78d6}
+    /* Extend the reference report style to page filters, charts and the cohort table. */
+    .filters{position:sticky;top:0;z-index:5;gap:14px;padding:12px 14px;background:rgba(252,252,251,.94);backdrop-filter:blur(8px);border-color:#e6e5e0;border-radius:12px;box-shadow:0 2px 8px #14141408}
+    .filter-field{display:flex;flex-direction:column;gap:4px;min-width:165px}
+    .filter-field>span{color:#8a8984;font-size:10px;font-weight:650;letter-spacing:.025em}
+    .select{height:38px;min-width:0;width:100%;border-color:#e6e5e0;border-radius:8px;background:#fff;color:#252525;font-size:12px}
+    .select:focus{border-color:#8db8e8;box-shadow:0 0 0 3px #e8f1fc}
+    .reset{color:#2a78d6}
+    .table-panel{border-color:#e6e5e0;border-radius:14px;box-shadow:none}
+    .panel-head{min-height:66px;padding:16px 20px}
+    .panel-title{font-size:14px;color:#171717}
+    .tabs{gap:2px;padding:3px;border:1px solid #e6e5e0;border-radius:10px;background:#fff}
+    .tab{padding:7px 10px;border-radius:7px;color:#686761;font-size:11px}
+    .tab.on{background:#171717;color:#fff;box-shadow:none}
+    .table-wrap th{padding:12px 16px;background:#fafaf8;color:#8a8984;font-size:10px;border-color:#e6e5e0}
+    .table-wrap td{padding:14px 16px;border-color:#efeee9;color:#52514e;font-size:12px}
+    .name{color:#171717;font-size:12px}
+    .badge{padding:4px 9px;background:#efeee9;color:#686761;font-size:10px}
+    .mini-track{width:68px;height:7px;background:#ecebe6}
+    .mini-track i{background:#2a78d6}
+    .num-link{color:#2a78d6;font-size:12px}
+    .table-wrap tbody tr:hover td{background:#f7faff}
+    .active-summary{border-color:#e6e5e0;border-radius:14px}
+    .activity-bar i:nth-child(1),.active-breakdown .activity-item:nth-child(1) i{background:#2a78d6}
+    .activity-bar i:nth-child(2),.active-breakdown .activity-item:nth-child(2) i{background:#eb6834}
+    .activity-bar i:nth-child(3),.active-breakdown .activity-item:nth-child(3) i{background:#1baf7a}
+    .viz-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;margin-top:14px}
+    .viz-panel{min-width:0;padding:0 0 14px;border-color:#e6e5e0;border-radius:14px;box-shadow:none;overflow:hidden}
+    .viz-head{min-height:66px;margin:0;padding:16px 20px;border-bottom:1px solid #efeee9}
+    .viz-sub{margin:4px 0 0;color:#8a8984;font-size:11px}
+    .chart-tag{padding:4px 8px;border-radius:999px;background:#e8f1fc;color:#2a78d6;font-size:10px;font-weight:650}
+    .cohort-rank{display:grid;gap:18px;padding:22px 20px 10px}
+    .cohort-rank-row{display:grid;grid-template-columns:minmax(130px,1fr) minmax(70px,1.2fr) 42px;gap:12px;align-items:center}
+    .cohort-rank-name{overflow:hidden;color:#252525;font-size:11px;font-weight:650;text-overflow:ellipsis;white-space:nowrap}
+    .cohort-rank-name small{display:block;margin-top:4px;color:#8a8984;font-size:10px;font-weight:400}
+    .cohort-rank-track{height:9px;position:relative;border-radius:4px;background:#ecebe6}
+    .cohort-rank-track i{height:100%;display:block;border-radius:0 4px 4px 0;background:#2a78d6}
+    .cohort-rank-row strong{color:#171717;font-size:12px;text-align:right;font-variant-numeric:tabular-nums}
+    .viz-foot{display:flex;align-items:center;gap:7px;padding:8px 20px 0;color:#8a8984;font-size:10px}
+    .viz-foot i{width:12px;border-top:1px dashed #8a8984}
+    .scatter-wrap{padding:10px 14px 0}
+    .scatter-chart{width:100%;height:auto;display:block;overflow:visible}
+    .scatter-grid line{stroke:#e9e8e3;stroke-width:1;stroke-dasharray:3 4}
+    .scatter-labels{fill:#8a8984;font-size:10px}
+    .scatter-point{stroke:#fff;stroke-width:2}
+    .scatter-point.point-rcp,.viz-legend .point-rcp{fill:#2a78d6;background:#2a78d6}
+    .scatter-point.point-ap,.viz-legend .point-ap{fill:#eb6834;background:#eb6834}
+    .scatter-name{fill:#52514e;font-size:10px;font-weight:600}
+    .viz-legend{display:flex;justify-content:center;gap:18px;color:#686761;font-size:10px}
+    .viz-legend span{display:flex;align-items:center;gap:6px}
+    .viz-legend i{width:8px;height:8px;border-radius:50%}
+    @media(max-width:900px){.viz-grid{grid-template-columns:1fr}}
+    @media(max-width:700px){.filters{position:relative;top:auto;padding:12px}.filter-field{flex:1 1 calc(50% - 8px);min-width:130px}.filter-spacer{display:none}.table-wrap th,.table-wrap td{padding-left:12px;padding-right:12px}}
+  </style>
+  <style>
+    .cohort-explorer{padding:0 20px;border-radius:14px}
+    .cohort-explorer .panel-head{padding:20px 0 16px;align-items:flex-start}
+    .cohort-explorer .viz-sub{line-height:1.5;margin-top:6px;font-size:12px;color:#697386}
+    .cohort-tools{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:12px}
+    .cohort-tools input{width:min(360px,100%);height:38px;padding:0 12px;background:#fafbfc;border:1px solid #e3e6eb;border-radius:8px;font:inherit;font-size:12px;color:#27344a}
+    .cohort-tools label{display:flex;align-items:center;gap:8px;white-space:nowrap;font-size:11px;color:#748094}
+    .cohort-tools select{padding:6px;border:1px solid #e3e6eb;border-radius:6px;background:white;color:#526176}
+    .cohort-explorer table{min-width:1030px}
+    .cohort-explorer th{padding:12px;background:transparent;border-top:0;text-transform:none;letter-spacing:0;font-size:11px;font-weight:500;white-space:nowrap}
+    .cohort-explorer th button{padding:0;border:0;background:none;color:inherit;font:inherit;cursor:pointer}
+    .cohort-explorer th[aria-sort]:not([aria-sort="none"]){color:#27344a}
+    .cohort-explorer td{padding:14px 12px;font-size:12px;font-variant-numeric:tabular-nums}
+    .cohort-explorer td:first-child{font-weight:700;color:#27344a}
+    .cohort-explorer .numeric{text-align:right}
+    .programme-mark{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px}
+    .programme-rcp{background:#2a78d6}.programme-academy{background:#eb6834}.programme-webinar{background:#1baf7a}.programme-masterclass{background:#a3a29c}
+    .cohort-stage{display:inline-block;border-radius:999px;padding:3px 8px;font-size:10px;font-weight:650}
+    .cohort-stage.mature{background:#e6f4ec;color:#087647}.cohort-stage.maturing{background:#fff2d9;color:#a15c00}.cohort-stage.early{background:#f0f2f4;color:#7b8593}
+    .cohort-vs{font-size:11px;font-weight:650}.cohort-vs.up{color:#087647}.cohort-vs.down{color:#c44238}
+    .cohort-pager{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 0;color:#748094;font-size:11px}
+    .cohort-pager>div{display:flex;gap:6px}
+    .cohort-pager button{padding:7px 11px;border:1px solid #e3e6eb;border-radius:7px;background:#fff;color:#526176;font:inherit;cursor:pointer}
+    .cohort-pager button:disabled{opacity:.4;cursor:default}
+    .cohort-tools input:focus-visible,.cohort-explorer button:focus-visible,.cohort-explorer select:focus-visible{outline:2px solid #2a78d6;outline-offset:3px}
+    @media(max-width:560px){.cohort-explorer{padding:0 12px}.cohort-tools{flex-wrap:wrap}.cohort-tools input{width:100%}.cohort-explorer .panel-head{flex-wrap:wrap}}
+  </style>
+  <style>
+    .filters{align-items:flex-end;gap:10px 12px;padding:14px 0 16px;border:0;border-bottom:1px solid #e1e5e9;border-radius:0;box-shadow:none;background:rgba(250,250,250,.96)}
+    .filter-field{min-width:135px;flex:1 1 135px;max-width:210px}
+    .filter-field>span,.judge-field>span{display:block;color:#7d8793;font-size:11px;font-weight:550;letter-spacing:0}
+    .select{height:36px;font-size:12px;background:#fff}
+    .judge-field{display:flex;flex-direction:column;gap:4px;flex:0 1 auto;min-width:0}
+    .judge-options{display:flex;align-items:center;gap:2px;padding:3px;border:1px solid #e1e5e9;border-radius:9px;background:#f0f2f4;min-height:36px;max-width:100%;flex-wrap:wrap}
+    .judge-options button{border:0;border-radius:6px;background:none;color:#647082;font:500 11px Inter,ui-sans-serif,system-ui,sans-serif;padding:6px 9px;cursor:pointer;white-space:nowrap}
+    .judge-options button[aria-pressed="true"]{background:#fff;color:#1d293b;box-shadow:0 1px 3px #1720331a}
+    .judge-options button:focus-visible{outline:2px solid #2a78d6;outline-offset:1px}
+    .filter-summary{display:flex;align-items:center;gap:14px;margin-left:auto;min-height:36px;color:#7d8793;font-size:11px}
+    .overview{gap:16px;margin-top:18px}
+    .business-metric{min-height:118px;padding:18px;border-radius:14px;border-color:#e1e5e9;box-shadow:none;background:#fff}
+    .business-metric .metric-label{font-size:12px;color:#526176;font-weight:500}
+    .business-metric .metric-value{margin-top:10px;font-size:32px;letter-spacing:-1px;line-height:1.1;color:#1d293b}
+    .business-metric .metric-foot{margin-top:4px;font-size:11px;color:#748094;line-height:1.4}
+    .business-metric .metric-foot b{color:#27344a;font-weight:650}
+    .cohort-explorer .selected-metric{background:#f1f7ff}
+    @media(max-width:700px){.filter-field{max-width:none;flex-basis:calc(50% - 12px)}.filter-summary{margin-left:0}.judge-field{flex-basis:100%}.business-metric{padding:15px}.business-metric .metric-value{font-size:28px}}
+    @media(max-width:380px){.filter-field{flex-basis:100%}}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" aria-label="Main navigation">
+      <div class="brand"><img src="public/logo.svg" alt="Abode" width="100" height="32" /></div>
+      <div class="nav-group"><div class="nav-heading">General</div><div class="nav-link"><span class="ico">▦</span>Dashboard</div><div class="nav-link"><span class="ico">⌂</span>Assets</div><div class="nav-link"><span class="ico">▤</span>Payment Plans</div><div class="nav-link"><span class="ico">▣</span>Agency</div></div>
+      <div class="nav-group"><div class="nav-heading">Sales</div><div class="nav-link"><span class="ico">◉</span>Sales</div><div class="nav-link"><span class="ico">♙</span>Flex Leads</div></div>
+      <div class="nav-group"><div class="nav-heading">Events</div><div class="nav-link"><span class="ico">▣</span>Meetings</div><div class="nav-sub"><div class="nav-link sub"><span class="ico">▱</span>Recruitment</div><div class="nav-link sub active"><span class="ico">▥</span>Recruitment Analysis</div></div><div class="nav-link"><span class="ico">▧</span>Company Events</div></div>
+      <div class="nav-group"><div class="nav-heading">Users</div><div class="nav-link"><span class="ico">♙</span>All Users</div><div class="nav-link"><span class="ico">◉</span>Suspended Users</div></div>
+      <div class="nav-group"><div class="nav-heading">Associates</div><div class="nav-link"><span class="ico">♧</span>Associates Upgrade</div><div class="nav-link"><span class="ico">↗</span>Top Associates</div></div>
+    </aside>
+    <main class="main">
+      <header class="topbar"><span class="menu">☰</span><span class="hello">Hello, User <span aria-hidden="true">👋🏽</span></span></header>
+      <div class="content">
+        <div class="page-head">
+          <div><span class="eyebrow">Associates · Recruitment</span><h1>Recruitment Analysis</h1></div>
+          <div class="head-actions"><span class="updated"><strong>Updated Nov 23 · 10:42 AM</strong></span><button class="btn" id="refresh">↻ &nbsp;Refresh</button></div>
+        </div>
+
+        <div class="filters" aria-label="Recruitment filters">
+          <label class="filter-field"><span>Programme</span><select class="select" id="programme"><option value="all">All programmes</option><option>Associate Pro Pathway</option><option>Realtor Certification Program</option></select></label>
+          <label class="filter-field"><span>Cohort</span><select class="select" id="cohort"><option value="all">All cohorts</option><option>RCP · August 2026</option><option>Associate Pro · July 2026</option></select></label>
+          <label class="filter-field"><span>Referral source</span><select class="select" id="source"><option value="all">All referral sources</option><option>Instagram</option><option>WhatsApp</option><option>Referral</option><option>Website</option></select></label>
+          <label class="filter-field"><span>Cohort stage</span><select class="select" id="cohort-stage"><option value="all">All stages</option><option value="Mature">Mature</option><option value="Maturing">Maturing</option><option value="Too early">Too early</option></select></label>
+          <div class="judge-field"><span>Judge by</span><div class="judge-options" role="group" aria-label="Comparison metric"><button type="button" data-judge="5" aria-pressed="true">Became Pro</button><button type="button" data-judge="6" aria-pressed="false">Pros selling</button><button type="button" data-judge="7" aria-pressed="false">₦ per registrant</button></div></div>
+          <div class="filter-summary"><span id="filter-status" aria-live="polite">Showing everything</span><button class="reset" id="reset">Reset</button></div>
+        </div>
+
+        <div class="section-head"><h2>Overview</h2></div>
+        <div class="overview">
+          <article class="metric business-metric"><span class="metric-label">Registrants</span><div class="metric-value">2,033</div><div class="metric-foot">across <b>2 cohorts</b></div></article>
+          <article class="metric business-metric"><span class="metric-label">Became Associate Pro</span><div class="metric-value">0</div><div class="metric-foot"><b>0%</b> of registrants</div></article>
+          <article class="metric business-metric"><span class="metric-label">Now selling</span><div class="metric-value">0</div><div class="metric-foot">Pros with a confirmed sale</div></article>
+          <article class="metric business-metric"><span class="metric-label">Sales from recruits</span><div class="metric-value">—</div><div class="metric-foot">No sales value recorded</div></article>
+        </div>
+
+        <div class="team-action"><div class="team-action-icon">!</div><div class="team-action-copy"><strong>0 attendance check-ins</strong><span>Review cohort check-in records.</span></div><button data-stage="Attendees">Review →</button></div>
+
+        <div class="section-head"><h2>Recruitment journey</h2></div>
+        <section class="panel journey">
+          <div class="journey-top"><h3>Stage conversion</h3><div class="legend"><span><i class="dot"></i>Tracked</span><span><i class="dot gray"></i>Not tracked</span></div></div>
+          <div class="journey-cards">
+            <button class="journey-card" data-stage="Registrants"><span class="journey-card-top"><span class="journey-card-label"><i>1</i>Registrants</span><span class="journey-share">100%</span></span><strong class="journey-card-value">2,033</strong><span class="journey-card-caption">Starting stage</span><span class="journey-card-track"><i style="width:100%"></i></span></button>
+            <button class="journey-card" data-stage="Attendees"><span class="journey-card-top"><span class="journey-card-label"><i>2</i>Attendees</span><span class="journey-share">0%</span></span><strong class="journey-card-value">0</strong><span class="journey-card-caption">0% of registrants</span><span class="journey-card-track"><i style="width:0%"></i></span></button>
+            <button class="journey-card" data-stage="Test participants"><span class="journey-card-top"><span class="journey-card-label"><i>3</i>Test participants</span><span class="journey-share">22.0%</span></span><strong class="journey-card-value">448</strong><span class="journey-card-caption">22.0% of registrants</span><span class="journey-card-track"><i style="width:22%"></i></span></button>
+            <button class="journey-card" data-stage="Test passes"><span class="journey-card-top"><span class="journey-card-label"><i>4</i>Test passes</span><span class="journey-share">19.2%</span></span><strong class="journey-card-value">391</strong><span class="journey-card-caption">87.3% of test participants</span><span class="journey-card-track"><i style="width:19.2%"></i></span></button>
+            <div class="journey-card unavailable-stage"><span class="journey-card-top"><span class="journey-card-label"><i>5</i>Course completions</span><span class="journey-share">—</span></span><strong class="journey-card-value missing-count">Not tracked</strong><span class="journey-card-caption">No data recorded</span><span class="journey-card-track"><i style="width:0%;background:#d4dbe3"></i></span></div>
+            <button class="journey-card key-stage" data-stage="Approved upgrades"><span class="journey-card-top"><span class="journey-card-label"><i>6</i>Approved upgrades</span><span class="journey-share">0%</span></span><strong class="journey-card-value">0</strong><span class="journey-card-caption">0% of registrants</span><span class="journey-card-track"><i style="width:0%"></i></span></button>
+            <button class="journey-card key-stage" data-stage="Active Associate Pros"><span class="journey-card-top"><span class="journey-card-label"><i>7</i>Active Associate Pros</span><span class="journey-share">0%</span></span><strong class="journey-card-value">0</strong><span class="journey-card-caption">0% of approved upgrades</span><span class="journey-card-track"><i style="width:0%"></i></span></button>
+          </div>
+        </section>
+
+        <section class="viz-grid" aria-label="Cohort visual analysis">
+          <article class="panel viz-panel">
+            <div class="panel-head viz-head"><div><h3 class="panel-title">Goal progress by cohort</h3><p class="viz-sub">Registration goal reached</p></div><span class="chart-tag">2 cohorts</span></div>
+            <div class="cohort-rank">
+              <div class="cohort-rank-row"><div class="cohort-rank-name">RCP · August 2026<small>1,284 registrants</small></div><div class="cohort-rank-track"><i style="width:85%"></i></div><strong>85%</strong></div>
+              <div class="cohort-rank-row"><div class="cohort-rank-name">Associate Pro · July 2026<small>749 registrants</small></div><div class="cohort-rank-track"><i style="width:62%"></i></div><strong>62%</strong></div>
+            </div>
+            <div class="viz-foot"><i></i> Goal progress</div>
+          </article>
+          <article class="panel viz-panel">
+            <div class="panel-head viz-head"><div><h3 class="panel-title">Cohort volume vs. goal progress</h3><p class="viz-sub">Each dot represents a cohort</p></div></div>
+            <div class="scatter-wrap">
+              <svg class="scatter-chart" viewBox="0 0 480 250" role="img" aria-label="Scatter chart comparing cohort registrants and goal progress">
+                <g class="scatter-grid"><line x1="62" y1="25" x2="62" y2="196"/><line x1="158" y1="25" x2="158" y2="196"/><line x1="254" y1="25" x2="254" y2="196"/><line x1="350" y1="25" x2="350" y2="196"/><line x1="446" y1="25" x2="446" y2="196"/><line x1="62" y1="25" x2="446" y2="25"/><line x1="62" y1="68" x2="446" y2="68"/><line x1="62" y1="111" x2="446" y2="111"/><line x1="62" y1="154" x2="446" y2="154"/><line x1="62" y1="196" x2="446" y2="196"/></g>
+                <g class="scatter-labels"><text x="54" y="200" text-anchor="end">0%</text><text x="54" y="158" text-anchor="end">25%</text><text x="54" y="115" text-anchor="end">50%</text><text x="54" y="72" text-anchor="end">75%</text><text x="54" y="29" text-anchor="end">100%</text><text x="62" y="216" text-anchor="middle">0</text><text x="158" y="216" text-anchor="middle">500</text><text x="254" y="216" text-anchor="middle">1,000</text><text x="350" y="216" text-anchor="middle">1,500</text><text x="446" y="216" text-anchor="middle">2,000</text><text x="254" y="241" text-anchor="middle">Registrants</text></g>
+                <circle class="scatter-point point-rcp" cx="308" cy="51" r="7"><title>RCP · August 2026: 1,284 registrants, 85% goal progress</title></circle><text class="scatter-name" x="319" y="47">RCP · Aug</text>
+                <circle class="scatter-point point-ap" cx="206" cy="90" r="7"><title>Associate Pro · July 2026: 749 registrants, 62% goal progress</title></circle><text class="scatter-name" x="217" y="86">Associate Pro · Jul</text>
+              </svg>
+            </div>
+            <div class="viz-legend"><span><i class="point-rcp"></i>RCP</span><span><i class="point-ap"></i>Associate Pro</span></div>
+          </article>
+        </section>
+
+        <section class="panel table-panel cohort-explorer" aria-labelledby="cohort-table-title">
+          <div class="panel-head"><div><h3 class="panel-title" id="cohort-table-title">All cohorts</h3><p class="viz-sub">“vs programme” compares Became Pro with the median of the same programme.</p></div><span class="chart-tag">Reference sample</span></div>
+          <div class="cohort-tools"><input id="cohort-search" type="search" placeholder="Search cohorts…" aria-label="Search cohorts or programmes" /><label>Rows <select id="cohort-page-size"><option>8</option><option>5</option></select></label></div>
+          <div class="table-wrap" tabindex="0" role="region" aria-label="All cohorts table"><table id="cohort-table"><thead><tr id="cohort-columns"></tr></thead><tbody id="comparison-rows"></tbody></table></div>
+          <div class="cohort-pager"><span id="cohort-page-info" aria-live="polite"></span><div><button id="cohort-prev" type="button">Previous</button><button id="cohort-next" type="button">Next</button></div></div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><div class="modal"><div class="modal-head"><div><h2 id="modal-title">Stage people</h2></div><button class="close" id="close" aria-label="Close">×</button></div><div class="modal-content"><input class="modal-search" placeholder="Search name, email, or cohort" /><table><thead><tr><th>Person</th><th>Cohort</th><th>Source</th><th>Furthest stage</th></tr></thead><tbody id="people-rows"><tr><td class="name">Sample registrant</td><td>RCP · August 2026</td><td>Referral</td><td>Test pass</td></tr><tr><td class="name">Sample registrant</td><td>Associate Pro · July 2026</td><td>Instagram</td><td>Registrant</td></tr></tbody></table></div></div></div>
+  <script>
+    const reset = document.querySelector('#reset');
+    const selects = [...document.querySelectorAll('.filters select')];
+    let comparisonMetric = 5;
+    function syncFilters(){
+      const count = selects.filter(select => select.value !== 'all').length;
+      document.querySelector('#filter-status').textContent = count ? `${count} filter${count===1?'':'s'} selected` : 'Showing everything';
+      cohortPage = 0; renderCohorts();
+    }
+    selects.forEach((select) => select.addEventListener('change', syncFilters));
+    reset.addEventListener('click', () => {
+      selects.forEach(select => select.value = 'all');
+      comparisonMetric = 5; cohortSort = 4; cohortDirection = -1;
+      document.querySelectorAll('[data-judge]').forEach(button => button.setAttribute('aria-pressed',Number(button.dataset.judge)===comparisonMetric));
+      syncFilters();
+    });
+    document.querySelectorAll('[data-judge]').forEach(button => button.addEventListener('click',() => {
+      comparisonMetric = Number(button.dataset.judge); cohortSort = comparisonMetric; cohortDirection = -1; cohortPage = 0;
+      document.querySelectorAll('[data-judge]').forEach(option => option.setAttribute('aria-pressed',option===button));
+      renderCohorts();
+    }));
+    document.querySelector('#refresh').addEventListener('click', (event) => { event.currentTarget.textContent = '✓  Updated'; setTimeout(() => event.currentTarget.textContent = '↻  Refresh', 900); });
+    const modal = document.querySelector('#modal');
+    const title = document.querySelector('#modal-title');
+    document.querySelectorAll('[data-stage]').forEach((button) => button.addEventListener('click', () => { title.textContent = button.dataset.stage; const rows = document.querySelector('#people-rows'); rows.innerHTML = button.dataset.stage === 'Attendees' ? '<tr><td colspan="4" style="padding:24px;text-align:center;color:#9a6a1a">No check-ins recorded for this selection.</td></tr>' : '<tr><td class="name">Sample registrant</td><td>RCP · August 2026</td><td>Referral</td><td>Test pass</td></tr><tr><td class="name">Sample registrant</td><td>Associate Pro · July 2026</td><td>Instagram</td><td>Registrant</td></tr>'; modal.classList.add('show'); }));
+    document.querySelector('#close').addEventListener('click', () => modal.classList.remove('show'));
+    modal.addEventListener('click', (event) => { if(event.target === modal) modal.classList.remove('show'); });
+    // Reference preview figures, independent of the overview's existing mock dataset.
+    const cohortPreview = [
+      ['RCP August 2026','RCP','2026-08-02','Maturing',4545,4.8,20,69000,77],
+      ['Academy Cohort 6','Academy','2026-06-05','Mature',3922,5.8,26,95000,-19],
+      ['RCP October 2026','RCP','2026-10-06','Too early',3253,2.7,null,null,1],
+      ['Academy Cohort 5','Academy','2026-02-25','Mature',2439,8.4,30,132000,19],
+      ['RCP July 2026','RCP','2026-07-11','Mature',2037,2.7,13,5000,-1],
+      ['RCP November 2026','RCP','2026-11-10','Too early',1547,0.2,null,null,-93],
+      ['Abode Webinar','Webinar','2026-04-10','Mature',141,5.7,0,0,0],
+      ["Jeffrey’s Masterclass",'Masterclass','2026-04-24','Mature',131,5.3,0,0,0]
+    ];
+    const cohortColumnNames = ['Cohort','Programme','Started','Stage','Registrants','Became Pro','Pros selling','₦ / registrant','vs programme'];
+    let cohortSort = 4, cohortDirection = -1, cohortPage = 0;
+    function renderCohorts(){
+      const query = document.querySelector('#cohort-search').value.trim().toLowerCase();
+      const pageSize = Number(document.querySelector('#cohort-page-size').value);
+      const selectedStage = document.querySelector('#cohort-stage').value;
+      const rows = cohortPreview.filter(row => (row[0]+' '+row[1]).toLowerCase().includes(query) && (selectedStage==='all'||row[3]===selectedStage)).sort((a,b) => {
+        if(a[cohortSort] == null) return b[cohortSort] == null ? 0 : 1;
+        if(b[cohortSort] == null) return -1;
+        return cohortDirection * (typeof a[cohortSort] === 'number' ? a[cohortSort]-b[cohortSort] : a[cohortSort].localeCompare(b[cohortSort]));
+      });
+      cohortPage = Math.min(cohortPage, Math.max(0,Math.ceil(rows.length/pageSize)-1));
+      document.querySelector('#cohort-columns').innerHTML = cohortColumnNames.map((name,index) => `<th scope="col" class="${index>=4?'numeric':''}" aria-sort="${cohortSort===index?(cohortDirection===1?'ascending':'descending'):'none'}"><button type="button" data-cohort-sort="${index}">${name}${cohortSort===index?(cohortDirection===1?' ↑':' ↓'):''}</button></th>`).join('');
+      document.querySelector('#comparison-rows').innerHTML = rows.slice(cohortPage*pageSize,(cohortPage+1)*pageSize).map(row => {
+        const [name,programme,started,stage,registrants,becamePro,selling,value,comparison] = row;
+        const date = new Date(started+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'2-digit'});
+        const stageClass = stage==='Mature'?'mature':stage==='Maturing'?'maturing':'early';
+        return `<tr><td>${name}</td><td><i class="programme-mark programme-${programme.toLowerCase()}" aria-hidden="true"></i>${programme}</td><td>${date}</td><td><span class="cohort-stage ${stageClass}">${stage}</span></td><td class="numeric">${registrants.toLocaleString('en-GB')}</td><td class="numeric">${becamePro}%</td><td class="numeric">${selling==null?'—':selling+'%'}</td><td class="numeric">${value==null?'—':value===0?'₦0':'₦'+value/1000+'k'}</td><td class="numeric"><span class="cohort-vs ${comparison>=0?'up':'down'}">${comparison>=0?'▲':'▼'} ${Math.abs(comparison)}%</span></td></tr>`;
+      }).join('') || '<tr><td colspan="9" style="text-align:center;padding:28px;color:#748094">No cohorts match your search.</td></tr>';
+      document.querySelector('#cohort-page-info').textContent = rows.length ? `${cohortPage*pageSize+1}–${Math.min((cohortPage+1)*pageSize,rows.length)} of ${rows.length} cohorts` : '0 cohorts';
+      document.querySelector('#cohort-prev').disabled = cohortPage===0;
+      document.querySelector('#cohort-next').disabled = (cohortPage+1)*pageSize>=rows.length;
+      document.querySelectorAll(`#cohort-table tr > :nth-child(${comparisonMetric+1})`).forEach(cell => cell.classList.add('selected-metric'));
+    }
+    document.querySelector('#cohort-columns').addEventListener('click',event => {
+      const button = event.target.closest('[data-cohort-sort]'); if(!button) return;
+      const index = Number(button.dataset.cohortSort);
+      cohortDirection = cohortSort===index ? -cohortDirection : index>=4 ? -1 : 1;
+      cohortSort = index; cohortPage = 0; renderCohorts();
+      document.querySelector(`[data-cohort-sort="${index}"]`).focus();
+    });
+    document.querySelector('#cohort-search').addEventListener('input',() => {cohortPage=0;renderCohorts();});
+    document.querySelector('#cohort-page-size').addEventListener('change',() => {cohortPage=0;renderCohorts();});
+    document.querySelector('#cohort-prev').addEventListener('click',() => {cohortPage--;renderCohorts();});
+    document.querySelector('#cohort-next').addEventListener('click',() => {cohortPage++;renderCohorts();});
+    renderCohorts();
+  </script>
+</body>
+</html>
