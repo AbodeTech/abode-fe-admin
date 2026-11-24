@@ -1,5 +1,7 @@
+import { ADMIN_PERMISSIONS } from '@/lib/rbac/permissions';
 import { MockHttpError, type MockRoutes } from '../router';
 import { body } from './util';
+import { MOCK_SEEDED_ROLES } from './rbac-roles.generated';
 
 /* ============================================================
  * Auth mock routes — "METHOD /path", handlers return the inner payload only.
@@ -11,6 +13,12 @@ import { body } from './util';
  * Testing affordances:
  *  - sign in as `newadmin@abode.ng` to get the forced-password-change flow
  *  - any password shorter than 8 characters returns a 401
+ *  - sign in as `as-<role>@abode.ng` to be a seeded backend role instead of a
+ *    super admin, e.g. `as-sales_member@abode.ng`. Join roles with `+` for a
+ *    person who holds several: `as-sales_team_lead+recruitment_member@abode.ng`.
+ *    The roles come from rbac-roles.generated.ts (a copy of the backend seed).
+ *    A role whose landing page is scoped by a manager / officer record is taken
+ *    to hold that record, so the landing page can actually be opened.
  * ============================================================ */
 
 const ALL_PERMISSIONS = [
@@ -45,16 +53,110 @@ const ALL_PERMISSIONS = [
 /** Email that exercises the temporary-password lock. */
 const TEMP_PASSWORD_EMAIL = 'newadmin@abode.ng';
 
+type MockRole = { id: string; name: string; is_super_admin: boolean; default_landing_page?: string };
+
+type MockRecords = { associate_manager: boolean; cs_manager: boolean; financial_officer: boolean };
+
 type MockAdmin = {
   id: string;
   firstName: string;
   lastName: string;
   userName: string;
   email: string;
-  role: { id: string; name: string; is_super_admin: boolean };
+  role: MockRole;
+  additional_roles?: MockRole[];
   permissions: string[];
+  role_permissions?: string[];
+  extra_permissions?: string[];
+  start_page?: string;
+  start_page_choice?: string | null;
   must_change_password: boolean;
+  /** Mock-only (the response schema strips it): which manager / officer records this test login holds. */
+  mock_records?: MockRecords;
 };
+
+/* ---------- `as-<role>` test logins ---------- */
+
+/** Pairs the BE treats as implied, so a role saved before a key was split keeps its access. */
+const IMPLIED: Array<[string, string]> = [
+  ['manage_promotions', 'view_promotions'],
+  ['withdrawals', 'view_withdrawals'],
+  ['manage_manager_tracker', 'reassign_manager'],
+  ['manage_company_events', 'view_company_events'],
+  ['view_user', 'view_users'],
+  ['adjust_wallet', 'view_wallets'],
+];
+
+const RECORD_BY_LANDING: Record<string, keyof MockRecords> = {
+  manager_performance: 'associate_manager',
+  cs_manager_performance: 'cs_manager',
+  financial_officer_performance: 'financial_officer',
+};
+
+function roleLabel(name: string): string {
+  return name.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
+
+function landingsOf(admin: Pick<MockAdmin, 'role' | 'additional_roles'>): string[] {
+  return [admin.role, ...(admin.additional_roles ?? [])].map((r) => r.default_landing_page ?? 'dashboard');
+}
+
+/** The server's rule: the person's own choice if a held role offers it, else the primary role's page. */
+function resolveStart(admin: Pick<MockAdmin, 'role' | 'additional_roles' | 'start_page_choice'>): string {
+  const available = landingsOf(admin);
+  const choice = admin.start_page_choice ?? null;
+  return choice && available.includes(choice) ? choice : available[0];
+}
+
+/** `as-sales_member+recruitment_member@abode.ng` → that session, or null for any other email. */
+function roleLoginFor(email: string): MockAdmin | null {
+  const match = email.toLowerCase().match(/^as-([a-z_+]+)@/);
+  if (!match) return null;
+  const names = match[1].split('+');
+  if (!names.every((n) => MOCK_SEEDED_ROLES[n])) return null;
+
+  const roles: MockRole[] = names.map((n) => ({
+    id: `mock-role-${n}`,
+    name: n,
+    is_super_admin: MOCK_SEEDED_ROLES[n].is_super_admin,
+    default_landing_page: MOCK_SEEDED_ROLES[n].default_landing_page,
+  }));
+
+  const fromRoles = roles.some((r) => r.is_super_admin)
+    ? [...ADMIN_PERMISSIONS]
+    : [...new Set(names.flatMap((n) => MOCK_SEEDED_ROLES[n].permissions))];
+  const held = new Set(fromRoles);
+  for (const [broad, narrow] of IMPLIED) if (held.has(broad)) held.add(narrow);
+
+  const records: MockRecords = { associate_manager: false, cs_manager: false, financial_officer: false };
+  for (const landing of roles.map((r) => r.default_landing_page ?? 'dashboard')) {
+    const record = RECORD_BY_LANDING[landing];
+    if (record) records[record] = true;
+  }
+
+  const admin: MockAdmin = {
+    id: '665f1c0a9b2e4d0012a3b457',
+    firstName: roleLabel(names[0]).split(' ')[0],
+    lastName: 'Tester',
+    userName: `as.${names.join('.')}`,
+    email,
+    role: roles[0],
+    additional_roles: roles.slice(1),
+    permissions: [...held],
+    role_permissions: [...held],
+    extra_permissions: [],
+    start_page_choice: null,
+    must_change_password: false,
+    mock_records: records,
+  };
+  admin.start_page = resolveStart(admin);
+  return admin;
+}
+
+/** Does the signed-in test login hold this manager / officer record? Real logins hold none. */
+export function mockHoldsRecord(kind: keyof MockRecords): boolean {
+  return loadSession()?.admin.mock_records?.[kind] === true;
+}
 
 type MockSession = { admin: MockAdmin; refreshToken: string };
 
@@ -113,6 +215,9 @@ export const authRoutes: MockRoutes = {
       throw new MockHttpError(401, 'Invalid email or password');
     }
 
+    const roleLogin = roleLoginFor(email);
+    if (roleLogin) return issueSession(roleLogin);
+
     const isTempPassword = email.toLowerCase() === TEMP_PASSWORD_EMAIL;
 
     return issueSession({
@@ -128,6 +233,51 @@ export const authRoutes: MockRoutes = {
   },
 
   'GET /auth/admin/me': () => requireSession(),
+
+  // PATCH /admin/me/start-page: the value must be the landing page of a held role.
+  'PATCH /admin/me/start-page': ({ body: raw }) => {
+    const admin = requireSession();
+    const { start_page } = body<{ start_page?: string | null }>(raw);
+    if (start_page === undefined) throw new MockHttpError(400, 'start_page must be one of the allowed values');
+
+    const available = landingsOf(admin);
+    if (start_page !== null && !available.includes(start_page)) {
+      throw new MockHttpError(
+        400,
+        "The start page must be the landing page of one of the person's roles",
+        'START_PAGE_NOT_AVAILABLE',
+      );
+    }
+
+    const next: MockAdmin = { ...admin, start_page_choice: start_page };
+    next.start_page = resolveStart(next);
+    const current = loadSession();
+    if (current) saveSession({ ...current, admin: next });
+    return { admin_id: admin.id, start_page_choice: next.start_page_choice ?? null, start_page: next.start_page };
+  },
+
+  // GET /admin/managers/me: a body, not a 403, for a non-manager. The rest of the
+  // /admin/managers/* family is not mocked, so the Manager Performance page itself
+  // cannot render in mock mode; this only answers "am I a manager?" for the sidebar.
+  'GET /admin/managers/me': () => {
+    const admin = requireSession();
+    if (!mockHoldsRecord('associate_manager')) return { is_manager: false, manager: null };
+    return {
+      is_manager: true,
+      manager: {
+        id: admin.id,
+        manager_id: admin.id,
+        display_name: `${admin.firstName} ${admin.lastName}`,
+        phone_number: null,
+        whatsapp_group_link: null,
+        is_private: false,
+        roster_size: 0,
+        associate_pros: [],
+        createdAt: null,
+        updatedAt: null,
+      },
+    };
+  },
 
   'POST /auth/admin/change-password': ({ body: raw }) => {
     const admin = requireSession();

@@ -1,4 +1,5 @@
 import { MockHttpError, type MockRoutes } from '../router';
+import { requireSession } from './auth';
 import { findPerson, matchesPersonSearch } from './people';
 import { body, paged } from './util';
 
@@ -395,7 +396,19 @@ export const withdrawalRoutes: MockRoutes = {
       });
     }
 
-    return paged(rows.map(populate), query, 20);
+    // Like the backend (`redactWithdrawalRow`): bank details need view_user_bank_details, the TIN needs view_kyc.
+    const held = new Set(requireSession().permissions);
+    const reveal = (row: ReturnType<typeof populate>) => {
+      const out: Record<string, unknown> = { ...row };
+      if (!held.has('view_user_bank_details')) {
+        out.bank_details_id = null;
+        out.provider_meta = null;
+      }
+      if (!held.has('view_kyc') && out.user && typeof out.user === 'object') out.user = { ...(out.user as object), kyc: null };
+      return out;
+    };
+
+    return paged(rows.map((row) => reveal(populate(row))), query, 20);
   },
 
   'PATCH /admin/withdrawals/:id/approve': ({ params, body: raw }) => {

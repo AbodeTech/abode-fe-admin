@@ -52,7 +52,7 @@ export function useAssetHistory(assetId: string) {
     assets: permissions.has('view_assets'),
     costs: permissions.has('view_asset_costs'),
     field: permissions.has('view_field_performance'),
-    allocations: permissions.has('view_allocations'),
+    allocations: permissions.has('view_company_events'),
   };
 
   const land = useLandConfigurationHistory(assetId, { enabled: can.assets });

@@ -9,6 +9,7 @@ import { userStreakRoutes } from './user-streaks';
 import { withdrawalRoutes } from './withdrawals';
 import { associateRoutes } from './associates';
 import { roleRoutes } from './roles';
+import { adminLogRoutes } from './admin-logs';
 import { associateProTrackerRoutes } from './associate-pro-tracker';
 import { assetTransactionRoutes } from './asset-transactions';
 import { salesRoutes } from './sales';
@@ -280,6 +281,7 @@ export function ensureRoutesRegistered(): void {
   registerRoutes(withdrawalRoutes);
   registerRoutes(associateRoutes);
   registerRoutes(roleRoutes);
+  registerRoutes(adminLogRoutes);
   registerRoutes(associateProTrackerRoutes);
   registerRoutes(assetTransactionRoutes);
   registerRoutes(allocationRoutes);

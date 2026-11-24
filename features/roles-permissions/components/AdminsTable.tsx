@@ -15,13 +15,16 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Users } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ChangeRoleDialog } from "@/features/roles-permissions/components/ChangeRoleDialog";
+import { ChangeAdminAccessDialog } from "@/features/roles-permissions/components/ChangeAdminAccessDialog";
+import { InviteAdminDialog } from "@/features/roles-permissions/components/InviteAdminDialog";
+import { useHasPermission } from "@/hooks/use-admin-permission";
 import {
   AdminDesktopTableWrap,
   AdminMobileCard,
   AdminMobileField,
   AdminMobileStack,
 } from "@/components/shared/admin-responsive-table";
+import { landingLabel } from "@/lib/rbac";
 import type { AdminWithRole } from "../schemas/role.schema";
 
 interface AdminsTableProps {
@@ -29,7 +32,59 @@ interface AdminsTableProps {
   isLoading?: boolean;
 }
 
+/** Every role the person holds, primary first. */
+function RoleBadges({ admin }: { admin: AdminWithRole }) {
+  return (
+    <div className="flex min-w-0 flex-wrap gap-1">
+      <Badge className="bg-primary/10 text-primary hover:bg-primary/20 border-primary/20">{admin.role_name}</Badge>
+      {admin.additional_roles.map((role) => (
+        <Badge key={role.id} variant="outline" className="border-border bg-muted/30">
+          {role.name}
+        </Badge>
+      ))}
+    </div>
+  );
+}
+
+/** The single permissions granted on top of the roles, or "None". */
+function ExtraPermissions({ admin }: { admin: AdminWithRole }) {
+  if (admin.extra_permissions.length === 0) {
+    return <span className="text-sm text-muted-foreground">None</span>;
+  }
+  const shown = admin.extra_permissions.slice(0, 2);
+  const more = admin.extra_permissions.length - shown.length;
+  return (
+    <div className="flex min-w-0 flex-wrap gap-1">
+      {shown.map((permission) => (
+        <Badge key={permission} variant="outline" className="border-border bg-muted/30 font-mono text-xs">
+          {permission}
+        </Badge>
+      ))}
+      {more > 0 && (
+        <Badge variant="outline" className="border-border bg-muted/30 text-xs">
+          +{more} more
+        </Badge>
+      )}
+    </div>
+  );
+}
+
+/** The person's own choice, or the primary role's page when they have made none. */
+function StartsOn({ admin }: { admin: AdminWithRole }) {
+  if (admin.start_page_choice) {
+    return <span className="text-sm">{landingLabel(admin.start_page_choice)}</span>;
+  }
+  return (
+    <span className="text-sm text-muted-foreground" title="The primary role's page">
+      {landingLabel(admin.primary_landing)}
+    </span>
+  );
+}
+
 export function AdminsTable({ admins, isLoading }: AdminsTableProps) {
+  // POST /admin/invite is guarded by manage_admins.
+  const canInvite = useHasPermission("manage_admins");
+
   if (isLoading) {
     return (
       <Card className="min-w-0 border-border bg-card">
@@ -58,33 +113,23 @@ export function AdminsTable({ admins, isLoading }: AdminsTableProps) {
           <Users className="h-5 w-5 shrink-0 text-muted-foreground" />
           <h2 className="min-w-0 text-2xl font-semibold text-foreground">Admin Management</h2>
         </div>
-        <div className="flex shrink-0 items-center gap-1 text-sm text-muted-foreground">
-          <Users className="h-4 w-4" />
-          {rows.length} total admins
+        <div className="flex shrink-0 flex-wrap items-center gap-3 text-sm text-muted-foreground">
+          <span className="flex items-center gap-1">
+            <Users className="h-4 w-4" />
+            {rows.length} total admins
+          </span>
+          {canInvite && <InviteAdminDialog variant="outline" />}
         </div>
       </div>
       <AdminMobileStack>
         {rows.map((admin, idx) => {
           return (
             <AdminMobileCard key={admin.id || idx} title={admin.name} subtitle={admin.email}>
-              <AdminMobileField label="Role" value={<Badge className="bg-primary/10 text-primary hover:bg-primary/20 border-primary/20">{admin.role_name}</Badge>} />
-              <div className="text-xs text-muted-foreground">
-                {admin.permissions.length} permission{admin.permissions.length === 1 ? "" : "s"}
-              </div>
-              <div className="flex min-w-0 flex-wrap gap-1 pt-1">
-                {admin.permissions.slice(0, 6).map((perm, i) => (
-                  <Badge key={`${admin.id}-${i}`} variant="outline" className="text-xs bg-muted/30 border-border">
-                    {perm}
-                  </Badge>
-                ))}
-                {admin.permissions.length > 6 && (
-                  <Badge variant="outline" className="text-xs bg-muted/30 border-border">
-                    +{admin.permissions.length - 6} more
-                  </Badge>
-                )}
-              </div>
+              <AdminMobileField label="Roles" value={<RoleBadges admin={admin} />} />
+              <AdminMobileField label="Extra permissions" value={<ExtraPermissions admin={admin} />} />
+              <AdminMobileField label="Starts on" value={<StartsOn admin={admin} />} />
               <div className="flex flex-wrap gap-2 border-t border-border pt-3">
-                <ChangeRoleDialog admin={admin} />
+                <ChangeAdminAccessDialog admin={admin} />
                 <Button variant="outline" size="sm" asChild>
                   <Link href={`/security/roles/${admin.id}`}>View</Link>
                 </Button>
@@ -97,19 +142,20 @@ export function AdminsTable({ admins, isLoading }: AdminsTableProps) {
       <AdminDesktopTableWrap>
       <Card className="min-w-0 overflow-hidden border-border bg-card">
         <div className="min-w-0 overflow-x-auto">
-          <Table className="min-w-[720px]">
+          <Table className="min-w-[860px]">
           <TableHeader>
             <TableRow className="border-border hover:bg-transparent">
               <TableHead className="font-semibold text-foreground">Admin</TableHead>
-              <TableHead className="font-semibold text-foreground">Role</TableHead>
-              <TableHead className="font-semibold text-foreground">Permissions</TableHead>
+              <TableHead className="font-semibold text-foreground">Roles</TableHead>
+              <TableHead className="font-semibold text-foreground">Extra permissions</TableHead>
+              <TableHead className="font-semibold text-foreground">Starts on</TableHead>
               <TableHead className="font-semibold text-foreground">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="text-center text-sm text-muted-foreground">
+                <TableCell colSpan={5} className="text-center text-sm text-muted-foreground">
                   No admins found.
                 </TableCell>
               </TableRow>
@@ -121,26 +167,18 @@ export function AdminsTable({ admins, isLoading }: AdminsTableProps) {
                       <div className="font-medium">{admin.name}</div>
                       <div className="break-all text-xs text-muted-foreground">{admin.email}</div>
                     </TableCell>
-                    <TableCell>
-                      <Badge className="bg-primary/10 text-primary hover:bg-primary/20 border-primary/20">{admin.role_name}</Badge>
+                    <TableCell className="align-top">
+                      <RoleBadges admin={admin} />
                     </TableCell>
-                    <TableCell>
-                      <div className="flex min-w-0 flex-wrap gap-1">
-                        {admin.permissions.slice(0, 3).map((perm, i) => (
-                          <Badge key={`${admin.id}-${i}`} variant="outline" className="text-xs bg-muted/30 border-border">
-                            {perm}
-                          </Badge>
-                        ))}
-                        {admin.permissions.length > 3 && (
-                          <Badge variant="outline" className="text-xs bg-muted/30 border-border">
-                            +{admin.permissions.length - 3} more
-                          </Badge>
-                        )}
-                      </div>
+                    <TableCell className="align-top">
+                      <ExtraPermissions admin={admin} />
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="align-top">
+                      <StartsOn admin={admin} />
+                    </TableCell>
+                    <TableCell className="align-top">
                       <div className="flex min-w-0 flex-wrap items-center gap-2">
-                        <ChangeRoleDialog admin={admin} />
+                        <ChangeAdminAccessDialog admin={admin} />
                         <Button variant="outline" size="sm" asChild>
                           <Link href={`/security/roles/${admin.id}`}>View</Link>
                         </Button>

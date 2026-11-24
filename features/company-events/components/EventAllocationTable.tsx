@@ -71,6 +71,11 @@ interface EventAllocationTableProps {
   usedSize: number;
   onSave: () => void;
   isSaving?: boolean;
+  /**
+   * manage_company_events: select clients and invite them. Without it the table is read-only:
+   * the list, the capacity and who is eligible stay visible; selecting and inviting go.
+   */
+  canManage: boolean;
 }
 
 export function EventAllocationTable({
@@ -86,6 +91,7 @@ export function EventAllocationTable({
   usedSize,
   onSave,
   isSaving,
+  canManage,
 }: EventAllocationTableProps) {
   if (isLoading) {
     return (
@@ -108,7 +114,9 @@ export function EventAllocationTable({
   const remaining = capacity == null ? null : Math.max(0, capacity - grandTotal);
   const unit = sizeUnit || "sqm";
 
+  // Only meaningful while selecting, so a read-only viewer never sees rows dimmed as "over capacity".
   const wouldExceedCapacity = (row: EventEligibleClient) =>
+    canManage &&
     capacity != null && !selected.has(row.payment_plan_id) && grandTotal + totalSize(row) > capacity;
 
   const handleRowClick = (row: EventEligibleClient, disabled: boolean) => {
@@ -133,15 +141,15 @@ export function EventAllocationTable({
                     ? `${formatNumber(usedSize)} ${unit} already reserved / ${formatNumber(capacity)} ${unit} capacity`
                     : `${formatNumber(usedSize)} ${unit} already reserved (no capacity set)`}
                 </span>
-                <span className="font-medium">
+                {canManage && (<span className="font-medium">
                   {selectedPeopleCount === 0
                     ? "No new clients selected"
                     : `${selectedPeopleCount} new ${selectedPeopleCount === 1 ? "client" : "clients"} · ${selectedPlotCount} ${selectedPlotCount === 1 ? "unit" : "units"} selected`}
-                </span>
+                </span>)}
               </div>
               {capacity != null && (
                 <p className="text-xs text-muted-foreground">
-                  {selectedSize > 0 && `${formatNumber(selectedSize)} ${unit} pending selection · `}
+                  {canManage && selectedSize > 0 && `${formatNumber(selectedSize)} ${unit} pending selection · `}
                   {formatNumber(remaining)} {unit} remaining
                 </p>
               )}
@@ -149,6 +157,7 @@ export function EventAllocationTable({
                 <Progress value={percent} className={cn(atOrOverCapacity && "[&>div]:bg-destructive")} />
               )}
             </div>
+            {canManage && (
             <Button
               onClick={onSave}
               disabled={isSaving || selected.size === 0 || (capacity != null && grandTotal > capacity)}
@@ -163,6 +172,7 @@ export function EventAllocationTable({
                 `Invite selected${selected.size ? ` (${selected.size})` : ""}`
               )}
             </Button>
+            )}
           </div>
           {selected.size > 0 && <p className="mt-2 text-xs text-muted-foreground">Inviting reserves the size of these plans for this event and emails an invitation to each customer and their realtor.</p>}
         </div>
@@ -179,13 +189,14 @@ export function EventAllocationTable({
                   key={row.payment_plan_id}
                   title={row.name}
                   subtitle={row.email}
-                  onClick={disabled ? undefined : () => onToggle(row)}
+                  onClick={!canManage || disabled ? undefined : () => onToggle(row)}
                   className={cn(isSelected && "border-primary/50 bg-primary/5", disabled && "opacity-60")}
                 >
                   <AdminMobileField label="Phone" value={row.phone || "—"} />
                   <AdminMobileField label="Size" value={`${formatNumber(totalSize(row))} ${unit}`} />
                   <AdminMobileField label="Eligibility" value={<EligibilityBadge tier={row.eligibility_tier} />} />
                   <AdminMobileField label="Land completed" value={formatDate(row.land_completed_at)} />
+                  {canManage && (
                   <div className="flex items-center justify-between border-t border-border pt-2">
                     <span className="text-sm text-muted-foreground">Select to invite</span>
                     <Checkbox
@@ -196,6 +207,7 @@ export function EventAllocationTable({
                       className="size-5"
                     />
                   </div>
+                  )}
                 </AdminMobileCard>
               );
             })
@@ -206,7 +218,7 @@ export function EventAllocationTable({
           <Table className="w-full table-auto text-sm">
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead className="w-12 px-4 py-3.5" />
+                {canManage && <TableHead className="w-12 px-4 py-3.5" />}
                 <TableHead className="min-w-44 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Client Name
                 </TableHead>
@@ -227,7 +239,7 @@ export function EventAllocationTable({
             <TableBody>
               {safeRows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="whitespace-normal px-4 py-12 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={canManage ? 6 : 5} className="whitespace-normal px-4 py-12 text-center text-sm text-muted-foreground">
                     No eligible clients found.
                   </TableCell>
                 </TableRow>
@@ -238,12 +250,13 @@ export function EventAllocationTable({
                   return (
                     <TableRow
                       key={row.payment_plan_id}
-                      onClick={() => handleRowClick(row, disabled)}
+                      onClick={canManage ? () => handleRowClick(row, disabled) : undefined}
                       className={cn(
-                        disabled ? "opacity-60" : "cursor-pointer hover:bg-muted/40",
+                        disabled ? "opacity-60" : canManage && "cursor-pointer hover:bg-muted/40",
                         isSelected && "bg-primary/5 hover:bg-primary/10"
                       )}
                     >
+                      {canManage && (
                       <TableCell className="px-4 py-4 align-top" onClick={(e) => e.stopPropagation()}>
                         <Checkbox
                           checked={isSelected}
@@ -252,6 +265,7 @@ export function EventAllocationTable({
                           className="size-5"
                         />
                       </TableCell>
+                      )}
                       <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed">
                         <span className="block wrap-break-word font-medium">{row.name}</span>
                       </TableCell>

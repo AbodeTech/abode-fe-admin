@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AdminLog } from "./AdminLogsTable"
+import type { AdminLog } from "../schemas/admin-log.schema"
 import {
   User,
   DollarSign,
@@ -594,7 +594,7 @@ export function AdminLogMetadataModal({ open, onOpenChange, log }: AdminLogMetad
     }
   }
 
-  const hasOldState = log.oldState && Object.keys(log.oldState).length > 0
+  const hasOldState = log.old_state && Object.keys(log.old_state).length > 0
   const hasMetadata = log.metadata && Object.keys(log.metadata).length > 0
   const showComparison = hasOldState && hasMetadata
 
@@ -625,8 +625,8 @@ export function AdminLogMetadataModal({ open, onOpenChange, log }: AdminLogMetad
                   Operator Information
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
-                  <MetadataField icon={Mail} label="Admin Account" value={log.adminEmail} />
-                  <MetadataField icon={Hash} label="Admin ID" value={log.adminId} />
+                  <MetadataField icon={Mail} label="Admin Account" value={log.admin_email} />
+                  <MetadataField icon={Hash} label="Admin ID" value={log.admin_id} />
                 </div>
                 <div className="mt-2 border-t border-border/50 pt-2">
                   <MetadataField icon={Calendar} label="Timestamp" value={`${formatDate(log.timestamp)} (${getRelativeTime(log.timestamp)})`} />
@@ -651,7 +651,7 @@ export function AdminLogMetadataModal({ open, onOpenChange, log }: AdminLogMetad
                         <h3 className="text-[15px] font-bold text-foreground">Changes Summary</h3>
                       </div>
                       <div className="pl-1">
-                        {renderComparisonContent(log.action || "", log.oldState, log.metadata)}
+                        {renderComparisonContent(log.action || "", log.old_state, log.metadata)}
                       </div>
                     </div>
                   </TabsContent>
@@ -679,7 +679,7 @@ export function AdminLogMetadataModal({ open, onOpenChange, log }: AdminLogMetad
                         <h3 className="text-[15px] font-bold text-foreground">Previous State (Before Action)</h3>
                       </div>
                       <div className="pl-1">
-                        {renderDataContent(log.action || "", log.oldState)}
+                        {renderDataContent(log.action || "", log.old_state)}
                       </div>
                     </div>
                   </TabsContent>
@@ -714,7 +714,7 @@ export function AdminLogMetadataModal({ open, onOpenChange, log }: AdminLogMetad
                           <h3 className="text-[15px] font-bold text-foreground">Previous State</h3>
                         </div>
                         <div className="pl-1">
-                          {renderDataContent(log.action || "", log.oldState)}
+                          {renderDataContent(log.action || "", log.old_state)}
                         </div>
                       </div>
                     </div>

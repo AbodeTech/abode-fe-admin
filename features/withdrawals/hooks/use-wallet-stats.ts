@@ -2,6 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 
+import { useHasPermission } from '@/hooks/use-admin-permission';
 import { apiGet } from '@/lib/api-client';
 
 import { WalletStatsSchema } from '../schemas/withdrawal.schema';
@@ -14,10 +15,14 @@ import { WalletStatsSchema } from '../schemas/withdrawal.schema';
  * ledger's copy of this card: features stay self-contained, and there is no
  * `features/wallets` for the two to share. Fold them together if one appears.
  */
-export const useWalletStats = () =>
-  useQuery({
+export const useWalletStats = () => {
+  // The endpoint takes view_wallets. A role without it would only get a 403 back.
+  const canViewWallets = useHasPermission('view_wallets');
+  return useQuery({
     queryKey: ['wallet-stats'] as const,
     queryFn: () => apiGet('/admin/wallets/stats', WalletStatsSchema),
+    enabled: canViewWallets,
     retry: false,
     staleTime: 60 * 1000,
   });
+};

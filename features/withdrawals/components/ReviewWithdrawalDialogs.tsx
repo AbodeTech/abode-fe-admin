@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { UnresolvedRef } from "@/components/shared/UnresolvedRef";
+import { useHasPermission } from "@/hooks/use-admin-permission";
 import { formatNaira } from "@/lib/utils/format";
 
 import {
@@ -73,6 +74,11 @@ function railOutcomeToast(result: ApproveResult, verb: string) {
 function Destination({ row }: { row: Withdrawal }) {
   const label = bankDetailsLabel(row.bank_details_id);
   const subtitle = bankDetailsSubtitle(row.bank_details_id);
+  // The backend drops the bank details unless the caller holds view_user_bank_details.
+  const canViewBank = useHasPermission("view_user_bank_details");
+  if (!label && !canViewBank) {
+    return <span className="text-sm text-muted-foreground">Restricted</span>;
+  }
   return (
     <div className="min-w-0 text-right space-y-0.5">
       <UnresolvedRef

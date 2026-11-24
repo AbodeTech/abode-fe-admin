@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Loader2, Lock } from "lucide-react";
 import { ApiClientError } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
-import { useHasPermission } from "@/hooks/use-admin-permission";
+import { useHasPermission, useIsSuperAdmin } from "@/hooks/use-admin-permission";
 import { CSManagerTicketFlow } from "@/features/cs-managers/components/CSManagerTicketFlow";
 import { AllocationModal, ALLOCATION_STATUSES, type AllocationModalClient } from "@/features/allocation";
 import {
@@ -25,7 +25,6 @@ import {
   type PlanFilterKey,
   type PlanRow,
 } from "@/features/cs-managers";
-import { useAuthStore } from "@/store/auth-store";
 
 /**
  * Friendly empty state for admins who shouldn't be here. `message` is the BE's
@@ -70,7 +69,6 @@ const toAllocationClient = (plan: PlanRow): AllocationModalClient => ({
 
 function CustomerManagersContent() {
   const searchParams = useSearchParams();
-  const { user } = useAuthStore();
   const [targetsDialogOpen, setTargetsDialogOpen] = useState(false);
   const [allocatingPlan, setAllocatingPlan] = useState<PlanRow | null>(null);
   const refreshDashboards = useRefreshCSManagerDashboards();
@@ -85,7 +83,9 @@ function CustomerManagersContent() {
   // the assignment record, not a permission: a CS Manager on any role sees
   // their own book. view_cs_manager_tracker opens every other book and the
   // picker. `?view=manager` previews the manager layout.
-  const isSuperAdmin = Boolean(user?.role?.is_super_admin);
+  // Setting targets, the combined view and logging a call on another book are
+  // `superAdmin: true` on the BE, so those follow the super-admin rule.
+  const isSuperAdmin = useIsSuperAdmin();
   const canViewAllBooks = useHasPermission("view_cs_manager_tracker");
   const canExportAnyBook = useHasPermission("export_cs_manager_tracker");
   const { isCSManager, csManagerId, isLoading: csmCheckLoading } = useIsCurrentCSManager();

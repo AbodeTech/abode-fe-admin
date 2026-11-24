@@ -9,6 +9,7 @@ export {
 export {
   useResolveDispute,
   useResendConfirmationEmail,
+  useApprovePurchaseConfirmation,
 } from "./hooks/use-confirmation-actions";
 export { useExportConfirmations } from "./hooks/use-export-confirmations";
 export { PurchaseConfirmationsTable } from "./components/PurchaseConfirmationsTable";
@@ -16,3 +17,4 @@ export { PurchaseConfirmationsFilters } from "./components/PurchaseConfirmations
 export { ConfirmationStatsStrip } from "./components/ConfirmationStatsStrip";
 export { PurchaseConfirmationDetailModal } from "./components/PurchaseConfirmationDetailModal";
 export { ResolveDisputeModal } from "./components/ResolveDisputeModal";
+export { ApproveConfirmationModal } from "./components/ApproveConfirmationModal";

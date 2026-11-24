@@ -50,8 +50,11 @@ function Mini({
  */
 export function AllocationEventReadinessCard({ assetId }: { assetId: string }) {
   const permissions = useAdminPermissions();
-  const canView = permissions.has("view_allocations");
-  const canCreate = permissions.has("allocate_land");
+  // The events come from GET /admin/company-events (view_company_events), and
+  // creating one is POST /admin/company-events (manage_company_events). `allocate_land`
+  // and `view_allocations` guard the plot allocation endpoints, not the events.
+  const canView = permissions.has("view_company_events");
+  const canCreate = permissions.has("manage_company_events");
 
   const { data: events, isLoading } = useAssetAllocationEvents(assetId, { enabled: canView });
   const { data: inventory } = useSqmInventory(assetId, { enabled: permissions.has("view_assets") });

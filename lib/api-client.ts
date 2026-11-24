@@ -216,6 +216,16 @@ export function isAuthError(error: unknown): boolean {
   return error instanceof ApiClientError && error.statusCode === 401;
 }
 
+/**
+ * A 403: the server understood the request and refuses it for this admin's
+ * roles. Not handled globally on purpose — the password-change lock also 403s
+ * every admin route, and a global handler would mistake that for "no access".
+ * Callers that can explain a refusal (a page, a button) branch on this.
+ */
+export function isForbiddenError(error: unknown): boolean {
+  return error instanceof ApiClientError && error.statusCode === 403;
+}
+
 export function isClientError(error: unknown): boolean {
   if (!(error instanceof ApiClientError) || error.statusCode == null) return false;
   return error.statusCode >= 400 && error.statusCode < 500;

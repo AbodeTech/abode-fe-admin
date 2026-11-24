@@ -8,7 +8,6 @@ import {
   useAdminLogs,
   DEFAULT_ADMIN_LOGS_LIMIT,
 } from "@/features/admin-logs";
-import { AdminLogsExport } from "@/features/admin-logs/components/AdminLogsExport";
 import { Pagination } from "@/components/shared/Pagination";
 import { PageContentLoader, SuspensePageFallback } from "@/components/shared/page-content-loader";
 import { Card } from "@/components/ui/card";
@@ -16,13 +15,13 @@ import { Card } from "@/components/ui/card";
 function Content() {
   const searchParams = useSearchParams();
   const page = Number(searchParams.get("page")) || 1;
-  const adminEmail = searchParams.get("query") || null;
+  const adminId = searchParams.get("admin") || null;
   const action = searchParams.get("action") || null;
 
   const { data, isLoading, error } = useAdminLogs({
     page,
     limit: DEFAULT_ADMIN_LOGS_LIMIT,
-    adminEmail,
+    adminId,
     action,
   });
 
@@ -52,21 +51,13 @@ function Content() {
     <div className="mx-auto mt-4 w-full min-w-0 max-w-[1600px] space-y-6 px-3 pb-16 sm:px-4 sm:pb-20">
       <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="min-w-0 text-2xl font-bold tracking-tight">Admin Logs</h1>
-        <AdminLogsExport
-          filters={{
-            page,
-            limit: DEFAULT_ADMIN_LOGS_LIMIT,
-            adminEmail,
-            action,
-          }}
-        />
       </div>
 
       <Card className="min-w-0 overflow-hidden p-4">
         <AdminLogFilters />
       </Card>
 
-      <AdminLogsTable logs={logs?.filter((log): log is NonNullable<typeof log> => log !== null)} />
+      <AdminLogsTable logs={logs} />
 
       <Pagination count={count} currentIdx={page} limit={DEFAULT_ADMIN_LOGS_LIMIT} />
     </div>

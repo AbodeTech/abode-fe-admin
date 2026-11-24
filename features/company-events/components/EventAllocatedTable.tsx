@@ -81,6 +81,11 @@ interface EventAllocatedTableProps {
   busyId?: string | null;
   /** Shown when there are no rows, e.g. when a search or filter matches nobody. */
   emptyMessage?: string;
+  /**
+   * manage_company_events: every row action (resend an invitation, register on behalf, change
+   * pickup, remove) changes the event. Without it the list is read-only and has no Action column.
+   */
+  canManage: boolean;
 }
 
 /** One ⋮ menu per row, offering only what fits the attendee's stage. */
@@ -139,6 +144,7 @@ export function EventAllocatedTable({
   removingId,
   busyId,
   emptyMessage = "No one has been invited yet.",
+  canManage,
 }: EventAllocatedTableProps) {
   if (isLoading) {
     return (
@@ -170,6 +176,7 @@ export function EventAllocatedTable({
                 <AdminMobileField label="Size reserved" value={`${formatNumber(row.size_reserved)} ${unit}`} />
                 <AdminMobileField label="Pickup" value={row.pickup_location ?? "—"} />
                 <AdminMobileField label="Invited on" value={formatDate(row.created_at)} />
+                {canManage && (
                 <div className="flex justify-end border-t border-border pt-2">
                   <RowActions
                     row={row}
@@ -180,6 +187,7 @@ export function EventAllocatedTable({
                     busy={removingId === row.allocation_id || busyId === row.allocation_id}
                   />
                 </div>
+                )}
               </AdminMobileCard>
             ))
           )}
@@ -207,15 +215,17 @@ export function EventAllocatedTable({
                 <TableHead className="min-w-34 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Invited On
                 </TableHead>
+                {canManage && (
                 <TableHead className="min-w-28 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Action
                 </TableHead>
+                )}
               </TableRow>
             </TableHeader>
             <TableBody>
               {safeRows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="whitespace-normal px-4 py-12 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={canManage ? 7 : 6} className="whitespace-normal px-4 py-12 text-center text-sm text-muted-foreground">
                     {emptyMessage}
                   </TableCell>
                 </TableRow>
@@ -241,6 +251,7 @@ export function EventAllocatedTable({
                     <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed wrap-break-word">
                       {formatDate(row.created_at)}
                     </TableCell>
+                    {canManage && (
                     <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4">
                       <RowActions
                         row={row}
@@ -251,6 +262,7 @@ export function EventAllocatedTable({
                         busy={removingId === row.allocation_id || busyId === row.allocation_id}
                       />
                     </TableCell>
+                    )}
                   </TableRow>
                 ))
               )}

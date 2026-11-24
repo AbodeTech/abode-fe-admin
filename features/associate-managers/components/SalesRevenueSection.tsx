@@ -43,8 +43,9 @@ export function SalesRevenueSection({ data, roster = "associate-pro", onOpenGrou
     ? contributorBreakdown(data.top_selling_contributors, data.others_selling_revenue, { getValue: (c) => c.amount ?? 0, formatValue: formatCurrencyShort })
     : sourceBreakdown(data.revenue_by_source, { formatValue: formatCurrencyShort });
 
+  // The backend sends null when no selling target is set: show the count alone, never "x / 0".
   const sellingDisplay =
-    selling_pros_target > 0
+    selling_pros_target !== null && selling_pros_target > 0
       ? `${selling_pros} / ${selling_pros_target}`
       : selling_pros.toLocaleString();
 

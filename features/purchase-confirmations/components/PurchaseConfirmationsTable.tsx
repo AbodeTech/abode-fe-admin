@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Eye, Mail, Wrench } from "lucide-react";
+import { CheckCircle2, Eye, Mail, Wrench } from "lucide-react";
 import {
   AdminDesktopTableWrap,
   AdminMobileCard,
@@ -53,6 +53,11 @@ interface PurchaseConfirmationsTableProps {
   onView: (row: PurchaseConfirmationRow) => void;
   onResolve: (row: PurchaseConfirmationRow) => void;
   onResendEmail: (row: PurchaseConfirmationRow) => void;
+  onApprove: (row: PurchaseConfirmationRow) => void;
+  /** manage_purchase_confirmations: Resolve and Resend. View-only roles see neither. */
+  canManage: boolean;
+  /** approve_purchase_confirmation: Approve on the buyer's behalf. */
+  canApprove: boolean;
 }
 
 export function PurchaseConfirmationsTable({
@@ -61,6 +66,9 @@ export function PurchaseConfirmationsTable({
   onView,
   onResolve,
   onResendEmail,
+  onApprove,
+  canManage,
+  canApprove,
 }: PurchaseConfirmationsTableProps) {
   if (isLoading) {
     return (
@@ -88,7 +96,7 @@ export function PurchaseConfirmationsTable({
         <Eye className="h-4 w-4" />
         View
       </Button>
-      {row.status === "disputed" && (
+      {row.status === "disputed" && canManage && (
         <Button
           size="sm"
           className={mobile ? "w-full gap-2" : "gap-2"}
@@ -98,7 +106,17 @@ export function PurchaseConfirmationsTable({
           Resolve
         </Button>
       )}
-      {row.status === "waiting" && (
+      {row.status === "waiting" && canApprove && (
+        <Button
+          size="sm"
+          className={mobile ? "w-full gap-2" : "gap-2"}
+          onClick={() => onApprove(row)}
+        >
+          <CheckCircle2 className="h-4 w-4" />
+          Approve
+        </Button>
+      )}
+      {row.status === "waiting" && canManage && (
         <Button
           variant="outline"
           size="sm"
@@ -180,7 +198,8 @@ export function PurchaseConfirmationsTable({
                 <TableHead className="min-w-32 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Status
                 </TableHead>
-                <TableHead className="min-w-44 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                {/* Pinned to the right edge: the table is wider than the card, and the actions (View, Approve, Resolve, Resend) must not hide behind a sideways scroll. */}
+                <TableHead className="min-w-44 whitespace-normal px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground sticky right-0 z-10 bg-card shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.18)]">
                   Action
                 </TableHead>
               </TableRow>
@@ -227,7 +246,7 @@ export function PurchaseConfirmationsTable({
                     <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 leading-relaxed">
                       {statusCell(row)}
                     </TableCell>
-                    <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4">
+                    <TableCell className="min-w-0 align-top whitespace-normal px-4 py-4 sticky right-0 z-10 bg-card shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.18)]">
                       {rowActions(row)}
                     </TableCell>
                   </TableRow>

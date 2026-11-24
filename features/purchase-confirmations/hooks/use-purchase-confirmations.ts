@@ -52,6 +52,8 @@ export type PurchaseConfirmationRow = {
   remindersSent: number;
   status: AdminConfirmationStatus;
   confirmedAt: string | null;
+  /** Set when the team approved it on the buyer's behalf rather than the buyer confirming. */
+  approvedAt: string | null;
   disputedAt: string | null;
   disputeNote: string | null;
   resolvedAt: string | null;
@@ -96,6 +98,7 @@ function mapRow(row: AdminConfirmationRow): PurchaseConfirmationRow {
     remindersSent: row.reminders_sent.length,
     status: toStatus(row.status),
     confirmedAt: row.confirmed_at,
+    approvedAt: row.approved_at,
     disputedAt: activeDispute?.disputed_at ?? null,
     disputeNote: row.open_dispute_note ?? activeDispute?.note ?? null,
     resolvedAt,

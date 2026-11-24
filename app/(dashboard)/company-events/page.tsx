@@ -7,6 +7,7 @@ import { Download, Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { useHasPermission } from "@/hooks/use-admin-permission";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Pagination } from "@/components/shared/Pagination";
@@ -37,6 +38,8 @@ function CompanyEventsContent() {
     search: searchParam || null,
   });
   const exportEvents = useCompanyEventsExport();
+  // Viewing the list needs view_company_events; creating an event needs manage_company_events.
+  const canManageEvents = useHasPermission("manage_company_events");
 
   const handleExport = () => {
     exportEvents.mutate(
@@ -117,12 +120,14 @@ function CompanyEventsContent() {
             {exportEvents.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
             Export
           </Button>
-          <Button asChild className="w-full gap-2 sm:w-auto">
-            <Link href="/company-events/new">
-              <Plus className="h-4 w-4" />
-              New event
-            </Link>
-          </Button>
+          {canManageEvents && (
+            <Button asChild className="w-full gap-2 sm:w-auto">
+              <Link href="/company-events/new">
+                <Plus className="h-4 w-4" />
+                New event
+              </Link>
+            </Button>
+          )}
         </div>
       </div>
 

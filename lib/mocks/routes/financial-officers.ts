@@ -1,4 +1,5 @@
 import { MockHttpError, type MockRoutes } from '../router';
+import { mockHoldsRecord, requireSession } from './auth';
 import { findAdmin, type MockAdmin } from './cs-managers';
 import { body } from './util';
 
@@ -444,9 +445,27 @@ const leastLoadedOfficer = (exclude?: string) =>
 /* -------------------- routes -------------------- */
 
 export const financialOfficerRoutes: MockRoutes = {
-  // Mock routes can't see who's calling, and the mock login is a super admin
-  // who isn't an officer — so null, as the BE returns for a non-officer.
-  'GET /admin/financial-officers/me': () => null,
+  // The default mock login is a super admin who isn't an officer — so null, as
+  // the BE returns for a non-officer. An `as-<role>` test login whose landing
+  // page is the officer record is taken to hold it.
+  'GET /admin/financial-officers/me': () => {
+    if (!mockHoldsRecord('financial_officer')) return null;
+    const admin = requireSession();
+    return {
+      id: 'mock-officer-record',
+      officer: {
+        id: admin.id,
+        user_name: admin.userName,
+        first_name: admin.firstName,
+        last_name: admin.lastName,
+        email: admin.email,
+        role: admin.role.name,
+      },
+      active_since: '2026-01-01T00:00:00.000Z',
+      open_plans_count: 0,
+      current_period_score: null,
+    };
+  },
 
   'GET /admin/financial-officers': () => {
     const period = thisMonth();

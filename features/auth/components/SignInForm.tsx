@@ -10,6 +10,7 @@ import { Eye, EyeOff, Loader2 } from "lucide-react";
 
 import { signInSchema, type SignInValues } from "../schemas/auth.schema";
 import { useAdminLogin } from "../hooks/use-admin-login";
+import { landingRoute } from "@/lib/rbac";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -43,7 +44,9 @@ export function SignInForm() {
       onSuccess: (result) => {
         // While must_change_password is set the BE 403s every other admin
         // route, so the dashboard would render nothing but failures.
-        router.push(result.admin.must_change_password ? "/change-password" : "/");
+        router.push(
+          result.admin.must_change_password ? "/change-password" : landingRoute(result.admin.start_page)
+        );
       },
       onError: (err) => {
         setError(err.message || "An unexpected error occurred.");

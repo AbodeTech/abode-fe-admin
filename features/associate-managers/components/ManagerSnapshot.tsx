@@ -109,10 +109,13 @@ const daysRemaining = (periodEnd: Date | string) => {
   return Math.max(0, Math.ceil(ms / (1000 * 60 * 60 * 24)));
 };
 
+/** A target counts only when it has been set to something above zero: the backend sends null for "not set". */
+const isSet = (value: number | null): value is number => value !== null && value > 0;
+
 const hasActiveTarget = (target: ManagerDashboard["target"]) =>
-  target.recruited_target > 0 ||
-  target.selling_target > 0 ||
-  target.performance_score_target > 0;
+  isSet(target.recruited_target) ||
+  isSet(target.selling_target) ||
+  isSet(target.performance_score_target);
 
 interface KpiTileProps {
   icon: React.ElementType;
@@ -280,14 +283,14 @@ export function ManagerSnapshot({ viewAs, canManageTargets, manager, dashboard }
   const remaining = daysRemaining(period.end);
 
   const recruitedPct =
-    target.recruited_target > 0
+    isSet(target.recruited_target)
       ? (target.recruited_so_far / target.recruited_target) * 100
       : undefined;
   const sellingPct =
-    target.selling_target > 0
+    isSet(target.selling_target)
       ? (target.selling_so_far / target.selling_target) * 100
       : undefined;
-  const revenuePct = target.revenue_target > 0
+  const revenuePct = isSet(target.revenue_target)
     ? (target.revenue_so_far / target.revenue_target) * 100
     : undefined;
   const RATING_MAX = 5;
@@ -296,9 +299,9 @@ export function ManagerSnapshot({ viewAs, canManageTargets, manager, dashboard }
     hasTarget ? `${label}: ${value.toFixed(1)}/${weight}` : `${label}: no target set`;
   const scoreTooltip = [
     "Objective score out of 100. Selling 50 + Revenue 30 + Recruitment 20.",
-    componentLine("Selling", 50, score.selling_component, target.selling_target > 0),
-    componentLine("Revenue", 30, score.revenue_component, target.revenue_target > 0),
-    componentLine("Recruitment", 20, score.recruitment_component, target.recruited_target > 0),
+    componentLine("Selling", 50, score.selling_component, isSet(target.selling_target)),
+    componentLine("Revenue", 30, score.revenue_component, isSet(target.revenue_target)),
+    componentLine("Recruitment", 20, score.recruitment_component, isSet(target.recruited_target)),
   ].join(" · ");
 
   const managerAdminId = manager?.manager_id ?? null;
@@ -361,7 +364,7 @@ export function ManagerSnapshot({ viewAs, canManageTargets, manager, dashboard }
             label="Associate Pros Recruited"
             actualDisplay={target.recruited_so_far.toLocaleString()}
             targetDisplay={
-              target.recruited_target > 0
+              isSet(target.recruited_target)
                 ? target.recruited_target.toLocaleString()
                 : undefined
             }
@@ -376,7 +379,7 @@ export function ManagerSnapshot({ viewAs, canManageTargets, manager, dashboard }
             label="Selling Associate Pros"
             actualDisplay={target.selling_so_far.toLocaleString()}
             targetDisplay={
-              target.selling_target > 0
+              isSet(target.selling_target)
                 ? target.selling_target.toLocaleString()
                 : undefined
             }
@@ -390,10 +393,10 @@ export function ManagerSnapshot({ viewAs, canManageTargets, manager, dashboard }
             iconBg="bg-emerald-50"
             label="Revenue"
             actualDisplay={formatNairaShort(target.revenue_so_far)}
-            targetDisplay={target.revenue_target > 0 ? formatNairaShort(target.revenue_target) : undefined}
+            targetDisplay={isSet(target.revenue_target) ? formatNairaShort(target.revenue_target) : undefined}
             percent={revenuePct}
             tooltip={`Cash received this period on plans opened this period vs. active target. Currently ${formatNaira(target.revenue_so_far)}.`}
-            noData={target.revenue_target === 0}
+            noData={!isSet(target.revenue_target)}
             noDataLabel="No revenue target set"
           />
 

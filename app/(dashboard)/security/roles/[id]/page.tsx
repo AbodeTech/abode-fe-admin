@@ -13,11 +13,12 @@ export default function AdminDetailPage() {
 
   const { data: admin, isLoading: loadingAdmin, error: adminError } = useAdminWithRole(adminId);
 
-  const { data: logsData, isLoading: loadingLogs, error: logsError } = useAdminLogs({
-    page: 1,
-    limit: DEFAULT_ADMIN_LOGS_LIMIT,
-    adminEmail: admin?.email || undefined,
-  });
+  // The BE filters the audit log by admin id. Wait for the id: asking before it is known
+  // would return everyone's activity and show it as this admin's.
+  const { data: logsData, isLoading: loadingLogs, error: logsError } = useAdminLogs(
+    { page: 1, limit: DEFAULT_ADMIN_LOGS_LIMIT, adminId: admin?.id },
+    { enabled: !!admin?.id },
+  );
 
   if (adminError) {
     return (
@@ -42,10 +43,7 @@ export default function AdminDetailPage() {
     <div className="mx-auto mt-4 w-full min-w-0 max-w-[1600px] space-y-6 px-3 pb-16 sm:px-4 sm:pb-20">
       <AdminDetailHeader
         admin={admin}
-        logs={
-          (logsData?.data?.filter((log): log is NonNullable<typeof log> => log !== null) ||
-            []) as AdminLogLike[]
-        }
+        logs={(logsData?.data ?? []) as AdminLogLike[]}
         isLoadingLogs={loadingLogs}
       />
 
@@ -60,7 +58,7 @@ export default function AdminDetailPage() {
         {logsError ? (
           <div className="text-sm text-red-500">Failed to load activity history.</div>
         ) : (
-          <AdminLogsTable logs={logsData?.data?.filter((log): log is NonNullable<typeof log> => log !== null)} />
+          <AdminLogsTable logs={logsData?.data} />
         )}
 
         <Pagination

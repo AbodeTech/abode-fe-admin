@@ -2,7 +2,7 @@ import { LAND_CHOICE_REASONS } from '@/features/cs-managers/schemas/cs-manager.s
 import { MockHttpError, type MockRoutes } from '../router';
 import { body } from './util';
 import { findPerson } from './people';
-import { requireSession } from './auth';
+import { mockHoldsRecord, requireSession } from './auth';
 
 /* ============================================================
  * CS Managers mocks — role management, targets, unassigned customers, the
@@ -758,14 +758,15 @@ function findPlan(planId: string): MockPlan {
 }
 
 export const csManagerRoutes: MockRoutes = {
-  'GET /admin/admins': () => ADMINS,
-
   'GET /admin/cs-managers': () => csManagers.map(toSummary),
 
   // The caller's own book, if any.
   'GET /admin/cs-managers/me': () => {
     const admin = requireSession();
-    const own = csManagers.find((m) => m.managerId === admin.id);
+    // A `as-<role>` test login whose landing page is the CS record is taken to hold it.
+    const own =
+      csManagers.find((m) => m.managerId === admin.id) ??
+      (mockHoldsRecord('cs_manager') ? csManagers[0] : undefined);
     return { is_cs_manager: !!own, manager: own ? toSummary(own) : null };
   },
 
