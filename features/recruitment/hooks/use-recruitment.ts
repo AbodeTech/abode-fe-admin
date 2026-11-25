@@ -236,6 +236,20 @@ export function useRecruitmentAnalysis(filters: RecruitmentAnalysisFilters = {})
   });
 }
 
+/** Reuse aggregate cache entries for the two-to-four selected comparison columns. */
+export function useRecruitmentAnalysisComparison(cohortIds: string[], source?: string) {
+  return useQueries({
+    queries: cohortIds.slice(0, 4).map(cohortId => {
+      const filters: RecruitmentAnalysisFilters = { cohort_id: cohortId, source };
+      return {
+        queryKey: recruitmentKeys.analysisDashboard(filters),
+        queryFn: () => apiGet('/admin/academy/recruitment-analysis', RecruitmentAnalysisSchema, { params: filters }),
+        staleTime: 30_000,
+      };
+    }),
+  });
+}
+
 /** People counted in one recruitment stage or currently needing follow-up. */
 export function useRecruitmentAnalysisPeople({
   filters,

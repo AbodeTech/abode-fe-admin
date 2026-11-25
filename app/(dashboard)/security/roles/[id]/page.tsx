@@ -16,7 +16,7 @@ export default function AdminDetailPage() {
   const { data: logsData, isLoading: loadingLogs, error: logsError } = useAdminLogs({
     page: 1,
     limit: DEFAULT_ADMIN_LOGS_LIMIT,
-    adminEmail: admin?.email || undefined,
+    adminId,
   });
 
   if (adminError) {
@@ -43,7 +43,7 @@ export default function AdminDetailPage() {
       <AdminDetailHeader
         admin={admin}
         logs={
-          (logsData?.data?.filter((log): log is NonNullable<typeof log> => log !== null) ||
+          (logsData?.items.map((log) => ({ action: log.action, timestamp: log.timestamp })) ||
             []) as AdminLogLike[]
         }
         isLoadingLogs={loadingLogs}
@@ -53,18 +53,18 @@ export default function AdminDetailPage() {
         <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h3 className="text-xl font-semibold">Activity History</h3>
           <span className="shrink-0 text-sm text-muted-foreground">
-            {logsData?.count ?? 0} total activities
+            {logsData?.meta.total ?? 0} total activities
           </span>
         </div>
 
         {logsError ? (
           <div className="text-sm text-red-500">Failed to load activity history.</div>
         ) : (
-          <AdminLogsTable logs={logsData?.data?.filter((log): log is NonNullable<typeof log> => log !== null)} />
+          <AdminLogsTable logs={logsData?.items} />
         )}
 
         <Pagination
-          count={logsData?.count ?? 0}
+          count={logsData?.meta.total ?? 0}
           currentIdx={1}
           limit={DEFAULT_ADMIN_LOGS_LIMIT}
         />

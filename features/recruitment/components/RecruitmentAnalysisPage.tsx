@@ -2,20 +2,25 @@
 
 import { useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Loader2, RefreshCw, Search } from 'lucide-react';
+import { Download, Loader2, RefreshCw, Search } from 'lucide-react';
+import { toast } from 'sonner';
 import { useDebounce } from '@/hooks/use-debounce';
 import { RecruitmentFollowUpSchema, RecruitmentStageSchema, type RecruitmentAnalysis, type RecruitmentFollowUp, type RecruitmentStage } from '../schemas/recruitment-analysis.schema';
 import { useRecruitmentAnalysis, useRecruitmentAnalysisPeople, type RecruitmentAnalysisFilters } from '../hooks/use-recruitment';
+import { useRecruitmentPeopleExport } from '../hooks/use-recruitment-people-export';
 import { Pagination } from '@/components/shared/Pagination';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AnalysisToolbar, AttendanceNotice, BusinessSummary, CohortExplorer, RecruitmentJourney, type CohortSort } from './RecruitmentAnalysisDashboard';
-import { cohortStage } from './analysis-presentation';
-import { RecruitmentCohortDrawer } from './RecruitmentCohortDrawer';
+import { AnalyticsFilters, RecruitmentAnalyticsOverview } from './RecruitmentAnalyticsOverview';
+import { RecruitmentAnalyticsDetail } from './RecruitmentAnalyticsDetail';
+import { RecruitmentAnalyticsCompare } from './RecruitmentAnalyticsCompare';
+import s from './recruitment-analytics.module.css';
 
 const EMPTY_FILTERS: RecruitmentAnalysisFilters = {};
 const PEOPLE_LIMIT = 25;
+const ANALYSIS_PATH = '/recruitment/analysis';
+const COMPARE_PATH = `${ANALYSIS_PATH}/compare`;
 type DrillSelection = { kind: 'stage' | 'follow_up'; value: RecruitmentStage | RecruitmentFollowUp; cohortId?: string };
 
 const STAGES: { key: RecruitmentStage; metric: keyof RecruitmentAnalysis['summary']; label: string; definition: string }[] = [
@@ -33,6 +38,9 @@ const FOLLOW_UPS: { key: RecruitmentFollowUp; label: string; from: RecruitmentSt
   { key: 'attended_without_test_attempt', label: 'Attended, no test attempt', from: 'attendee', to: 'test_participant' },
   { key: 'passed_without_course_completion', label: 'Passed, course not completed', from: 'test_pass', to: 'course_completion' },
   { key: 'completed_without_approved_upgrade', label: 'Completed, not upgraded', from: 'course_completion', to: 'approved_upgrade' },
+  { key: 'attempted_without_test_pass', label: 'Took the test, didn’t pass', from: 'test_participant', to: 'test_pass' },
+  { key: 'passed_without_approved_upgrade', label: 'Passed, not upgraded to Pro', from: 'test_pass', to: 'approved_upgrade' },
+  { key: 'approved_without_confirmed_sale', label: 'Pros who haven’t sold yet', from: 'approved_upgrade', to: 'active_associate_pro' },
 ];
 
 function formatUpdatedAt(value: string) {
@@ -58,7 +66,7 @@ function useAnalysisFilters() {
     source,
   }), [programmeId, cohortId, source]);
 
-  const update = (changes: Record<string, string | null>) => {
+  const update = (changes: Record<string, string | null>, destination?: string) => {
     const params = new URLSearchParams(searchParams.toString());
     params.delete('period');
     params.delete('cohort_started_from');
@@ -67,10 +75,13 @@ function useAnalysisFilters() {
       if (value) params.set(key, value);
       else params.delete(key);
     });
-    params.delete('people_page');
+    if (!('people_page' in changes)) params.delete('people_page');
     if (!('cohort_page' in changes)) params.delete('cohort_page');
     const query = params.toString();
-    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    const target = destination ?? pathname;
+    const href = query ? `${target}?${query}` : target;
+    if (destination) router.push(href);
+    else router.replace(href, { scroll: false });
   };
 
   return { filters, programmeId, cohortId, source, update };
@@ -95,6 +106,8 @@ function PeopleDialog({
   const page = Number(searchParams.get('people_page')) || 1;
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
+  const exportPeople = useRecruitmentPeopleExport();
+  const coverage = useRecruitmentAnalysis(filters);
   const people = useRecruitmentAnalysisPeople({
     filters,
     stage: selection?.kind === 'stage' ? selection.value as RecruitmentStage : undefined,
@@ -108,6 +121,19 @@ function PeopleDialog({
     ? STAGES.find((stage) => stage.key === selection.value)?.label ?? 'People'
     : FOLLOW_UPS.find((item) => item.key === selection?.value)?.label ?? 'Follow-up';
   const cohortName = selection?.cohortId ? people.data?.items[0]?.cohort_name : undefined;
+  const canExport = selection?.kind === 'follow_up' && Boolean(filters.cohort_id)
+    && coverage.data?.follow_up[selection.value as RecruitmentFollowUp]?.available
+    && !people.isFetching && !people.error && search === debouncedSearch && (people.data?.meta.total ?? 0) > 0;
+  const downloadPeople = async () => {
+    if (!canExport || selection?.kind !== 'follow_up' || exportPeople.isPending) return;
+    try {
+      const count = await exportPeople.mutateAsync({ filters, followUp: selection.value as RecruitmentFollowUp, search: debouncedSearch, label: title, expectedTotal: people.data!.meta.total! });
+      toast.success(`Downloaded ${count.toLocaleString()} people.`);
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
+      toast.error(error instanceof Error ? error.message : 'Unable to download this follow-up list.');
+    }
+  };
 
   const updatePeoplePage = (nextPage: string | null) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -135,18 +161,19 @@ function PeopleDialog({
         <DialogHeader className="shrink-0 border-b border-slate-100 px-5 py-4 pr-12 text-left sm:px-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div><DialogTitle className="text-lg">{title}</DialogTitle><DialogDescription className="mt-1 text-xs">People counted in this group{cohortName ? ` · ${cohortName}` : ''}. Filters follow the dashboard selection.</DialogDescription></div>
-            <Select value={selectionToken} onValueChange={changeSelection}>
+            <Select value={selectionToken} onValueChange={changeSelection} disabled={exportPeople.isPending}>
               <SelectTrigger className="w-full sm:w-[230px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {STAGES.map((stage) => <SelectItem key={`stage:${stage.key}`} value={`stage:${stage.key}`}>{stage.label}</SelectItem>)}
-                {FOLLOW_UPS.map((item) => <SelectItem key={`follow_up:${item.key}`} value={`follow_up:${item.key}`}>Follow-up: {item.label}</SelectItem>)}
+                {FOLLOW_UPS.filter(item => coverage.data?.follow_up[item.key]?.available || selection?.value === item.key).map((item) => <SelectItem key={`follow_up:${item.key}`} value={`follow_up:${item.key}`}>Follow-up: {item.label}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
           <div className="relative mt-4">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input value={search} onChange={(event) => { setSearch(event.target.value); updatePeoplePage(null); }} placeholder="Search name, email or cohort" aria-label="Search people" className="h-10 w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100" />
+            <input value={search} disabled={exportPeople.isPending} onChange={(event) => { setSearch(event.target.value); updatePeoplePage(null); }} placeholder="Search name, email or cohort" aria-label="Search people" className="h-10 w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100" />
           </div>
+          {selection?.kind === 'follow_up' && <div className="mt-3 flex flex-wrap items-center justify-between gap-3"><p className="text-xs text-slate-500">Download all {people.data?.meta.total?.toLocaleString() ?? 'matching'} people{search ? ' matching this search' : ' in this group'}. Phone numbers appear when available.</p><div className="flex items-center gap-2">{exportPeople.isPending && <Button variant="ghost" size="sm" onClick={exportPeople.cancel}>Cancel</Button>}<Button size="sm" disabled={!canExport || exportPeople.isPending} onClick={() => void downloadPeople()}>{exportPeople.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}{exportPeople.isPending ? 'Preparing CSV…' : 'Download CSV'}</Button></div></div>}
         </DialogHeader>
         <div className="min-h-0 flex-1 overflow-auto px-5 sm:px-6">
           {people.isLoading ? <div className="flex items-center justify-center gap-2 py-14 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" />Loading people…</div> : people.error ? <p className="py-12 text-center text-sm text-red-600">{people.error.message}</p> : people.data?.items.length ? (
@@ -163,62 +190,46 @@ function PeopleDialog({
 }
 
 
-export function RecruitmentAnalysisPage() {
-  const router = useRouter();
-  const pathname = usePathname();
+const positivePage = (value: string | null) => {
+  const number = Number(value ?? 1);
+  return Number.isSafeInteger(number) && number > 0 ? number : 1;
+};
+
+export function RecruitmentAnalysisPage({ mode = 'overview' }: { mode?: 'overview' | 'compare' }) {
   const searchParams = useSearchParams();
   const { filters, programmeId, cohortId, source, update } = useAnalysisFilters();
-  const [drillOpen, setDrillOpen] = useState(false);
-  const [drawerCohortId, setDrawerCohortId] = useState<string | null>(null);
   const [drill, setDrill] = useState<DrillSelection | null>(null);
   const optionsQuery = useRecruitmentAnalysis(EMPTY_FILTERS);
   const dashboard = useRecruitmentAnalysis(filters);
   const data = dashboard.data;
-  const drawerCohort = data?.cohorts.find(cohort => cohort.id === drawerCohortId);
   const options = optionsQuery.data?.filter_options ?? data?.filter_options;
-  const stage = searchParams.get('cohort_stage') ?? 'all';
-  const metric = searchParams.get('judge_by') === 'selling' ? 'selling' : 'upgrades';
-  const sortParam = searchParams.get('cohort_sort') ?? 'registrants';
-  const sort: CohortSort = ['name', 'programme', 'started', 'stage', 'registrants', 'upgrades', 'selling', 'comparison'].includes(sortParam) ? sortParam as CohortSort : 'registrants';
-  const direction = searchParams.get('cohort_direction') === 'asc' ? 'asc' : 'desc';
-  const pageParam = Number(searchParams.get('cohort_page') ?? 1);
-  const page = Number.isSafeInteger(pageParam) && pageParam > 0 ? pageParam : 1;
-  const stages = Array.from(new Set((data?.cohorts ?? []).map(cohortStage))).sort();
-
-  const openStage = (value: RecruitmentStage, scopedCohortId?: string) => {
-    setDrill({ kind: 'stage', value, cohortId: scopedCohortId });
-    setDrillOpen(true);
-    const params = new URLSearchParams(searchParams.toString());
-    params.set('people_page', '1');
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  const detailId = mode === 'compare' ? undefined : searchParams.get('detail') ?? cohortId;
+  const view = mode === 'compare' ? 'compare' : detailId ? 'detail' : searchParams.get('view') === 'compare' ? 'compare' : 'overview';
+  const selected = Array.from(new Set((searchParams.get('compare') ?? '').split(',').filter(Boolean)))
+    .filter(id => !options || options.cohorts.some(c => c.id === id)).slice(0, 4);
+  const statusParam = searchParams.get('status');
+  const status = statusParam === 'registration_open' || statusParam === 'registration_closed' ? statusParam : 'all';
+  const sortParam = searchParams.get('cohort_sort');
+  const sort = sortParam === 'registrants' || sortParam === 'upgrades' ? sortParam : 'newest';
+  const onSelect = (id: string) => update({ compare: (selected.includes(id) ? selected.filter(item => item !== id) : [...selected, id].slice(0, 4)).join(',') });
+  const onOpen = (id: string) => update({ view: null, detail: id, cohort_id: null, pro_page: null, pro_search: null }, ANALYSIS_PATH);
+  const openCompare = (ids = selected) => update({ view: null, detail: null, cohort_id: null, compare: ids.join(',') }, COMPARE_PATH);
+  const onDrill = (kind: DrillSelection['kind'], value: DrillSelection['value'], id: string) => {
+    setDrill({ kind, value, cohortId: id });
+    update({ people_page: '1' });
   };
-  const refresh = () => { void dashboard.refetch(); void optionsQuery.refetch(); };
-  const closePeople = (open: boolean) => {
-    setDrillOpen(open);
-    if (!open) {
-      setDrill(null);
-      const params = new URLSearchParams(searchParams.toString());
-      params.delete('people_page');
-      const query = params.toString();
-      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
-    }
-  };
+  const overview = () => update({ view: null, detail: null, cohort_id: null }, ANALYSIS_PATH);
 
-  return (
-    <div className="mx-auto w-full max-w-[1600px] space-y-5 px-3 pb-16 pt-4 sm:px-5 lg:px-7">
-      <header className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
-        <div><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-700">Associates · Recruitment</p><h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">Recruitment Analysis</h1></div>
-        <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-500"><span>Updated {data ? formatUpdatedAt(data.generated_at) : '—'}</span><Button variant="outline" size="sm" onClick={refresh} disabled={dashboard.isFetching}><RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${dashboard.isFetching ? 'animate-spin' : ''}`} />Refresh</Button></div>
-      </header>
-      {options ? <AnalysisToolbar options={options} programmeId={programmeId} cohortId={cohortId} source={source} stage={stage} stages={stages} metric={metric} update={update} /> : null}
-      {dashboard.isLoading && !data ? <div className="flex min-h-56 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" />Loading recruitment analysis…</div> : dashboard.error ? <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{dashboard.error.message || 'Unable to load recruitment analysis.'}<Button variant="link" onClick={refresh} className="text-red-800">Try again</Button></div> : data ? <>
-        <BusinessSummary data={data} />
-        <AttendanceNotice data={data} onOpen={openStage} />
-        <RecruitmentJourney data={data} onOpen={openStage} />
-        <CohortExplorer data={data} stage={stage} metric={metric} search={searchParams.get('cohort_search') ?? ''} sort={sort} direction={direction} page={page} update={update} onOpenCohort={setDrawerCohortId} />
-      </> : null}
-      {drawerCohort ? <RecruitmentCohortDrawer key={drawerCohort.id} cohort={drawerCohort} filters={filters} onClose={() => setDrawerCohortId(null)} onOpenPeople={openStage} /> : null}
-      {drill ? <PeopleDialog open={drillOpen} onOpenChange={closePeople} selection={drill} setSelection={setDrill} filters={{ ...filters, cohort_id: drill.cohortId ?? filters.cohort_id }} /> : null}
-    </div>
-  );
+  return <div className={s.page}><div className={s.content}>
+    <nav className={s.nav} aria-label="Recruitment analytics pages"><span className={s.eyebrow}>Associates · Recruitment</span><div className={s.tabs}><button aria-current={view === 'overview' ? 'page' : undefined} onClick={overview}>Overview</button><button aria-current={view === 'compare' ? 'page' : undefined} onClick={() => openCompare()}>Compare</button></div></nav>
+    {view === 'overview' && <>
+      <header className={s.heading}><div><h1>Recruitment Analytics</h1><p className={s.subtitle}>Every cohort, from registration to sales. Open a cohort or select a few to compare.</p></div><button className={s.button} disabled={dashboard.isFetching} onClick={() => { void dashboard.refetch(); void optionsQuery.refetch(); }}><RefreshCw size={14} className={dashboard.isFetching ? 'animate-spin' : undefined} />Refresh</button></header>
+      {options && <AnalyticsFilters options={options} programmeId={programmeId} source={source} status={status} update={update} />}
+      {dashboard.isLoading ? <div className={s.empty}><Loader2 className="animate-spin" />Loading recruitment analytics…</div> : dashboard.error ? <div role="alert" className={s.error}>{dashboard.error.message}<button className={s.link} onClick={() => void dashboard.refetch()}> Try again</button></div> : data ? <RecruitmentAnalyticsOverview data={data} status={status} search={searchParams.get('cohort_search') ?? ''} sort={sort} page={positivePage(searchParams.get('cohort_page'))} selected={selected} update={update} onSelect={onSelect} onCompare={() => openCompare()} onOpen={onOpen} /> : null}
+      <p className={s.muted}>Updated {data ? formatUpdatedAt(data.generated_at) : '—'}</p>
+    </>}
+    {view === 'detail' && detailId && <RecruitmentAnalyticsDetail key={detailId} cohortId={detailId} filters={{ source }} onBack={overview} onCompare={() => openCompare(Array.from(new Set([detailId, ...selected])).slice(0, 4))} onDrill={onDrill} proPage={positivePage(searchParams.get('pro_page'))} proSearch={searchParams.get('pro_search') ?? ''} update={update} />}
+    {view === 'compare' && (options ? <RecruitmentAnalyticsCompare options={options.cohorts} selected={selected} source={source} onChange={ids => update({ compare: ids.join(',') })} onOpen={onOpen} /> : optionsQuery.error ? <div role="alert" className={s.error}>Unable to load cohort options. <button className={s.link} onClick={() => void optionsQuery.refetch()}>Try again</button></div> : <div className={s.empty}>Loading cohorts…</div>)}
+    {drill && <PeopleDialog open onOpenChange={open => { if (!open) { setDrill(null); update({ people_page: null }); } }} selection={drill} setSelection={setDrill} filters={{ source, cohort_id: drill.cohortId }} />}
+  </div></div>;
 }

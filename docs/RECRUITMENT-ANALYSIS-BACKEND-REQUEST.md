@@ -1,55 +1,67 @@
-# Backend request: Recruitment Analysis redesign
+# PRD: Recruitment Analytics — backend requirements
 
-Updated: 24 November 2026. This replaces the earlier mock-based requirements in this file.
+Updated: 25 November 2026. This document supersedes the earlier recruitment-analysis mock and drawer requirements.
 
-## 1. What needs to be delivered
+## 1. Purpose and approved scope
 
-The redesigned admin page is `/recruitment/analysis`. The implementation is in `features/recruitment/components/RecruitmentAnalysisPage.tsx`, `RecruitmentAnalysisDashboard.tsx`, `RecruitmentCohortDrawer.tsx`, and `RecruitmentNeedsAttention.tsx`. The visual mock is `recruitment-analysis-redesign.html`; its example numbers must never become production data.
+Give business and sales teams a clear view of which recruitment cohorts produce approved Associate Pros, sellers, sales and new recruits, and what those outcomes cost. Keep every count explainable through the same cohort membership, source filters and evidence.
 
-Priorities:
+Design reference: `C:/Users/Seymart/Downloads/Recruitment Analytics.html`. Sample names, amounts, percentages and chart points in that file are layout examples, not data to seed or hard-code.
 
-1. **Fix historical attendee counting using meeting verifications.** The affected programmes and cohorts are named in section 3. A false `checked_in` value must not erase valid Supabase meeting-verification attendance.
-2. Extend the existing aggregate endpoint with sales values, explicit seller counts by source, outcome definitions, and maturity metadata.
-3. Keep the aggregate, cohort drawer, and people drill-down consistent under the same filters.
-4. Support outcome comparisons and Needs attention independently of registration goals.
-
-The approved page contains:
-
-| Area | Required data / behaviour |
-| --- | --- |
-| Filters | Programme, cohort, referral source, cohort stage, and Judge by: Became Pro / Pros selling / ₦ per registrant |
-| Four summary cards | Registrants, Became Associate Pro, Now selling, Sales from recruits |
-| Recruitment journey | Seven stages, four cards per desktop row, counts, availability, and conversion denominators |
-| Goal progress chart | Registrants divided by the cohort's registration goal |
-| Volume diagram | Registrants on the horizontal axis; registration-goal progress on the vertical axis |
-| Needs attention | Closed comparable cohorts with outcome rates at least 15% below their programme median |
-| All cohorts table | Cohort, programme, started date, stage, registrants, became Pro rate, Pros selling rate, ₦ per registrant, vs programme |
-| Cohort drawer | Selected cohort metadata, outcome cards, journey, source breakdown, Open people list |
-| People dialog | Actual people behind the selected cohort/stage, searchable and paginated |
-
-The date filter, Follow-up queue section, and standalone Active Associate Pros section were removed from the design. Do not make new follow-up or export endpoints a dependency for this release. Existing follow-up response fields remain for backwards compatibility.
-
-## 2. Existing endpoints and current gaps
-
-Paths below are relative to `/api/v1` and require the existing authorized Academy admin read access.
-
-| Endpoint | Status | Work needed |
+| Screen | Frontend route / behaviour | Backend responsibility |
 | --- | --- | --- |
-| `GET /admin/academy/recruitment-analysis` | Exists and is used by the frontend | Correct attendance; extend outcome, sales, coverage, and maturity fields |
-| `GET /admin/academy/recruitment-analysis?cohort_id=<id>` | Already used by the cohort drawer | Return the same contract scoped to exactly that cohort; preserve selected source |
-| `GET /admin/academy/recruitment-analysis/people` | Exists and is used by people dialogs | Apply the same corrected attendance and outcome membership rules; add attendance evidence metadata |
+| Overview | `/recruitment/analysis` | Filter options, six summary metrics, return chart, Needs attention, all-cohorts table |
+| Cohort detail | `/recruitment/analysis?detail=<cohort-id>` | Exact cohort results, journey, stopped-person groups, commercial results/costs, activities and Pro list |
+| Compare | **`/recruitment/analysis/compare`** | Two to four selected cohorts with consistent definitions, source scope and observation metadata |
+| Stage/follow-up lists | Dialog from the cohort detail page | Searchable, paginated people whose membership reconciles with the clicked count |
 
-A separate drawer endpoint is **not required**. Reuse the existing aggregate endpoint with `cohort_id`. A separate filter endpoint is also unnecessary while `filter_options` is supplied by the aggregate.
+Comparison selection is stored in the frontend URL as `compare=<id1>,<id2>`. Show **all available cohorts** in the chooser; the former three suggestion buttons were a UI truncation, not a backend limit. Zero/one selections show the selection prompt; two to four render a comparison. Four is the current simultaneous comparison limit, not a cap on available cohorts or programmes.
 
-Verified against the local backend source:
+### Latest layout
 
-- `academy-recruitment-analysis.derive.ts` currently sets `attendee: Boolean(registration.checked_in)` and uses `checked_in_at` for its timestamp.
-- `academy-recruitment-analysis.repository.ts` loads meetings but does not load `MeetingVerification` records.
-- The service returns `stage_label: null`; the current frontend consequently shows registration-open/closed status, not invented maturity.
-- Summary/cohort activity includes `confirmed_sale_only`, `approved_recruit_only`, and `both`. Source comparisons currently return only `active_associate_pros`, which includes sellers and recruiters.
-- Sales amounts are not returned. The UI displays unavailable values and disables the monetary Judge by option.
+- Overview summary: cohorts, registrants, became Associate Pro, Pros selling, sales brought in, return on cost.
+- Return by cohort: chronological bars for the latest 12 cohorts, sales per ₦1 spent, median and maturity context.
+- Needs attention: actionable outcome shortfalls, linked to the relevant cohort.
+- All cohorts: cohort/programme, actual start date, maturity/status, registrants, Pro rate, selling rate, sales, cost and return; search, sort, pagination and comparison selection.
+- Detail: six headline metrics (including downstream Pros), journey, Where people stopped, sales/recruiting results, sales timeline, costs, activity-to-selling comparison and Associate Pro table.
+- Compare: programme journey, outcomes after approval, costs/return, participation rates, first-sale timeline and evidence-backed highlights.
 
-These are source-code observations, not a verification of the current production deployment or database contents.
+The active design has no cohort drawer, goal-progress chart, volume diagram or Judge by control. Keep registration goals as detail metadata. CSV download of each “Where people stopped” group is now explicitly required for marketing follow-up, superseding the earlier exclusion. General overview/transaction exports and date-filter work remain outside this request. Preserve existing optional date parameters for compatibility.
+
+### Delivery priorities
+
+1. **P0 — attendance correctness:** include authoritative legacy meeting verification, with named programme/cohort reconciliation in section 3.
+2. **P1 — consistent live analytics and follow-up:** complete cohort choices, scoped detail/comparison results, exact people groups, downloadable follow-up contacts, coverage and versioned definitions.
+3. **P1 — commercial metrics:** sales, costs, recruiting outcomes and return, once attribution and authoritative sources are agreed.
+4. **P2 — deeper analysis:** activity comparisons, first-sale timelines, benchmark-driven alerts and enhanced Pro lists.
+
+## 2. Existing API and proposed work
+
+All paths below are relative to `/api/v1`. Existing reads require admin authentication and `view_academy`. Apply the same authorization to additions; retain any stricter existing permissions for financial data.
+
+| Endpoint | Status | Required work |
+| --- | --- | --- |
+| `GET /admin/academy/recruitment-analysis` | Exists | Correct attendance; preserve response contract; add commercial results, lifecycle, coverage, chart and alert blocks |
+| Same endpoint with `cohort_id=<id>` | Exists; detail and comparison use it | Return only that cohort's scoped metrics; include the detail blocks described in section 6 |
+| `GET /admin/academy/recruitment-analysis/people` | Exists | Preserve stage/follow-up lists; add the three missing follow-up groups, nullable phone numbers and stable complete pagination; supports the current CSV fallback |
+| `GET /admin/academy/recruitment-analysis/people/export` | **Proposed, recommended for consistent full-group exports; not implemented** | Export all matching contacts from one snapshot, using the exact same membership and scope as the people list (section 10.1) |
+| `GET /admin/academy/recruitment-analysis/compare?cohort_ids=<id1>,<id2>` | **Optional proposed endpoint; does not currently exist** | Batch two to four cohorts under one observation snapshot, preserving selection order and per-cohort availability |
+
+The frontend currently compares cohorts by calling the existing aggregate endpoint once per selected cohort, at most four requests. A new frontend URL does **not** require a new backend endpoint. Reusing the aggregate remains valid; a batch endpoint is useful for consistent snapshots and efficiency. No dedicated detail/filter endpoint is required while the aggregate supplies those blocks and complete `filter_options`.
+
+### Verified local source behaviour
+
+Read-only review on 24 November 2026, not a production/database verification:
+
+- Controller exposes aggregate and people endpoints only.
+- `RecruitmentAnalysisFilterDto` accepts programme/cohort/source and the legacy creation-date parameters. It does not accept status, maturity, comparison IDs, monetary sorts or Pro activity filters yet.
+- People DTO accepts stage, existing follow-up, search, page (default 1), limit (default 25; maximum 100).
+- Attendance is currently `Boolean(registration.checked_in)`; the repository loads meetings but not `MeetingVerification`.
+- Cohorts expose `created_at`, registration open/closed and `stage_label: null`; they do not establish actual start/close dates or maturity.
+- Seller evidence is returned through `confirmed_sale_only`, `approved_recruit_only`, `both`. Source comparisons expose broader active AP counts, not a seller-only count.
+- Confirmed sales are queried as distinct users, without transaction values or dates. Cost, activity-to-sale and first-sale series are absent.
+
+Proposed field names in this PRD are a requested additive contract, not implemented capabilities. Agree DTOs and frontend Zod schemas together before sending new parameters.
 
 ## 3. Attendance correction: historical Supabase meeting verification
 
@@ -130,186 +142,272 @@ Proposed additive cohort metadata (illustrative shape, not observed counts):
 
 Evidence split fields count unique eligible cohort people; unresolved/excluded fields count verification records and must be labeled as such. The attendee count must reconcile with the attendance evidence included under the cohort's policy. When the policy excludes a type of evidence, do not include it in these contributing counts.
 
-## 4. Aggregate endpoint contract
+## 4. Scope, compatibility and response rules
+
+### Filters and URL state
+
+| Field | Current behaviour | Required contract |
+| --- | --- | --- |
+| `programme_id` | Sent to aggregate | Exact programme scope; validate against a supplied cohort |
+| `cohort_id` | Sent to aggregate/people | Exact cohort scope; no fallback to a different cohort |
+| `source` | Sent to aggregate/people and each compared cohort | Exact registration referral-source value, consistently applied to every membership and derived metric |
+| `status` | Frontend-only `registration_open` / `registration_closed`; filters overview cohort totals/table/alerts | If moved server-side, agree a distinct `registration_status` DTO field; never interpret it as maturity |
+| `maturity_code` | Not implemented | Separate proposed lifecycle filter; do not send before backend support |
+| `compare`, `detail`, `view` | Frontend navigation/selection state | Not aggregate API parameters; do not forward them |
+| `cohort_search`, `cohort_sort`, `cohort_page` | Frontend table state; eight rows/page | Search/pagination must not change summary, charts or benchmark pools |
+| `people_page` | People dialog state | Maps to `page`, currently limit 25 |
+| `pro_search`, `pro_page` | Detail Pro-list state | Map to people `search`/`page`, currently limit 10 and `stage=approved_upgrade` |
+
+Current overview sorts: newest created, most registrants, lowest Pro rate. Requested additions are newest actual start, highest return and highest sales once data exists. Keep null values last and use a stable ID tie-break. Do not silently paginate `cohorts[]`: the current frontend derives totals and alerts from the complete set. If server-side table pagination is introduced, return independently computed full-scope summary, chart and benchmark blocks plus table pagination metadata in a coordinated contract change.
+
+The reference's “Cohorts started” date selector is out of scope. Existing `cohort_started_from/to` actually filter cohort **creation dates** in the local backend; do not relabel or silently change those semantics. The UI uses `Created` until actual `started_at` is supplied.
+
+Comparison must retain selected cohort IDs and source scope across navigation/refresh. Cohorts may belong to different programmes. An overview programme/status filter must not silently exclude an explicitly selected comparison cohort. The chooser must have the complete authorized cohort catalog, independent of selected items and table pagination; it currently comes from an unfiltered aggregate request.
+
+### Preserve the existing contract
+
+Keep the `{ success, data, message, meta }` envelope and paged people envelope. Retain existing `generated_at`, `filters`, `filter_options`, `summary`, `coverage`, `journey`, `cohorts`, `comparison` and `follow_up` blocks. Keep all existing singular stage codes:
+
+`registrant`, `attendee`, `test_participant`, `test_pass`, `course_completion`, `approved_upgrade`, `active_associate_pro`.
+
+Stage metrics remain `{ count, acquired, influenced, unclassified }`. Do not treat `was_existing=null` as either acquired or influenced. Adding backend fields alone is insufficient: update `features/recruitment/schemas/recruitment-analysis.schema.ts` and the consuming hooks/components in the same rollout.
+
+For new metrics return `availability: tracked | partial | unavailable`, a nullable value/count and a machine-readable missing reason where relevant. A tracked zero is `0`; missing data is `null`; partial known totals must remain labelled partial and cannot win a comparison or establish a trustworthy benchmark. Return metric-specific coverage, not only one dashboard-wide flag.
+
+Percentages use 0–100 numeric values; return null for zero/missing denominators. Rates should carry numerator, denominator and denominator label. Money uses NGN integer kobo (`amount_minor`, `currency: NGN`), with an agreed safe serialization range; no formatted strings as the source of truth. Ratios are numeric multiples, not percentages. Use full precision for calculation, round for display only. Timestamps are ISO-8601 UTC; calendar display is Africa/Lagos.
+
+Include `metric_definition_version`, `generated_at`, `observation_ends_at` and attribution/benchmark basis. Cache keys must include scope and definition version; invalidate relevant results when reconciled attendance, approval, sales/refunds or costs change.
+
+## 5. Metrics and commercial attribution
+
+| Metric | Definition / denominator |
+| --- | --- |
+| Registrants | Unique eligible person within each cohort; overall legacy totals count cohort-person memberships, not automatically globally unique users |
+| Became Associate Pro | Approved qualifying upgrades; rate = approved Pros / registrants under the declared conversion definition |
+| Pros selling | Distinct approved Pros with an attributable confirmed sale after approval; rate = sellers / approved Pros |
+| Active Associate Pros | Sellers OR approved recruiters; preserve existing broader metric but never label it “Pros selling” |
+| Sales brought in | Sum of eligible confirmed sales attributed to those Pros and the cohort; never number of sales or user purchases substituted for money |
+| Pros they brought in | Distinct downstream people with qualifying approved Pro upgrades; not the number of recruiting agents |
+| Return on cost | Sales value / cohort cost; null for zero, missing or partial cost/revenue; this is sales per ₦1 spent, not profit ROI |
+| Unit costs | Cohort cost / registrants, approved Pros or selling Pros, respectively; null for zero/missing denominator |
+| Sales per selling Pro | Attributable sales value / selling Pros |
+| Days to first sale | Days from approved upgrade to first qualifying confirmed sale; cohort summary uses the median among sellers and reports sample/coverage |
+
+Keep the existing activity partition mutually exclusive: `confirmed_sale_only`, `approved_recruit_only`, `both`. Seller count = confirmed-sale-only + both; recruiting-agent count = approved-recruit-only + both. Neither expression supplies a downstream recruit total.
+
+### Attribution decisions required before monetary release
+
+These are proposed business rules for agreement, not silent changes to historical counts:
+
+- Separate cohort attendance/registration membership from commercial credit. People can attend multiple cohorts, but the same sale must not be credited multiple times in commercial rollups.
+- Recommended commercial credit: latest eligible cohort registration before qualifying Pro approval, with deterministic tie-break; subsequent eligible sales follow that attributed approval. Return the rule/version and exclusions.
+- Distinguish people already Pro at cohort entry from newly approved Pros. Return already-Pro exclusions and the exact conversion denominator. Do not silently replace the existing registrant/upgrade metrics with a new population.
+- Decide whether “sales value” means confirmed paid value or contracted plan value; define refunds, cancellations, instalments, multiple confirmations and currency treatment. Count the same economic sale once.
+- Only post-approval sales/recruits qualify for post-upgrade outcomes. Missing historical dates produce partial/unavailable evidence, not an assumed order.
+- Identify the authoritative cohort cost source and its completeness. Request actual total and category costs; do not estimate costs from reference figures. Cost-entry workflows are outside this read-only analytics scope unless separately agreed.
+- For source-filtered cost/return, explicitly define cost allocation. Until a valid allocation exists, return cost-based metrics unavailable for source slices rather than dividing source revenue by an unexplained whole-cohort cost.
+
+Add `started_at`, `closed_at`, `registration_closed_at` where distinct, `maturity_code`, `maturity_basis` and results age. Complete/maturing/unknown must be based on an agreed observation policy, not registration-open/closed or `created_at`. The latest reference does not establish a binding maturity threshold; older 30/90-day proposals are not accepted requirements.
+
+## 6. Aggregate and cohort detail additions
 
 ```http
-GET /api/v1/admin/academy/recruitment-analysis?programme_id=<id>&cohort_id=<id>&source=<value>
+GET /api/v1/admin/academy/recruitment-analysis?programme_id=<id>&source=<value>
+GET /api/v1/admin/academy/recruitment-analysis?cohort_id=<id>&source=<value>
 ```
 
-### Filters and UI state
+Proposed additive blocks:
 
-| Parameter | Current status | Required behaviour |
-| --- | --- | --- |
-| `programme_id` | Supported | Restrict to that programme |
-| `cohort_id` | Supported | Restrict to that cohort; validate consistency with programme |
-| `source` | Supported | Exact registration referral-source value; apply consistently to summary, journey, table, attention, and drawer |
-| `cohort_stage` | Proposed backend addition | Use stable stage codes, including an explicit unknown state; document whether it means registration status or maturity |
-| `judge_by` | Proposed backend addition | `upgrades`, `selling`, `sales_per_registrant`; changes comparison/attention metric, not underlying registration counts |
+| Block | Required fields / use |
+| --- | --- |
+| `performance` at aggregate and cohort level | Seller count, confirmed-sale count/value, total/categorical cost, return multiple, cost per registrant/Pro/seller, sales per seller; coverage for each metric |
+| `recruiting` at cohort level | Recruiting Pros, people recruited, approved downstream Pros, downstream Pros selling; eligibility window and coverage |
+| `lifecycle` per cohort | Actual lifecycle dates, registration status, maturity basis/status and observation window |
+| `return_by_cohort` | Last 12 eligible cohorts in oldest-to-newest order; IDs/names, actual start, maturity, return multiple/availability, median and benchmark membership |
+| `needs_attention` | Full-scope alerts, total flagged, rule/version, threshold, benchmark and drill target (section 7) |
+| `cohort_detail.sales_timeline` | Bucket start/end, confirmed sales value/count, currency, cumulative vs period basis, observation bounds and coverage |
+| `cohort_detail.costs` | Total plus ads, events/venue, facilitators, tools/messaging and any other category; completeness, cost source and reconciliation |
+| `cohort_detail.unit_cost_benchmarks` | Cost per registrant/Pro/seller, same-programme median, included peers and availability |
+| `cohort_detail.activity_analysis` | Activity rows and participation/selling comparisons (section 8) |
+| `cohort_detail.first_sale_timeline` | Day-since-approval series, eligible denominators and observation/censoring method (section 8) |
 
-The current frontend sends only programme/cohort/source to the API. Its cohort-stage filter currently applies locally to the table, charts, and Needs attention. If backend stage filtering is implemented for the whole dashboard, update the UI and contract together so all sections have a clearly defined scope. Do not silently send new query fields before DTO support exists.
+Only populate single-cohort detail blocks when scoped to a cohort; a detail request must never include global totals. A nonexistent/deleted cohort returns explicit not-found or an explicitly empty scoped result. Unauthorized data follows the existing authorization policy.
 
-The date selector was removed. Existing optional `cohort_started_from` / `cohort_started_to` may remain for compatibility but are not new-design requirements.
-
-`cohort_search`, `cohort_sort`, `cohort_direction`, and `cohort_page` are currently frontend URL state. Search and table pagination must not change summary totals or programme-median benchmarks. `people_page` maps to the people endpoint's `page` parameter.
-
-### Preserve the current response structure
-
-Keep the standard `{ success, data, message, meta }` API envelope. The frontend unwraps it once. Retain:
-
-- `generated_at`, echoed `filters`, and `filter_options.programmes/cohorts/sources` with stable IDs/values and names.
-- `summary`: `registrants`, `attendees`, `test_participants`, `test_passes`, `course_completions`, `approved_upgrades`, `active_associate_pros`.
-- Stage metrics: `{ count, acquired, influenced, unclassified }`, nullable when unavailable. `active_associate_pros` also includes mutually exclusive `confirmed_sale_only`, `approved_recruit_only`, `both`.
-- `coverage`: tracked and missing cohort/segment counts for every stage.
-- `journey[]`: `stage`, `label`, `count`, `denominator_stage`, `denominator_count`, `conversion_rate`, `tracked_cohorts`, `missing_cohorts`.
-- `cohorts[]`: existing identity, programme, event, created date, registration status, `stage_label`, goal, metric objects, activity split, and `missing_stages`.
-- `comparison`: programme, event, source, and cohort groups; retain these fields even though the old comparison tabs are no longer rendered.
-
-Stage codes are singular: `registrant`, `attendee`, `test_participant`, `test_pass`, `course_completion`, `approved_upgrade`, `active_associate_pro`. Percentages are numbers on a 0–100 scale; a zero denominator returns null.
-
-The current Zod schemas are in `features/recruitment/schemas/recruitment-analysis.schema.ts`. Coordinate new fields and any definition changes with those schemas. Adding fields only on the backend will not automatically display them in the frontend.
-
-### Required additions for summary, table, and drawer
-
-| Data | Requested field / calculation | Notes |
-| --- | --- | --- |
-| People actually selling | `selling_associate_pros` count, including coverage | `confirmed_sale_only + both`; recruiter-only activity must not count as selling |
-| Sales from recruits | `sales_from_recruits.amount_minor`, `currency`, `availability` | NGN integer kobo; null if unavailable; specify the authoritative confirmed-sale amount and refund/cancellation treatment |
-| ₦ per registrant | `sales_per_registrant_minor` | Sales value divided by registrants, null for unavailable value or zero denominator |
-| Source-level sellers | `comparison.sources[].selling_associate_pros` | Needed to label the drawer column “Selling”; current `active_associate_pros` is a broader metric |
-| Source-level sales | `comparison.sources[].sales_from_recruits` | Same money and availability structure as summary/cohort |
-| Cohort maturity | `started_at`, `registration_closed_at`, `maturity_code`, `stage_label`, `maturity_basis` | Use actual lifecycle dates; preserve existing `created_at` and registration `status` |
-| Historical attendance | `attendance` metadata from section 3 | Scope to cohort and selected registration-source filter |
-| Definition/freshness | `metric_definition_version`, data `generated_at` | Changing approval attribution or maturity rules must be distinguishable from a visual change |
-
-Return seller and money fields at summary, cohort, and source levels so the four summary cards, table, and drawer agree. `Now selling` is a person count; `Sales from recruits` is money. Do not use number of transactions, gross user purchases, or recruiter counts as substitutes.
-
-For amounts, document whether the metric is confirmed paid value or total contracted plan value and use that same definition everywhere. The existing API does not establish this yet. Do not turn unavailable revenue into zero while this is unresolved.
-
-The reference uses maturity bands of under 30 days, 30–90 days, and over 90 days after closing. These are a proposed policy, not something to infer from `created_at`. Supply the true closing date and agree the thresholds before exposing these bands. Until then the implemented card uses explicit registration-closed eligibility and labels it that way.
-
-### Outcome attribution
-
-Keep existing metric definitions stable during an additive rollout. The reference's commercial view assumes an approved upgrade happened after cohort registration, excludes people already Pro on entry from new-Pro conversions, and credits a commercial outcome to one cohort. The existing analysis may count a person across multiple enrolled cohorts; do not silently change those existing counts.
-
-Before enabling revenue totals, define and version the commercial attribution rule. Recommended: credit an approved upgrade and its subsequent eligible sales to the latest eligible cohort registration before that upgrade, with a deterministic tie-break. Each confirmed transaction is credited once. Keep raw cohort registration/attendance membership separately so attendance remains count-once-per-person-per-cohort. Return the attribution rule and already-Pro exclusions so numerator and denominator populations are explainable.
-
-Both selling and approved-recruit activity must occur after the attributed Pro upgrade. Pending/declined upgrades and unconfirmed sales do not qualify. Return null/partial coverage when historical timestamps cannot establish that order.
-
-## 5. Goal progress and Needs attention are different metrics
-
-### Registration goal chart and volume diagram
-
-```text
-goal_progress_percent = registrants / registration_goal * 100
-```
-
-If the goal is zero/missing, progress is unavailable. Preserve a numeric value above 100% when the target is exceeded; the visual bar may cap at 100%. The volume diagram uses registrants and this goal percentage. It does not diagnose upgrade/sales performance.
-
-### Needs attention
-
-The current frontend calculates this from the complete returned cohort set. No separate endpoint is necessary while those rows remain complete. A backend-generated `needs_attention` block is preferable if cohort pagination or business-rule centralization is introduced.
-
-Required algorithm, matching the implemented card:
-
-1. Apply programme/cohort/source and the declared cohort-stage scope. Use closed cohorts with a valid tracked value and a positive denominator. Do not manufacture maturity from created dates.
-2. For `upgrades`, use `approved_upgrades / registrants * 100`. For `selling`, use `selling_associate_pros / approved_upgrades * 100`. The monetary mode remains unavailable until sales data is supplied.
-3. Group eligible cohorts by `programme_id`. At least two tracked comparable cohorts are required in a programme. Compute the unweighted median of their metric rates. Exclude null values; a measured zero remains a value.
-4. Only compare against a positive median. Flag values at least 15% below that median: `(median - value) / median * 100 >= 15`.
-5. Rank by the estimated people needed to reach the median: `(median_percent - value_percent) / 100 * denominator`. The denominator is registrants for upgrades and approved Pros for selling. Break ties by relative gap and then cohort name/ID. Show the top seven, with the total number flagged.
-6. Clicking a result opens that cohort's drawer.
-
-Do not rank by registration goal, raw cohort size alone, or raw conversion percentage alone. The reference HTML weights relative gap by cohort size; the current implementation uses the percentage-point difference times the denominator so its “more people at median rate” label is mathematically correct.
-
-Example: two closed cohorts in the same programme each have 100 registrants. Cohort A reached its 100-registration goal but converted only 2 Pros. Cohort B reached 10% of a 1,000-registration goal but converted 30 Pros. Median conversion is 16%; A is flagged at 87.5% below median, representing approximately 14 more upgrades to reach that median. B is not flagged. Goal progress still shows A at 100% and B at 10%.
-
-When there are fewer than two comparable cohorts, missing outcomes, or a zero median, return an insufficient-comparison state rather than claiming every cohort is healthy. Benchmark pools must be independent of table text search and pagination. A selected single cohort can legitimately leave too few peers under the current filter scope; do not silently compare it to a different global population.
-
-Suggested optional aggregate block:
+Illustrative **additive fragment**, not a complete response or observed dataset:
 
 ```json
 {
-  "needs_attention": {
-    "metric": "upgrades",
-    "eligibility_basis": "registration_closed",
-    "threshold_percent": 15,
-    "comparable_cohorts": 2,
-    "total_flagged": 1,
-    "items": [{
-      "cohort_id": "cohort-id",
-      "programme_id": "programme-id",
-      "metric_value": 2,
-      "programme_median": 16,
-      "below_median_percent": 87.5,
-      "denominator_count": 100,
-      "estimated_people_gap": 14
-    }]
+  "performance": {
+    "sales_brought_in": {
+      "amount_minor": null,
+      "currency": "NGN",
+      "availability": "unavailable",
+      "reason": "sales_value_not_supplied"
+    },
+    "cohort_cost": {
+      "amount_minor": null,
+      "currency": "NGN",
+      "availability": "unavailable",
+      "reason": "cost_not_recorded"
+    },
+    "return_on_cost": {
+      "value": null,
+      "availability": "unavailable",
+      "reason": "cost_not_recorded"
+    }
   }
 }
 ```
 
-For the table's `vs programme`, return a signed relative difference if calculated server-side: `(value / median - 1) * 100`. This table currently uses all selected tracked cohort rows; Needs attention uses closed cohorts only. Expose the benchmark population if both calculations move to the backend, rather than implying their medians are always identical.
+Journey counts and rates must identify their denominators. Bars use registrants; next-stage transition annotations must use actual intersecting memberships, not assume every test-taker has an attendance record. Course completion is separate and must stay unavailable where not tracked. “Made a sale” uses sellers, never broader active APs. Do not show a programme-usual annotation without a valid peer benchmark.
 
-## 6. Cohort drawer
+## 7. Needs attention and programme benchmarks
+
+### Current implemented rule — retain until a versioned replacement is agreed
+
+- Use registration-closed cohorts with tracked Pro conversion and positive registrant denominators, within the declared overview programme/source/status scope.
+- Group by programme; require at least two valid cohorts; take the unweighted median of their conversion rates. The current median includes the assessed cohort.
+- For a positive median, flag `(median - value) / median * 100 >= 15` (inclusive).
+- Estimate the upgrade shortfall as `(median_percent - value_percent) / 100 * registrants`. Rank descending by this estimate, then relative gap, then stable name/ID. Display the top **three** alerts plus the total flagged; this limit is unrelated to the all-cohort comparison chooser.
+- Clicking an alert opens the cohort detail page. Summary, benchmark and alert inputs must be independent of table search/pagination.
+- Fewer than two eligible cohorts, zero median or unavailable outcomes must produce an insufficient-comparison state, not “all healthy”.
+
+### Additional rules requested by the latest reference
+
+The design also calls for medians of **other finished editions**, passed-but-not-upgraded alerts and low-return alerts. This differs from the current rule; the backend must return an explicit rule/version and benchmark population before the frontend changes its interpretation.
+
+For every alert supply `cohort_id`, `programme_id`, `reason_code`, metric value, denominator, benchmark, peer count/IDs or reproducible scope, relative/absolute gap, estimated people gap where applicable, availability, ranking basis and drill target. Agree minimum peer/sample requirements, maturity eligibility and low-return thresholds before enabling new alert types. Do not mix differently scaled alert types into an unexplained ranking.
+
+Goal progress is **not** an attention signal. Example: two closed cohorts each have 100 registrants and convert 2 and 30 Pros. The current median is 16%; the first is 87.5% below median and about 14 upgrades short, regardless of whether it has already met its registration goal. A low registration-goal percentage alone does not mean poor conversion or return.
+
+## 8. Activities and first-sale charts
+
+### Activity rows
+
+Support these keys with explicit coverage: `weekly_meeting_any`, `weekly_meetings_three_in_30_days`, `allocation_event`, `recruited_person`, `site_inspection`, `sales_marathon`.
+
+For each activity return eligible Pros, participant count, nonparticipant count, seller counts for both groups, selling rates, percentage-point difference, unknown-participation count, data source and window. Unknown participation must not be silently counted as nonparticipation. Site inspection and sales marathon can be unavailable until attendance/event tracking exists.
+
+The reference proposes activity from approval until first sale, or the first 60 days for nonsellers; the three-meeting metric also needs its first-30-day window. Agree how immature Pros and events after those windows are handled. Prevent post-sale activities from being credited as pre-sale exposure. These comparisons show association, not causation.
+
+### Sales and first-sale series
+
+- Sales-since-close chart: true cohort close date, interval boundaries, period sales/counts and optional cumulative totals; do not synthesize time points from an aggregate.
+- First-sale comparison: align each cohort at day zero = individual Pro approval. Return day offsets, seller count, eligible denominator, percent and observation horizon for each point.
+- Use a documented common observation window or censoring-aware method; newer cohorts must not be presented as worse simply because they have had less time to sell. Do not invent zero-valued future points.
+- Median days-to-first-sale excludes nonsellers from the median but reports the number of observed sellers and coverage; do not treat nonsellers as zero days.
+- Return explicit empty/unavailable series where dates or event histories are missing.
+
+## 9. Comparison contract
+
+The existing scoped aggregate requests can supply the same fields as detail. Use the selected cohorts in user order, with a common source definition and compatible snapshot/version metadata. Avoid per-person N+1 queries.
+
+If implementing the optional batch endpoint:
 
 ```http
-GET /api/v1/admin/academy/recruitment-analysis?programme_id=<programme-id>&cohort_id=<cohort-id>&source=<optional-source>
+GET /api/v1/admin/academy/recruitment-analysis/compare?cohort_ids=<id1>,<id2>&source=<value>
 ```
 
-Return only the requested cohort's summary, journey, source comparisons, coverage, and metadata. Preserve the source filter when opening from the table/charts/Needs attention. Summary cards must never retain all-cohort totals inside a single-cohort drawer.
+- Validate two to four distinct, valid cohort IDs; return 400 for invalid size, duplicates or malformed IDs. No artificial limit of three available cohorts.
+- Preserve input order. Return a result for each requested authorized cohort, with explicit unavailable/not-found/error state where permitted. Never substitute another cohort or collapse missing data to zero.
+- Use one `observation_ends_at`/definition version where possible; expose partial failure. Do not claim a common snapshot when four separate requests were computed at different observation times.
+- Recommended response blocks: `selected_cohort_ids`, snapshot/version, `items[]` (cohort metadata and same metric/detail blocks), `measures[]` (denominator, comparison direction, availability, winners), and optional structured `highlights` with supporting values.
+- The chooser catalog is independent of the selected result list. Return all authorized choices or an explicitly paginated searchable catalog; a page of cohort table rows must not be the only available choices.
 
-The drawer needs:
+Measures: registration and journey counts/rates; upgrade count/rate; selling count/rate; median days-to-first-sale; sales; sales per seller; downstream approved Pros; total and unit costs; return multiple; activity participation shares; first-sale timelines.
 
-- Cohort and programme names, opened/started date with the actual date basis, registration status/maturity.
-- Became Pro percentage, percentage of approved Pros with confirmed sales, sales value/availability.
-- All seven journey stages, counts and denominator metadata. Untracked stages stay unavailable.
-- Source table with registrants, approved upgrades, confirmed sellers, and sales value. Until explicit seller-by-source values exist, the current UI labels the returned metric “Active APs”.
-- Attendance coverage/provenance sufficient to explain migrated legacy cohorts.
-- Open people list for this same cohort and source selection.
+Highlight higher conversion/selling rates, sales, return and participation where meaningful; lower days-to-first-sale and **unit** cost where meaningful. Total cohort cost and raw registrant volume are context, not automatically “best”. Show ties consistently. Mark no winner when required comparison data is incomplete, denominators are zero, or maturity/observation windows are not comparable. Narrative highlights must reference returned numbers and exclude unavailable measures; do not generate sample claims such as “best on 11 of 15 measures”.
 
-Missing/deleted cohorts must produce an explicit not-found result or an empty scoped result; never fall back to another cohort's data. Do not require one request per source to build the drawer.
-
-## 7. People endpoint and attendance evidence
+## 10. People, follow-up and Pro list
 
 ```http
 GET /api/v1/admin/academy/recruitment-analysis/people?cohort_id=<id>&stage=attendee&page=1&limit=25
+GET /api/v1/admin/academy/recruitment-analysis/people?cohort_id=<id>&stage=approved_upgrade&page=1&limit=10
 ```
 
-Keep supported `programme_id`, `cohort_id`, `source`, `stage`, `search`, `page`, and `limit`. Stage codes are listed in section 4. Existing `follow_up` remains compatible. Validate page >= 1 and limit 1–100.
+Preserve programme/cohort/source/stage/follow-up/search filters and existing identity, classification, furthest-stage and stalled/follow-up fields. Page >= 1; limit 1–100. Paged responses need total, page, limit and total pages under the existing envelope. Counts and person memberships must use the same snapshot/scope as the corresponding metric.
 
-Return the standard paged envelope with `meta.total`, `meta.page`, `meta.limit`, and `meta.totalPages`, and the existing person fields (`id`, `user_id`, name/email, programme/cohort/event, referral source, classification, furthest stage, stalled/follow-up metadata).
+### Exact stopped-person groups
 
-Proposed additive attendee fields:
+| Group | Existing or proposed `follow_up` | Required membership |
+| --- | --- | --- |
+| Registered, never attended | Existing `registered_without_attendance` | Registered AND not attended, only where attendance is sufficiently tracked |
+| Attended, did not take test | Existing `attended_without_test_attempt` | Attended AND no eligible attempt |
+| Took test, did not pass | Proposed `attempted_without_test_pass` | Has eligible attempt AND no qualifying pass across eligible attempts |
+| Passed, not upgraded | Proposed `passed_without_approved_upgrade` | Has qualifying pass AND no qualifying approved Pro upgrade |
+| Pros without a sale | Proposed `approved_without_confirmed_sale` | Has qualifying approved upgrade AND no eligible confirmed sale |
 
-```json
-{
-  "attendance_source": "meeting_verification",
-  "attended_at": "2026-08-27T18:35:00.000Z",
-  "attendance_evidence_count": 2,
-  "meeting_ids": ["target-meeting-id"],
-  "legacy_registration_id": "source-registration-uuid"
-}
+Retain existing `passed_without_course_completion` and `completed_without_approved_upgrade` for compatibility. They are **not substitutes** for passed-without-upgrade. Return exact set-membership counts and paginated lists; subtracting aggregate counts can produce wrong results when data is non-nested. Null/partial tracking must not become a definitive list of people who failed to progress. Groups can overlap when evidence permits; document that they are not necessarily a mutually exclusive funnel.
+
+### Pro table additions
+
+For `stage=approved_upgrade`, add approval date, meeting count, activity labels, first-sale date/days, confirmed-sale count/value, downstream approved recruit count, inactive-in-window flags and per-field coverage.
+
+Proposed DTO extensions: `selling_status=all|selling|not_selling`, `sort_by=sales_value|approved_recruits|meetings_attended|approved_at`, `sort_direction=asc|desc`. Apply these before pagination; sort nulls last with stable ID ties. A nonselling filter requires tracked absence of sales, not unknown evidence. Do not use the broader active-AP stage to implement the selling tab.
+
+Attendee rows need additive `attendance_source` (`checkin`, `meeting_verification`, `both` or null), earliest `attended_at`, evidence count, relevant meeting IDs and legacy registration ID where retained. Evidence count is records/sessions, not people. Avoid returning unnecessary raw verification history. The attendee list must reconcile with the same deduplicated aggregate, including valid legacy verification when check-in is false.
+
+### 10.1 Download contacts for marketing follow-up
+
+**User flow:** click a row under “Where people stopped” → review the cohort's people list → optionally search → click **Download CSV**. Download every matching person across all pages, not just the current visible page and not one aggregate row. Use the same selected cohort, follow-up group, source and search as the open list. The export is a file download only; it does not send messages or start an outreach campaign.
+
+#### What works now and what needs backend changes
+
+- The existing paged `/people` endpoint supports `registered_without_attendance` and `attended_without_test_attempt`. Frontend download now collects every matching page with `limit=100` and generates CSV. A new endpoint is not required to enable basic name/email exports for these two groups.
+- Backend must implement **`attempted_without_test_pass`**, **`passed_without_approved_upgrade`**, and **`approved_without_confirmed_sale`** in both aggregate `follow_up` counts/availability and `/people` filtering. The frontend accepts these additive keys but keeps rows unavailable until the backend advertises them. Do not map them to existing course-completion groups or derive them by subtracting stage totals.
+- Add **`phone_number: string | null`** to person records, from the authoritative user/registration contact source. The current API supplies names/emails but no phone numbers. Specify source precedence when registration and canonical-user contacts differ; do not infer a number or country code. Blank/unknown phones must not become `0`.
+- Correct historical attendance before presenting “never attended” as a reliable marketing list. If tracking is incomplete, return `available=false` or explicit partial coverage, and do not present unknown attendance as confirmed nonattendance.
+- Preserve all qualifying people with missing contact fields in the export; blank phone/email must not silently reduce the row count. Report missing-contact counts when available.
+
+#### CSV contract
+
+Exact initial columns, in order:
+
+```text
+User ID, First name, Last name, Email, Phone number, Programme, Cohort, Source, Follow-up group, Furthest stage, Stalled days
 ```
 
-`attendance_source` can be `checkin`, `meeting_verification`, or `both`; use null for a non-attendee. Evidence count is qualifying session/check-in records, not unique attendees. Avoid returning unnecessary raw personal data or the entire verification history by default.
+One record per canonical person within the selected cohort/group. `Follow-up group` identifies the clicked group even when a person also belongs to another group; it must not be replaced by a different single `follow_up_stage` label. `Stalled days` is blank if not tracked. Contact fields preserve international prefixes and leading zeros. Include no passwords, tokens, payment details or unrelated user-record fields.
 
-Most importantly, `/people?stage=attendee` must include the same deduplicated people used by `summary.attendees`, journey attendance, and cohort details. A valid legacy meeting verification must qualify even when `checked_in=false`. Keep `was_existing=null` as unclassified; `existing_registrant` in the verification CSV does not prove the person was an existing user before registration.
+Format: UTF-8 CSV with BOM, CRLF rows, correct escaping of commas, quotes and multiline text. Treat values beginning with spreadsheet formula characters as text, and keep phone numbers as text. Use a safe filename containing cohort, follow-up code and generation date. CSV count must match the complete scoped people result at the export's snapshot.
 
-## 8. Implementation and acceptance checklist
+The current frontend snapshots the selected filters/search when downloading, disables selector/search changes during preparation, allows cancellation, and fetches sequential pages. It rejects changed totals, short pages, duplicate cohort-person identities, wrong-cohort/source records and failed requests; it saves no partial file. Existing pagination does **not** guarantee a consistent snapshot when membership changes without changing the total. That limitation is why the server export below is recommended.
 
-- Load verification records in a bounded batch by relevant meeting IDs, then map identities within cohort. Avoid a per-registration or per-cohort N+1 query pattern.
-- Index the meeting/cohort and verification identity joins appropriately; existing verification unique `(meeting, email)` protects session records but does not replace cohort deduplication.
-- Reuse one attendance/outcome derivation for all views and filter paths. Invalidate cached aggregates after attendance reconciliation, verification, upgrade approval, and sale/refund changes.
-- Preserve backend RBAC on aggregates and person-level lists. Return explicit error/partial coverage on source failures instead of an all-zero successful response.
-- Verify source/programme/cohort filters scope every returned count and drawer correctly; keep table pagination from changing median benchmarks.
-- Reconcile the four named legacy cohorts against the source counts above, documenting held/unresolved/administrative rows separately. Repeated sessions and combined check-in/verification must count a person once per cohort.
-- Test check-in false plus valid verification, both evidence types, repeated sessions, null target user with a unique registration/email match, unresolved/conflicting identities, and a same-email registration in another cohort.
-- Ensure an incomplete attendance import is not marked fully tracked solely because a meeting ended.
-- Confirm people totals equal the aggregate count for the same stage and filters, including legacy attendance.
-- Confirm sellers exclude recruiter-only APs and monetary metrics do not duplicate a transaction across cohorts.
-- Confirm the goal-progress/Needs-attention example in section 5 returns different results; test the inclusive 15% boundary, zero/null denominators, zero medians, single-peer groups, and metric switching.
-- Verify loading, empty, error, and unavailable-data responses remain renderable through the frontend Zod schema.
+#### Recommended backend export
 
-## 9. Evidence and references
+```http
+GET /api/v1/admin/academy/recruitment-analysis/people/export?cohort_id=<id>&follow_up=registered_without_attendance&source=<optional-value>&search=<optional-text>
+```
+
+- Require one valid `cohort_id` and one of the five requested follow-up codes. Optional programme must match that cohort. Source/search semantics must match `/people` exactly; do not accept table `page`/`limit` as a truncation instruction.
+- Return `text/csv; charset=utf-8` with `Content-Disposition: attachment`, not CSV inside the normal JSON success envelope. Existing API errors remain structured; frontend must use a shared download helper when switching from the paged fallback.
+- Generate from a single consistent membership snapshot. Use stable `(cohort_id, canonical person ID)` ordering for both people pagination and export. Capture scope, generation time, definition version and row count; expose export row count/time in response headers or agreed metadata.
+- Export all records, regardless of UI pagination. If size/time limits require a background job, agree an explicit async contract with status, failure and authenticated expiring download URL. Never silently cap results or return a partial CSV as success.
+- A fully tracked empty group returns a header-only CSV with row count zero; the frontend normally disables Download for an empty list. Unavailable/incomplete membership returns an explicit error/coverage reason instead of a misleading zero-row file.
+- Apply the same admin/cohort/source authorization as person reads and existing export permission conventions. Record export actor, group, cohort, scope, row count and time in the audit log without copying contact values into logs. Downloads must not be exposed through a public permanent URL.
+- Audit membership and contact resolution centrally; do not implement a separate export query whose attendee/follow-up logic can drift from the list and summary.
+
+## 11. Acceptance and delivery checklist
+
+- Preserve existing envelopes/fields and demonstrate additive responses parse with coordinated frontend Zod schemas. Document all new DTO fields before use.
+- Reconcile the four named legacy cohorts in section 3 against export evidence, explaining held/unresolved/test-session exclusions separately. Never claim export counts were verified in production.
+- Test false check-in plus verification, repeated sessions, both evidence types, null target user with unique cohort/email mapping, conflicting/unresolved identities, and the same email in another cohort. Verify detail, overview and people counts agree.
+- Batch attendance/sales/approval joins and index cohort/meeting/identity lookups; avoid query-per-person patterns. Preserve `view_academy` and any applicable financial permissions.
+- Return null/unavailable/partial for missing imports, unknown lifecycle, absent cost, unsupported activities or failed dependencies; measured zero remains zero.
+- Ensure overview programme/source/status scope is consistent; table text search/page does not change summary or benchmark populations. No silent truncation of the cohort catalog or cohort totals.
+- Compare two, three and four cohorts across programmes; verify user order/source persistence, complete chooser, partial failure, deleted/unauthorized cohort handling and stable observation metadata. Reject invalid optional batch requests.
+- Confirm source-filtered cost allocation is explicit or unavailable. Confirm a confirmed transaction is not duplicated across commercial cohort totals; refunds/instalments follow the agreed definition.
+- Validate all denominator-zero cases, precision, unit costs and return. A known zero cost produces null return, not infinity or zero return.
+- Test the inclusive 15% attention boundary, goal-independent example, insufficient peers, zero median, partial data and the distinction between the current inclusive median and proposed other-edition median.
+- Verify all five stopped-person counts reconcile with exact paginated memberships; multiple test attempts with one pass must not appear in failed-test follow-up.
+- Pro table search, selling filter and sorts apply before pagination and respect coverage. Recruiter-only APs are excluded from sellers.
+- For each of the five follow-up groups, export more than 100 matching people and verify cohort/source/search scope, no duplicates, exact membership and all-page row count. Missing contacts remain blank without dropping rows.
+- Test exports with quotes, commas, newlines, non-ASCII names, formula-like text, international/leading-zero phone numbers, empty groups, missing groups, partial attendance, permission failures and concurrent membership changes. No failed/cancelled export may save a partial file.
+- Activity windows exclude post-sale exposure and unknown attendance; first-sale series handle immature cohorts, zero sellers and missing dates without false winners.
+- Supply schema-valid fixtures for tracked, zero, partial, unavailable and per-cohort failure results, plus field definitions and query examples for frontend integration.
+- Before commercial/benchmark release, record decisions for attribution, revenue basis/refunds, cost source/allocation, maturity/observation windows and benchmark/alert thresholds. Keep unsupported sections unavailable until those decisions and data exist.
+
+## 12. Evidence and references
 
 Read-only source review; no imports or backend data changes were performed for this handoff.
 
@@ -320,3 +418,23 @@ Read-only source review; no imports or backend data changes were performed for t
 - Historical migration status: `abode-be-v2/docs/migration/ACADEMY-MIGRATION-README.md`, meeting migration section. Treat its staging import counts as historical evidence, not a live production query.
 - Current analytics gap: `abode-be-v2/src/modules/academy/academy-recruitment-analysis.repository.ts` and `academy-recruitment-analysis.derive.ts`.
 - Existing API contract: `abode-be-v2/src/modules/academy/dto/recruitment-analysis.dto.ts`, `academy-recruitment-analysis.service.ts`, and frontend `features/recruitment/schemas/recruitment-analysis.schema.ts`.
+
+
+
+
+Backend requirement: add middle name to user signup
+I checked the backend repo. Signup uses a NestJS DTO, a Mongoose User model, and AuthUserView to shape user data returned by authentication endpoints. The app rejects request fields that aren’t declared in a DTO, so middleName must be added through this full path to be accepted and saved.
+
+Requirement
+- Accept optional middleName in POST /auth/signup. Existing clients that omit it must continue to work.
+- Validate it as a string when provided, and trim leading and trailing whitespace, following the existing firstName and lastName DTO pattern.
+- Store it as an optional field on the User model. Existing user records should remain valid; no backfill is needed.
+- Pass dto.middleName through AuthService.signupUser when creating the user.
+- Expose the field in AuthUserView, so it can be returned consistently in authentication responses that use that view.
+- Allow users to update it through the profile update endpoint by adding an optional middleName to UpdateProfileDto and the existing profile update flow.
+Acceptance criteria
+- Signup with a middle name succeeds and saves it.
+- Signup without a middle name still succeeds, and existing users without one remain readable.
+- Profile reads return the middle name when present.
+- Profile updates can set or change it.
+- A request with an invalid middle-name type is rejected using the existing DTO validation behavior.

@@ -16,6 +16,9 @@ export const RecruitmentFollowUpSchema = z.enum([
   'attended_without_test_attempt',
   'passed_without_course_completion',
   'completed_without_approved_upgrade',
+  'attempted_without_test_pass',
+  'passed_without_approved_upgrade',
+  'approved_without_confirmed_sale',
 ]);
 export type RecruitmentFollowUp = z.infer<typeof RecruitmentFollowUpSchema>;
 
@@ -138,6 +141,9 @@ export const RecruitmentAnalysisSchema = z.object({
     attended_without_test_attempt: z.object({ count: z.number().nullable(), available: z.boolean() }),
     passed_without_course_completion: z.object({ count: z.number().nullable(), available: z.boolean() }),
     completed_without_approved_upgrade: z.object({ count: z.number().nullable(), available: z.boolean() }),
+    attempted_without_test_pass: z.object({ count: z.number().nullable(), available: z.boolean() }).optional(),
+    passed_without_approved_upgrade: z.object({ count: z.number().nullable(), available: z.boolean() }).optional(),
+    approved_without_confirmed_sale: z.object({ count: z.number().nullable(), available: z.boolean() }).optional(),
   }),
 });
 export type RecruitmentAnalysis = z.infer<typeof RecruitmentAnalysisSchema>;
@@ -148,6 +154,7 @@ export const RecruitmentAnalysisPersonSchema = z.object({
   first_name: z.string(),
   last_name: z.string(),
   email: z.string(),
+  phone_number: z.string().nullable().optional(),
   cohort_id: z.string(),
   cohort_name: z.string(),
   programme_id: z.string(),

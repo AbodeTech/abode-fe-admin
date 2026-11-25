@@ -31,28 +31,11 @@ const actionBadge = (action: string) => {
   return "bg-gray-100 text-gray-800";
 };
 
-import { ResultOf } from "@graphql-typed-document-node/core";
-import { FragmentType, useFragment } from "@/lib/gql";
-import { graphql } from "@/lib/gql";
+import type { AdminLog } from "../schemas/admin-log.schema";
+export type { AdminLog } from "../schemas/admin-log.schema";
 
-export const AdminLogsRowFragment = graphql(`
-  fragment AdminLogsRowFragment on LogAdmin {
-    _id
-    timestamp
-    description
-    action
-    adminEmail
-    adminId
-    metadata
-    oldState
-  }
-`);
-
-export type AdminLog = ResultOf<typeof AdminLogsRowFragment>;
-
-export function AdminLogsTable({ logs }: { logs: FragmentType<typeof AdminLogsRowFragment>[] | null | undefined }) {
-  const data = useFragment(AdminLogsRowFragment, logs);
-  const items = data || [];
+export function AdminLogsTable({ logs }: { logs: AdminLog[] | null | undefined }) {
+  const items = logs || [];
   const [selected, setSelected] = useState<AdminLog | null>(null);
 
   return (
@@ -60,7 +43,7 @@ export function AdminLogsTable({ logs }: { logs: FragmentType<typeof AdminLogsRo
       {/* Mobile cards */}
       <div className="lg:hidden min-w-0 space-y-3">
         {items.map((log) => (
-          <Card key={log._id} className="min-w-0 border-border bg-card">
+          <Card key={log.id} className="min-w-0 border-border bg-card">
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center justify-between text-base">
                 <span>{formatTimestamp(log.timestamp)}</span>
@@ -71,11 +54,11 @@ export function AdminLogsTable({ logs }: { logs: FragmentType<typeof AdminLogsRo
               <div className="flex flex-col gap-1">
                 <div className="flex items-center gap-2">
                   <span className="text-muted-foreground">Admin:</span>
-                  <span className="font-medium break-all text-foreground">{log.adminEmail}</span>
+                  <span className="font-medium break-all text-foreground">{log.admin_email || "System"}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-muted-foreground">Admin ID:</span>
-                  <span className="font-mono text-xs text-foreground">{log.adminId}</span>
+                  <span className="font-mono text-xs text-foreground">{log.admin_id || "—"}</span>
                 </div>
               </div>
               <p className="text-muted-foreground leading-relaxed pt-2">{log.description}</p>
@@ -104,10 +87,10 @@ export function AdminLogsTable({ logs }: { logs: FragmentType<typeof AdminLogsRo
             <TableBody>
               {items.length ? (
                 items.map((log) => (
-                  <TableRow key={log._id} className="border-border hover:bg-muted/50">
+                  <TableRow key={log.id} className="border-border hover:bg-muted/50">
                     <TableCell className="px-6 py-4 font-medium text-foreground whitespace-nowrap">{formatTimestamp(log.timestamp)}</TableCell>
-                    <TableCell className="px-6 py-4 text-foreground whitespace-nowrap">{log.adminEmail}</TableCell>
-                    <TableCell className="px-6 py-4 text-foreground font-mono text-xs whitespace-nowrap">{log.adminId}</TableCell>
+                    <TableCell className="px-6 py-4 text-foreground whitespace-nowrap">{log.admin_email || "System"}</TableCell>
+                    <TableCell className="px-6 py-4 text-foreground font-mono text-xs whitespace-nowrap">{log.admin_id || "—"}</TableCell>
                     <TableCell className="px-6 py-4 whitespace-nowrap">
                       <Badge className={actionBadge(log.action || "")}>{log.action}</Badge>
                     </TableCell>
