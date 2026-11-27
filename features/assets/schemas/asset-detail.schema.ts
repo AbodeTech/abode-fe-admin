@@ -140,6 +140,8 @@ export const OfferSchema = z.object({
   allocation_qualification_pct: z.number(),
   /** Full-ownership model only — full-ownership and commercial. */
   payment_type: PaymentTypeSchema.optional(),
+  /** Customers with a suspended plan may ask to move here. Off by default. */
+  open_to_recovery_moves: z.boolean().default(false),
   /** The product's commercial land pool (see land-configuration.schema.ts). Not decremented by purchases in Phase 1. */
   assigned_sqm: z.number().default(0),
   sizes: z.array(SizeSchema).default([]),

@@ -204,6 +204,11 @@ export const ADMIN_PERMISSIONS = [
   'verify_field_submissions',
   'view_field_performance',
   'manage_asset_boundary',
+  // Finance › Recovery period (suspended plans' three-month window).
+  'view_recovery_windows',
+  'remind_recovery_customers',
+  'send_recovery_terms',
+  'approve_recovery_refunds',
 ] as const;
 
 export type AdminPermission = (typeof ADMIN_PERMISSIONS)[number];

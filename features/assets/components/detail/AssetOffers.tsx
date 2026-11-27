@@ -140,8 +140,25 @@ function OfferCard({
     );
   };
 
+  const handleRecoveryToggle = (next: boolean) => {
+    updateOffer.mutate(
+      { open_to_recovery_moves: next },
+      {
+        onSuccess: () =>
+          toast.success(
+            next
+              ? `Customers with a suspended plan can now ask to move to this ${OFFER_TYPE_LABELS[offer.offer_type]}`
+              : `${OFFER_TYPE_LABELS[offer.offer_type]} closed to recovery moves`
+          ),
+        onError: (error) => toast.error(error.message || "Couldn't update the offer"),
+      }
+    );
+  };
+
   const label = OFFER_TYPE_LABELS[offer.offer_type];
   const isFlex = offer.offer_type === "flex";
+  // Recovery moves go to Flex, Full Ownership or Commercial, never to a developer plot.
+  const takesRecoveryMoves = offer.offer_type !== "developer-plot";
 
   return (
     <section className="overflow-hidden rounded-lg border">
@@ -182,6 +199,35 @@ function OfferCard({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {takesRecoveryMoves ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  disabled={updateOffer.isPending}
+                  aria-label={`${label} is ${offer.open_to_recovery_moves ? "open" : "closed"} to recovery moves — change`}
+                  title="Whether a customer with a suspended plan can ask to move here"
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-semibold",
+                    offer.open_to_recovery_moves
+                      ? "bg-teal-500/10 text-teal-700"
+                      : "bg-muted text-muted-foreground"
+                  )}
+                >
+                  {offer.open_to_recovery_moves ? "Open to recovery moves" : "Closed to recovery moves"}
+                  <ChevronDown className="h-3 w-3" aria-hidden />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleRecoveryToggle(!offer.open_to_recovery_moves)}>
+                  {offer.open_to_recovery_moves
+                    ? "Close to recovery moves"
+                    : "Open to recovery moves"}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : null}
 
           {isFlex ? (
             <Button type="button" variant="outline" size="sm" onClick={onOpenHistory}>

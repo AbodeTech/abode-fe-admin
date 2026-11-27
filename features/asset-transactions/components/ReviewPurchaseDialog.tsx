@@ -93,6 +93,7 @@ export function ReviewPurchaseDialog({
   const kind = purchaseKind(row);
   const isFoOutright = kind === "fo_outright_land";
   const isDocPayment = kind === "fo_doc_payment";
+  const isMove = family === "recovery-move";
 
   const submitApprove = () => {
     approve.mutate(
@@ -100,7 +101,9 @@ export function ReviewPurchaseDialog({
       {
         onSuccess: (result) => {
           toast.success(
-            isDocPayment
+            isMove
+              ? `Approved — customer moved to the new plan (${result.planId.slice(-6)})`
+              : isDocPayment
               ? `Approved — document plan updated (${result.planId.slice(-6)})`
               : isInitial
                 ? `Approved — payment plan created (${result.planId.slice(-6)}) and commission paid`
@@ -148,7 +151,9 @@ export function ReviewPurchaseDialog({
         <DialogHeader>
           <DialogTitle>Review transfer payment</DialogTitle>
           <DialogDescription>
-            {isFoOutright
+            {isMove
+              ? "A suspended customer’s payment to take their recovery terms. Approving marks the default fee paid, records the change fee, closes the old plan (its plot is released) and opens the new one with everything paid carried over. Commission is paid only on any up-front land. Declining keeps their terms open so they can pay again."
+              : isFoOutright
               ? "A full-ownership outright purchase paid by bank transfer. Approving creates the land plan, settles the sibling document fee, and pays commission; declining releases the held units and declines the document row with it."
               : isDocPayment
                 ? "A full-ownership document fee paid by bank transfer. Approving records it against the document plan."
@@ -162,6 +167,13 @@ export function ReviewPurchaseDialog({
           <div className="space-y-1 rounded-md border bg-muted/30 p-3 text-sm">
             <Row label="Amount" value={<span className="tabular-nums">{formatNaira(row.amount)}</span>} />
             <Row label="Kind" value={kindLabel(details?.transaction_kind)} />
+            {isMove ? (
+              <>
+                <Row label="Default fee" value={<span className="tabular-nums">{formatNaira(details?.default_fee_portion ?? 0)}</span>} />
+                <Row label="Change fee" value={<span className="tabular-nums">{formatNaira(details?.change_fee_portion ?? 0)}</span>} />
+                <Row label="Land (earns commission)" value={<span className="tabular-nums">{formatNaira(details?.land_portion ?? 0)}</span>} />
+              </>
+            ) : null}
             {details?.size_sqm ? (
               <Row label="Size" value={`${details.size_sqm.toLocaleString()} sqm`} />
             ) : null}
