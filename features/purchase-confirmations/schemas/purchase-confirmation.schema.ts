@@ -66,6 +66,9 @@ export const AdminConfirmationRowSchema = z.object({
   snapshot: PurchaseSnapshotSchema,
   email_sent_at: z.string().nullable(),
   confirmed_at: z.string().nullable(),
+  /** Admin id, set when a Support Lead approved it on the buyer's behalf. Older BE: absent. */
+  approved_by: z.string().nullable().default(null),
+  approved_at: z.string().nullable().default(null),
   reminders_sent: z.array(z.string()),
   escalated_at: z.string().nullable(),
   open_dispute_note: z.string().nullable(),
@@ -87,6 +90,14 @@ export const ResolveDisputeResponseSchema = z.object({
   plan_id: z.string(),
   status: PurchaseConfirmationStatusSchema,
   resent: z.boolean(),
+});
+
+/** POST /admin/purchase-confirmations/:plan_id/approve — records the approver and the time. */
+export const ApproveResponseSchema = z.object({
+  plan_id: z.string(),
+  status: PurchaseConfirmationStatusSchema,
+  approved_by: z.string(),
+  approved_at: z.string(),
 });
 
 /** POST /admin/purchase-confirmations/:plan_id/resend */

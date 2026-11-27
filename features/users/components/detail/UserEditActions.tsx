@@ -30,7 +30,8 @@ interface UserEditActionsProps {
 }
 
 export function UserEditActions({ user }: UserEditActionsProps) {
-  const canEditUser = useHasPermission("edit_user")
+  // Each action follows the key its own endpoint takes. `edit_user` is not one of them (it guards only wallet
+  // provisioning, which this menu does not call), so it must not unlock the others: the server would refuse them.
   const canEditProfile = useHasPermission("edit_user_profile")
   // Deliberately not implied by edit_user: changing the login email hands over the account.
   const canEditEmail = useHasPermission("edit_user_email")
@@ -78,7 +79,7 @@ export function UserEditActions({ user }: UserEditActionsProps) {
   }
 
   const hasAny =
-    canEditUser || canEditProfile || canEditEmail || canModifyTier || canAdjustWallet || canEditTin || canReassignReferrer
+    canEditProfile || canEditEmail || canModifyTier || canAdjustWallet || canEditTin || canReassignReferrer
 
   if (!hasAny) return null
 
@@ -92,7 +93,7 @@ export function UserEditActions({ user }: UserEditActionsProps) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-[220px]">
-          {(canEditUser || canEditProfile) && (
+          {canEditProfile && (
             <DropdownMenuItem onSelect={() => setModalParam("edituserprofile")}>
               Edit User Profile
             </DropdownMenuItem>
@@ -102,17 +103,17 @@ export function UserEditActions({ user }: UserEditActionsProps) {
               Change Login Email
             </DropdownMenuItem>
           )}
-          {(canEditUser || canModifyTier) && (
+          {canModifyTier && (
             <DropdownMenuItem onSelect={() => setModalParam("changeRef")}>
               Edit Ref Status / Tier
             </DropdownMenuItem>
           )}
-          {(canEditUser || canAdjustWallet) && (
+          {canAdjustWallet && (
             <DropdownMenuItem onSelect={() => setModalParam("edituserbalance")}>
               Adjust Wallet Balance
             </DropdownMenuItem>
           )}
-          {(canEditUser || canEditTin) && (
+          {canEditTin && (
             <>
               <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={() => setModalParam("editusertin")}>
@@ -126,7 +127,7 @@ export function UserEditActions({ user }: UserEditActionsProps) {
               </DropdownMenuItem>
             </>
           )}
-          {(canEditUser || canReassignReferrer) && (
+          {canReassignReferrer && (
             <>
               <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={() => setModalParam("reassignreferrer")}>

@@ -48,6 +48,8 @@ interface CouponsTableProps {
   onUpdate: (input: { couponCode: string } & UpdateCouponInput) => Promise<void>;
   onViewUsage?: (code: string) => void;
   isLoading?: boolean;
+  /** manage_promotions: edit, pause or resume, and delete. Without it the table is read-only. */
+  canManage: boolean;
 }
 
 const statusTone: Record<string, string> = {
@@ -73,7 +75,7 @@ function nextStatusAction(coupon: Coupon): { label: string; status: ManualCoupon
   return null;
 }
 
-export function CouponsTable({ data, onStatusChange, onDelete, onUpdate, onViewUsage, isLoading }: CouponsTableProps) {
+export function CouponsTable({ data, onStatusChange, onDelete, onUpdate, onViewUsage, isLoading, canManage }: CouponsTableProps) {
   const [editingCoupon, setEditingCoupon] = React.useState<Coupon | null>(null);
   const [isEditOpen, setIsEditOpen] = React.useState(false);
   const [deletingCode, setDeletingCode] = React.useState<string | null>(null);
@@ -146,6 +148,7 @@ export function CouponsTable({ data, onStatusChange, onDelete, onUpdate, onViewU
                   </Badge>
                 }
               />
+              {canManage && (
               <div className="flex justify-end border-t border-[#E5EAEF] pt-2">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -180,6 +183,7 @@ export function CouponsTable({ data, onStatusChange, onDelete, onUpdate, onViewU
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
+              )}
             </AdminMobileCard>
           );
         })}
@@ -200,7 +204,7 @@ export function CouponsTable({ data, onStatusChange, onDelete, onUpdate, onViewU
             <TableHead className="py-4 font-semibold">Usage Limit</TableHead>
             <TableHead className="py-4 font-semibold">Expiry</TableHead>
             <TableHead className="py-4 font-semibold">Status</TableHead>
-            <TableHead className="py-4 font-semibold">Actions</TableHead>
+            <TableHead className="py-4 font-semibold">{canManage ? "Actions" : null}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -229,6 +233,7 @@ export function CouponsTable({ data, onStatusChange, onDelete, onUpdate, onViewU
                     </Badge>
                   </TableCell>
                   <TableCell className="py-4">
+                    {canManage && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon">
@@ -260,6 +265,7 @@ export function CouponsTable({ data, onStatusChange, onDelete, onUpdate, onViewU
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
+                    )}
                   </TableCell>
                 </TableRow>
               );

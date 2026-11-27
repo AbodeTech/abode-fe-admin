@@ -109,17 +109,25 @@ export function PerformanceHeader({
 
           {viewAs === "admin" && (
             <>
-              {unassignedCount > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setUnassignedDialogOpen(true)}
-                  className="inline-flex items-center gap-2 rounded-full bg-amber-50 hover:bg-amber-100 text-amber-800 px-3 py-1.5 text-xs font-medium border border-amber-200 transition-colors"
-                  aria-label="View unassigned Pros"
-                >
-                  <Inbox className="h-3.5 w-3.5" />
-                  {unassignedCount} unassigned
-                </button>
-              )}
+              {unassignedCount > 0 &&
+                (canManage ? (
+                  <button
+                    type="button"
+                    onClick={() => setUnassignedDialogOpen(true)}
+                    className="inline-flex items-center gap-2 rounded-full bg-amber-50 hover:bg-amber-100 text-amber-800 px-3 py-1.5 text-xs font-medium border border-amber-200 transition-colors"
+                    aria-label="View unassigned Pros"
+                  >
+                    <Inbox className="h-3.5 w-3.5" />
+                    {unassignedCount} unassigned
+                  </button>
+                ) : (
+                  // Assigning a batch from the pool needs manage_manager_tracker, so
+                  // without it the chip is a count, not a door to a dialog that 403s.
+                  <span className="inline-flex items-center gap-2 rounded-full bg-amber-50 text-amber-800 px-3 py-1.5 text-xs font-medium border border-amber-200">
+                    <Inbox className="h-3.5 w-3.5" />
+                    {unassignedCount} unassigned
+                  </span>
+                ))}
 
               {canManage && <ManageManagersMenu activeManager={activeManager} />}
             </>

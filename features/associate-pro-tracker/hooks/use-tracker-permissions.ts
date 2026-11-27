@@ -1,6 +1,6 @@
 'use client';
 
-import { useAuthStore } from '@/store/auth-store';
+import { useAdminPermissions } from '@/hooks/use-admin-permission';
 
 import { TRACKER_PERMISSIONS } from '../schemas/tracker.schema';
 
@@ -17,12 +17,8 @@ import { TRACKER_PERMISSIONS } from '../schemas/tracker.schema';
  * permission here never grants anything.
  */
 export const useTrackerPermissions = () => {
-  const { user } = useAuthStore();
-  const permissions = user?.permissions ?? [];
-  // A super admin is not enumerated permission-by-permission on the FE.
-  const isSuperAdmin = Boolean(user?.role?.is_super_admin);
-
-  const has = (permission: string) => isSuperAdmin || permissions.includes(permission);
+  // `has` already treats a super admin (on any held role) as holding every key.
+  const { has } = useAdminPermissions();
 
   return {
     canView: has(TRACKER_PERMISSIONS.view),

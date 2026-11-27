@@ -10,7 +10,7 @@ import { ViewTransactionEvidence } from "@/components/shared/ViewTransactionEvid
 import { format } from "date-fns";
 import { graphql } from "@/lib/gql";
 import { FragmentType, useFragment } from "@/lib/gql";
-import { useAuthStore } from "@/store/auth-store";
+import { useHasPermission } from "@/hooks/use-admin-permission";
 import {
   AdminDesktopTableWrap,
   AdminMobileCard,
@@ -66,8 +66,9 @@ const DECLINE_REASONS = [
 ];
 
 export function TopupTransactionsTable({ data, isLoading, onApprove, onDecline, filterQuery = "" }: TopupTransactionsTableProps) {
-  const { user } = useAuthStore();
-  const canManageTopup = Boolean(user?.role?.is_super_admin);
+  // Crediting, debiting and changing a wallet's status are guarded by
+  // approve_payments on the BE (`/admin/wallets/:userId/status|credit|debit`).
+  const canManageTopup = useHasPermission("approve_payments");
   const nonNullData = (data || []).filter((t): t is FragmentType<typeof TopupTransactionsFragment> => t !== null);
   const validTransactions = useFragment(TopupTransactionsFragment, nonNullData).filter((tx) => {
       if (!filterQuery) return true;

@@ -17,17 +17,22 @@ import { adminMinName, type FinancialOfficerSummary } from "../schemas/financial
 export const ALL_OFFICERS = "all";
 
 interface Props {
-  /** Super admins pick any officer or the team; an officer only sees their own. */
-  viewAs: "super-admin" | "officer";
+  /**
+   * `team`: may pick any officer or the whole team (the backend's
+   * view_financial_officer_tracker); `officer`: sees only their own book.
+   */
+  viewAs: "team" | "officer";
+  /** Promoting and removing officers is super-admin only on the backend. */
+  canManageOfficers: boolean;
   officers: FinancialOfficerSummary[];
   /** An officer id, or ALL_OFFICERS. */
   activeOfficerId: string;
 }
 
-export function FOPerformanceHeader({ viewAs, officers, activeOfficerId }: Props) {
+export function FOPerformanceHeader({ viewAs, canManageOfficers, officers, activeOfficerId }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const isSuperAdmin = viewAs === "super-admin";
+  const isTeam = viewAs === "team";
 
   const activeOfficer = officers.find((o) => o.officer?.id === activeOfficerId) ?? null;
 
@@ -41,7 +46,7 @@ export function FOPerformanceHeader({ viewAs, officers, activeOfficerId }: Props
     router.push(`?${params.toString()}`);
   };
 
-  const subtitle = !isSuperAdmin
+  const subtitle = !isTeam
     ? "Your approval speed and the debt you've recovered this month."
     : activeOfficer
       ? `${adminMinName(activeOfficer.officer)} — ${activeOfficer.open_plans_count} plan${activeOfficer.open_plans_count === 1 ? "" : "s"} in their recovery book.`
@@ -55,7 +60,7 @@ export function FOPerformanceHeader({ viewAs, officers, activeOfficerId }: Props
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        {isSuperAdmin && (
+        {isTeam && (
           <Select value={activeOfficerId} onValueChange={handleOfficerChange}>
             <SelectTrigger className="w-fit min-w-55 bg-white" aria-label="Officer">
               <SelectValue placeholder="Select officer" />
@@ -74,7 +79,7 @@ export function FOPerformanceHeader({ viewAs, officers, activeOfficerId }: Props
 
         <MonthPeriodFilter />
 
-        {isSuperAdmin && <ManageFinancialOfficersMenu activeOfficer={activeOfficer} />}
+        {canManageOfficers && <ManageFinancialOfficersMenu activeOfficer={activeOfficer} />}
       </div>
     </div>
   );

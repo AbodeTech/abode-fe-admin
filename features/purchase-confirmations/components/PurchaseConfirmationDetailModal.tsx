@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { AlertTriangle, Mail, Wrench } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Mail, Wrench } from "lucide-react";
 
 import type { PurchaseConfirmationRow } from "../hooks/use-purchase-confirmations";
 import { ConfirmationStatusBadge } from "./ConfirmationStatusBadge";
@@ -46,6 +46,9 @@ interface PurchaseConfirmationDetailModalProps {
   onOpenChange: (open: boolean) => void;
   onResolve: (row: PurchaseConfirmationRow) => void;
   onResendEmail: (row: PurchaseConfirmationRow) => void;
+  onApprove: (row: PurchaseConfirmationRow) => void;
+  canManage: boolean;
+  canApprove: boolean;
 }
 
 export function PurchaseConfirmationDetailModal({
@@ -54,6 +57,9 @@ export function PurchaseConfirmationDetailModal({
   onOpenChange,
   onResolve,
   onResendEmail,
+  onApprove,
+  canManage,
+  canApprove,
 }: PurchaseConfirmationDetailModalProps) {
   if (!row) return null;
 
@@ -106,6 +112,9 @@ export function PurchaseConfirmationDetailModal({
           {row.confirmedAt && (
             <DetailRow label="Confirmed" value={formatDateTime(row.confirmedAt)} />
           )}
+          {row.approvedAt && (
+            <DetailRow label="Approved by the team" value={formatDateTime(row.approvedAt)} />
+          )}
           {row.resolvedAt && (
             <DetailRow label="Dispute resolved" value={formatDateTime(row.resolvedAt)} />
           )}
@@ -115,13 +124,19 @@ export function PurchaseConfirmationDetailModal({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Close
           </Button>
-          {row.status === "waiting" && (
+          {row.status === "waiting" && canManage && (
             <Button variant="outline" className="gap-2" onClick={() => onResendEmail(row)}>
               <Mail className="h-4 w-4" />
               Resend email
             </Button>
           )}
-          {row.status === "disputed" && (
+          {row.status === "waiting" && canApprove && (
+            <Button className="gap-2" onClick={() => onApprove(row)}>
+              <CheckCircle2 className="h-4 w-4" />
+              Approve
+            </Button>
+          )}
+          {row.status === "disputed" && canManage && (
             <Button className="gap-2" onClick={() => onResolve(row)}>
               <Wrench className="h-4 w-4" />
               Resolve dispute

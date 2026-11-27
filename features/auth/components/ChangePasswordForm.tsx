@@ -12,6 +12,7 @@ import { useAuthStore } from "@/store/auth-store";
 import { changePasswordSchema, type ChangePasswordValues } from "../schemas/auth.schema";
 import { useChangePassword } from "../hooks/use-change-password";
 import { useLogout } from "../hooks/use-logout";
+import { landingRoute } from "@/lib/rbac";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -51,7 +52,7 @@ export function ChangePasswordForm() {
     changePassword.mutate(values, {
       // The hook stores the fresh token pair the BE issues here — every
       // session was just revoked, so the old token is already dead.
-      onSuccess: () => router.push("/"),
+      onSuccess: (result) => router.push(landingRoute(result.admin.start_page)),
       onError: (err) => setError(err.message || "Failed to change password."),
     });
   }

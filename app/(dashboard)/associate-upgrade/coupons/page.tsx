@@ -1,6 +1,7 @@
 "use client";
 
 import { useDeferredValue, useState } from "react";
+import { useHasPermission } from "@/hooks/use-admin-permission";
 import {
   CouponFilters,
   CouponsTable,
@@ -29,6 +30,8 @@ export default function CouponsPage() {
   });
   const { mutateAsync: updateStatus, isPending: updating } = useUpdateCouponStatus();
   const { mutateAsync: deleteCoupon, isPending: deleting } = useDeleteCoupon();
+  // Viewing the list needs view_promotions; creating, editing, pausing and deleting need manage_promotions.
+  const canManage = useHasPermission("manage_promotions");
   const { mutateAsync: updateCoupon, isPending: editing } = useUpdateCoupon();
 
   const handleStatusChange = async (
@@ -81,9 +84,11 @@ export default function CouponsPage() {
           <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Associate Upgrade Coupons</h1>
           <p className="text-sm text-muted-foreground sm:text-base">Manage discount codes for upgrade flows.</p>
         </div>
-        <div className="w-full shrink-0 sm:w-auto">
-          <CreateCouponDialog />
-        </div>
+        {canManage && (
+          <div className="w-full shrink-0 sm:w-auto">
+            <CreateCouponDialog />
+          </div>
+        )}
       </div>
 
       <CouponFilters status={status} onStatusChange={setStatus} search={search} onSearchChange={setSearch} />
@@ -94,6 +99,7 @@ export default function CouponsPage() {
         onStatusChange={handleStatusChange}
         onDelete={handleDelete}
         onUpdate={handleUpdate}
+        canManage={canManage}
       />
     </div>
   );

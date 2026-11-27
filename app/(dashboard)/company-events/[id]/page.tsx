@@ -7,6 +7,7 @@ import { Copy, Download, Loader2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useHasPermission } from "@/hooks/use-admin-permission";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -158,6 +159,9 @@ function EventDetailContent() {
   const exportAllocations = useEventAllocationsExport();
   const exportRegistrations = useEventRegistrationsExport();
   const updateEventStatus = useUpdateEventStatus();
+  // Viewing an event and its subpages needs view_company_events; changing its
+  // status (and, on the server, allocating) needs manage_company_events.
+  const canManageEvents = useHasPermission("manage_company_events");
 
   const view = (searchParams.get("view") as "allocation" | "analytics" | "registrations" | null) ?? "allocation";
 
@@ -465,6 +469,7 @@ function EventDetailContent() {
             <Badge variant="secondary">{event.type === "allocation" ? "Allocation" : "Site Inspection"}</Badge>
             <Badge variant="outline">{event.status}</Badge>
           </div>
+          {canManageEvents && (
           <div className="flex items-center gap-2">
             {event.status === "draft" && (
               <Button size="sm" onClick={handlePublish} disabled={updateEventStatus.isPending}>
@@ -489,6 +494,7 @@ function EventDetailContent() {
               </Button>
             )}
           </div>
+          )}
         </div>
         <p className="text-sm text-muted-foreground">
           {event.asset_name} · {new Date(event.date).toLocaleDateString()} at {event.time}
@@ -649,6 +655,7 @@ function EventDetailContent() {
               usedSize={usedSize}
               onSave={handleSave}
               isSaving={saveAllocations.isPending}
+              canManage={canManageEvents}
             />
 
             <Pagination count={eligibleData?.meta.total ?? 0} currentIdx={page} limit={DEFAULT_EVENT_ELIGIBLE_LIMIT} />
@@ -709,6 +716,7 @@ function EventDetailContent() {
               onRegister={(row) => openAllocatedAction(row, 'register')}
               onChangePickup={(row) => openAllocatedAction(row, 'pickup')}
               onResendInvite={handleResendInvite}
+              canManage={canManageEvents}
               emptyMessage={
                 allocSearchParam || (allocStatusParam && allocStatusParam !== "all")
                   ? "No one matches these filters."
@@ -764,7 +772,7 @@ function EventDetailContent() {
               onPickupChange={(value) => updateParams({ reg_pickup: value || null, reg_page: 1 })}
             />
 
-            <EventRegistrationsTable rows={registrationsData?.items} isLoading={registrationsLoading} onChangePickup={openRegistrationAction} />
+            <EventRegistrationsTable rows={registrationsData?.items} isLoading={registrationsLoading} onChangePickup={canManageEvents ? openRegistrationAction : undefined} />
 
             <Pagination
               count={registrationsData?.meta.total ?? 0}
@@ -798,7 +806,7 @@ function EventDetailContent() {
         onConfirm={handleClose}
         destructive
       />
-      <ConfirmationSheetPanel open={sheetOpen} onOpenChange={setSheetOpen} eventId={eventId} pickupLocations={event.pickup_locations} />
+      <ConfirmationSheetPanel open={sheetOpen} onOpenChange={setSheetOpen} eventId={eventId} pickupLocations={event.pickup_locations} canManage={canManageEvents} />
       {attendeeAction && (
         <AttendeeActionDialog
           open

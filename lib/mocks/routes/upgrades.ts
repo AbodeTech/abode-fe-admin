@@ -186,26 +186,75 @@ const REASON_MIN = 20;
 
 const UPGRADE_TARGET_TIERS = ['associate', 'associate-pro', 'founder', 'premium', 'management'];
 
+/**
+ * The queue's filters. The stats cards use the very same predicate, so — as the
+ * hook documents — the cards follow the table: search, status, payment method,
+ * tier and date range, everything except paging.
+ */
+function matchesQuery(upgrade: MockUpgrade, query: Record<string, unknown>): boolean {
+  const search = typeof query.search === 'string' ? query.search : '';
+
+  if (query.status && upgrade.status !== query.status) return false;
+  if (query.payment_method && upgrade.payment_method !== query.payment_method) return false;
+  if (query.to_tier && upgrade.to_tier !== query.to_tier) return false;
+
+  const created = new Date(upgrade.createdAt).getTime();
+  if (query.start_date && created < new Date(String(query.start_date)).getTime()) return false;
+  if (query.end_date && created > new Date(String(query.end_date)).getTime()) return false;
+
+  if (search) {
+    // Applicant only, matching `findUserIdsBySearch` — a referrer's name
+    // returns nothing here, exactly as it does against the real backend.
+    const applicant = findPerson(upgrade.user);
+    if (!applicant || !matchesPersonSearch(applicant, search)) return false;
+  }
+
+  return true;
+}
+
+const STATUSES = ['pending', 'approved', 'declined', 'cancelled'] as const;
+const METHODS = ['transfer', 'paystack', 'admin-manual'] as const;
+
+/** Count and money per status. Money is what the applicant paid (`fee_amount` is already net of any coupon). */
+function byStatus(rows: MockUpgrade[]) {
+  return Object.fromEntries(
+    STATUSES.map((status) => {
+      const inStatus = rows.filter((row) => row.status === status);
+      return [status, { count: inStatus.length, amount: inStatus.reduce((sum, row) => sum + row.fee_amount, 0) }];
+    })
+  ) as Record<(typeof STATUSES)[number], { count: number; amount: number }>;
+}
+
 export const upgradeRoutes: MockRoutes = {
   'GET /admin/referrals/upgrades': ({ query }) => {
-    const search = typeof query.search === 'string' ? query.search : '';
-
-    const filtered = upgrades.filter((upgrade) => {
-      if (query.status && upgrade.status !== query.status) return false;
-      if (query.payment_method && upgrade.payment_method !== query.payment_method) return false;
-      if (query.to_tier && upgrade.to_tier !== query.to_tier) return false;
-
-      if (search) {
-        // Applicant only, matching `findUserIdsBySearch` — a referrer's name
-        // returns nothing here, exactly as it does against the real backend.
-        const applicant = findPerson(upgrade.user);
-        if (!applicant || !matchesPersonSearch(applicant, search)) return false;
-      }
-
-      return true;
-    });
+    const filtered = upgrades.filter((upgrade) => matchesQuery(upgrade, query));
 
     return paged(filtered.map(populate), query);
+  },
+
+  // The summary strip. An admin-recorded upgrade with no fee adds to counts, not to money.
+  'GET /admin/referrals/upgrades/stats': ({ query }) => {
+    const rows = upgrades.filter((upgrade) => matchesQuery(upgrade, query));
+    const discounted = rows.filter((row) => row.status === 'approved' && row.coupon);
+
+    return {
+      range: {
+        start_date: query.start_date ? String(query.start_date) : null,
+        end_date: query.end_date ? String(query.end_date) : null,
+      },
+      total: rows.length,
+      by_status: byStatus(rows),
+      by_payment_method: Object.fromEntries(
+        METHODS.map((method) => {
+          const forMethod = rows.filter((row) => row.payment_method === method);
+          return [method, { ...byStatus(forMethod), total: forMethod.length }];
+        })
+      ),
+      approved_discounts: {
+        count: discounted.length,
+        amount: discounted.reduce((sum, row) => sum + (row.discount_amount ?? 0), 0),
+      },
+    };
   },
 
   'PATCH /admin/referrals/upgrades/:id/approve': ({ params }) => {

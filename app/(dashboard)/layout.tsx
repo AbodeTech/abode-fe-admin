@@ -8,6 +8,9 @@ import { Menu } from "lucide-react";
 import { useEffect } from "react";
 import { useUIStore } from "@/store/ui-store";
 import { AdminSessionGate } from "@/features/auth";
+import { PageAccessGuard } from "@/components/shared/PageAccessGuard";
+import { usePathname } from "next/navigation";
+import { findPage } from "@/lib/rbac";
 
 // Mocking NextStep for now as we focus on UI structure
 const NextStepProvider = ({ children }: { children: React.ReactNode }) => <>{children}</>;
@@ -18,6 +21,9 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }>) {
   const { isMobileNavOpen, toggleMobileNav, closeMobileNav } = useUIStore();
+  const pathname = usePathname();
+  // The phone's top bar names the page the person is on.
+  const pageTitle = findPage(pathname)?.label ?? "Dashboard";
 
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 768px)");
@@ -64,7 +70,7 @@ export default function DashboardLayout({
               >
                 <Menu className="h-6 w-6 text-[#222222]" />
               </button>
-              <span className="truncate font-semibold text-[#222222]">Dashboard</span>
+              <span className="truncate font-semibold text-[#222222]">{pageTitle}</span>
             </div>
 
             {/* Header - Sticky at top of card (desktop) */}
@@ -76,7 +82,9 @@ export default function DashboardLayout({
 
             {/* Scrollable Page Content — inner column fills height so centered loaders align in the viewport */}
             <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden p-3 sm:p-4 md:p-6 lg:p-8 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-              <div className="flex min-h-full min-w-0 flex-1 flex-col">{children}</div>
+              <div className="flex min-h-full min-w-0 flex-1 flex-col">
+                <PageAccessGuard>{children}</PageAccessGuard>
+              </div>
             </div>
 
           </div>

@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, User, Shield, Activity, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { landingLabel } from "@/lib/rbac";
 import type { AdminWithRole } from "../schemas/role.schema";
 
 export interface AdminLogLike {
@@ -81,16 +82,51 @@ export function AdminDetailHeader({ admin, logs = [], isLoadingLogs = false }: A
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-5 pt-1">
-            <div className="flex items-center justify-between gap-2">
-              <span className="shrink-0 text-sm font-medium text-muted-foreground">Current Role</span>
-              <Badge className="min-w-0 max-w-[min(100%,14rem)] whitespace-normal break-words bg-primary/10 px-3 text-center font-semibold text-primary hover:bg-primary/20 border-primary/20 sm:max-w-[55%]">
-                {data.role_name}
-              </Badge>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <span className="shrink-0 text-sm font-medium text-muted-foreground">
+                {data.additional_roles.length > 0 ? "Roles" : "Current Role"}
+              </span>
+              <div className="flex min-w-0 flex-wrap gap-1.5 sm:max-w-[65%] sm:justify-end">
+                <Badge className="min-w-0 max-w-full whitespace-normal break-words bg-primary/10 px-3 text-center font-semibold text-primary hover:bg-primary/20 border-primary/20">
+                  {data.role_name}
+                </Badge>
+                {data.additional_roles.map((role) => (
+                  <Badge key={role.id} variant="outline" className="min-w-0 max-w-full whitespace-normal break-words border-border bg-muted/30 px-3">
+                    {role.name}
+                  </Badge>
+                ))}
+              </div>
             </div>
             <div className="flex flex-col gap-2 rounded-md bg-muted/20 p-2 sm:flex-row sm:items-center sm:justify-between">
-              <span className="shrink-0 text-sm font-medium text-muted-foreground">Role ID</span>
+              <span className="shrink-0 text-sm font-medium text-muted-foreground">Starts on</span>
+              <span className="text-sm text-foreground sm:text-right">
+                {data.start_page_choice ? landingLabel(data.start_page_choice) : `${landingLabel(data.primary_landing)} (role default)`}
+              </span>
+            </div>
+            <div className="flex flex-col gap-2 rounded-md bg-muted/20 p-2 sm:flex-row sm:items-center sm:justify-between">
+              <span className="shrink-0 text-sm font-medium text-muted-foreground">Associate Pro</span>
+              <span className="text-sm text-foreground sm:text-right">
+                {data.associate_pro_user_id ? "Linked" : "Not linked"}
+              </span>
+            </div>
+            <div className="flex flex-col gap-2 rounded-md bg-muted/20 p-2 sm:flex-row sm:items-center sm:justify-between">
+              <span className="shrink-0 text-sm font-medium text-muted-foreground">Primary role ID</span>
               <span className="break-all font-mono text-[13px] text-foreground sm:text-right">{data.role_id}</span>
             </div>
+            {data.extra_permissions.length > 0 && (
+              <div className="pt-3 border-t border-border/50">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                  Extra permissions ({data.extra_permissions.length})
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {data.extra_permissions.map((perm) => (
+                    <Badge key={perm} className="font-mono text-xs bg-primary/10 text-primary border-primary/20 hover:bg-primary/10">
+                      {perm}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="pt-3 border-t border-border/50">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Permissions ({data.permissions?.length || 0})</p>
               <div className="flex flex-wrap gap-2">

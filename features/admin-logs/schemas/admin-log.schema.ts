@@ -1,51 +1,81 @@
 import { z } from 'zod';
 
-const RawAdminLogSchema = z.object({
-  id: z.string().optional(),
-  _id: z.string().optional(),
+/* ============================================================
+ * Admin audit log — GET /admin/audit-logs (`view_audit_logs`).
+ *
+ * One row is the documented `AdminLogResponseDto` (snake_case: `id`, `admin_id`,
+ * `admin_email`, `old_state`, `new_state`, ...). The backend still sends the old
+ * camelCase fields (`_id`, `adminId`, `adminEmail`, `oldState`) beside them as
+ * deprecated aliases; this schema reads only the documented ones, so dropping the
+ * aliases there changes nothing here.
+ *
+ * Query: `page`, `limit`, `admin_id`, `action`. There is no search by email, no
+ * date range and no export route (the export button pages through this endpoint).
+ * ============================================================ */
+
+/**
+ * `action` is an open string. The BE validates it against a list of several
+ * hundred values that grows with every feature, so a closed enum here would turn
+ * every new action into a SCHEMA_MISMATCH for the whole page.
+ */
+export const AdminLogSchema = z.looseObject({
+  id: z.string(),
+  /** Null for a system-actor row (a scheduled job): show "System", not blank. */
   admin_id: z.string().nullable().optional(),
-  adminId: z.string().nullable().optional(),
   admin_email: z.string().nullable().optional(),
-  adminEmail: z.string().nullable().optional(),
-  actor_type: z.enum(['admin', 'system']).optional(),
+  actor_type: z.string().optional(),
   action: z.string(),
   description: z.string(),
+  /** The admin's typed justification, where one was collected. */
   reason: z.string().nullable().optional(),
   entity: z.string().nullable().optional(),
   entity_id: z.string().nullable().optional(),
+  /** The user affected, which is often not the entity. */
   target_user_id: z.string().nullable().optional(),
-  metadata: z.unknown().optional(),
-  old_state: z.unknown().optional(),
-  oldState: z.unknown().optional(),
-  new_state: z.unknown().optional(),
+  metadata: z.record(z.string(), z.unknown()).nullable().optional(),
+  old_state: z.record(z.string(), z.unknown()).nullable().optional(),
+  new_state: z.record(z.string(), z.unknown()).nullable().optional(),
   ip_address: z.string().nullable().optional(),
   user_agent: z.string().nullable().optional(),
-  timestamp: z.union([z.string(), z.date()]),
+  timestamp: z.string(),
 });
 
-function asObject(value: unknown): Record<string, unknown> | null {
-  return value !== null && typeof value === 'object'
-    ? value as Record<string, unknown>
-    : null;
-}
-
-export const AdminLogSchema = RawAdminLogSchema.transform((raw) => ({
-  id: raw.id ?? raw._id ?? '',
-  admin_id: raw.admin_id ?? raw.adminId ?? null,
-  admin_email: raw.admin_email ?? raw.adminEmail ?? null,
-  actor_type: raw.actor_type ?? 'admin',
-  action: raw.action,
-  description: raw.description,
-  reason: raw.reason ?? undefined,
-  entity: raw.entity ?? undefined,
-  entity_id: raw.entity_id ?? undefined,
-  target_user_id: raw.target_user_id ?? undefined,
-  metadata: asObject(raw.metadata),
-  old_state: asObject(raw.old_state ?? raw.oldState),
-  new_state: asObject(raw.new_state),
-  ip_address: raw.ip_address ?? undefined,
-  user_agent: raw.user_agent ?? undefined,
-  timestamp: raw.timestamp instanceof Date ? raw.timestamp.toISOString() : raw.timestamp,
-}));
-
 export type AdminLog = z.infer<typeof AdminLogSchema>;
+
+/** `GET /admin/admins` as the filter's admin picker needs it: who, by id. */
+export const AdminLogAdminOptionSchema = z.looseObject({
+  _id: z.string(),
+  email: z.string(),
+  firstName: z.string().nullable().optional(),
+  lastName: z.string().nullable().optional(),
+});
+
+export type AdminLogAdminOption = z.infer<typeof AdminLogAdminOptionSchema>;
+
+/**
+ * The actions worth filtering by, with the BE's own spelling (checked against
+ * `ADMIN_LOG_ACTIONS`). The full list is several hundred values; these are the
+ * ones an admin reviewing access or money actually looks for. Any action can
+ * still be reached with `?action=` in the URL.
+ */
+export const ADMIN_LOG_ACTION_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
+  { value: 'permission-denied', label: 'Denied attempt' },
+  { value: 'assign-admin-role', label: 'Roles changed' },
+  { value: 'update-admin-extra-permissions', label: 'Extra permissions changed' },
+  { value: 'update-admin-start-page', label: 'Start page changed' },
+  { value: 'create-role', label: 'Create role' },
+  { value: 'delete-admin', label: 'Delete admin' },
+  { value: 'log-in', label: 'Log in' },
+  { value: 'approve-purchase-confirmation', label: 'Approve purchase confirmation' },
+  { value: 'approve-asset-transaction', label: 'Approve asset transaction' },
+  { value: 'approve-withdrawal', label: 'Approve withdrawal' },
+  { value: 'reassign-associate-pro', label: 'Reassign associate pro' },
+  { value: 'modify-referral-status', label: 'Modify referral status' },
+  { value: 'update-payment-plan', label: 'Update payment plan' },
+  { value: 'suspend-user', label: 'Suspend user' },
+  { value: 'unsuspend-user', label: 'Unsuspend user' },
+  { value: 'edit-wallet-details', label: 'Edit wallet details' },
+  { value: 'buy-asset', label: 'Buy asset' },
+  { value: 'update-asset', label: 'Update asset' },
+  { value: 'delete-asset', label: 'Delete asset' },
+];

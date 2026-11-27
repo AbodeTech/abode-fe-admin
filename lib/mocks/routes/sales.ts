@@ -24,7 +24,7 @@ const LOCATIONS = ['Ibeju-Lekki, Lagos', 'Epe, Lagos', 'Ikeja, Lagos', 'Abeokuta
 
 type PlanStatus = (typeof PLAN_STATUSES)[number];
 
-type MockSalesRow = {
+export type MockSalesRow = {
   id: string;
   buyer: { id: string; name: string; email: string };
   referrer: { id: string; name: string; email: string } | null;
@@ -131,7 +131,8 @@ const rows: MockSalesRow[] = MOCK_USERS.map((user, i) => {
   };
 });
 
-function applyListFilters(query: Record<string, unknown>): MockSalesRow[] {
+/** Shared with associate-managers.ts: a manager's sales record is this list scoped to the roster. */
+export function applyListFilters(query: Record<string, unknown>): MockSalesRow[] {
   let filtered = rows as MockSalesRow[];
 
   const q = query.q ? String(query.q).trim().toLowerCase() : null;

@@ -1,13 +1,61 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { MoreVertical, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Shield, Trash2 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { CreateRoleDialog } from "./CreateRoleDialog";
+import { DeleteRoleDialog } from "./DeleteRoleDialog";
+import { EditRoleDialog } from "./EditRoleDialog";
+import { useHasPermission } from "@/hooks/use-admin-permission";
+import { landingLabel } from "@/lib/rbac";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Role } from "../schemas/role.schema";
+
+/**
+ * Edit and Delete for one role card. Both take `manage_roles`; the backend refuses to edit the
+ * super-admin role and to delete a system or super-admin role, so those entries say why they are
+ * off. A role that still has admins can be opened to see them, and is only refused at the delete.
+ */
+function RoleCardActions({ role }: { role: Role }) {
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
+  const deleteBlocked = role.is_super_admin ? "Super admin roles can't be deleted" : role.is_system ? "System roles can't be deleted" : null;
+
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="-mr-2 -mt-1 h-8 w-8 shrink-0" aria-label={`Actions for ${role.name}`}>
+            <MoreVertical className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem disabled={role.is_super_admin} onSelect={() => setEditOpen(true)}>
+            {role.is_super_admin ? "Edit role (not allowed for super admin)" : "Edit role"}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            disabled={!!deleteBlocked}
+            className="text-red-600 focus:text-red-600"
+            onSelect={() => setDeleteOpen(true)}
+          >
+            {deleteBlocked ? `Delete role (${deleteBlocked.toLowerCase()})` : "Delete role"}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {!role.is_super_admin && <EditRoleDialog role={role} open={editOpen} onOpenChange={setEditOpen} />}
+      {!deleteBlocked && <DeleteRoleDialog role={role} open={deleteOpen} onOpenChange={setDeleteOpen} />}
+    </>
+  );
+}
 
 interface RolesGridProps {
   roles?: Role[] | null;
@@ -15,6 +63,10 @@ interface RolesGridProps {
 }
 
 export function RolesGrid({ roles, isLoading }: RolesGridProps) {
+  // POST, PATCH and DELETE /admin/roles are all guarded by manage_roles.
+  const canManageRoles = useHasPermission("manage_roles");
+  const canCreateRole = canManageRoles;
+
   if (isLoading) {
     return (
       <Card className="min-w-0 border-border bg-card">
@@ -43,9 +95,11 @@ export function RolesGrid({ roles, isLoading }: RolesGridProps) {
           <Shield className="h-5 w-5 shrink-0 text-muted-foreground" />
           <h2 className="min-w-0 text-2xl font-semibold text-foreground">Roles Management</h2>
         </div>
-        <div className="w-full sm:ml-auto sm:w-auto">
-          <CreateRoleDialog />
-        </div>
+        {canCreateRole && (
+          <div className="w-full sm:ml-auto sm:w-auto">
+            <CreateRoleDialog />
+          </div>
+        )}
       </div>
 
       <div className="grid min-w-0 grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -63,30 +117,15 @@ export function RolesGrid({ roles, isLoading }: RolesGridProps) {
                 </CardTitle>
                 <p className="mt-1 text-sm text-muted-foreground">{role.description}</p>
               </div>
-              {/*
-                DELETE /admin/roles/:id exists now, but wiring it needs more than
-                a button: the BE refuses system roles outright, and refuses any
-                role that still has admins — returning them in the 400 so they
-                can be reassigned first. That reassignment flow is the real work.
-              */}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-destructive"
-                disabled
-                title={
-                  role.is_system
-                    ? "System roles cannot be deleted"
-                    : "Deleting roles isn't wired up yet"
-                }
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              {canManageRoles && <RoleCardActions role={role} />}
             </CardHeader>
             <CardContent className="space-y-3">
               <p className="text-sm font-medium text-muted-foreground">
                 {role.permissions.length} permission{role.permissions.length === 1 ? "" : "s"} ·{" "}
                 {role.admin_count} admin{role.admin_count === 1 ? "" : "s"}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Starts on <span className="font-medium text-foreground">{landingLabel(role.default_landing_page)}</span>
               </p>
               <div className="flex flex-wrap gap-1">
                 {role.permissions.slice(0, 3).map((perm) => (

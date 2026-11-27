@@ -49,6 +49,8 @@ export function UserAssetActions({ userId, asset, email }: UserAssetActionsProps
   const canSuspend = useHasPermission('suspend_plan');
   const canUnsuspend = useHasPermission('unsuspend_plan');
   const canClose = useHasPermission('close_plan');
+  // Close and relocate closes the plan and opens a new one: the endpoint takes both keys.
+  const canCreatePlan = useHasPermission('create_user_plan');
   const canEditCommissionConfig = useHasPermission('edit_plan_commission_config');
   const canEditCommissionRecipients = useHasPermission('edit_plan_commission_recipients');
   const canDelete = useHasPermission('delete_user_plan');
@@ -192,9 +194,11 @@ export function UserAssetActions({ userId, asset, email }: UserAssetActionsProps
               <DropdownMenuItem className="text-amber-700" onSelect={() => setShowClose(true)}>
                 Close Plan
               </DropdownMenuItem>
-              <DropdownMenuItem className="text-amber-700" onSelect={() => setShowRelocate(true)}>
-                Close and Relocate
-              </DropdownMenuItem>
+              {canCreatePlan && (
+                <DropdownMenuItem className="text-amber-700" onSelect={() => setShowRelocate(true)}>
+                  Close and Relocate
+                </DropdownMenuItem>
+              )}
             </>
           )}
           {canDelete && (

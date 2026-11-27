@@ -6,7 +6,9 @@ import { toast } from "sonner";
 
 import { SuspensePageFallback } from "@/components/shared/page-content-loader";
 import { Pagination } from "@/components/shared/Pagination";
+import { useAdminPermissions } from "@/hooks/use-admin-permission";
 import {
+  ApproveConfirmationModal,
   ConfirmationStatsStrip,
   DEFAULT_CONFIRMATIONS_LIMIT,
   PurchaseConfirmationDetailModal,
@@ -49,9 +51,15 @@ function PurchaseConfirmationsContent() {
   });
   const resendEmail = useResendConfirmationEmail();
   const exportConfirmations = useExportConfirmations();
+  const permissions = useAdminPermissions();
+  // View, manage and approve are three separate keys: Finance and Support Member
+  // see the list only, a Support Lead can also approve.
+  const canManage = permissions.has("manage_purchase_confirmations");
+  const canApprove = permissions.has("approve_purchase_confirmation");
 
   const [detailRow, setDetailRow] = useState<PurchaseConfirmationRow | null>(null);
   const [resolveRow, setResolveRow] = useState<PurchaseConfirmationRow | null>(null);
+  const [approveRow, setApproveRow] = useState<PurchaseConfirmationRow | null>(null);
 
   const handleExport = () => {
     exportConfirmations.mutate(
@@ -77,6 +85,11 @@ function PurchaseConfirmationsContent() {
   const handleResolveFromDetail = (row: PurchaseConfirmationRow) => {
     setDetailRow(null);
     setResolveRow(row);
+  };
+
+  const handleApproveFromDetail = (row: PurchaseConfirmationRow) => {
+    setDetailRow(null);
+    setApproveRow(row);
   };
 
   if (error) {
@@ -123,6 +136,9 @@ function PurchaseConfirmationsContent() {
           onView={setDetailRow}
           onResolve={setResolveRow}
           onResendEmail={handleResendEmail}
+          onApprove={setApproveRow}
+          canManage={canManage}
+          canApprove={canApprove}
         />
         <Pagination count={count} currentIdx={page} limit={DEFAULT_CONFIRMATIONS_LIMIT} />
       </div>
@@ -133,12 +149,21 @@ function PurchaseConfirmationsContent() {
         onOpenChange={(open) => !open && setDetailRow(null)}
         onResolve={handleResolveFromDetail}
         onResendEmail={handleResendEmail}
+        onApprove={handleApproveFromDetail}
+        canManage={canManage}
+        canApprove={canApprove}
       />
 
       <ResolveDisputeModal
         open={resolveRow !== null}
         row={resolveRow}
         onOpenChange={(open) => !open && setResolveRow(null)}
+      />
+
+      <ApproveConfirmationModal
+        open={approveRow !== null}
+        row={approveRow}
+        onOpenChange={(open) => !open && setApproveRow(null)}
       />
     </div>
   );

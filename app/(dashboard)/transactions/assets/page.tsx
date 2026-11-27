@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 
 import { Pagination } from "@/components/shared/Pagination";
 import { PageContentLoader } from "@/components/shared/page-content-loader";
+import { useHasPermission } from "@/hooks/use-admin-permission";
 import {
   ASSET_TYPES,
   DEFAULT_PURCHASE_LIMIT,
@@ -28,6 +29,10 @@ function parseEnum<T extends string>(value: string | null, allowed: readonly T[]
 function AssetTransactionsContent() {
   const searchParams = useSearchParams();
   const page = Number(searchParams.get("page")) || 1;
+
+  // The ledger opens on `asset_transactions` (Sales and Support can read it); approving or
+  // declining is `approve_payments` on the BE, so only that key shows the Action column.
+  const canReview = useHasPermission("approve_payments");
   const search = searchParams.get("search") ?? undefined;
   const status = parseEnum<PurchaseStatus>(searchParams.get("status"), PURCHASE_STATUSES);
   const salesType = parseEnum<SalesType>(searchParams.get("sales_type"), SALES_TYPES);
@@ -89,6 +94,7 @@ function AssetTransactionsContent() {
               isLoading={isLoading}
               onApprove={handleApprove}
               onDecline={handleDecline}
+              canReview={canReview}
             />
 
             {!isLoading && total > 0 ? (

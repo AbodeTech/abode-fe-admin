@@ -334,7 +334,8 @@ function AssociateManagersContent() {
         onExport={isAllManagers || !canExportTeam ? undefined : handleExportPros}
         isExporting={isExportingPros}
         canLogCalls={canLogCalls}
-        canReassign={canManageTeams}
+        canReassign={permissions.has("reassign_manager")}
+        canBulkAssign={canManageTeams}
       />
 
       {/* Team sales is scoped to a single manager's roster — skip it when the

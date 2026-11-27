@@ -28,6 +28,7 @@ import {
 import { formatNaira } from "@/lib/utils/format";
 
 import { cn } from "@/lib/utils";
+import { useHasPermission } from "@/hooks/use-admin-permission";
 
 import {
   KYC_STATE_LABELS,
@@ -81,8 +82,21 @@ function Requester({ row }: { row: Withdrawal }) {
  * money and a number nobody has checked must not read the same as one that has
  * been. Only `approved` gets the plain treatment.
  */
+/** Shown where the backend left a field out because the caller lacks its key: not the same as "none on file". */
+function Restricted() {
+  return (
+    <span className="text-sm text-muted-foreground" title="You don't have access to this detail">
+      Restricted
+    </span>
+  );
+}
+
 function Tin({ row }: { row: Withdrawal }) {
   const tin = personTin(row.user);
+  // The backend leaves the TIN out unless the caller holds view_kyc.
+  const canViewKyc = useHasPermission("view_kyc");
+
+  if (!tin?.value && !canViewKyc) return <Restricted />;
 
   if (!tin?.value) {
     return (
@@ -125,6 +139,9 @@ function BankField({
   value: string | null;
   mono?: boolean;
 }) {
+  // The backend drops the bank details unless the caller holds view_user_bank_details.
+  const canViewBank = useHasPermission("view_user_bank_details");
+  if (!value && !canViewBank) return <Restricted />;
   if (value) {
     return <span className={mono ? "font-mono text-sm tabular-nums" : "text-sm"}>{value}</span>;
   }
@@ -177,8 +194,11 @@ function RowActions({
   onDecline: (row: Withdrawal) => void;
   onRetry: (row: Withdrawal) => void;
 }) {
+  // Viewing the queue needs view_withdrawals; approving, declining and retrying
+  // need withdrawals. A role that can only look gets no action menu at all.
+  const canAct = useHasPermission("withdrawals");
   const actions = withdrawalActions(row);
-  if (!actions.canApprove && !actions.canDecline && !actions.canRetry) return null;
+  if (!canAct || (!actions.canApprove && !actions.canDecline && !actions.canRetry)) return null;
 
   return (
     <DropdownMenu>
@@ -260,8 +280,9 @@ export function WithdrawalsTable({
               <TableHead>Requested</TableHead>
               <TableHead>Method</TableHead>
               <TableHead>Provider</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="w-px" />
+              {/* Status and the action menu are pinned to the right edge: the table is wider than the page, and what a row is and what can be done to it must not hide behind a sideways scroll. */}
+              <TableHead className="min-w-32 right-14 sticky z-10 bg-[#fafafa]">Status</TableHead>
+              <TableHead className="w-14 right-0 sticky z-10 bg-[#fafafa]" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -294,13 +315,13 @@ export function WithdrawalsTable({
                 <TableCell>
                   <Provider row={row} />
                 </TableCell>
-                <TableCell>
+                <TableCell className="right-14 sticky z-10 bg-[#fafafa]">
                   <div className="space-y-1">
                     <WithdrawalStatusBadge status={row.admin_status ?? "pending"} />
                     <MoneyState status={row.status} />
                   </div>
                 </TableCell>
-                <TableCell className="text-right">
+                <TableCell className="w-14 text-right right-0 sticky z-10 bg-[#fafafa]">
                   <RowActions
                     row={row}
                     onApprove={onApprove}

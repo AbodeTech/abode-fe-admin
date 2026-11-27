@@ -289,7 +289,16 @@ export const AdminPickerRowSchema = z.looseObject({
   firstName: z.string().nullable().optional(),
   lastName: z.string().nullable().optional(),
   email: z.string(),
-  role: z.string().nullable().optional(),
+  /**
+   * The BE populates `role` (a role document) since abode-be-v2 `3a65785`; older
+   * responses sent a bare string. Either way the picker only shows the role's name,
+   * so both read as that name.
+   */
+  role: z
+    .union([z.string(), z.looseObject({ name: z.string() })])
+    .nullable()
+    .optional()
+    .transform((value) => (typeof value === 'string' ? value : (value?.name ?? null))),
 });
 
 export type AdminPickerRow = z.infer<typeof AdminPickerRowSchema>;

@@ -38,6 +38,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { useHasPermission } from "@/hooks/use-admin-permission"
 import {
   formatAmount,
   formatDate,
@@ -116,6 +117,9 @@ function TransactionTypeBadges({ transaction }: { transaction: TransactionListRe
 }
 
 export function OtherTransactionsTable({ transactions }: OtherTransactionsTableProps) {
+  // The BE's `can_reprocess` / `can_send_receipt` say whether an action applies to a row; these say whether this admin may.
+  const mayReprocess = useHasPermission("reprocess_transaction")
+  const mayEmail = useHasPermission("send_user_email")
   const [sortField, setSortField] = useState<string>("time_of_transaction")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc")
 
@@ -272,24 +276,28 @@ export function OtherTransactionsTable({ transactions }: OtherTransactionsTableP
                           ) : (
                             <DropdownMenuItem disabled>View Receipt (N/A)</DropdownMenuItem>
                           )}
-                          <DropdownMenuItem
-                            disabled={!canReprocess || isProcessing}
-                            onSelect={(event) => {
-                              event.preventDefault()
-                              handleOpenConfirm(transaction._id)
-                            }}
-                          >
-                            {isProcessing ? "Reprocessing..." : "Reprocess Transaction"}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            disabled={!canSendReceipt || isSendingReceipt}
-                            onSelect={async (event) => {
-                              event.preventDefault()
-                              await handleSendReceipt(transaction._id)
-                            }}
-                          >
-                            {isSendingReceipt ? "Sending..." : "Send Receipt Email"}
-                          </DropdownMenuItem>
+                          {mayReprocess && (
+                            <DropdownMenuItem
+                              disabled={!canReprocess || isProcessing}
+                              onSelect={(event) => {
+                                event.preventDefault()
+                                handleOpenConfirm(transaction._id)
+                              }}
+                            >
+                              {isProcessing ? "Reprocessing..." : "Reprocess Transaction"}
+                            </DropdownMenuItem>
+                          )}
+                          {mayEmail && (
+                            <DropdownMenuItem
+                              disabled={!canSendReceipt || isSendingReceipt}
+                              onSelect={async (event) => {
+                                event.preventDefault()
+                                await handleSendReceipt(transaction._id)
+                              }}
+                            >
+                              {isSendingReceipt ? "Sending..." : "Send Receipt Email"}
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
@@ -385,26 +393,30 @@ export function OtherTransactionsTable({ transactions }: OtherTransactionsTableP
                               )}
 
                               {/* Reprocess */}
-                              <DropdownMenuItem
-                                disabled={!canReprocess || isProcessing}
-                                onSelect={(event) => {
-                                  event.preventDefault()
-                                  handleOpenConfirm(transaction._id)
-                                }}
-                              >
-                                {isProcessing ? "Reprocessing..." : "Reprocess Transaction"}
-                              </DropdownMenuItem>
+                              {mayReprocess && (
+                                <DropdownMenuItem
+                                  disabled={!canReprocess || isProcessing}
+                                  onSelect={(event) => {
+                                    event.preventDefault()
+                                    handleOpenConfirm(transaction._id)
+                                  }}
+                                >
+                                  {isProcessing ? "Reprocessing..." : "Reprocess Transaction"}
+                                </DropdownMenuItem>
+                              )}
 
                               {/* Send Receipt */}
-                              <DropdownMenuItem
-                                disabled={!canSendReceipt || isSendingReceipt}
-                                onSelect={async (event) => {
-                                  event.preventDefault()
-                                  await handleSendReceipt(transaction._id)
-                                }}
-                              >
-                                {isSendingReceipt ? "Sending..." : "Send Receipt Email"}
-                              </DropdownMenuItem>
+                              {mayEmail && (
+                                <DropdownMenuItem
+                                  disabled={!canSendReceipt || isSendingReceipt}
+                                  onSelect={async (event) => {
+                                    event.preventDefault()
+                                    await handleSendReceipt(transaction._id)
+                                  }}
+                                >
+                                  {isSendingReceipt ? "Sending..." : "Send Receipt Email"}
+                                </DropdownMenuItem>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>

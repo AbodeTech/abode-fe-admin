@@ -9,8 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CopyableText } from "@/components/shared/CopyableText";
-import { useAuthStore } from "@/store/auth-store";
-import { useHasPermission } from "@/hooks/use-admin-permission";
+import { useHasPermission, useIsSuperAdmin } from "@/hooks/use-admin-permission";
 
 import { useReactivateAgency } from "../hooks/use-agency-actions";
 import { agencyOwnerName, type AgencyDetail } from "../schemas/agency.schema";
@@ -67,7 +66,8 @@ export function AgencyDetailView({
   const [changeOwnerOpen, setChangeOwnerOpen] = useState(false);
 
   const canManage = useHasPermission("manage_agencies");
-  const isSuperAdmin = useAuthStore((state) => state.user?.role?.is_super_admin ?? false);
+  // POST /agencies/:id/change-owner is `superAdmin: true` AND manage_agencies on the BE.
+  const isSuperAdmin = useIsSuperAdmin();
 
   const { mutateAsync: reactivateAgency, isPending: reactivating } = useReactivateAgency();
 
@@ -131,7 +131,7 @@ export function AgencyDetailView({
                 </Button>
               )}
 
-              {isSuperAdmin && (
+              {isSuperAdmin && canManage && (
                 <Button
                   variant="outline"
                   className="w-full sm:w-auto"
@@ -236,7 +236,7 @@ export function AgencyDetailView({
             open={deleteOpen}
             onOpenChange={setDeleteOpen}
           />
-          {isSuperAdmin && (
+          {isSuperAdmin && canManage && (
             <AgencyChangeOwnerDialog
               agencyId={agency.id}
               currentOwnerName={ownerName}

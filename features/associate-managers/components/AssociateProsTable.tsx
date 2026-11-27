@@ -62,8 +62,10 @@ interface Props {
   isExporting?: boolean;
   /** The viewer's own team, or they hold manage_manager_tracker. */
   canLogCalls: boolean;
-  /** manage_manager_tracker: move pros between managers. */
+  /** reassign_manager: move ONE pro to another manager (the row menu). */
   canReassign: boolean;
+  /** manage_manager_tracker: assign a batch of pros at once (selection and the bulk bar). */
+  canBulkAssign: boolean;
 }
 
 const formatCurrency = (n: number) =>
@@ -174,6 +176,7 @@ export function AssociateProsTable({
   isExporting = false,
   canLogCalls,
   canReassign,
+  canBulkAssign,
 }: Props) {
   const searchParams = useSearchParams();
   const page = Number(searchParams.get("page")) || 1;
@@ -312,7 +315,7 @@ export function AssociateProsTable({
             <TableHeader>
               <TableRow className="bg-gray-50/60">
                 {/* Selection only feeds bulk reassign. */}
-                {canReassign && (
+                {canBulkAssign && (
                   <TableHead className="w-10">
                     <Checkbox
                       checked={
@@ -339,7 +342,7 @@ export function AssociateProsTable({
             <TableBody>
               {paginated.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={canReassign ? 8 : 7} className="text-center py-10 text-gray-500">
+                  <TableCell colSpan={canBulkAssign ? 8 : 7} className="text-center py-10 text-gray-500">
                     No Associate Pros match the current filters.
                   </TableCell>
                 </TableRow>
@@ -357,7 +360,7 @@ export function AssociateProsTable({
                         isSelected && "bg-[#E0F2F1]/40"
                       )}
                     >
-                      {canReassign && (
+                      {canBulkAssign && (
                         <TableCell>
                           <Checkbox
                             checked={isSelected}
@@ -460,7 +463,7 @@ export function AssociateProsTable({
       </div>
 
       {/* Bulk action bar — sticky to viewport bottom */}
-      {canReassign && selected.size > 0 && (
+      {canBulkAssign && selected.size > 0 && (
         <div className="fixed inset-x-0 bottom-4 z-30 flex justify-center px-4 pointer-events-none">
           <div className="pointer-events-auto bg-gray-900 text-white rounded-full shadow-lg pl-5 pr-2 py-2 flex items-center gap-4">
             <span className="text-sm font-medium">
