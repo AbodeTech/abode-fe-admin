@@ -207,6 +207,27 @@ export function requireSession(): MockAdmin {
   return current.admin;
 }
 
+/** The signed-in admin, or null: for routes that read fine without a session and only attribute writes to one. */
+export function mockSessionAdmin(): MockAdmin | null {
+  return loadSession()?.admin ?? null;
+}
+
+/** Does the signed-in test login hold this permission? A super admin holds every one. */
+export function mockCan(permission: string): boolean {
+  return mockIsSuperAdmin() || requireSession().permissions.includes(permission);
+}
+
+/** Super admin on any held role, as the BE decides "own notes only, unless super admin". */
+export function mockIsSuperAdmin(): boolean {
+  const admin = requireSession();
+  return admin.role.is_super_admin || (admin.additional_roles ?? []).some((r) => r.is_super_admin);
+}
+
+/** The BE's guard: 403 with the reason when the login lacks the permission. */
+export function requireMockPermission(permission: string, message: string, code = 'FORBIDDEN'): void {
+  if (!mockCan(permission)) throw new MockHttpError(403, message, code);
+}
+
 export const authRoutes: MockRoutes = {
   'POST /auth/admin/login': ({ body: raw }) => {
     const { email, password } = body<{ email?: string; password?: string }>(raw);
@@ -256,28 +277,7 @@ export const authRoutes: MockRoutes = {
     return { admin_id: admin.id, start_page_choice: next.start_page_choice ?? null, start_page: next.start_page };
   },
 
-  // GET /admin/managers/me: a body, not a 403, for a non-manager. The rest of the
-  // /admin/managers/* family is not mocked, so the Manager Performance page itself
-  // cannot render in mock mode; this only answers "am I a manager?" for the sidebar.
-  'GET /admin/managers/me': () => {
-    const admin = requireSession();
-    if (!mockHoldsRecord('associate_manager')) return { is_manager: false, manager: null };
-    return {
-      is_manager: true,
-      manager: {
-        id: admin.id,
-        manager_id: admin.id,
-        display_name: `${admin.firstName} ${admin.lastName}`,
-        phone_number: null,
-        whatsapp_group_link: null,
-        is_private: false,
-        roster_size: 0,
-        associate_pros: [],
-        createdAt: null,
-        updatedAt: null,
-      },
-    };
-  },
+  // GET /admin/managers/me lives in associate-managers.ts, next to the rosters it answers for.
 
   'POST /auth/admin/change-password': ({ body: raw }) => {
     const admin = requireSession();

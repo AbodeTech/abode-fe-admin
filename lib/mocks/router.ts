@@ -99,6 +99,11 @@ function matchRoute(method: string, path: string): Match | null {
   return null;
 }
 
+/** Whether a "METHOD /path" would be answered. Lets a script audit coverage without running a handler. */
+export function hasMockRoute(method: string, path: string): boolean {
+  return matchRoute(method.toUpperCase(), path) !== null;
+}
+
 export async function dispatchMockRoute(req: MockRequest): Promise<unknown> {
   const match = matchRoute(req.method, req.path);
   if (!match) {

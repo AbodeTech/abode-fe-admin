@@ -483,6 +483,11 @@ export function offerTree(row: MockAsset): MockOffer[] {
   return trees[row._id];
 }
 
+/** For portfolio-analytics.ts's in-process roll-up of every asset that is not soft-deleted — not an HTTP route. */
+export function listLiveAssets(): MockAsset[] {
+  return assets.filter((candidate) => !candidate.deleted_at);
+}
+
 /** For lib/mocks/routes/land-configuration.ts — the same lookup every write route here uses. */
 export function findActiveAsset(assetId: string): MockAsset | undefined {
   return assets.find((candidate) => candidate._id === assetId && !candidate.deleted_at);
