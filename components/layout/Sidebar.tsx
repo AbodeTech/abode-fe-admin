@@ -48,22 +48,29 @@ import {
 } from "lucide-react";
 
 import LogOutModal from "@/components/settings/LogOutModal";
+import { useAccessSubject } from "@/hooks/use-access";
 import { useAuthStore } from "@/store/auth-store";
-import { useAdminPermissions, type AdminPermission } from "@/hooks/use-admin-permission";
-import { useIsCurrentUserManager } from "@/features/associate-managers";
-import { useIsCurrentCSManager } from "@/features/cs-managers";
+import { canAccess, getPage } from "@/lib/rbac";
 
-// Grouped Navigation Items
-const navGroups = [
+// Grouped navigation. Presentation only: the group titles, their order and the
+// icons live here. Each item names a page in the registry (lib/rbac/registry.ts),
+// which owns its label, route and who may see it — so a new page is one registry
+// entry and one line here, and no permission logic is repeated in this file.
+const rawNavGroups: Array<{
+  title: string;
+  isCollapsible?: boolean;
+  icon?: React.ReactElement;
+  items: Array<{ id: string; icon: React.ReactElement }>;
+}> = [
   {
     title: "General",
     items: [
-      { name: "Dashboard", link: "/", icon: <LayoutDashboard /> },
-      { name: "Assets", link: "/assets", icon: <CircleDollarSign /> },
-      { name: "Payment Plans", link: "/admin/payment-plans", icon: <ScrollText />, requiresPermission: "view_payment_plans" },
-      { name: "Agency", link: "/agency", icon: <Building2 /> },
-      { name: "Allocation", link: "/allocation", icon: <Building2 /> },
-      { name: "Marketplace", link: "/marketplace", icon: <Store /> },
+      { id: "dashboard", icon: <LayoutDashboard /> },
+      { id: "assets", icon: <CircleDollarSign /> },
+      { id: "payment-plans", icon: <ScrollText /> },
+      { id: "agency", icon: <Building2 /> },
+      { id: "allocation", icon: <Building2 /> },
+      { id: "marketplace", icon: <Store /> },
     ]
   },
   {
@@ -71,8 +78,8 @@ const navGroups = [
     isCollapsible: true,
     icon: <ShoppingCart />,
     items: [
-      { name: "Sales", link: "/sales", icon: <ShoppingCart /> },
-      { name: "Flex Leads", link: "/flex-leads", icon: <UserPlus /> },
+      { id: "sales", icon: <ShoppingCart /> },
+      { id: "flex-leads", icon: <UserPlus /> },
     ]
   },
   {
@@ -81,13 +88,9 @@ const navGroups = [
     isCollapsible: true,
     icon: <CalendarDays />,
     items: [
-      { name: "Meetings", link: "/meetings", icon: <Video />, requiresPermission: "view_meetings" },
-      // No requiresPermission — ships open like the rest of the dashboard
-      // (RBAC not FE-enforced per CLAUDE.md); the real backend still gates
-      // the underlying /admin/academy/* calls on view_academy, so a page
-      // visit without that permission will show real 403 error states.
-      { name: "Recruitment", link: "/recruitment", icon: <GraduationCap /> },
-      { name: "Company Events", link: "/company-events", icon: <LandPlot />, requiresPermission: "view_allocations" },
+      { id: "meetings", icon: <Video /> },
+      { id: "recruitment", icon: <GraduationCap /> },
+      { id: "company-events", icon: <LandPlot /> },
     ]
   },
   {
@@ -95,12 +98,12 @@ const navGroups = [
     isCollapsible: true,
     icon: <Users />,
     items: [
-      { name: "All Users", link: "/users", icon: <Users /> },
-      { name: "Suspended Users", link: "/users/suspended", icon: <ShieldCheck /> },
-      { name: "Completed Asset Payments", link: "/users/completed-asset-payments", icon: <CheckCircle /> },
+      { id: "users", icon: <Users /> },
+      { id: "users-suspended", icon: <ShieldCheck /> },
+      { id: "users-completed-asset-payments", icon: <CheckCircle /> },
       // Standing lives under Users, not in a settings area: it is mostly read
       // as "who are my biggest landholders", and only occasionally edited.
-      { name: "Portfolio Standing", link: "/standing", icon: <Trophy />, requiresPermission: "view_standing" },
+      { id: "standing", icon: <Trophy /> },
     ]
   },
   {
@@ -108,14 +111,14 @@ const navGroups = [
     isCollapsible: true,
     icon: <Users />,
     items: [
-      { name: "Associates Upgrade", link: "/associate-upgrade", icon: <UserPlus /> },
-      { name: "Top associates", link: "/associates", icon: <TrendingUp /> },
-      { name: "Associate Performance", link: "/associates/performance", icon: <Activity />, requiresSuperAdmin: true },
-      { name: "Manager Performance", link: "/associates/managers", icon: <ShieldCheck />, requiresTrackerAccess: "associate" },
+      { id: "upgrades", icon: <UserPlus /> },
+      { id: "top-associates", icon: <TrendingUp /> },
+      { id: "associate-performance", icon: <Activity /> },
+      { id: "manager-performance", icon: <ShieldCheck /> },
       // Division sits with the associates rather than beside Portfolio Standing:
       // the two screens are built the same way, but this one is read as "how is
       // the sales floor doing this season", which is an associates question.
-      { name: "Division", link: "/division", icon: <Gem />, requiresPermission: "view_division" },
+      { id: "division", icon: <Gem /> },
     ]
   },
   {
@@ -123,8 +126,8 @@ const navGroups = [
     isCollapsible: true,
     icon: <GraduationCap />,
     items: [
-      { name: "Courses", link: "/academy/courses", icon: <GraduationCap /> },
-      { name: "Learners", link: "/academy/learners", icon: <Users /> },
+      { id: "courses", icon: <GraduationCap /> },
+      { id: "learners", icon: <Users /> },
     ]
   },
   {
@@ -132,11 +135,11 @@ const navGroups = [
     isCollapsible: true,
     icon: <UserCog />,
     items: [
-      { name: "CS Manager Performance", link: "/customer-managers", icon: <ShieldCheck />, requiresTrackerAccess: "cs" },
-      { name: "Tickets", link: "/tickets", icon: <Inbox /> },
-      { name: "Issues", link: "/issues", icon: <AlertOctagon /> },
-      { name: "Purchase Confirmations", link: "/purchase-confirmations", icon: <CheckCircle /> },
-      { name: "Requests", link: "/requests", icon: <ClipboardList /> },
+      { id: "cs-performance", icon: <ShieldCheck /> },
+      { id: "tickets", icon: <Inbox /> },
+      { id: "issues", icon: <AlertOctagon /> },
+      { id: "purchase-confirmations", icon: <CheckCircle /> },
+      { id: "requests", icon: <ClipboardList /> },
     ]
   },
   {
@@ -144,32 +147,28 @@ const navGroups = [
     isCollapsible: true,
     icon: <Bot />,
     items: [
-      { name: "Amaris", link: "/amaris", icon: <Bot />, requiresPermission: "view_amaris_queries" },
-      { name: "WhatsApp", link: "/whatsapp", icon: <MessageCircle />, requiresPermission: "view_whatsapp_inbox" },
+      { id: "amaris", icon: <Bot /> },
+      { id: "whatsapp", icon: <MessageCircle /> },
     ]
   },
   {
-    // No permission gate: the page itself admits only super admins and
-    // promoted Financial Officers.
     title: "Finance",
     isCollapsible: true,
     icon: <Landmark />,
     items: [
-      { name: "Financial Officer Performance", link: "/financial-officers", icon: <Gauge /> },
-      { name: "Finance Automation", link: "/finance-automation", icon: <ClipboardCheck />, requiresPermission: "view_finance_runs" },
-      { name: "Upgrade Coupons", link: "/associate-upgrade/coupons", icon: <Gift /> },
+      { id: "fo-performance", icon: <Gauge /> },
+      { id: "finance-automation", icon: <ClipboardCheck /> },
+      { id: "coupons", icon: <Gift /> },
     ]
   },
   {
-    // Site Manager and Surveyor tracking. Gated on the BE's own permission
-    // keys so an admin without them isn't sent to a page of 403s.
     title: "Field Performance",
     isCollapsible: true,
     icon: <HardHat />,
     items: [
-      { name: "Site Manager Performance", link: "/field-performance/site-managers", icon: <HardHat />, requiresPermission: "view_field_performance" },
-      { name: "Surveyor Performance", link: "/field-performance/surveyors", icon: <Compass />, requiresPermission: "view_field_performance" },
-      { name: "Review Queue", link: "/field-performance/review-queue", icon: <ClipboardCheck />, requiresPermission: "view_field_submissions" },
+      { id: "field-site-managers", icon: <HardHat /> },
+      { id: "field-surveyors", icon: <Compass /> },
+      { id: "field-review-queue", icon: <ClipboardCheck /> },
     ]
   },
   {
@@ -177,13 +176,13 @@ const navGroups = [
     isCollapsible: true,
     icon: <BarChart3 />,
     items: [
-      { name: "Withdrawal", link: "/transactions/withdrawal", icon: <ArrowDownToLine /> },
-      { name: "Topup", link: "/transactions/topup", icon: <Upload /> },
-      { name: "Asset", link: "/transactions/assets", icon: <BarChart3 /> },
-      { name: "Document", link: "/transactions/document", icon: <FileText /> },
+      { id: "tx-withdrawal", icon: <ArrowDownToLine /> },
+      { id: "tx-topup", icon: <Upload /> },
+      { id: "tx-assets", icon: <BarChart3 /> },
+      { id: "tx-document", icon: <FileText /> },
       // "Payouts" rather than "Commission": this lists commission payout
       // transactions, and the Commission section below owns rates and overrides.
-      { name: "Commission Payouts", link: "/transactions/commission", icon: <Percent /> },
+      { id: "tx-commission", icon: <Percent /> },
     ]
   },
   {
@@ -191,8 +190,8 @@ const navGroups = [
     isCollapsible: true,
     icon: <SlidersHorizontal />,
     items: [
-      { name: "Rates", link: "/commission/rates", icon: <Percent /> },
-      { name: "Overrides", link: "/commission/overrides", icon: <Tags /> },
+      { id: "commission-rates", icon: <Percent /> },
+      { id: "commission-overrides", icon: <Tags /> },
     ]
   },
   {
@@ -200,8 +199,8 @@ const navGroups = [
     isCollapsible: true,
     icon: <Gift />,
     items: [
-      { name: "Campaigns", link: "/campaigns", icon: <Gift /> },
-      { name: "Associate Pro Tracker", link: "/associate-pros/tracker", icon: <TrendingUp /> },
+      { id: "campaigns", icon: <Gift /> },
+      { id: "associate-pro-tracker", icon: <TrendingUp /> },
     ]
   },
   {
@@ -209,11 +208,21 @@ const navGroups = [
     isCollapsible: true,
     icon: <ShieldCheck />,
     items: [
-      { name: "Admin Logs", link: "/security/adminlogs", icon: <ScrollText /> },
-      { name: "Roles and Permissions", link: "/security/roles", icon: <ShieldCheck /> },
+      { id: "admin-logs", icon: <ScrollText /> },
+      { id: "roles", icon: <ShieldCheck /> },
     ]
   }
 ];
+
+/** Name and route come from the registry, so the two can never drift apart. */
+const navGroups = rawNavGroups.map((group) => ({
+  ...group,
+  items: group.items.map((item) => {
+    const page = getPage(item.id);
+    if (!page) throw new Error(`Sidebar names a page the registry does not have: "${item.id}"`);
+    return { id: item.id, name: page.label, link: page.route, icon: item.icon };
+  }),
+}));
 
 function getRouteOpenGroups(pathname: string): Record<string, boolean> {
   const open: Record<string, boolean> = {};
@@ -239,9 +248,8 @@ function getRouteOpenGroups(pathname: string): Record<string, boolean> {
 const Sidebar = () => {
   const pathname = usePathname();
   const { isSidebarCollapsed, isMobileNavOpen, closeMobileNav } = useUIStore();
-  const { user } = useAuthStore();
-  const { isManager } = useIsCurrentUserManager();
-  const { isCSManager } = useIsCurrentCSManager();
+  const subject = useAccessSubject();
+  const signedIn = useAuthStore((state) => !!state.user);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   /** Manual open/close overrides; cleared on navigation so route-driven opens win. */
   const [manualOpenGroups, setManualOpenGroups] = useState<Record<string, boolean>>({});
@@ -273,41 +281,16 @@ const Sidebar = () => {
     closeMobileNav();
   }, [pathname, closeMobileNav]);
 
-  const isSuperAdmin = Boolean(user?.role?.is_super_admin);
-  const permissions = useAdminPermissions();
-
-  // Strip out items the current user shouldn't see. Each gate is a small
-  // predicate keyed off a flag on the item.
-  const visibleNavGroups = navGroups
+  // Strip out the pages this person may not open. Every page is judged by the
+  // same registry rule the route guard uses, so the menu and the page agree.
+  // Until the session is in memory nobody holds any permission, so only the pages open to
+  // every admin would match: a menu of two items that then jumps to the real one. Show none.
+  const visibleNavGroups = (signedIn ? navGroups : [])
     .map((group) => ({
       ...group,
       items: group.items.filter((item) => {
-        const flags = item as {
-          restrictedToRoles?: string[];
-          requiresTrackerAccess?: "associate" | "cs";
-          requiresSuperAdmin?: boolean;
-          requiresPermission?: AdminPermission;
-        };
-        if (flags.requiresPermission) {
-          return permissions.has(flags.requiresPermission);
-        }
-        if (flags.requiresSuperAdmin) {
-          return isSuperAdmin;
-        }
-        // A manager tracker opens to its own managers on any role (being a
-        // manager is the manager record, not a permission), and to anyone
-        // who may view every manager's team.
-        if (flags.requiresTrackerAccess === "associate") {
-          return permissions.has("view_manager_tracker") || isManager;
-        }
-        if (flags.requiresTrackerAccess === "cs") {
-          return permissions.has("view_cs_manager_tracker") || isCSManager;
-        }
-        if (flags.restrictedToRoles) {
-          // Matches on the role NAME — roles are records now, not strings.
-          return !!user?.role && flags.restrictedToRoles.includes(user.role.name);
-        }
-        return true;
+        const page = getPage(item.id);
+        return !!page && canAccess(subject, page.access);
       }),
     }))
     .filter((group) => group.items.length > 0);

@@ -14,7 +14,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
+import { RolePermissionPicker } from "./RolePermissionPicker";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { LANDING_PAGES, landingLabel, type LandingPage } from "@/lib/rbac";
 import { Plus, Loader2 } from "lucide-react";
 import { usePermissions } from "../hooks/use-permissions";
 import { useCreateRole } from "../hooks/use-create-role";
@@ -25,6 +33,8 @@ export function CreateRoleDialog() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
+  // Where a person with this role starts after sign-in. The BE accepts only its own list.
+  const [landing, setLanding] = useState<LandingPage>("dashboard");
 
   const { data: permissionsData, isLoading } = usePermissions();
   const { mutateAsync: createRole, isPending } = useCreateRole();
@@ -47,11 +57,13 @@ export function CreateRoleDialog() {
         name: name.trim(),
         description: description.trim(),
         permissions: selected,
+        default_landing_page: landing,
       });
       toast.success("Role created");
       setName("");
       setDescription("");
       setSelected([]);
+      setLanding("dashboard");
       setOpen(false);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Failed to create role");
@@ -93,41 +105,32 @@ export function CreateRoleDialog() {
               disabled={isPending}
             />
           </div>
-
-          <div>
-            <Label className="text-base font-semibold">Permissions</Label>
-            <div className="mt-3 border border-gray-200 rounded-lg p-4 max-h-60 overflow-y-auto space-y-3">
-              {isLoading ? (
-                <div className="text-sm text-muted-foreground">Loading permissions...</div>
-              ) : (
-                permissions.map((perm) => (
-                  <div key={perm.name} className="flex items-start space-x-3">
-                    <Checkbox
-                      id={perm.name}
-                      checked={selected.includes(perm.name)}
-                      onCheckedChange={(checked) =>
-                        toggle(perm.name, Boolean(checked))
-                      }
-                      disabled={isPending}
-                    />
-                    <div className="flex-1">
-                      <Label htmlFor={perm.name} className="text-sm font-medium cursor-pointer">
-                        {perm.name}
-                      </Label>
-                      <p className="text-xs text-gray-600 mt-1">
-                        {perm.description}
-                      </p>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-            {permissions.length > 0 && (
-              <div className="mt-2 text-sm text-gray-500">
-                {selected.length} of {permissions.length} selected
-              </div>
-            )}
+          <div className="space-y-2">
+            <Label htmlFor="landing">Starts on</Label>
+            <Select value={landing} onValueChange={(value) => setLanding(value as LandingPage)} disabled={isPending}>
+              <SelectTrigger id="landing" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {LANDING_PAGES.map((value) => (
+                  <SelectItem key={value} value={value}>
+                    {landingLabel(value)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              The page a person with this role sees first after signing in.
+            </p>
           </div>
+
+          <RolePermissionPicker
+            permissions={permissions}
+            selected={selected}
+            onToggle={toggle}
+            loading={isLoading}
+            disabled={isPending}
+          />
 
           <DialogFooter className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={isPending}>

@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 
 import { Pagination } from "@/components/shared/Pagination";
 import { PageContentLoader } from "@/components/shared/page-content-loader";
-import { useAuthStore } from "@/store/auth-store";
+import { useHasPermission } from "@/hooks/use-admin-permission";
 import {
   ASSET_TYPES,
   DEFAULT_DOCUMENT_PURCHASE_LIMIT,
@@ -45,12 +45,10 @@ function DocumentTransactionsContent() {
   const searchParams = useSearchParams();
   const page = Number(searchParams.get("page")) || 1;
 
-  // The gate this screen has always had. It is the only FE permission check in
-  // the transactions area — the BE's own RBAC is what actually enforces it.
-  const { user } = useAuthStore();
-  const canReview =
-    (user?.permissions ?? []).includes("asset_transactions") ||
-    Boolean(user?.role?.is_super_admin);
+  // Approving or declining a transaction is guarded by approve_payments on the BE
+  // (POST /admin/acquisitions/transactions/:id/approve and /decline). The old
+  // `asset_transactions` key guards nothing there.
+  const canReview = useHasPermission("approve_payments");
 
   const filters = {
     search: searchParams.get("search") ?? undefined,

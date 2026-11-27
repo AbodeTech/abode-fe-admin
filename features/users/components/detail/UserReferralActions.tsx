@@ -36,7 +36,8 @@ export function UserReferralActions({ referralId, referralName }: UserReferralAc
   const params = useParams<{ id: string }>()
   const searchParams = useSearchParams()
   const userId = params.id
-  const canDeleteReferral = useHasPermission("reassign_referrer")
+  // DELETE /admin/users/:id/referrals/:referralId is guarded by remove_referral.
+  const canDeleteReferral = useHasPermission("remove_referral")
   const { setClient } = useSelectedClientStore()
 
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)

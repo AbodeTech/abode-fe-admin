@@ -22,7 +22,7 @@ import {
   useIsCurrentFinancialOfficer,
   type RecoveryFilterKey,
 } from "@/features/financial-officers";
-import { useAuthStore } from "@/store/auth-store";
+import { useHasPermission, useIsSuperAdmin } from "@/hooks/use-admin-permission";
 
 function NotAuthorized() {
   return (
@@ -36,6 +36,17 @@ function NotAuthorized() {
           This page is for Super Admins and Financial Officers. Ask your admin if you need access.
         </p>
       </div>
+    </div>
+  );
+}
+
+function NoOfficersYet() {
+  return (
+    <div className="flex items-center justify-center h-[calc(100vh-200px)]">
+      <p className="max-w-md text-center text-sm text-gray-600">
+        No Financial Officers have been set up yet. A Founder can promote an admin to start tracking
+        approval speed and debt recovery.
+      </p>
     </div>
   );
 }
@@ -61,20 +72,22 @@ const PLANS_PER_PAGE = 20;
 
 function FinancialOfficersContent() {
   const searchParams = useSearchParams();
-  const { user } = useAuthStore();
   const [targetsOpen, setTargetsOpen] = useState(false);
 
-  // Super admins see every officer and the team view; an officer sees only
-  // their own dashboard, whatever `?officer=` says. That pin is a UX guard,
-  // not a security boundary — the BE must reject a non-owning caller.
-  const isSuperAdmin = Boolean(user?.role?.is_super_admin);
+  // Whoever holds view_financial_officer_tracker sees every officer and the team
+  // view; an officer sees only their own dashboard, whatever `?officer=` says.
+  // That pin is a UX guard, not a security boundary — the BE rejects a non-owning
+  // caller. Promoting or removing officers, setting targets and moving a plan to
+  // another officer are `superAdmin: true` on the BE, so those stay super-admin only.
+  const canViewTeam = useHasPermission("view_financial_officer_tracker");
+  const isSuperAdmin = useIsSuperAdmin();
   const { isOfficer, officerId: ownOfficerId, isLoading: officerCheckLoading } = useIsCurrentFinancialOfficer();
-  const viewAs: "super-admin" | "officer" = isSuperAdmin ? "super-admin" : "officer";
-  const isAuthorized = isSuperAdmin || isOfficer;
+  const viewAs: "team" | "officer" = canViewTeam ? "team" : "officer";
+  const isAuthorized = canViewTeam || isOfficer;
 
   const activeOfficerId =
     viewAs === "officer" ? ownOfficerId ?? "" : searchParams.get("officer") ?? ALL_OFFICERS;
-  const isTeamView = viewAs === "super-admin" && activeOfficerId === ALL_OFFICERS;
+  const isTeamView = viewAs === "team" && activeOfficerId === ALL_OFFICERS;
 
   const month = searchParams.get("month") ? Number(searchParams.get("month")) : undefined;
   const year = searchParams.get("year") ? Number(searchParams.get("year")) : undefined;
@@ -82,8 +95,8 @@ function FinancialOfficersContent() {
   const filter = (searchParams.get("filter") as RecoveryFilterKey | null) ?? undefined;
   const search = searchParams.get("search") ?? undefined;
 
-  // The full list needs the view permission, so only super admins fetch it.
-  const officersQuery = useFinancialOfficers(isSuperAdmin);
+  // The full list needs the view permission, so only team viewers fetch it.
+  const officersQuery = useFinancialOfficers(canViewTeam);
   const officers = officersQuery.data ?? [];
 
   const teamQuery = useFinancialOfficersTeamDashboard({ month, year, enabled: isAuthorized && isTeamView });
@@ -101,9 +114,19 @@ function FinancialOfficersContent() {
   if (officerCheckLoading || officersQuery.isLoading) return <Spinner />;
   if (!isAuthorized) return <NotAuthorized />;
   if (officersQuery.error) return <LoadError message={officersQuery.error.message} />;
-  if (isSuperAdmin && officers.length === 0) return <NoFinancialOfficersEmptyState />;
+  if (canViewTeam && officers.length === 0) {
+    // The "add an officer" call to action is super-admin only on the BE.
+    return isSuperAdmin ? <NoFinancialOfficersEmptyState /> : <NoOfficersYet />;
+  }
 
-  const header = <FOPerformanceHeader viewAs={viewAs} officers={officers} activeOfficerId={activeOfficerId} />;
+  const header = (
+    <FOPerformanceHeader
+      viewAs={viewAs}
+      canManageOfficers={isSuperAdmin}
+      officers={officers}
+      activeOfficerId={activeOfficerId}
+    />
+  );
 
   if (isTeamView) {
     if (teamQuery.isLoading) return <Spinner />;

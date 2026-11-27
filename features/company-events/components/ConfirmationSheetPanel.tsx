@@ -15,11 +15,13 @@ import { parseConfirmationCsv } from '../lib/confirmation-csv';
 import { downloadCsv } from '../lib/csv';
 import type { PickupLocation } from '../schemas/company-event.schema';
 
-export function ConfirmationSheetPanel({ open, onOpenChange, eventId, pickupLocations }: {
+export function ConfirmationSheetPanel({ open, onOpenChange, eventId, pickupLocations, canManage }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   eventId: string;
   pickupLocations: PickupLocation[];
+  /** manage_company_events: upload a returned sheet, preview it and apply it. Without it only the download is offered. */
+  canManage: boolean;
 }) {
   const [pickupId, setPickupId] = useState('');
   const [rows, setRows] = useState<{ attendance_id: string; given: boolean }[] | null>(null);
@@ -57,7 +59,11 @@ export function ConfirmationSheetPanel({ open, onOpenChange, eventId, pickupLoca
     <DialogContent className="max-h-[85vh] max-w-xl overflow-y-auto">
       <DialogHeader>
         <DialogTitle>Offline confirmation sheet</DialogTitle>
-        <DialogDescription>Download a sheet for the site, tick “given” for land handed over, then upload it. Preview shows what will change before you save.</DialogDescription>
+        <DialogDescription>
+          {canManage
+            ? 'Download a sheet for the site, tick “given” for land handed over, then upload it. Preview shows what will change before you save.'
+            : 'Download the sheet for the site. Uploading a returned sheet and applying confirmations needs permission to manage events.'}
+        </DialogDescription>
       </DialogHeader>
       <div className="space-y-4 py-2">
         {pickupLocations.length > 0 && <div className="space-y-1"><Label>Pickup</Label><Select value={pickupId || 'all'} onValueChange={(value) => setPickupId(value === 'all' ? '' : value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All pickups</SelectItem>{pickupLocations.map((pickup) => <SelectItem key={pickup.id} value={pickup.id}>{pickup.name}</SelectItem>)}</SelectContent></Select></div>}
@@ -66,17 +72,17 @@ export function ConfirmationSheetPanel({ open, onOpenChange, eventId, pickupLoca
           downloadCsv(sheet.data.rows.map((row) => ({ attendance_id: row.attendance_id, name: row.name ?? '', phone: row.phone ?? '', email: row.email ?? '', pickup_location: row.pickup_location ?? '', size_reserved: row.size_reserved, eligibility_tier: row.eligibility_tier ?? '', plots: row.plots, boarded: row.boarded, given: row.given, confirmed_at: row.confirmed_at ?? '' })), `confirmation-sheet_${eventId}.csv`);
         }}><Download className="mr-2 size-4" /> Download {sheet.data?.count ?? ''} rows</Button>
         {sheet.isError && <p className="text-sm text-destructive">Could not load the confirmation sheet. Try again.</p>}
-        <div className="space-y-1"><Label htmlFor="confirmation-upload">Returned CSV</Label><Input id="confirmation-upload" type="file" accept=".csv,text/csv" onChange={(event) => void readFile(event.target.files?.[0])} /></div>
+        {canManage && <div className="space-y-1"><Label htmlFor="confirmation-upload">Returned CSV</Label><Input id="confirmation-upload" type="file" accept=".csv,text/csv" onChange={(event) => void readFile(event.target.files?.[0])} /></div>}
         {rows && <p className="text-sm text-muted-foreground">{rows.length} rows loaded; {rows.filter((row) => row.given).length} ticked.</p>}
         {preview && <div className="rounded-lg border bg-muted/30 p-3 text-sm">
           <p>{preview.newly_confirmed} new confirmations · {preview.already_confirmed} already confirmed · {preview.unmatched.length} unmatched</p>
           {preview.unmatched.length > 0 && <p className="mt-1 break-all text-destructive">Unmatched IDs: {preview.unmatched.join(', ')}</p>}
         </div>}
       </div>
-      <DialogFooter>
+      {canManage && <DialogFooter>
         <Button variant="outline" disabled={!rows || applySheet.isPending} onClick={() => run(false)}>{applySheet.isPending ? <Loader2 className="size-4 animate-spin" /> : 'Preview changes'}</Button>
         <Button disabled={!rows || !preview || preview.unmatched.length > 0 || applySheet.isPending} onClick={() => run(true)}>Apply confirmations</Button>
-      </DialogFooter>
+      </DialogFooter>}
     </DialogContent>
   </Dialog>;
 }

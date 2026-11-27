@@ -10,10 +10,11 @@ import {
   DashboardQuickOverview,
   TopSellingProducts,
   TopAssociates,
-  InviteAdminDialog,
   DEFAULT_TOP_LIST_LIMIT,
 } from "@/features/dashboard";
 import { useAuthStore } from "@/store/auth-store";
+import { useHasPermission } from "@/hooks/use-admin-permission";
+import { InviteAdminDialog } from "@/features/roles-permissions";
 import { SuspensePageFallback, PageContentLoader } from "@/components/shared/page-content-loader";
 import { DateFilter } from "@/components/shared/DateFilter";
 
@@ -27,7 +28,8 @@ function DashboardContent() {
   const topProducts = useDashboardTopProducts(DEFAULT_TOP_LIST_LIMIT);
   const topAssociates = useDashboardTopAssociates(DEFAULT_TOP_LIST_LIMIT);
 
-  const isAdmin = Boolean(user?.role?.is_super_admin);
+  // POST /admin/invite is guarded by manage_admins.
+  const canInviteAdmin = useHasPermission("manage_admins");
   const isLoading = kpis.isLoading || topProducts.isLoading || topAssociates.isLoading;
   const error = kpis.error ?? topProducts.error ?? topAssociates.error;
 
@@ -57,7 +59,7 @@ function DashboardContent() {
           <div className="min-w-0 flex-1 sm:flex-initial">
             <DateFilter />
           </div>
-          {isAdmin && (
+          {canInviteAdmin && (
             <div className="shrink-0 [&_button]:w-full sm:[&_button]:w-auto">
               <InviteAdminDialog />
             </div>

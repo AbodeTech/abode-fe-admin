@@ -9,6 +9,7 @@ import SubscriptionBadge from "./SubscriptionBadge";
 import { useAuthStore } from "@/store/auth-store";
 import { Menu } from "lucide-react";
 import { useUIStore } from "@/store/ui-store";
+import { RoleChip } from "@/features/roles-permissions";
 
 // Design-focused TopBar (Header)
 export function Header() {
@@ -52,7 +53,7 @@ export function Header() {
             </div>
 
             <div className="flex shrink-0 items-center gap-4">
-              {/* Right side cleared as requested */}
+              <RoleChip />
             </div>
           </Container>
         </div>

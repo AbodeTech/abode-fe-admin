@@ -8,6 +8,7 @@ import { ArrowLeft, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageContentLoader } from "@/components/shared/page-content-loader";
 import { UnresolvedRef } from "@/components/shared/UnresolvedRef";
+import { useHasPermission } from "@/hooks/use-admin-permission";
 import { formatNaira } from "@/lib/utils/format";
 
 import {
@@ -183,6 +184,8 @@ export function FoTransactionDetail() {
   const txId = params.id;
   const { data, isLoading, error } = useFoTransaction(txId);
   const [reviewing, setReviewing] = useState<Purchase | null>(null);
+  // Approving a transfer is `approve_payments` on the BE; reading it is `asset_transactions`.
+  const mayApprove = useHasPermission("approve_payments");
 
   if (isLoading) {
     return <PageContentLoader label="Loading full-ownership transaction…" />;
@@ -199,7 +202,7 @@ export function FoTransactionDetail() {
 
   if (!data) return null;
 
-  const canReview = isReviewablePurchase(data);
+  const canReview = mayApprove && isReviewablePurchase(data);
   const planId = landPlanId(data, data.sibling);
 
   return (

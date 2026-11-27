@@ -13,11 +13,12 @@ export default function AdminDetailPage() {
 
   const { data: admin, isLoading: loadingAdmin, error: adminError } = useAdminWithRole(adminId);
 
-  const { data: logsData, isLoading: loadingLogs, error: logsError } = useAdminLogs({
-    page: 1,
-    limit: DEFAULT_ADMIN_LOGS_LIMIT,
-    adminId,
-  });
+  // The BE filters the audit log by admin id. Wait for the id: asking before it is known
+  // would return everyone's activity and show it as this admin's.
+  const { data: logsData, isLoading: loadingLogs, error: logsError } = useAdminLogs(
+    { page: 1, limit: DEFAULT_ADMIN_LOGS_LIMIT, adminId: admin?.id },
+    { enabled: !!admin?.id },
+  );
 
   if (adminError) {
     return (
@@ -42,10 +43,7 @@ export default function AdminDetailPage() {
     <div className="mx-auto mt-4 w-full min-w-0 max-w-[1600px] space-y-6 px-3 pb-16 sm:px-4 sm:pb-20">
       <AdminDetailHeader
         admin={admin}
-        logs={
-          (logsData?.items.map((log) => ({ action: log.action, timestamp: log.timestamp })) ||
-            []) as AdminLogLike[]
-        }
+        logs={(logsData?.data ?? []) as AdminLogLike[]}
         isLoadingLogs={loadingLogs}
       />
 
@@ -53,18 +51,18 @@ export default function AdminDetailPage() {
         <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h3 className="text-xl font-semibold">Activity History</h3>
           <span className="shrink-0 text-sm text-muted-foreground">
-            {logsData?.meta.total ?? 0} total activities
+            {logsData?.count ?? 0} total activities
           </span>
         </div>
 
         {logsError ? (
           <div className="text-sm text-red-500">Failed to load activity history.</div>
         ) : (
-          <AdminLogsTable logs={logsData?.items} />
+          <AdminLogsTable logs={logsData?.data} />
         )}
 
         <Pagination
-          count={logsData?.meta.total ?? 0}
+          count={logsData?.count ?? 0}
           currentIdx={1}
           limit={DEFAULT_ADMIN_LOGS_LIMIT}
         />

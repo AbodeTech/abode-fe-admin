@@ -9,18 +9,14 @@ import { saveAs } from 'file-saver';
 import { jsPDF } from 'jspdf';
 // @ts-ignore
 import autoTable from 'jspdf-autotable';
-import { AdminLogSchema } from '../schemas/admin-log.schema';
+import { AdminLogSchema, type AdminLog } from '../schemas/admin-log.schema';
 import type { AdminLogFilters } from './use-admin-logs';
 
 export type AdminLogExportFormat = 'csv' | 'xlsx' | 'pdf';
 
-const processLog = (log: {
-  timestamp: string;
-  admin_email: string | null;
-  action: string;
-  description: string;
-  admin_id: string | null;
-}) => ({
+const processLog = (
+  log: Pick<AdminLog, 'timestamp' | 'admin_email' | 'action' | 'description' | 'admin_id'>,
+) => ({
   timestamp: log.timestamp,
   adminEmail: log.admin_email ?? 'System',
   action: log.action,
@@ -55,17 +51,19 @@ const exportPdf = (rows: ReturnType<typeof processLog>[], filename: string) => {
   doc.save(`${filename}.pdf`);
 };
 
+// The audit-log endpoint has no export of its own, so this pages through it with the same
+// filters the table uses (`admin_id`, `action`) and builds the file in the browser.
 async function getAllFilteredLogs(filters: AdminLogFilters) {
   const limit = 500;
   const firstPage = await apiGetPaged('/admin/audit-logs', AdminLogSchema, {
-    params: { page: 1, limit, adminId: filters.adminId || undefined, action: filters.action || undefined },
+    params: { page: 1, limit, admin_id: filters.adminId || undefined, action: filters.action || undefined },
   });
   const logs = [...firstPage.items];
   const totalPages = firstPage.meta.totalPages ?? 1;
 
   for (let page = 2; page <= totalPages; page += 1) {
     const result = await apiGetPaged('/admin/audit-logs', AdminLogSchema, {
-      params: { page, limit, adminId: filters.adminId || undefined, action: filters.action || undefined },
+      params: { page, limit, admin_id: filters.adminId || undefined, action: filters.action || undefined },
     });
     logs.push(...result.items);
   }

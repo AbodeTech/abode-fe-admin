@@ -1,10 +1,11 @@
 import { MockHttpError, type MockRoutes } from '../router';
 import { body, paged } from './util';
 import { findPerson } from './people';
+import { requireSession } from './auth';
 
 /* ============================================================
  * Purchase confirmations mocks — /admin/purchase-confirmations/* (list,
- * counts, resolve-dispute, resend). No export route on purpose: the real
+ * counts, resolve-dispute, approve, resend). No export route on purpose: the real
  * endpoint streams CSV with @SkipTransform, which the mock transport
  * cannot represent — the FE hook refuses in mock mode with a clear
  * message rather than faking a file (matches flex-leads).
@@ -43,6 +44,8 @@ type MockConfirmation = {
   };
   email_sent_at: string | null;
   confirmed_at: string | null;
+  approved_by?: string | null;
+  approved_at?: string | null;
   reminders_sent: string[];
   escalated_at: string | null;
   disputes: MockDispute[];
@@ -190,6 +193,8 @@ function toRow(c: MockConfirmation) {
     snapshot: c.snapshot,
     email_sent_at: c.email_sent_at,
     confirmed_at: c.confirmed_at,
+    approved_by: c.approved_by ?? null,
+    approved_at: c.approved_at ?? null,
     reminders_sent: c.reminders_sent,
     escalated_at: c.escalated_at,
     open_dispute_note: openDispute?.note ?? null,
@@ -264,6 +269,38 @@ export const purchaseConfirmationRoutes: MockRoutes = {
     }
 
     return { plan_id: confirmation.plan_id, status: confirmation.status, resent };
+  },
+
+  // Mirrors the BE: only a WAITING purchase can be approved; a disputed one must be
+  // resolved first (409), a confirmed one is already done (409). Records who and when.
+  'POST /admin/purchase-confirmations/:plan_id/approve': ({ params, body: raw }) => {
+    const confirmation = findConfirmation(params.plan_id);
+    const dto = body<{ note?: string }>(raw);
+    if (dto.note !== undefined && (dto.note.trim().length < 3 || dto.note.length > 2000)) {
+      throw new MockHttpError(400, 'note must be between 3 and 2000 characters', 'VALIDATION_FAILED');
+    }
+    if (confirmation.status === 'disputed') {
+      throw new MockHttpError(
+        409,
+        'Resolve the open dispute before approving this purchase confirmation',
+        'APPROVAL_BLOCKED_BY_DISPUTE',
+      );
+    }
+    if (confirmation.status === 'confirmed') {
+      throw new MockHttpError(409, 'This purchase confirmation is already confirmed', 'ALREADY_CONFIRMED');
+    }
+
+    const now = new Date().toISOString();
+    confirmation.status = 'confirmed';
+    confirmation.confirmed_at = now;
+    confirmation.approved_by = requireSession().id;
+    confirmation.approved_at = now;
+    return {
+      plan_id: confirmation.plan_id,
+      status: confirmation.status,
+      approved_by: confirmation.approved_by,
+      approved_at: now,
+    };
   },
 
   'POST /admin/purchase-confirmations/:plan_id/resend': ({ params }) => {

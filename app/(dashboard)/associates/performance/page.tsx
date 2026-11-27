@@ -16,7 +16,7 @@ import {
 } from "@/features/associate-managers";
 import { buildManagerDashboardFilter, buildManagerDashboardPeriodFilter } from "@/features/associate-managers/lib/dashboard-filter";
 import { DashboardPeriodFilter } from "@/features/associate-managers/components/DashboardPeriodFilter";
-import { useAuthStore } from "@/store/auth-store";
+import { useHasPermission } from "@/hooks/use-admin-permission";
 
 function NotAuthorized() {
   return (
@@ -29,7 +29,7 @@ function NotAuthorized() {
           Associate Performance is restricted
         </h2>
         <p className="text-sm text-gray-600">
-          Only Super Admins can view the system-wide associate dashboard.
+          Your roles don&apos;t include the system-wide associate dashboard. Ask your admin if you need access.
         </p>
       </div>
     </div>
@@ -39,7 +39,6 @@ function NotAuthorized() {
 function AssociatePerformanceContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { user } = useAuthStore();
 
   const openGroup = (group: ProGroup) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -48,7 +47,8 @@ function AssociatePerformanceContent() {
     router.push(`?${params.toString()}`, { scroll: false });
   };
 
-  const isSuperAdmin = Boolean(user?.role?.is_super_admin);
+  // The server guards the system dashboard with its own key, so that is the gate.
+  const canView = useHasPermission("view_associate_performance");
 
   const startDate = searchParams.get("start_date");
   const endDate = searchParams.get("end_date");
@@ -78,13 +78,13 @@ function AssociatePerformanceContent() {
     setPage(1);
   }, [startDate, endDate, month, year, proGroup, proSort]);
 
-  const kpiQuery = useSystemAssociatesDashboard(periodFilter, { enabled: isSuperAdmin });
+  const kpiQuery = useSystemAssociatesDashboard(periodFilter, { enabled: canView });
   const tableQuery = useSystemAssociatesDashboard(
     { ...filter, page, limit: DEFAULT_SYSTEM_ASSOCIATES_LIMIT },
-    { enabled: isSuperAdmin, keepPreviousData: true }
+    { enabled: canView, keepPreviousData: true }
   );
 
-  if (!isSuperAdmin) return <NotAuthorized />;
+  if (!canView) return <NotAuthorized />;
 
   const dashboard = kpiQuery.data;
   const tableData = tableQuery.data;

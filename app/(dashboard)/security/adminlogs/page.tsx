@@ -16,7 +16,7 @@ import { Card } from "@/components/ui/card";
 function Content() {
   const searchParams = useSearchParams();
   const page = Number(searchParams.get("page")) || 1;
-  const adminId = searchParams.get("adminId") || null;
+  const adminId = searchParams.get("admin") || null;
   const action = searchParams.get("action") || null;
 
   const { data, isLoading, error } = useAdminLogs({
@@ -45,8 +45,8 @@ function Content() {
     );
   }
 
-  const logs = data?.items || [];
-  const count = data?.meta.total || 0;
+  const logs = data?.data || [];
+  const count = data?.count || 0;
 
   return (
     <div className="mx-auto mt-4 w-full min-w-0 max-w-[1600px] space-y-6 px-3 pb-16 sm:px-4 sm:pb-20">
@@ -66,7 +66,7 @@ function Content() {
         <AdminLogFilters />
       </Card>
 
-      <AdminLogsTable logs={logs?.filter((log): log is NonNullable<typeof log> => log !== null)} />
+      <AdminLogsTable logs={logs} />
 
       <Pagination count={count} currentIdx={page} limit={DEFAULT_ADMIN_LOGS_LIMIT} />
     </div>

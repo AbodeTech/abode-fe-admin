@@ -69,7 +69,7 @@ export function ManagementSummaryCard({ assetId }: { assetId: string }) {
 
   const { data: land } = useLandConfiguration(assetId, { enabled: canViewAssets });
   const { data: inventory } = useSqmInventory(assetId, { enabled: canViewAssets });
-  const { data: events } = useAssetAllocationEvents(assetId, { enabled: permissions.has("view_allocations") });
+  const { data: events } = useAssetAllocationEvents(assetId, { enabled: permissions.has("view_company_events") });
   const { data: profitability } = useEstateProfitability(assetId, undefined, { enabled: canViewProfit });
   const { data: coverage } = useCostCoverage(assetId, { enabled: permissions.has("view_asset_costs") });
 

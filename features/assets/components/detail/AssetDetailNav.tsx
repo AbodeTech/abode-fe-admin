@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { useAccessSubject } from "@/hooks/use-access";
+import { canAccess, findPage } from "@/lib/rbac";
 import { cn } from "@/lib/utils";
 
 /**
@@ -26,11 +28,20 @@ const TABS = [
 
 export function AssetDetailNav({ assetId }: { assetId: string }) {
   const pathname = usePathname();
+  const subject = useAccessSubject();
   const base = `/assets/${assetId}`;
+
+  // A tab whose page the person cannot open is left out, not shown and then refused: Support
+  // allocates plots but never sees the cost and performance figures (PRD FR08). The registry
+  // decides, so the tab list cannot drift from the page guard.
+  const visibleTabs = TABS.filter((tab) => {
+    const entry = findPage(tab.segment ? `${base}/${tab.segment}` : base);
+    return !entry || canAccess(subject, entry.access);
+  });
 
   return (
     <nav className="-mb-px flex min-w-0 gap-1 overflow-x-auto border-b" aria-label="Asset sections">
-      {TABS.map((tab) => {
+      {visibleTabs.map((tab) => {
         const href = tab.segment ? `${base}/${tab.segment}` : base;
         const active = tab.segment
           ? pathname.startsWith(href)

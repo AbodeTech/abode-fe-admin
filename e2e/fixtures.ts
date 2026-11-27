@@ -34,6 +34,22 @@ export async function login(page: Page): Promise<void> {
   await expect(page).toHaveURL('/', { timeout: 90_000 });
 }
 
+/**
+ * Signs in as one seeded role. The mock login (`lib/mocks/routes/auth.ts`) builds the session from the
+ * backend's seeded roles for `as-<role>@abode.ng`, or the union of several for `as-<a>+<b>@abode.ng`, so
+ * what a role sees here is what its real permissions give it. Resolves once the app has left /signin,
+ * wherever that role lands (its start page is not always `/`).
+ */
+export async function loginAs(page: Page, email: string): Promise<void> {
+  await page.goto('/signin');
+  await page.getByLabel('Email Address').fill(email);
+  await page.locator('input[type="password"]').fill('e2e-test-password');
+  await page.getByRole('button', { name: 'Login' }).click();
+  await expect(page).not.toHaveURL(/\/signin/, { timeout: 90_000 });
+  // The sidebar only renders once the session is known, so this means "the shell is up".
+  await expect(page.locator('#dashboard-sidebar, header').first()).toBeVisible({ timeout: 90_000 });
+}
+
 export const test = base.extend<{ adminPage: Page }>({
   adminPage: async ({ page }, use) => {
     await login(page);

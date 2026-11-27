@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
 
 import { apiGet } from '@/lib/api-client';
+import { useAdminPermissions } from '@/hooks/use-admin-permission';
 import { useAuthStore } from '@/store/auth-store';
 
 import { ticketKeys } from './query-keys';
@@ -34,11 +35,11 @@ const CSManagerMeSchema = z.looseObject({ is_cs_manager: z.boolean() });
 
 export const useTicketPermissions = () => {
   const user = useAuthStore((s) => s.user);
-  const permissions = user?.permissions ?? [];
-  const isSuperAdmin = user?.role?.is_super_admin ?? false;
+  // `has` already treats a super admin (on any held role) as holding every key.
+  const { has } = useAdminPermissions();
 
-  const canManageAllTickets = isSuperAdmin || permissions.includes('manage_all_tickets');
-  const canRouteTickets = canManageAllTickets || permissions.includes('route_tickets');
+  const canManageAllTickets = has('manage_all_tickets');
+  const canRouteTickets = canManageAllTickets || has('route_tickets');
 
   // Only asked when it could change the answer — a super admin already may.
   const roster = useQuery({

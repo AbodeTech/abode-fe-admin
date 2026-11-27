@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Download, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { useAuthStore } from "@/store/auth-store";
+import { useHasPermission } from "@/hooks/use-admin-permission";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -56,10 +56,9 @@ export function UsersExportModal() {
   const [open, setOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<ExportCategory>("all");
 
-  const user = useAuthStore((state) => state.user);
-  const canGenerateReport =
-    Boolean(user?.role?.is_super_admin) ||
-    (user?.permissions ?? []).includes("generate_reports");
+  // The CSV is GET /admin/users?export=csv, guarded by view_users. `generate_reports`
+  // guards nothing on the BE, so checking it hid the button from people who may export.
+  const canGenerateReport = useHasPermission("view_users");
 
   const { mutateAsync: exportUsers, isPending: isExporting } = useExportUsersByFilter();
 

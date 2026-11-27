@@ -9,6 +9,7 @@ import { userStreakRoutes } from './user-streaks';
 import { withdrawalRoutes } from './withdrawals';
 import { associateRoutes } from './associates';
 import { roleRoutes } from './roles';
+import { adminLogRoutes } from './admin-logs';
 import { associateProTrackerRoutes } from './associate-pro-tracker';
 import { assetTransactionRoutes } from './asset-transactions';
 import { salesRoutes } from './sales';
@@ -44,6 +45,8 @@ import { courseRoutes } from './courses';
 import { divisionRoutes } from './division';
 import { standingRoutes } from './standing';
 import { ticketRoutes } from './tickets';
+import { associateManagerRoutes } from './associate-managers';
+import { portfolioAnalyticsRoutes } from './portfolio-analytics';
 
 /* ============================================================
  * Route registration. Importing this module (via lib/mocks/index.ts)
@@ -88,7 +91,8 @@ import { ticketRoutes } from './tickets';
  *               plan actions POST
  *               /admin/acquisitions/plans/:planId/suspend|unsuspend|allocate.
  *               The wallet family (/admin/wallets/*) is unclaimed.
- * upgrades    — /admin/referrals/upgrades/* and POST
+ * upgrades    — /admin/referrals/upgrades/* (list, stats — which follow the list's
+ *               filters — approve, decline) and POST
  *               /admin/users/:id/manual-upgrade (claimed 2026-08-13 — the
  *               upgrade queue is where that UI lives). The remaining admin
  *               referral routes (referral-status, referrer, downlines) are
@@ -220,10 +224,12 @@ import { ticketRoutes } from './tickets';
  *               between the physical and commercial sides of Live Inventory.
  *               The segment after :assetId is the literal
  *               "inventory-reconciliation".
- * courses     — /admin/courses/* and /admin/academy-settings/*. Entirely
- *               provisional — abode-be-v2 has no courses model yet. Covers
- *               design screens 1–2 (list, overview) only; modules/quiz/
- *               learners (screens 3, 5, 6, 7) are unbuilt.
+ * courses     — /admin/courses/* (list, detail with modules and blocks inline,
+ *               create, edit, publish, unpublish, delete, learners), /admin/modules/*,
+ *               /admin/content-blocks/*, /admin/learners and /admin/academy-settings
+ *               (GET, PATCH). Real module, shaped as features/courses/schemas
+ *               transcribes it. Media upload and the quiz settings / questions
+ *               families are unclaimed and 404 in mock mode.
  * field-staff — unclaimed. /admin/field-staff/*, /admin/field-scorecards/*,
  *               /admin/field-submissions/*, /admin/field-performance/* and
  *               /admin/assets/:id/site-setup are integrated against the real
@@ -257,13 +263,25 @@ import { ticketRoutes } from './tickets';
  *               but unclaimed — no FE screen calls them yet. "Roads and
  *               services" (non-saleable land) is a DIFFERENT real module
  *               (asset/land — see land-configuration.ts), not this one.
- * tickets     — /admin/tickets list, stats, categories, :id detail, PATCH
- *               :id, :id/reply (with attachments), :id/notes, :id/resolve,
- *               and empty :id/suggest-users|suggest-issues. Real module
- *               (`support-ticket-admin.controller.ts`). Create, classify,
- *               merge, collaborators, participants, note edit/delete and
- *               /admin/issues/* are unclaimed and 404 in mock mode. Reads
- *               cs-managers.ts's ADMINS in-process for admin refs.
+ * tickets     — /admin/tickets list, stats, categories, create, :id detail, PATCH
+ *               :id, :id/reply (with attachments), :id/notes and note edit/delete,
+ *               :id/resolve, :id/classify, merge-into, collaborators, participants,
+ *               suggest-users|suggest-issues, and the whole issues layer
+ *               (/admin/issues/*). Real module (`support-ticket-admin.controller.ts`).
+ *               Issues live in tickets.ts because a ticket's issue, the blocked chip
+ *               and the queue stats read the same state. Reads cs-managers.ts's
+ *               ADMINS in-process for admin refs.
+ * associate-managers — /admin/managers/* (list, detail, add, remove, private,
+ *               targets, rating series, the four dashboards, team sales, bulk
+ *               assign, reassign, unassigned pool, and GET .../me, moved here from
+ *               auth.ts) and /admin/pros/:pro_id/onboarding-attempts. Real module.
+ *               The CSV exports are unclaimed — the FE hooks refuse in mock mode.
+ *               Reads cs-managers.ts's ADMINS and sales.ts's list in-process.
+ * portfolio-analytics — GET /admin/assets/analytics/portfolio. Carved out of the
+ *               assets domain the way asset-analytics is; the segment after
+ *               /assets is the literal "analytics". Rolled up in-process from
+ *               assets.ts, so it moves with the asset fixtures; the money is
+ *               stand-in (see its header) and not reconciled to a Performance tab.
  * ============================================================ */
 
 let registered = false;
@@ -280,6 +298,7 @@ export function ensureRoutesRegistered(): void {
   registerRoutes(withdrawalRoutes);
   registerRoutes(associateRoutes);
   registerRoutes(roleRoutes);
+  registerRoutes(adminLogRoutes);
   registerRoutes(associateProTrackerRoutes);
   registerRoutes(assetTransactionRoutes);
   registerRoutes(allocationRoutes);
@@ -319,6 +338,8 @@ export function ensureRoutesRegistered(): void {
   registerRoutes(siteSetupRoutes);
   registerRoutes(fieldOperationsRoutes);
   registerRoutes(ticketRoutes);
+  registerRoutes(associateManagerRoutes);
+  registerRoutes(portfolioAnalyticsRoutes);
 
   // Only mark done after every domain registered — a throw mid-way must allow retry.
   registered = true;

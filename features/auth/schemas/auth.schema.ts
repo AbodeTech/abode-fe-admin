@@ -26,6 +26,13 @@ export const AdminRoleSchema = z.object({
   id: z.string(),
   name: z.string(),
   is_super_admin: z.boolean().default(false),
+  /**
+   * Where this role starts after sign-in. Deliberately an open string, like the
+   * role name: the BE validates it against its own list, and a value this app
+   * has not heard of yet must degrade to the dashboard (`lib/rbac/landing.ts`),
+   * not turn every login into a SCHEMA_MISMATCH.
+   */
+  default_landing_page: z.string().default('dashboard'),
 });
 
 export type AdminRole = z.infer<typeof AdminRoleSchema>;
@@ -33,9 +40,15 @@ export type AdminRole = z.infer<typeof AdminRoleSchema>;
 /**
  * The admin record the BE returns from every auth endpoint (`AuthAdminView`).
  *
- * `permissions` is resolved server-side from the admin's role document — it is
- * not stored per admin. Kept as `string[]` rather than an enum so a new BE
- * permission does not turn every login into a SCHEMA_MISMATCH.
+ * A person holds one primary `role` and any number of `additional_roles`; what
+ * they can do is the union of all of them plus their own `extra_permissions`.
+ * The server does that union and returns it as `permissions` — the frontend
+ * reads it, it never recomputes it. Kept as `string[]` rather than an enum so a
+ * new BE permission does not turn every login into a SCHEMA_MISMATCH.
+ *
+ * Every field added for multi-role access carries a default, so a response from
+ * an older backend — or a session persisted in localStorage before these fields
+ * existed — still parses and behaves as a single-role admin.
  */
 export const AdminSchema = z.object({
   id: z.string(),
@@ -44,7 +57,22 @@ export const AdminSchema = z.object({
   userName: z.string().nullable().optional(),
   email: z.string().nullable().optional(),
   role: AdminRoleSchema.nullable(),
+  /** Roles beyond the primary one. The primary role is the first the person was given. */
+  additional_roles: z.array(AdminRoleSchema).default([]),
+  /** Everything the person can do: every role's keys plus `extra_permissions`. */
   permissions: z.array(z.string()).default([]),
+  /** What the roles alone grant. `permissions` minus `extra_permissions`, as the server sees it. */
+  role_permissions: z.array(z.string()).default([]),
+  /** Single keys granted to this person on top of their roles. Additive only. */
+  extra_permissions: z.array(z.string()).default([]),
+  /**
+   * Where to land after sign-in, already resolved by the server: the person's
+   * own choice if it still matches one of their roles, else the primary role's.
+   * Read it; do not recompute it.
+   */
+  start_page: z.string().default('dashboard'),
+  /** The stored choice, or null when the person uses their primary role's page. */
+  start_page_choice: z.string().nullable().default(null),
   /**
    * True while the admin is still on a temporary password. The BE's
    * PasswordChangeGuard 403s **every** admin route until it clears — only
