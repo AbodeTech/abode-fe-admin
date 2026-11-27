@@ -10,13 +10,19 @@ import { Label } from '@/components/ui/label';
 import { useAdminPermissions } from '@/hooks/use-admin-permission';
 
 import { useCreateProgramme } from '../hooks/use-recruitment';
+import { CohortCostSetup } from './CohortCostsManager';
+import type { CohortSummary } from '../schemas/programme.schema';
 import { ScheduleBuilder, type ScheduleBuilderValue } from './ScheduleBuilder';
 
 export function ProgrammeCreatePage() {
   const router = useRouter();
-  const canManage = useAdminPermissions().has('manage_academy');
+  const permissions = useAdminPermissions();
+  const canManage = permissions.has('manage_academy');
+  const canManageCosts = permissions.has('manage_cohort_costs');
   const create = useCreateProgramme();
 
+  const [addCosts, setAddCosts] = useState(false);
+  const [created, setCreated] = useState<{ programmeId: string; cohort: Pick<CohortSummary, 'id' | 'name'> } | null>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [cohortName, setCohortName] = useState('');
@@ -32,6 +38,8 @@ export function ProgrammeCreatePage() {
       </div>
     );
   }
+
+  if (created) return <CohortCostSetup cohort={created.cohort} onDone={() => router.push(`/recruitment/${created.programmeId}/cohorts/${created.cohort.id}/dashboard`)} />;
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -55,7 +63,8 @@ export function ProgrammeCreatePage() {
       toast.success('Programme created');
       const cohortId = programme.cohorts?.[0]?.id ?? programme.default_cohort?.id;
       if (cohortId) {
-        router.push(`/recruitment/${programme.id}/cohorts/${cohortId}/dashboard`);
+        if (addCosts && canManageCosts) setCreated({ programmeId: programme.id, cohort: { id: cohortId, name: cohortName } });
+        else router.push(`/recruitment/${programme.id}/cohorts/${cohortId}/dashboard`);
       } else {
         router.push(`/recruitment/${programme.id}`);
       }
@@ -70,7 +79,7 @@ export function ProgrammeCreatePage() {
         <div>
           <h1 className="text-xl font-semibold text-slate-900">New programme</h1>
           <p className="mt-1 text-sm text-slate-500">
-            Creates the programme and its first cohort in one step (mock until BE ABO-33+).
+            Create the programme and its first cohort. You can record cohort costs next.
           </p>
         </div>
         <div className="flex gap-2">
@@ -78,7 +87,7 @@ export function ProgrammeCreatePage() {
             Cancel
           </Button>
           <Button type="submit" form="programme-create-form" disabled={create.isPending}>
-            {create.isPending ? 'Creating…' : 'Create programme'}
+            {create.isPending ? 'Creating…' : addCosts && canManageCosts ? 'Create & add cohort costs' : 'Create programme'}
           </Button>
         </div>
       </div>
@@ -161,6 +170,7 @@ export function ProgrammeCreatePage() {
           </div>
 
           <ScheduleBuilder onChange={setScheduleValue} disabled={create.isPending} />
+          {canManageCosts && <label className="flex items-start gap-2 rounded-lg border bg-slate-50 p-3 text-sm"><input type="checkbox" checked={addCosts} disabled={create.isPending} onChange={e => setAddCosts(e.target.checked)} className="mt-1 accent-emerald-700" /><span>Add cohort costs next<span className="mt-1 block text-xs text-slate-500">Optional. Record each expense after the cohort is created.</span></span></label>}
         </section>
       </form>
     </div>

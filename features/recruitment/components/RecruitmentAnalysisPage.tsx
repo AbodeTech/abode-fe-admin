@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Download, Loader2, RefreshCw, Search } from 'lucide-react';
 import { toast } from 'sonner';
@@ -77,6 +78,7 @@ function useAnalysisFilters() {
     });
     if (!('people_page' in changes)) params.delete('people_page');
     if (!('cohort_page' in changes)) params.delete('cohort_page');
+    if ('source' in changes || 'programme_id' in changes || 'cohort_id' in changes) params.delete('pro_page');
     const query = params.toString();
     const target = destination ?? pathname;
     const href = query ? `${target}?${query}` : target;
@@ -157,13 +159,13 @@ function PeopleDialog({
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => { onOpenChange(isOpen); if (!isOpen) setSearch(''); }}>
-      <DialogContent className="flex max-h-[90vh] max-w-5xl flex-col gap-0 overflow-hidden p-0">
-        <DialogHeader className="shrink-0 border-b border-slate-100 px-5 py-4 pr-12 text-left sm:px-6">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div><DialogTitle className="text-lg">{title}</DialogTitle><DialogDescription className="mt-1 text-xs">People counted in this group{cohortName ? ` · ${cohortName}` : ''}. Filters follow the dashboard selection.</DialogDescription></div>
+      <DialogContent className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl">
+        <DialogHeader className="shrink-0 border-b border-slate-100 px-5 py-4 text-left sm:px-6">
+          <div className="flex flex-col gap-3">
+            <div className="pr-8"><DialogTitle className="text-lg">{title}</DialogTitle><DialogDescription className="mt-1 text-xs">People counted in this group{cohortName ? ` · ${cohortName}` : ''}. Filters follow the dashboard selection.</DialogDescription></div>
             <Select value={selectionToken} onValueChange={changeSelection} disabled={exportPeople.isPending}>
-              <SelectTrigger className="w-full sm:w-[230px]"><SelectValue /></SelectTrigger>
-              <SelectContent>
+              <SelectTrigger aria-label="Select stage or follow-up group" className="w-full sm:max-w-md"><SelectValue /></SelectTrigger>
+              <SelectContent position="popper" align="start">
                 {STAGES.map((stage) => <SelectItem key={`stage:${stage.key}`} value={`stage:${stage.key}`}>{stage.label}</SelectItem>)}
                 {FOLLOW_UPS.filter(item => coverage.data?.follow_up[item.key]?.available || selection?.value === item.key).map((item) => <SelectItem key={`follow_up:${item.key}`} value={`follow_up:${item.key}`}>Follow-up: {item.label}</SelectItem>)}
               </SelectContent>
@@ -177,7 +179,7 @@ function PeopleDialog({
         </DialogHeader>
         <div className="min-h-0 flex-1 overflow-auto px-5 sm:px-6">
           {people.isLoading ? <div className="flex items-center justify-center gap-2 py-14 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" />Loading people…</div> : people.error ? <p className="py-12 text-center text-sm text-red-600">{people.error.message}</p> : people.data?.items.length ? (
-            <div className="overflow-x-auto"><table className="w-full min-w-[690px] border-collapse text-left text-xs"><thead className="sticky top-0 bg-white"><tr className="border-b border-slate-100 text-[10px] uppercase tracking-wide text-slate-400"><th className="py-3 pr-3">Person</th><th className="px-3 py-3">Cohort</th><th className="px-3 py-3">Source</th><th className="px-3 py-3">Type</th><th className="px-3 py-3">Furthest stage</th><th className="py-3 pl-3">Follow-up</th></tr></thead><tbody>{people.data.items.map((person) => <tr key={person.id} className="border-b border-slate-50 last:border-0"><td className="py-3 pr-3"><b className="text-slate-800">{person.first_name} {person.last_name}</b><span className="mt-1 block text-[10px] text-slate-400">{person.email}</span></td><td className="px-3 py-3 text-slate-600">{person.cohort_name}</td><td className="px-3 py-3 text-slate-600">{person.source ?? 'Unattributed'}</td><td className="px-3 py-3"><span className={`rounded-full px-2 py-1 text-[10px] ${person.classification === 'acquired' ? 'bg-emerald-50 text-emerald-800' : person.classification === 'influenced' ? 'bg-sky-50 text-sky-800' : 'bg-slate-100 text-slate-600'}`}>{person.classification === 'acquired' ? 'New recruit' : person.classification === 'influenced' ? 'Existing user' : 'Unclassified'}</span></td><td className="px-3 py-3 text-slate-600">{STAGES.find((stage) => stage.key === person.furthest_stage)?.label ?? person.furthest_stage}</td><td className="py-3 pl-3 text-slate-500">{person.stalled_days !== null ? `Stalled ${person.stalled_days} days` : '—'}</td></tr>)}</tbody></table></div>
+            <div className="overflow-x-auto"><table className="w-full min-w-[690px] border-collapse text-left text-xs"><thead className="sticky top-0 bg-white"><tr className="border-b border-slate-100 text-[10px] uppercase tracking-wide text-slate-400"><th className="py-3 pr-3">Person</th><th className="px-3 py-3">Cohort</th><th className="px-3 py-3">Source</th><th className="px-3 py-3">Type</th><th className="px-3 py-3">Furthest stage</th><th className="py-3 pl-3">Follow-up</th></tr></thead><tbody>{people.data.items.map((person) => <tr key={person.id} className="border-b border-slate-50 last:border-0"><td className="py-3 pr-3"><b className="text-slate-800">{person.first_name} {person.last_name}</b><span className="mt-1 block text-[10px] text-slate-400">{person.email}</span>{person.phone_number && <span className="mt-1 block text-slate-500">{person.phone_number}</span>}</td><td className="px-3 py-3 text-slate-600">{person.cohort_name}</td><td className="px-3 py-3 text-slate-600">{person.source ?? 'Unattributed'}</td><td className="px-3 py-3"><span className={`rounded-full px-2 py-1 text-[10px] ${person.classification === 'acquired' ? 'bg-emerald-50 text-emerald-800' : person.classification === 'influenced' ? 'bg-sky-50 text-sky-800' : 'bg-slate-100 text-slate-600'}`}>{person.classification === 'acquired' ? 'New recruit' : person.classification === 'influenced' ? 'Existing user' : 'Unclassified'}</span></td><td className="px-3 py-3 text-slate-600">{STAGES.find((stage) => stage.key === person.furthest_stage)?.label ?? person.furthest_stage}</td><td className="py-3 pl-3 text-slate-500">{person.stalled_days !== null ? `Stalled ${person.stalled_days} days` : '—'}</td></tr>)}</tbody></table></div>
           ) : <div className="py-14 text-center text-sm text-slate-400">No people match this selection.</div>}
         </div>
         <div className="shrink-0 border-t border-slate-100 px-5 sm:px-6">
@@ -210,9 +212,9 @@ export function RecruitmentAnalysisPage({ mode = 'overview' }: { mode?: 'overvie
   const statusParam = searchParams.get('status');
   const status = statusParam === 'registration_open' || statusParam === 'registration_closed' ? statusParam : 'all';
   const sortParam = searchParams.get('cohort_sort');
-  const sort = sortParam === 'registrants' || sortParam === 'upgrades' ? sortParam : 'newest';
+  const sort = sortParam === 'registrants' || sortParam === 'upgrades' || sortParam === 'sales' || sortParam === 'return' ? sortParam : 'newest';
   const onSelect = (id: string) => update({ compare: (selected.includes(id) ? selected.filter(item => item !== id) : [...selected, id].slice(0, 4)).join(',') });
-  const onOpen = (id: string) => update({ view: null, detail: id, cohort_id: null, pro_page: null, pro_search: null }, ANALYSIS_PATH);
+  const onOpen = (id: string) => update({ view: null, detail: id, cohort_id: null, pro_page: null, pro_search: null, pro_selling: null, pro_sort: null, pro_direction: null }, ANALYSIS_PATH);
   const openCompare = (ids = selected) => update({ view: null, detail: null, cohort_id: null, compare: ids.join(',') }, COMPARE_PATH);
   const onDrill = (kind: DrillSelection['kind'], value: DrillSelection['value'], id: string) => {
     setDrill({ kind, value, cohortId: id });
@@ -220,8 +222,23 @@ export function RecruitmentAnalysisPage({ mode = 'overview' }: { mode?: 'overvie
   };
   const overview = () => update({ view: null, detail: null, cohort_id: null }, ANALYSIS_PATH);
 
+  const overviewParams = new URLSearchParams(searchParams.toString());
+  ['view', 'detail', 'cohort_id', 'people_page', 'pro_page', 'pro_search', 'pro_sort', 'pro_selling', 'pro_direction'].forEach(key => overviewParams.delete(key));
+  const overviewHref = overviewParams.size ? `${ANALYSIS_PATH}?${overviewParams}` : ANALYSIS_PATH;
+  const detailName = options?.cohorts.find(cohort => cohort.id === detailId)?.name ?? 'Cohort';
+
   return <div className={s.page}><div className={s.content}>
-    <nav className={s.nav} aria-label="Recruitment analytics pages"><span className={s.eyebrow}>Associates · Recruitment</span><div className={s.tabs}><button aria-current={view === 'overview' ? 'page' : undefined} onClick={overview}>Overview</button><button aria-current={view === 'compare' ? 'page' : undefined} onClick={() => openCompare()}>Compare</button></div></nav>
+    <nav aria-label="Breadcrumb" className="text-sm text-muted-foreground">
+      <ol className="flex min-w-0 flex-wrap items-center gap-1.5">
+        <li><Link href="/recruitment" className="transition-colors hover:text-primary">Recruitment</Link></li>
+        <li aria-hidden="true">›</li>
+        {view === 'overview' ? <li aria-current="page" className="font-medium text-foreground">Analysis</li> : <>
+          <li><Link href={overviewHref} className="transition-colors hover:text-primary">Analysis</Link></li>
+          <li aria-hidden="true">›</li>
+          <li aria-current="page" className="min-w-0 break-words font-medium text-foreground">{view === 'compare' ? 'Compare cohorts' : detailName}</li>
+        </>}
+      </ol>
+    </nav>
     {view === 'overview' && <>
       <header className={s.heading}><div><h1>Recruitment Analytics</h1><p className={s.subtitle}>Every cohort, from registration to sales. Open a cohort or select a few to compare.</p></div><button className={s.button} disabled={dashboard.isFetching} onClick={() => { void dashboard.refetch(); void optionsQuery.refetch(); }}><RefreshCw size={14} className={dashboard.isFetching ? 'animate-spin' : undefined} />Refresh</button></header>
       {options && <AnalyticsFilters options={options} programmeId={programmeId} source={source} status={status} update={update} />}

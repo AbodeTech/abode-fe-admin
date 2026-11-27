@@ -32,6 +32,8 @@ import {
 import {
   RecruitmentAnalysisPersonSchema,
   RecruitmentAnalysisSchema,
+  type AnalysisPeopleSelling,
+  type AnalysisPeopleSort,
   type RecruitmentFollowUp,
   type RecruitmentStage,
 } from '../schemas/recruitment-analysis.schema';
@@ -258,6 +260,9 @@ export function useRecruitmentAnalysisPeople({
   page,
   limit,
   search,
+  sellingStatus,
+  sortBy,
+  sortDirection,
 }: {
   filters: RecruitmentAnalysisFilters;
   stage?: RecruitmentStage;
@@ -265,6 +270,9 @@ export function useRecruitmentAnalysisPeople({
   page: number;
   limit: number;
   search?: string;
+  sellingStatus?: AnalysisPeopleSelling;
+  sortBy?: AnalysisPeopleSort;
+  sortDirection?: 'asc' | 'desc';
 }) {
   const params = {
     ...filters,
@@ -273,6 +281,9 @@ export function useRecruitmentAnalysisPeople({
     page,
     limit,
     search: search || undefined,
+    selling_status: sellingStatus,
+    sort_by: sortBy,
+    sort_direction: sortDirection,
   };
 
   return useQuery({

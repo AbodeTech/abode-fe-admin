@@ -15,15 +15,21 @@ import {
   useProgramme,
   useToggleProgrammeActive,
 } from '../hooks/use-recruitment';
+import type { CohortSummary } from '../schemas/programme.schema';
+import { CohortCostSetup } from './CohortCostsManager';
 import { ScheduleBuilder, type ScheduleBuilderValue } from './ScheduleBuilder';
 
 export function ProgrammeDetailPage({ programmeId }: { programmeId: string }) {
   const router = useRouter();
-  const canManage = useAdminPermissions().has('manage_academy');
+  const permissions = useAdminPermissions();
+  const canManage = permissions.has('manage_academy');
+  const canManageCosts = permissions.has('manage_cohort_costs');
   const { data: programme, isLoading, error } = useProgramme(programmeId);
   const toggle = useToggleProgrammeActive();
   const createCohort = useCreateCohort(programmeId);
 
+  const [addCosts, setAddCosts] = useState(false);
+  const [createdCohort, setCreatedCohort] = useState<CohortSummary | null>(null);
   const [showNewCohort, setShowNewCohort] = useState(false);
   const [cohortName, setCohortName] = useState('');
   const [goal, setGoal] = useState('5000');
@@ -39,6 +45,8 @@ export function ProgrammeDetailPage({ programmeId }: { programmeId: string }) {
       </div>
     );
   }
+
+  if (createdCohort) return <CohortCostSetup cohort={createdCohort} onDone={() => router.push(`/recruitment/${programmeId}/cohorts/${createdCohort.id}/dashboard`)} />;
 
   return (
     <div className="space-y-6 p-4 md:p-6">
@@ -94,7 +102,8 @@ export function ProgrammeDetailPage({ programmeId }: { programmeId: string }) {
               toast.success('Cohort created');
               setShowNewCohort(false);
               setCohortName('');
-              router.push(`/recruitment/${programmeId}/cohorts/${cohort.id}/dashboard`);
+              if (addCosts && canManageCosts) setCreatedCohort(cohort);
+              else router.push(`/recruitment/${programmeId}/cohorts/${cohort.id}/dashboard`);
             } catch (err) {
               toast.error(err instanceof Error ? err.message : 'Failed');
             }
@@ -122,8 +131,9 @@ export function ProgrammeDetailPage({ programmeId }: { programmeId: string }) {
             </div>
           </div>
           <ScheduleBuilder onChange={setScheduleValue} disabled={createCohort.isPending} />
+          {canManageCosts && <label className="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm"><input type="checkbox" className="mt-1 accent-emerald-700" checked={addCosts} disabled={createCohort.isPending} onChange={e => setAddCosts(e.target.checked)} /><span>Add cohort costs next<span className="mt-1 block text-xs text-slate-500">Optional. Record ads, venue, facilitator and other expenses after creating the cohort.</span></span></label>}
           <Button type="submit" disabled={createCohort.isPending}>
-            Create cohort
+            {createCohort.isPending ? 'Creating…' : addCosts && canManageCosts ? 'Create cohort & add costs' : 'Create cohort'}
           </Button>
         </form>
       ) : null}

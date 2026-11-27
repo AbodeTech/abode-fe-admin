@@ -87,7 +87,7 @@ const navGroups = [
       // the underlying /admin/academy/* calls on view_academy, so a page
       // visit without that permission will show real 403 error states.
       { name: "Recruitment", link: "/recruitment", icon: <GraduationCap /> },
-      { name: "Recruitment Analysis", link: "/recruitment/analysis", icon: <BarChart3 /> },
+      { name: "Recruitment Analysis", link: "/recruitment/analysis", icon: <BarChart3 />, requiresPermission: "view_recruitment_analysis" },
       { name: "Company Events", link: "/company-events", icon: <LandPlot />, requiresPermission: "view_allocations" },
     ]
   },

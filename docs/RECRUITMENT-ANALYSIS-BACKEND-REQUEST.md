@@ -41,27 +41,35 @@ All paths below are relative to `/api/v1`. Existing reads require admin authenti
 
 | Endpoint | Status | Required work |
 | --- | --- | --- |
-| `GET /admin/academy/recruitment-analysis` | Exists | Correct attendance; preserve response contract; add commercial results, lifecycle, coverage, chart and alert blocks |
+| `GET /admin/academy/recruitment-analysis` | Updated | Attendance, performance, cost and chart blocks implemented; lifecycle and backend alerts remain outstanding |
 | Same endpoint with `cohort_id=<id>` | Exists; detail and comparison use it | Return only that cohort's scoped metrics; include the detail blocks described in section 6 |
-| `GET /admin/academy/recruitment-analysis/people` | Exists | Preserve stage/follow-up lists; add the three missing follow-up groups, nullable phone numbers and stable complete pagination; supports the current CSV fallback |
+| `GET /admin/academy/recruitment-analysis/people` | Updated | All follow-up groups, phone numbers, Pro fields, selling filter and sorts implemented; supports paged CSV fallback |
 | `GET /admin/academy/recruitment-analysis/people/export` | **Proposed, recommended for consistent full-group exports; not implemented** | Export all matching contacts from one snapshot, using the exact same membership and scope as the people list (section 10.1) |
 | `GET /admin/academy/recruitment-analysis/compare?cohort_ids=<id1>,<id2>` | **Optional proposed endpoint; does not currently exist** | Batch two to four cohorts under one observation snapshot, preserving selection order and per-cohort availability |
 
 The frontend currently compares cohorts by calling the existing aggregate endpoint once per selected cohort, at most four requests. A new frontend URL does **not** require a new backend endpoint. Reusing the aggregate remains valid; a batch endpoint is useful for consistent snapshots and efficiency. No dedicated detail/filter endpoint is required while the aggregate supplies those blocks and complete `filter_options`.
 
-### Verified local source behaviour
+### Implemented contract — verified 25 November 2026
 
-Read-only review on 24 November 2026, not a production/database verification:
+This implementation note supersedes earlier proposed field names and missing-capability statements below. The remaining sections retain the product requirements and historical attendance evidence. Verification is against the local backend source, not a production database.
 
-- Controller exposes aggregate and people endpoints only.
-- `RecruitmentAnalysisFilterDto` accepts programme/cohort/source and the legacy creation-date parameters. It does not accept status, maturity, comparison IDs, monetary sorts or Pro activity filters yet.
-- People DTO accepts stage, existing follow-up, search, page (default 1), limit (default 25; maximum 100).
-- Attendance is currently `Boolean(registration.checked_in)`; the repository loads meetings but not `MeetingVerification`.
-- Cohorts expose `created_at`, registration open/closed and `stage_label: null`; they do not establish actual start/close dates or maturity.
-- Seller evidence is returned through `confirmed_sale_only`, `approved_recruit_only`, `both`. Source comparisons expose broader active AP counts, not a seller-only count.
-- Confirmed sales are queried as distinct users, without transaction values or dates. Cost, activity-to-sale and first-sale series are absent.
+- Aggregate and people reads still require `view_academy`. Costs and return additionally require `view_cohort_costs`; the API returns `restricted` without it. The frontend access-control work currently uses `view_recruitment_analysis`; align the role rollout with the backend before enabling non-admin access.
+- The aggregate now includes `performance`, `return_by_cohort`, and each cohort's `attendance` and `performance`. A `cohort_id` request additionally includes `sales_timeline`, `first_sale_timeline` and `activity_analysis`.
+- `performance` supplies `credited_pros`, `selling_pros`, `plans_sold`, `ended_plans`, `contract_value`, `revenue`, per-selling-Pro values, `approved_recruits`, `definition` and `cost`. Per-cohort performance additionally supplies `median_days_to_first_sale`.
+- Money objects are `{ amount_minor, currency: "NGN" }`; amounts are **kobo**, converted once for display. `contract_value` is land price excluding cancelled/closed plans; `revenue` is money paid to date on the plans. The UI labels them **Sales value** and **Money paid**. Return headlines/chart use `return_on_revenue`, not profit or contract value divided by cost.
+- `sales-v1` credits a Pro to their latest cohort registration on/before approval. Plans must have that Pro as direct seller and occur on/after approval; close-and-relocate plans are excluded. Metrics are to date, with no common observation window. Selling rates and unit costs use credited Pros. Journey/people membership may include an approved Pro credited elsewhere; the Pro table identifies this explicitly.
+- `cost.availability` is `tracked`, `unavailable` or `restricted`. Tracked costs expose total, category amounts, unit costs and returns on both money paid and contract value. Missing costs, source-filtered costs, permission restrictions and zero-cost denominators are not displayed as zero return. Status filters recalculate totals from visible cohorts and require all their costs before reporting a combined return.
+- Attendance combines registration check-in **or** resolved cohort meeting verification, deduplicated by person/cohort. The response provides check-in-only, verification-only, both, unresolved rows and earliest attendance. Source-filtered requests return null unresolved rows. Programme name is shown beside the cohort attendance breakdown. Preserve the section 3 reconciliation evidence.
+- First-sale points contain `day`, `eligible`, `sellers`, `percent`; each point only includes Pros approved at least N days ago. Sales timeline months contain `month`, `plans_sold`, `contract_value`, `revenue`; paid amounts are paid-to-date on plans sold in that month, not cash received during that month.
+- **Programme applicability correction:** RCP has no site inspection or allocation event. Omit those activities from RCP detail and RCP-only comparisons; show `Not applicable` for RCP in mixed-programme comparisons. They are not missing attendance records. The frontend currently identifies RCP from the supplied programme name; backend should supply stable programme/activity applicability metadata so this rule does not depend on naming. Keep non-applicability distinct from `activity_not_recorded` and from individual unknown history.
+- Activity rows include participants, nonparticipants, unknown histories, selling rates for both groups, difference in percentage points and observation-window/source metadata. Unknown histories are excluded from participation-rate denominators. Association must not be presented as causation.
+- All seven follow-up enum groups now exist, including attempted-without-pass, passed-without-upgrade and approved-without-sale. People responses include nullable `phone_number`, `follow_ups`, `attendance_source`, `attended_at` and nullable `pro` (approval, credit, sales, paid value, first-sale dates/days and recruited Pros).
+- People requests now accept `selling_status=all|selling|not_selling`, `sort_by=sales_value|revenue|approved_recruits|approved_at` and `sort_direction=asc|desc`. Sorting happens before pagination. No meetings-attended sort or per-person activity totals exist.
+- Aggregate DTO filters remain programme/cohort/source and optional legacy creation-date parameters. Registration status, cohort search and monetary sorting are frontend operations. No new date filter or `current_tier` registration filter is sent.
+- There is still no batch comparison or people-export endpoint. Comparison uses scoped aggregate requests. Follow-up CSV downloads continue to fetch every matching page, preserving cohort/source/search, checking totals and duplicate identities before saving. They do not send messages.
+- Cohort-cost CRUD endpoints now exist at `/admin/academy/cohorts/:cohortId/costs` (and `/:costId` for edits/deletion). The frontend now supports optional cost entry after cohort creation (including the first cohort of a new programme), plus cost management from the regular cohort header and the analysis detail cost card. GET requires `view_cohort_costs`; add/edit/remove require `manage_cohort_costs`. Writes send amounts in naira; responses use kobo. Editing and removing require a 15–500 character reason. Successful writes refresh the cost ledger and invalidate analysis queries. Cohort creation and cost entry are separate steps so a failed cost write never recreates the cohort.
+- Still outstanding: actual programme/cohort start and close dates, maturity metadata, backend-generated Needs attention, single-snapshot CSV export, and per-person meeting/activity totals. The UI retains creation dates and registration status, and computes Needs attention from comparable closed-cohort credited-Pro rates.
 
-Proposed field names in this PRD are a requested additive contract, not implemented capabilities. Agree DTOs and frontend Zod schemas together before sending new parameters.
 
 ## 3. Attendance correction: historical Supabase meeting verification
 

@@ -7,6 +7,7 @@ export const recruitmentKeys = {
   cohorts: (programmeId: string) =>
     [...recruitmentKeys.all, 'cohorts', programmeId] as const,
   cohort: (id: string) => [...recruitmentKeys.all, 'cohort', id] as const,
+  costs: (id: string) => [...recruitmentKeys.cohort(id), 'costs'] as const,
   dashboard: (cohortId: string, from: string, to: string) =>
     [...recruitmentKeys.all, 'dashboard', cohortId, from, to] as const,
   analysis: () => [...recruitmentKeys.all, 'analysis'] as const,

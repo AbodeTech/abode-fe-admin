@@ -5,6 +5,7 @@ import {
   seedSessionsForCohort,
 } from './meetings';
 import { body, paged } from './util';
+import { createCohortCostRoutes } from './cohort-costs';
 
 /**
  * Stored shapes are deliberately thin — every derived field (`session_count`,
@@ -621,6 +622,7 @@ function toReferralCsvRow(r: ReferralRow): string {
 }
 
 export const academyRoutes: MockRoutes = {
+  ...createCohortCostRoutes(id => Boolean(findCohort(id))),
   'GET /admin/academy/programmes': ({ query }) => {
     let rows = [...programmes];
     const q = String(query.q ?? '').trim().toLowerCase();

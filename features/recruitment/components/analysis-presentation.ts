@@ -7,10 +7,11 @@ export const countText = (value: number | null) => value === null ? '—' : valu
 export const rate = (value: number | null, total: number | null) => value === null || total === null || total <= 0 ? null : value / total * 100;
 export const rateText = (value: number | null) => value === null ? '—' : `${Number.isInteger(value) ? value : value.toFixed(1)}%`;
 export const cohortStage = (cohort: AnalysisCohort) => cohort.stage_label?.trim() || (cohort.status === 'registration_open' ? 'Registration open' : 'Registration closed');
-export const sellingCount = (cohort: AnalysisCohort) => cohort.active_associate_pros.count === null ? null : cohort.active_associate_pros.confirmed_sale_only + cohort.active_associate_pros.both;
+export const proCount = (cohort: AnalysisCohort) => cohort.performance?.credited_pros ?? cohort.approved_upgrades.count;
+export const sellingCount = (cohort: AnalysisCohort) => cohort.performance?.selling_pros ?? (cohort.active_associate_pros.count === null ? null : cohort.active_associate_pros.confirmed_sale_only + cohort.active_associate_pros.both);
 export const cohortValue = (cohort: AnalysisCohort, metric: AnalysisMetric) => metric === 'selling'
-  ? rate(sellingCount(cohort), cohort.approved_upgrades.count)
-  : rate(cohort.approved_upgrades.count, cohort.registrants.count);
+  ? rate(sellingCount(cohort), proCount(cohort))
+  : rate(proCount(cohort), cohort.registrants.count);
 export const goalProgress = (cohort: AnalysisCohort) => rate(cohort.registrants.count, cohort.registration_goal);
 
 export function median(values: (number | null)[]) {
@@ -36,7 +37,7 @@ export function recruitmentAttention(cohorts: AnalysisCohort[], metric: Analysis
   const groups = new Map<string, { cohort: AnalysisCohort; value: number; base: number }[]>();
   for (const cohort of cohorts) {
     const value = cohortValue(cohort, metric);
-    const base = metric === 'selling' ? cohort.approved_upgrades.count : cohort.registrants.count;
+    const base = metric === 'selling' ? proCount(cohort) : cohort.registrants.count;
     if (cohort.status !== 'registration_closed' || value === null || !Number.isFinite(value) || base === null || base <= 0) continue;
     const group = groups.get(cohort.programme_id) ?? [];
     group.push({ cohort, value, base });

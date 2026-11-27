@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
 import { useCohort, useProgramme } from '../hooks/use-recruitment';
+import { useAdminPermissions } from '@/hooks/use-admin-permission';
 
 const TABS = [
   { slug: 'dashboard', label: 'Dashboard' },
@@ -14,6 +15,7 @@ const TABS = [
   { slug: 'sessions', label: 'Sessions' },
   { slug: 'tests', label: 'Tests' },
   { slug: 'settings', label: 'Settings' },
+  { slug: 'costs', label: 'Manage costs' },
 ] as const;
 
 export function CohortShell({
@@ -26,6 +28,9 @@ export function CohortShell({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const permissions = useAdminPermissions();
+  const canManageCosts = permissions.has('manage_cohort_costs');
+  const canViewCosts = permissions.has('view_cohort_costs');
   const { data: programme } = useProgramme(programmeId);
   const { data: cohort } = useCohort(cohortId);
   const base = `/recruitment/${programmeId}/cohorts/${cohortId}`;
@@ -51,12 +56,14 @@ export function CohortShell({
 
       <nav className="flex flex-wrap gap-1 border-b pb-px">
         {TABS.map((tab) => {
+          if (tab.slug === 'costs' && !canManageCosts && !canViewCosts) return null;
           const href = `${base}/${tab.slug}`;
           const active = pathname === href || pathname.startsWith(`${href}/`);
           return (
             <Link
               key={tab.slug}
               href={href}
+              aria-current={active ? 'page' : undefined}
               className={cn(
                 'rounded-t-md px-3 py-2 text-sm font-medium',
                 active
@@ -64,7 +71,7 @@ export function CohortShell({
                   : 'text-slate-500 hover:text-slate-800',
               )}
             >
-              {tab.label}
+              {tab.slug === 'costs' && !canManageCosts ? 'View costs' : tab.label}
             </Link>
           );
         })}

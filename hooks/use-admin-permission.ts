@@ -1,6 +1,7 @@
 'use client';
 
 import { useAuthStore } from '@/store/auth-store';
+import type { Admin } from '@/features/auth/schemas/auth.schema';
 
 /* ============================================================
  * Does the signed-in admin hold a permission?
@@ -180,6 +181,9 @@ export const ADMIN_PERMISSIONS = [
 
   // In-house recruitment / Academy Admin (ABO-5–28 FE). BE keys land with ABO-82.
   'view_academy',
+  'view_cohort_costs',
+  'manage_cohort_costs',
+  'view_recruitment_analysis',
   'manage_academy',
   'export_academy',
 
@@ -209,14 +213,14 @@ export const ADMIN_PERMISSIONS = [
 export type AdminPermission = (typeof ADMIN_PERMISSIONS)[number];
 
 export function useHasPermission(permission: AdminPermission): boolean {
-  const user = useAuthStore((state) => state.user);
+  return useAuthStore((state) => hasPermission(state.user, permission));
+}
 
+function hasPermission(user: Admin | null, permission: AdminPermission): boolean {
   if (!user) return false;
-  // The super-admin bypass. Was `role === 'admin'`, which no longer means
-  // unrestricted: `admin` is an ops-editable role now (RP-7).
-  if (user.role?.is_super_admin) return true;
-
-  return (user.permissions ?? []).includes(permission);
+  return user.role?.is_super_admin === true
+    || (user.additional_roles ?? []).some((role) => role.is_super_admin)
+    || (user.permissions ?? []).includes(permission);
 }
 
 /** MD §4 uses `useAdminPermissions().has('manage_campaigns')`. */
@@ -224,10 +228,6 @@ export function useAdminPermissions() {
   const user = useAuthStore((state) => state.user);
 
   return {
-    has: (permission: AdminPermission) => {
-      if (!user) return false;
-      if (user.role?.is_super_admin) return true;
-      return (user.permissions ?? []).includes(permission);
-    },
+    has: (permission: AdminPermission) => hasPermission(user, permission),
   };
 }

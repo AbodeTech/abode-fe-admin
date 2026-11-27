@@ -33,8 +33,8 @@ export type AdminRole = z.infer<typeof AdminRoleSchema>;
 /**
  * The admin record the BE returns from every auth endpoint (`AuthAdminView`).
  *
- * `permissions` is resolved server-side from the admin's role document — it is
- * not stored per admin. Kept as `string[]` rather than an enum so a new BE
+ * `permissions` is resolved server-side from the admin's roles and extra grants.
+ * Kept as `string[]` rather than an enum so a new BE
  * permission does not turn every login into a SCHEMA_MISMATCH.
  */
 export const AdminSchema = z.object({
@@ -44,6 +44,7 @@ export const AdminSchema = z.object({
   userName: z.string().nullable().optional(),
   email: z.string().nullable().optional(),
   role: AdminRoleSchema.nullable(),
+  additional_roles: z.array(AdminRoleSchema).optional(),
   permissions: z.array(z.string()).default([]),
   /**
    * True while the admin is still on a temporary password. The BE's
