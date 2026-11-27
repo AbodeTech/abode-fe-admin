@@ -174,7 +174,10 @@ export const RegistrantSchema = z.object({
   id: z.string(),
   cohort_id: z.string(),
   user_id: z.string().optional(),
-  was_existing: z.boolean().optional(),
+  // Older Academy registrations predate the acquired/influenced migration and
+  // can have a persisted null. Keep it unknown in the UI instead of rejecting
+  // the full dashboard response (or treating the person as newly acquired).
+  was_existing: z.boolean().nullable().optional(),
   tier_at_registration: z.string().nullable().optional(),
   first_name: z.string(),
   last_name: z.string(),

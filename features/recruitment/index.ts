@@ -12,6 +12,7 @@ export { CohortReferralsPage } from './components/CohortReferralsPage';
 export { CohortSessionsPage } from './components/CohortSessionsPage';
 export { CohortTestsPage } from './components/CohortTestsPage';
 export { CohortSettingsPage } from './components/CohortSettingsPage';
+export { RecruitmentAnalysisPage } from './components/RecruitmentAnalysisPage';
 export { CohortShell } from './components/CohortShell';
 export { ScheduleBuilder } from './components/ScheduleBuilder';
 
@@ -28,6 +29,8 @@ export {
   useToggleCohortRegistration,
   useSetDefaultCohort,
   useCohortDashboard,
+  useRecruitmentAnalysis,
+  useRecruitmentAnalysisPeople,
   useCohortRegistrants,
   usePatchRegistrant,
   useDeleteRegistrant,
@@ -45,6 +48,13 @@ export {
   DEFAULT_PROGRAMMES_LIMIT,
   DEFAULT_REGISTRANTS_LIMIT,
 } from './hooks/use-recruitment';
+export type { RecruitmentAnalysisFilters } from './hooks/use-recruitment';
+export type {
+  RecruitmentAnalysis,
+  RecruitmentAnalysisPerson,
+  RecruitmentFollowUp,
+  RecruitmentStage,
+} from './schemas/recruitment-analysis.schema';
 
 export type {
   Programme,

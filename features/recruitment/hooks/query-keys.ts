@@ -9,6 +9,11 @@ export const recruitmentKeys = {
   cohort: (id: string) => [...recruitmentKeys.all, 'cohort', id] as const,
   dashboard: (cohortId: string, from: string, to: string) =>
     [...recruitmentKeys.all, 'dashboard', cohortId, from, to] as const,
+  analysis: () => [...recruitmentKeys.all, 'analysis'] as const,
+  analysisDashboard: (filters: Record<string, unknown>) =>
+    [...recruitmentKeys.analysis(), 'dashboard', filters] as const,
+  analysisPeople: (filters: Record<string, unknown>) =>
+    [...recruitmentKeys.analysis(), 'people', filters] as const,
   registrants: (cohortId: string, filters: Record<string, unknown>) =>
     [...recruitmentKeys.all, 'registrants', cohortId, filters] as const,
   referrals: (cohortId: string, filters: Record<string, unknown>) =>
